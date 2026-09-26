@@ -131,4 +131,15 @@ public sealed class ProbeEventParserTests
             .Message.ShouldContain("'msg'");
         Should.Throw<FormatException>(() => ProbeEventParser.Parse("[1,2]"));
     }
+
+    [Theory]
+    [InlineData("""{"kind":"pong","seq":"1","qpc":1,"fg":0}""", "'seq'")]
+    [InlineData("""{"kind":7,"seq":1,"qpc":1,"fg":0}""", "'kind'")]
+    [InlineData("""{"kind":"pong","seq":1,"qpc":1,"fg":0,"id":"7"}""", "'id'")]
+    [InlineData("""{"kind":"error","seq":1,"qpc":1,"fg":0,"detail":null}""", "'detail'")]
+    [InlineData("""{"kind":"ready","seq":1,"qpc":1,"fg":0,"protocol":1.5}""", "'protocol'")]
+    public void A_field_of_the_wrong_type_is_a_protocol_error(string line, string field) =>
+        Should
+            .Throw<FormatException>(() => ProbeEventParser.Parse(line))
+            .Message.ShouldContain(field);
 }
