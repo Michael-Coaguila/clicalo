@@ -1,0 +1,106 @@
+// One task per `cl` verb (blueprint §13). Tasks run cl.cmd through cmd.exe whatever the default terminal
+// is, and never echo the command line, so Narrator only reads cl's own lines. Every run ends with one line.
+{
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}",
+    "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+  },
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated",
+    "clear": true,
+    "echo": false,
+    "showReuseMessage": false,
+    "focus": false
+  },
+  "tasks": [
+    {
+      "label": "cl setup",
+      "detail": "Prepara el equipo: herramientas, git, DCO y firma SSH.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["setup"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl build",
+      "detail": "Compila toda la solución en Debug.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["build"],
+      "problemMatcher": ["$msCompile"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "cl fast",
+      "detail": "Compila y prueba el núcleo portátil (objetivo: menos de 45 s).",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["fast"],
+      "problemMatcher": ["$msCompile"],
+      "group": "test"
+    },
+    {
+      "label": "cl test",
+      "detail": "Compila y ejecuta todas las pruebas salvo las de escritorio.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["test"],
+      "problemMatcher": ["$msCompile"],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "cl desk",
+      "detail": "Compila y ejecuta solo las pruebas de escritorio.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["desk"],
+      "problemMatcher": ["$msCompile"],
+      "group": "test"
+    },
+    {
+      "label": "cl fix",
+      "detail": "Da formato al código C# con CSharpier.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["fix"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl check",
+      "detail": "La misma puerta que la CI: termina siempre con esta orden.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["check"],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "label": "cl clean",
+      "detail": "Borra las salidas de compilación, los registros y los resultados.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["clean"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl: abrir el último error",
+      "detail": "Abre artifacts/cl/last-error.md, el informe del último fallo.",
+      "type": "shell",
+      "command": "code",
+      "args": ["--reuse-window", "artifacts\\cl\\last-error.md"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "never", "echo": false, "showReuseMessage": false }
+    },
+    {
+      "label": "cl: compilar el orquestador",
+      "detail": "Compila build/Build.csproj antes de depurar cl.",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "build\\Build.csproj", "-nologo", "-v:q", "-nodeReuse:false"],
+      "problemMatcher": ["$msCompile"],
+      "hide": true
+    }
+  ]
+}

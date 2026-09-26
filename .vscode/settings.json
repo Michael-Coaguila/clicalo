@@ -1,0 +1,31 @@
+{
+  // Blueprint §13: autosave, CSharpier on save and one task per `cl` verb (tasks.json).
+  // onFocusChange (not afterDelay) because VS Code only formats on save when the save is not delayed.
+  "files.autoSave": "onFocusChange",
+  "editor.formatOnSave": true,
+  "[csharp]": {
+    "editor.defaultFormatter": "csharpier.csharpier-vscode"
+  },
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "task.saveBeforeRun": "always",
+  "dotnet.defaultSolution": "Clicalo.slnx",
+
+  // Failure reports and setup notes open rendered, so Narrator can move through them by headings.
+  "workbench.editorAssociations": {
+    "**/artifacts/cl/*.md": "vscode.markdown.preview.editor"
+  },
+
+  // Build output and the read-only design handoff stay out of search and file watching.
+  "search.exclude": {
+    "**/artifacts": true,
+    "docs/design/handoff/**": true
+  },
+  "files.watcherExclude": {
+    "**/artifacts/**": true
+  },
+  "files.readonlyInclude": {
+    "docs/design/handoff/**": true
+  }
+}
