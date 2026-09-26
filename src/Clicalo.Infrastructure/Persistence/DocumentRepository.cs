@@ -231,6 +231,9 @@ public sealed partial class DocumentRepository : IDocumentRepository
             return Results.Fail<SaveReceipt>(PersistenceFailures.Invalid());
         }
 
+        // The seq is spent even when the write fails: a failed attempt can leave a complete .tmp with this seq, and the
+        // next attempt (and its emergency copy) must go above it, or the load chain could prefer that older .tmp.
+        _seq = seq;
         var written = await _writer
             .WriteAsync(_locations.Document, bytes, cancellationToken)
             .ConfigureAwait(false);
@@ -240,7 +243,6 @@ public sealed partial class DocumentRepository : IDocumentRepository
             return Results.Fail<SaveReceipt>(written.Failure);
         }
 
-        _seq = seq;
         DiscardEmergencyCopy();
         return Results.Ok(new SaveReceipt(seq, now));
     }

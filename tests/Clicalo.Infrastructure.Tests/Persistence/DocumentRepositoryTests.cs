@@ -267,6 +267,37 @@ public sealed class DocumentRepositoryTests : IDisposable
         load.Document.ShouldBe(TestDocuments.Document(2));
     }
 
+    [Fact(SkipExceptions = [typeof(NotImplementedException)])]
+    [Trait("Req", "DAT-002")]
+    public async Task A_complete_tmp_left_by_a_failed_save_never_wins_over_a_newer_emergency_copy()
+    {
+        await SaveAsync(TestDocuments.Document(1));
+        var files = new ScriptedFailures();
+        var repository = Repository(
+            files,
+            new AtomicFile(_time, NullLogger<AtomicFile>.Instance, files)
+        );
+        _ = await repository.LoadAsync(Token);
+
+        // Save 2 writes a complete .tmp, then ReplaceFileW keeps failing: .tmp holds version 2.
+        files.FailReplaceOf = Data.Document;
+        _ = await FakeClock.RunAsync(
+            _time,
+            repository.SaveAsync(TestDocuments.Document(2), Token)
+        );
+
+        // Save 3 cannot even write its .tmp: only its emergency copy holds version 3. Then the process dies.
+        files.FailWriteOf = AtomicFile.TemporaryOf(Data.Document);
+        _ = await FakeClock.RunAsync(
+            _time,
+            repository.SaveAsync(TestDocuments.Document(3), Token)
+        );
+
+        var load = await Repository().LoadAsync(Token);
+
+        load.Document.ShouldBe(TestDocuments.Document(3));
+    }
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     private static byte[] FutureMajor() =>
@@ -320,12 +351,15 @@ public sealed class DocumentRepositoryTests : IDisposable
         File.WriteAllBytes(Data.Document, bytes);
     }
 
-    private DocumentRepository Repository(IAtomicFileSystem? files = null)
+    private DocumentRepository Repository(
+        IAtomicFileSystem? files = null,
+        IAtomicFileWriter? documentWriter = null
+    )
     {
         var writer = new AtomicFile(_time, NullLogger<AtomicFile>.Instance);
         return new DocumentRepository(
             Data,
-            writer,
+            documentWriter ?? writer,
             new QuarantineStore(Data, _time),
             new BackupService(Data, writer, _time, NullLogger<BackupService>.Instance),
             _time,
@@ -334,6 +368,51 @@ public sealed class DocumentRepositoryTests : IDisposable
             files ?? AtomicFile.Disk,
             () => TestDocuments.Document(0)
         );
+    }
+
+    /// <summary>The disk, with the replace of one file or the write of another failing as a lock that never ends.</summary>
+    private sealed class ScriptedFailures : IAtomicFileSystem
+    {
+        private readonly IAtomicFileSystem _disk = AtomicFile.Disk;
+
+        public string? FailReplaceOf { get; set; }
+
+        public string? FailWriteOf { get; set; }
+
+        public bool Exists(string path) => _disk.Exists(path);
+
+        public byte[]? ReadAllBytesOrNull(string path) => _disk.ReadAllBytesOrNull(path);
+
+        public void CreateDirectory(string path) => _disk.CreateDirectory(path);
+
+        public void WriteThrough(string path, ReadOnlySpan<byte> content)
+        {
+            if (string.Equals(path, FailWriteOf, StringComparison.OrdinalIgnoreCase))
+            {
+                throw Locked();
+            }
+
+            _disk.WriteThrough(path, content);
+        }
+
+        public void Replace(string target, string replacement, string backup)
+        {
+            if (string.Equals(target, FailReplaceOf, StringComparison.OrdinalIgnoreCase))
+            {
+                throw Locked();
+            }
+
+            _disk.Replace(target, replacement, backup);
+        }
+
+        public void Move(string source, string target) => _disk.Move(source, target);
+
+        public void Delete(string path) => _disk.Delete(path);
+
+        public IReadOnlyList<string> Files(string directory, string pattern) =>
+            _disk.Files(directory, pattern);
+
+        private static IOException Locked() => new("locked", unchecked((int)0x80070020));
     }
 
     /// <summary>The disk, with the document held by another process.</summary>
