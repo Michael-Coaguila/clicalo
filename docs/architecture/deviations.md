@@ -25,7 +25,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-13 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
 | D-14 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación | M1 |
 | D-15 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
-| D-16 | Primer plano | §3.6 y §7.9 | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, restauración fuera del procedimiento de ventana | M1 |
+| D-16 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
 | D-17 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
@@ -264,14 +264,18 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - `WM_DPICHANGED` se maneja como pide el plano y además se reenvía a `HwndTarget` (con un indicador de reentrada)
     dentro del veto, porque WPF necesita el mensaje para reescalar (ACC-008) y su `SetWindowPos` no lleva
     `SWP_NOACTIVATE` (#7561).
-  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes) y `WM_ACTIVATEAPP(TRUE)` solo
-    cuenta en la superficie en primer plano.
+  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes) y solo mientras la superficie
+    tiene el primer plano (`GetForegroundWindow`): un mensaje de activación que llega cuando el primer plano ya está en
+    otra app (tardío, porque la restauración va por el grupo de hilos mientras el hilo de UI aún entrega los mensajes
+    de la activación) se retiene y repara `WS_EX_NOACTIVATE`, pero no cuenta. `WM_ACTIVATEAPP(TRUE)` cierra una
+    violación que nunca recibió su desactivación.
   - Las superficies, `OwnerAnchor` y `SurfaceRegistry` viven en un único hilo; todas comparten `OwnerAnchor`, así que
     la banda *topmost* se pierde y se repara en familia.
 - **Motivo.** Sin el veto, una prueba sin escritorio mostró `WM_ACTIVATEAPP`, `WM_ACTIVATE` y `WM_SETFOCUS` en la
   superficie al mostrarla y al cambiar de DPI (resultados en [S1](../testing/spikes/S1.md)).
 - **Coste.** Un *hook* de hilo más. Una activación externa que coincida exactamente con el `Show` o con el cambio de
-  DPI también se rechaza y el guardián no la ve.
+  DPI también se rechaza y el guardián no la ve. Una superficie activada dentro de su propio hilo sin llegar al primer
+  plano (sin quitárselo a nadie) tampoco cuenta como violación.
 - **Revisión.** Al cerrar S1 con las filas manuales del equipo táctil; valorar un veto general entre
   `WM_WINDOWPOSCHANGING` y `WM_WINDOWPOSCHANGED` para cualquier `SetWindowPos` sin `SWP_NOACTIVATE`.
 
@@ -304,8 +308,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 
 ## D-16 · Primer plano implementado en M1
 
-- **Plano.** [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano) y
-  [§7.9](blueprint.md#79-cambio-de-app-de-extremo-a-extremo-per-003).
+- **Plano.** [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano),
+  [§7.9](blueprint.md#79-cambio-de-app-de-extremo-a-extremo-per-003) y la tabla de hilos de
+  [§3.2](blueprint.md#32-modelo-de-hilos), que pone `ForegroundOrchestrator` en el hilo SysEvents.
 - **Repositorio.**
   - `ForegroundMonitor` se engancha **sin** `WINEVENT_SKIPOWNPROCESS`: anota las ventanas propias, pero nunca las
     publica; así, tocar la app a la que volvería una concesión cuenta como cambio y la termina.
@@ -320,8 +325,16 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - `NOTIFYICONDATAW` escrito a mano, solo x64 y ARM64 (CsWin32 no lo genera para AnyCPU).
   - Una violación durante una concesión devuelve el primer plano al destino de la concesión, no a
     `lastExternalForeground`: §3.5 no cubre ese caso, y restaurar la app externa terminaba la concesión.
-  - `ReportViolation` vuelve enseguida y restaura desde el grupo de hilos: se llama dentro del procedimiento de ventana
-    de la superficie, en el hilo de UI, que nunca cambia el primer plano (§3.2).
+  - El orquestador no se ejecuta en el hilo SysEvents, sino en el grupo de hilos: `ReportViolation` vuelve enseguida y
+    restaura desde allí (se llama dentro del procedimiento de ventana de la superficie, en el hilo de UI), y
+    `AcquireAsync`, la devolución de una concesión, la restauración tras una violación y la reacción a un cambio de
+    primer plano verificado salen del hilo que las llama antes de tocar el primer plano o una superficie. Así el hilo
+    de UI nunca llama a `SetForegroundWindow` y el *callback* WinEvent de SysEvents nunca espera un `SetWindowLong`
+    entre hilos (§3.2); lo comprueban `ForegroundOrchestratorLeaseTests` (afinidad) y las pruebas de escritorio de
+    `Windowing.IntegrationTests/Foreground`, que piden las concesiones desde el hilo de UI.
+  - Tras el `WM_HOTKEY` del atajo interno, la escalera espera a que sus teclas estén sueltas
+    (`IInternalRightsHotkey.WaitForChordReleaseAsync`, `Timings.Foreground.ChordReleasePoll`) antes de reintentar: si
+    no, una liberación llegaba a la ventana nueva y la app de delante se quedaba con Ctrl pulsada (S4).
 - **Motivo.** Hallazgos de la primera ejecución de escritorio de S4 ([S4](../testing/spikes/S4.md)) y de la
   integración de M1.
 - **Coste.** Más superficie pública en Application.Foreground; todas las adiciones son compatibles.
