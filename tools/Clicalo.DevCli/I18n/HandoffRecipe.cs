@@ -59,18 +59,28 @@ internal sealed record HandoffRecipe(
         {
             foreach (var key in Objects(addedElement, "'added'"))
             {
-                AllowOnly(key.Value, "added." + key.Name, "notes", "after", "plural");
+                var owner = "added." + key.Name;
+                AllowOnly(key.Value, owner, "notes", "after", "text", "plural");
+                var hasText = key.Value.TryGetProperty("text", out var text);
+                var hasPlural = key.Value.TryGetProperty("plural", out var plural);
+                if (hasText == hasPlural)
+                {
+                    throw Invalid(owner + " needs exactly one of 'text' or 'plural'.");
+                }
+
                 added.Add(
                     new HandoffAddedKey(
                         key.Name,
-                        String(
-                            Required(key.Value, "after", "added." + key.Name),
-                            "added." + key.Name + ".after"
-                        ),
-                        Forms(
-                            Required(key.Value, "plural", "added." + key.Name),
-                            "added." + key.Name + ".plural"
-                        )
+                        String(Required(key.Value, "after", owner), owner + ".after"),
+                        hasText
+                            ? Strings(text, owner + ".text")
+                            : ImmutableDictionary.Create<string, string>(StringComparer.Ordinal),
+                        hasPlural
+                            ? Forms(plural, owner + ".plural")
+                            : ImmutableDictionary.Create<
+                                string,
+                                ImmutableDictionary<string, string>
+                            >(StringComparer.Ordinal)
                     )
                 );
             }

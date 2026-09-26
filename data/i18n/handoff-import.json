@@ -101,6 +101,66 @@
         "es": { "one": "{count} atajo", "other": "{count} atajos" },
         "en": { "one": "{count} shortcut", "other": "{count} shortcuts" }
       }
+    },
+    "kgMods": {
+      "notes": "Grupo de teclas del selector (data/catalogs/keys.json).",
+      "after": "kgSides",
+      "text": { "es": "Modificadores", "en": "Modifiers" }
+    },
+    "kgFn": {
+      "notes": "Grupo de teclas del selector (data/catalogs/keys.json).",
+      "after": "kgSpecial",
+      "text": { "es": "F1–F12", "en": "F1–F12" }
+    },
+    "catEdit": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "lcSys",
+      "text": { "es": "Edición", "en": "Editing" }
+    },
+    "catHist": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catEdit",
+      "text": { "es": "Historial", "en": "History" }
+    },
+    "catFile": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catHist",
+      "text": { "es": "Archivo", "en": "File" }
+    },
+    "catSel": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catFile",
+      "text": { "es": "Selección", "en": "Selection" }
+    },
+    "catWin": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catSel",
+      "text": { "es": "Ventanas", "en": "Windows" }
+    },
+    "catVoice": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catWin",
+      "text": { "es": "Voz", "en": "Voice" }
+    },
+    "catNav": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catVoice",
+      "text": { "es": "Navegación", "en": "Navigation" }
+    },
+    "catFmt": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catNav",
+      "text": { "es": "Formato", "en": "Formatting" }
+    },
+    "catWeb": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catFmt",
+      "text": { "es": "Web", "en": "Web" }
+    },
+    "catText": {
+      "notes": "Categoría de atajo (data/catalogs/categories.json).",
+      "after": "catWeb",
+      "text": { "es": "Texto", "en": "Text" }
     }
   }
 }

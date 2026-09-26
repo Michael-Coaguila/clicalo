@@ -187,6 +187,12 @@ internal static partial class HandoffImporter
                 errors.Add("added." + entry.Key + " already exists in the handoff.");
             }
 
+            if (!entry.Text.IsEmpty)
+            {
+                CheckLanguages(recipe, entry.Text.Keys, "added." + entry.Key + ".text", true, errors);
+                continue;
+            }
+
             CheckLanguages(
                 recipe,
                 entry.Plural.Keys,
@@ -365,6 +371,12 @@ internal static partial class HandoffImporter
 
             foreach (var language in recipe.Languages)
             {
+                if (!entry.Text.IsEmpty)
+                {
+                    import.Entries[language].Add(new(entry.Key, entry.Text[language]));
+                    continue;
+                }
+
                 foreach (
                     var (category, form) in entry
                         .Plural[language]
