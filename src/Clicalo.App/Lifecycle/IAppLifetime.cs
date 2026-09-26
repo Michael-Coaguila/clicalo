@@ -1,0 +1,16 @@
+namespace Clicalo.App.Lifecycle;
+
+/// <summary>
+/// The only way Clícalo ends (blueprint §4.4: <c>Environment.Exit</c> and <c>Application.Shutdown</c> are banned
+/// outside <c>App/Lifecycle</c>). <see cref="ExitAsync"/> guarantees «Release all» before the process ends
+/// (SEG-006, SEG-007): the engine releases everything, the document is flushed, and whatever could not be released in
+/// time stays in the ledger for Sentinel.
+/// </summary>
+internal interface IAppLifetime
+{
+    /// <summary>Completes when the app has started ending (the same task for every caller).</summary>
+    Task Exiting { get; }
+
+    /// <summary>Releases everything, flushes the document, closes every window and ends the process.</summary>
+    Task ExitAsync();
+}
