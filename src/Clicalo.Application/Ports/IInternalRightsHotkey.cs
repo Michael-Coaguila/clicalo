@@ -30,5 +30,11 @@ public interface IInternalRightsHotkey
     /// leave the modifier down in the app that received the press (spike S4).
     /// </summary>
     /// <returns>True when every key is up; false when the wait ended first (the ladder goes on anyway).</returns>
-    ValueTask<bool> WaitForChordReleaseAsync(CancellationToken cancellationToken);
+    /// <remarks>
+    /// The default says the chord is already up: it is for an implementation whose chord never reaches the keyboard (a
+    /// fake, or one written before this member existed). <c>InternalRightsHotkey</c>, the only implementation that
+    /// registers the chord with the system, implements it.
+    /// </remarks>
+    ValueTask<bool> WaitForChordReleaseAsync(CancellationToken cancellationToken) =>
+        ValueTask.FromResult(true);
 }
