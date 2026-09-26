@@ -9,6 +9,27 @@ internal static class Zips
 {
     private const uint LocalHeader = 0x04034B50;
     private const uint CentralHeader = 0x02014B50;
+    private const uint EndOfCentralDirectory = 0x06054B50;
+
+    /// <summary>
+    /// Rewrites the entry counts of the end-of-central-directory record (on this disk and in total), leaving the
+    /// directory itself as it is.
+    /// </summary>
+    public static byte[] DeclareEntryCount(byte[] zip, ushort declared)
+    {
+        var copy = (byte[])zip.Clone();
+        for (var i = copy.Length - 22; i >= 0; i--)
+        {
+            if (BinaryPrimitives.ReadUInt32LittleEndian(copy.AsSpan(i)) == EndOfCentralDirectory)
+            {
+                BinaryPrimitives.WriteUInt16LittleEndian(copy.AsSpan(i + 8), declared);
+                BinaryPrimitives.WriteUInt16LittleEndian(copy.AsSpan(i + 10), declared);
+                return copy;
+            }
+        }
+
+        throw new InvalidDataException("The zip has no end-of-central-directory record.");
+    }
 
     /// <summary>A zip with these entries, in order.</summary>
     public static byte[] Create(

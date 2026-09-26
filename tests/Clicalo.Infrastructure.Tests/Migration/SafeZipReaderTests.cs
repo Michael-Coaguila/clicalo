@@ -126,6 +126,20 @@ public sealed class SafeZipReaderTests
         Code(Read(zip)).ShouldBe(V1ImportFailures.ZipTooManyEntriesCode);
     }
 
+    [Theory]
+    [InlineData((ushort)1001)]
+    [InlineData(ushort.MaxValue)]
+    public void A_declared_entry_count_over_the_limit_is_refused_before_the_directory_is_loaded(
+        ushort declared
+    )
+    {
+        // The directory still holds one entry: only the check before loading it can tell «too many entries» from
+        // damage (0xFFFF is also the ZIP64 marker, which a v1 backup never needs).
+        var zip = Zips.DeclareEntryCount(Zips.Create(("profiles.json", "{}")), declared);
+
+        Code(Read(zip)).ShouldBe(V1ImportFailures.ZipTooManyEntriesCode);
+    }
+
     [Fact]
     public void Headers_that_understate_the_size_do_not_let_a_bomb_through()
     {
