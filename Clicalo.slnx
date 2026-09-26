@@ -32,5 +32,6 @@
   </Folder>
   <Folder Name="/build/">
     <Project Path="build/Build.csproj" />
+    <Project Path="build/Build.Tests/Build.Tests.csproj" />
   </Folder>
 </Solution>

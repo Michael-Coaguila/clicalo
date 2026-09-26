@@ -128,6 +128,14 @@
       "projectReferences": [],
       "packageReferences": ["Microsoft.Extensions.TimeProvider.Testing"]
     },
+    "Clicalo.TestKit.Windows": {
+      "area": "tests",
+      "rule": "Windows test helpers (WPF render snapshots, InputProbe sessions, guarded test-only SendInput injector). Referenced by test projects only; InputProbe is referenced for build order and output copy only (ReferenceOutputAssembly=false).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.TestKit", "InputProbe"],
+      "packageReferences": ["Microsoft.Windows.CsWin32"],
+      "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
+    },
     "Clicalo.Domain.Tests": {
       "area": "tests",
       "rule": "Tests the Domain layer only (blueprint §10.1).",
@@ -172,7 +180,8 @@
         "Clicalo.Platform.Windows",
         "Clicalo.Application",
         "Clicalo.Domain",
-        "Clicalo.TestKit"
+        "Clicalo.TestKit",
+        "Clicalo.TestKit.Windows"
       ],
       "packageReferences": ["xunit.v3", "Shouldly"]
     },
@@ -203,9 +212,9 @@
     },
     "Clicalo.DevCli": {
       "area": "tools",
-      "rule": "Developer utilities behind cl (i18n-check, trace, notes...). No product dependency.",
+      "rule": "Developer utilities behind cl (i18n-check, i18n-import, trace, notes...). May reference the generators assembly (i18n-check reuses the generator's Roslyn-free validation core) and Application (CLDR plural-rule parser); never UI, Platform or Infrastructure.",
       "platform": "portable",
-      "projectReferences": [],
+      "projectReferences": ["Clicalo.Generators", "Clicalo.Application"],
       "packageReferences": []
     },
     "InputProbe": {
@@ -221,6 +230,13 @@
       "platform": "portable",
       "projectReferences": [],
       "packageReferences": ["Bullseye", "SimpleExec"]
+    },
+    "Build.Tests": {
+      "area": "build",
+      "rule": "Unit tests of the cl orchestrator.",
+      "platform": "portable",
+      "projectReferences": ["Build"],
+      "packageReferences": ["xunit.v3", "Shouldly"]
     }
   }
 }
