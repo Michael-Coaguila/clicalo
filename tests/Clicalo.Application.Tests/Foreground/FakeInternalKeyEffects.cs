@@ -21,7 +21,7 @@ internal sealed class FakeInternalKeyEffects(ForegroundWorld world) : IInternalK
     {
         cancellationToken.ThrowIfCancellationRequested();
         RightsChords++;
-        world.Log.Add("send rights chord");
+        world.Write("send rights chord");
         var sent = (OnRightsChord ?? DeliverRights)();
         return new ValueTask<bool>(sent);
     }
@@ -30,7 +30,7 @@ internal sealed class FakeInternalKeyEffects(ForegroundWorld world) : IInternalK
     {
         cancellationToken.ThrowIfCancellationRequested();
         DictationChords++;
-        world.Log.Add("send dictation chord");
+        world.Write("send dictation chord");
         return new ValueTask<bool>(true);
     }
 

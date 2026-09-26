@@ -23,12 +23,12 @@ internal sealed class FakeSurfaceActivationStyle(ForegroundWorld world)
     public void AllowActivation(SurfaceId surface)
     {
         Activatable.Add(surface);
-        world.Log.Add("allow " + surface);
+        world.Write("allow " + surface);
     }
 
     public void RestoreNoActivate(SurfaceId surface)
     {
         Activatable.Remove(surface);
-        world.Log.Add("noactivate " + surface);
+        world.Write("noactivate " + surface);
     }
 }

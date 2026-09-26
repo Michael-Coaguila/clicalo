@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Timing;
@@ -15,6 +16,12 @@ namespace Clicalo.Application.Foreground;
 /// It is an actor: acquisitions, restorations and the reactions to foreground changes, idle timeouts and violations
 /// run one at a time behind an asynchronous gate, so there is never more than one active lease. In the app it lives on
 /// the SysEvents thread next to <see cref="IForegroundMonitor"/>; nothing here depends on that thread.
+/// </para>
+/// <para>
+/// Thread affinity (blueprint §3.2): the UI thread never calls <c>SetForegroundWindow</c> and the SysEvents thread never
+/// blocks. So every entry point leaves the thread that calls it before it touches the foreground or a surface:
+/// <see cref="AcquireAsync"/>, the restorations and the reaction to a verified foreground change continue on the thread
+/// pool, and <see cref="ReportViolation"/> and the monitor's event return at once.
 /// </para>
 /// <para>
 /// Concurrency rules: a new lease replaces the active one without restoring in between and inherits its previous
@@ -42,6 +49,7 @@ public sealed partial class ForegroundOrchestrator
     private ForegroundLease? _active;
     private int _disposed;
     private Task _violationRestore = Task.CompletedTask;
+    private Task _foregroundChange = Task.CompletedTask;
 
     /// <summary>Creates the orchestrator and starts following <see cref="ForegroundPorts.Monitor"/>.</summary>
     /// <param name="ports">The adapters it works through.</param>
@@ -96,6 +104,7 @@ public sealed partial class ForegroundOrchestrator
             return Deny(request, ForegroundDenialReason.TargetUnavailable);
         }
 
+        await LeaveCallerThread();
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -119,6 +128,7 @@ public sealed partial class ForegroundOrchestrator
             return;
         }
 
+        await LeaveCallerThread();
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -155,6 +165,9 @@ public sealed partial class ForegroundOrchestrator
 
     /// <summary>The latest restoration started by <see cref="ReportViolation"/>; tests await it.</summary>
     internal Task ViolationRestore => Volatile.Read(ref _violationRestore);
+
+    /// <summary>The latest reaction to a verified foreground change that ends a lease; tests await it.</summary>
+    internal Task ForegroundChangeHandled => Volatile.Read(ref _foregroundChange);
 
     /// <summary>
     /// Ends the active lease because of a terminal event of the engine (release all, panic, exit), restoring according
@@ -203,6 +216,7 @@ public sealed partial class ForegroundOrchestrator
         }
 
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        await LeaveCallerThread();
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -253,6 +267,14 @@ public sealed partial class ForegroundOrchestrator
 
     private static bool NeedsSurfaceActivation(LeaseKind kind) =>
         kind is LeaseKind.TextInput or LeaseKind.KeyboardNavigation;
+
+    /// <summary>
+    /// Continues on the thread pool, always, even when nothing before it went asynchronous: the caller may be the UI
+    /// thread (which never changes the foreground) or the SysEvents thread (which never blocks), and the gate completes
+    /// synchronously when it is free.
+    /// </summary>
+    private static ConfiguredTaskAwaitable LeaveCallerThread() =>
+        Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 
     private async ValueTask<LeaseResult> AcquireInsideAsync(
         LeaseRequest request,
@@ -558,12 +580,14 @@ public sealed partial class ForegroundOrchestrator
     /// <summary>
     /// True when the user switched to another app since <paramref name="start"/>: a verified external change to a
     /// window other than the one the request started from and other than <paramref name="target"/> itself (a «Try
-    /// now» target is an external app). A late report of the app that was already in front is not a switch.
+    /// now» target is an external app). A late report of the app that was already in front is not a switch, even with
+    /// a new epoch (the user went away and came back). The window of <see cref="Current"/> only changes with a new
+    /// epoch, so comparing the windows is enough.
     /// </summary>
     private bool Changed(ForegroundSnapshot start, WindowToken target)
     {
         var now = Current;
-        return now.Epoch != start.Epoch && now.Window != start.Window && now.Window != target;
+        return now.Window != start.Window && now.Window != target;
     }
 
     private void Publish(WindowToken active, WindowToken pending) =>
@@ -586,7 +610,7 @@ public sealed partial class ForegroundOrchestrator
         var lease = Volatile.Read(ref _active);
         if (lease is not null && lease.Target != snapshot.Window)
         {
-            _ = EndOnForegroundChangeAsync(lease, snapshot);
+            Volatile.Write(ref _foregroundChange, EndOnForegroundChangeAsync(lease, snapshot));
         }
     }
 
@@ -594,6 +618,9 @@ public sealed partial class ForegroundOrchestrator
     {
         try
         {
+            // Queued for real: the free gate would otherwise run GetForegroundWindow and the cross-thread
+            // SetWindowLong of RestoreNoActivate inside the monitor's WinEvent callback.
+            await LeaveCallerThread();
             await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
             try
             {

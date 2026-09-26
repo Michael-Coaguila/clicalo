@@ -98,9 +98,13 @@ public sealed class ActivationArbiterTests : IDisposable
         _world.Control.Script.Enqueue(false);
         _world.Control.Script.Enqueue(true);
 
-        var pending = _world.Orchestrator.RestoreAfterViolationAsync(
-            Word,
-            TestContext.Current.CancellationToken
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            _world
+                .Orchestrator.RestoreAfterViolationAsync(
+                    Word,
+                    TestContext.Current.CancellationToken
+                )
+                .AsTask()
         );
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
         await pending;

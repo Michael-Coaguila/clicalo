@@ -21,14 +21,14 @@ internal sealed class FakeInternalRightsHotkey(ForegroundWorld world) : IInterna
     public ValueTask<bool> WaitForRightsAsync(CancellationToken cancellationToken)
     {
         Armed++;
-        world.Log.Add("arm");
+        world.Write("arm");
         var pending = new TaskCompletionSource<bool>();
         _pending = pending;
         cancellationToken.Register(() =>
         {
             if (pending.TrySetCanceled(cancellationToken))
             {
-                world.Log.Add("disarm");
+                world.Write("disarm");
             }
         });
         return new ValueTask<bool>(pending.Task);
@@ -37,7 +37,7 @@ internal sealed class FakeInternalRightsHotkey(ForegroundWorld world) : IInterna
     /// <summary>The <c>WM_HOTKEY</c> of the reserved chord arrives.</summary>
     public void Arrive()
     {
-        world.Log.Add("hotkey");
+        world.Write("hotkey");
         _pending?.TrySetResult(true);
     }
 

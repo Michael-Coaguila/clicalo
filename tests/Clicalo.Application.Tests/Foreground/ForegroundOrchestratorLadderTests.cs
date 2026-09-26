@@ -48,9 +48,13 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
         _world.Control.Script.Enqueue(true);
         var deadline = _world.Time.After(Timings.Foreground.RestoreRetryDelay);
 
-        var pending = _world.Orchestrator.AcquireAsync(
-            Request(LeaseKind.TextInput, Search, origin),
-            TestContext.Current.CancellationToken
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            _world
+                .Orchestrator.AcquireAsync(
+                    Request(LeaseKind.TextInput, Search, origin),
+                    TestContext.Current.CancellationToken
+                )
+                .AsTask()
         );
         _world.Time.AdvanceToJustBefore(deadline);
         _world.Control.Attempts.Count.ShouldBe(1, "the retry waits for the retry delay");
@@ -111,15 +115,18 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
     [Fact]
     public async Task A_first_attempt_that_Windows_completes_during_the_verification_delay_needs_no_chord()
     {
-        var pending = _world.Orchestrator.AcquireAsync(
-            Request(LeaseKind.TextInput, Search, LeaseOrigin.UiaInvoke),
-            TestContext.Current.CancellationToken
-        );
+        // Windows refuses the call, and the surface's own thread finishes the switch after SetForegroundWindow returned.
+        _world.Control.Script.Enqueue(false);
+        _world.Control.DuringAttempt = _ => _world.Control.Foreground = Search;
 
-        // The surface's own thread finishes the switch after SetForegroundWindow returned.
-        _world.Control.Foreground = Search;
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        var result = await pending;
+        var result = await _world.CompleteAsync(
+            _world
+                .Orchestrator.AcquireAsync(
+                    Request(LeaseKind.TextInput, Search, LeaseOrigin.UiaInvoke),
+                    TestContext.Current.CancellationToken
+                )
+                .AsTask()
+        );
 
         result.ShouldBeOfType<LeaseResult.Granted>().Lease.GrantedAt.ShouldBe(LadderStep.Direct);
         _world.Control.Attempts.ShouldBe([Search], "verified again, not set again");

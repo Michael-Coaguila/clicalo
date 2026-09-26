@@ -140,6 +140,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         _world.Mark();
 
         _world.Monitor.SwitchTo(Chrome);
+        await _world.Orchestrator.ForegroundChangeHandled;
 
         (await search.Ended).ShouldBe(LeaseEndReason.ForegroundChanged);
         _world.Orchestrator.ActiveLease.ShouldBeNull();
@@ -158,6 +159,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
 
         // The report of Word coming back after the previous lease arrives only now, with the search already in front.
         _world.Monitor.SwitchTo(Word, alsoForeground: false);
+        await _world.Orchestrator.ForegroundChangeHandled;
 
         search.IsActive.ShouldBeTrue();
         _world.Orchestrator.Current.Epoch.ShouldBe(epoch.Next());
@@ -170,6 +172,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         var search = await _world.GrantAsync(LeaseKind.TextInput, Search);
 
         _world.Monitor.SwitchTo(Word);
+        await _world.Orchestrator.ForegroundChangeHandled;
         _ = await search.Ended;
 
         (await search.RestoreAsync(TestContext.Current.CancellationToken)).ShouldBe(
@@ -189,6 +192,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
 
         var tryNow = await _world.GrantAsync(LeaseKind.TryNowTarget, Notepad, LeaseOrigin.Touch);
         _world.Monitor.SwitchTo(Notepad);
+        await _world.Orchestrator.ForegroundChangeHandled;
 
         tryNow.IsActive.ShouldBeTrue();
         tryNow.PreviousForeground.ShouldBe(
@@ -206,6 +210,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         _ = await _world.GrantAsync(LeaseKind.ControlCenter, ControlCenter);
         _ = await _world.GrantAsync(LeaseKind.TryNowTarget, Notepad, LeaseOrigin.Touch);
         _world.Monitor.SwitchTo(Notepad);
+        await _world.Orchestrator.ForegroundChangeHandled;
 
         var back = await _world.GrantAsync(
             LeaseKind.ControlCenter,
@@ -293,6 +298,75 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         (
             await _world.Orchestrator.EndActiveLeaseAsync(TestContext.Current.CancellationToken)
         ).ShouldBeNull();
+    }
+
+    [Fact]
+    [Trait("Req", "BUS-001")]
+    public async Task A_verified_foreground_change_is_handled_outside_the_monitors_callback()
+    {
+        // The monitor raises its event inside a WinEvent callback on SysEvents, which never blocks (§3.2): ending the
+        // lease there would run GetForegroundWindow and the cross-thread SetWindowLong of RestoreNoActivate inline.
+        var search = await _world.GrantAsync(LeaseKind.TextInput, Search);
+        var monitorThread = Environment.CurrentManagedThreadId;
+        var inside = true;
+        var touchedInside = new List<string>();
+        _world.OnPortCall = call =>
+        {
+            if (Volatile.Read(ref inside) && Environment.CurrentManagedThreadId == monitorThread)
+            {
+                lock (touchedInside)
+                {
+                    touchedInside.Add(call);
+                }
+            }
+        };
+
+        _world.Monitor.SwitchTo(Chrome);
+        Volatile.Write(ref inside, false);
+        await _world.Orchestrator.ForegroundChangeHandled;
+
+        touchedInside.ShouldBe(
+            ["external Chrome"],
+            "only the monitor's own report runs in its callback"
+        );
+        search.EndReason.ShouldBe(LeaseEndReason.ForegroundChanged);
+        _world.Surfaces.Activatable.ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "BUS-002")]
+    public async Task Acquiring_and_restoring_never_touch_the_foreground_on_the_calling_thread()
+    {
+        // SpikeLab and the product ask from the UI thread, which never calls SetForegroundWindow (§3.2).
+        var caller = Environment.CurrentManagedThreadId;
+        var calling = true;
+        var attemptsOnCaller = 0;
+        _world.Control.DuringAttempt = _ =>
+        {
+            if (Volatile.Read(ref calling) && Environment.CurrentManagedThreadId == caller)
+            {
+                Interlocked.Increment(ref attemptsOnCaller);
+            }
+        };
+
+        var acquiring = _world
+            .Orchestrator.AcquireAsync(
+                Request(LeaseKind.TextInput, Search, LeaseOrigin.Touch),
+                TestContext.Current.CancellationToken
+            )
+            .AsTask();
+        Volatile.Write(ref calling, false);
+        var lease = (await _world.CompleteAsync(acquiring))
+            .ShouldBeOfType<LeaseResult.Granted>()
+            .Lease;
+
+        Volatile.Write(ref calling, true);
+        var restoring = lease.RestoreAsync(TestContext.Current.CancellationToken).AsTask();
+        Volatile.Write(ref calling, false);
+        (await _world.CompleteAsync(restoring)).ShouldBe(RestoreOutcome.Restored);
+
+        attemptsOnCaller.ShouldBe(0);
+        _world.Control.Attempts.ShouldBe([Search, Word]);
     }
 
     [Fact]

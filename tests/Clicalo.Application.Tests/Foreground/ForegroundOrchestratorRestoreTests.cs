@@ -50,7 +50,9 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         _world.Control.Script.Enqueue(true);
         var deadline = _world.Time.After(Timings.Foreground.RestoreRetryDelay);
 
-        var pending = search.RestoreAsync(TestContext.Current.CancellationToken);
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            search.RestoreAsync(TestContext.Current.CancellationToken).AsTask()
+        );
         _world.Time.AdvanceToJustBefore(deadline);
         search.IsActive.ShouldBeTrue("the lease ends after the retry");
         _world.Time.AdvanceTo(deadline);
@@ -65,7 +67,9 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         var search = await _world.GrantAsync(LeaseKind.TextInput, Search);
         _world.Control.Script.Enqueue(false);
 
-        var pending = search.RestoreAsync(TestContext.Current.CancellationToken);
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            search.RestoreAsync(TestContext.Current.CancellationToken).AsTask()
+        );
         _world.Control.Foreground = Word;
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
 
@@ -174,7 +178,10 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
             TestContext.Current.CancellationToken
         );
 
-        var pending = search.RestoreAsync(cancel.Token).AsTask();
+        // Cancelled while it waits to verify the first attempt.
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            search.RestoreAsync(cancel.Token).AsTask()
+        );
         await cancel.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(pending);

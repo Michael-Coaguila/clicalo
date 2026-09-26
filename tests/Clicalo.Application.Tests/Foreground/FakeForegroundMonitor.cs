@@ -20,7 +20,7 @@ internal sealed class FakeForegroundMonitor(ForegroundWorld world) : IForeground
             world.Control.Foreground = window;
         }
 
-        world.Log.Add("external " + ForegroundWorld.Name(window));
+        world.Write("external " + ForegroundWorld.Name(window));
         Current = new ExternalForeground(
             window,
             ProcessId: 4000 + (uint)window.Handle,

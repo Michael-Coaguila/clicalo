@@ -36,7 +36,7 @@ internal sealed class FakeForegroundControl(ForegroundWorld world) : IForeground
         DuringAttempt?.Invoke(window);
         var granted =
             Script.Count > 0 ? Script.Dequeue() : HasRights || ForegroundWorld.IsOwn(Foreground);
-        world.Log.Add((granted ? "set " : "refused ") + ForegroundWorld.Name(window));
+        world.Write((granted ? "set " : "refused ") + ForegroundWorld.Name(window));
         if (granted)
         {
             Foreground = window;
@@ -45,11 +45,15 @@ internal sealed class FakeForegroundControl(ForegroundWorld world) : IForeground
         return granted;
     }
 
-    public WindowToken GetForeground() => Foreground;
+    public WindowToken GetForeground()
+    {
+        world.Observe("get foreground");
+        return Foreground;
+    }
 
     public void FlashTaskbar(WindowToken window)
     {
         Flashed.Add(window);
-        world.Log.Add("flash " + ForegroundWorld.Name(window));
+        world.Write("flash " + ForegroundWorld.Name(window));
     }
 }

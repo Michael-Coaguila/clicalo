@@ -2,7 +2,6 @@ using Clicalo.Application.Foreground;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Timing;
 using Clicalo.TestKit.Time;
-using Microsoft.Extensions.Time.Testing;
 
 namespace Clicalo.Application.Tests.Foreground;
 
@@ -30,7 +29,8 @@ internal sealed class ForegroundWorld : IDisposable
 
     public ForegroundWorld(bool seedWord = true)
     {
-        Time = TestTime.CreateProvider();
+        Time = new WatchedTime(TestTime.Epoch);
+        Time.SetLocalTimeZone(TimeZoneInfo.Utc);
         Control = new FakeForegroundControl(this);
         Monitor = new FakeForegroundMonitor(this);
         Surfaces = new FakeSurfaceActivationStyle(this);
@@ -44,7 +44,7 @@ internal sealed class ForegroundWorld : IDisposable
         }
     }
 
-    public FakeTimeProvider Time { get; }
+    public WatchedTime Time { get; }
 
     public FakeForegroundControl Control { get; }
 
@@ -56,8 +56,28 @@ internal sealed class ForegroundWorld : IDisposable
 
     public FakeInternalKeyEffects Keys { get; }
 
-    /// <summary>Every port call and external event, in order.</summary>
+    /// <summary>Every port call and external event, in order. Read it once the operation under test has ended.</summary>
     public List<string> Log { get; } = [];
+
+    /// <summary>
+    /// Runs inside every port call, with its log entry: a test observes on which thread, and when, the orchestrator
+    /// touches the ports.
+    /// </summary>
+    public Action<string>? OnPortCall { get; set; }
+
+    /// <summary>Appends to <see cref="Log"/>; the orchestrator works on the thread pool, so writes are serialized.</summary>
+    public void Write(string entry)
+    {
+        lock (Log)
+        {
+            Log.Add(entry);
+        }
+
+        Observe(entry);
+    }
+
+    /// <summary>A port call that is not logged (a query such as <c>GetForegroundWindow</c>) for <see cref="OnPortCall"/>.</summary>
+    public void Observe(string call) => OnPortCall?.Invoke(call);
 
     public ForegroundOrchestrator Orchestrator =>
         _orchestrator ??= new ForegroundOrchestrator(
@@ -126,6 +146,20 @@ internal sealed class ForegroundWorld : IDisposable
         CompleteAsync(
             Orchestrator.AcquireAsync(request, TestContext.Current.CancellationToken).AsTask()
         );
+
+    /// <summary>
+    /// Starts <paramref name="operation"/> and returns it once it has armed its next timer (the verification delay after
+    /// a refused attempt) or ended: the orchestrator continues on the thread pool, so the test must not move the clock
+    /// before the delay exists.
+    /// </summary>
+    public async Task<TTask> StartUntilItWaitsAsync<TTask>(Func<TTask> operation)
+        where TTask : Task
+    {
+        var timers = Time.TimersCreated;
+        var pending = operation();
+        _ = await Task.WhenAny(pending, Time.WhenTimersAsync(timers + 1));
+        return pending;
+    }
 
     /// <summary>Clears the log, to look only at what happens next.</summary>
     public void Mark() => Log.Clear();
