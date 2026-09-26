@@ -1,6 +1,6 @@
 # Contenido
 
-Atajos que Clícalo trae de serie. Son datos que se cargan de forma perezosa en tiempo de ejecución (D17) y se tratan como contenido no confiable: se validan contra su esquema al compilar y al cargar (LOG-006).
+Atajos que Clícalo trae de serie. Son datos que se cargan de forma perezosa en tiempo de ejecución (D17) y se tratan como contenido no confiable: las pruebas de datos los validan contra su esquema en cada PR, y el cargador lo hará de nuevo al leerlos (LOG-006).
 
 | Archivo | Contenido |
 |---|---|
