@@ -1,0 +1,54 @@
+name: "Texto o traducción · Text or translation"
+description: "Un texto de Clícalo está mal, se entiende mal o falta en un idioma. · A Clícalo text is wrong, unclear or missing in a language."
+title: "[Texto · Text]: "
+labels: ["type/i18n", "area/i18n"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Los textos de Clícalo están en español y en inglés. Gracias por ayudar a que se entiendan bien, también cuando los lee Narrador o se dicen con Acceso por voz.
+
+        Clícalo's texts are in Spanish and English. Thank you for helping them read well, also when Narrator reads them or they are spoken with Voice Access.
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: "Idioma · Language"
+      options:
+        - "Español · Spanish"
+        - "Inglés · English"
+        - "Los dos · Both"
+    validations:
+      required: true
+
+  - type: textarea
+    id: where
+    attributes:
+      label: "Dónde aparece · Where it appears"
+      description: "Por ejemplo: Centro de control › Atajos, un aviso del panel, lo que lee Narrador. · For example: Control center › Shortcuts, a panel notice, what Narrator reads."
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: "Texto actual · Current text"
+      description: "Cópialo tal cual. · Copy it exactly."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: "Texto propuesto · Proposed text"
+      description: "Cómo debería decirse y, si quieres, por qué. · How it should read and, if you like, why."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: voice
+    attributes:
+      label: "Voz · Voice"
+      options:
+        - label: "El texto se usa como orden de voz (por ejemplo «clic Negrita») y el cambio lo afecta. · The text is used as a voice command (for example \"click Bold\") and the change affects it."
+          required: false

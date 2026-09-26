@@ -1,0 +1,82 @@
+name: "Error · Bug"
+description: "Algo no funciona como debería. · Something does not work as it should."
+title: "[Error · Bug]: "
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por avisar. Puedes escribir en español o en inglés.
+        Si el problema te impide usar Clícalo con tu forma de acceso (Narrador, Acceso por voz, conmutadores, solo táctil…), usa el formulario **Barrera de accesibilidad**: se atiende antes.
+        **No pegues textos personales, contraseñas ni claves.**
+
+        Thank you for reporting. Spanish or English are both fine.
+        If the problem stops you from using Clícalo with your way of access (Narrator, Voice Access, switches, touch only…), please use the **Accessibility barrier** form: it is handled first.
+        **Do not paste personal texts, passwords or keys.**
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: "Qué pasó · What happened"
+      description: "Qué hiciste, qué esperabas y qué ocurrió en su lugar. · What you did, what you expected and what happened instead."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Pasos para repetirlo · Steps to reproduce"
+      description: "Un paso por línea, desde que abres Clícalo. Si no sabes repetirlo, déjalo vacío. · One step per line, from opening Clícalo. Leave it empty if you cannot reproduce it."
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: "Versión de Clícalo · Clícalo version"
+      description: "Está en Centro de control › Acerca de. · It is in Control center › About."
+      placeholder: "2.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows
+    attributes:
+      label: "Versión de Windows · Windows version"
+      options:
+        - "Windows 11"
+        - "Windows 10 22H2"
+        - "Otra · Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: access
+    attributes:
+      label: "Cómo lo estabas usando · How you were using it"
+      description: "Elige todas las que apliquen. · Choose all that apply."
+      multiple: true
+      options:
+        - "Pantalla táctil con el dedo · Touch screen with a finger"
+        - "Lápiz · Pen"
+        - "Ratón o panel táctil · Mouse or touchpad"
+        - "Teclado físico · Physical keyboard"
+        - "Teclado en pantalla · On-screen keyboard"
+        - "Acceso por voz · Voice Access"
+        - "Reconocimiento de voz de Windows · Windows Speech Recognition"
+        - "Narrador u otro lector de pantalla · Narrator or another screen reader"
+        - "Conmutadores · Switches"
+    validations:
+      required: false
+
+  - type: textarea
+    id: more
+    attributes:
+      label: "Algo más (opcional) · Anything else (optional)"
+      description: "Capturas, el paquete de diagnóstico de Clícalo (revísalo antes de adjuntarlo) o cualquier detalle. · Screenshots, Clícalo's diagnostic package (review it before attaching) or any detail."
+    validations:
+      required: false

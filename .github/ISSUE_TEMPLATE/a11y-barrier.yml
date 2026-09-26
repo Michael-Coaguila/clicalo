@@ -1,0 +1,89 @@
+name: "Barrera de accesibilidad · Accessibility barrier"
+description: "Algo te impide o te dificulta usar Clícalo con tu forma de acceso. · Something stops or hinders you from using Clícalo your way."
+title: "[Accesibilidad · Accessibility]: "
+labels: ["type/a11y"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Clícalo existe para que puedas usar el ordenador a tu manera: una barrera es un error grave y se atiende antes que el resto.
+        Cuéntalo con tus palabras, en español o en inglés. No hace falta saber de tecnología. **No pegues textos personales, contraseñas ni claves.**
+
+        Clícalo exists so you can use your computer your way: a barrier is a serious bug and is handled before the rest.
+        Tell us in your own words, in Spanish or English. No technical knowledge needed. **Do not paste personal texts, passwords or keys.**
+
+  - type: textarea
+    id: barrier
+    attributes:
+      label: "Qué no puedes hacer · What you cannot do"
+      description: "Qué intentabas hacer y en qué punto te quedaste bloqueado o te costó demasiado. · What you were trying to do and where you got stuck or it took too much effort."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: access
+    attributes:
+      label: "Tu forma de acceso · Your way of access"
+      description: "Elige todas las que uses. · Choose all you use."
+      multiple: true
+      options:
+        - "Pantalla táctil con el dedo · Touch screen with a finger"
+        - "Lápiz · Pen"
+        - "Acceso por voz · Voice Access"
+        - "Reconocimiento de voz de Windows · Windows Speech Recognition"
+        - "Narrador · Narrator"
+        - "Otro lector de pantalla (NVDA, JAWS…) · Another screen reader (NVDA, JAWS…)"
+        - "Lupa o zoom · Magnifier or zoom"
+        - "Alto contraste · High contrast"
+        - "Teclado en pantalla · On-screen keyboard"
+        - "Conmutadores o control con la mirada · Switches or eye control"
+        - "Ratón o teclado físico · Physical mouse or keyboard"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: "Cuánto te afecta · How much it affects you"
+      options:
+        - "No puedo usar Clícalo · I cannot use Clícalo"
+        - "Puedo, pero con mucho esfuerzo · I can, but with a lot of effort"
+        - "Es una molestia · It is an annoyance"
+    validations:
+      required: true
+
+  - type: textarea
+    id: where
+    attributes:
+      label: "Dónde ocurre · Where it happens"
+      description: "Por ejemplo: el panel, la pestaña, la burbuja, el Centro de control, la bienvenida. Si Narrador lee algo raro, copia lo que dice. · For example: the panel, the tab, the bubble, the Control center, the welcome. If Narrator reads something odd, copy what it says."
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: "Versión de Clícalo · Clícalo version"
+      description: "Está en Centro de control › Acerca de. Si no puedes llegar, déjalo vacío. · It is in Control center › About. Leave it empty if you cannot get there."
+      placeholder: "2.0.0"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: windows
+    attributes:
+      label: "Versión de Windows · Windows version"
+      options:
+        - "Windows 11"
+        - "Windows 10 22H2"
+        - "No lo sé · I do not know"
+    validations:
+      required: false
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: "Qué te ayudaría (opcional) · What would help (optional)"
+      description: "Si tienes una idea de cómo debería funcionar, cuéntala. · If you have an idea of how it should work, tell us."
+    validations:
+      required: false
