@@ -241,10 +241,28 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             Project(viewModel, store, session, localization);
             UpdateTray(viewModel);
         };
-        store.Changed += (_, _) =>
+        var engine = services.GetRequiredService<IEngineInbox>();
+        store.Changed += (_, change) =>
+        {
+            if (!ReferenceEquals(change.Before.Settings, change.After.Settings))
+            {
+                // The engine obeys the settings it was built with until told otherwise (SEG-004, SEG-005, TAC-002).
+                _ = engine.Post(
+                    new EngineEvent.ConfigChanged(SettingsProjection.Engine(change.After.Settings))
+                );
+                if (change.Before.Settings.Language != change.After.Settings.Language)
+                {
+                    // IDI-001: the language switches in place; LanguageChanged repaints below.
+                    _ = localization.TrySetLanguage(change.After.Settings.Language.Value);
+                }
+            }
+
             _ = _application!.Dispatcher.BeginInvoke(() =>
-                Project(viewModel, store, session, localization)
-            );
+            {
+                viewModel.ApplyTouch(SettingsProjection.Touch(store.Current.Settings));
+                Project(viewModel, store, session, localization);
+            });
+        };
         localization.LanguageChanged += (_, _) =>
             _ = _application!.Dispatcher.BeginInvoke(() =>
             {
