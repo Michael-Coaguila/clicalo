@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Windows.Threading;
 using Clicalo.Domain.Touch;
 
@@ -75,9 +76,15 @@ public sealed class GestureHost : IPointerFrameSink, IDisposable
             return;
         }
 
-        Recognizer.Feed(frame, _pending);
-        Flush();
-        Schedule();
+        try
+        {
+            Recognizer.Feed(frame, _pending);
+            Flush();
+        }
+        finally
+        {
+            Schedule();
+        }
     }
 
     /// <inheritdoc />
@@ -90,9 +97,15 @@ public sealed class GestureHost : IPointerFrameSink, IDisposable
     public void Reset()
     {
         Dispatcher.VerifyAccess();
-        Recognizer.Reset(Clock.GetUtcNow(), _pending);
-        Flush();
-        Schedule();
+        try
+        {
+            Recognizer.Reset(Clock.GetUtcNow(), _pending);
+            Flush();
+        }
+        finally
+        {
+            Schedule();
+        }
     }
 
     /// <summary>
@@ -132,15 +145,27 @@ public sealed class GestureHost : IPointerFrameSink, IDisposable
         }
 
         _scheduled = null;
-        Recognizer.OnTick(Clock.GetUtcNow(), _pending);
-        Flush();
-        Schedule();
+        try
+        {
+            Recognizer.OnTick(Clock.GetUtcNow(), _pending);
+            Flush();
+        }
+        finally
+        {
+            Schedule();
+        }
     }
 
     /// <summary>
     /// Hands the pending gestures to the surface. A gesture handler that feeds the recognizer again (a reset from a
     /// gesture) appends to the same list, which this loop then delivers in order.
     /// </summary>
+    /// <remarks>
+    /// Every gesture is delivered even when a handler throws: the recognizer has already let go of those contacts, so a
+    /// <see cref="GestureKind.HoldEnd"/> left undelivered would leave its key down for good (REG-03). The failures are
+    /// thrown again once the list is empty: a single one as it was, several together in an
+    /// <see cref="AggregateException"/>.
+    /// </remarks>
     private void Flush()
     {
         if (_flushing)
@@ -149,11 +174,19 @@ public sealed class GestureHost : IPointerFrameSink, IDisposable
         }
 
         _flushing = true;
+        List<ExceptionDispatchInfo>? failures = null;
         try
         {
             for (var i = 0; i < _pending.Count; i++)
             {
-                _onGesture(_pending[i]);
+                try
+                {
+                    _onGesture(_pending[i]);
+                }
+                catch (Exception ex)
+                {
+                    (failures ??= []).Add(ExceptionDispatchInfo.Capture(ex));
+                }
             }
         }
         finally
@@ -161,6 +194,18 @@ public sealed class GestureHost : IPointerFrameSink, IDisposable
             _pending.Clear();
             _flushing = false;
         }
+
+        if (failures is null)
+        {
+            return;
+        }
+
+        if (failures.Count == 1)
+        {
+            failures[0].Throw();
+        }
+
+        throw new AggregateException(failures.Select(failure => failure.SourceException));
     }
 
     private void Schedule()

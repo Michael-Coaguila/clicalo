@@ -33,6 +33,7 @@ public sealed class GestureHostTests
             TouchTargetKind.TapOrLongPress
         ),
         new(new TouchTargetId(2), new PhysicalRect(200, 100, 80, 80), TouchTargetKind.Hold),
+        new(new TouchTargetId(3), new PhysicalRect(300, 100, 80, 80), TouchTargetKind.Hold),
     ];
 
     [Fact]
@@ -122,6 +123,26 @@ public sealed class GestureHostTests
     }
 
     [Fact]
+    [Trait("Req", "REG-03")]
+    public void A_handler_that_throws_on_one_hold_end_does_not_keep_the_next_one_from_arriving()
+    {
+        using var run = new HostRun(Standard, throwOnFirstHoldEnd: true);
+        run.Feed(1, PointerPhase.Down, 240, 140);
+        run.Feed(2, PointerPhase.Down, 340, 140);
+        run.Clock.Advance(TimeSpan.FromMilliseconds(50));
+
+        // Both fingers lift in the same frame and the surface fails on the first release.
+        Should.Throw<InvalidOperationException>(() =>
+            run.FeedFrame((1, PointerPhase.Up, 240, 140), (2, PointerPhase.Up, 340, 140))
+        );
+
+        run.Gestures.Where(g => g.Gesture.Kind == GestureKind.HoldEnd)
+            .Select(g => g.Gesture.Target)
+            .ShouldBe([new TouchTargetId(2), new TouchTargetId(3)]);
+        WpfThread.Invoke(() => run.Host.Recognizer.ActiveContacts).ShouldBe(0);
+    }
+
+    [Fact]
     public void A_disposed_host_ignores_frames_and_timers()
     {
         var run = new HostRun(Standard);
@@ -176,7 +197,11 @@ public sealed class GestureHostTests
     {
         private readonly PointerRecorder _recorder;
 
-        public HostRun(TouchSettings settings, bool resetOnHoldStart = false)
+        public HostRun(
+            TouchSettings settings,
+            bool resetOnHoldStart = false,
+            bool throwOnFirstHoldEnd = false
+        )
         {
             Clock = TestTime.CreateProvider();
             _recorder = new PointerRecorder(Clock);
@@ -197,6 +222,12 @@ public sealed class GestureHostTests
                         {
                             host!.Reset();
                         }
+
+                        if (throwOnFirstHoldEnd && gesture.Kind == GestureKind.HoldEnd)
+                        {
+                            throwOnFirstHoldEnd = false;
+                            throw new InvalidOperationException("The surface failed on a release.");
+                        }
                     }
                 );
                 return host;
@@ -212,19 +243,25 @@ public sealed class GestureHostTests
         public IReadOnlyList<RecordedGesture> Gestures => _recorder.Gestures;
 
         /// <summary>Feeds a one-sample frame at the current fake time, on the UI thread.</summary>
-        public void Feed(uint id, PointerPhase phase, int x, int y)
+        public void Feed(uint id, PointerPhase phase, int x, int y) => FeedFrame((id, phase, x, y));
+
+        /// <summary>Feeds one frame with a sample per contact at the current fake time, on the UI thread.</summary>
+        public void FeedFrame(params (uint Id, PointerPhase Phase, int X, int Y)[] contacts)
         {
             var now = Clock.GetUtcNow();
-            var sample = new PointerSample(
-                id,
-                PointerKind.Finger,
-                phase,
-                new PhysicalPoint(x, y),
-                new PhysicalRect(x - 5, y - 5, 10, 10),
-                now,
-                PointerInputOrigin.Injected
-            );
-            WpfThread.Invoke(() => Host.OnFrame(new PointerFrame(1, now, [sample])));
+            ImmutableArray<PointerSample> samples =
+            [
+                .. contacts.Select(contact => new PointerSample(
+                    contact.Id,
+                    PointerKind.Finger,
+                    contact.Phase,
+                    new PhysicalPoint(contact.X, contact.Y),
+                    new PhysicalRect(contact.X - 5, contact.Y - 5, 10, 10),
+                    now,
+                    PointerInputOrigin.Injected
+                )),
+            ];
+            WpfThread.Invoke(() => Host.OnFrame(new PointerFrame(1, now, samples)));
         }
 
         /// <summary>Lets the dispatcher run the ticks the fake timer queued.</summary>
