@@ -36,6 +36,18 @@
           "duration": "150ms",
           "description": "Length of the discreet outline or vibration that signals an ignored touch.",
           "req": ["TAC-003"]
+        },
+        "PalmContactMinPx": {
+          "px": 120,
+          "description": "A contact whose area (rcContact) reaches this width or height, in logical pixels (about 32 mm), is a palm and never counts. Provisional until spike S2 records real traces on the maintainer's touch screen.",
+          "req": ["ACC-007"],
+          "source": "blueprint §7.8"
+        },
+        "PointerStampMaxAge": {
+          "duration": "1s",
+          "description": "A pointer frame is dated when Windows recorded it (its performance counter); if that is older than this when the window procedure reads it (a stalled UI thread or a bogus counter), it is dated now instead.",
+          "req": ["NFR-001"],
+          "source": "blueprint §7.1"
         }
       }
     },
@@ -321,6 +333,47 @@
         "SurfaceIntegrityInterval": {
           "duration": "30s",
           "description": "Period of the check that re-applies WS_EX_NOACTIVATE and topmost to every surface.",
+          "req": ["REG-01"],
+          "source": "blueprint §3.5"
+        },
+        "RestoreRetryDelay": {
+          "duration": "50ms",
+          "description": "After a SetForegroundWindow that GetForegroundWindow does not confirm yet, wait this long and check again (the thread that owns the window activates it asynchronously); the single retry of a lease that takes or gives back the foreground follows the same wait. Provisional: S4 measured the first check failing and this one succeeding in 20 of 20 cycles.",
+          "req": ["BUS-002", "CCM-004"],
+          "source": "blueprint §3.6"
+        },
+        "RightsHotkeyTimeout": {
+          "duration": "500ms",
+          "description": "Longest wait for WM_HOTKEY after injecting the internal rights chord (step 2 of the ladder for UI Automation origins). Provisional until spike S4 measures it.",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        },
+        "ChordReleasePoll": {
+          "duration": "2ms",
+          "description": "After WM_HOTKEY of the internal rights chord, the keys of the chord are sampled this often (GetAsyncKeyState) until they are all up, at most RightsHotkeyTimeout, before the foreground is taken: each key message goes to the thread in front when the system processes it, so the releases must reach the app that received the presses (spike S4: a left Ctrl release that arrived after the retry went to the new foreground).",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        },
+        "TouchKeyboardPoll": {
+          "duration": "100ms",
+          "description": "While Clícalo has shown the touch keyboard, its covered area is sampled this often so the panel can move above it. Provisional until spike S4 measures it.",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        }
+      }
+    },
+    "Windowing": {
+      "description": "Non-activatable surfaces and ActivationGuard.",
+      "entries": {
+        "ViolationRestoreBudget": {
+          "duration": "200ms",
+          "description": "After an activation without a lease, the previous external foreground must be back within this time (ActivationGuardNegativeTests, spike S1).",
+          "req": ["REG-01"],
+          "source": "blueprint §3.5"
+        },
+        "ActivationRecheck": {
+          "duration": "50ms",
+          "description": "An activation message that reaches a surface while the foreground is outside the process is judged again once the UI thread has delivered what it had queued and, if the foreground is still outside, once more after this wait: a window of the process in front without a lease is one violation, anything else was a late message. It is spent inside ViolationRestoreBudget (spike S1: a real forced activation arrived as a WM_ACTIVATE that GetForegroundWindow did not confirm yet).",
           "req": ["REG-01"],
           "source": "blueprint §3.5"
         }

@@ -123,13 +123,20 @@ internal static class ProductRules
     /// <summary>
     /// Types of a product project only use the product assemblies that allowed-dependencies.json lets it reference.
     /// </summary>
+    /// <remarks>
+    /// The universe is <see cref="Product.Code"/>, not <see cref="Product.All"/>: CsWin32 generates internal types with
+    /// the same full name (<c>Windows.Win32.PInvoke</c>, <c>Foundation.HWND</c>…) in every assembly that uses it, and
+    /// ArchUnitNET merges types by full name, so the interop of UI.Wpf and Platform.Windows would look like a
+    /// dependency between the two. That interop is internal to each assembly and cannot cross it; where CsWin32 may be
+    /// used is checked by its own rules.
+    /// </remarks>
     public static IArchRule Layer(string project)
     {
         var entry = ArchitectureDocuments.AllowedDependencies().Projects[project];
         var allowed = entry.ProjectReferences.Select(Product.OfProject).ToArray();
         return DependencyRules.OnlyDependOn(
             Product.OfProject(project),
-            Product.All,
+            Product.Code,
             allowed,
             entry.Rule
         );

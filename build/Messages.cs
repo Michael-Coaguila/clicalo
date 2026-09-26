@@ -97,6 +97,16 @@ internal static class Messages
             _ => string.Create(CultureInfo.InvariantCulture, $"{count} pruebas"),
         };
 
+    /// <summary>The <c>total</c> of <c>dotnet test</c> and, when there are any, how many of them were skipped.</summary>
+    public static string TestCount(int total, int skipped) =>
+        skipped switch
+        {
+            <= 0 => TestCount(total),
+            1 => TestCount(total) + ", 1 omitida",
+            _ => TestCount(total)
+                + string.Create(CultureInfo.InvariantCulture, $", {skipped} omitidas"),
+        };
+
     public static string OverBudget(string budget) => "superó el objetivo de " + budget;
 
     public static string SetupPending(string items, string file) =>

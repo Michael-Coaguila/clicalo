@@ -53,7 +53,7 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 | `Clicalo.Presentation.Tests` | Previsto | ViewModels contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente |
 | `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación v1, `SafeZipReader`, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
 | `Clicalo.UI.Wpf.Tests` | Previsto | *Peers*, 44 px, disposición, pseudolocalización, contraste resuelto, instantáneas de renderizado |
-| `Clicalo.Windowing.IntegrationTests` | Previsto | No activación de las superficies, `ActivationGuard` (prueba negativa), concesiones por origen, bandeja, `Upstream/` |
+| `Clicalo.Windowing.IntegrationTests` | Existe (M1) | No activación de las superficies, `ActivationGuard` (prueba negativa), concesiones por origen, bandeja, `Upstream/` |
 | `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | *Ledger* v2 y relanzamiento; verificación tras la copia y `minSafeVersion` |
 | `Clicalo.E2E`, `Clicalo.Performance` | Previstos | Recorridos sobre la app publicada; presupuestos (`budgets.json`) |
 

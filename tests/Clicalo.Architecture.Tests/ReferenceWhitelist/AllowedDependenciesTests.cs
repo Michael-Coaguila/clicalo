@@ -119,12 +119,19 @@ public sealed class AllowedDependenciesTests
     [Fact]
     public void Only_the_WPF_projects_may_use_WPF()
     {
-        // The product's WPF layers, plus the Windows test helpers that render WPF visuals for snapshot tests.
+        // The product's WPF layers, the Windows test helpers that render WPF visuals for snapshot tests, the tests
+        // that show real surfaces (Windowing.IntegrationTests) and the spike laboratory that composes them.
         Policy
             .Projects.Where(pair => pair.Value.FrameworkReferences?.Length > 0)
             .Select(pair => pair.Key)
             .ShouldBe(
-                ["Clicalo.App", "Clicalo.UI.Wpf", "Clicalo.TestKit.Windows"],
+                [
+                    "Clicalo.App",
+                    "Clicalo.UI.Wpf",
+                    "Clicalo.TestKit.Windows",
+                    "Clicalo.Windowing.IntegrationTests",
+                    "SpikeLab",
+                ],
                 ignoreOrder: true
             );
     }

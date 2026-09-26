@@ -23,6 +23,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
 | D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | Repositorio privado en el plan gratuito, que no admite protección de ramas: *hook* local `pre-push` y *merge* solo por *squash* configurado en GitHub | M0 |
+| D-14 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
+| D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación | M1 |
+| D-16 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
+| D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
+| D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -238,6 +243,147 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** Al hacer público el repositorio (o con GitHub Pro) se activa la protección real: PR
   obligatorio, checks `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal, conversación
   resuelta y sin excepciones para administradores. Entonces esta entrada se elimina.
+
+## D-14 · Contratos de M1 para el primer plano
+
+- **Plano.** [§3.5](blueprint.md#35-ventanas-no-activables) pone `SurfaceId` junto a `NonActivatingWindow`
+  (`Clicalo.UI.Wpf.Windowing`) y hace que `ActivationGuard` llame directamente a
+  `Orchestrator.RestoreAfterViolation`; [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano)
+  declara `IForegroundControl` e `ISurfaceActivationStyle` y describe el atajo interno de derechos y Win+H como
+  efectos que inyecta el motor.
+- **Repositorio.**
+  - `SurfaceId` (con `SurfaceKind`) y `WindowToken` viven en `Clicalo.Application.Ports`, porque los usan los
+    puertos y Application no ve UI.Wpf. `NonActivatingWindow.Id` los expone igual.
+  - `IActivationArbiter` (Ports), que implementa `ForegroundOrchestrator`: es lo que `ActivationGuard` llama
+    (`IsActivationLeased` y `ReportViolation`), porque UI.Wpf solo puede usar de Application los tipos de
+    `Application.Ports` (§4.2, regla de ArchUnit).
+  - `ISurfaceLookup` (Ports), que implementa `SurfaceRegistry`: traduce el `WindowToken` destino de una concesión
+    a su `SurfaceId`, que es lo que pide `ISurfaceActivationStyle`.
+  - `IInternalKeyEffects` (Ports): el envío del atajo interno (Ctrl+Alt+Shift+F24) y de Win+H. En M2 lo implementa
+    el motor tras `InjectionGate`; en M1, implementaciones de prueba protegidas.
+  - `ForegroundLease` añade la propiedad `Target`; `IForegroundMonitor`, `IInternalRightsHotkey` e `ITouchKeyboard`
+    son los puertos que el plano nombra sin firma.
+- **Motivo.** Sin estas piezas, los tipos de §3.5 y §3.6 no compilan respetando las reglas de capas de §4.2 y §4.4.
+- **Coste.** Tres interfaces más en Ports, todas pequeñas y con una sola implementación.
+- **Revisión.** Al cerrar S1 y S4; pendiente de ratificar junto con D-09.
+
+## D-15 · No activación medida en S1
+
+- **Plano.** La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) confía en añadir
+  `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING` y aplica el rectángulo de `WM_DPICHANGED` sin pasar el mensaje a WPF;
+  `ActivationGuard` cuenta cada mensaje de activación.
+- **Repositorio.**
+  - Añadir `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING` **no impide** la activación: se midió en S1 que Windows activa
+    igual. La regla se mantiene, pero el `Show` de WPF de `ShowPassive` y el `WM_DPICHANGED` reenviado van dentro
+    de `ActivationVeto`: un *hook* `WH_CBT` del propio hilo de UI (`SetWindowsHookEx` con `dwThreadId`), de ámbito
+    mínimo y anidable, que rechaza `HCBT_ACTIVATE` solo de las superficies con un ámbito abierto y solo mientras dura
+    la llamada. No es permanente, porque vetaría las activaciones externas que `ActivationGuard` debe ver.
+  - `WM_DPICHANGED` se maneja como pide el plano y además se reenvía a `HwndTarget` (con un indicador de reentrada)
+    dentro del veto, porque WPF necesita el mensaje para reescalar (ACC-008) y su `SetWindowPos` no lleva
+    `SWP_NOACTIVATE` (#7561).
+  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes). Un mensaje de activación
+    para una superficie que no tiene el primer plano (`GetForegroundWindow`) se juzga por quién lo tiene: una ventana
+    del propio proceso sin concesión (otra superficie, `OwnerAnchor`) es una violación al momento; una ventana de otra
+    app puede ser un mensaje tardío (la restauración va por el grupo de hilos mientras el hilo de UI aún entrega los
+    mensajes de la activación) o una activación que `GetForegroundWindow` todavía no confirma (S1 la vio llegar así),
+    así que el mensaje se retiene, se repara `WS_EX_NOACTIVATE` y el juicio se aplaza: cuando el hilo de UI ha
+    entregado lo que tenía en cola y, si el primer plano sigue fuera, otra vez tras
+    `Timings.Windowing.ActivationRecheck` (50 ms). Si entonces tiene el primer plano una ventana del proceso sin
+    concesión, cuenta una violación; si no, era tardío y no cuenta. Una violación abierta se cierra con
+    `WA_INACTIVE` o `WM_ACTIVATEAPP(FALSE)`, con el siguiente `WM_ACTIVATEAPP(TRUE)` y, porque esos mensajes llegan
+    tarde, desordenados o no llegan cuando la restauración gana la carrera (S1, hallazgo 8), en cuanto la guarda ve el
+    primer plano fuera del proceso: en cualquier mensaje de activación o desactivación (también
+    `WM_NCACTIVATE(FALSE)`) y cada `ActivationRecheck` mientras está abierta.
+  - Las superficies, `OwnerAnchor` y `SurfaceRegistry` viven en un único hilo; todas comparten `OwnerAnchor`, así que
+    la banda *topmost* se pierde y se repara en familia.
+- **Motivo.** Sin el veto, una prueba sin escritorio mostró `WM_ACTIVATEAPP`, `WM_ACTIVATE` y `WM_SETFOCUS` en la
+  superficie al mostrarla y al cambiar de DPI (resultados en [S1](../testing/spikes/S1.md)).
+- **Coste.** Un *hook* de hilo más. Una activación externa que coincida exactamente con el `Show` o con el cambio de
+  DPI también se rechaza y el guardián no la ve. Una superficie activada sin que el primer plano llegue al proceso (sin
+  quitárselo a nadie) no cuenta como violación. Una activación que solo se confirma en la segunda mirada se revierte
+  hasta 50 ms más tarde, dentro del presupuesto de 200 ms.
+- **Revisión.** Al cerrar S1 con las filas manuales del equipo táctil; valorar un veto general entre
+  `WM_WINDOWPOSCHANGING` y `WM_WINDOWPOSCHANGED` para cualquier `SetWindowPos` sin `SWP_NOACTIVATE`.
+
+## D-16 · Capa de punteros implementada en M1
+
+- **Plano.** [§7.8](blueprint.md#78-filtro-táctil-y-gestos-domaintouch) y
+  [§8.3](blueprint.md#83-entrada-táctil) describen `TouchFilter`, `GestureRecognizer` y `PointerInputSource` sin
+  fijar cómo llega el mouse, quién ejecuta los plazos ni la regla exacta de resolución del objetivo.
+- **Repositorio.**
+  - `PointerSetup.EnableMouseInPointer` al arrancar: el mouse llega a las superficies como `WM_POINTER`. Afecta a
+    todo el proceso y no se puede deshacer.
+  - `GestureHost` (público, UI.Wpf.Pointer): la tubería de gestos de cada superficie, con un único temporizador de
+    `TimeProvider` llevado al dispatcher.
+  - Las muestras de `PointerFrame` solo son válidas durante `IPointerFrameSink.OnFrame`: `PointerInputSource`
+    reutiliza sus búferes para no asignar memoria (copia: `frame with { Samples = [.. frame.Samples] }`).
+  - `PointerInputSource` marca como manejados los mensajes de contacto y el cambio de captura de sus contactos; el
+    *hover* y el botón derecho siguen a `DefWindowProc`. La hora del fotograma sale de `PerformanceCount` con el tope
+    `Timings.Touch.PointerStampMaxAge` (1 s).
+  - Un 0 desactiva cada comprobación del filtro, también `cancelMovePx`; umbral de palma
+    `Timings.Touch.PalmContactMinPx` (120 px lógicos, provisional); el deslizamiento se decide al levantar el dedo con
+    `dx > 60 px`.
+  - Resolución del objetivo: acierto directo; centro más cercano si los límites se solapan (REG-02); objetivo más
+    cercano con desempate por el centro en el área extra (TAC-002).
+- **Motivo.** S1 exige que dedo, lápiz y mouse lleguen como fotogramas, y la ruta caliente no puede asignar memoria.
+- **Coste.** La documentación de `WM_POINTERCAPTURECHANGED` avisa de que consumir de forma selectiva la entrada de
+  puntero y pasar el resto a `DefWindowProc` tiene un comportamiento no definido: S2 o S15 deben confirmar el *hover*
+  y el botón derecho en hardware real. La lectura conjunta de REG-02 y TAC-002 está pendiente de que el usuario la
+  confirme.
+- **Revisión.** En S2, con trazas reales del equipo táctil.
+
+## D-17 · Primer plano implementado en M1
+
+- **Plano.** [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano),
+  [§7.9](blueprint.md#79-cambio-de-app-de-extremo-a-extremo-per-003) y la tabla de hilos de
+  [§3.2](blueprint.md#32-modelo-de-hilos), que pone `ForegroundOrchestrator` en el hilo SysEvents.
+- **Repositorio.**
+  - `ForegroundMonitor` se engancha **sin** `WINEVENT_SKIPOWNPROCESS`: anota las ventanas propias, pero nunca las
+    publica; así, tocar la app a la que volvería una concesión cuenta como cambio y la termina.
+  - `ExternalForeground` añade `AppProcessId` (la app detrás de ApplicationFrameHost) y `Elevation` con el enum
+    `ProcessElevation` (`Unknown` cubre EC-PER-03), ambos opcionales.
+  - Tipos públicos nuevos: `ForegroundPorts`, `LadderStep`, `LeaseEndReason`; en `ForegroundLease`, `Origin`,
+    `GrantedAt`, `IsActive`, `EndReason`, `Ended` y `KeepAlive()`; en `ForegroundOrchestrator`, `ActiveLease` y
+    `EndActiveLeaseAsync` (evento terminal).
+  - Cada `SetForegroundWindow` se vuelve a comprobar tras `RestoreRetryDelay` antes de contarse como rechazado: la
+    activación entre hilos es asíncrona (S4, hallazgo 1).
+  - `TryNowTarget` vuelve al Centro de control que estaba delante y conserva el `prev` original (CCM-004).
+  - `NOTIFYICONDATAW` escrito a mano, solo x64 y ARM64 (CsWin32 no lo genera para AnyCPU).
+  - Una violación durante una concesión devuelve el primer plano al destino de la concesión, no a
+    `lastExternalForeground`: §3.5 no cubre ese caso, y restaurar la app externa terminaba la concesión.
+  - El orquestador no se ejecuta en el hilo SysEvents, sino en el grupo de hilos: `ReportViolation` vuelve enseguida y
+    restaura desde allí (se llama dentro del procedimiento de ventana de la superficie, en el hilo de UI), y
+    `AcquireAsync`, la devolución de una concesión, la restauración tras una violación y la reacción a un cambio de
+    primer plano verificado salen del hilo que las llama antes de tocar el primer plano o una superficie. Así el hilo
+    de UI nunca llama a `SetForegroundWindow` y el *callback* WinEvent de SysEvents nunca espera un `SetWindowLong`
+    entre hilos (§3.2); lo comprueban `ForegroundOrchestratorLeaseTests` (afinidad) y las pruebas de escritorio de
+    `Windowing.IntegrationTests/Foreground`, que piden las concesiones desde el hilo de UI.
+  - Tras el `WM_HOTKEY` del atajo interno, la escalera espera a que sus teclas estén sueltas
+    (`IInternalRightsHotkey.WaitForChordReleaseAsync`, `Timings.Foreground.ChordReleasePoll`) antes de reintentar: si
+    no, una liberación llegaba a la ventana nueva y la app de delante se quedaba con Ctrl pulsada (S4).
+- **Motivo.** Hallazgos de la primera ejecución de escritorio de S4 ([S4](../testing/spikes/S4.md)) y de la
+  integración de M1.
+- **Coste.** Más superficie pública en Application.Foreground; todas las adiciones son compatibles.
+- **Revisión.** Al cerrar S4 con las filas manuales (Acceso por voz, Narrador y Word).
+
+## D-18 · UI Automation implementada en M1
+
+- **Plano.** [§8.6](blueprint.md#86-accesibilidad-uia-y-números-de-voz) y el contrato de `AnnouncementUrgency`
+  (cortés = `ImportantMostRecent`).
+- **Repositorio.**
+  - Un aviso cortés usa `AutomationNotificationProcessing.MostRecent`: las variantes `Important*` interrumpen al
+    lector, lo contrario de «cortés» (S3, fila 9a). El urgente sigue en `ImportantAll`.
+  - `IInvokeProvider.Invoke` vuelve enseguida y `Invoked` llega en el siguiente turno del dispatcher, como pide UI
+    Automation; `Toggle`, `Expand` y `Collapse` son síncronos.
+  - El *peer* solo es enfocable por teclado mientras la ventana está activa (bajo concesión); si no, `SetFocus` lanza
+    `InvalidOperationException` sin enfocar.
+  - `LiveAnnouncer.ForUiaBstr` compensa un defecto de WPF: `RaiseNotificationEvent` pasa una cadena ancha donde UI
+    Automation lee un `BSTR`, y los lectores recibían la mitad del texto. Lo vigila
+    `Upstream/WpfNotificationBstrTests` (`wpf-notification-bstr`).
+- **Motivo.** Hallazgos de S3 ([S3](../testing/spikes/S3.md)).
+- **Coste.** El relleno depende de que WPF pase la cadena fijada sin copiarla; la prueba Upstream avisa si WPF lo
+  corrige, pero no si cambia a otro formato.
+- **Revisión.** Con Narrador en la fila manual 9a (quizá `CurrentThenMostRecent`) y con cada actualización de WPF.
 
 ## Puntos del plano pendientes de resolver
 

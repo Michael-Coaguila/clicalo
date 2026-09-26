@@ -1,0 +1,47 @@
+// Win32 for tools/SpikeLab only (the laboratory of S1, S3 and S4; never shipped). The product's lists live in src/.
+// Never AttachThreadInput or LockSetForegroundWindow. SendInput only through LabKeyInjector and its safety rules.
+
+// Lab injector of the panel (balanced batches, left modifiers only, foreground checked immediately before)
+SendInput
+INPUT
+KEYBDINPUT
+GetAsyncKeyState
+VIRTUAL_KEY
+
+// Foreground observation, and the forced activation of S1 row 31 (SetForegroundWindow on the lab panel only)
+GetForegroundWindow
+SetForegroundWindow
+GetWindowThreadProcessId
+SetWinEventHook
+UnhookWinEvent
+EVENT_SYSTEM_FOREGROUND
+WINEVENT_OUTOFCONTEXT
+
+// WS_EX_NOACTIVATE check after the forced activation, and window placement in physical pixels
+GetWindowLong
+WINDOW_EX_STYLE
+WINDOW_LONG_PTR_INDEX
+GetWindowRect
+GetCursorPos
+
+// Work area of the monitor of a surface (no surface or window leaves it), and the monitors of the report
+MonitorFromRect
+GetMonitorInfo
+MONITORINFO
+EnumDisplayMonitors
+GetDpiForMonitor
+MONITOR_DPI_TYPE
+
+// Input hardware of the report (touch, pen, mouse)
+GetSystemMetrics
+SYSTEM_METRICS_INDEX
+
+// Lab global hotkey (Ctrl+Shift+F11) and the activation messages counted on the lab surfaces
+RegisterHotKey
+UnregisterHotKey
+HOT_KEY_MODIFIERS
+WM_HOTKEY
+WM_ACTIVATE
+WA_INACTIVE
+WM_NCACTIVATE
+WM_ACTIVATEAPP

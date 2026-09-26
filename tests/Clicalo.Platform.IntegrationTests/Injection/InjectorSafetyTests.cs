@@ -210,6 +210,63 @@ public sealed class InjectorSafetyTests
         );
     }
 
+    [Theory]
+    [InlineData(VirtualKeyCode.RightControl)]
+    [InlineData(VirtualKeyCode.RightMenu)]
+    public void Right_Ctrl_and_AltGr_are_refused_outside_continuous_integration(VirtualKeyCode key)
+    {
+        // The desktop root window is never in the foreground: the reserved-key rule must refuse before that check.
+        var injector = new TestKeyboardInjector(
+            ForegroundWindows.DesktopWindow,
+            _handedToSendInput.Add,
+            reservedKeysAllowed: static () => false
+        );
+
+        var refusal = Should.Throw<InjectionRefusedException>(() =>
+            injector.Send(KeyStrokes.Chord(key))
+        );
+
+        refusal.Message.ShouldContain("right Ctrl or right Alt");
+        refusal.Message.ShouldContain("Nothing was injected");
+        injector.SentBatches.ShouldBe(0);
+        _handedToSendInput.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_right_Ctrl_as_an_extended_scan_code_is_refused_outside_continuous_integration()
+    {
+        var injector = new TestKeyboardInjector(
+            ForegroundWindows.DesktopWindow,
+            _handedToSendInput.Add,
+            reservedKeysAllowed: static () => false
+        );
+
+        Should
+            .Throw<InjectionRefusedException>(() =>
+                injector.Send(KeyStrokes.ScanCodeTap(0x1D, extended: true))
+            )
+            .Message.ShouldContain("right Ctrl or right Alt");
+        _handedToSendInput.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Left_Ctrl_and_left_Alt_are_not_reserved()
+    {
+        var injector = new TestKeyboardInjector(
+            ForegroundWindows.DesktopWindow,
+            _handedToSendInput.Add,
+            reservedKeysAllowed: static () => false
+        );
+
+        // They pass the reserved-key rule and stop at the next one: the desktop is not in the foreground.
+        Should
+            .Throw<InjectionRefusedException>(() =>
+                injector.Send(KeyStrokes.Chord(VirtualKeyCode.LeftControl, VirtualKeyCode.LeftMenu))
+            )
+            .Message.ShouldContain("not in the foreground");
+        _handedToSendInput.ShouldBeEmpty();
+    }
+
     private TestKeyboardInjector CreateInjector(nint targetWindow) =>
         new(targetWindow, _handedToSendInput.Add);
 }

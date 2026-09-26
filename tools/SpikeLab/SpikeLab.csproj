@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Laboratory of the M1 blocking spikes S1, S3 and S4 (docs/testing/spikes/): composes the real UI.Wpf, Application,
+    Platform.Windows and Domain pieces in a small WPF app that the maintainer drives with finger and voice. It is not
+    the product: it is never shipped and its visible text is not localized. How to run it and the report format:
+    docs/testing/spikes/README.md.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Clicalo.Tools.SpikeLab</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>Clicalo.Tools.SpikeLab.Program</StartupObject>
+    <!-- Lab surfaces derive from NonActivatingWindow: CLC0001 applies here too (docs/guides/analyzers.md). -->
+    <ClicaloProductRules>true</ClicaloProductRules>
+    <!-- The unit tests of the laboratory live below this folder, in their own project (Tests/SpikeLab.Tests.csproj). -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tests/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.UI.Wpf\Clicalo.UI.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Platform.Windows\Clicalo.Platform.Windows.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <!-- InputProbe as the target window of the voice-origin cycles of S4, and the guarded test injectors. -->
+    <ProjectReference Include="..\..\tests\Clicalo.TestKit.Windows\Clicalo.TestKit.Windows.csproj" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SpikeLab.Tests" />
+  </ItemGroup>
+  <ItemGroup Label="Own pointer layer (blueprint §8.3): WPF's stylus and touch stacks are off from the first instruction">
+    <RuntimeHostConfigurationOption
+      Include="Switch.System.Windows.Input.Stylus.DisableStylusAndTouchSupport"
+      Value="true"
+    />
+  </ItemGroup>
+</Project>

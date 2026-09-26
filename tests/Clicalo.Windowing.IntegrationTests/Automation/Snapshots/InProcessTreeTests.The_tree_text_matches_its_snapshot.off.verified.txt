@@ -1,0 +1,11 @@
+Pane «lab»
+  Button «Negrita» #tile.bold [Invoke] help=«Ctrl + N»
+  Button «Cursiva» #tile.italic [Invoke] help=«Ctrl + K»
+  Button «Subrayado» #tile.underline [Invoke] help=«Ctrl + S»
+  Button «Copiar» #tile.copy [Invoke] help=«Ctrl + C»
+  Button «Pegar» #tile.paste [Invoke] help=«Ctrl + V»
+  Button «Deshacer» #tile.undo [Invoke] help=«Ctrl + Z»
+  Button «Mayús» #tile.shift [Toggle] toggle=Off help=«Mayús»
+  Button «Mantener Ctrl» #tile.holdCtrl [Toggle] toggle=Off help=«Ctrl»
+  Button «Perfil» #tile.profile [ExpandCollapse] expand=Collapsed
+  Text «Listo. Toca un botón para usarlo.» #notice live=Polite

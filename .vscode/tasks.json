@@ -118,6 +118,14 @@
       "presentation": { "reveal": "never", "echo": false, "showReuseMessage": false }
     },
     {
+      "label": "SpikeLab: abrir",
+      "detail": "Abre el laboratorio de los spikes S1, S3 y S4 (docs/testing/spikes/README.md).",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["run", "--project", "tools\\SpikeLab", "-c", "Release"],
+      "problemMatcher": ["$msCompile"]
+    },
+    {
       "label": "cl: compilar el orquestador",
       "detail": "Compila build/Build.csproj antes de depurar cl.",
       "type": "shell",

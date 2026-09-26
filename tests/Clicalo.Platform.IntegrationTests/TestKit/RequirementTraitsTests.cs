@@ -13,6 +13,9 @@ public sealed class RequirementTraitsTests
 
         catalog.Ids.Count.ShouldBeGreaterThan(300);
         catalog.Contains("EJE-003").ShouldBeTrue();
+        catalog
+            .Contains("REG-01")
+            .ShouldBeTrue("The eight rules of §1 have two-digit identifiers.");
         catalog.Contains("NFR-004").ShouldBeTrue();
         catalog.Contains("EC-EJE-10").ShouldBeTrue();
         catalog.Contains("EJE-999").ShouldBeFalse();

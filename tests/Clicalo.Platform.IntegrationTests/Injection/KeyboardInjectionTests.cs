@@ -1,4 +1,5 @@
 using Clicalo.Platform.IntegrationTests.Desktop;
+using Clicalo.TestKit.Windows;
 using Clicalo.TestKit.Windows.Input;
 using Clicalo.TestKit.Windows.Probe;
 
@@ -12,6 +13,8 @@ namespace Clicalo.Platform.IntegrationTests.Injection;
 /// <remarks>
 /// These tests pin the Windows contract that the product injector (Platform.Core, milestone M2) must build on;
 /// when it exists they are re-pointed at it. The full S7 adds es-ES, en-US and es-419 layouts and elevation.
+/// The right Ctrl and AltGr tests carry the reserved-keys trait: the dictation and voice tools of the maintainer
+/// capture those keys, so <c>cl desk</c> runs them only in continuous integration.
 /// </remarks>
 [Collection(DesktopCollectionDefinition.Name)]
 [Trait("Requires", "Desktop")]
@@ -70,6 +73,10 @@ public sealed class KeyboardInjectionTests(DesktopProbeFixture desktop)
 
     [DesktopFact]
     [Trait("Req", "NFR-004")]
+    [Trait(
+        DesktopTestEnvironment.ReservedKeysTraitName,
+        DesktopTestEnvironment.ReservedKeysTraitValue
+    )]
     public async Task Left_and_right_Ctrl_reach_the_application_as_different_keys()
     {
         var cursor = await desktop.PrepareAsync();
@@ -134,6 +141,10 @@ public sealed class KeyboardInjectionTests(DesktopProbeFixture desktop)
 
     [DesktopFact]
     [Trait("Req", "NFR-004")]
+    [Trait(
+        DesktopTestEnvironment.ReservedKeysTraitName,
+        DesktopTestEnvironment.ReservedKeysTraitValue
+    )]
     public async Task AltGr_is_sent_as_the_right_Alt_key()
     {
         var cursor = await desktop.PrepareAsync();

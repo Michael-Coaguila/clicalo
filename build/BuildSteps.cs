@@ -11,6 +11,19 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
     /// <summary>The trait that marks tests needing an interactive desktop.</summary>
     public const string DesktopTrait = "Requires=Desktop";
 
+    /// <summary>
+    /// The trait of desktop tests that inject keys reserved for the maintainer's dictation and voice tools (right Ctrl,
+    /// AltGr): <c>cl desk</c> runs them only in continuous integration, never on the maintainer's machine.
+    /// </summary>
+    public const string ReservedKeysTrait = "Injects=ReservedKeys";
+
+    /// <summary>
+    /// Makes every test module write its xUnit TRX as <c>&lt;AssemblyName&gt;.trx</c> (<c>Directory.Build.targets</c>):
+    /// with xUnit's default name, taken from the clock when each module starts, two modules started together shared a
+    /// file and <see cref="TestRunReport"/> counted fewer tests than <c>dotnet test</c>.
+    /// </summary>
+    public const string TrxReportProperty = "-p:ClicaloTrxReport=true";
+
     /// <summary>Tells desktop tests that the run is deliberate (they self-skip otherwise).</summary>
     public const string DesktopVariable = "CLICALO_DESKTOP_TESTS";
 
@@ -231,11 +244,9 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
                     "--no-progress",
                     "--results-directory",
                     layout.Relative(results),
-                    "--report-xunit-trx",
-                    selection == TestSelection.DesktopOnly
-                        ? "--filter-trait"
-                        : "--filter-not-trait",
-                    DesktopTrait,
+                    // One <AssemblyName>.trx per module (Directory.Build.targets), so no module overwrites another's.
+                    TrxReportProperty,
+                    .. SelectionArguments(selection, context.Mode.Ci),
                     // A project may hold only desktop tests (or none of them): zero tests there is fine.
                     "--ignore-exit-code",
                     ZeroTestsExitCode.ToString(CultureInfo.InvariantCulture),
@@ -287,6 +298,34 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
                 );
             }
         );
+
+    /// <summary>
+    /// How a test run selects its tests: without the desktop tests, or only the desktop tests. Desktop test modules run
+    /// one at a time, because each one takes the foreground with its own InputProbe and two at once would take it from
+    /// each other. Outside continuous integration the desktop tests that inject reserved keys
+    /// (<see cref="ReservedKeysTrait"/>) are left out too.
+    /// </summary>
+    internal static string[] SelectionArguments(TestSelection selection, bool ci) =>
+        selection switch
+        {
+            TestSelection.DesktopOnly when ci =>
+            [
+                "--filter-trait",
+                DesktopTrait,
+                "--max-parallel-test-modules",
+                "1",
+            ],
+            TestSelection.DesktopOnly =>
+            [
+                "--filter-trait",
+                DesktopTrait,
+                "--filter-not-trait",
+                ReservedKeysTrait,
+                "--max-parallel-test-modules",
+                "1",
+            ],
+            _ => ["--filter-not-trait", DesktopTrait],
+        };
 
     /// <summary>
     /// Runs the i18n verbs of the developer CLI: <c>i18n-check</c> (the generator's validation, CLDR rules and unused

@@ -1,0 +1,78 @@
+// Win32 for Clicalo.UI.Wpf. CsWin32 is allowed only in Windowing/ and Pointer/ (blueprint §4.2, ArchUnit).
+// Each M1 package appends only inside its own section (docs/testing/spikes/M1-ownership.md).
+// Never list SetForegroundWindow, AllowSetForegroundWindow, AttachThreadInput, LockSetForegroundWindow, SendInput or
+// TrackPopupMenu*: they are banned in UI.Wpf (BannedSymbols.All.txt).
+// GetWindowLongPtr/SetWindowLongPtr only exist per architecture: use GetWindowLong/SetWindowLong (styles are 32-bit).
+
+// ---- Windowing (NonActivatingWindow, SurfaceRegistry, ActivationGuard, SurfaceIntegrityCheck, OwnerAnchor) ----
+GetWindowLong
+SetWindowLong
+SetWindowPos
+GetWindowRect
+IsWindowVisible
+GetDpiForWindow
+WINDOW_EX_STYLE
+WINDOW_LONG_PTR_INDEX
+SET_WINDOW_POS_FLAGS
+WINDOWPOS
+HWND_TOPMOST
+WM_MOUSEACTIVATE
+MA_NOACTIVATE
+WM_POINTERACTIVATE
+PA_NOACTIVATE
+WM_WINDOWPOSCHANGING
+WM_ACTIVATE
+WA_INACTIVE
+WM_NCACTIVATE
+WM_ACTIVATEAPP
+WM_DPICHANGED
+WM_GETDPISCALEDSIZE
+WM_NCHITTEST
+WM_DISPLAYCHANGE
+GetForegroundWindow
+GetWindow
+GET_WINDOW_CMD
+SIZE
+HTNOWHERE
+WM_NCDESTROY
+WM_THEMECHANGED
+WM_SYSCOLORCHANGE
+WM_SETTINGCHANGE
+WINDOW_STYLE
+SendMessage
+SetWindowsHookEx
+UnhookWindowsHookEx
+CallNextHookEx
+WINDOWS_HOOK_ID
+HCBT_ACTIVATE
+GetCurrentThreadId
+GetWindowThreadProcessId
+// ---- end of Windowing ----
+
+// ---- Pointer (PointerInputSource, PointerSetup) ----
+GetPointerType
+GetPointerInfo
+GetPointerTouchInfo
+GetPointerPenInfo
+GetPointerFrameTouchInfo
+GetCurrentInputMessageSource
+SetWindowFeedbackSetting
+FEEDBACK_TYPE
+POINTER_INFO
+POINTER_TOUCH_INFO
+POINTER_PEN_INFO
+POINTER_INPUT_TYPE
+POINTER_FLAGS
+INPUT_MESSAGE_SOURCE
+WM_POINTERDOWN
+WM_POINTERUP
+WM_POINTERUPDATE
+WM_POINTERENTER
+WM_POINTERLEAVE
+WM_POINTERCAPTURECHANGED
+WM_POINTERWHEEL
+EnableMouseInPointer
+IsMouseInPointerEnabled
+GetWindowFeedbackSetting
+TOUCH_MASK_CONTACTAREA
+// ---- end of Pointer ----

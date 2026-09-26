@@ -321,6 +321,38 @@ public sealed class InputProbeSession : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Makes the probe call <c>SetForegroundWindow(<paramref name="window"/>)</c> from its own process (the
+    /// <c>foreground</c> command with <c>hwnd</c>, tools/InputProbe/README.md) and returns its answer. The probe may
+    /// only do it while it owns the foreground; the negative test of <c>ActivationGuard</c> uses it to force the
+    /// activation of a surface without injecting any input.
+    /// </summary>
+    /// <param name="window">The window the probe brings to the foreground; must not be null.</param>
+    /// <param name="timeout">How long to wait for the probe's answer.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    /// <exception cref="TimeoutException">The probe did not answer within <paramref name="timeout"/>.</exception>
+    public async Task<ProbeForegroundEvent> RequestForegroundAsync(
+        nint window,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (window == 0)
+        {
+            throw new ArgumentException("The window cannot be null.", nameof(window));
+        }
+
+        var cursor = Cursor;
+        var id = await SendCommandAsync(ProbeCommands.Foreground, cancellationToken, window);
+        var events = await WaitForAsync(
+            cursor,
+            received => received.OfType<ProbeForegroundEvent>().Any(answer => answer.Id == id),
+            timeout,
+            cancellationToken
+        );
+        return events.OfType<ProbeForegroundEvent>().First(answer => answer.Id == id);
+    }
+
     /// <summary><see cref="TryBringToForegroundAsync"/>, failing with a diagnostic when Windows refuses.</summary>
     public async Task EnsureForegroundAsync(
         TimeSpan timeout,
@@ -469,7 +501,11 @@ public sealed class InputProbeSession : IAsyncDisposable
         return builder.ToString();
     }
 
-    private async Task<long> SendCommandAsync(string command, CancellationToken cancellationToken)
+    private async Task<long> SendCommandAsync(
+        string command,
+        CancellationToken cancellationToken,
+        nint window = 0
+    )
     {
         var id = Interlocked.Increment(ref _nextCommandId);
         var buffer = new ArrayBufferWriter<byte>(64);
@@ -478,6 +514,11 @@ public sealed class InputProbeSession : IAsyncDisposable
             json.WriteStartObject();
             json.WriteString(ProbeCommands.CommandField, command);
             json.WriteNumber(ProbeFields.Id, id);
+            if (window != 0)
+            {
+                json.WriteNumber(ProbeFields.Window, (long)window);
+            }
+
             json.WriteEndObject();
         }
 

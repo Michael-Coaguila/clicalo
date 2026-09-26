@@ -28,7 +28,7 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl build` | Compila la solución completa en Debug | M0 |
 | `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit). Objetivo: menos de 45 s; la línea final avisa si se supera | M0 |
 | `cl test` | Compila y ejecuta todas las pruebas salvo las de escritorio (`Requires=Desktop`) | M0 |
-| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva) | M0 |
+| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva), un módulo de pruebas cada vez porque cada uno toma el primer plano con su InputProbe. Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr: las capturan las herramientas de dictado y voz del mantenedor | M0 |
 | `cl fix` | Da formato al C# con CSharpier | M0 |
 | `cl check` | **Lo mismo que el trabajo `verify` de la CI.** Todo PR termina con él (ver abajo) | M0 |
 | `cl clean` | Vacía `artifacts/`, salvo la salida del propio orquestador, y dice qué archivos siguen en uso | M0 |
@@ -55,13 +55,16 @@ Los mismos pasos, en este orden, en local y en la CI; el primero que falla detie
 3. **format**: `dotnet csharpier check .`
 4. **restore**: `dotnet restore --locked-mode` (los *lock files* deben coincidir).
 5. **build**: compilación Release con `-warnaserror`.
-6. **test**: todas las pruebas salvo `Requires=Desktop`, con resultados TRX.
+6. **test**: todas las pruebas salvo `Requires=Desktop`, con resultados TRX: un `<Ensamblado>.trx` por módulo de
+   pruebas (`-p:ClicaloTrxReport=true`, que lee `Directory.Build.targets`), para que ningún módulo sobrescriba los
+   resultados de otro.
 7. **i18n**: `Clicalo.DevCli i18n-check` y `Clicalo.DevCli i18n-import --check`.
 
 ### Línea final e informe de errores
 
 Cada orden termina en **una sola línea para Narrador**, por ejemplo «cl check: correcto en 1 min 22 s;
-1233 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El informe
+1233 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El número de pruebas es el
+`total` que da `dotnet test` en su resumen (las omitidas cuentan y se dicen aparte: «65 pruebas, 2 omitidas»). El informe
 `artifacts/cl/last-error.md` es Markdown con encabezados y listas (sin tablas ni colores) y recoge el error
 exacto: errores de MSBuild con enlace a la línea, pruebas fallidas con mensaje y pila (leídas del TRX),
 archivos sin formato o firmas NuGet rechazadas (NU3034). Se borra al empezar cada orden, así que nunca queda
