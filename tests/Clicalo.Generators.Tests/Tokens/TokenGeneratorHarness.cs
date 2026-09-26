@@ -15,34 +15,46 @@ internal static class TokenGeneratorHarness
         LoadReferences
     );
 
-    private static readonly CSharpParseOptions ParseOptions = new(LanguageVersion.Latest);
+    /// <summary>The parse options of the generated code, for trees that tests add to the compilation.</summary>
+    public static CSharpParseOptions ParseOptions { get; } = new(LanguageVersion.Latest);
 
     /// <summary>Runs the generator over <paramref name="files"/> (file name → content) under <c>data/tokens</c>.</summary>
     public static GeneratorDriverRunResult Run(
         IReadOnlyDictionary<string, string> files,
         string? profile = "UiWpf"
-    )
-    {
-        var texts = files
-            .Select(file =>
-                (AdditionalText)
-                    new InMemoryAdditionalText(TokenTestData.Directory + file.Key, file.Value)
+    ) => CreateDriver(files, profile).RunGenerators(UiCompilation()).GetRunResult();
+
+    /// <summary>
+    /// A driver over <paramref name="files"/> that records its pipeline steps, for incremental-generation tests.
+    /// </summary>
+    public static GeneratorDriver CreateDriver(
+        IReadOnlyDictionary<string, string> files,
+        string? profile = "UiWpf"
+    ) =>
+        CSharpGeneratorDriver.Create(
+            [new TokenGenerator().AsSourceGenerator()],
+            [
+                .. files.Select(file =>
+                    (AdditionalText)
+                        new InMemoryAdditionalText(TokenTestData.Directory + file.Key, file.Value)
+                ),
+            ],
+            ParseOptions,
+            new ProfileOptionsProvider(profile),
+            new GeneratorDriverOptions(
+                IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true
             )
-            .ToImmutableArray();
-        var compilation = CSharpCompilation.Create(
+        );
+
+    /// <summary>The (empty) UI.Wpf compilation the generator runs against.</summary>
+    public static CSharpCompilation UiCompilation() =>
+        CSharpCompilation.Create(
             "Clicalo.UI.Wpf",
             [],
             References.Value,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         );
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            [new TokenGenerator().AsSourceGenerator()],
-            texts,
-            ParseOptions,
-            new ProfileOptionsProvider(profile)
-        );
-        return driver.RunGenerators(compilation).GetRunResult();
-    }
 
     /// <summary>Compiles generated trees together with minimal WPF stand-ins (the test host has no WPF).</summary>
     public static CSharpCompilation CompileWithWpfStubs(IEnumerable<SyntaxTree> generated) =>

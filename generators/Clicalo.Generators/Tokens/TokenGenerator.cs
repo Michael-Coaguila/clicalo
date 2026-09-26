@@ -26,7 +26,9 @@ public sealed class TokenGenerator : IIncrementalGenerator
             .FilesIn(context, TokenFiles.Directory)
             .Where(static file => TokenFiles.IsRelevant(Path.GetFileName(file.Path)))
             .Collect();
-        var input = files.Combine(GeneratorContext.Profile(context));
+        var input = files
+            .Combine(GeneratorContext.Profile(context))
+            .WithTrackingName(TrackingNames.Input);
         context.RegisterSourceOutput(
             input,
             static (spc, pair) => Execute(spc, pair.Left, pair.Right)
@@ -76,5 +78,12 @@ public sealed class TokenGenerator : IIncrementalGenerator
         {
             context.AddSource(source.HintName, SourceText.From(source.Text, Encoding.UTF8));
         }
+    }
+
+    /// <summary>Names of the pipeline steps, observable by incremental-generation tests.</summary>
+    internal static class TrackingNames
+    {
+        /// <summary>The data files combined with the generator profile: the only input of the output.</summary>
+        public const string Input = "Tokens.Input";
     }
 }

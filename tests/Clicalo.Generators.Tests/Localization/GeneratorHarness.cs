@@ -32,10 +32,37 @@ internal static class GeneratorHarness
         string? profile = "Domain"
     )
     {
-        var texts = files
-            .Select(f => (AdditionalText)new InMemoryAdditionalText(DataDirectory + f.Key, f.Value))
-            .ToImmutableArray();
-        var compilation = CSharpCompilation.Create(
+        var compilation = DomainCompilation();
+        var driver = CreateDriver(files, profile)
+            .RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+        return new GeneratorOutput(driver.GetRunResult(), output);
+    }
+
+    /// <summary>
+    /// A driver over <paramref name="files"/> that records its pipeline steps, for incremental-generation tests.
+    /// </summary>
+    public static GeneratorDriver CreateDriver(
+        IReadOnlyDictionary<string, string> files,
+        string? profile = "Domain"
+    ) =>
+        CSharpGeneratorDriver.Create(
+            [new LocalizationGenerator().AsSourceGenerator()],
+            [
+                .. files.Select(f =>
+                    (AdditionalText)new InMemoryAdditionalText(DataDirectory + f.Key, f.Value)
+                ),
+            ],
+            ParseOptions,
+            new ProfileOptionsProvider(profile),
+            new GeneratorDriverOptions(
+                IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true
+            )
+        );
+
+    /// <summary>The Domain compilation the generator runs against (the hand-written message types).</summary>
+    public static CSharpCompilation DomainCompilation() =>
+        CSharpCompilation.Create(
             "Clicalo.Domain",
             DomainMessageSources(),
             References.Value,
@@ -44,20 +71,14 @@ internal static class GeneratorHarness
                 nullableContextOptions: NullableContextOptions.Enable
             )
         );
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            [new LocalizationGenerator().AsSourceGenerator()],
-            texts,
-            (CSharpParseOptions)compilation.SyntaxTrees[0].Options,
-            new ProfileOptionsProvider(profile)
-        );
-        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
-        return new GeneratorOutput(driver.GetRunResult(), output);
-    }
+
+    /// <summary>The parse options of the Domain compilation, for trees that tests add to it.</summary>
+    public static CSharpParseOptions ParseOptions { get; } = new(LanguageVersion.Preview);
 
     /// <summary>The hand-written Domain message types the generated code builds on, with the SDK implicit usings.</summary>
     private static IEnumerable<SyntaxTree> DomainMessageSources()
     {
-        var options = new CSharpParseOptions(LanguageVersion.Preview);
+        var options = ParseOptions;
         yield return CSharpSyntaxTree.ParseText(ImplicitUsings, options, "ImplicitUsings.g.cs");
         foreach (
             var path in Directory
