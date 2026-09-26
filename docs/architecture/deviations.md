@@ -281,18 +281,27 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - `WM_DPICHANGED` se maneja como pide el plano y además se reenvía a `HwndTarget` (con un indicador de reentrada)
     dentro del veto, porque WPF necesita el mensaje para reescalar (ACC-008) y su `SetWindowPos` no lleva
     `SWP_NOACTIVATE` (#7561).
-  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes) y solo mientras la superficie
-    tiene el primer plano (`GetForegroundWindow`): un mensaje de activación que llega cuando el primer plano ya está en
-    otra app (tardío, porque la restauración va por el grupo de hilos mientras el hilo de UI aún entrega los mensajes
-    de la activación) se retiene y repara `WS_EX_NOACTIVATE`, pero no cuenta. `WM_ACTIVATEAPP(TRUE)` cierra una
-    violación que nunca recibió su desactivación.
+  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes). Un mensaje de activación
+    para una superficie que no tiene el primer plano (`GetForegroundWindow`) se juzga por quién lo tiene: una ventana
+    del propio proceso sin concesión (otra superficie, `OwnerAnchor`) es una violación al momento; una ventana de otra
+    app puede ser un mensaje tardío (la restauración va por el grupo de hilos mientras el hilo de UI aún entrega los
+    mensajes de la activación) o una activación que `GetForegroundWindow` todavía no confirma (S1 la vio llegar así),
+    así que el mensaje se retiene, se repara `WS_EX_NOACTIVATE` y el juicio se aplaza: cuando el hilo de UI ha
+    entregado lo que tenía en cola y, si el primer plano sigue fuera, otra vez tras
+    `Timings.Windowing.ActivationRecheck` (50 ms). Si entonces tiene el primer plano una ventana del proceso sin
+    concesión, cuenta una violación; si no, era tardío y no cuenta. Una violación abierta se cierra con
+    `WA_INACTIVE` o `WM_ACTIVATEAPP(FALSE)`, con el siguiente `WM_ACTIVATEAPP(TRUE)` y, porque esos mensajes llegan
+    tarde, desordenados o no llegan cuando la restauración gana la carrera (S1, hallazgo 8), en cuanto la guarda ve el
+    primer plano fuera del proceso: en cualquier mensaje de activación o desactivación (también
+    `WM_NCACTIVATE(FALSE)`) y cada `ActivationRecheck` mientras está abierta.
   - Las superficies, `OwnerAnchor` y `SurfaceRegistry` viven en un único hilo; todas comparten `OwnerAnchor`, así que
     la banda *topmost* se pierde y se repara en familia.
 - **Motivo.** Sin el veto, una prueba sin escritorio mostró `WM_ACTIVATEAPP`, `WM_ACTIVATE` y `WM_SETFOCUS` en la
   superficie al mostrarla y al cambiar de DPI (resultados en [S1](../testing/spikes/S1.md)).
 - **Coste.** Un *hook* de hilo más. Una activación externa que coincida exactamente con el `Show` o con el cambio de
-  DPI también se rechaza y el guardián no la ve. Una superficie activada dentro de su propio hilo sin llegar al primer
-  plano (sin quitárselo a nadie) tampoco cuenta como violación.
+  DPI también se rechaza y el guardián no la ve. Una superficie activada sin que el primer plano llegue al proceso (sin
+  quitárselo a nadie) no cuenta como violación. Una activación que solo se confirma en la segunda mirada se revierte
+  hasta 50 ms más tarde, dentro del presupuesto de 200 ms.
 - **Revisión.** Al cerrar S1 con las filas manuales del equipo táctil; valorar un veto general entre
   `WM_WINDOWPOSCHANGING` y `WM_WINDOWPOSCHANGED` para cualquier `SetWindowPos` sin `SWP_NOACTIVATE`.
 

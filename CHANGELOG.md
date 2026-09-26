@@ -67,7 +67,9 @@ Milestone M0 · Foundations and harness, and milestone M1 · blocking spikes S1,
 - Milestone M1 windowing (spike S1): non-activatable surfaces (`NonActivatingWindow` with `ShowPassive`,
   `HidePassive` and `MovePassive`, the common surface hook, a thread-scoped `ActivationVeto` around the WPF show and
   the forwarded `WM_DPICHANGED`, and the hidden `OwnerAnchor`), `ActivationGuard` (one REG-01 violation per
-  activation, `reg01.violations`, probable cause), the thread-safe `SurfaceRegistry` and `SurfaceIntegrityCheck`;
+  activation, `reg01.violations`, probable cause, and a deferred judgment of an activation message that the
+  foreground does not confirm yet, and an open violation that ends when the foreground is seen outside the
+  process, with the `Windowing.ActivationRecheck` timing), the thread-safe `SurfaceRegistry` and `SurfaceIntegrityCheck`;
   the guarded `SyntheticPointer` (finger, pen and mouse only into the test process's own windows) and the S1
   headless and desktop tests.
 - Milestone M1 touch: the TAC-002 `TouchFilter` and an allocation-free `GestureRecognizer` (tap, long press, hold,
