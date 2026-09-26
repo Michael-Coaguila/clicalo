@@ -78,8 +78,15 @@ internal sealed class ContrastPairSet
     public static IReadOnlyList<string> Layers(string background) =>
         [.. background.Split(" over ", StringSplitOptions.None).Select(layer => layer.Trim())];
 
-    /// <summary>Measures every pair, background and category of <paramref name="theme"/>.</summary>
-    public IEnumerable<ContrastResult> Evaluate(TokenDataSet data, string theme)
+    /// <summary>
+    /// Measures every pair, background and category of <paramref name="theme"/> over the backdrops of the data,
+    /// or over <paramref name="backdrops"/> when given.
+    /// </summary>
+    public IEnumerable<ContrastResult> Evaluate(
+        TokenDataSet data,
+        string theme,
+        IReadOnlyList<Rgba8>? backdrops = null
+    )
     {
         foreach (var pair in Pairs)
         {
@@ -95,7 +102,7 @@ internal sealed class ContrastPairSet
                     var measurement = ContrastEvaluator.Measure(
                         ColorOf(data, theme, pair.Foreground, category),
                         [.. layers.Select(layer => ColorOf(data, theme, layer, category))],
-                        Backdrops
+                        backdrops ?? Backdrops
                     );
                     yield return new ContrastResult(
                         theme,

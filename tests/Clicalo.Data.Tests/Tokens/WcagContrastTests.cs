@@ -83,6 +83,23 @@ public sealed class WcagContrastTests
     }
 
     [Fact]
+    public void A_desktop_between_two_backdrops_that_matches_the_foreground_gives_1_to_1()
+    {
+        // Mid gray over a half-transparent gray panel: 2.66:1 over black and 2.17:1 over white, but a mid-gray
+        // desktop makes the panel exactly the color of the text.
+        var gray = new Rgba8(128, 128, 128);
+
+        var measurement = ContrastEvaluator.Measure(
+            gray,
+            [new Rgba8(128, 128, 128, 128)],
+            [Black, White]
+        );
+
+        measurement.Ratio.ShouldBe(1d, 1e-6);
+        measurement.BackdropIndex.ShouldBe(-1);
+    }
+
+    [Fact]
     public void An_opaque_layer_hides_the_backdrops()
     {
         var measurement = ContrastEvaluator.Measure(

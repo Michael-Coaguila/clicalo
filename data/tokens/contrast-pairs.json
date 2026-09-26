@@ -5,8 +5,17 @@
     "text": 4.5,
     "graphic": 3
   },
-  "$backdrops": "Escritorios extremos que pueden verse a través del panel translúcido. La luminancia del compuesto crece con la del escritorio, así que el negro y el blanco acotan cualquier fondo real.",
-  "backdrops": ["#000000", "#ffffff"],
+  "$backdrops": "Escritorios que pueden verse a través del panel translúcido: los 8 vértices del cubo sRGB. El negro y el blanco acotan la luminancia del fondo, pero con un primer plano translúcido un escritorio de color puede dar algo menos de contraste (line sobre panel en el tema oscuro es peor sobre #00ffff), y una prueba recorre una rejilla de escritorios para confirmar que ninguno queda por debajo del mínimo. Si el primer plano pasa de más claro a más oscuro que el fondo entre dos vértices, el peor caso es 1:1.",
+  "backdrops": [
+    "#000000",
+    "#0000ff",
+    "#00ff00",
+    "#00ffff",
+    "#ff0000",
+    "#ff00ff",
+    "#ffff00",
+    "#ffffff"
+  ],
   "decorative": {
     "$comment": "Tokens sin mínimo de contraste, con el motivo.",
     "desk": "Escritorio simulado del prototipo; el fondo real tras el panel se modela con backdrops.",

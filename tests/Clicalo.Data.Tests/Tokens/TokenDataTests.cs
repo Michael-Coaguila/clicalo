@@ -169,8 +169,43 @@ public sealed class TokenDataTests
 
     [Fact]
     [Trait("Req", "TEM-004")]
-    public void Translucent_surfaces_are_measured_over_the_darkest_and_lightest_desktops() =>
-        Pairs.Value.Backdrops.ShouldBe([new Rgba8(0, 0, 0), new Rgba8(255, 255, 255)]);
+    public void Translucent_surfaces_are_measured_over_the_vertices_of_the_srgb_cube() =>
+        Pairs
+            .Value.Backdrops.Select(backdrop => backdrop.ToRgbHex())
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
+                "#000000",
+                "#0000FF",
+                "#00FF00",
+                "#00FFFF",
+                "#FF0000",
+                "#FF00FF",
+                "#FFFF00",
+                "#FFFFFF",
+            ]);
+
+    [Fact]
+    [Trait("Req", "TEM-004")]
+    public void No_desktop_color_behind_the_panel_breaks_a_pair()
+    {
+        // Every 8-bit desktop cannot be enumerated; a 9-level grid per channel (729 colors, vertices included)
+        // checks that the vertices used by the generator really bound the worst case.
+        byte[] levels = [0, 32, 64, 96, 128, 159, 191, 223, 255];
+        Rgba8[] desktops =
+        [
+            .. levels.SelectMany(r =>
+                levels.SelectMany(g => levels.Select(b => new Rgba8(r, g, b)))
+            ),
+        ];
+        var data = Data.Value;
+
+        var failures = data
+            .Themes.SelectMany(theme => Pairs.Value.Evaluate(data, theme, desktops))
+            .Where(result => !result.Passes)
+            .Select(result => result.ToString());
+
+        failures.ShouldBeEmpty();
+    }
 
     [Fact]
     [Trait("Req", "TEM-004")]
