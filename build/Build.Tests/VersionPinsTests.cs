@@ -130,10 +130,82 @@ public sealed class VersionPinsTests
         VersionPins.CheckGlobalJson("global.json", json).Count.ShouldBe(violations);
 
     [Fact]
+    public void Malformed_json_is_reported_at_its_line_instead_of_crashing()
+    {
+        const string Manifest = """
+            {
+              "tools": {
+                "csharpier": { "version": }
+              }
+            }
+            """;
+
+        var violation = VersionPins
+            .CheckToolManifest(".config/dotnet-tools.json", Manifest)
+            .ShouldHaveSingleItem();
+
+        violation.Line.ShouldBe(3);
+        violation.Problem.ShouldBe(Messages.PinUnreadable);
+        VersionPins
+            .CheckGlobalJson("global.json", """{ "sdk": """)
+            .ShouldHaveSingleItem()
+            .Problem.ShouldBe(Messages.PinUnreadable);
+    }
+
+    [Fact]
+    public void A_malformed_project_file_is_a_violation_and_the_rest_is_still_checked()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "clicalo-pins-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Write(root, "global.json", """{ "sdk": { "version": "10.0.401" } }""");
+            Write(
+                root,
+                "Directory.Packages.props",
+                """<Project><ItemGroup><PackageVersion Include="A" Version="1.*" /></ItemGroup></Project>"""
+            );
+            Write(
+                root,
+                "src/Broken/Broken.csproj",
+                """
+                <Project>
+                  <ItemGroup>
+                </Project>
+                """
+            );
+
+            var violations = VersionPins.Check(RepoLayout.FromRoot(root));
+
+            violations
+                .Select(violation => violation.File)
+                .ShouldBe(
+                    ["Directory.Packages.props", "src/Broken/Broken.csproj"],
+                    ignoreOrder: true
+                );
+            var broken = violations.Single(violation =>
+                violation.File.EndsWith(".csproj", StringComparison.Ordinal)
+            );
+            broken.Problem.ShouldBe(Messages.PinUnreadable);
+            broken.Line.ShouldBe(3);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void This_repository_is_fully_pinned()
     {
         var layout = RepoLayout.Locate(AppContext.BaseDirectory);
 
         VersionPins.Check(layout).ShouldBeEmpty();
+    }
+
+    private static void Write(string root, string relativePath, string content)
+    {
+        var path = Path.Combine(root, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
     }
 }

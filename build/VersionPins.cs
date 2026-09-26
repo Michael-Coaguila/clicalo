@@ -43,9 +43,7 @@ internal static partial class VersionPins
         var violations = new List<VersionPinViolation>();
 
         var central = Path.Combine(layout.Root, CentralFileName);
-        violations.AddRange(
-            CheckCentralPackages(layout.RelativeForward(central), LoadXml(central))
-        );
+        violations.AddRange(CheckXmlFile(layout, central, CheckCentralPackages));
 
         foreach (var file in EnumerateFiles(layout))
         {
@@ -57,7 +55,7 @@ internal static partial class VersionPins
                 && !string.Equals(name, CentralFileName, StringComparison.Ordinal)
             )
             {
-                violations.AddRange(CheckProjectFile(relative, LoadXml(file)));
+                violations.AddRange(CheckXmlFile(layout, file, CheckProjectFile));
             }
             else if (IsWorkflowOrAction(relative))
             {
@@ -183,7 +181,12 @@ internal static partial class VersionPins
     public static IReadOnlyList<VersionPinViolation> CheckToolManifest(string file, string json)
     {
         var violations = new List<VersionPinViolation>();
-        using var document = JsonDocument.Parse(json);
+        using var document = ParseJson(file, json, violations);
+        if (document is null)
+        {
+            return violations;
+        }
+
         if (
             !document.RootElement.TryGetProperty("tools", out var tools)
             || tools.ValueKind != JsonValueKind.Object
@@ -218,7 +221,13 @@ internal static partial class VersionPins
     /// <summary>The SDK is pinned to one exact version.</summary>
     public static IReadOnlyList<VersionPinViolation> CheckGlobalJson(string file, string json)
     {
-        using var document = JsonDocument.Parse(json);
+        var violations = new List<VersionPinViolation>();
+        using var document = ParseJson(file, json, violations);
+        if (document is null)
+        {
+            return violations;
+        }
+
         var version =
             document.RootElement.TryGetProperty("sdk", out var sdk)
             && sdk.TryGetProperty("version", out var value)
@@ -339,7 +348,59 @@ internal static partial class VersionPins
         }
     }
 
-    private static XDocument LoadXml(string path) => XDocument.Load(path, LoadOptions.SetLineInfo);
+    /// <summary>
+    /// Loads an MSBuild file and runs <paramref name="check"/> on it; a file that is not well-formed XML is a
+    /// violation at the reported line (the pins cannot be verified), never a crash of <c>cl</c>.
+    /// </summary>
+    private static IEnumerable<VersionPinViolation> CheckXmlFile(
+        RepoLayout layout,
+        string path,
+        Func<string, XDocument, IEnumerable<VersionPinViolation>> check
+    )
+    {
+        var relative = layout.RelativeForward(path);
+        XDocument document;
+        try
+        {
+            document = XDocument.Load(path, LoadOptions.SetLineInfo);
+        }
+        catch (XmlException exception)
+        {
+            return
+            [
+                new VersionPinViolation(
+                    relative,
+                    exception.LineNumber > 0 ? exception.LineNumber : null,
+                    exception.Message,
+                    Messages.PinUnreadable
+                ),
+            ];
+        }
+
+        return check(relative, document);
+    }
+
+    /// <summary>Parses <paramref name="json"/>, or records why it cannot be checked and returns null.</summary>
+    private static JsonDocument? ParseJson(
+        string file,
+        string json,
+        List<VersionPinViolation> violations
+    )
+    {
+        try
+        {
+            return JsonDocument.Parse(json);
+        }
+        catch (JsonException exception)
+        {
+            // JsonException.LineNumber is zero-based.
+            var line = exception.LineNumber is { } zeroBased ? (int)zeroBased + 1 : (int?)null;
+            violations.Add(
+                new VersionPinViolation(file, line, exception.Message, Messages.PinUnreadable)
+            );
+            return null;
+        }
+    }
 
     private static int? LineOf(XObject node) =>
         node is IXmlLineInfo info && info.HasLineInfo() ? info.LineNumber : null;

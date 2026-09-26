@@ -234,7 +234,7 @@ internal static class Messages
     public const string PinActionNotSha = "acción no fijada por SHA completo";
     public const string PinActionNoVersionComment =
         "acción fijada por SHA sin el comentario de versión (# vX.Y.Z) que usa Renovate";
-    public const string PinUnreadable = "no se pudo leer";
+    public const string PinUnreadable = "archivo no válido; no se pudieron comprobar sus versiones";
 
     // ---- cl setup ---------------------------------------------------------------------------
 
