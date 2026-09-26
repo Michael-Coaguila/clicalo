@@ -29,6 +29,23 @@ WM_DPICHANGED
 WM_GETDPISCALEDSIZE
 WM_NCHITTEST
 WM_DISPLAYCHANGE
+GetForegroundWindow
+GetWindow
+GET_WINDOW_CMD
+SIZE
+HTNOWHERE
+WM_NCDESTROY
+WM_THEMECHANGED
+WM_SYSCOLORCHANGE
+WM_SETTINGCHANGE
+WINDOW_STYLE
+SendMessage
+SetWindowsHookEx
+UnhookWindowsHookEx
+CallNextHookEx
+WINDOWS_HOOK_ID
+HCBT_ACTIVATE
+GetCurrentThreadId
 // ---- end of Windowing ----
 
 // ---- Pointer (PointerInputSource, PointerSetup) ----

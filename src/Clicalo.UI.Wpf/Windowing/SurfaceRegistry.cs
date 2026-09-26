@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+using System.Windows.Threading;
 using Clicalo.Application.Ports;
+using Clicalo.UI.Wpf.Windowing.Internal;
+using Windows.Win32.Foundation;
 
 namespace Clicalo.UI.Wpf.Windowing;
 
@@ -11,13 +13,16 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// <see cref="ISurfaceActivationStyle"/> and <see cref="ISurfaceLookup"/> for <c>ForegroundOrchestrator</c>, and the
 /// list that <see cref="SurfaceIntegrityCheck"/> repairs.
 /// </summary>
-[SuppressMessage(
-    "Design",
-    "MA0025:Implement the functionality",
-    Justification = "M1 contract stub: the windowing package implements it (docs/testing/spikes/M1-ownership.md)."
-)]
+/// <remarks>
+/// Create it on the UI thread that will own the surfaces: it keeps that thread's dispatcher.
+/// <see cref="AllowActivation"/>, <see cref="RestoreNoActivate"/>, <see cref="IsActivationAllowed"/>,
+/// <see cref="TryGetSurface"/> and <see cref="Surfaces"/> may be called from any thread; <see cref="Register"/> and
+/// <see cref="Unregister"/> only from the UI thread.
+/// </remarks>
 public sealed class SurfaceRegistry : ISurfaceActivationStyle, ISurfaceLookup
 {
+    private RegistryState _state = RegistryState.Empty;
+
     /// <summary>Creates the registry of one UI thread.</summary>
     /// <param name="anchor">Hidden owner of every surface.</param>
     /// <param name="guard">Runtime REG-01 guard fed by every surface.</param>
@@ -27,6 +32,8 @@ public sealed class SurfaceRegistry : ISurfaceActivationStyle, ISurfaceLookup
         ArgumentNullException.ThrowIfNull(guard);
         Anchor = anchor;
         Guard = guard;
+        Dispatcher = Dispatcher.CurrentDispatcher;
+        Hints = new ActivationHints(Dispatcher);
     }
 
     /// <summary>Hidden owner of every surface.</summary>
@@ -36,36 +43,97 @@ public sealed class SurfaceRegistry : ISurfaceActivationStyle, ISurfaceLookup
     public ActivationGuard Guard { get; }
 
     /// <summary>The registered surfaces, in registration order.</summary>
-    public ImmutableArray<NonActivatingWindow> Surfaces =>
-        throw new NotImplementedException("M1 windowing package.");
+    public ImmutableArray<NonActivatingWindow> Surfaces => Volatile.Read(ref _state).Surfaces;
+
+    /// <summary>The dispatcher of the UI thread that owns the surfaces.</summary>
+    internal Dispatcher Dispatcher { get; }
+
+    /// <summary>What the surfaces were doing when an activation arrived (the probable cause).</summary>
+    internal ActivationHints Hints { get; }
+
+    /// <summary>Raised on the UI thread when a surface saw a change after which its styles must be checked.</summary>
+    internal event EventHandler? IntegrityCheckRequested;
 
     /// <summary>
     /// Registers <paramref name="surface"/> once its handle exists (called by <see cref="NonActivatingWindow"/>
     /// itself). Throws if another live surface has the same id.
     /// </summary>
-    public void Register(NonActivatingWindow surface) =>
-        throw new NotImplementedException("M1 windowing package.");
+    public void Register(NonActivatingWindow surface)
+    {
+        ArgumentNullException.ThrowIfNull(surface);
+        Dispatcher.VerifyAccess();
+        if (surface.SurfaceWindow.IsNone)
+        {
+            throw new InvalidOperationException(
+                "A surface is registered once its handle exists (OnSourceInitialized)."
+            );
+        }
+
+        _ = ImmutableInterlocked.Update(
+            ref _state,
+            static (state, added) => state.With(added),
+            surface
+        );
+    }
 
     /// <summary>Removes <paramref name="surface"/> when its handle is destroyed.</summary>
-    public void Unregister(NonActivatingWindow surface) =>
-        throw new NotImplementedException("M1 windowing package.");
+    public void Unregister(NonActivatingWindow surface)
+    {
+        ArgumentNullException.ThrowIfNull(surface);
+        Dispatcher.VerifyAccess();
+        _ = ImmutableInterlocked.Update(
+            ref _state,
+            static (state, removed) => state.Without(removed),
+            surface
+        );
+        Guard.Forget(surface);
+    }
 
     /// <summary>
     /// True while a <c>TextInput</c> or <c>KeyboardNavigation</c> lease lets <paramref name="surface"/> activate
     /// (between <see cref="AllowActivation"/> and <see cref="RestoreNoActivate"/>).
     /// </summary>
     public bool IsActivationAllowed(SurfaceId surface) =>
-        throw new NotImplementedException("M1 windowing package.");
+        Volatile.Read(ref _state).Allowed.Contains(surface);
 
     /// <inheritdoc />
-    public void AllowActivation(SurfaceId surface) =>
-        throw new NotImplementedException("M1 windowing package.");
+    public void AllowActivation(SurfaceId surface)
+    {
+        _ = ImmutableInterlocked.Update(
+            ref _state,
+            static (state, id) =>
+                state.Windows.ContainsKey(id)
+                    ? state with
+                    {
+                        Allowed = state.Allowed.Add(id),
+                    }
+                    : state,
+            surface
+        );
+        if (Volatile.Read(ref _state).Windows.TryGetValue(surface, out var window))
+        {
+            _ = SurfaceStyles.SetNoActivate((HWND)window, noActivate: false);
+        }
+    }
 
     /// <inheritdoc />
-    public void RestoreNoActivate(SurfaceId surface) =>
-        throw new NotImplementedException("M1 windowing package.");
+    public void RestoreNoActivate(SurfaceId surface)
+    {
+        _ = ImmutableInterlocked.Update(
+            ref _state,
+            static (state, id) => state with { Allowed = state.Allowed.Remove(id) },
+            surface
+        );
+        if (Volatile.Read(ref _state).Windows.TryGetValue(surface, out var window))
+        {
+            _ = SurfaceStyles.SetNoActivate((HWND)window, noActivate: true);
+        }
+    }
 
     /// <inheritdoc />
     public bool TryGetSurface(WindowToken window, out SurfaceId surface) =>
-        throw new NotImplementedException("M1 windowing package.");
+        Volatile.Read(ref _state).ByWindow.TryGetValue(window.Handle, out surface);
+
+    /// <summary>Asks <see cref="SurfaceIntegrityCheck"/> to check every surface after the current message.</summary>
+    internal void RequestIntegrityCheck() => IntegrityCheckRequested?.Invoke(this, EventArgs.Empty);
 }
