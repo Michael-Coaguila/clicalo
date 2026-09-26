@@ -1,3 +1,4 @@
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 
 namespace Clicalo.Domain.Execution;
@@ -14,4 +15,11 @@ public sealed record MacroRun(
     int StepIndex,
     int StepCount,
     long? WaitingUntilTicks
-);
+)
+{
+    /// <summary>The steps being run.</summary>
+    public ValueList<MacroStep> Steps { get; init; }
+
+    /// <summary>Where and how it was started: every step sends with this epoch, target and mode.</summary>
+    public ExecutionOrigin? Origin { get; init; }
+}

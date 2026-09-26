@@ -1,6 +1,8 @@
+using System.Collections.Immutable;
 using Clicalo.Domain.Errors;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Keys;
+using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
@@ -150,6 +152,24 @@ public abstract record EngineEvent
     {
         /// <inheritdoc />
         public override EngineLane Lane => EngineLane.Normal;
+    }
+
+    /// <summary>
+    /// The secure desktop refused a release (locked session, <c>InjectionStatus.Blocked</c>): the engine keeps it and
+    /// sends it again on <see cref="SessionResumed"/> (INV-3). The physical ledger marks it pending meanwhile.
+    /// </summary>
+    /// <param name="Events">The release events that did not go.</param>
+    public sealed record ReleasesBlocked(ImmutableArray<InjectedEvent> Events) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Priority;
+    }
+
+    /// <summary>The session was unlocked or the computer resumed: blocked releases go again (§7.6).</summary>
+    public sealed record SessionResumed : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Priority;
     }
 
     /// <summary>A system command finished on the Shell thread.</summary>

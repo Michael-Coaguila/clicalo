@@ -1,3 +1,4 @@
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 
 namespace Clicalo.Domain.Execution;
@@ -12,4 +13,17 @@ public sealed record EngineConfig(
     bool ReleaseOnAppSwitch,
     TimeSpan InterEventDelay,
     TouchSettings Touch
-);
+)
+{
+    /// <summary>
+    /// Ticks per second of the host's <see cref="TimeProvider"/> (<see cref="TimeProvider.TimestampFrequency"/>): the
+    /// reducer counts in those ticks. <see cref="TimeSpan.TicksPerSecond"/> by default, as the fake time provider.
+    /// </summary>
+    public long TimestampFrequency { get; init; } = TimeSpan.TicksPerSecond;
+
+    /// <summary>
+    /// The language of the target apps (keyboard settings), which picks a Tap's combination variant (docs/02
+    /// <c>vk</c>); <see langword="null"/> uses the saved combination.
+    /// </summary>
+    public LangCode? AppsLanguage { get; init; }
+}

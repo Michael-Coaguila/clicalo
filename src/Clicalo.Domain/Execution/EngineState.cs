@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using Clicalo.Domain.KeySafety;
+using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Touch;
 
 namespace Clicalo.Domain.Execution;
 
@@ -41,4 +43,42 @@ public sealed record EngineState(
             ImmutableDictionary<EffectId, PendingExternal>.Empty,
             0
         );
+
+    /// <summary>Key operations waiting for their turn (<see cref="QueuedStep"/>), in order.</summary>
+    public ValueList<QueuedStep> Outbox { get; init; }
+
+    /// <summary>When the next queued step may go, or <see langword="null"/> when it may go now.</summary>
+    public long? OutboxDueTicks { get; init; }
+
+    /// <summary>The touch filter memory of each shortcut (TAC-002: one target never blocks another).</summary>
+    public ImmutableDictionary<ShortcutId, ButtonFilterState> Filters { get; init; } =
+        ImmutableDictionary<ShortcutId, ButtonFilterState>.Empty;
+
+    /// <summary>The scroll action repeating under a contact, if any.</summary>
+    public ScrollRepeat? Scroll { get; init; }
+
+    /// <summary>The last number given to a transaction, effect or macro run; each new one is the next.</summary>
+    public long Sequence { get; init; }
+
+    /// <summary>
+    /// The last press batches sent (at most <see cref="PressMemory"/>), so a batch that <c>SendInput</c> took only in
+    /// part releases whatever it may have left down (INV-5). The failure comes back a few events later at most.
+    /// </summary>
+    public ImmutableDictionary<EffectId, PressedBatch> PressEffects { get; init; } =
+        ImmutableDictionary<EffectId, PressedBatch>.Empty;
+
+    /// <summary>How many press batches <see cref="PressEffects"/> remembers.</summary>
+    public const int PressMemory = 64;
+
+    /// <summary>
+    /// Releases the secure desktop refused (a locked session): sent again when the session comes back (INV-3,
+    /// <see cref="EngineEvent.SessionResumed"/>).
+    /// </summary>
+    public ValueList<InjectedEvent> BlockedReleases { get; init; }
+
+    /// <summary>
+    /// Whether nothing is held or about to be pressed: no holder, no queued step, no macro and no repeating scroll
+    /// (INV-3 after a terminal event).
+    /// </summary>
+    public bool IsQuiet => Keys.IsEmpty && Outbox.IsEmpty && Macro is null && Scroll is null;
 }

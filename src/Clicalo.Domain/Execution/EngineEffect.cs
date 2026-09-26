@@ -30,7 +30,17 @@ public abstract record EngineEffect
         ForegroundWindowId? RequiredForeground,
         bool IsRelease,
         bool IsInternal
-    ) : EngineEffect;
+    ) : EngineEffect
+    {
+        /// <summary>
+        /// Identity of a batch that presses something: when it fails, <see cref="EngineEvent.InjectFailed"/> names it
+        /// and the engine releases what its holder pressed (INV-5). Default for releases.
+        /// </summary>
+        public EffectId Effect { get; init; }
+
+        /// <summary>The holder the batch presses or releases for, if a single one.</summary>
+        public HolderId? Holder { get; init; }
+    }
 
     /// <summary>Type a text as Unicode (EJE-008).</summary>
     /// <param name="Effect">The effect.</param>
