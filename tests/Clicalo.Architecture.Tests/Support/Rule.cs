@@ -29,9 +29,17 @@ internal static class Rule
             .Because(because)
             .WithoutRequiringPositiveResults();
 
-    /// <summary>Every type <paramref name="type"/> depends on (signatures, bodies, attributes, generics).</summary>
+    /// <summary>
+    /// Every type <paramref name="type"/> depends on (signatures, bodies, attributes, generics). Generic parameters
+    /// (<c>TElement</c> of a generic method, including the compiler's <c>&lt;PrivateImplementationDetails&gt;</c>
+    /// helpers for collection expressions) are placeholders, not dependencies: ArchUnitNET gives them no assembly,
+    /// and the types they are instantiated or constrained with are reported as dependencies of their own.
+    /// </summary>
     public static IEnumerable<IType> DependencyTargets(IType type) =>
-        type.Dependencies.Select(dependency => dependency.Target).Distinct();
+        type
+            .Dependencies.Select(dependency => dependency.Target)
+            .Where(target => target is not GenericParameter)
+            .Distinct();
 
     /// <summary>Every method or constructor that <paramref name="type"/> calls.</summary>
     public static IEnumerable<IMember> CalledMembers(IType type) =>
