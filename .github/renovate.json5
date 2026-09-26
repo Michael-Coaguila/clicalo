@@ -1,0 +1,116 @@
+// Renovate (blueprint §1.3, §2.1 and §12.2 T12). Versions stay exact, every update is a pull request that
+// runs `cl check`, and nothing merges on its own except patch releases of test-only tooling.
+// Dependabot security alerts stay enabled in the repository settings; Renovate turns them into PRs.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    // Actions pinned by full commit SHA with a "# vX.Y.Z" comment, the form `cl check` enforces.
+    'helpers:pinGitHubActionDigestsToSemver',
+  ],
+
+  // Commit and PR titles follow blueprint §13 (the pr-title check): build(deps) and ci(deps).
+  semanticCommits: 'enabled',
+  semanticCommitType: 'build',
+  semanticCommitScope: 'deps',
+  // DCO: Renovate's commits are signed off like everyone else's.
+  commitBody: 'Signed-off-by: {{{gitAuthor}}}',
+  labels: ['area/deps'],
+
+  // Exact versions everywhere; new releases wait a few days before they are proposed (supply chain).
+  rangeStrategy: 'pin',
+  minimumReleaseAge: '3 days',
+  internalChecksFilter: 'strict',
+  schedule: ['before 6am on monday'],
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+  dependencyDashboard: true,
+  // config:recommended ignores tests/ folders; test projects have lock files that must stay current.
+  ignorePaths: ['**/node_modules/**', 'artifacts/**', 'docs/design/handoff/**'],
+
+  // Transitive versions in packages.lock.json are refreshed once a month.
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ['before 6am on the first day of the month'],
+  },
+  // Known vulnerabilities do not wait for the schedule or the release age, but are still reviewed.
+  osvVulnerabilityAlerts: true,
+  vulnerabilityAlerts: {
+    labels: ['security'],
+    schedule: ['at any time'],
+    minimumReleaseAge: null,
+  },
+
+  packageRules: [
+    {
+      description: 'GitHub Actions: one monthly PR, ci(deps) commits, never merged automatically.',
+      matchManagers: ['github-actions'],
+      groupName: 'GitHub Actions',
+      semanticCommitType: 'ci',
+      schedule: ['before 6am on the first day of the month'],
+    },
+    {
+      description: 'The .NET SDK of global.json moves on its own PR (the runtime patch flow is patch-tuesday.yml).',
+      matchDepNames: ['dotnet-sdk'],
+      groupName: '.NET SDK',
+    },
+    {
+      description: 'Libraries of the .NET release train move together.',
+      matchPackageNames: ['Microsoft.Extensions.*', 'System.*'],
+      groupName: '.NET libraries',
+    },
+    {
+      description: 'Roslyn stays on the version every supported .NET 10 SDK and IDE can load (see Directory.Packages.props).',
+      matchPackageNames: [
+        'Microsoft.CodeAnalysis.Analyzers',
+        'Microsoft.CodeAnalysis.CSharp',
+        'Microsoft.CodeAnalysis.CSharp.Workspaces',
+      ],
+      allowedVersions: '4.14.x',
+      groupName: 'Roslyn',
+    },
+    {
+      description: 'Analyzers can add rules that break the warnings-as-errors build: grouped and reviewed.',
+      matchPackageNames: ['Meziantou.Analyzer', 'Microsoft.CodeAnalysis.BannedApiAnalyzers'],
+      groupName: 'analyzers',
+    },
+    {
+      description: 'The Velopack runtime and the vpk CLI must always be the same version.',
+      matchPackageNames: ['Velopack', 'vpk'],
+      groupName: 'Velopack',
+    },
+    {
+      description: 'Build orchestration and repository tools (a CSharpier update may need `cl fix`).',
+      matchPackageNames: ['Bullseye', 'SimpleExec', 'csharpier', 'CycloneDX'],
+      groupName: 'build tooling',
+    },
+    {
+      description: 'xUnit packages move together.',
+      matchPackageNames: ['xunit.v3', 'xunit.v3.*'],
+      groupName: 'xUnit',
+    },
+    {
+      description: 'Axe.Windows stays on the 2.4 line pinned by blueprint §10.2.',
+      matchPackageNames: ['Axe.Windows'],
+      allowedVersions: '2.4.x',
+    },
+    {
+      description: 'Only patch releases of test-only tooling merge on their own, and only after `cl check` is green.',
+      matchPackageNames: [
+        'xunit.v3',
+        'xunit.v3.*',
+        'Shouldly',
+        'CsCheck',
+        'JsonSchema.Net',
+        'FlaUI.UIA3',
+        'TngTech.ArchUnitNET.xUnitV3',
+        'Microsoft.Extensions.TimeProvider.Testing',
+        'Microsoft.CodeAnalysis.CSharp.Analyzer.Testing',
+        'Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing',
+      ],
+      matchUpdateTypes: ['patch'],
+      automerge: true,
+      automergeType: 'pr',
+    },
+  ],
+}
