@@ -18,8 +18,12 @@
       Private="false"
     />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
-    <!-- The injector's own tests replace SendInput through an internal constructor. -->
+    <!--
+      The injector's own tests replace SendInput through an internal constructor, and so do the S4 dictation tests,
+      whose Win+H must pass the real checks but never open voice typing (GuardedDictationKeys).
+    -->
     <InternalsVisibleTo Include="Clicalo.Platform.IntegrationTests" />
+    <InternalsVisibleTo Include="Clicalo.Windowing.IntegrationTests" />
   </ItemGroup>
   <ItemGroup Label="InputProbe wire contract, shared with the probe">
     <Compile
