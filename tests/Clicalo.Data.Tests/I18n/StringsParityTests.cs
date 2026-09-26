@@ -1,0 +1,92 @@
+namespace Clicalo.Data.Tests.I18n;
+
+public sealed class StringsParityTests
+{
+    [Fact]
+    [Trait("Req", "IDI-001")]
+    public void Spanish_and_English_have_exactly_the_same_keys_in_the_same_order()
+    {
+        var spanish = I18nData.Strings("es").Select(static e => e.Key).ToList();
+        var english = I18nData.Strings("en").Select(static e => e.Key).ToList();
+
+        english.ShouldBe(spanish);
+    }
+
+    [Fact]
+    [Trait("Req", "IDI-001")]
+    public void Every_one_of_the_669_handoff_keys_is_kept_with_its_original_name()
+    {
+        var handoff = I18nData.Handoff("es").Select(static e => e.Key).ToList();
+        var imported = I18nData
+            .Strings("es")
+            .Select(static e => I18nData.BaseKey(e.Key))
+            .ToHashSet(StringComparer.Ordinal);
+
+        handoff.Count.ShouldBe(669);
+        handoff.Where(k => !imported.Contains(k)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Only_the_reviewed_keys_are_new_and_only_the_catalog_plurals_have_forms()
+    {
+        var handoff = I18nData
+            .Handoff("es")
+            .Select(static e => e.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        var entries = I18nData.Strings("es");
+
+        entries
+            .Select(static e => I18nData.BaseKey(e.Key))
+            .Where(k => !handoff.Contains(k))
+            .Distinct(StringComparer.Ordinal)
+            .ShouldBe(["migTProfiles", "migTShortcuts"]);
+        entries
+            .Where(static e => I18nData.Category(e.Key) is not null)
+            .Select(static e => I18nData.BaseKey(e.Key))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
+                "addMissing",
+                "comboN",
+                "dupHead",
+                "instNoteSome",
+                "migTProfiles",
+                "migTShortcuts",
+                "sugLine",
+                "twMacro",
+            ]);
+    }
+
+    [Theory]
+    [InlineData("es")]
+    [InlineData("en")]
+    [Trait("Req", "IDI-001")]
+    public void No_text_is_empty(string language) =>
+        I18nData
+            .Strings(language)
+            .Where(static e => string.IsNullOrWhiteSpace(e.Value))
+            .Select(static e => e.Key)
+            .ShouldBeEmpty();
+
+    [Theory]
+    [InlineData("es")]
+    [InlineData("en")]
+    public void Keys_are_letters_and_digits_with_an_optional_CLDR_plural_suffix(string language)
+    {
+        foreach (var (key, _) in I18nData.Strings(language))
+        {
+            var baseKey = I18nData.BaseKey(key);
+            (
+                baseKey.Length > 0
+                && char.IsAsciiLetter(baseKey[0])
+                && baseKey.All(char.IsAsciiLetterOrDigit)
+            ).ShouldBeTrue(key);
+            if (I18nData.Category(key) is { } category)
+            {
+                I18nData
+                    .PluralCategories.Contains(category, StringComparer.Ordinal)
+                    .ShouldBeTrue(key);
+            }
+        }
+    }
+}
