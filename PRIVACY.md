@@ -36,9 +36,14 @@ revisará antes de la primera beta.
 
 ### Borrar tus datos
 
-Tus datos se conservan al desinstalar, para que no los pierdas por error. Puedes borrarlos desde Sistema ›
-Desinstalar en el Centro de control (con confirmación en dos toques) o eliminando la carpeta
-`%AppData%\Clicalo`.
+Ninguna desinstalación borra tus datos sin preguntarte, para que no los pierdas por error:
+
+- Si desinstalas desde Sistema › Desinstalar en el Centro de control, Clícalo te pregunta si quieres
+  conservarlos; borrarlos pide confirmación en dos toques.
+- Si desinstalas desde Configuración de Windows, los datos se conservan siempre, porque ese camino no
+  puede mostrar preguntas. Si vuelves a instalar Clícalo, la bienvenida te ofrece conservarlos o empezar de
+  cero.
+- También puedes borrarlos tú eliminando la carpeta `%AppData%\Clicalo`.
 
 ### Más detalles
 
@@ -77,9 +82,13 @@ reviewed before the first beta.
 
 ### Deleting your data
 
-Your data is kept when you uninstall, so you do not lose it by accident. You can delete it from System ›
-Uninstall in the Control Center (with a two-tap confirmation) or by removing the `%AppData%\Clicalo`
-folder.
+No uninstall deletes your data without asking, so you do not lose it by accident:
+
+- Uninstalling from System › Uninstall in the Control Center asks whether to keep your data; deleting it
+  needs a two-tap confirmation.
+- Uninstalling from Windows Settings always keeps your data, because that path cannot show questions. If
+  you reinstall Clícalo, the welcome flow offers to keep it or start from scratch.
+- You can also delete it yourself by removing the `%AppData%\Clicalo` folder.
 
 The technical version of this policy is in [docs/security/privacy.md](docs/security/privacy.md) (in
 Spanish). For security matters, see [SECURITY.md](SECURITY.md#english).

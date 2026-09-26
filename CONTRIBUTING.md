@@ -58,8 +58,8 @@ git commit -s -m "fix(touch): ignore palm contacts larger than the threshold"
 ```
 
 Además, los commits se firman con SSH. `cl setup` configura las dos cosas; la configuración manual está en
-[preparar el entorno](docs/guides/dev-setup.md#firma-de-commits-y-dco). La CI rechaza los commits sin
-`Signed-off-by`.
+[preparar el entorno](docs/guides/dev-setup.md#firma-de-commits-y-dco). El trabajo `dco` de la CI
+rechazará los commits sin `Signed-off-by` en cuanto `pr.yml` esté activo.
 
 ### Antes de abrir el PR
 
@@ -149,8 +149,8 @@ Report accessibility barriers or bugs with the issue forms, write app shortcut t
 ### DCO and signed commits
 
 Every commit needs a [Developer Certificate of Origin](https://developercertificate.org/) sign-off, added
-with `git commit -s`. Commits are also signed with SSH. `cl setup` configures both; CI rejects commits
-without `Signed-off-by`.
+with `git commit -s`. Commits are also signed with SSH. `cl setup` configures both; once `pr.yml` is
+active, its `dco` job rejects commits without `Signed-off-by`.
 
 ### Before opening a PR
 
