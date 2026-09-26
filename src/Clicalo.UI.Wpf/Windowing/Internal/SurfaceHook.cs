@@ -161,9 +161,7 @@ internal sealed unsafe class SurfaceHook(NonActivatingWindow surface, SurfaceReg
         }
 
         // WPF rescales from this message (ACC-008), and its SetWindowPos would activate the surface (#7561).
-        var veto = registry.IsActivationAllowed(surface.Id)
-            ? HHOOK.Null
-            : ActivationVeto.Begin(window);
+        var vetoed = !registry.IsActivationAllowed(surface.Id) && ActivationVeto.Begin(window);
         _forwardingDpiChange = true;
         try
         {
@@ -177,7 +175,10 @@ internal sealed unsafe class SurfaceHook(NonActivatingWindow surface, SurfaceReg
         finally
         {
             _forwardingDpiChange = false;
-            ActivationVeto.End(veto);
+            if (vetoed)
+            {
+                ActivationVeto.End(window);
+            }
         }
 
         // WPF only applies it when it rescales (per-monitor scaling on and another DPI): the rectangle is applied anyway.

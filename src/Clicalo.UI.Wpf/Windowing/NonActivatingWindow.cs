@@ -57,6 +57,9 @@ public abstract class NonActivatingWindow : Window
     protected NonActivatingWindow(SurfaceId id, SurfaceRegistry registry)
     {
         ArgumentNullException.ThrowIfNull(registry);
+
+        // Owner and owned windows on different threads share one input queue (an implicit AttachThreadInput, §3.6).
+        registry.Dispatcher.VerifyAccess();
         Id = id;
         Registry = registry;
         ShowActivated = false;
@@ -109,16 +112,17 @@ public abstract class NonActivatingWindow : Window
             if (!IsVisible)
             {
                 // WPF's show path is long (layout, first render, topmost): whatever it calls, it cannot activate.
-                var veto = Registry.IsActivationAllowed(Id)
-                    ? HHOOK.Null
-                    : ActivationVeto.Begin(window);
+                var vetoed = !Registry.IsActivationAllowed(Id) && ActivationVeto.Begin(window);
                 try
                 {
                     ShowWithoutActivating();
                 }
                 finally
                 {
-                    ActivationVeto.End(veto);
+                    if (vetoed)
+                    {
+                        ActivationVeto.End(window);
+                    }
                 }
             }
 
@@ -254,7 +258,7 @@ public abstract class NonActivatingWindow : Window
     [SuppressMessage(
         "Clicalo.Windowing",
         "CLC0001",
-        Justification = "The single show of a surface: with ShowActivated false WPF shows it with SW_SHOWNA, and the common hook adds SWP_NOACTIVATE to every position change."
+        Justification = "The single show of a surface, called only from ShowPassive: with ShowActivated false WPF shows it with SW_SHOWNA, inside an ActivationVeto that refuses any activation of the surface for the length of the call."
     )]
     private void ShowWithoutActivating()
     {

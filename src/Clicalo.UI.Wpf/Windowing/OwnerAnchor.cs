@@ -24,8 +24,11 @@ public sealed class OwnerAnchor : IDisposable
     public WindowToken Window => _source is { } source ? new(source.Handle) : WindowToken.None;
 
     /// <summary>Creates the hidden window if it does not exist yet and returns it.</summary>
+    /// <exception cref="InvalidOperationException">Called on a thread other than the one that created the window.</exception>
     public WindowToken EnsureCreated()
     {
+        // The anchor and its surfaces live on one thread: an owner on another thread would attach the input queues.
+        _source?.VerifyAccess();
         if (_source is null)
         {
             var parameters = new HwndSourceParameters(WindowName)
