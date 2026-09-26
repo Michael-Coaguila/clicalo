@@ -705,6 +705,18 @@
           "description": "Largest JSON entry inside an imported zip.",
           "req": ["MIG-009", "LOG-006"],
           "source": "blueprint §6.6"
+        },
+        "V1MaxBytes": {
+          "bytes": "5MiB",
+          "description": "Largest Macro Quick Access v1 file (profiles.json or a language backup) the import reads.",
+          "req": ["MIG-009", "LOG-006"],
+          "source": "blueprint §6.6"
+        },
+        "V1MaxDepth": {
+          "count": 32,
+          "description": "Deepest JSON nesting accepted in a Macro Quick Access v1 file.",
+          "req": ["MIG-002", "LOG-006"],
+          "source": "blueprint §6.6"
         }
       }
     },
