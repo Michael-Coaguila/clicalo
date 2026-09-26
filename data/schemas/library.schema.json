@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/library.schema.json",
+  "title": "Clícalo shortcut library",
+  "description": "Sections of the «Add shortcut» library (ATJ-010, CAT-003). Loaded lazily at run time (D17).",
+  "type": "object",
+  "required": ["catalogVersion", "sections"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "labelKey", "shortcuts"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z]+$" },
+          "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" },
+          "shortcuts": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "shortcut.schema.json#/$defs/shortcut" }
+          }
+        }
+      }
+    }
+  }
+}

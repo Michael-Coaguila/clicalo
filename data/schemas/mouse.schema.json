@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/mouse.schema.json",
+  "title": "Clícalo mouse actions",
+  "description": "The eight mouse actions (EJE-009, EDI-012) and the scroll speeds.",
+  "type": "object",
+  "required": ["catalogVersion", "scrollSpeeds", "defaultScrollSpeed", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "scrollSpeeds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "labelKey", "repeatTiming"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z]+$" },
+          "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" },
+          "repeatTiming": {
+            "description": "Group.Entry of timings.json with the wheel repeat interval.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*\\.[A-Z][A-Za-z0-9]*$"
+          }
+        }
+      }
+    },
+    "defaultScrollSpeed": { "type": "string", "pattern": "^[a-z]+$" },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/action" }
+    }
+  },
+  "$defs": {
+    "action": {
+      "type": "object",
+      "required": ["id", "icon", "label", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/mouseActionId" },
+        "icon": { "$ref": "common.schema.json#/$defs/iconId" },
+        "label": { "$ref": "common.schema.json#/$defs/localizedText" },
+        "spoken": {
+          "description": "Accessible name when the label contains glyphs (UIA008).",
+          "$ref": "common.schema.json#/$defs/localizedText"
+        },
+        "kind": { "enum": ["click", "drag", "scroll"] },
+        "button": { "enum": ["left", "right", "middle"] },
+        "clicks": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "direction": { "enum": ["up", "down", "left", "right"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "click" } } },
+          "then": { "required": ["button", "clicks"], "not": { "required": ["direction"] } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "drag" } } },
+          "then": { "required": ["button"], "not": { "anyOf": [{ "required": ["clicks"] }, { "required": ["direction"] }] } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "scroll" } } },
+          "then": { "required": ["direction"], "not": { "anyOf": [{ "required": ["button"] }, { "required": ["clicks"] }] } }
+        }
+      ]
+    }
+  }
+}

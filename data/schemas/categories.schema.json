@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/categories.schema.json",
+  "title": "Clícalo colour categories",
+  "description": "The ten colour categories of shortcuts (TEM-003). Their colours are design tokens (data/tokens); only identity and name live here.",
+  "type": "object",
+  "required": ["catalogVersion", "categories"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "labelKey"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/categoryId" },
+          "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" }
+        }
+      }
+    }
+  }
+}

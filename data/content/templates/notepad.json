@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "notepad",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Bloc de notas", "en": "Notepad" },
+  "icon": "edit_note",
+  "category": "edit",
+  "processes": ["notepad.exe"],
+  "shortcuts": [
+    {
+      "id": "n1",
+      "name": { "es": "Fecha y hora", "en": "Date/time" },
+      "icon": "schedule",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["f5"] }
+    },
+    {
+      "id": "n2",
+      "name": { "es": "Reemplazar", "en": "Replace" },
+      "icon": "find_replace",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["ctrl", "h"] }
+    },
+    {
+      "id": "n3",
+      "name": { "es": "Zoom +", "en": "Zoom in" },
+      "icon": "text_increase",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["ctrl", "char:+"] }
+    },
+    {
+      "id": "n4",
+      "name": { "es": "Ajuste línea", "en": "Word wrap" },
+      "icon": "wrap_text",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["alt", "o", "w"] }
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "browser",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Navegador", "en": "Browser" },
+  "icon": "public",
+  "processes": ["chrome.exe"],
+  "shortcuts": [
+    {
+      "id": "newtab",
+      "name": { "es": "Nueva pestaña", "en": "New tab" },
+      "icon": "add",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["ctrl", "t"] }
+    },
+    {
+      "id": "closetab",
+      "name": { "es": "Cerrar pestaña", "en": "Close tab" },
+      "icon": "tab_close",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["ctrl", "w"] }
+    },
+    {
+      "id": "reopen",
+      "name": { "es": "Reabrir", "en": "Reopen" },
+      "icon": "history",
+      "category": "hist",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "t"] }
+    },
+    {
+      "id": "prev",
+      "name": { "es": "Atrás", "en": "Back" },
+      "icon": "arrow_back",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["alt", "left"] }
+    },
+    {
+      "id": "reload",
+      "name": { "es": "Recargar", "en": "Reload" },
+      "icon": "refresh",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["f5"] }
+    },
+    {
+      "id": "urlbar",
+      "name": { "es": "Dirección", "en": "Address bar" },
+      "icon": "link",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["ctrl", "l"] }
+    },
+    {
+      "id": "zin",
+      "name": { "es": "Ampliar", "en": "Zoom in" },
+      "icon": "zoom_in",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["ctrl", "char:+"] }
+    },
+    {
+      "id": "zout",
+      "name": { "es": "Reducir", "en": "Zoom out" },
+      "icon": "zoom_out",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["ctrl", "char:-"] }
+    },
+    {
+      "id": "mail",
+      "name": { "es": "Correo", "en": "Mail" },
+      "icon": "mail",
+      "category": "web",
+      "action": { "type": "web", "url": "https://mail.google.com" }
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "outlook",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Correo", "en": "Mail" },
+  "icon": "mail",
+  "category": "web",
+  "processes": ["outlook.exe"],
+  "shortcuts": [
+    {
+      "id": "o1",
+      "name": { "es": "Nuevo correo", "en": "New mail" },
+      "icon": "edit_square",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["ctrl", "u"], "variants": { "en": ["ctrl", "shift", "m"] } }
+    },
+    {
+      "id": "o2",
+      "name": { "es": "Responder", "en": "Reply" },
+      "icon": "reply",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["ctrl", "r"] }
+    },
+    {
+      "id": "o3",
+      "name": { "es": "Resp. a todos", "en": "Reply all" },
+      "icon": "reply_all",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "r"] }
+    },
+    {
+      "id": "o4",
+      "name": { "es": "Reenviar", "en": "Forward" },
+      "icon": "forward",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["ctrl", "f"] }
+    },
+    {
+      "id": "o5",
+      "name": { "es": "Enviar", "en": "Send" },
+      "icon": "send",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["alt", "s"] }
+    }
+  ]
+}

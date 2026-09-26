@@ -1,0 +1,678 @@
+{
+  "$schema": "../schemas/timings.schema.json",
+  "catalogVersion": 1,
+  "groups": {
+    "Touch": {
+      "description": "Touch filter, gestures and pointer thresholds shared by every surface.",
+      "entries": {
+        "LongPress": {
+          "duration": "600ms",
+          "description": "Time a finger must rest on a tile before its context menu opens instead of executing.",
+          "req": ["NFR-020", "CUA-014"],
+          "source": "docs/03 §8"
+        },
+        "SwipeMinDistancePx": {
+          "px": 60,
+          "description": "Horizontal travel that turns a gesture into a page swipe.",
+          "req": ["NFR-020", "CUA-005"]
+        },
+        "SwipeMaxSlope": {
+          "ratio": 0.6,
+          "description": "A swipe must satisfy |dy| < ratio × |dx|.",
+          "req": ["CUA-005"],
+          "source": "blueprint §7.8"
+        },
+        "PostSwipeLock": {
+          "duration": "300ms",
+          "description": "Tiles ignore touches for this long after a page swipe.",
+          "req": ["NFR-020", "CUA-005"]
+        },
+        "DragMinDistancePx": {
+          "px": 6,
+          "description": "Lower bound of the drag threshold; the effective threshold is max(this, cancelMovePx).",
+          "req": ["NFR-020", "PAN-004"]
+        },
+        "IgnoredTouchFeedback": {
+          "duration": "150ms",
+          "description": "Length of the discreet outline or vibration that signals an ignored touch.",
+          "req": ["TAC-003"]
+        }
+      }
+    },
+    "Confirmation": {
+      "description": "Two-step confirmations.",
+      "entries": {
+        "ExecuteConfirmWindow": {
+          "duration": "3s",
+          "description": "A shortcut that asks for confirmation stays armed this long after the first tap.",
+          "req": ["NFR-020", "EJE-002"]
+        },
+        "DestructiveConfirmWindow": {
+          "duration": "3.5s",
+          "description": "Window for the second tap of every destructive operation (TwoStepConfirm).",
+          "req": ["NFR-020", "REG-04"]
+        }
+      }
+    },
+    "Notices": {
+      "description": "Notice bar and status bar messages.",
+      "entries": {
+        "NoticeDuration": {
+          "duration": "3.2s",
+          "description": "Time a normal notice stays visible.",
+          "req": ["NFR-020", "AVI-002"]
+        },
+        "UndoNoticeDuration": {
+          "duration": "6s",
+          "description": "Time a notice that offers Undo stays visible.",
+          "req": ["NFR-020", "AVI-002", "AVI-005"]
+        },
+        "ExecutionFlash": {
+          "duration": "240ms",
+          "description": "Colour flash of a tile after its action runs.",
+          "req": ["NFR-020", "EJE-012", "CUA-009"]
+        }
+      }
+    },
+    "TestMode": {
+      "description": "Test mode: touches are filtered and marked but nothing is sent.",
+      "entries": {
+        "TestModeDuration": {
+          "duration": "30s",
+          "description": "Test mode switches itself off after this long.",
+          "req": ["NFR-020", "TAC-008"]
+        },
+        "TestMarkDuration": {
+          "duration": "700ms",
+          "description": "Time a tile shows its accepted or ignored mark in test mode.",
+          "req": ["NFR-020", "TAC-008"]
+        }
+      }
+    },
+    "Dock": {
+      "description": "Edge bar (Tab view).",
+      "entries": {
+        "CollapseDelay": {
+          "duration": "900ms",
+          "description": "The open bar collapses this long after an action when it is set to collapse.",
+          "req": ["NFR-020", "PES-012"]
+        }
+      }
+    },
+    "Dimming": {
+      "description": "Auto-dim of the panel, bar and bubble (DimPolicy).",
+      "entries": {
+        "DimDelay": {
+          "duration": "2.5s",
+          "description": "Surfaces dim this long after the finger or the pointer leaves them.",
+          "req": ["NFR-020", "GEN-009"]
+        },
+        "DimTransition": {
+          "duration": "350ms",
+          "description": "Opacity transition of dimming; zero when reduce motion is on.",
+          "req": ["NFR-020", "GEN-009", "TEM-006"]
+        },
+        "BubbleMinOpacity": {
+          "ratio": 0.55,
+          "description": "The bubble and the bar handle never go below this opacity.",
+          "req": ["BUR-002", "PES-004"]
+        }
+      }
+    },
+    "KeySafety": {
+      "description": "Held keys and automatic release.",
+      "entries": {
+        "AutoReleaseChoices": {
+          "durations": ["30s", "60s", "120s"],
+          "description": "Automatic release limits offered for held items; «Never» is a separate setting value.",
+          "req": ["NFR-020", "SEG-004", "GEN-012"]
+        },
+        "AutoReleaseDefault": {
+          "duration": "60s",
+          "description": "Default automatic release limit.",
+          "req": ["SEG-004", "GEN-012"]
+        },
+        "ShiftBurstLimit": {
+          "countWindow": { "count": 4, "window": "1s" },
+          "description": "At most this many Shift presses per window; the next one is delayed so Windows Sticky Keys never triggers.",
+          "req": ["SEG-008"],
+          "source": "blueprint §7.7"
+        },
+        "SuspendReleaseWait": {
+          "duration": "500ms",
+          "description": "The synchronous suspend handler waits up to this long for the engine to confirm the release.",
+          "req": ["SEG-006"],
+          "source": "blueprint §7.6"
+        }
+      }
+    },
+    "Macro": {
+      "description": "Macro steps.",
+      "entries": {
+        "MacroWaitRange": {
+          "durationRange": { "min": "100ms", "max": "10s", "step": "100ms" },
+          "description": "Allowed range and editing step of a macro wait step.",
+          "req": ["NFR-020", "EDI-013"],
+          "source": "docs/03 §4"
+        },
+        "MacroWaitDefault": { "duration": "500ms", "description": "Duration of a newly added wait step.", "req": ["EDI-013"] }
+      }
+    },
+    "Mouse": {
+      "description": "Mouse actions.",
+      "entries": {
+        "ScrollRepeatSlow": {
+          "duration": "60ms",
+          "description": "Wheel repeat interval while a slow scroll is held.",
+          "req": ["NFR-020", "EJE-009"]
+        },
+        "ScrollRepeatNormal": {
+          "duration": "40ms",
+          "description": "Wheel repeat interval while a normal scroll is held.",
+          "req": ["NFR-020", "EJE-009"]
+        },
+        "ScrollRepeatFast": {
+          "duration": "25ms",
+          "description": "Wheel repeat interval while a fast scroll is held.",
+          "req": ["NFR-020", "EJE-009"]
+        }
+      }
+    },
+    "Injection": {
+      "description": "Input injection (single send path).",
+      "entries": {
+        "InterEventDelay": {
+          "duration": "20ms",
+          "description": "Pause between injected events; zero sends one atomic SendInput batch. docs/03 suggests about 15 ms, v1 needed 20 ms (DIS-95); the blueprint starts at 20 ms until S7 measures it.",
+          "req": ["NFR-004"],
+          "source": "blueprint §7.7"
+        },
+        "ClipboardRestoreDelay": {
+          "duration": "500ms",
+          "description": "The original clipboard is restored this long after a paste-method text action.",
+          "req": ["NFR-020", "EJE-008"]
+        },
+        "ClipboardCaptureMaxBytes": {
+          "bytes": "64MiB",
+          "description": "Largest clipboard content captured for restoration.",
+          "source": "blueprint §7.7"
+        }
+      }
+    },
+    "Engine": {
+      "description": "Engine actor, heartbeat and generation fence.",
+      "entries": {
+        "LedgerHeartbeatInterval": {
+          "duration": "250ms",
+          "description": "The engine writes its heartbeat to the key ledger at least this often.",
+          "req": ["REG-03"],
+          "source": "blueprint §3.2 rule 6"
+        },
+        "EngineStallThreshold": {
+          "duration": "2s",
+          "description": "Without heartbeat progress for this long, SysEvents runs the emergency release.",
+          "req": ["REG-03", "SEG-007"],
+          "source": "blueprint §3.2, §7.6"
+        },
+        "EmergencyGateWait": {
+          "duration": "250ms",
+          "description": "Longest wait of the emergency releaser for the injection gate before escalating to a process restart.",
+          "req": ["REG-03"],
+          "source": "blueprint §3.2 rule 6"
+        },
+        "EngineHangLoop": {
+          "countWindow": { "count": 2, "window": "10min" },
+          "description": "This many engine hangs within the window escalate directly to a process restart.",
+          "req": ["REG-03"],
+          "source": "blueprint §3.2 rule 6"
+        },
+        "UiPingInterval": {
+          "duration": "1s",
+          "description": "The engine pings the UI dispatcher this often.",
+          "source": "blueprint §3.2 rule 6"
+        },
+        "UiHangThreshold": {
+          "duration": "5s",
+          "description": "A dispatcher that does not answer for this long is logged as hung.",
+          "req": ["NFR-003"],
+          "source": "blueprint §3.2 rule 6"
+        },
+        "UiHangRestartOffer": {
+          "duration": "30s",
+          "description": "After this long hung, the tray offers to restart Clícalo.",
+          "req": ["NFR-005"],
+          "source": "blueprint §3.2 rule 6"
+        },
+        "SnapshotCoalescing": {
+          "duration": "16ms",
+          "description": "At most one engine snapshot reaches the UI per this interval (about one frame).",
+          "req": ["NFR-001"],
+          "source": "blueprint §3.2 rule 5"
+        }
+      }
+    },
+    "Guardian": {
+      "description": "Clicalo.Sentinel supervision.",
+      "entries": {
+        "PipeHeartbeatInterval": {
+          "duration": "1s",
+          "description": "Heartbeat period on the pipe inherited by the guardian.",
+          "req": ["SEG-006"],
+          "source": "blueprint §3.1"
+        },
+        "RestartBackoff": {
+          "durations": ["1s", "5s", "30s"],
+          "description": "Waits before relaunching a guardian that died.",
+          "req": ["SEG-006"],
+          "source": "blueprint §3.1"
+        },
+        "RestartLoop": {
+          "countWindow": { "count": 3, "window": "10min" },
+          "description": "Guardian deaths within the window that stop relaunching and raise a warning in System › Startup and stability.",
+          "req": ["SEG-006"],
+          "source": "blueprint §3.1"
+        }
+      }
+    },
+    "App": {
+      "description": "Main process lifecycle.",
+      "entries": {
+        "CrashLoop": {
+          "countWindow": { "count": 3, "window": "10min" },
+          "description": "Main process crashes within the window after which the next start enters safe mode.",
+          "req": ["SIS-004"],
+          "source": "blueprint §3.1, spike S9"
+        },
+        "UpdateHealthTimeout": {
+          "duration": "60s",
+          "description": "After an update the new version must show the panel, load the document and run the engine within this time.",
+          "req": ["ACT-003"],
+          "source": "blueprint §9.3"
+        },
+        "UnconfirmedStartsBeforeSafeMode": {
+          "count": 2,
+          "description": "Consecutive starts without health confirmation that trigger safe mode and the rollback offer.",
+          "req": ["ACT-005"],
+          "source": "blueprint §9.3"
+        },
+        "HandoverFlushTimeout": {
+          "duration": "2s",
+          "description": "Longest document flush before relaunching elevated.",
+          "req": ["EJE-013"],
+          "source": "blueprint §3.3"
+        },
+        "HandoverMutexWait": {
+          "duration": "15s",
+          "description": "The elevated instance waits this long for the previous instance to release the single-instance mutex.",
+          "req": ["EJE-013", "SIS-003"],
+          "source": "blueprint §3.3"
+        }
+      }
+    },
+    "Foreground": {
+      "description": "ForegroundOrchestrator leases and surface integrity.",
+      "entries": {
+        "TextInputLeaseIdle": {
+          "duration": "30s",
+          "description": "A text input lease without interaction ends after this long and the foreground is restored.",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        },
+        "SurfaceIntegrityInterval": {
+          "duration": "30s",
+          "description": "Period of the check that re-applies WS_EX_NOACTIVATE and topmost to every surface.",
+          "req": ["REG-01"],
+          "source": "blueprint §3.5"
+        }
+      }
+    },
+    "TryNow": {
+      "description": "«Try now» from the control center.",
+      "entries": {
+        "TryNowSendDelay": {
+          "duration": "0.9s",
+          "description": "Delay between activating the target app and sending the action.",
+          "req": ["NFR-020", "PRB-004"]
+        },
+        "TryNowReturnDelay": {
+          "duration": "2.6s",
+          "description": "Delay after which the control center comes back with the question.",
+          "req": ["NFR-020", "PRB-004"]
+        },
+        "TryNowHoldDuration": {
+          "duration": "1.5s",
+          "description": "Hold shortcuts are held, and toggles stay latched, this long during a try.",
+          "req": ["PRB-004"]
+        },
+        "TryNowSwitchSuppression": {
+          "duration": "3s",
+          "description": "App switches caused by a try are not user switches during this window.",
+          "req": ["PRB-006"],
+          "source": "blueprint §3.6"
+        }
+      }
+    },
+    "TryAnimation": {
+      "description": "Phase timeline of the Test card animation.",
+      "entries": {
+        "PlaybackKeyInterval": {
+          "duration": "260ms",
+          "description": "Each key of the combination lights up at this interval.",
+          "req": ["PRB-002"]
+        },
+        "TapReleasedAfter": {
+          "duration": "500ms",
+          "description": "Tap: the released phase starts this long after the keys.",
+          "req": ["PRB-002"]
+        },
+        "HoldHoldingAfter": {
+          "duration": "200ms",
+          "description": "Hold: the holding phase starts this long after the keys.",
+          "req": ["PRB-002"]
+        },
+        "HoldLiftAfter": {
+          "duration": "1600ms",
+          "description": "Hold: the lift phase starts this long after holding.",
+          "req": ["PRB-002"]
+        },
+        "HoldDoneAfter": {
+          "duration": "900ms",
+          "description": "Hold: the done phase starts this long after lifting.",
+          "req": ["PRB-002"]
+        },
+        "ToggleLatchedAfter": {
+          "duration": "200ms",
+          "description": "Toggle: the latched phase starts this long after the keys.",
+          "req": ["PRB-002"]
+        },
+        "ToggleSecondTapAfter": {
+          "duration": "1600ms",
+          "description": "Toggle: the second tap phase starts this long after latching.",
+          "req": ["PRB-002"]
+        },
+        "ToggleReleasedAfter": {
+          "duration": "500ms",
+          "description": "Toggle: the released phase starts this long after the second tap.",
+          "req": ["PRB-002"]
+        },
+        "MacroStepInterval": {
+          "duration": "650ms",
+          "description": "Macro: each step is shown at this interval.",
+          "req": ["PRB-002"]
+        },
+        "MacroDoneAfter": {
+          "duration": "700ms",
+          "description": "Macro: the done phase starts this long after the last step.",
+          "req": ["PRB-002"]
+        },
+        "OtherDoneAfter": {
+          "duration": "1100ms",
+          "description": "Text, Web, App and Mouse: the done phase starts this long after the sentence.",
+          "req": ["PRB-002"]
+        }
+      }
+    },
+    "Persistence": {
+      "description": "Document and usage persistence.",
+      "entries": {
+        "DocumentSaveDebounce": {
+          "duration": "500ms",
+          "description": "Debounce of document saves after a meaningful change.",
+          "req": ["DAT-002"],
+          "source": "blueprint §6.4"
+        },
+        "DocumentSaveMaxLatency": {
+          "duration": "2s",
+          "description": "A pending document change is written no later than this.",
+          "req": ["DAT-002"],
+          "source": "blueprint §6.4"
+        },
+        "UsageSaveDebounce": {
+          "duration": "30s",
+          "description": "Debounce of usage.json writes.",
+          "req": ["FRE-002"],
+          "source": "blueprint §6.4"
+        },
+        "UsageSaveMaxLatency": {
+          "duration": "5min",
+          "description": "Pending usage is written no later than this.",
+          "req": ["FRE-002"],
+          "source": "blueprint §6.4"
+        },
+        "WriteRetryBackoff": {
+          "durations": ["50ms", "100ms", "200ms", "400ms", "800ms"],
+          "description": "Retries after a transient sharing or lock violation.",
+          "req": ["DAT-002"],
+          "source": "blueprint §6.5"
+        },
+        "WriteRetryInterval": {
+          "duration": "30s",
+          "description": "After a persistent write failure the save is retried at this interval.",
+          "req": ["DAT-002"],
+          "source": "blueprint §6.5"
+        },
+        "UndoDepth": {
+          "count": 20,
+          "description": "Entries kept in the undo history.",
+          "req": ["DAT-006"],
+          "source": "docs/02"
+        }
+      }
+    },
+    "Backups": {
+      "description": "Backups and rollback.",
+      "entries": {
+        "AutoBackupDelay": {
+          "duration": "30s",
+          "description": "An automatic backup is taken this long after the last meaningful change.",
+          "req": ["NFR-020", "COP-003"]
+        },
+        "AutoBackupRetention": { "count": 12, "description": "Automatic backups kept.", "req": ["COP-003"] },
+        "OperationBackupRetention": {
+          "count": 10,
+          "description": "Backups kept per kind before update, migration, restore, import or reset.",
+          "req": ["COP-003"],
+          "source": "blueprint §6.8"
+        },
+        "MigrationCardVisibility": {
+          "duration": "30d",
+          "description": "The migration card stays visible at most this long.",
+          "req": ["COP-001"]
+        },
+        "PreviousVersionRetention": {
+          "duration": "7d",
+          "description": "The previous version is kept, and rollback offered, this long after an update.",
+          "req": ["NFR-020", "NFR-010", "ACT-005"]
+        }
+      }
+    },
+    "Frequents": {
+      "description": "Frequents view.",
+      "entries": {
+        "UsageWindow": {
+          "duration": "30d",
+          "description": "Only executions within this window count; older marks are purged.",
+          "req": ["FRE-001", "FRE-002"]
+        },
+        "MaxShown": { "count": 9, "description": "Frequents shows at most this many shortcuts.", "req": ["FRE-001"] }
+      }
+    },
+    "Updates": {
+      "description": "Update checks and installation.",
+      "entries": {
+        "UpdateCheckInterval": {
+          "duration": "24h",
+          "description": "Automatic update checks run this often.",
+          "req": ["ACT-002"],
+          "source": "blueprint §9.3"
+        },
+        "UpdateIdleRequired": {
+          "duration": "5min",
+          "description": "An update installs only after this long without touches.",
+          "req": ["NFR-020", "ACT-003"]
+        }
+      }
+    },
+    "Recording": {
+      "description": "Physical keyboard recording.",
+      "entries": {
+        "KeyboardRecordingTimeout": {
+          "duration": "30s",
+          "description": "The temporary keyboard hook removes itself after this long.",
+          "req": ["EDI-010"],
+          "source": "blueprint §7.10"
+        }
+      }
+    },
+    "Ai": {
+      "description": "AI template generation.",
+      "entries": {
+        "AiRequestTimeout": {
+          "duration": "15s",
+          "description": "A generation without answer after this long fails as offline.",
+          "req": ["NFR-020", "PLA-005"]
+        },
+        "AiFreeDailyQuota": {
+          "count": 5,
+          "description": "Free generations per local day (only with the deferred quota proxy, proposal P3).",
+          "req": ["PLA-003"]
+        },
+        "AiNameMaxLength": {
+          "count": 32,
+          "description": "Longest shortcut name accepted from an AI proposal.",
+          "req": ["PLA-008"],
+          "source": "blueprint §9.2"
+        }
+      }
+    },
+    "Text": {
+      "description": "Text previews.",
+      "entries": {
+        "TextPreviewLength": {
+          "count": 16,
+          "description": "Characters of a text action shown in tiles and notices.",
+          "req": ["CUA-007", "EJE-008"]
+        }
+      }
+    },
+    "Icons": {
+      "description": "Icon suggestions (suggestIcons).",
+      "entries": {
+        "IconSuggestionsMax": { "count": 6, "description": "Most icons suggested for a name.", "req": ["EDI-005"] },
+        "IconWordMinLength": { "count": 3, "description": "Name words shorter than this are ignored.", "req": ["EDI-005"] },
+        "IconReverseMatchMinLength": {
+          "count": 4,
+          "description": "A word may start with an icon tag only when the tag is at least this long.",
+          "req": ["EDI-005"]
+        }
+      }
+    },
+    "Ipc": {
+      "description": "Single-instance pipe.",
+      "entries": {
+        "IpcRequestTimeout": {
+          "duration": "2s",
+          "description": "Longest time a pipe request may take.",
+          "req": ["SIS-003"],
+          "source": "blueprint §3.4"
+        },
+        "IpcRateLimit": {
+          "countWindow": { "count": 10, "window": "1s" },
+          "description": "Most pipe requests accepted per window.",
+          "req": ["LOG-007"],
+          "source": "blueprint §3.4"
+        },
+        "IpcMaxInstances": {
+          "count": 4,
+          "description": "Concurrent pipe server instances.",
+          "req": ["LOG-007"],
+          "source": "blueprint §3.4"
+        },
+        "IpcMaxMessageBytes": {
+          "bytes": "16KiB",
+          "description": "Largest pipe message.",
+          "req": ["LOG-007"],
+          "source": "blueprint §3.4"
+        },
+        "OpenUriMaxBytes": {
+          "bytes": "8KiB",
+          "description": "Largest clicalo: URI accepted over the pipe.",
+          "req": ["LOG-006"],
+          "source": "blueprint §3.4"
+        }
+      }
+    },
+    "Import": {
+      "description": "Limits for untrusted imported content.",
+      "entries": {
+        "ShareMaxBytes": {
+          "bytes": "5MiB",
+          "description": "Largest shared profile file.",
+          "req": ["LOG-006", "DAT-007"],
+          "source": "blueprint §9.1"
+        },
+        "ShareMaxDepth": {
+          "count": 32,
+          "description": "Deepest JSON nesting accepted in a shared profile.",
+          "req": ["LOG-006"],
+          "source": "blueprint §9.1"
+        },
+        "ShareMaxProfiles": {
+          "count": 200,
+          "description": "Most profiles in one import.",
+          "req": ["LOG-006"],
+          "source": "blueprint §9.1"
+        },
+        "ShareMaxShortcuts": {
+          "count": 10000,
+          "description": "Most shortcuts in one import.",
+          "req": ["LOG-006"],
+          "source": "blueprint §9.1"
+        },
+        "ZipMaxTotalBytes": {
+          "bytes": "50MiB",
+          "description": "Largest total uncompressed size of an imported zip.",
+          "req": ["MIG-009", "LOG-006"],
+          "source": "blueprint §6.6"
+        },
+        "ZipMaxEntries": {
+          "count": 1000,
+          "description": "Most entries in an imported zip.",
+          "req": ["MIG-009", "LOG-006"],
+          "source": "blueprint §6.6"
+        },
+        "ZipMaxCompressionRatio": {
+          "ratio": 100,
+          "description": "Largest compression ratio per zip entry, counted while reading.",
+          "req": ["MIG-009", "LOG-006"],
+          "source": "blueprint §6.6"
+        },
+        "ZipMaxJsonBytes": {
+          "bytes": "5MiB",
+          "description": "Largest JSON entry inside an imported zip.",
+          "req": ["MIG-009", "LOG-006"],
+          "source": "blueprint §6.6"
+        }
+      }
+    },
+    "Logging": {
+      "description": "Log files and diagnostics.",
+      "entries": {
+        "LogFileMaxBytes": { "bytes": "1MiB", "description": "Size at which clicalo.log rotates.", "req": ["LOG-001"] },
+        "LogFileCount": { "count": 5, "description": "Log files kept, including the current one.", "req": ["LOG-001"] },
+        "DebugLoggingDuration": {
+          "duration": "1h",
+          "description": "Debug logging requested by the user turns itself off after this long.",
+          "req": ["LOG-001"],
+          "source": "blueprint §9.4"
+        },
+        "DiagnosticTransitionCount": {
+          "count": 200,
+          "description": "Engine transitions (types and codes only) included in a diagnostic package.",
+          "req": ["ACE-003"],
+          "source": "blueprint §9.4"
+        }
+      }
+    }
+  }
+}

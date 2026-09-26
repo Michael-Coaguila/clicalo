@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/combo-icons.schema.json",
+  "catalogVersion": 1,
+  "appsLanguage": "es",
+  "entries": [
+    { "keys": ["ctrl", "c"], "icon": "content_copy" },
+    { "keys": ["ctrl", "v"], "icon": "content_paste" },
+    { "keys": ["ctrl", "x"], "icon": "content_cut" },
+    { "keys": ["ctrl", "z"], "icon": "undo" },
+    { "keys": ["ctrl", "y"], "icon": "redo" },
+    { "keys": ["ctrl", "p"], "icon": "print" },
+    { "keys": ["ctrl", "t"], "icon": "add" },
+    { "keys": ["ctrl", "w"], "icon": "close" },
+    { "keys": ["f5"], "icon": "refresh" },
+    { "keys": ["alt", "f4"], "icon": "close" },
+    { "keys": ["alt", "tab"], "icon": "swap_horiz" },
+    { "keys": ["win", "d"], "icon": "desktop_windows" },
+    { "keys": ["win", "h"], "icon": "mic" },
+    { "keys": ["ctrl", "g"], "icon": "save" },
+    { "keys": ["ctrl", "b"], "icon": "search" },
+    { "keys": ["ctrl", "e"], "icon": "select_all" },
+    { "keys": ["ctrl", "n"], "icon": "format_bold" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "../schemas/blocked-combos.schema.json",
+  "catalogVersion": 1,
+  "combos": [
+    { "keys": ["ctrl", "alt", "delete"], "level": "blocked" },
+    { "keys": ["win", "l"], "level": "blocked", "alternative": { "systemCommand": "lock" } },
+    { "keys": ["win", "g"], "level": "special" },
+    { "keys": ["alt", "tab"], "level": "special" },
+    { "keys": ["win", "tab"], "level": "special" },
+    { "keys": ["ctrl", "shift", "esc"], "level": "special" }
+  ]
+}

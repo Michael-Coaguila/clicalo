@@ -1,0 +1,68 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "vscode",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "VS Code", "en": "VS Code" },
+  "icon": "code",
+  "processes": ["code.exe"],
+  "shortcuts": [
+    {
+      "id": "term",
+      "name": { "es": "Terminal", "en": "Terminal" },
+      "icon": "terminal",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["ctrl", "char:ñ"] }
+    },
+    {
+      "id": "palette",
+      "name": { "es": "Comandos", "en": "Commands" },
+      "icon": "keyboard_command_key",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "p"] }
+    },
+    {
+      "id": "gofile",
+      "name": { "es": "Ir a archivo", "en": "Go to file" },
+      "icon": "description",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["ctrl", "p"] }
+    },
+    {
+      "id": "comment",
+      "name": { "es": "Comentar", "en": "Comment" },
+      "icon": "code",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "char:/"] }
+    },
+    {
+      "id": "format",
+      "name": { "es": "Formatear", "en": "Format" },
+      "icon": "format_align_left",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["shift", "alt", "f"] }
+    },
+    {
+      "id": "rename",
+      "name": { "es": "Renombrar", "en": "Rename" },
+      "icon": "edit",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["f2"] }
+    },
+    {
+      "id": "side",
+      "name": { "es": "Panel lateral", "en": "Sidebar" },
+      "icon": "view_sidebar",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["ctrl", "b"] }
+    },
+    {
+      "id": "split",
+      "name": { "es": "Dividir", "en": "Split" },
+      "icon": "splitscreen_right",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["ctrl", "char:\\"] }
+    }
+  ]
+}

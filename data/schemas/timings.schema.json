@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/timings.schema.json",
+  "title": "Clícalo named times and thresholds",
+  "description": "Every time and threshold of the product, defined once (NFR-020). Generated as Clicalo.Domain.Timing.Timings.<Group>.<Entry>. Each entry holds exactly one value kind and cites its requirement or source.",
+  "type": "object",
+  "required": ["catalogVersion", "groups"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "groups": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "entries"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string", "minLength": 1 },
+          "entries": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": { "$ref": "#/$defs/name" },
+            "additionalProperties": { "$ref": "#/$defs/entry" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "duration": { "$ref": "common.schema.json#/$defs/duration" },
+    "entry": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "description": "English sentence; becomes the XML documentation of the constant.", "type": "string", "minLength": 1 },
+        "req": {
+          "description": "Requirement identifiers of docs/requirements/catalog.md.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z]{3}-[0-9]{2,3}$" }
+        },
+        "source": { "description": "Other source (blueprint section, handoff doc).", "type": "string", "minLength": 1 },
+        "duration": { "$ref": "#/$defs/duration" },
+        "durations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/duration" } },
+        "px": { "description": "Logical pixels.", "type": "integer", "minimum": 0 },
+        "count": { "type": "integer", "minimum": 0 },
+        "ratio": { "type": "number", "exclusiveMinimum": 0 },
+        "bytes": { "type": "string", "pattern": "^[1-9][0-9]*(?:B|KiB|MiB|GiB)$" },
+        "countWindow": {
+          "type": "object",
+          "required": ["count", "window"],
+          "additionalProperties": false,
+          "properties": {
+            "count": { "type": "integer", "minimum": 1 },
+            "window": { "$ref": "#/$defs/duration" }
+          }
+        },
+        "durationRange": {
+          "type": "object",
+          "required": ["min", "max", "step"],
+          "additionalProperties": false,
+          "properties": {
+            "min": { "$ref": "#/$defs/duration" },
+            "max": { "$ref": "#/$defs/duration" },
+            "step": { "$ref": "#/$defs/duration" }
+          }
+        }
+      },
+      "oneOf": [
+        { "required": ["duration"] },
+        { "required": ["durations"] },
+        { "required": ["px"] },
+        { "required": ["count"] },
+        { "required": ["ratio"] },
+        { "required": ["bytes"] },
+        { "required": ["countWindow"] },
+        { "required": ["durationRange"] }
+      ],
+      "anyOf": [{ "required": ["req"] }, { "required": ["source"] }]
+    }
+  }
+}

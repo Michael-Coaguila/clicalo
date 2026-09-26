@@ -1,0 +1,125 @@
+{
+  "$schema": "../schemas/seed.schema.json",
+  "catalogVersion": 1,
+  "alwaysVisible": [
+    {
+      "id": "dict",
+      "name": { "es": "Dictar", "en": "Dictate" },
+      "icon": "mic",
+      "category": "voice",
+      "action": { "type": "tap", "keys": ["win", "h"] }
+    },
+    {
+      "id": "ptt",
+      "name": { "es": "Hablar", "en": "Talk" },
+      "icon": "record_voice_over",
+      "category": "voice",
+      "action": { "type": "hold", "keys": ["ctrl", "space"] }
+    },
+    {
+      "id": "mute",
+      "name": { "es": "Silenciar", "en": "Mute" },
+      "icon": "mic_off",
+      "category": "voice",
+      "action": { "type": "tap", "keys": ["win", "alt", "k"] }
+    },
+    {
+      "id": "desk",
+      "name": { "es": "Escritorio", "en": "Desktop" },
+      "icon": "desktop_windows",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["win", "d"] }
+    }
+  ],
+  "general": {
+    "name": { "es": "General", "en": "General" },
+    "icon": "apps",
+    "shortcuts": [
+      {
+        "id": "copy",
+        "name": { "es": "Copiar", "en": "Copy" },
+        "icon": "content_copy",
+        "category": "edit",
+        "action": { "type": "tap", "keys": ["ctrl", "c"] }
+      },
+      {
+        "id": "paste",
+        "name": { "es": "Pegar", "en": "Paste" },
+        "icon": "content_paste",
+        "category": "edit",
+        "action": { "type": "tap", "keys": ["ctrl", "v"] }
+      },
+      {
+        "id": "cut",
+        "name": { "es": "Cortar", "en": "Cut" },
+        "icon": "content_cut",
+        "category": "edit",
+        "action": { "type": "tap", "keys": ["ctrl", "x"] }
+      },
+      {
+        "id": "undo",
+        "name": { "es": "Deshacer", "en": "Undo" },
+        "icon": "undo",
+        "category": "hist",
+        "action": { "type": "tap", "keys": ["ctrl", "z"] }
+      },
+      {
+        "id": "redo",
+        "name": { "es": "Rehacer", "en": "Redo" },
+        "icon": "redo",
+        "category": "hist",
+        "action": { "type": "tap", "keys": ["ctrl", "y"] }
+      },
+      {
+        "id": "save",
+        "name": { "es": "Guardar", "en": "Save" },
+        "icon": "save",
+        "category": "file",
+        "action": { "type": "tap", "keys": ["ctrl", "s"] }
+      },
+      {
+        "id": "selall",
+        "name": { "es": "Seleccionar todo", "en": "Select all" },
+        "icon": "select_all",
+        "category": "sel",
+        "action": { "type": "tap", "keys": ["ctrl", "a"] }
+      },
+      {
+        "id": "find",
+        "name": { "es": "Buscar", "en": "Find" },
+        "icon": "search",
+        "category": "sel",
+        "action": { "type": "tap", "keys": ["ctrl", "f"] }
+      },
+      {
+        "id": "alttab",
+        "name": { "es": "Cambiar app", "en": "Switch app" },
+        "icon": "swap_horiz",
+        "category": "win",
+        "action": { "type": "tap", "keys": ["alt", "tab"] }
+      },
+      {
+        "id": "shift",
+        "name": { "es": "Mayús fija", "en": "Shift lock" },
+        "icon": "keyboard_capslock",
+        "category": "fmt",
+        "action": { "type": "toggle", "keys": ["shift"] }
+      },
+      {
+        "id": "drag",
+        "name": { "es": "Clic sostenido", "en": "Hold click" },
+        "icon": "pan_tool",
+        "category": "nav",
+        "action": { "type": "mouse", "mouse": "drag" }
+      },
+      {
+        "id": "close",
+        "name": { "es": "Cerrar ventana", "en": "Close window" },
+        "icon": "close",
+        "category": "win",
+        "action": { "type": "tap", "keys": ["alt", "f4"] },
+        "confirm": true
+      }
+    ]
+  }
+}

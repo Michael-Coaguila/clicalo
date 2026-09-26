@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/keys.win32.schema.json",
+  "title": "Clícalo Win32 key mapping",
+  "description": "Physical mapping of every key of keys.json. Fixed keys carry the virtual key (Microsoft «Virtual-Key Codes») and the set 1 make code (Microsoft «About Keyboard Input», Scan 1 Make) of the reference layout. Layout-dependent characters are resolved when sending with the foreground layout (VkKeyScanEx).",
+  "type": "object",
+  "required": ["catalogVersion", "referenceLayout", "keys"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "referenceLayout": {
+      "description": "Keyboard layout identifier (KLID) the scan codes refer to.",
+      "type": "string",
+      "pattern": "^[0-9A-F]{8}$"
+    },
+    "keys": {
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/keyId" },
+      "additionalProperties": {
+        "oneOf": [{ "$ref": "#/$defs/fixed" }, { "$ref": "#/$defs/character" }]
+      }
+    }
+  },
+  "$defs": {
+    "hexByte": { "type": "string", "pattern": "^0x[0-9A-F]{2}$" },
+    "fixed": {
+      "type": "object",
+      "required": ["vk", "vkName", "scan", "extended"],
+      "additionalProperties": false,
+      "properties": {
+        "vk": { "description": "Virtual-key code.", "$ref": "#/$defs/hexByte" },
+        "vkName": {
+          "description": "Constant name in the Microsoft table (letters and digits have no VK_ constant).",
+          "type": "string",
+          "pattern": "^(?:VK_[A-Z0-9_]+|[A-Z0-9])$"
+        },
+        "scan": { "description": "Last byte of the set 1 make code.", "$ref": "#/$defs/hexByte" },
+        "extended": {
+          "description": "The make code starts with the 0xE0 prefix (KEYEVENTF_EXTENDEDKEY).",
+          "type": "boolean"
+        },
+        "prefixE1": {
+          "description": "The make code starts with the 0xE1 prefix (Pause). SendInput cannot inject it as a scan code.",
+          "const": true
+        }
+      }
+    },
+    "character": {
+      "type": "object",
+      "required": ["resolve"],
+      "additionalProperties": false,
+      "properties": {
+        "resolve": { "const": "character" }
+      }
+    }
+  }
+}

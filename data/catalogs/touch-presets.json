@@ -1,0 +1,10 @@
+{
+  "$schema": "../schemas/touch-presets.schema.json",
+  "catalogVersion": 1,
+  "default": "mild-tremor",
+  "presets": [
+    { "id": "standard", "labelKey": "pStd", "descriptionKey": "dStd", "debounce": "150ms", "hitSlopPx": 8, "cancelMovePx": 45, "minContact": "0ms" },
+    { "id": "mild-tremor", "labelKey": "pLeve", "descriptionKey": "dLeve", "debounce": "300ms", "hitSlopPx": 14, "cancelMovePx": 35, "minContact": "0ms" },
+    { "id": "strong-tremor", "labelKey": "pFuerte", "descriptionKey": "dFuerte", "debounce": "600ms", "hitSlopPx": 24, "cancelMovePx": 28, "minContact": "80ms" }
+  ]
+}

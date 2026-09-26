@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/blocked-combos.schema.json",
+  "title": "Clícalo blocked and special combinations",
+  "description": "Combinations Windows reserves (blocked: never sent, EJE-014) or treats specially (special: the editor recommends testing them, EDI-007). Compared by canonical key (REP-001) ignoring the side of the modifiers: Windows reserves these combinations with either Ctrl, Alt, Shift or Win key, so Ctrl+Alt+Delete also covers right Ctrl and AltGr.",
+  "type": "object",
+  "required": ["catalogVersion", "combos"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "combos": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["keys", "level"],
+        "additionalProperties": false,
+        "properties": {
+          "keys": { "$ref": "common.schema.json#/$defs/keyChord" },
+          "level": { "enum": ["blocked", "special"] },
+          "alternative": {
+            "description": "Action offered instead of the blocked combination (EJE-016).",
+            "type": "object",
+            "required": ["systemCommand"],
+            "additionalProperties": false,
+            "properties": {
+              "systemCommand": { "$ref": "common.schema.json#/$defs/systemCommandId" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

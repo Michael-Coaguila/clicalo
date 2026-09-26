@@ -1,0 +1,48 @@
+{
+  "$schema": "../schemas/mouse.schema.json",
+  "catalogVersion": 1,
+  "scrollSpeeds": [
+    { "id": "slow", "labelKey": "spSlow", "repeatTiming": "Mouse.ScrollRepeatSlow" },
+    { "id": "normal", "labelKey": "spNormal", "repeatTiming": "Mouse.ScrollRepeatNormal" },
+    { "id": "fast", "labelKey": "spFast", "repeatTiming": "Mouse.ScrollRepeatFast" }
+  ],
+  "defaultScrollSpeed": "normal",
+  "actions": [
+    { "id": "rclick", "icon": "right_click", "label": { "es": "Clic derecho", "en": "Right click" }, "kind": "click", "button": "right", "clicks": 1 },
+    { "id": "dbl", "icon": "ads_click", "label": { "es": "Doble clic", "en": "Double click" }, "kind": "click", "button": "left", "clicks": 2 },
+    { "id": "mid", "icon": "mouse", "label": { "es": "Clic central", "en": "Middle click" }, "kind": "click", "button": "middle", "clicks": 1 },
+    { "id": "drag", "icon": "drag_pan", "label": { "es": "Arrastrar", "en": "Drag" }, "kind": "drag", "button": "left" },
+    {
+      "id": "sup",
+      "icon": "keyboard_double_arrow_up",
+      "label": { "es": "Desplazar ↑", "en": "Scroll ↑" },
+      "spoken": { "es": "Desplazar hacia arriba", "en": "Scroll up" },
+      "kind": "scroll",
+      "direction": "up"
+    },
+    {
+      "id": "sdn",
+      "icon": "keyboard_double_arrow_down",
+      "label": { "es": "Desplazar ↓", "en": "Scroll ↓" },
+      "spoken": { "es": "Desplazar hacia abajo", "en": "Scroll down" },
+      "kind": "scroll",
+      "direction": "down"
+    },
+    {
+      "id": "sleft",
+      "icon": "keyboard_double_arrow_left",
+      "label": { "es": "Desplazar ←", "en": "Scroll ←" },
+      "spoken": { "es": "Desplazar a la izquierda", "en": "Scroll left" },
+      "kind": "scroll",
+      "direction": "left"
+    },
+    {
+      "id": "sright",
+      "icon": "keyboard_double_arrow_right",
+      "label": { "es": "Desplazar →", "en": "Scroll →" },
+      "spoken": { "es": "Desplazar a la derecha", "en": "Scroll right" },
+      "kind": "scroll",
+      "direction": "right"
+    }
+  ]
+}

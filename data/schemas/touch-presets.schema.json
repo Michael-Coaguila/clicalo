@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/touch-presets.schema.json",
+  "title": "Clícalo touch filter presets",
+  "description": "Presets of the touch filter (TAC-001): debounce, extra hit area, cancel-on-move distance and minimum contact.",
+  "type": "object",
+  "required": ["catalogVersion", "default", "presets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "default": { "$ref": "#/$defs/presetId" },
+    "presets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "labelKey", "descriptionKey", "debounce", "hitSlopPx", "cancelMovePx", "minContact"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/presetId" },
+          "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" },
+          "descriptionKey": { "$ref": "common.schema.json#/$defs/messageKey" },
+          "debounce": { "$ref": "common.schema.json#/$defs/duration" },
+          "hitSlopPx": { "type": "integer", "minimum": 0 },
+          "cancelMovePx": { "type": "integer", "minimum": 0 },
+          "minContact": { "$ref": "common.schema.json#/$defs/duration" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "presetId": { "type": "string", "pattern": "^[a-z]+(?:-[a-z]+)*$" }
+  }
+}

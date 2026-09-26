@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/categories.schema.json",
+  "catalogVersion": 1,
+  "categories": [
+    { "id": "edit", "labelKey": "catEdit" },
+    { "id": "hist", "labelKey": "catHist" },
+    { "id": "file", "labelKey": "catFile" },
+    { "id": "sel", "labelKey": "catSel" },
+    { "id": "win", "labelKey": "catWin" },
+    { "id": "voice", "labelKey": "catVoice" },
+    { "id": "nav", "labelKey": "catNav" },
+    { "id": "fmt", "labelKey": "catFmt" },
+    { "id": "web", "labelKey": "catWeb" },
+    { "id": "text", "labelKey": "catText" }
+  ]
+}

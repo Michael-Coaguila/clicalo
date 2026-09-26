@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/keys.schema.json",
+  "title": "Clícalo key catalog",
+  "description": "Every key a shortcut can press, in picker order (EDI-008), with its canonical id, labels and modifier metadata. The physical mapping lives in keys.win32.json.",
+  "type": "object",
+  "required": ["catalogVersion", "groups", "keys"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "groups": {
+      "description": "Picker groups, in display order.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "labelKey"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*$" },
+          "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" }
+        }
+      }
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/key" }
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "object",
+      "required": ["id", "codeName", "group", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/keyId" },
+        "codeName": {
+          "description": "Name of the generated constant in Clicalo.Domain.Keys.KeyIds.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "group": { "type": "string", "pattern": "^[a-z][a-z0-9]*$" },
+        "label": {
+          "description": "Visible name (IDI-003).",
+          "$ref": "common.schema.json#/$defs/localizedText"
+        },
+        "short": {
+          "description": "Abbreviation for the key line of size S tiles (CUA-008). Defaults to the label.",
+          "$ref": "common.schema.json#/$defs/localizedText"
+        },
+        "spoken": {
+          "description": "Accessible name when the label is a glyph (ACC-001, UIA008). Defaults to the label.",
+          "$ref": "common.schema.json#/$defs/localizedText"
+        },
+        "labelWithoutAltGr": {
+          "description": "Label used when the active keyboard layout has no AltGr (EDI-009).",
+          "$ref": "common.schema.json#/$defs/localizedText"
+        },
+        "modifier": {
+          "description": "Modifier family of the key (REP-001 compares modifiers as a set).",
+          "enum": ["ctrl", "alt", "shift", "win"]
+        },
+        "sideOf": {
+          "description": "Any-side key this sided key specializes (EDI-009: one side mechanism).",
+          "$ref": "common.schema.json#/$defs/keyId"
+        },
+        "side": { "enum": ["left", "right"] },
+        "aliases": {
+          "description": "Extra lower-case spellings accepted when parsing combinations (catalog §7.3).",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[^\\sA-Z]+$" }
+        }
+      },
+      "dependentRequired": {
+        "sideOf": ["side", "modifier"],
+        "side": ["sideOf"]
+      }
+    }
+  }
+}
