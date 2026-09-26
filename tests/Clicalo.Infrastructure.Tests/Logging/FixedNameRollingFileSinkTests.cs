@@ -65,6 +65,27 @@ public sealed class FixedNameRollingFileSinkTests : IDisposable
     }
 
     [Fact]
+    public void A_rotation_blocked_by_another_process_keeps_writing_to_clicalo_log()
+    {
+        Directory.CreateDirectory(_folder.Locations.Logs);
+        var held = FixedNameRollingFileSink.RotationOf(LogFile, 1);
+        File.WriteAllText(held, "old");
+        using (var logger = Logger(maxBytes: 200, files: 5))
+        using (new FileStream(held, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            for (var i = 0; i < 20; i++)
+            {
+                logger.Information(
+                    "held {Number} with some padding text",
+                    i.ToString("D3", CultureInfo.InvariantCulture)
+                );
+            }
+        }
+
+        File.ReadAllText(LogFile).ShouldContain("held 019");
+    }
+
+    [Fact]
     public void Removes_the_windows_user_when_writing_even_from_exceptions()
     {
         var redactor = new UserPathRedactor(@"C:\Users\Ana María", "Ana María");

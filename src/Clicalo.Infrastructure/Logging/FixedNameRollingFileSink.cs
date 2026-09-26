@@ -92,7 +92,7 @@ public sealed class FixedNameRollingFileSink : ILogEventSink, IDisposable
                 var stream = _stream ??= Open();
                 if (stream.Length > 0 && stream.Length + bytes.Length > _maxBytes)
                 {
-                    Roll();
+                    TryRoll();
                     stream = _stream = Open();
                 }
 
@@ -136,6 +136,22 @@ public sealed class FixedNameRollingFileSink : ILogEventSink, IDisposable
                 Share = FileShare.Read | FileShare.Delete,
             }
         );
+    }
+
+    /// <summary>
+    /// Rotates; when another process holds one of the files (a viewer without delete sharing), the line still goes to
+    /// <c>clicalo.log</c> past its size and the next line tries again, so a held file never silences the log.
+    /// </summary>
+    private void TryRoll()
+    {
+        try
+        {
+            Roll();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            SelfLog.WriteLine("clicalo.log rotation failed: {0}", ex.GetType().Name);
+        }
     }
 
     /// <summary>Shifts every file up one rotation, dropping the oldest.</summary>
