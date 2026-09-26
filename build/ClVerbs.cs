@@ -1,7 +1,7 @@
 namespace Clicalo.Build;
 
 /// <summary>
-/// The M0 verbs of <c>cl</c> (blueprint §13), composed from <see cref="BuildSteps"/>. <c>devCliArguments</c>
+/// The verbs of <c>cl</c> available so far (blueprint §13: M0 and M2), composed from <see cref="BuildSteps"/>. <c>devCliArguments</c>
 /// are the words written after a developer CLI verb, passed to it unchanged.
 /// </summary>
 internal sealed class ClVerbs(
@@ -72,4 +72,41 @@ internal sealed class ClVerbs(
 
     /// <summary><c>cl adr-check --base &lt;ref&gt;</c>: the <c>adr</c> job of pr.yml.</summary>
     public Task AdrCheckAsync() => steps.DevCliAsync(VerbCatalog.AdrCheck, devCliArguments);
+
+    /// <summary>
+    /// <c>cl run</c>: builds the app and starts it with its data isolated in <c>%TEMP%\clicalo-dev</c> and without key
+    /// sending (<c>--no-input</c>).
+    /// </summary>
+    public async Task RunAppAsync()
+    {
+        await steps.BuildAsync(Path.Combine(layout.Root, BuildSteps.AppProject), BuildMode.Debug);
+        await steps.LaunchAsync(Path.Combine(Path.GetTempPath(), "clicalo-dev"));
+    }
+
+    /// <summary><c>cl note</c>: the user-facing news fragment of the branch, in Spanish and English.</summary>
+    public Task NoteAsync() => steps.NoteAsync();
+
+    /// <summary>
+    /// <c>cl perf</c>: publishes the S5 variants, builds the measurements and runs them on the desktop; the numbers go to
+    /// <c>artifacts/perf</c> (<c>s5.json</c>, <c>s5.md</c>).
+    /// </summary>
+    public async Task PerfAsync()
+    {
+        var output = Path.Combine(layout.Artifacts, "perf");
+        var apps = Path.Combine(output, "apps");
+        await steps.PublishAsync(PublishVariant.All, apps);
+        var project = Path.Combine(layout.Root, BuildSteps.PerformanceProject);
+        await steps.BuildAsync(project, BuildMode.Debug);
+        await steps.TestAsync(
+            project,
+            BuildMode.Debug,
+            TestSelection.PerfOnly,
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["CLICALO_PERF_APPS"] = BuildSteps.PerfApps(PublishVariant.All, apps),
+                ["CLICALO_PERF_RESULTS"] = output,
+            }
+        );
+        steps.NotePerfResults(output);
+    }
 }
