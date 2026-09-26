@@ -24,6 +24,7 @@
     <Project Path="tests/Clicalo.Generators.Tests/Clicalo.Generators.Tests.csproj" />
     <Project Path="tests/Clicalo.Platform.IntegrationTests/Clicalo.Platform.IntegrationTests.csproj" />
     <Project Path="tests/Clicalo.TestKit/Clicalo.TestKit.csproj" />
+    <Project Path="tests/Clicalo.TestKit.Windows/Clicalo.TestKit.Windows.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Clicalo.DevCli/Clicalo.DevCli.csproj" />

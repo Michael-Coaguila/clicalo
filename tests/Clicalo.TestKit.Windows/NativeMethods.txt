@@ -1,0 +1,20 @@
+// Test-only injection (the product injector is Platform.Core's SendInputInjector, milestone M2)
+SendInput
+INPUT
+KEYBDINPUT
+GetAsyncKeyState
+VIRTUAL_KEY
+
+// Foreground: legitimate means only (no AttachThreadInput, no synthetic keys)
+GetForegroundWindow
+SetForegroundWindow
+AllowSetForegroundWindow
+GetWindowThreadProcessId
+GetDesktopWindow
+IsWindow
+SystemParametersInfo
+SYSTEM_PARAMETERS_INFO_ACTION
+
+// Keyboard layout of the target window
+GetKeyboardLayout
+MapVirtualKeyEx

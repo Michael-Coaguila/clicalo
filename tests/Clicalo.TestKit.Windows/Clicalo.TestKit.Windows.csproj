@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Windows-only test helpers: WPF render snapshots, InputProbe sessions and a guarded, test-only SendInput injector
+    (blueprint §10.1). Referenced by test projects only.
+  -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Clicalo.TestKit.Windows</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+    <!-- Build order only: the probe runs as its own process (see ClicaloIncludeInputProbe below). -->
+    <ProjectReference
+      Include="..\..\tools\InputProbe\InputProbe.csproj"
+      ReferenceOutputAssembly="false"
+      Private="false"
+    />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+    <!-- The injector's own tests replace SendInput through an internal constructor. -->
+    <InternalsVisibleTo Include="Clicalo.Platform.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup Label="InputProbe wire contract, shared with the probe">
+    <Compile
+      Include="..\..\tools\InputProbe\Protocol\*.cs"
+      Link="Probe\Protocol\%(Filename)%(Extension)"
+    />
+  </ItemGroup>
+
+  <!--
+    Copies the InputProbe build output (apphost, assemblies, deps and runtimeconfig) to InputProbe\ in this project's
+    output and, through GetCopyToOutputDirectoryItems, in the output of every project that references it, where
+    InputProbeLocator finds it. It depends on ResolveProjectReferences so that the probe is built (or, when a
+    referencing project only asks for the items, located) before its folder is listed.
+  -->
+  <Target
+    Name="ClicaloIncludeInputProbe"
+    BeforeTargets="AssignTargetPaths"
+    DependsOnTargets="ResolveProjectReferences"
+    Condition="'$(DesignTimeBuild)' != 'true'"
+  >
+    <MSBuild
+      Projects="..\..\tools\InputProbe\InputProbe.csproj"
+      Targets="GetTargetPath"
+      Properties="Configuration=$(Configuration)"
+    >
+      <Output TaskParameter="TargetOutputs" ItemName="_ClicaloInputProbeTargetPath" />
+    </MSBuild>
+    <PropertyGroup>
+      <_ClicaloInputProbeDirectory>@(_ClicaloInputProbeTargetPath->'%(RootDir)%(Directory)')</_ClicaloInputProbeDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ClicaloInputProbeFile
+        Include="$(_ClicaloInputProbeDirectory)**\*"
+        Exclude="$(_ClicaloInputProbeDirectory)**\*.xml"
+      />
+      <None
+        Include="@(_ClicaloInputProbeFile)"
+        Link="InputProbe\%(RecursiveDir)%(Filename)%(Extension)"
+        CopyToOutputDirectory="PreserveNewest"
+        Visible="false"
+      />
+    </ItemGroup>
+  </Target>
+</Project>
