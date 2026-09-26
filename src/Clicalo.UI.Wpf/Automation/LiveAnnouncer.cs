@@ -118,7 +118,8 @@ public sealed class LiveAnnouncer
     /// length UI Automation reads is then the .NET length in characters taken as bytes, and readers receive only the
     /// first half of the text («Aviso 1» arrives as «Avi»). Appending as many NUL characters as the string has makes
     /// that length twice the number of characters, so exactly the original text arrives and the padding is never
-    /// read. <c>LiveRegionTests</c> fails as soon as WPF passes real <c>BSTR</c>s; then this goes away.
+    /// read. The Upstream test <c>WpfNotificationBstrTests</c> fails as soon as WPF passes real <c>BSTR</c>s; then this
+    /// goes away.
     /// </summary>
     internal static string ForUiaBstr(string value) =>
         string.Concat(value, new string(Nul, value.Length));
