@@ -108,6 +108,16 @@ internal sealed class FakeDocumentRepository(TimeProvider time) : IDocumentRepos
             FailureAnnouncement.Assertive
         );
 
+    /// <summary>What the real writer returns at once, without a backoff, when the disk is full.</summary>
+    public static Failure DiskFull { get; } =
+        new(
+            "persist.io.full",
+            L.TBug,
+            FailureSeverity.Critical,
+            FailureRecovery.Retry,
+            FailureAnnouncement.Assertive
+        );
+
     public static Failure ReadOnly { get; } =
         new(
             "persist.readonly",

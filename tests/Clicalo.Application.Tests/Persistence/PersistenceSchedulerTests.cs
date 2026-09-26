@@ -231,6 +231,27 @@ public sealed class PersistenceSchedulerTests
     }
 
     [Fact]
+    [Trait("Req", "NFR-006")]
+    public async Task A_full_disk_never_spins_it_is_visible_after_3_s_and_retried_every_30_s()
+    {
+        await using var rig = new SchedulerRig();
+        rig.Documents.Refuse = FakeDocumentRepository.DiskFull;
+
+        await rig.ChangeAsync(DocumentSlices.Library);
+        await rig.AdvanceToAsync(2900 * Ms);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Retrying);
+        await rig.AdvanceToAsync(3600 * Ms);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Failing);
+        await rig.AdvanceToAsync(TimeSpan.FromSeconds(62), TimeSpan.FromSeconds(1));
+
+        rig.Documents.Attempts.ShouldBe(3, "the first one, then at 30 s and 60 s");
+        rig.Documents.Refuse = null;
+        await rig.AdvanceToAsync(TimeSpan.FromSeconds(91), TimeSpan.FromSeconds(1));
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Saved);
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+    }
+
+    [Fact]
     public async Task A_refused_save_is_visible_at_once_and_retried_with_the_next_change()
     {
         await using var rig = new SchedulerRig();

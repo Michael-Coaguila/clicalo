@@ -23,7 +23,8 @@ namespace Clicalo.Application.Persistence;
 /// </para>
 /// <para>
 /// A failed save keeps the newest document pending. An I/O failure (the writer already retried its backoff) is retried
-/// at once and stays <see cref="SaveStatus.Retrying"/>, silent, until <c>Timings.Persistence.UnsavedNoticeAfter</c>
+/// at once, unless it came back at once (a full disk: then it waits for <c>WriteRetryInterval</c> and never spins), and
+/// stays <see cref="SaveStatus.Retrying"/>, silent, until <c>Timings.Persistence.UnsavedNoticeAfter</c>
 /// after the first failed attempt started; then it is <see cref="SaveStatus.Failing"/>, visible, and retried every
 /// <c>WriteRetryInterval</c> (S11: an antivirus or indexer lock never shows an error; a lock longer than 3 s always
 /// does). Any other failure (read-only, invalid) is visible at once and retried with the next change.
@@ -383,7 +384,13 @@ public sealed partial class PersistenceScheduler : IDisposable
             }
 
             Arm(_noticeTimer, Timings.Persistence.UnsavedNoticeAfter - failing);
-            if (retryAtOnce)
+
+            // Retrying at once only makes sense after the writer spent its own backoff on a lock; a failure that came
+            // back at once (a full disk, any other persistent error) would otherwise spin the Persistence thread and
+            // flood the log until the notice. It waits for the regular cadence instead.
+            var spentBackoff =
+                _time.GetElapsedTime(started) >= Timings.Persistence.WriteRetryBackoff[0];
+            if (retryAtOnce && spentBackoff)
             {
                 Raise(Signal.Document);
             }
