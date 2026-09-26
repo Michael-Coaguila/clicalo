@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Clicalo.Tools.SpikeLab.Scripting;
@@ -10,11 +9,14 @@ namespace Clicalo.Tools.SpikeLab.Surfaces;
 
 /// <summary>
 /// The panel of the laboratory: the fourteen tiles of <see cref="LabTiles.Panel"/> in four columns and, on its left,
-/// the handle that drags it between monitors (S1 row 30).
+/// the handle that drags it between monitors (S1 row 30), a named touch target of at least 44 logical pixels.
 /// </summary>
 internal sealed class PanelSurface : LabSurface
 {
-    private readonly Border _handle;
+    /// <summary>Width of the handle, in logical pixels: a touch target of at least 44 (REG-02).</summary>
+    public const double GripWidth = 48;
+
+    private readonly DragGrip _handle;
 
     /// <summary>Creates the panel.</summary>
     public PanelSurface(SurfaceRegistry registry, LabSurfaceContext context)
@@ -26,19 +28,7 @@ internal sealed class PanelSurface : LabSurface
             grid.Children.Add(AddTile(tile, width: 104, height: 72));
         }
 
-        _handle = new Border
-        {
-            Width = 36,
-            Child = new TextBlock
-            {
-                Text = "⠿",
-                FontSize = 24,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
-        };
-        _handle.SetResourceReference(Border.BackgroundProperty, SystemColors.ControlDarkBrushKey);
-        AutomationProperties.SetName(_handle, "Asa del panel");
+        _handle = new DragGrip("Asa del panel", GripWidth);
 
         var layout = new DockPanel();
         DockPanel.SetDock(_handle, System.Windows.Controls.Dock.Left);
@@ -46,6 +36,9 @@ internal sealed class PanelSurface : LabSurface
         layout.Children.Add(grid);
         Content = layout;
     }
+
+    /// <summary>The handle (S1 row 30).</summary>
+    public DragGrip Grip => _handle;
 
     /// <inheritdoc />
     protected override FrameworkElement DragHandle => _handle;

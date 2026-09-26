@@ -69,7 +69,25 @@ internal static class ReportFixture
 
     public static ReportContext Context() =>
         new(
-            new MachineInfo("Microsoft Windows NT 10.0.26200.0", "X64", "2.0.0-dev+abc123"),
+            new MachineInfo("10.0.26200.6584 (25H2)", "X64", "2.0.0-dev+abc123")
+            {
+                WindowsBuild = "10.0.26200.6584",
+                WindowsDisplayVersion = "25H2",
+                Input = new InputHardware(
+                    IntegratedTouch: true,
+                    ExternalTouch: false,
+                    IntegratedPen: true,
+                    ExternalPen: false,
+                    Ready: true,
+                    MaxTouches: 10,
+                    MousePresent: true
+                ),
+                Monitors =
+                [
+                    new MonitorDescription(0, 0, 2400, 1600, 2400, 1516, 168, IsPrimary: true),
+                    new MonitorDescription(2400, 0, 1920, 1080, 1920, 1040, 96, IsPrimary: false),
+                ],
+            },
             Start.AddMinutes(10),
             [
                 new LabComponent(

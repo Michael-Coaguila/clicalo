@@ -112,7 +112,7 @@ internal static class TileFactory
         var stack = new FrameworkElementFactory(typeof(StackPanel));
         stack.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         stack.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 6, 4, 4));
-        var glyph = new FrameworkElementFactory(typeof(TextBlock));
+        var glyph = new FrameworkElementFactory(typeof(TextBlock), GlyphPart);
         glyph.SetBinding(TextBlock.TextProperty, Parent(nameof(FrameworkElement.Tag)));
         glyph.SetValue(TextBlock.FontSizeProperty, 20.0);
         glyph.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
@@ -126,9 +126,18 @@ internal static class TileFactory
         border.AppendChild(grid);
 
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = border };
+
+        // A tile without a glyph takes no line for it (the small buttons of the guide strip).
+        var noGlyph = new Trigger { Property = FrameworkElement.TagProperty, Value = string.Empty };
+        noGlyph.Setters.Add(
+            new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, GlyphPart)
+        );
+        template.Triggers.Add(noGlyph);
         template.Seal();
         return template;
     }
+
+    private const string GlyphPart = "Glyph";
 
     private static Binding Parent(string path) =>
         new(path) { RelativeSource = RelativeSource.TemplatedParent };

@@ -34,7 +34,10 @@ internal sealed class LabControlCenter : Window
         _dictate = dictate;
         _focused = focused;
         Title = "Centro de control de laboratorio";
-        Width = 560;
+        var area = SystemParameters.WorkArea;
+        Width = Math.Min(560, area.Width);
+        MaxWidth = area.Width;
+        MaxHeight = area.Height;
         SizeToContent = SizeToContent.Height;
         ShowActivated = false;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;

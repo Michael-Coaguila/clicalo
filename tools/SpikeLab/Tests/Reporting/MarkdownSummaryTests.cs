@@ -24,6 +24,21 @@ public sealed class MarkdownSummaryTests
     }
 
     [Fact]
+    public void The_header_says_the_windows_revision_the_input_hardware_and_the_monitors()
+    {
+        Summary.ShouldContain(
+            "- Windows: 10.0.26200.6584 (25H2) · X64 · SpikeLab 2.0.0-dev+abc123"
+        );
+        Summary.ShouldContain(
+            "- Pantalla táctil: sí (integrada, 10 contactos) · Lápiz: sí · Mouse: sí"
+        );
+        Summary.ShouldContain(
+            "- Monitores: 2400 × 1600 al 175 % (principal; área de trabajo 2400 × 1516); 1920 × 1080 al 100 % "
+                + "(área de trabajo 1920 × 1040)"
+        );
+    }
+
+    [Fact]
     public void The_settings_and_the_pieces_that_are_not_ready_are_listed()
     {
         Summary.ShouldContain("- Envío de teclas: desactivado · Números de voz: activados");

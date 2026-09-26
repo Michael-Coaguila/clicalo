@@ -8,7 +8,8 @@ namespace Clicalo.Tools.SpikeLab.Tiles;
 /// <summary>
 /// The tiles of every laboratory surface. The panel has the twelve tiles of S3.md plus «Localizar» (Ctrl+F) and
 /// «Centro de control» (S4.md); its order fixes the voice numbers («clic 4» is «Copiar», «clic 7» is «Guardar»).
-/// Names are unique across the surfaces shown together, so «clic Negrita» never needs disambiguation.
+/// Names are unique across every window of SpikeLab (UiaNameUniquenessTests), so «clic Negrita» never needs
+/// disambiguation.
 /// </summary>
 internal static class LabTiles
 {
@@ -117,6 +118,23 @@ internal static class LabTiles
         Instrument("guide-next", "Siguiente", "→", LabAction.GuideNext),
         Instrument("guide-release-all", "Soltar todo ya", "✋", LabAction.ReleaseAll),
     ];
+
+    /// <summary>«Plegar la tira»: leaves only the step, the state, the notice and the buttons (and back).</summary>
+    public static LabTile GuideFold { get; } =
+        Instrument("guide-fold", "Plegar la tira", string.Empty, LabAction.GuideFold);
+
+    /// <summary>«Ver instrucción completa»: the whole instruction instead of its first lines (and back).</summary>
+    public static LabTile GuideInstruction { get; } =
+        Instrument(
+            "guide-instruction",
+            "Ver instrucción completa",
+            string.Empty,
+            LabAction.GuideInstruction
+        );
+
+    /// <summary>«Mover la tira»: sends the guide strip to the other half of the screen (the finger drags it).</summary>
+    public static LabTile GuideMove { get; } =
+        Instrument("guide-move", "Mover la tira", string.Empty, LabAction.GuideMove);
 
     /// <summary>The step action button of the guide strip; its name follows the current step.</summary>
     public static LabTile GuideStepAction { get; } =

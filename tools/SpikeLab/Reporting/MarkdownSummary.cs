@@ -36,6 +36,17 @@ internal static class MarkdownSummary
             .Append(" · SpikeLab ")
             .Append(context.Machine.LabVersion)
             .Append('\n');
+        text.Append("- ").Append(context.Machine.Input.Describe()).Append('\n');
+        text.Append("- Monitores: ")
+            .Append(
+                context.Machine.Monitors.IsDefaultOrEmpty
+                    ? "desconocidos"
+                    : string.Join(
+                        "; ",
+                        context.Machine.Monitors.Select(monitor => monitor.Describe())
+                    )
+            )
+            .Append('\n');
         text.Append("- Envío de teclas: ")
             .Append(context.SendsKeys ? "activado" : "desactivado")
             .Append(" · Números de voz: ")

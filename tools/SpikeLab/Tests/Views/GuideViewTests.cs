@@ -40,6 +40,9 @@ public sealed class GuideViewTests
             tiles
                 .Select(tile => Peer(tile).GetName())
                 .ShouldBe([
+                    "Ver instrucción completa",
+                    "Plegar la tira",
+                    "Mover la tira",
                     "Funcionó",
                     "Falló",
                     "Repetir",
@@ -52,7 +55,10 @@ public sealed class GuideViewTests
                 Peer(tile).GetAutomationControlType() == AutomationControlType.Button
             );
 
-            ((IInvokeProvider)Peer(tiles[0]).GetPattern(PatternInterface.Invoke)).Invoke();
+            var worked = tiles.Single(tile =>
+                string.Equals(tile.AccessibleName, "Funcionó", StringComparison.Ordinal)
+            );
+            ((IInvokeProvider)Peer(worked).GetPattern(PatternInterface.Invoke)).Invoke();
 
             // Invoke returns at once and the tile raises Invoked on the next dispatcher turn (UI Automation, S3).
             Dispatcher.CurrentDispatcher.Invoke(static () => { }, DispatcherPriority.Background);
@@ -103,6 +109,126 @@ public sealed class GuideViewTests
             texts.ShouldContain("Toca el panel 20 veces.", StringComparer.Ordinal);
             view.Notice.Text.ShouldBe("Toque ignorado por el filtro.");
         });
+
+    [Fact]
+    public void Folding_leaves_the_step_the_state_the_notice_and_the_buttons() =>
+        WpfThread.Invoke(() =>
+        {
+            var view = new GuideView(
+                (tile, width, height) => TileFactory.Create(tile, width, height)
+            );
+            view.Update(Model(stepAction: null) with { Instruction = LongestInstruction() });
+            Layout(view);
+            var compact = view.DesiredSize.Height;
+
+            view.IsFolded = true;
+            Layout(view);
+
+            view.DesiredSize.Height.ShouldBeLessThan(compact - 100);
+            var names = Tiles(view)
+                .Where(tile => tile.Visibility == Visibility.Visible)
+                .Select(tile => tile.AccessibleName)
+                .ToArray();
+            names.ShouldContain(GuideView.UnfoldName, StringComparer.Ordinal);
+            names.ShouldContain("Funcionó", StringComparer.Ordinal);
+            names.ShouldNotContain(name =>
+                string.Equals(name, "Ver instrucción completa", StringComparison.Ordinal)
+            );
+            view.Notice.Visibility.ShouldBe(Visibility.Visible, "the live region stays");
+            Texts(view).ShouldContain("Panel · dedo · Word", StringComparer.Ordinal);
+
+            view.IsFolded = false;
+            Layout(view);
+
+            view.DesiredSize.Height.ShouldBe(compact, tolerance: 0.5);
+        });
+
+    [Fact]
+    public void The_instruction_takes_three_lines_until_the_whole_one_is_asked_for() =>
+        WpfThread.Invoke(() =>
+        {
+            var view = new GuideView(
+                (tile, width, height) => TileFactory.Create(tile, width, height)
+            );
+            view.Update(Model(stepAction: null) with { Instruction = LongestInstruction() });
+            Layout(view);
+            var compact = view.DesiredSize.Height;
+
+            view.ShowsFullInstruction = true;
+            Layout(view);
+
+            view.DesiredSize.Height.ShouldBeGreaterThan(compact);
+            Tiles(view).ShouldContain(tile => tile.AccessibleName == GuideView.ShortenName);
+        });
+
+    [Fact]
+    public void The_compact_strip_with_the_longest_step_fits_below_the_free_zone_of_the_maintainers_screen() =>
+        WpfThread.Invoke(() =>
+        {
+            // 2400 × 1516 physical pixels of work area at 175 %, in logical pixels.
+            var area = new Rect(0, 0, 2400 / 1.75, 1516 / 1.75);
+            var panel = SpikeLabNames.Surfaces().Panel.MeasureSize();
+            var view = new GuideView(
+                (tile, width, height) => TileFactory.Create(tile, width, height)
+            )
+            {
+                Width = LabLayout.StripWidth(area, panel),
+            };
+            view.Update(
+                Model(stepAction: "Forzar activación del panel") with
+                {
+                    Instruction = LongestInstruction(),
+                    Measurements =
+                    [
+                        "Primer plano: notepad · Enviar teclas: no · piezas que no arrancaron: 2 (ver la ventana de control)",
+                        "Cambios de primer plano: 0 · activaciones de superficies (WM_ACTIVATE): 0 · reg01.violations: 0",
+                        "Última orden: Negrita (Ctrl+B) por toque (dedo) · sin enviar · latencia: 1,2 ms",
+                        "Concesión: TextInput concedida (paso 2, 120 ms) · origen UiaInvoke · devolución: Restaurado al reintentar",
+                        "La sonda recibió: F24 = 0, caracteres = 0, menú = 0",
+                    ],
+                }
+            );
+            Layout(view);
+
+            // The window adds a border of 1 on each side.
+            var height = view.DesiredSize.Height + 2;
+            height.ShouldBeLessThanOrEqualTo(
+                (area.Height / 2) - LabLayout.StripBottomGap,
+                "the strip starts at the bottom and must stay below the top-left quarter"
+            );
+            (
+                view.DesiredSize.Width + 2 + panel.Width + (3 * LabLayout.Gap)
+            ).ShouldBeLessThanOrEqualTo(area.Width + 0.5);
+        });
+
+    [Fact]
+    public void The_handles_are_named_thumbs_of_at_least_44_px_without_their_glyph() =>
+        WpfThread.Invoke(() =>
+        {
+            var view = new GuideView(
+                (tile, width, height) => TileFactory.Create(tile, width, height)
+            );
+            var panel = SpikeLabNames.Surfaces().Panel;
+
+            foreach (
+                var (grip, name) in (ReadOnlySpan<(DragGrip, string)>)
+                    [(view.Grip, "Asa de la tira-guía"), (panel.Grip, "Asa del panel")]
+            )
+            {
+                var peer = UIElementAutomationPeer.CreatePeerForElement(grip);
+                peer.GetAutomationControlType().ShouldBe(AutomationControlType.Thumb);
+                peer.GetName().ShouldBe(name);
+                peer.GetChildren().ShouldBeNull();
+                grip.Width.ShouldBeGreaterThanOrEqualTo(DragGrip.MinimumSide);
+                grip.MinHeight.ShouldBeGreaterThanOrEqualTo(DragGrip.MinimumSide);
+            }
+        });
+
+    private static string LongestInstruction() =>
+        SpikeScripts
+            .All.SelectMany(script => script.Steps)
+            .Select(step => step.Instruction)
+            .MaxBy(instruction => instruction.Length)!;
 
     private static GuideModel Model(string? stepAction) =>
         new(

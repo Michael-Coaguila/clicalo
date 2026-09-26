@@ -8,7 +8,7 @@ public sealed class LabTilesTests
     [Fact]
     public void The_panel_order_fixes_the_voice_numbers_the_scripts_use()
     {
-        LabTiles.VoiceNumberOf(LabTiles.Underline).ShouldBe(3, "S1 row 32: «clic 3»");
+        LabTiles.VoiceNumberOf(LabTiles.Underline).ShouldBe(3, "S1 row 32 says «clic Subrayado»");
         LabTiles.VoiceNumberOf(LabTiles.Copy).ShouldBe(4, "S3 row 1: «clic 4»");
         LabTiles.VoiceNumberOf(LabTiles.Save).ShouldBe(7, "S3 row 6: «clic 7»");
         LabTiles.VoiceNumberOf("guide-worked").ShouldBeNull();
@@ -58,6 +58,9 @@ public sealed class LabTilesTests
             .Concat(LabTiles.SearchControls)
             .Concat(LabTiles.Guide)
             .Append(LabTiles.GuideStepAction)
+            .Append(LabTiles.GuideFold)
+            .Append(LabTiles.GuideInstruction)
+            .Append(LabTiles.GuideMove)
             .ToArray();
 
         all.Select(tile => tile.Name).ShouldBeUnique(StringComparer.Ordinal);

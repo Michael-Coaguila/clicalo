@@ -62,6 +62,13 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         // Moving a window runs no layout pass: without this, the touch targets keep their old screen position after a
         // drag of the handle (S1 row 30) or after the panel moves above the touch keyboard (EC-BUS-01).
         LocationChanged += (_, _) => RefreshTargets();
+        SizeChanged += (_, _) =>
+        {
+            if (IsShown)
+            {
+                OnResized();
+            }
+        };
     }
 
     /// <summary>«Panel#0», «Dock#0»…</summary>
@@ -91,6 +98,75 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     /// <summary>The element that drags the surface (the panel handle); null when it cannot be dragged.</summary>
     protected virtual FrameworkElement? DragHandle => null;
 
+    /// <summary>True when a drag of <see cref="DragHandle"/> is a repetition candidate (S1 row 30); false for instruments.</summary>
+    protected virtual bool CountsDrags => true;
+
+    /// <summary>
+    /// The size of the window in logical pixels: its actual size once shown; before, its content measured without
+    /// limits plus the border, so the surfaces can be placed from their real size before they appear.
+    /// </summary>
+    public Size MeasureSize()
+    {
+        if (IsVisible && ActualWidth > 0 && ActualHeight > 0)
+        {
+            return new Size(ActualWidth, ActualHeight);
+        }
+
+        if (Content is not UIElement content)
+        {
+            return default;
+        }
+
+        content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var border = BorderThickness;
+        return new Size(
+            content.DesiredSize.Width + border.Left + border.Right,
+            content.DesiredSize.Height + border.Top + border.Bottom
+        );
+    }
+
+    /// <summary>
+    /// Moves the shown surface (never resizes it) so it lies inside the work area of its monitor; with
+    /// <paramref name="bottom"/>, its bottom edge goes there first (physical pixels).
+    /// </summary>
+    public void KeepInsideWorkArea(int? bottom = null)
+    {
+        var bounds = Bounds();
+        if (!IsShown || bounds.IsEmpty)
+        {
+            return;
+        }
+
+        var area = WorkAreas.Of(bounds);
+        if (area.IsEmpty)
+        {
+            return;
+        }
+
+        var wanted = bottom is { } edge ? bounds with { Top = edge - bounds.Height } : bounds;
+        var inside = LabLayout.Inside(wanted, area);
+        if (inside != bounds)
+        {
+            TryMove(inside);
+        }
+    }
+
+    /// <summary><paramref name="logical"/> logical pixels in the physical pixels of this surface's monitor.</summary>
+    protected int ToPhysical(double logical) =>
+        (int)Math.Round(logical * VisualTreeHelper.GetDpi(this).DpiScaleY);
+
+    /// <summary>After every successful <see cref="TryShow"/>: keeps the surface inside the work area.</summary>
+    protected virtual void OnShown() => KeepInsideWorkArea();
+
+    /// <summary>After a drag of <see cref="DragHandle"/> ends: keeps the surface inside the work area it was dropped on.</summary>
+    protected virtual void OnDragEnded() => KeepInsideWorkArea();
+
+    /// <summary>
+    /// The shown surface changed size (its content changed). Nothing by default: the surfaces under test are only
+    /// moved when they appear and when a drag ends, never in the middle of a DPI change (S1 row 30).
+    /// </summary>
+    protected virtual void OnResized() { }
+
     /// <summary>The tile control of <paramref name="id"/>, if this surface has it.</summary>
     public ShortcutTile? Find(string id) =>
         Tiles
@@ -110,13 +186,15 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
                 "Superficies no activables (ShowPassive, HidePassive, MovePassive)."
             );
             RefreshTargets();
-            return true;
         }
         catch (Exception ex) when (ComponentBoard.IsContained(ex))
         {
             Context.Board.Fail(WindowingComponent, ex);
             return false;
         }
+
+        OnShown();
+        return true;
     }
 
     /// <summary>Hides the surface without activating anything.</summary>
@@ -467,7 +545,11 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         }
 
         _drag = null;
-        Context.Sink.OnHandleDrag(SurfaceName, Group, drag.Pointer);
+        OnDragEnded();
+        if (CountsDrags)
+        {
+            Context.Sink.OnHandleDrag(SurfaceName, Group, drag.Pointer);
+        }
     }
 
     private sealed record DragState(

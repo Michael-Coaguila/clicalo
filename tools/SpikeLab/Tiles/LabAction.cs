@@ -59,4 +59,13 @@ internal enum LabAction
 
     /// <summary>Guide strip: the extra action of the current step.</summary>
     GuideStepAction,
+
+    /// <summary>Guide strip: «Plegar la tira» and «Desplegar la tira».</summary>
+    GuideFold,
+
+    /// <summary>Guide strip: «Ver instrucción completa» and «Acortar la instrucción».</summary>
+    GuideInstruction,
+
+    /// <summary>Guide strip: «Mover la tira».</summary>
+    GuideMove,
 }

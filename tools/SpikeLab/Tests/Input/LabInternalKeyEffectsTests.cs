@@ -148,5 +148,8 @@ public sealed class LabInternalKeyEffectsTests
 
         public ValueTask<bool> WaitForRightsAsync(CancellationToken cancellationToken) =>
             ValueTask.FromResult(true);
+
+        public ValueTask<bool> WaitForChordReleaseAsync(CancellationToken cancellationToken) =>
+            ValueTask.FromResult(true);
     }
 }

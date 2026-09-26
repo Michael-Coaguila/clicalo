@@ -37,4 +37,7 @@ internal sealed record LabStatus
 
     /// <summary>True while «Enviar teclas» is on.</summary>
     public bool SendsKeys { get; init; }
+
+    /// <summary>True while «Números de voz» is on (it names the step action of S3 row 6).</summary>
+    public bool VoiceNumbers { get; init; }
 }

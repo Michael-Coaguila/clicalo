@@ -34,28 +34,41 @@ rutas: [M1-ownership.md](M1-ownership.md).
 
 | Ventana | ¿Se activa? | Para qué |
 |---|---|---|
-| **Ventana de control** | **Sí** (ventana normal) | Preparar: elegir el spike, «Mostrar superficies», «Abrir sonda», «Números de voz», «Enviar teclas», «Centro de control», «Paso anterior», «Guardar informe». Muestra qué piezas del producto están listas. **No la toques durante un ciclo**: te quitaría el primer plano |
-| **Tira-guía** (arriba) | **No** (`NonActivatingWindow`) | El paso actual en letra grande, los botones grandes y las mediciones automáticas. Es la franja de estado de los guiones |
-| **Panel** (abajo a la derecha) | No | 14 fichas reales (`ShortcutTile`) y el asa ⠿ para arrastrarlo |
-| **Pestaña con su lateral** (borde derecho) | No | Asa que abre y cierra la ventana lateral, y tres fichas |
-| **Burbuja** (abajo a la izquierda) | No | Un objetivo de 56 px |
-| **Búsqueda** (junto al panel, S4) | Solo con la concesión `TextInput` | Campo, «Dictar», «Resultado Negrita» y «Cerrar búsqueda» |
-| **Centro de control de laboratorio** (S4) | Sí, con la concesión `ControlCenter` | Campos «Nombre», «Texto» y «Web», cada uno con «Dictar», y «Cerrar» |
-| **Icono de bandeja** | — | Menú con la concesión `TrayMenu`: «Centro de control», «Soltar todo», «Salir de SpikeLab» |
+| **Ventana de control** (centrada) | **Sí** (ventana normal) | Preparar: elegir el spike, «Mostrar superficies», «Abrir sonda», «Números de voz», «Enviar teclas», «Abrir el CC desde la ventana de control», «Paso anterior», «Escribir el informe ahora», **«Abrir carpeta de informes»** y **«Abrir resumen»**. Arriba dice qué piezas del producto no están listas (el detalle, al final). **No la toques durante un ciclo**: te quitaría el primer plano |
+| **Tira-guía** (abajo a la izquierda) | **No** (`NonActivatingWindow`) | El paso actual, los botones y las mediciones automáticas, compacta, plegable y arrastrable por su asa. Es la franja de estado de los guiones |
+| **Panel** (abajo a la derecha) | No | 14 fichas reales (`ShortcutTile`) y el asa ⠿ (48 px de ancho) para arrastrarlo |
+| **Pestaña con su lateral** (borde derecho, arriba) | No | Asa que abre y cierra la ventana lateral, y tres fichas |
+| **Burbuja** (encima del panel) | No | Una ficha de 56 px |
+| **Búsqueda** (arriba, a la izquierda de la Pestaña; S4) | Solo con la concesión `TextInput` | «Campo de búsqueda», «Dictar», «Resultado Negrita» y «Cerrar búsqueda» |
+| **Centro de control de laboratorio** (centrado; S4) | Sí, con la concesión `ControlCenter` | Campos «Nombre», «Texto» y «Web», cada uno con «Dictar», y «Cerrar» |
+| **Icono de bandeja** | — | Menú con la concesión `TrayMenu`: «Abrir el Centro de control», «Soltar todas las teclas», «Salir de SpikeLab» |
 | **InputProbe** («la sonda», S4) | Sí | La app objetivo de los ciclos de voz de S4: cuenta lo que le llega |
+
+**Dónde queda cada cosa.** SpikeLab coloca cada superficie con el tamaño que mide de verdad, antes de mostrarla, y la
+mantiene dentro del área de trabajo (la pantalla sin la barra de tareas) cuando aparece y cuando se suelta tras
+arrastrarla; la ventana de control y el Centro de control de laboratorio nunca son más grandes que el área de trabajo.
+El cuarto de arriba a la izquierda queda libre: es la **zona libre** donde los guiones piden poner la app objetivo
+(arrastra su barra de título a esa esquina, o di con Acceso por voz «pulsa Windows flecha izquierda» y «pulsa Windows
+flecha arriba»), así ninguna superficie tapa el cursor, los menús ni la cinta que hay que vigilar.
 
 Las fichas del panel, por orden (es su número de voz): 1 Negrita (Ctrl+B), 2 Cursiva (Ctrl+I), 3 Subrayado (Ctrl+U),
 4 Copiar (Ctrl+C), 5 Pegar (Ctrl+V), 6 Deshacer (Ctrl+Z), 7 Guardar (Ctrl+S), 8 Localizar (Ctrl+F), 9 Mayús (Toggle
 de tres estados), 10 Mantener Ctrl (Toggle), 11 Perfil (ExpandCollapse), 12 Buscar, 13 Centro de control y 14 Soltar
-todo. Los nombres no se repiten en ninguna superficie, así «clic Negrita» nunca necesita desambiguar. «Buscar» y
-«Centro de control» solo piden concesión en S4; en S1 y S3 no cambian el primer plano.
+todo. **Ningún nombre se repite en ninguna ventana de SpikeLab** (superficies, ventana de control, Centro de control
+de laboratorio y menú de la bandeja), salvo «Dictar», que la regla UIA010 pide junto a cada campo de texto; así «clic
+Negrita» nunca necesita desambiguar y ninguna orden de voz elige por error la ventana de control, que se activa. Lo
+comprueba `UiaNameUniquenessTests`, que además exige que cada «clic X» de los guiones llegue a un solo elemento y que
+ningún otro nombre contenga X. «Buscar» y «Centro de control» solo piden concesión en S4; en S1 y S3 no cambian el
+primer plano.
 
 ## La tira-guía
 
-Arriba dice el spike, el paso y la fila de la tabla de resultados; debajo, el título y **qué hacer**, en letra grande.
-Luego las repeticiones («Repeticiones: 7 de 20 · correctas: 7 · fallos: 0 · comprobación final: pendiente»), las
-mediciones automáticas y la última nota. El recuadro de la derecha dice el estado **con palabras** («Todo bien.»,
-«Algo cambió: …», «Paso superado: toca «Siguiente».») y el borde es **verde** o **rojo**.
+Empieza **abajo a la izquierda** y es **compacta**: arriba, su asa ⠿ (a la izquierda, para arrastrarla con el dedo),
+el spike, el paso y la fila de la tabla de resultados, el título y el estado **con palabras** («Todo bien.», «Algo
+cambió: …», «Paso superado: toca «Siguiente».»), con el borde **verde** o **rojo**; debajo, **qué hacer** en tres
+líneas, las repeticiones («Repeticiones: 7 de 20 · correctas: 7 · fallos: 0 · comprobación final: pendiente»), las
+mediciones automáticas, la última nota (la región *live* que lee Narrador) y los botones. Nunca sale del área de
+trabajo: si crece o se pliega, conserva su borde de abajo (o el de arriba, si la has llevado a la mitad de arriba).
 
 **Mediciones automáticas:**
 
@@ -78,8 +91,13 @@ mediciones automáticas y la última nota. El recuadro de la derecha dice el est
 | **Falló** | Marca como fallida la última repetición (viste algo que SpikeLab no mide: un menú que se cerró, el cursor que se movió) | Cuenta una repetición fallida |
 | **Repetir** | Empieza el paso de cero. El intento anterior **no se borra**: queda en el informe como «intento descartado» | Igual |
 | **Siguiente** | Pasa al siguiente paso. Un paso opcional sin repeticiones queda «no aplicable»; uno obligatorio, «incompleto» | Igual |
-| **Acción del paso** | Solo en los pasos que la necesitan: «Forzar activación del panel» (S1 fila 31), «Aviso cortés» y «Aviso urgente» (S3 filas 9a y 9b) | |
+| **Acción del paso** | Solo en los pasos que la necesitan: «Forzar activación del panel» (S1 fila 31), «Aviso cortés» y «Aviso urgente» (S3 filas 9a y 9b), «Activar números de Clícalo» y «Quitar números de Clícalo» (S3 fila 6) | Igual |
 | **Soltar todo ya** | Suelta Mayús, Ctrl y Alt izquierdas si están pulsadas y quita los enclavamientos | Igual |
+| **Ver instrucción completa** | Muestra toda la instrucción en lugar de sus tres primeras líneas; **«Acortar la instrucción»** vuelve | Igual |
+| **Plegar la tira** | Deja solo el paso, el estado, el aviso y los botones, para que no tape una lista o un menú (S1 filas 28 y 29); **«Desplegar la tira»** vuelve | Igual |
+| **Mover la tira** | La lleva a la otra mitad de la pantalla, arriba o abajo (con el dedo se arrastra por su asa) | Igual |
+
+Plegar, mover y arrastrar la tira no cuentan como repeticiones ni cambian «Última orden».
 
 ## Cómo se cuentan las repeticiones
 
@@ -125,8 +143,14 @@ SpikeLab corre en el equipo de trabajo real, con dictado (Wispr Flow, Typeless) 
 - **El atajo interno (Ctrl+Alt+Mayús+F24) y Win+H** solo se inyectan si delante está una ventana de SpikeLab o la
   sonda, comprobado justo antes con el inyector protegido de TestKit.Windows. Por eso los ciclos de voz de S4 usan la
   sonda como app objetivo.
-- **«Soltar todo»** está en el panel, en la tira-guía, en la ventana de control y en la bandeja. Solo envía
-  liberaciones de Mayús, Ctrl y Alt izquierdas que estén pulsadas (nunca Windows, que abriría Inicio).
+- **Soltar todo** está en el panel («Soltar todo»), en la tira-guía («Soltar todo ya», que no quita el foco: di «clic
+  Soltar todo ya»), en la ventana de control («Soltar todo desde la ventana de control», que se activa) y en la
+  bandeja («Soltar todas las teclas»). Solo envía liberaciones de Mayús, Ctrl y Alt izquierdas que estén pulsadas
+  (nunca Windows, que abriría Inicio).
+- **Ninguna instrucción de los guiones pide decir una frase que no sea una orden** («clic …», «mostrar números»,
+  «mostrar números en todas partes», «ocultar números», «pulsa …»), así Acceso por voz nunca escribe una orden en la
+  app objetivo; lo comprueba `UiaNameUniquenessTests`. Lo único que se dicta en la app es la comprobación final, en un
+  documento de prueba.
 
 ## Piezas y cómo llega la entrada
 
@@ -146,7 +170,9 @@ cuenta ese dispositivo.
 Cada ejecución guarda dos archivos en **`%LOCALAPPDATA%\Clicalo.SpikeLab\reports`** (o en `--reports`), con el
 spike y la hora local de inicio: `S1-2026-09-26-101530.json` y `S1-2026-09-26-101530.md`. Se reescriben (de forma
 atómica) tras cada repetición, cada 10 segundos y al cerrar, así que un cierre inesperado pierde como mucho la última
-repetición. La ruta exacta aparece en la ventana de control.
+repetición. La ruta exacta aparece en la ventana de control, y sus botones **«Abrir carpeta de informes»** (el
+Explorador, con el informe seleccionado: la carpeta está oculta en `%LOCALAPPDATA%`) y **«Abrir resumen»** (el `.md`,
+con la app que Windows tenga para él) los abren sin escribir la ruta.
 
 **Privacidad:** solo nombres de proceso, contadores, longitudes y tiempos. **Nunca** títulos de ventana ni el texto que
 escribas o dictes (de la búsqueda y del Centro de control solo se guarda si el campo tenía texto).
@@ -154,7 +180,9 @@ escribas o dictes (de la búsqueda y del Centro de control solo se guarda si el 
 ### Resumen Markdown (`.md`)
 
 Pensado para leerlo con Narrador: la primera frase es el resultado («**Resultado: fallido.** 1 de 32 pasos
-superados…»), luego la máquina y los ajustes, las piezas que no estaban listas, una tabla con una fila por paso
+superados…»), luego la máquina (Windows con su revisión, pantalla táctil, lápiz y mouse, y cada monitor con su
+resolución, su escala y su área de trabajo: lo que pide la cabecera de los resultados manuales de S1) y los ajustes,
+las piezas que no estaban listas, una tabla con una fila por paso
 (resultado, correctas, fallos y latencia p95) y, por cada paso con fallos, la lista de repeticiones fallidas con su
 motivo y los intentos descartados con «Repetir».
 
@@ -167,7 +195,7 @@ Enumeraciones en camelCase, fechas ISO 8601 con zona, `null` cuando un valor no 
 | `format` | `"clicalo.spikelab.report/1"` |
 | `spike`, `title`, `document` | `"S1"`, su título y su guion (`docs/testing/spikes/S1.md`) |
 | `startedAt`, `updatedAt` | Inicio de la ejecución y última escritura |
-| `machine` | `windows` (versión y compilación), `architecture`, `labVersion` (versión de SpikeLab, con el commit si la compilación lo conoce) |
+| `machine` | `windows` (compilación con su revisión y nombre de versión, «10.0.26200.6584 (25H2)»), `windowsBuild`, `windowsDisplayVersion`, `architecture`, `labVersion` (versión de SpikeLab, con el commit si la compilación lo conoce), `input` (`touch`, `integratedTouch`, `externalTouch`, `maxTouches`, `pen`, `digitizerReady` y `mouse`, según `GetSystemMetrics`) y `monitors[]` (`primary`, `left`, `top`, `width`, `height`, `workWidth`, `workHeight`, `dpi` y `scalePercent`, en píxeles físicos; los monitores de ese momento) |
 | `settings` | `sendsKeys` («Enviar teclas»), `voiceNumbers` («Números de voz») |
 | `verdict` | `passed`, `failed` o `incomplete` |
 | `summary` | `steps` y el número de pasos por veredicto: `pending`, `inProgress`, `passed`, `failed`, `incomplete`, `notApplicable` |
@@ -208,7 +236,13 @@ Cada `evidence`:
 `tools/SpikeLab/Tests` (`SpikeLab.Tests`) prueba sin escritorio el motor del guion (pasos, 20 de 20, «Falló»,
 «Repetir», «Siguiente», veredictos), las comprobaciones automáticas, la ventana de cada repetición, los informes (JSON,
 Markdown y escritura atómica), el inyector de laboratorio y sus reglas de seguridad (con un `SendInput` falso: no
-inyecta nada), la tira-guía y las superficies creadas en proceso sin mostrarse. Ninguna prueba muestra ventanas ni
+inyecta nada), la tira-guía y las superficies creadas en proceso sin mostrarse, dónde empieza cada superficie
+(`LabLayoutTests`: dentro del área de trabajo y fuera de la zona libre, también en la pantalla de 2400 × 1600 al
+175 %), que ningún nombre UIA se repite entre ventanas y que cada orden de voz de los guiones es inequívoca
+(`UiaNameUniquenessTests`), y que el «Recorrido» y la tabla de resultados de S1.md, S3.md y S4.md dicen exactamente lo
+mismo que la tira-guía (`SpikeScriptDocumentTests`). El «Recorrido» de cada guion **se genera** desde
+`SpikeScripts.cs`: tras cambiar un texto del laboratorio, ejecuta las pruebas una vez con
+`CLICALO_UPDATE_SPIKE_ROUTES=1` y la prueba lo reescribe entre sus marcadores. Ninguna prueba muestra ventanas ni
 inyecta entrada. Para ejecutarlas sueltas:
 
 ```powershell

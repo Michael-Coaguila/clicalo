@@ -8,9 +8,16 @@ namespace Clicalo.Tools.SpikeLab.Scripting;
 
 /// <summary>
 /// The manual scripts of docs/testing/spikes/S1.md, S3.md and S4.md as data: one step per row of their manual results
-/// table, in the recommended order. The texts are the laboratory's own (M1 adds no product text, M1-ownership.md).
-/// When a script document changes a row, this catalog changes with it (SpikeScriptsTests pins the row ids).
+/// table, in the recommended order. The texts are the laboratory's own (M1 adds no product text, M1-ownership.md) and
+/// are the single source of the «Recorrido» of each document: SpikeScriptDocumentTests fails when a document and this
+/// catalog say different things, and prints the block to paste.
 /// </summary>
+/// <remarks>
+/// Every voice order is unambiguous: «clic» with a name that no other element of SpikeLab contains, or, where the row
+/// is about numbers, «mostrar números» (or «mostrar números en todas partes») and «ocultar números» said explicitly.
+/// Nothing asks to say a phrase that is not a command, so nothing is dictated into the app under test by accident; the
+/// only dictation into the app is the final check, in a blank document.
+/// </remarks>
 internal static class SpikeScripts
 {
     /// <summary>Repetitions per row: «20 de 20» is the success criterion of every blocking spike (blueprint §15.1).</summary>
@@ -19,8 +26,23 @@ internal static class SpikeScripts
     /// <summary>Repetitions of S3 row 13 (high contrast): the goal is only to see that the tree survives.</summary>
     public const int HighContrastRepetitions = 5;
 
+    /// <summary>Where the app under test goes (<c>LabLayout.TargetZone</c>): no surface starts there.</summary>
+    private const string Zone = "en la zona libre (el cuarto de arriba a la izquierda)";
+
     private const string FinalWordCheck =
-        " Al terminar, dicta otra palabra sin tocar la app: si se escribe en ella, toca «Funcionó»; si no, «Falló».";
+        " Al terminar, dicta otra palabra sin tocar la app y espera a que aparezca (Wispr Flow y Typeless tardan un "
+        + "momento): si se escribe en la app, toca «Funcionó»; si no aparece, «Falló».";
+
+    private const string FinalKeyboardCheck =
+        " Al terminar, sin tocar la app, escribe otra letra con el teclado táctil (el dictado de Wispr Flow y "
+        + "Typeless no llega a una app de administrador): si aparece en la app, toca «Funcionó»; si no, «Falló».";
+
+    private const string FinalNumberCheck =
+        " Al terminar, sin tocar la Calculadora, escribe otro número con el teclado táctil: si aparece en la "
+        + "Calculadora, toca «Funcionó»; si no, «Falló».";
+
+    private const string NotTyped =
+        " Si una orden se escribe en el Bloc de notas en vez de ejecutarse, no cuenta: repítela.";
 
     /// <summary>S1 · No activation (32 rows).</summary>
     public static SpikeScript S1 { get; } =
@@ -44,6 +66,9 @@ internal static class SpikeScripts
             BuildS4()
         );
 
+    /// <summary>Every script, in the order of the control window.</summary>
+    public static ImmutableArray<SpikeScript> All { get; } = [S1, S3, S4];
+
     /// <summary>The script of <paramref name="spike"/>.</summary>
     public static SpikeScript For(SpikeId spike) =>
         spike switch
@@ -56,37 +81,58 @@ internal static class SpikeScripts
 
     private static ImmutableArray<ScriptStep> BuildS1()
     {
-        (string Name, string Setup)[] apps =
+        (string Name, string Setup, string FinalCheck)[] apps =
         [
             (
                 "Word",
-                "Pon Word delante con un documento en blanco y escribe o dicta una palabra: el cursor debe quedar parpadeando."
+                "Pon Word "
+                    + Zone
+                    + ", con un documento en blanco, y escribe o dicta una palabra: el cursor debe "
+                    + "quedar parpadeando.",
+                FinalWordCheck
             ),
             (
                 "Chrome",
-                "Pon Chrome delante con una página que tenga un campo de búsqueda; toca el campo y escribe o dicta una palabra."
+                "Pon Chrome "
+                    + Zone
+                    + " con una página que tenga un campo de búsqueda; toca el campo y escribe o "
+                    + "dicta una palabra, sin pulsar Intro.",
+                FinalWordCheck
             ),
             (
                 "VS Code",
-                "Pon VS Code delante con un archivo de texto y escribe o dicta una palabra: el cursor debe quedar parpadeando."
+                "Pon VS Code "
+                    + Zone
+                    + " con un archivo nuevo sin guardar (Archivo › Nuevo archivo de texto) y "
+                    + "escribe o dicta una palabra: el cursor debe quedar parpadeando.",
+                FinalWordCheck
             ),
             (
                 "Bloc de notas",
-                "Pon el Bloc de notas delante y escribe o dicta una palabra: el cursor debe quedar parpadeando."
+                "Pon un Bloc de notas nuevo "
+                    + Zone
+                    + " y escribe o dicta una palabra: el cursor debe quedar "
+                    + "parpadeando.",
+                FinalWordCheck
             ),
             (
                 "Calculadora (Tienda)",
-                "Pon la Calculadora delante y escribe un número con su teclado en pantalla."
+                "Pon la Calculadora " + Zone + " y escribe un número con sus propios botones.",
+                FinalNumberCheck
             ),
             (
                 "Bloc de notas (administrador)",
-                "Pon delante el Bloc de notas abierto como administrador y escribe o dicta una palabra."
+                "Pon "
+                    + Zone
+                    + " el Bloc de notas abierto como administrador y escribe una palabra con el teclado "
+                    + "táctil.",
+                FinalKeyboardCheck
             ),
         ];
 
         var steps = ImmutableArray.CreateBuilder<ScriptStep>(32);
         var row = 1;
-        foreach (var (app, setup) in apps)
+        foreach (var (app, setup, finalCheck) in apps)
         {
             foreach (
                 var surface in (SurfaceGroup[])
@@ -99,14 +145,16 @@ internal static class SpikeScripts
                         surface,
                         PointerKind.Finger,
                         app,
-                        setup + " " + TapWith(surface, "el dedo")
+                        setup + " " + TapWith(surface, "el dedo") + finalCheck
                     )
                 );
             }
         }
 
         const string Notepad =
-            "Pon el Bloc de notas delante y escribe o dicta una palabra: el cursor debe quedar parpadeando.";
+            "Pon un Bloc de notas nuevo "
+            + Zone
+            + " y escribe o dicta una palabra: el cursor debe quedar parpadeando.";
         foreach (
             var (kind, name, missing) in (ReadOnlySpan<(PointerKind, string, string)>)
                 [
@@ -129,6 +177,7 @@ internal static class SpikeScripts
                         Notepad
                             + " "
                             + TapWith(surface, name)
+                            + FinalWordCheck
                             + " Si no tienes "
                             + missing
                             + ", toca «Siguiente»: la fila queda como no aplicable."
@@ -174,16 +223,23 @@ internal static class SpikeScripts
             PanelCondition(
                 row++,
                 "Lista de la cinta de Word abierta",
-                "En Word abre la lista de tamaño de fuente de la cinta y, con la lista abierta, toca el panel 20 veces. "
-                    + "Si la lista se cierra, toca «Falló» y vuelve a abrirla. Al final toca «Funcionó» si siguió abierta."
+                "Con Word "
+                    + Zone
+                    + ", toca «Plegar la tira» para que la tira no tape la lista. Abre la lista de "
+                    + "tamaño de fuente de la cinta y, con la lista abierta, toca el panel 20 veces. Si la lista se "
+                    + "cierra, toca «Falló» y vuelve a abrirla. Al final toca «Funcionó» si siguió abierta y "
+                    + "«Desplegar la tira»."
             )
         );
         steps.Add(
             PanelCondition(
                 row++,
                 "Menú ⋮ de Chrome abierto",
-                "En Chrome abre el menú ⋮ y, con el menú abierto, toca el panel 20 veces. Si el menú se cierra, toca "
-                    + "«Falló» y vuelve a abrirlo. Al final toca «Funcionó» si siguió abierto."
+                "Con Chrome "
+                    + Zone
+                    + ", toca «Plegar la tira» para que la tira no tape el menú. Abre el menú ⋮ y, "
+                    + "con el menú abierto, toca el panel 20 veces. Si el menú se cierra, toca «Falló» y vuelve a "
+                    + "abrirlo. Al final toca «Funcionó» si siguió abierto y «Desplegar la tira»."
             )
         );
         steps.Add(
@@ -225,9 +281,11 @@ internal static class SpikeScripts
         steps.Add(
             new ScriptStep(
                 Id(row),
-                "Panel · voz («clic 3») · Bloc de notas",
-                "Con el Bloc de notas delante, activa Acceso por voz y di «mostrar números» y «clic 3» 20 veces (cada "
-                    + "orden sobre una ficha del panel cuenta). La tira sigue en verde."
+                "Panel · voz («clic Subrayado») · Bloc de notas",
+                "Con el Bloc de notas delante y Acceso por voz despierto, di «clic Subrayado» 20 veces: cada orden "
+                    + "cuenta y la tira sigue en verde. Si Acceso por voz te pide elegir con números, di el que muestra "
+                    + "sobre la ficha «Subrayado» del panel."
+                    + NotTyped
                     + FinalWordCheck
                     + " Si solo falla esta fila, S1 no se decide aquí: pasa a S3.",
                 CyclesPerRow,
@@ -235,6 +293,8 @@ internal static class SpikeScripts
                 EvidenceCheck.NonActivation
             )
             {
+                Tile = LabTiles.Underline,
+                Pattern = CommandPattern.Invoke,
                 Decisive = false,
             }
         );
@@ -244,7 +304,9 @@ internal static class SpikeScripts
     private static ImmutableArray<ScriptStep> BuildS3()
     {
         const string Target =
-            "Deja el Bloc de notas delante con el cursor parpadeando (la tira dice «Primer plano: notepad»). ";
+            "Deja el Bloc de notas delante, "
+            + Zone
+            + ", con el cursor parpadeando (la tira dice «Primer plano: notepad»). ";
         const string AfterEach =
             " Tras cada orden la tira sigue en verde y «Última orden» muestra la ficha y el patrón.";
 
@@ -252,11 +314,14 @@ internal static class SpikeScripts
         [
             Voice(
                 "1",
-                "Acceso por voz · «mostrar números» + «clic 4»",
+                "Acceso por voz · «mostrar números» + «clic» y el número de «Copiar»",
                 Target
-                    + "Di «mostrar números» y después «clic» con el número que Acceso por voz muestre sobre la ficha 4 de "
-                    + "Clícalo («Copiar»). 20 veces."
+                    + "Di «mostrar números». Si Acceso por voz pone números sobre las fichas del panel, di «clic» y el "
+                    + "número que muestra sobre «Copiar» (el de Acceso por voz, no el de Clícalo). Si solo los pone en "
+                    + "el Bloc de notas, no digas ningún número: di «ocultar números» y toca «Falló». Repite las dos "
+                    + "órdenes 20 veces y, al terminar, di «ocultar números»."
                     + AfterEach
+                    + NotTyped
                     + FinalWordCheck,
                 LabTiles.Copy,
                 CommandPattern.Invoke
@@ -264,17 +329,18 @@ internal static class SpikeScripts
             Voice(
                 "2",
                 "Acceso por voz · «clic Negrita»",
-                Target + "Di «clic Negrita». 20 veces." + AfterEach + FinalWordCheck,
+                Target + "Di «clic Negrita». 20 veces." + AfterEach + NotTyped + FinalWordCheck,
                 LabTiles.Bold,
                 CommandPattern.Invoke
             ),
             Voice(
                 "3",
-                "Acceso por voz · «mostrar números en todas partes» + «clic N»",
+                "Acceso por voz · «mostrar números en todas partes» + «clic» y el número de «Guardar»",
                 Target
-                    + "Di «mostrar números en todas partes» y después «clic» con el número de la ficha «Guardar». 20 "
-                    + "veces."
+                    + "Di «mostrar números en todas partes» y después «clic» con el número que Acceso por voz muestra "
+                    + "sobre la ficha «Guardar». 20 veces. Al terminar, di «ocultar números»."
                     + AfterEach
+                    + NotTyped
                     + FinalWordCheck,
                 LabTiles.Save,
                 CommandPattern.Invoke
@@ -285,6 +351,7 @@ internal static class SpikeScripts
                 Target
                     + "Di «clic Mayús»: cada orden cambia su estado (desactivada, activada, bloqueada) y la tira dice "
                     + "«Toggle». 20 órdenes."
+                    + NotTyped
                     + FinalWordCheck,
                 LabTiles.Shift,
                 CommandPattern.Toggle
@@ -295,6 +362,7 @@ internal static class SpikeScripts
                 Target
                     + "Di «clic Perfil»: se abre la ventana de perfil y la tira dice «ExpandCollapse»; dilo otra vez "
                     + "para cerrarla. Cada orden cuenta: 20 órdenes."
+                    + NotTyped
                     + FinalWordCheck,
                 LabTiles.Profile,
                 CommandPattern.ExpandCollapse
@@ -303,22 +371,25 @@ internal static class SpikeScripts
                 "6",
                 "Acceso por voz · «clic 7» con los números de Clícalo",
                 Target
-                    + "Activa «Números de voz» en la ventana de control antes de empezar: cada ficha muestra su "
-                    + "número. Di «clic 7» con el número de Clícalo de «Guardar» (su nombre empieza por «7»). 20 "
-                    + "veces."
+                    + "Si Acceso por voz muestra sus números, di «ocultar números». Toca «Activar números de Clícalo» "
+                    + "en esta tira: cada ficha del panel muestra su número y su nombre empieza por él. Di «clic 7» "
+                    + "(el número de Clícalo de «Guardar»). 20 veces. Al terminar, toca «Quitar números de Clícalo»."
+                    + NotTyped
                     + FinalWordCheck,
                 LabTiles.Save,
                 CommandPattern.Invoke
             ) with
             {
                 Checks = EvidenceCheck.NonActivation | EvidenceCheck.VoiceNumberInName,
+                Action = StepAction.ToggleVoiceNumbers,
             },
             Voice(
                 "7",
                 "Narrador · exploración táctil + doble toque",
                 Target
                     + "Con Narrador activo, arrastra un dedo sobre las fichas: debe leer «Negrita, botón» (o «1 "
-                    + "Negrita, botón» con números de voz). Toca dos veces con un dedo para activar. 20 activaciones."
+                    + "Negrita, botón» con los números de Clícalo). Toca dos veces con un dedo para activar. 20 "
+                    + "activaciones."
                     + FinalWordCheck,
                 tile: null,
                 pattern: null
@@ -365,11 +436,11 @@ internal static class SpikeScripts
             ),
             Voice(
                 "11",
-                "Reconocimiento de voz (W10) · «mostrar números» + «clic 4»",
+                "Reconocimiento de voz (W10) · «mostrar números» + «clic» y el número de «Copiar»",
                 "Solo en la máquina virtual de Windows 10 22H2, con Reconocimiento de voz de Windows. "
                     + Target
-                    + "Di «mostrar números» y «clic» con el número de «Copiar». 20 veces. Sin máquina virtual, toca "
-                    + "«Siguiente»: la fila queda pendiente.",
+                    + "Di «mostrar números» y «clic» con el número que muestre sobre «Copiar». 20 veces. Sin máquina "
+                    + "virtual, toca «Siguiente»: la fila queda pendiente.",
                 LabTiles.Copy,
                 CommandPattern.Invoke
             ) with
@@ -391,10 +462,12 @@ internal static class SpikeScripts
             Voice(
                 "13",
                 "Acceso por voz con alto contraste · filas 1 y 2",
-                "Activa el alto contraste (Configuración › Accesibilidad › Temas de contraste › Aplicar). "
+                "Activa el alto contraste (Configuración › Accesibilidad › Temas de contraste › Aplicar) y vuelve a "
+                    + "tocar el Bloc de notas. "
                     + Target
-                    + "Repite las órdenes de las filas 1 y 2 («clic» sobre «Copiar» y «clic Negrita»): 5 órdenes en "
-                    + "total. Las fichas conservan sus nombres y la tira sigue en verde. Después desactívalo y toca "
+                    + "Repite las órdenes de las filas 1 y 2: 5 órdenes en total, por ejemplo 3 sobre «Copiar» (con "
+                    + "«mostrar números» y su número) y 2 «clic Negrita». Las fichas conservan sus nombres y la tira "
+                    + "sigue en verde. Al terminar, di «ocultar números», desactiva el alto contraste y toca "
                     + "«Funcionó».",
                 tile: null,
                 pattern: null
@@ -407,14 +480,20 @@ internal static class SpikeScripts
 
     private static ImmutableArray<ScriptStep> BuildS4()
     {
-        const string Result =
-            " Toca «Resultado Negrita» (o di «clic Resultado Negrita»): SpikeLab no envía ninguna acción en M1, solo "
-            + "devuelve el primer plano y lo verifica. La app vuelve delante con el cursor donde estaba y la tira dice "
-            + "«Devolución: Restaurado» (o «Restaurado al reintentar»). 20 ciclos. Al final toca «Funcionó» si el "
-            + "texto cayó siempre en el campo de búsqueda y no en la app.";
         const string OpenByTouch =
-            "Pon Word delante con el cursor parpadeando. Toca 🔍 «Buscar» en el panel: el campo tiene el cursor dentro "
-            + "y la tira dice «Concesión: TextInput concedida». ";
+            "Pon Word "
+            + Zone
+            + ", con un documento en blanco y el cursor parpadeando. Toca 🔍 «Buscar» en el panel: el campo tiene el "
+            + "cursor dentro y la tira dice «Concesión: TextInput concedida». ";
+        const string WaitForText =
+            " Espera a ver «negr» o «negrita» en el campo de búsqueda antes de seguir: Wispr Flow y Typeless pegan el "
+            + "texto un momento después. Si no aparece, toca «Cerrar búsqueda»: el ciclo cuenta como fallido.";
+        const string Result =
+            " Después toca «Resultado Negrita» (o di «clic Resultado Negrita»): SpikeLab no envía ninguna acción en "
+            + "M1, solo devuelve el primer plano y lo verifica; con el campo vacío no lo devuelve y te avisa. Word "
+            + "vuelve delante con el cursor donde estaba y la tira dice «devolución: Restaurado» (o «Restaurado al "
+            + "reintentar»). 20 ciclos. Al final toca «Funcionó» si el texto cayó siempre en el campo de búsqueda y "
+            + "nunca en Word.";
         const string Probe =
             "Toca «Abrir sonda» en la ventana de control (una vez) y pon la sonda delante antes de cada ciclo. ";
         const string ProbeResult =
@@ -433,6 +512,7 @@ internal static class SpikeScripts
                 OpenByTouch
                     + "Escribe «negr» con el teclado táctil (toca el campo si no sale solo; si tapa el panel, el panel "
                     + "debe subir)."
+                    + WaitForText
                     + Result,
                 LeaseKind.TextInput,
                 LeaseOrigin.Touch,
@@ -443,6 +523,7 @@ internal static class SpikeScripts
                 "Toque · Word · 🎤 Dictar (Win+H)",
                 OpenByTouch
                     + "Toca 🎤 «Dictar» y dicta «negrita» con el dictado de Windows."
+                    + WaitForText
                     + Result,
                 LeaseKind.TextInput,
                 LeaseOrigin.Touch,
@@ -451,7 +532,7 @@ internal static class SpikeScripts
             Lease(
                 "3",
                 "Toque · Word · Wispr Flow",
-                OpenByTouch + "Dicta «negrita» con Wispr Flow." + Result,
+                OpenByTouch + "Dicta «negrita» con Wispr Flow." + WaitForText + Result,
                 LeaseKind.TextInput,
                 LeaseOrigin.Touch,
                 TextCycle
@@ -459,7 +540,7 @@ internal static class SpikeScripts
             Lease(
                 "4",
                 "Toque · Word · Typeless",
-                OpenByTouch + "Dicta «negrita» con Typeless." + Result,
+                OpenByTouch + "Dicta «negrita» con Typeless." + WaitForText + Result,
                 LeaseKind.TextInput,
                 LeaseOrigin.Touch,
                 TextCycle
@@ -468,8 +549,8 @@ internal static class SpikeScripts
                 "5",
                 "Acceso por voz (UIA) · sonda · dictado de Acceso por voz",
                 Probe
-                    + "Di «clic Buscar» con Acceso por voz; dicta «negr» con Acceso por voz; di «clic Resultado "
-                    + "Negrita»."
+                    + "Di «clic Buscar» con Acceso por voz; dicta «negr» con Acceso por voz y espera a verlo en el "
+                    + "campo; di «clic Resultado Negrita»."
                     + ProbeResult,
                 LeaseKind.TextInput,
                 LeaseOrigin.UiaInvoke,
@@ -491,8 +572,8 @@ internal static class SpikeScripts
                 "Reconocimiento de voz (W10) · sonda · dictado",
                 "Solo en la máquina virtual de Windows 10 22H2. "
                     + Probe
-                    + "Di «clic Buscar», dicta «negr» y di «clic Resultado Negrita». Sin máquina virtual, toca "
-                    + "«Siguiente»: la fila queda pendiente."
+                    + "Di «clic Buscar», dicta «negr», espera a verlo en el campo y di «clic Resultado Negrita». Sin "
+                    + "máquina virtual, toca «Siguiente»: la fila queda pendiente."
                     + ProbeResult,
                 LeaseKind.TextInput,
                 LeaseOrigin.UiaInvoke,
@@ -515,10 +596,12 @@ internal static class SpikeScripts
             Lease(
                 "9",
                 "Centro de control desde el panel · Bloc de notas · los tres métodos",
-                "Pon el Bloc de notas delante. Toca ⚙ «Centro de control» en el panel. Rellena los tres campos: "
-                    + "«Nombre» con el teclado táctil, «Texto» con 🎤 (Win+H) y «Web» con Wispr Flow o Typeless. Cierra "
-                    + "el CC con «Cerrar»: el Bloc de notas vuelve delante con el cursor en su sitio. 20 ciclos. Al "
-                    + "final toca «Funcionó» si cada texto cayó en su campo.",
+                "Pon el Bloc de notas delante, "
+                    + Zone
+                    + ". Toca ⚙ «Centro de control» en el panel. Rellena los tres campos: «Nombre» con el teclado "
+                    + "táctil, «Texto» con 🎤 «Dictar» (Win+H) y «Web» con Wispr Flow o Typeless; espera a ver cada "
+                    + "texto en su campo antes de seguir. Ciérralo con «Cerrar»: el Bloc de notas vuelve delante con el "
+                    + "cursor en su sitio. 20 ciclos. Al final toca «Funcionó» si cada texto cayó en su campo.",
                 LeaseKind.ControlCenter,
                 LeaseOrigin.Touch,
                 TextCycle
@@ -527,8 +610,8 @@ internal static class SpikeScripts
                 "10",
                 "Centro de control desde la bandeja · Bloc de notas",
                 "Con el Bloc de notas delante, toca el icono de SpikeLab en la bandeja (si está oculto, toca ^ primero) "
-                    + "y elige «Centro de control»; ciérralo con «Cerrar». El Bloc de notas vuelve delante. 20 ciclos. "
-                    + "Al final toca «Funcionó».",
+                    + "y elige «Abrir el Centro de control»; ciérralo con «Cerrar». El Bloc de notas vuelve delante. 20 "
+                    + "ciclos. Al final toca «Funcionó».",
                 LeaseKind.ControlCenter,
                 LeaseOrigin.Tray,
                 EvidenceCheck.LeaseRoundTrip
@@ -537,8 +620,8 @@ internal static class SpikeScripts
                 "11",
                 "Menú de la bandeja · Bloc de notas",
                 "Con el Bloc de notas delante, mantén el dedo sobre el icono de SpikeLab en la bandeja (o tócalo) y "
-                    + "elige «Soltar todo». El menú se cierra y el Bloc de notas vuelve delante. 20 ciclos. Al final "
-                    + "toca «Funcionó».",
+                    + "elige «Soltar todas las teclas». El menú se cierra y el Bloc de notas vuelve delante. 20 ciclos. "
+                    + "Al final toca «Funcionó».",
                 LeaseKind.TrayMenu,
                 LeaseOrigin.Tray,
                 EvidenceCheck.LeaseRoundTrip
@@ -571,17 +654,14 @@ internal static class SpikeScripts
             SurfaceGroup.Panel => "Toca el panel 20 veces con "
                 + device
                 + ", alternando sus fichas. Tras cada toque la tira sigue en verde y el cursor de la app no se "
-                + "mueve."
-                + FinalWordCheck,
+                + "mueve.",
             SurfaceGroup.TabWithSide => "Toca la Pestaña 20 veces con "
                 + device
                 + ": sus fichas y su asa, que abre y cierra la ventana lateral (los toques en la lateral también "
-                + "cuentan). Tras cada toque la tira sigue en verde."
-                + FinalWordCheck,
+                + "cuentan). Tras cada toque la tira sigue en verde.",
             _ => "Toca la burbuja 20 veces con "
                 + device
-                + ". Tras cada toque la tira sigue en verde."
-                + FinalWordCheck,
+                + ". Tras cada toque la tira sigue en verde.",
         };
 
     private static ScriptStep TapStep(
