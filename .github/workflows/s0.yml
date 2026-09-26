@@ -1,0 +1,112 @@
+# Spike S0 · CI desktop (blueprint §15.1): do the hosted runners windows-2025 and windows-11-arm give the tests that
+# need an interactive desktop (`cl desk`: SendInput into InputProbe and taking the foreground) what they need?
+# Success criterion: 10 of 10 runs per runner without failures caused by a missing desktop. Each run is a separate job
+# on a fresh runner. Start it from the Actions tab (Run workflow) and record the outcome in docs/testing/spikes/S0.md.
+#
+# Same rules as pr.yml: actions pinned by full SHA with their version, read-only permissions, no secrets, no top-level
+# env or defaults.
+name: s0
+
+on:
+  workflow_dispatch:
+    inputs:
+      arm64:
+        description: "Also windows-11-arm while the repository is private (paid minutes; always runs when public)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # One measurement at a time; a second request waits instead of cancelling the first.
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  desk-x64:
+    name: desk x64 (run ${{ matrix.run }})
+    runs-on: windows-2025
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: cl desk
+        shell: pwsh
+        run: .\cl.cmd desk
+
+      - name: Upload cl report and test results
+        # Always: a passing run is evidence too (the TRX shows that no desktop test was skipped).
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: s0-x64-run-${{ matrix.run }}
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  desk-arm64:
+    name: desk arm64 (run ${{ matrix.run }})
+    # Hosted ARM64 runners are free only for public repositories (deviation D-04).
+    if: github.event.repository.private == false || inputs.arm64
+    runs-on: windows-11-arm
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: cl desk
+        shell: pwsh
+        run: .\cl.cmd desk
+
+      - name: Upload cl report and test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: s0-arm64-run-${{ matrix.run }}
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 30

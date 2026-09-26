@@ -200,7 +200,9 @@ pruebas) están acotadas a `tests/`.
 Workflows previstos ([§10.5 del plano](blueprint.md#105-cicd)). En M0 existen `pr.yml` (trabajos
 `verify (x64)` = `cl check`, `adr` = `adr-check` y `dco` (cada commit del PR con `Signed-off-by` de su autor,
 [ADR-0015](../adr/0015-licencia-mit-y-dco.md)) en cada PR; `verify (arm64)`, CodeQL y Scorecard solo con el
-repositorio público) y `pr-title.yml` (título en Conventional Commits):
+repositorio público), `pr-title.yml` (título en Conventional Commits) y `s0.yml` (spike S0: `cl desk` diez
+veces en `windows-2025` y, con el repositorio público o bajo petición, en `windows-11-arm`; se lanza a mano y
+su resultado va a [S0.md](../testing/spikes/S0.md)):
 
 | Workflow | Cuándo | Qué hace |
 |---|---|---|
