@@ -74,5 +74,4 @@ EnableMouseInPointer
 IsMouseInPointerEnabled
 GetWindowFeedbackSetting
 TOUCH_MASK_CONTACTAREA
-WM_NCDESTROY
 // ---- end of Pointer ----
