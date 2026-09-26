@@ -161,6 +161,23 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     }
 
     /// <summary>
+    /// Starts <see cref="Run"/> on its own background thread, «Clicalo.Engine», with
+    /// <see cref="ThreadPriority.AboveNormal"/> (blueprint §3.2). The thread ends when the loop ends.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the loop after releasing everything.</param>
+    public Thread StartOnDedicatedThread(CancellationToken cancellationToken)
+    {
+        var thread = new Thread(() => Run(cancellationToken))
+        {
+            Name = "Clicalo.Engine",
+            IsBackground = true,
+            Priority = ThreadPriority.AboveNormal,
+        };
+        thread.Start();
+        return thread;
+    }
+
+    /// <summary>
     /// One turn of the loop: the heartbeat, the timers that fell due, every queued event (priority lane first) and a
     /// coalesced snapshot; then arms the wake-up timer. The tests call it directly on their thread.
     /// </summary>

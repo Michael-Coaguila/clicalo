@@ -385,9 +385,7 @@ public sealed class EngineHostTests
     {
         using var world = new HostWorld(HostWorld.HoldingShift(), realReducer: true);
         using var stop = new CancellationTokenSource();
-        var engine = new Thread(() => world.Host.Run(stop.Token)) { IsBackground = true };
-
-        engine.Start();
+        var engine = world.Host.StartOnDedicatedThread(stop.Token);
         await WaitUntil(() => world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive));
         await stop.CancelAsync();
         engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
@@ -406,8 +404,7 @@ public sealed class EngineHostTests
     {
         using var world = new HostWorld(HostWorld.HoldingShift(), realReducer: true);
         using var stop = new CancellationTokenSource();
-        var engine = new Thread(() => world.Host.Run(stop.Token)) { IsBackground = true };
-        engine.Start();
+        var engine = world.Host.StartOnDedicatedThread(stop.Token);
 
         world.Host.Post(new EngineEvent.ReleaseAll(ReleaseReason.User)).ShouldBeTrue();
         await WaitUntil(() => world.Injector.Batches.Count > 0);
