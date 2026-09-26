@@ -16,6 +16,12 @@ public sealed class RecordingArbiter : IActivationArbiter
     /// <summary>What to do after a violation: the desktop tests give the foreground back to InputProbe.</summary>
     public Func<ActivationViolation, Task>? Restore { get; set; }
 
+    /// <summary>
+    /// The real arbiter behind this one, when set (a <c>ForegroundOrchestrator</c>): its leases count, and every
+    /// violation is recorded here and then reported to it, which restores the foreground the product's way.
+    /// </summary>
+    public IActivationArbiter? Forward { get; set; }
+
     /// <summary>Every violation reported so far, in order.</summary>
     public IReadOnlyList<ActivationViolation> Violations => [.. _violations];
 
@@ -26,12 +32,14 @@ public sealed class RecordingArbiter : IActivationArbiter
     public void EndLease(WindowToken window) => _leased.TryRemove(window.Handle, out _);
 
     /// <inheritdoc />
-    public bool IsActivationLeased(WindowToken window) => _leased.ContainsKey(window.Handle);
+    public bool IsActivationLeased(WindowToken window) =>
+        _leased.ContainsKey(window.Handle) || Forward?.IsActivationLeased(window) == true;
 
     /// <inheritdoc />
     public void ReportViolation(ActivationViolation violation)
     {
         _violations.Enqueue(violation);
+        Forward?.ReportViolation(violation);
         if (Restore is { } restore)
         {
             _ = Task.Run(() => restore(violation));
