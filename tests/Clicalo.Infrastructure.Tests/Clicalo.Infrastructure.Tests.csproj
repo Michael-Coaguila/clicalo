@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Persistence, backups and the v1 import against a real temporary folder (blueprint §10.1). -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Infrastructure.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.Infrastructure\Clicalo.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Performance budgets of blueprint §10.3 and spike S5: start-up, memory, CPU and touch → SendInput latency. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Performance</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit.Windows\Clicalo.TestKit.Windows.csproj" />
+  </ItemGroup>
+</Project>

@@ -11,4 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Sentinel.Tests" />
+  </ItemGroup>
 </Project>

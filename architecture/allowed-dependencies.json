@@ -178,6 +178,27 @@
         "Microsoft.CodeAnalysis.CSharp.Workspaces"
       ]
     },
+    "Clicalo.Infrastructure.Tests": {
+      "area": "tests",
+      "rule": "Tests Infrastructure against real temporary folders (blueprint §10.1): envelope, atomic writes, quarantine, backups, the v1 import and SafeZipReader with hostile zips (S11).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Infrastructure", "Clicalo.Application", "Clicalo.Domain", "Clicalo.TestKit"],
+      "packageReferences": ["xunit.v3", "Shouldly", "CsCheck", "Microsoft.Extensions.TimeProvider.Testing"]
+    },
+    "Clicalo.Sentinel.Tests": {
+      "area": "tests",
+      "rule": "Tests Sentinel and the ledger v2 it reads (blueprint §10.1, S9): layout, release with the menu mask, relaunch policy and crash loop. Tests that kill processes or freeze threads are CI-only (Category=Chaos).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Sentinel", "Clicalo.Platform.Core", "Clicalo.TestKit"],
+      "packageReferences": ["xunit.v3", "Shouldly", "Microsoft.Extensions.TimeProvider.Testing"]
+    },
+    "Clicalo.Performance": {
+      "area": "tests",
+      "rule": "Performance budgets of blueprint §10.3 and spike S5 (start-up, memory, CPU, touch to SendInput). Measures the built Clicalo.exe as a process, never by reference; runs with sending disabled outside the CI.",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.TestKit", "Clicalo.TestKit.Windows"],
+      "packageReferences": ["xunit.v3", "Shouldly"]
+    },
     "Clicalo.Platform.IntegrationTests": {
       "area": "tests",
       "rule": "Real Win32 integration against tools/InputProbe (blueprint §10.1).",
