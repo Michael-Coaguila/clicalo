@@ -1,10 +1,8 @@
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Clicalo.Application.Foreground;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
-using Clicalo.Domain.Touch;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
@@ -19,18 +17,14 @@ using Windows.Win32;
 namespace Clicalo.Tools.SpikeLab.Composition;
 
 /// <summary>
-/// The composition root of the laboratory: creates the real pieces of the product through their contracts, records
-/// on the <see cref="ComponentBoard"/> which ones already work, and keeps going without the ones whose M1 package is
-/// not integrated yet. <c>ForegroundOrchestrator</c> is found by name and built with <see cref="ConstructorBinder"/>,
-/// so the laboratory compiles against the contracts only and picks the real orchestrator up as soon as the foreground
-/// package is merged. Everything runs on the UI thread except the pieces that live on the SysEvents thread.
+/// The composition root of the laboratory: creates the real pieces of the product (windowing, pointer layer, UI
+/// Automation, the SysEvents adapters and <see cref="ForegroundOrchestrator"/>) and records on the
+/// <see cref="ComponentBoard"/> whether each one started; a piece that fails (a shortcut another program owns, a
+/// broken Explorer) is shown in red and the laboratory goes on with the rest. Everything runs on the UI thread except
+/// the pieces that live on the SysEvents thread.
 /// </summary>
 internal sealed class LabHost : IAsyncDisposable
 {
-    /// <summary>Full name of the orchestrator the foreground package adds in M1.</summary>
-    public const string OrchestratorTypeName =
-        "Clicalo.Application.Foreground.ForegroundOrchestrator";
-
     private readonly Dispatcher _dispatcher;
     private readonly uint _ownProcessId = (uint)Environment.ProcessId;
     private LabHotkey? _hotkey;
@@ -73,7 +67,7 @@ internal sealed class LabHost : IAsyncDisposable
             if (!args.Forwarded)
             {
                 Measurements.Notice(
-                    "Violación de REG-01 sin ForegroundOrchestrator: nadie devuelve el primer plano."
+                    "Violación de REG-01 sin ForegroundOrchestrator (ver piezas): nadie devuelve el primer plano."
                 );
             }
         };
@@ -109,7 +103,7 @@ internal sealed class LabHost : IAsyncDisposable
     /// <summary>The guarded implementation of <see cref="IInternalKeyEffects"/>.</summary>
     public LabInternalKeyEffects KeyEffects { get; }
 
-    /// <summary>Forwards <c>ActivationGuard</c> to the orchestrator once it exists.</summary>
+    /// <summary>Forwards <c>ActivationGuard</c> to the orchestrator, created after the guard.</summary>
     public ArbiterRelay Relay { get; }
 
     /// <summary>The real <see cref="ActivationGuard"/> (<c>reg01.violations</c>).</summary>
@@ -121,34 +115,37 @@ internal sealed class LabHost : IAsyncDisposable
     /// <summary>The real <see cref="SurfaceRegistry"/>.</summary>
     public SurfaceRegistry Registry { get; }
 
-    /// <summary>The real SysEvents thread, when integrated.</summary>
+    /// <summary>The real SysEvents thread, once started.</summary>
     public SysEventsThread? SysEvents { get; private set; }
 
-    /// <summary>The real <see cref="IForegroundMonitor"/>, when integrated.</summary>
+    /// <summary>The real <see cref="IForegroundMonitor"/>, once started.</summary>
     public ForegroundMonitor? Monitor { get; private set; }
 
     /// <summary>
-    /// The real <see cref="IInternalRightsHotkey"/>, when integrated; check <c>IsRegistered</c> (another program may
+    /// The real <see cref="IInternalRightsHotkey"/>, once it answered; check <c>IsRegistered</c> (another program may
     /// own the chord, and then step 2 of the ladder is skipped).
     /// </summary>
     public InternalRightsHotkey? RightsHotkey { get; private set; }
 
-    /// <summary>The real <see cref="IForegroundControl"/>, when integrated.</summary>
+    /// <summary>The real <see cref="IForegroundControl"/>.</summary>
     public ForegroundControl? Control { get; private set; }
 
-    /// <summary>The real <see cref="ITouchKeyboard"/>, when integrated.</summary>
+    /// <summary>The real <see cref="ITouchKeyboard"/>.</summary>
     public TouchKeyboard? TouchKeyboard { get; private set; }
 
-    /// <summary>The real <see cref="IForegroundOrchestrator"/>, when the foreground package is integrated.</summary>
-    public IForegroundOrchestrator? Orchestrator { get; private set; }
+    /// <summary>
+    /// The real <see cref="ForegroundOrchestrator"/>, once its ports started; null when one of them failed (see the
+    /// board).
+    /// </summary>
+    public ForegroundOrchestrator? Orchestrator { get; private set; }
 
-    /// <summary>The real <see cref="SurfaceIntegrityCheck"/>, when integrated.</summary>
+    /// <summary>The real <see cref="SurfaceIntegrityCheck"/>, once started.</summary>
     public SurfaceIntegrityCheck? Integrity { get; private set; }
 
-    /// <summary>The real tray icon, when integrated.</summary>
+    /// <summary>The real tray icon, once shown.</summary>
     public TrayIcon? Tray { get; private set; }
 
-    /// <summary>The real tray menu host, when integrated.</summary>
+    /// <summary>The real tray menu host, once started.</summary>
     public TrayMenuHost? TrayMenu { get; private set; }
 
     /// <summary>Called on the UI thread when the tray icon asks for its menu (anchor in physical pixels).</summary>
@@ -186,33 +183,21 @@ internal sealed class LabHost : IAsyncDisposable
             () => _ = Registry.Surfaces
         );
 
-        // The pointer layer is attached by each surface; these probes say early whether its package is integrated.
-        Board.Try(
-            "GestureRecognizer",
-            "Gestos del dominio (toque, filtro de TAC-002).",
-            () =>
-                new GestureRecognizer(
-                    LabSurfaceContext.DefaultTouchSettings,
-                    dpiScale: 1
-                ).SetTargets([])
-        );
-        var pointerProbe = new Window();
-        try
+        // The surfaces attach PointerInputSource and GestureHost themselves (and report them); the process routes the
+        // mouse through the pointer messages before the first window (Program), so a click is a pointer frame too.
+        if (PointerSetup.IsStylusAndTouchSupportDisabled && PointerSetup.IsMouseInPointerEnabled)
         {
-            Board.Try(
-                "PointerInputSource",
-                "WM_POINTER propio en cada superficie (ADR-0006).",
-                () =>
-                {
-                    using var source = new PointerInputSource(pointerProbe, new NoFrames(), Time);
-                    _ = source.IsAttached;
-                }
+            Board.Ready(
+                "PointerSetup",
+                "Pila táctil de WPF apagada y mouse como WM_POINTER (blueprint §8.3)."
             );
         }
-        finally
+        else
         {
-            // Never shown, but a Window stays in Application.Windows until it is closed.
-            pointerProbe.Close();
+            Board.Fail(
+                "PointerSetup",
+                "La pila táctil de WPF sigue activa o el mouse no llega como WM_POINTER: los toques no se medirán bien."
+            );
         }
 
         Board.Try(
@@ -286,23 +271,7 @@ internal sealed class LabHost : IAsyncDisposable
         _hotkey?.Dispose();
 
         // The orchestrator first: it may still hold a lease or a restore on the pieces disposed below.
-        switch (Orchestrator)
-        {
-            case IAsyncDisposable asyncDisposable:
-                try
-                {
-                    await asyncDisposable.DisposeAsync();
-                }
-                catch (Exception ex) when (ComponentBoard.IsContained(ex))
-                {
-                    // Shutting down: see DisposeQuietly.
-                }
-
-                break;
-            case IDisposable disposable:
-                DisposeQuietly(disposable.Dispose);
-                break;
-        }
+        DisposeQuietly(() => Orchestrator?.Dispose());
 
         DisposeQuietly(() => Integrity?.Dispose());
         DisposeQuietly(() => Tray?.Dispose());
@@ -438,54 +407,33 @@ internal sealed class LabHost : IAsyncDisposable
     private void CreateOrchestrator()
     {
         const string Name = "ForegroundOrchestrator";
-        var type = typeof(IForegroundOrchestrator).Assembly.GetType(
-            OrchestratorTypeName,
-            throwOnError: false
-        );
-        if (type is null)
+        if (Control is null || Monitor is null || RightsHotkey is null)
         {
             Board.Pending(
                 Name,
-                "Pendiente de integrar: el paquete foreground aún no añadió "
-                    + OrchestratorTypeName
-                    + "."
+                "Espera a ForegroundControl, ForegroundMonitor e InternalRightsHotkey (ver arriba)."
             );
             return;
         }
 
-        List<object> services = [Registry, KeyEffects, Time];
-        if (Control is not null)
-        {
-            services.Add(Control);
-        }
-
-        if (Monitor is not null)
-        {
-            services.Add(Monitor);
-        }
-
-        if (RightsHotkey is not null)
-        {
-            services.Add(RightsHotkey);
-        }
-
         try
         {
-            var result = ConstructorBinder.Create(type, services);
-            if (result.Instance is IForegroundOrchestrator orchestrator)
-            {
-                Orchestrator = orchestrator;
-                if (orchestrator is IActivationArbiter arbiter)
+            // SurfaceRegistry is both the activation style and the lookup of the surfaces (blueprint §3.5, §3.6).
+            var orchestrator = new ForegroundOrchestrator(
+                new ForegroundPorts
                 {
-                    Relay.Target = arbiter;
-                }
-
-                Board.Ready(Name, "Concesiones tipadas y escalera por origen.");
-            }
-            else
-            {
-                Board.Fail(Name, result.Problem ?? "No se pudo crear.");
-            }
+                    Control = Control,
+                    Monitor = Monitor,
+                    SurfaceStyle = Registry,
+                    Surfaces = Registry,
+                    RightsHotkey = RightsHotkey,
+                    KeyEffects = KeyEffects,
+                },
+                Time
+            );
+            Orchestrator = orchestrator;
+            Relay.Target = orchestrator;
+            Board.Ready(Name, "Concesiones tipadas y escalera por origen.");
         }
         catch (Exception ex) when (ComponentBoard.IsContained(ex))
         {
@@ -503,12 +451,5 @@ internal sealed class LabHost : IAsyncDisposable
     {
         var (processId, _) = ProcessNames.Of(window);
         return LabTargetPolicy.IsOwnOrProbe(window, processId, _ownProcessId, Probe.Window);
-    }
-
-    private sealed class NoFrames : IPointerFrameSink
-    {
-        public void OnFrame(in PointerFrame frame) { }
-
-        public void OnHover(bool inside) { }
     }
 }

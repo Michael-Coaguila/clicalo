@@ -92,7 +92,12 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
             WriteReport();
         };
 
-        GuideStripShown = Surfaces.Guide.TryShow();
+        if (!Surfaces.Guide.TryShow())
+        {
+            host.Measurements.Notice(
+                "La tira-guía no se pudo mostrar como ventana no activable (ver piezas): no se puede medir."
+            );
+        }
         _reportTimer = new DispatcherTimer { Interval = ReportInterval };
         _reportTimer.Tick += (_, _) => WriteReport();
         _reportTimer.Start();
@@ -109,9 +114,6 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
 
     /// <summary>The lab surfaces.</summary>
     public LabSurfaces Surfaces { get; }
-
-    /// <summary>False while the windowing package is not integrated: the control window then hosts a copy of the guide.</summary>
-    public bool GuideStripShown { get; private set; }
 
     /// <summary>The JSON report.</summary>
     public string ReportPath => _writer.JsonPath;
@@ -144,26 +146,20 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
         }
     }
 
-    /// <summary>A copy of the guide for the control window, used while the guide strip cannot be shown.</summary>
-    public GuideView CreateWindowGuide(Func<LabTile, double, double, ShortcutTile> addTile)
-    {
-        var view = new GuideView(addTile);
-        _guides.Add(view);
-        RefreshGuides();
-        return view;
-    }
-
     /// <summary>«Mostrar superficies».</summary>
     public void ShowSurfaces()
     {
         if (!Surfaces.ShowUnderTest())
         {
             _host.Measurements.Notice(
-                "Las superficies no se pueden mostrar: NonActivatingWindow aún no está integrado (ver piezas)."
+                "Las superficies no se pudieron mostrar como ventanas no activables (ver piezas)."
             );
         }
 
-        GuideStripShown = Surfaces.Guide.IsShown || Surfaces.Guide.TryShow();
+        if (!Surfaces.Guide.IsShown)
+        {
+            _ = Surfaces.Guide.TryShow();
+        }
     }
 
     /// <summary>«Ocultar superficies».</summary>
@@ -378,7 +374,7 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
                     Surface = surface,
                     Group = group,
                     Pointer = pointer,
-                    Channel = pointer is null ? "mouse-promoted" : "pointer",
+                    Channel = "pointer",
                 },
             }
         );
@@ -780,6 +776,6 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
                 PointerKind.Finger => "toque (dedo)",
                 PointerKind.Pen => "toque (lápiz)",
                 PointerKind.Mouse => "toque (mouse)",
-                _ => "toque (mouse promovido)",
+                _ => "toque",
             };
 }

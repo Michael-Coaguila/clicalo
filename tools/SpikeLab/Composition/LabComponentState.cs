@@ -6,7 +6,7 @@ internal enum LabComponentState
     /// <summary>It works.</summary>
     Ready,
 
-    /// <summary>Its M1 package has not been integrated yet: it still throws <see cref="NotImplementedException"/>.</summary>
+    /// <summary>It waits for another piece that did not start (see the detail).</summary>
     Pending,
 
     /// <summary>It failed for another reason (see the detail).</summary>

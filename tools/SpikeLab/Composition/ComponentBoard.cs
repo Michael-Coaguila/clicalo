@@ -3,9 +3,8 @@ using System.Collections.Immutable;
 namespace Clicalo.Tools.SpikeLab.Composition;
 
 /// <summary>
-/// The list of real pieces and their state. While M1 is being integrated, a piece whose package is not merged yet
-/// throws <see cref="NotImplementedException"/>: the board shows it in red as «pendiente» and the laboratory goes on
-/// with the rest (docs/testing/spikes/M1-ownership.md).
+/// The list of real pieces and their state. A piece that fails to start is shown in red and the laboratory goes on
+/// with the rest; a piece that waits for another one that failed is «pendiente».
 /// </summary>
 internal sealed class ComponentBoard
 {
@@ -21,28 +20,22 @@ internal sealed class ComponentBoard
     public bool AllReady =>
         _components.All(component => component.State == LabComponentState.Ready);
 
-    /// <summary>Describes an exception thrown by a piece: pending for <see cref="NotImplementedException"/>.</summary>
+    /// <summary>Describes an exception thrown by a piece: its type and message.</summary>
     public static LabComponent Describe(string name, Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        return exception is NotImplementedException
-            ? new LabComponent(
-                name,
-                LabComponentState.Pending,
-                "Pendiente de integrar: " + exception.Message
-            )
-            : new LabComponent(
-                name,
-                LabComponentState.Failed,
-                exception.GetType().Name + ": " + exception.Message
-            );
+        return new LabComponent(
+            name,
+            LabComponentState.Failed,
+            exception.GetType().Name + ": " + exception.Message
+        );
     }
 
     /// <summary>Records <paramref name="name"/> as ready.</summary>
     public void Ready(string name, string detail) =>
         Set(new LabComponent(name, LabComponentState.Ready, detail));
 
-    /// <summary>Records <paramref name="name"/> as failed or pending because of <paramref name="exception"/>.</summary>
+    /// <summary>Records <paramref name="name"/> as failed because of <paramref name="exception"/>.</summary>
     public void Fail(string name, Exception exception) => Set(Describe(name, exception));
 
     /// <summary>Records <paramref name="name"/> as failed with <paramref name="detail"/>.</summary>
@@ -54,7 +47,7 @@ internal sealed class ComponentBoard
         Set(new LabComponent(name, LabComponentState.Pending, detail));
 
     /// <summary>
-    /// Runs <paramref name="action"/> and records the piece as ready, or as pending or failed when it throws. The
+    /// Runs <paramref name="action"/> and records the piece as ready, or as failed when it throws. The
     /// exception never escapes: the laboratory keeps working with the pieces that are ready.
     /// </summary>
     /// <returns>True when the action completed.</returns>

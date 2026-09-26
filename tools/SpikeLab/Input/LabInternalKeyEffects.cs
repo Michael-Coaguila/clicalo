@@ -93,17 +93,7 @@ internal sealed class LabInternalKeyEffects : IInternalKeyEffects
         return ValueTask.FromResult(SendToOwnOrProbe(DictationChord, "Win+H"));
     }
 
-    private bool IsRegistered()
-    {
-        try
-        {
-            return _rightsHotkey() is { IsRegistered: true };
-        }
-        catch (NotImplementedException)
-        {
-            return false;
-        }
-    }
+    private bool IsRegistered() => _rightsHotkey() is { IsRegistered: true };
 
     private bool SendToOwnOrProbe(LabChord chord, string what)
     {

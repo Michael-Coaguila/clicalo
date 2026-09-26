@@ -1,4 +1,5 @@
 using System.Windows.Automation.Peers;
+using System.Windows.Threading;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Touch;
 using Clicalo.TestKit.Windows.Rendering;
@@ -88,6 +89,9 @@ public sealed class LabSurfacesTests
                         .CreatePeerForElement(bold)
                         .GetPattern(PatternInterface.Invoke)
             ).Invoke();
+
+            // Invoke returns at once and the tile raises Invoked on the next dispatcher turn (UI Automation, S3).
+            Dispatcher.CurrentDispatcher.Invoke(static () => { }, DispatcherPriority.Background);
 
             var input = sink.Inputs.ShouldHaveSingleItem();
             input.IsCommand.ShouldBeTrue();

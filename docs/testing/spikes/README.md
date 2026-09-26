@@ -63,12 +63,12 @@ mediciones automáticas y la última nota. El recuadro de la derecha dice el est
   superficie se quedó con él.
 - **Cambios de primer plano** y **activaciones de superficies (WM_ACTIVATE)** desde que empezó el paso, y
   **reg01.violations** desde que se abrió SpikeLab.
-- **Última orden:** la ficha, el patrón o el dispositivo (dedo, lápiz, mouse, mouse promovido) y su **latencia**,
+- **Última orden:** la ficha, el patrón o el dispositivo (dedo, lápiz o mouse) y su **latencia**,
   desde que se levanta el dedo (o llega la orden de UI Automation) hasta que la acción está hecha.
 - **Concesión** y **devolución:** tipo, origen, concedida o denegada (con el motivo), paso de la escalera (1 o 2),
   tiempos y `Restaurado`, `Restaurado al reintentar`, `Parpadeo en la barra de tareas` o `Falló`.
 - **La sonda recibió:** F24, caracteres y menú (solo con la sonda abierta).
-- Si «Enviar teclas» está activado y cuántas piezas del producto faltan por integrar.
+- Si «Enviar teclas» está activado y cuántas piezas del producto no arrancaron.
 
 **Botones** (fichas reales de al menos 44 px con nombre para la voz: di «clic Funcionó»):
 
@@ -128,15 +128,18 @@ SpikeLab corre en el equipo de trabajo real, con dictado (Wispr Flow, Typeless) 
 - **«Soltar todo»** está en el panel, en la tira-guía, en la ventana de control y en la bandeja. Solo envía
   liberaciones de Mayús, Ctrl y Alt izquierdas que estén pulsadas (nunca Windows, que abriría Inicio).
 
-## Mientras M1 se integra
+## Piezas y cómo llega la entrada
 
-SpikeLab compila contra los contratos. Una pieza cuyo paquete aún no se ha integrado lanza `NotImplementedException`:
-la ventana de control la muestra en rojo como **«Pendiente»**, el informe la lista y el laboratorio sigue con el
-resto. Sin `NonActivatingWindow` la tira-guía no puede mostrarse: aparece una copia en la ventana de control (que se
-activa, así que no sirve para medir). Sin `PointerInputSource` o `GestureRecognizer`, el toque llega como mouse
-promovido y el informe lo dice («mouse-promoted»). `ForegroundOrchestrator` se busca por su nombre
-(`Clicalo.Application.Foreground.ForegroundOrchestrator`) y se construye con los servicios que su constructor pida,
-así que funciona en cuanto se fusiona el paquete `foreground`. Para ver el estado sin abrir nada: `--check`.
+SpikeLab construye cada pieza real directamente (`ForegroundOrchestrator` con sus puertos: `ForegroundControl`,
+`ForegroundMonitor`, `SurfaceRegistry`, `InternalRightsHotkey` y el inyector protegido del laboratorio). Si una pieza
+no arranca (por ejemplo, otro programa ya registró el atajo de laboratorio o el Explorador no tiene bandeja), la
+ventana de control la muestra en rojo con el motivo, el informe la lista y el laboratorio sigue con el resto; lo que
+espera a una pieza que falló aparece como **«Pendiente»**. Para ver el estado sin abrir nada: `--check`.
+
+Como el producto, SpikeLab apaga la pila táctil de WPF y encamina el mouse por `WM_POINTER`
+(`PointerSetup.EnableMouseInPointer`) antes de la primera ventana: dedo, lápiz y mouse llegan a cada superficie por
+`PointerInputSource` y `GestureHost`, y el informe anota el dispositivo de cada toque. Un paso de un dispositivo solo
+cuenta ese dispositivo.
 
 ## Informes
 

@@ -29,7 +29,7 @@ public sealed class MarkdownSummaryTests
         Summary.ShouldContain("- Envío de teclas: desactivado · Números de voz: activados");
         Summary.ShouldContain("1 de 2 piezas no están listas");
         Summary.ShouldContain(
-            "- Pendiente: ForegroundOrchestrator. Pendiente de integrar: M1 foreground package."
+            "- Pendiente: ForegroundOrchestrator. Espera a ForegroundControl, ForegroundMonitor e InternalRightsHotkey."
         );
     }
 

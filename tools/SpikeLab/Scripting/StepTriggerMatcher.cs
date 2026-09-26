@@ -45,15 +45,18 @@ internal static class StepTriggerMatcher
             return "Este paso se hace sobre " + Describe(step.Surface) + ".";
         }
 
-        // A tap that arrived as promoted mouse (pointer layer pending) has no device: it counts, and the report shows
-        // its channel.
-        if (step.Pointer is { } pointer && trigger.Pointer is { } actual && actual != pointer)
+        // Every tap comes from the pointer layer with its device: a row for one device only counts that device.
+        if (step.Pointer is { } pointer && trigger.Pointer != pointer)
         {
-            return "Este paso se hace con "
-                + Describe(pointer)
-                + "; el toque con "
-                + Describe(actual)
-                + " no cuenta.";
+            return trigger.Pointer is { } actual
+                ? "Este paso se hace con "
+                    + Describe(pointer)
+                    + "; el toque con "
+                    + Describe(actual)
+                    + " no cuenta."
+                : "Este paso se hace con "
+                    + Describe(pointer)
+                    + "; un toque sin dispositivo no cuenta.";
         }
 
         return null;

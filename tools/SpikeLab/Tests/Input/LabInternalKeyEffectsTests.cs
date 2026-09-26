@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Clicalo.Application.Ports;
 using Clicalo.TestKit.Windows.Input;
 using Clicalo.Tools.SpikeLab.Input;
@@ -45,15 +44,10 @@ public sealed class LabInternalKeyEffectsTests
     }
 
     [Fact]
-    [SuppressMessage(
-        "Design",
-        "MA0025:Implement the functionality",
-        Justification = "Simulates the M1 contract stub of InternalRightsHotkey."
-    )]
-    public async Task Nothing_is_sent_when_the_registration_is_still_pending()
+    public async Task Nothing_is_sent_while_the_rights_hotkey_has_not_answered()
     {
         var effects = new LabInternalKeyEffects(
-            () => throw new NotImplementedException("M1 foreground package."),
+            () => null,
             () => _foreground,
             window => window == Own,
             Send,

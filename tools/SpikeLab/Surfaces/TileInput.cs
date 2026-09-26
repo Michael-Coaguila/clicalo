@@ -28,9 +28,9 @@ internal sealed record TileInput(
     /// <summary>For ExpandCollapse: true to expand, false to collapse.</summary>
     public bool Expand { get; init; }
 
-    /// <summary>The device of a tap; null for a promoted-mouse tap or a command.</summary>
+    /// <summary>The device of a tap; null for a command.</summary>
     public PointerKind? Pointer { get; init; }
 
-    /// <summary>«pointer», «mouse-promoted» or «uia».</summary>
+    /// <summary>«pointer» or «uia».</summary>
     public string Channel { get; init; } = "pointer";
 }

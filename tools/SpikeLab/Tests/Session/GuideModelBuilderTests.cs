@@ -56,7 +56,7 @@ public sealed class GuideModelBuilderTests
             "Última orden: Negrita por Invoke · latencia: 12,3 ms",
             "Concesión: TextInput concedida (paso 2) · devolución: Restored",
             "La sonda recibió: F24 = 1, caracteres = 3, menú = 0",
-            "Enviar teclas: no · piezas sin integrar: 3 (ver la ventana de control)",
+            "Enviar teclas: no · piezas que no arrancaron: 3 (ver la ventana de control)",
         ]);
     }
 

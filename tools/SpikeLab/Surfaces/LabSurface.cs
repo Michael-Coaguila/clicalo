@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.Application.Ports;
@@ -20,24 +19,22 @@ namespace Clicalo.Tools.SpikeLab.Surfaces;
 
 /// <summary>
 /// Base of the laboratory surfaces: a real <see cref="NonActivatingWindow"/> (CLC0001 applies) whose tiles are real
-/// <see cref="ShortcutTile"/>s. Touch goes through the real pointer layer (<see cref="PointerInputSource"/> and
-/// <see cref="GestureRecognizer"/>, blueprint §8.3); while that layer is not integrated, the surface falls back to the
-/// mouse input Windows promotes from touch and the control window shows the layer as pending. UI Automation commands
+/// <see cref="ShortcutTile"/>s. Finger, pen and mouse go through the real pointer layer (<see cref="PointerInputSource"/>
+/// feeding a <see cref="GestureHost"/> and its <see cref="GestureRecognizer"/>, blueprint §8.3; the mouse arrives as
+/// pointer input because the laboratory calls <see cref="PointerSetup.EnableMouseInPointer"/>). UI Automation commands
 /// come from the tiles' peers. The surface also counts its own activation messages (the laboratory's instrument,
 /// independent of <c>ActivationGuard</c>).
 /// </summary>
 internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
 {
     private const string PointerComponent = "PointerInputSource";
-    private const string GestureComponent = "GestureRecognizer";
+    private const string GestureComponent = "GestureHost";
     private const string WindowingComponent = "NonActivatingWindow";
 
     private readonly List<(FrameworkElement Element, LabTile Tile)> _targets = [];
-    private readonly List<GestureEvent> _gestures = [];
     private readonly Dictionary<uint, PointerKind> _contacts = [];
-    private GestureRecognizer? _recognizer;
+    private GestureHost? _gestures;
     private PointerInputSource? _pointer;
-    private ITimer? _deadline;
     private DragState? _drag;
     private nint _handle;
 
@@ -76,8 +73,8 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     /// <summary>True after a successful <see cref="TryShow"/> and until <see cref="TryHide"/>.</summary>
     public bool IsShown { get; private set; }
 
-    /// <summary>True when touch goes through the real pointer layer; false on the promoted-mouse fallback.</summary>
-    public bool UsesPointerLayer => _recognizer is not null && _pointer is not null;
+    /// <summary>True once the pointer layer is attached to the window: without it the surface cannot be touched.</summary>
+    public bool UsesPointerLayer => _gestures is not null && _pointer is not null;
 
     /// <summary>The window handle once created (without going through the contract), zero before.</summary>
     public nint Handle => _handle;
@@ -178,14 +175,9 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
             TrackContact(sample);
         }
 
-        if (_recognizer is not { } recognizer)
-        {
-            return;
-        }
-
-        _gestures.Clear();
-        recognizer.Feed(frame, _gestures);
-        Dispatch();
+        // The gestures of this frame are delivered before the contacts that ended in it are forgotten, so a tap still
+        // knows its device.
+        _gestures?.OnFrame(frame);
         foreach (var sample in frame.Samples)
         {
             if (sample.Phase is PointerPhase.Up or PointerPhase.Cancel)
@@ -193,14 +185,12 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
                 _contacts.Remove(sample.PointerId);
             }
         }
-
-        ScheduleDeadline();
     }
 
     /// <inheritdoc />
     public void OnHover(bool inside) { }
 
-    /// <summary>Adds a tile and wires its UI Automation events and the promoted-mouse fallback.</summary>
+    /// <summary>Adds a tile and wires its UI Automation events.</summary>
     protected ShortcutTile AddTile(LabTile tile, double width, double height)
     {
         var control = TileFactory.Create(tile, width, height);
@@ -226,35 +216,6 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     {
         ArgumentNullException.ThrowIfNull(element);
         _targets.Add((element, tile));
-
-        // handledEventsToo: a text box handles its own mouse events, and its tap must still reach the session.
-        element.AddHandler(
-            MouseLeftButtonUpEvent,
-            new MouseButtonEventHandler(
-                (_, args) =>
-                {
-                    if (UsesPointerLayer)
-                    {
-                        return;
-                    }
-
-                    args.Handled = true;
-                    Context.Sink.OnTile(
-                        new TileInput(
-                            tile,
-                            element as ShortcutTile,
-                            SurfaceName,
-                            Group,
-                            Context.Time.GetUtcNow()
-                        )
-                        {
-                            Channel = "mouse-promoted",
-                        }
-                    );
-                }
-            ),
-            handledEventsToo: true
-        );
     }
 
     /// <summary>Called once the handle has the non-activation contract: hooks the messages and the pointer layer.</summary>
@@ -265,12 +226,6 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         Context.Directory.Register(_handle, SurfaceName);
         HwndSource.FromHwnd(_handle)?.AddHook(CountActivation);
         AttachPointerLayer();
-        if (DragHandle is { } handle)
-        {
-            handle.MouseLeftButtonDown += (_, args) => StartMouseDrag(args);
-            handle.MouseMove += (_, _) => ContinueMouseDrag();
-            handle.MouseLeftButtonUp += (_, _) => EndDrag(pointerId: null);
-        }
     }
 
     /// <inheritdoc />
@@ -286,7 +241,10 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         );
         try
         {
-            _recognizer?.Configure(LabSurfaceContext.DefaultTouchSettings, newDpi.DpiScaleX);
+            _gestures?.Recognizer.Configure(
+                LabSurfaceContext.DefaultTouchSettings,
+                newDpi.DpiScaleX
+            );
         }
         catch (Exception ex) when (ComponentBoard.IsContained(ex))
         {
@@ -299,7 +257,6 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     /// <inheritdoc />
     protected override void OnClosed(EventArgs e)
     {
-        _deadline?.Dispose();
         try
         {
             _pointer?.Detach();
@@ -310,57 +267,55 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         }
 
         _pointer?.Dispose();
+
+        // On the UI thread: an active hold ends with HoldEndReason.Reset before the host stops (REG-03).
+        _gestures?.Dispose();
         Context.Directory.Unregister(_handle);
         base.OnClosed(e);
     }
 
     private void AttachPointerLayer()
     {
-        GestureRecognizer? recognizer = null;
-        var recognizerReady = Context.Board.Try(
+        GestureHost? gestures = null;
+        var gesturesReady = Context.Board.Try(
             GestureComponent,
-            "Gestos del dominio (toque, filtro de TAC-002).",
+            "Gestos del dominio (GestureRecognizer, filtro de TAC-002) con sus plazos.",
             () =>
             {
-                recognizer = new GestureRecognizer(
+                var recognizer = new GestureRecognizer(
                     LabSurfaceContext.DefaultTouchSettings,
                     VisualTreeHelper.GetDpi(this).DpiScaleX
                 );
                 recognizer.SetTargets([]);
+                gestures = new GestureHost(recognizer, Dispatcher, Context.Time, OnGesture);
             }
         );
-        var pointer = new PointerInputSource(this, this, Context.Time);
-        var pointerReady = Context.Board.Try(
-            PointerComponent,
-            "WM_POINTER propio en cada superficie (ADR-0006).",
-            pointer.Attach
-        );
-        if (recognizerReady && pointerReady)
+        if (!gesturesReady)
         {
-            _recognizer = recognizer;
+            return;
+        }
+
+        var pointer = new PointerInputSource(this, this, Context.Time);
+        if (
+            Context.Board.Try(
+                PointerComponent,
+                "WM_POINTER propio en cada superficie: dedo, lápiz y mouse (ADR-0006).",
+                pointer.Attach
+            )
+        )
+        {
+            _gestures = gestures;
             _pointer = pointer;
             return;
         }
 
-        // Without both halves the pointer messages would be consumed without gestures: go back to promoted mouse.
-        if (pointerReady)
-        {
-            try
-            {
-                pointer.Detach();
-            }
-            catch (Exception ex) when (ComponentBoard.IsContained(ex))
-            {
-                Context.Board.Fail(PointerComponent, ex);
-            }
-        }
-
         pointer.Dispose();
+        gestures!.Dispose();
     }
 
     private void RefreshTargets()
     {
-        if (_recognizer is not { } recognizer || PresentationSource.FromVisual(this) is null)
+        if (_gestures is not { } gestures || PresentationSource.FromVisual(this) is null)
         {
             return;
         }
@@ -377,7 +332,7 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
 
         try
         {
-            recognizer.SetTargets(targets.ToImmutable());
+            gestures.Recognizer.SetTargets(targets.ToImmutable());
         }
         catch (Exception ex) when (ComponentBoard.IsContained(ex))
         {
@@ -425,57 +380,32 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         }
     }
 
-    private void Dispatch()
+    private void OnGesture(GestureEvent gesture)
     {
-        foreach (var gesture in _gestures)
+        switch (gesture.Kind)
         {
-            switch (gesture.Kind)
-            {
-                case GestureKind.Tap when gesture.Target is { } id && id.Value < _targets.Count:
-                    var (element, tile) = _targets[id.Value];
-                    var input = new TileInput(
-                        tile,
-                        element as ShortcutTile,
-                        SurfaceName,
-                        Group,
-                        gesture.Timestamp
-                    )
-                    {
-                        Pointer = _contacts.TryGetValue(gesture.PointerId, out var kind)
-                            ? kind
-                            : null,
-                        Channel = "pointer",
-                    };
+            case GestureKind.Tap when gesture.Target is { } id && id.Value < _targets.Count:
+                var (element, tile) = _targets[id.Value];
+                var input = new TileInput(
+                    tile,
+                    element as ShortcutTile,
+                    SurfaceName,
+                    Group,
+                    gesture.Timestamp
+                )
+                {
+                    Pointer = _contacts.TryGetValue(gesture.PointerId, out var kind) ? kind : null,
+                    Channel = "pointer",
+                };
 
-                    // Leave the window procedure of WM_POINTERUP before running the action.
-                    _ = Dispatcher.BeginInvoke(() => Context.Sink.OnTile(input));
-                    break;
-                case GestureKind.Ignored:
-                    var reason = gesture.Ignored;
-                    _ = Dispatcher.BeginInvoke(() =>
-                        Context.Sink.OnIgnoredTouch(SurfaceName, reason)
-                    );
-                    break;
-            }
+                // Leave the window procedure of WM_POINTERUP before running the action.
+                _ = Dispatcher.BeginInvoke(() => Context.Sink.OnTile(input));
+                break;
+            case GestureKind.Ignored:
+                var reason = gesture.Ignored;
+                _ = Dispatcher.BeginInvoke(() => Context.Sink.OnIgnoredTouch(SurfaceName, reason));
+                break;
         }
-    }
-
-    private void ScheduleDeadline()
-    {
-        _deadline?.Dispose();
-        _deadline = null;
-        if (_recognizer?.NextDeadline is not { } deadline)
-        {
-            return;
-        }
-
-        var due = deadline - Context.Time.GetUtcNow();
-        _deadline = Context.Time.CreateTimer(
-            _ => _ = Dispatcher.BeginInvoke(Tick),
-            state: null,
-            due < TimeSpan.Zero ? TimeSpan.Zero : due,
-            Timeout.InfiniteTimeSpan
-        );
     }
 
     /// <summary>
@@ -486,37 +416,14 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     {
         _drag = null;
         _contacts.Clear();
-        _deadline?.Dispose();
-        _deadline = null;
-        if (_recognizer is not { } recognizer)
-        {
-            return;
-        }
-
-        _gestures.Clear();
         try
         {
-            recognizer.Reset(Context.Time.GetUtcNow(), _gestures);
+            _gestures?.Reset();
         }
         catch (Exception ex) when (ComponentBoard.IsContained(ex))
         {
             Context.Board.Fail(GestureComponent, ex);
         }
-
-        _gestures.Clear();
-    }
-
-    private void Tick()
-    {
-        if (_recognizer is not { } recognizer)
-        {
-            return;
-        }
-
-        _gestures.Clear();
-        recognizer.OnTick(Context.Time.GetUtcNow(), _gestures);
-        Dispatch();
-        ScheduleDeadline();
     }
 
     private nint CountActivation(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
@@ -536,32 +443,6 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         return 0;
     }
 
-    private void StartMouseDrag(MouseButtonEventArgs args)
-    {
-        if (UsesPointerLayer || !PInvoke.GetCursorPos(out var cursor))
-        {
-            return;
-        }
-
-        args.Handled = true;
-        _drag = new DragState(0, new PhysicalPoint(cursor.X, cursor.Y), Bounds(), Pointer: null);
-    }
-
-    private void ContinueMouseDrag()
-    {
-        if (
-            UsesPointerLayer
-            || _drag is not { } drag
-            || Mouse.LeftButton != MouseButtonState.Pressed
-            || !PInvoke.GetCursorPos(out var cursor)
-        )
-        {
-            return;
-        }
-
-        MoveBy(drag, new PhysicalPoint(cursor.X, cursor.Y));
-    }
-
     private void MoveBy(DragState drag, PhysicalPoint position)
     {
         if (drag.StartBounds.IsEmpty)
@@ -578,9 +459,9 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         );
     }
 
-    private void EndDrag(uint? pointerId)
+    private void EndDrag(uint pointerId)
     {
-        if (_drag is not { } drag || (pointerId is { } id && id != drag.PointerId))
+        if (_drag is not { } drag || pointerId != drag.PointerId)
         {
             return;
         }
@@ -593,6 +474,6 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         uint PointerId,
         PhysicalPoint Start,
         PhysicalRect StartBounds,
-        PointerKind? Pointer
+        PointerKind Pointer
     );
 }

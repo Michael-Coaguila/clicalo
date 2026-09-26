@@ -390,7 +390,7 @@ internal sealed class LeaseFlows
                 null,
                 evidence with
                 {
-                    Unavailable = "ForegroundOrchestrator no está integrado todavía.",
+                    Unavailable = "ForegroundOrchestrator no arrancó (ver piezas).",
                 }
             );
         }

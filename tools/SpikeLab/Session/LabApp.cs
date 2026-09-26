@@ -74,7 +74,7 @@ internal sealed class LabApp : IAsyncDisposable
             }
             catch (InvalidOperationException)
             {
-                // The handle never finished its creation (windowing pending): nothing to close.
+                // The handle never finished its creation (the board says why): nothing to close.
             }
 
             var text = new StringBuilder("# SpikeLab · comprobación de piezas\n\n");

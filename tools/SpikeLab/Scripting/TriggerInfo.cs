@@ -22,8 +22,8 @@ internal sealed record TriggerInfo(StepTrigger Kind)
     public PointerKind? Pointer { get; init; }
 
     /// <summary>
-    /// How the input arrived: «pointer» (<c>PointerInputSource</c>), «mouse-promoted» (fallback while the pointer
-    /// layer is pending), «uia», «hotkey», «tray» or «lab».
+    /// How the input arrived: «pointer» (<c>PointerInputSource</c> and <c>GestureHost</c>), «uia», «hotkey», «tray» or
+    /// «lab».
     /// </summary>
     public string Channel { get; init; } = "lab";
 

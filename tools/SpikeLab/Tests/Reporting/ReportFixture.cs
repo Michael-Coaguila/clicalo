@@ -80,7 +80,7 @@ internal static class ReportFixture
                 new LabComponent(
                     "ForegroundOrchestrator",
                     LabComponentState.Pending,
-                    "Pendiente de integrar: M1 foreground package."
+                    "Espera a ForegroundControl, ForegroundMonitor e InternalRightsHotkey."
                 ),
             ],
             [new LabLogEntry(Start, "foreground", "Primer plano: notepad.")]

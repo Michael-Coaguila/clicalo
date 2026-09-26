@@ -167,7 +167,7 @@ internal static class GuideModelBuilder
                 + (
                     status.PiecesNotReady > 0
                         ? Format(
-                            $" · piezas sin integrar: {status.PiecesNotReady} (ver la ventana de control)"
+                            $" · piezas que no arrancaron: {status.PiecesNotReady} (ver la ventana de control)"
                         )
                         : string.Empty
                 )

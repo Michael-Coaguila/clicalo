@@ -30,10 +30,10 @@ public sealed class StepTriggerMatcherTests
             .ShouldBe("Este paso se hace con el lápiz; el toque con el dedo no cuenta.");
 
     [Fact]
-    public void A_promoted_mouse_tap_without_device_still_counts() =>
+    public void A_tap_without_device_does_not_count_for_a_device_row() =>
         StepTriggerMatcher
             .Mismatch(PenOnPanel, Tap(SurfaceGroup.Panel, pointer: null))
-            .ShouldBeNull();
+            .ShouldBe("Este paso se hace con el lápiz; un toque sin dispositivo no cuenta.");
 
     [Fact]
     public void Another_kind_of_trigger_does_not_count() =>

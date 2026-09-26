@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Clicalo.Application.Ports;
 using Clicalo.Tools.SpikeLab.Composition;
 
@@ -7,35 +6,18 @@ namespace Clicalo.Tools.SpikeLab.Tests.Composition;
 public sealed class ComponentBoardTests
 {
     [Fact]
-    [SuppressMessage(
-        "Design",
-        "MA0025:Implement the functionality",
-        Justification = "Simulates an M1 contract stub, which throws NotImplementedException until its package is merged."
-    )]
-    public void A_piece_that_is_not_implemented_yet_is_pending_and_does_not_stop_the_laboratory()
+    public void A_piece_that_throws_is_a_failure_with_its_type_and_does_not_stop_the_laboratory()
     {
         var board = new ComponentBoard();
 
         var ok = board.Try(
-            "NonActivatingWindow",
-            "Superficies",
-            () => throw new NotImplementedException("M1 windowing package.")
+            "TrayIcon",
+            "Bandeja",
+            () => throw new InvalidOperationException("sin bandeja")
         );
 
         ok.ShouldBeFalse();
-        var component = board.Components.ShouldHaveSingleItem();
-        component.State.ShouldBe(LabComponentState.Pending);
-        component.Detail.ShouldContain("M1 windowing package.");
         board.AllReady.ShouldBeFalse();
-    }
-
-    [Fact]
-    public void Another_exception_is_a_failure_with_its_type()
-    {
-        var board = new ComponentBoard();
-
-        board.Try("TrayIcon", "Bandeja", () => throw new InvalidOperationException("sin bandeja"));
-
         board.Components[0].State.ShouldBe(LabComponentState.Failed);
         board.Components[0].Detail.ShouldBe("InvalidOperationException: sin bandeja");
     }
@@ -47,7 +29,7 @@ public sealed class ComponentBoardTests
         var changes = 0;
         board.Changed += (_, _) => changes++;
 
-        board.Pending("PointerInputSource", "Esperando al paquete pointer.");
+        board.Pending("PointerInputSource", "Espera a SysEventsThread.");
         (
             await board.TryAsync("PointerInputSource", "Punteros propios", () => Task.CompletedTask)
         ).ShouldBeTrue();

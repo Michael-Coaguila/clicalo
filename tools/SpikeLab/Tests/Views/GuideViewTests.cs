@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
+using System.Windows.Threading;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.Tools.SpikeLab.Scripting;
 using Clicalo.Tools.SpikeLab.Session;
@@ -52,6 +53,9 @@ public sealed class GuideViewTests
             );
 
             ((IInvokeProvider)Peer(tiles[0]).GetPattern(PatternInterface.Invoke)).Invoke();
+
+            // Invoke returns at once and the tile raises Invoked on the next dispatcher turn (UI Automation, S3).
+            Dispatcher.CurrentDispatcher.Invoke(static () => { }, DispatcherPriority.Background);
             commands.ShouldBe([("guide-worked", CommandPattern.Invoke)]);
         });
 

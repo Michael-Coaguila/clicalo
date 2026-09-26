@@ -6,8 +6,6 @@ using System.Windows.Media;
 using Clicalo.Tools.SpikeLab.Composition;
 using Clicalo.Tools.SpikeLab.Scripting;
 using Clicalo.Tools.SpikeLab.Session;
-using Clicalo.Tools.SpikeLab.Surfaces;
-using Clicalo.Tools.SpikeLab.Tiles;
 using Clicalo.UI.Wpf.Automation;
 
 namespace Clicalo.Tools.SpikeLab.Views;
@@ -15,8 +13,7 @@ namespace Clicalo.Tools.SpikeLab.Views;
 /// <summary>
 /// The control window of the laboratory: a normal, ACTIVATABLE window to prepare the cycles (choose the spike, show
 /// the surfaces, open the probe, switch voice numbers and key sending) and to see which real pieces already work.
-/// Touching it takes the foreground, so during a cycle the maintainer uses the guide strip instead. While the
-/// windowing is not integrated, it also hosts a copy of the guide.
+/// Touching it takes the foreground, so during a cycle the maintainer uses the guide strip instead.
 /// </summary>
 internal sealed class LabWindow : Window
 {
@@ -26,7 +23,6 @@ internal sealed class LabWindow : Window
     private readonly TextBlock _spikeLine = Line(18, FontWeights.SemiBold);
     private readonly TextBlock _reportLine = Line(15, FontWeights.Normal);
     private readonly StackPanel _components = new();
-    private readonly ContentControl _fallbackGuide = new();
     private bool _closing;
 
     /// <summary>Creates the window for <paramref name="app"/>; <paramref name="argumentError"/> explains a bad command line.</summary>
@@ -61,7 +57,6 @@ internal sealed class LabWindow : Window
         layout.Children.Add(_controls);
         layout.Children.Add(Line(20, FontWeights.Bold, "Piezas del producto"));
         layout.Children.Add(_components);
-        layout.Children.Add(_fallbackGuide);
         Content = new ScrollViewer
         {
             Content = layout,
@@ -162,43 +157,6 @@ internal sealed class LabWindow : Window
         _controls.Visibility = Visibility.Visible;
         _spikeLine.Text = session.Script.Title + " · guion: " + session.Script.Document;
         _reportLine.Text = "Informe: " + session.ReportPath + " (y su resumen .md al lado).";
-        if (!session.GuideStripShown)
-        {
-            _fallbackGuide.Content = new StackPanel
-            {
-                Children =
-                {
-                    Line(
-                        16,
-                        FontWeights.SemiBold,
-                        "La tira-guía no pudo mostrarse como ventana no activable (NonActivatingWindow pendiente). "
-                            + "Aquí tienes una copia, pero esta ventana se activa: no sirve para medir."
-                    ),
-                    session.CreateWindowGuide(CreateWindowTile),
-                },
-            };
-        }
-    }
-
-    private ShortcutTile CreateWindowTile(LabTile tile, double width, double height)
-    {
-        var control = TileFactory.Create(tile, width, height);
-        TileInput Input(bool command, CommandPattern pattern, bool expand) =>
-            new(tile, control, "Ventana de control", SurfaceGroup.Any, _app.Host.Time.GetUtcNow())
-            {
-                IsCommand = command,
-                Pattern = pattern,
-                Expand = expand,
-                Channel = command ? "uia" : "mouse-promoted",
-            };
-
-        TileFactory.WireAutomation(
-            control,
-            (pattern, expand) => Session?.OnTile(Input(true, pattern, expand))
-        );
-        control.MouseLeftButtonUp += (_, _) =>
-            Session?.OnTile(Input(false, CommandPattern.Invoke, false));
-        return control;
     }
 
     private void ShowComponents()

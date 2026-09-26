@@ -6,8 +6,8 @@ namespace Clicalo.Tools.SpikeLab.Composition;
 /// Breaks the construction cycle of the foreground pieces: <c>ActivationGuard</c> needs its
 /// <see cref="IActivationArbiter"/> at construction, the arbiter is the <c>ForegroundOrchestrator</c>, and the
 /// orchestrator needs <c>SurfaceRegistry</c>, which needs the guard. The relay forwards to the orchestrator once it
-/// exists; before that (or while the foreground package is not integrated) no activation is leased and violations are
-/// only counted and reported to the laboratory.
+/// exists; before that (or when one of its ports failed to start) no activation is leased and violations are only
+/// counted and reported to the laboratory.
 /// </summary>
 internal sealed class ArbiterRelay : IActivationArbiter
 {
