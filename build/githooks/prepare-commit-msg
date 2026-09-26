@@ -1,0 +1,12 @@
+#!/bin/sh
+# Adds the DCO "Signed-off-by" trailer (blueprint section 13) to every commit message, so nobody has to
+# remember `git commit -s` when committing by voice or touch. `cl setup` installs it via core.hooksPath.
+# Idempotent (an identical trailer is never added twice) and silent without a git identity.
+message_file="$1"
+name=$(git config user.name) || exit 0
+email=$(git config user.email) || exit 0
+if [ -z "$name" ] || [ -z "$email" ]; then
+  exit 0
+fi
+exec git interpret-trailers --in-place --if-exists addIfDifferent \
+  --trailer "Signed-off-by: $name <$email>" "$message_file"

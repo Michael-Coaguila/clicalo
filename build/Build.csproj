@@ -4,9 +4,14 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
     <RootNamespace>Clicalo.Build</RootNamespace>
+    <!-- The orchestrator's own tests and the versioned git hooks live below this folder. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Build.Tests/**;githooks/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Bullseye" />
     <PackageReference Include="SimpleExec" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Build.Tests" />
   </ItemGroup>
 </Project>
