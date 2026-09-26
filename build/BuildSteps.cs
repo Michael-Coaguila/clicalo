@@ -17,6 +17,13 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
     /// </summary>
     public const string ReservedKeysTrait = "Injects=ReservedKeys";
 
+    /// <summary>
+    /// Makes every test module write its xUnit TRX as <c>&lt;AssemblyName&gt;.trx</c> (<c>Directory.Build.targets</c>):
+    /// with xUnit's default name, taken from the clock when each module starts, two modules started together shared a
+    /// file and <see cref="TestRunReport"/> counted fewer tests than <c>dotnet test</c>.
+    /// </summary>
+    public const string TrxReportProperty = "-p:ClicaloTrxReport=true";
+
     /// <summary>Tells desktop tests that the run is deliberate (they self-skip otherwise).</summary>
     public const string DesktopVariable = "CLICALO_DESKTOP_TESTS";
 
@@ -237,7 +244,8 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
                     "--no-progress",
                     "--results-directory",
                     layout.Relative(results),
-                    "--report-xunit-trx",
+                    // One <AssemblyName>.trx per module (Directory.Build.targets), so no module overwrites another's.
+                    TrxReportProperty,
                     .. SelectionArguments(selection, context.Mode.Ci),
                     // A project may hold only desktop tests (or none of them): zero tests there is fine.
                     "--ignore-exit-code",

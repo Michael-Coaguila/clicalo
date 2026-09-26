@@ -55,13 +55,16 @@ Los mismos pasos, en este orden, en local y en la CI; el primero que falla detie
 3. **format**: `dotnet csharpier check .`
 4. **restore**: `dotnet restore --locked-mode` (los *lock files* deben coincidir).
 5. **build**: compilación Release con `-warnaserror`.
-6. **test**: todas las pruebas salvo `Requires=Desktop`, con resultados TRX.
+6. **test**: todas las pruebas salvo `Requires=Desktop`, con resultados TRX: un `<Ensamblado>.trx` por módulo de
+   pruebas (`-p:ClicaloTrxReport=true`, que lee `Directory.Build.targets`), para que ningún módulo sobrescriba los
+   resultados de otro.
 7. **i18n**: `Clicalo.DevCli i18n-check` y `Clicalo.DevCli i18n-import --check`.
 
 ### Línea final e informe de errores
 
 Cada orden termina en **una sola línea para Narrador**, por ejemplo «cl check: correcto en 1 min 22 s;
-1233 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El informe
+1233 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El número de pruebas es el
+`total` que da `dotnet test` en su resumen (las omitidas cuentan y se dicen aparte: «65 pruebas, 2 omitidas»). El informe
 `artifacts/cl/last-error.md` es Markdown con encabezados y listas (sin tablas ni colores) y recoge el error
 exacto: errores de MSBuild con enlace a la línea, pruebas fallidas con mensaje y pila (leídas del TRX),
 archivos sin formato o firmas NuGet rechazadas (NU3034). Se borra al empezar cada orden, así que nunca queda
