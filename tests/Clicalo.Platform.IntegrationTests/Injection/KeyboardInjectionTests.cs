@@ -106,6 +106,34 @@ public sealed class KeyboardInjectionTests(DesktopProbeFixture desktop)
 
     [DesktopFact]
     [Trait("Req", "NFR-004")]
+    public async Task Virtual_key_mode_sends_the_arrow_keys_as_extended_keys()
+    {
+        var cursor = await desktop.PrepareAsync();
+
+        // Without the extended flag the arrow would be the keypad key: Raw Input readers see keypad 4 and, with
+        // Num Lock on, Windows wraps Shift+keypad in synthetic Shift releases that break text selection.
+        desktop.Injector.Send(KeyStrokes.Chord(VirtualKeyCode.LeftShift, VirtualKeyCode.Left));
+        var events = await CollectInjectedKeysAsync(cursor, count: 4);
+
+        var keys = ProbeEvents.InjectedKeys(events);
+        keys.Select(key => (key.SideVirtualKey, key.ScanCode, key.IsExtended, key.IsPress))
+            .ShouldBe([
+                (VirtualKeyCode.LeftShift, (byte)0x2A, false, true),
+                (VirtualKeyCode.Left, (byte)LeftArrowScanCode, true, true),
+                (VirtualKeyCode.Left, (byte)LeftArrowScanCode, true, false),
+                (VirtualKeyCode.LeftShift, (byte)0x2A, false, false),
+            ]);
+        keys[1].Modifiers.ShouldBe(SideModifiers.LeftShift);
+        ProbeEvents
+            .InjectedRaw(events)
+            .Where(raw => raw.MakeCode == LeftArrowScanCode)
+            .Select(raw => (raw.IsE0, raw.IsBreak))
+            .ShouldBe([(true, false), (true, true)]);
+        ProbeEvents.ShouldHaveNoForeignKeys(events);
+    }
+
+    [DesktopFact]
+    [Trait("Req", "NFR-004")]
     public async Task AltGr_is_sent_as_the_right_Alt_key()
     {
         var cursor = await desktop.PrepareAsync();
