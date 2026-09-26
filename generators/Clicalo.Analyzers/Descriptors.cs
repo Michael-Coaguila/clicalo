@@ -93,4 +93,35 @@ internal static class Descriptors
         description: PresentationDescription,
         helpLinkUri: HelpBase + "clc0006"
     );
+
+    // ---- CLC0010 · Safety (REG-04) ---------------------------------------------------------------------------
+
+    private const string SafetyTitle =
+        "Destructive commands are dispatched only with a confirmation token";
+
+    private const string SafetyDescription =
+        "Nothing destructive happens with a single tap. A command that implements IDestructiveCommand travels with the "
+        + "ConfirmationToken that only TwoStepConfirm issues on the second tap.";
+
+    public static readonly DiagnosticDescriptor MissingConfirmationToken = new(
+        DiagnosticIds.DestructiveCommand,
+        SafetyTitle,
+        "The destructive command '{0}' is passed to '{1}' without a ConfirmationToken; use the overload that takes the token issued by TwoStepConfirm (REG-04)",
+        DiagnosticCategories.Safety,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: SafetyDescription,
+        helpLinkUri: HelpBase + "clc0010"
+    );
+
+    public static readonly DiagnosticDescriptor ForgedConfirmationToken = new(
+        DiagnosticIds.DestructiveCommand,
+        SafetyTitle,
+        "'{0}' produces a ConfirmationToken outside TwoStepConfirm; only TwoStepConfirm may issue one (REG-04)",
+        DiagnosticCategories.Safety,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: SafetyDescription,
+        helpLinkUri: HelpBase + "clc0010"
+    );
 }

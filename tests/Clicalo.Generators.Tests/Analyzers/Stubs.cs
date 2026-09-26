@@ -206,4 +206,82 @@ internal static class Stubs
             }
         }
         """;
+
+    /// <summary>Document commands, the confirmation token (a class) and its issuer (CLC0010).</summary>
+    public const string Commands = """
+        namespace Clicalo.Domain.Commands
+        {
+            public interface IDocumentCommand { }
+            public interface IDestructiveCommand : IDocumentCommand { }
+            public sealed record DeleteShortcut(int Id) : IDestructiveCommand;
+            public sealed record RenameShortcut(int Id) : IDocumentCommand;
+        }
+
+        namespace Clicalo.Application.Confirmation
+        {
+            public class ConfirmationToken
+            {
+                internal ConfirmationToken(long serial) { Serial = serial; }
+                internal ConfirmationToken() : this(0) { }
+                public long Serial { get; }
+            }
+
+            public sealed class TwoStepConfirm
+            {
+                private long _next;
+                public void Arm(Clicalo.Domain.Commands.IDocumentCommand command) { }
+                public ConfirmationToken Confirm() => new ConfirmationToken(++_next);
+            }
+        }
+
+        namespace Clicalo.Application.Store
+        {
+            using Clicalo.Application.Confirmation;
+            using Clicalo.Domain.Commands;
+
+            public sealed class DocumentStore
+            {
+                public void Dispatch(IDocumentCommand command) { }
+                public void Dispatch(IDestructiveCommand command, ConfirmationToken token) { }
+                public void DispatchOptional(IDocumentCommand command, ConfirmationToken token = null) { }
+                public void DispatchAll(params IDocumentCommand[] commands) { }
+                public void Queue<TCommand>(TCommand command) where TCommand : IDocumentCommand { }
+                public void Remember(object value) { }
+                public void Keep<T>(T value) { }
+            }
+        }
+        """;
+
+    /// <summary>The same contracts with a struct token, to cover <c>default</c> and <c>Nullable</c> forgeries (CLC0010).</summary>
+    public const string CommandsWithStructToken = """
+        namespace Clicalo.Domain.Commands
+        {
+            public interface IDocumentCommand { }
+            public interface IDestructiveCommand : IDocumentCommand { }
+            public sealed record DeleteProfile(int Id) : IDestructiveCommand;
+        }
+
+        namespace Clicalo.Application.Confirmation
+        {
+            public readonly record struct ConfirmationToken(long Serial);
+
+            public sealed class TwoStepConfirm
+            {
+                public ConfirmationToken Confirm() => new ConfirmationToken(1);
+                public ConfirmationToken Empty() => default;
+            }
+        }
+
+        namespace Clicalo.Application.Store
+        {
+            using Clicalo.Application.Confirmation;
+            using Clicalo.Domain.Commands;
+
+            public sealed class DocumentStore
+            {
+                public void Dispatch(IDestructiveCommand command, ConfirmationToken token) { }
+                public void DispatchMaybe(IDestructiveCommand command, ConfirmationToken? token) { }
+            }
+        }
+        """;
 }
