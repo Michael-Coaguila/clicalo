@@ -58,7 +58,7 @@ Copia fiel de `docs/design/handoff/data/theme-palettes.json` (solo se añade el 
 | Sección | Contenido |
 |---|---|
 | `minimums` | `text` 4,5 (WCAG 1.4.3) y `graphic` 3 (WCAG 1.4.11). El generador rechaza valores menores. |
-| `backdrops` | Escritorios que pueden verse a través del panel translúcido: `#000000` y `#ffffff` (§4). |
+| `backdrops` | Escritorios que pueden verse a través del panel translúcido: los 8 vértices del cubo sRGB, de `#000000` a `#ffffff` (§4). |
 | `decorative` | Tokens sin mínimo, cada uno con su motivo: `desk`, `border`, `scrim`, `shadow`. |
 | `pairs` | `kind` (`text` o `graphic`), `foreground`, `backgrounds` y `use` (dónde se usa). |
 
@@ -113,7 +113,7 @@ La inversa usa las matrices de Ottosson y raíz cúbica con signo. Las pruebas c
 
 ### 3.3 Mapeo de gama
 
-Algoritmo de CSS Color 4 §13.2: si el color no cabe en sRGB se busca, a luminosidad y tono constantes, la mayor croma cuyo recorte quede a menos de una diferencia apenas perceptible (ΔEOK < 0,02, JND) del color reducido; búsqueda binaria con ε = 0,0001. `L ≥ 1` da blanco y `L ≤ 0` da negro. ΔEOK es la distancia euclídea en OKLab.
+Algoritmo de CSS Color 4 §13.2: si el color no cabe en sRGB se busca, a luminosidad y tono constantes, la mayor croma cuyo recorte quede a menos de una diferencia apenas perceptible (ΔEOK < 0,02, JND) del color reducido; búsqueda binaria con ε = 0,0001. `L ≥ 1` da blanco y `L ≤ 0` da negro; si además la croma no es 0, el color cuenta como fuera de gama y su ΔEOK hasta el blanco o el negro puede dar CLCT003. ΔEOK es la distancia euclídea en OKLab.
 
 Trece colores de los datos quedan fuera de sRGB (TEM-003 contaba once en el paquete original; las correcciones cambian cuáles); el mapeo los mueve como mucho 0,040. `maxDeltaEOK` = 0,05 (2,5 JND) deja margen y detecta errores de verdad, como una croma de 0,3 escrita por descuido (CLCT003).
 
@@ -125,7 +125,11 @@ Luminancia relativa de WCAG 2.x (`0,2126 R + 0,7152 G + 0,0722 B` sobre canales 
 
 1. Se usan los **colores de 8 bits** que se van a pintar, no los valores OKLCH ideales.
 2. El fondo es la **pila real**: las capas se componen de abajo arriba y el primer plano, aunque sea translúcido (como `line`), se compone encima.
-3. Si la pila no es opaca (el panel es translúcido, α 0,96 y 0,97), se compone **sobre cada backdrop** y cuenta el peor caso. Se usan el negro y el blanco puros porque la luminancia del compuesto crece con la de cada canal del escritorio: cualquier escritorio real da un fondo entre esos dos extremos, y el contraste con un color fijo es peor en uno de ellos.
+3. Si la pila no es opaca (el panel es translúcido, α 0,96 y 0,97), se compone **sobre cada backdrop** y cuenta el peor caso. Los backdrops son los 8 vértices del cubo sRGB (negro, blanco, primarios y secundarios):
+   - La luminancia del compuesto crece con cada canal del escritorio, así que el negro y el blanco acotan la luminancia del fondo. Con un primer plano opaco, el peor caso está en uno de los dos extremos, salvo que el primer plano quede entre ambos.
+   - Si el primer plano es más claro que el fondo sobre un backdrop y más oscuro sobre otro, algún escritorio intermedio los iguala: `ContrastEvaluator` lo detecta, busca ese escritorio por bisección y da 1:1.
+   - Con un primer plano translúcido (`line` sobre `panel`), el primer plano también depende del escritorio y un escritorio de color puede dar algo menos que el negro o el blanco: `line` sobre `panel` en el tema oscuro es peor sobre `#00ffff` (3,108:1) que sobre el blanco (3,111:1). Por eso se usan los 8 vértices y no solo los dos extremos.
+   - No se pueden recorrer los 16,7 millones de escritorios. Una prueba (`No_desktop_color_behind_the_panel_breaks_a_pair`) mide todos los pares sobre una rejilla de 729 escritorios, con los vértices incluidos, y confirma que ninguno queda por debajo del mínimo.
 4. Se mide con la opacidad del usuario al 100 %. El estado atenuado queda exento mientras dura (TEM-004, PQ-42).
 5. Los pares con `categoryTint` o `categoryWash` se miden para cada categoría.
 
@@ -174,12 +178,13 @@ TEM-004 citaba los fallos del tema claro (warn, accent sobre cardHi, peligro y l
 ## 7. Alto contraste
 
 - **Paleta propia (`hc`):** negro, blanco y #FFE600, bordes de 2 px, sin transparencias ni desenfoque. Peligro #FF6B6B con texto negro (DIS-26), éxito blanco con icono negro, velo opaco y sombra transparente (sin sombra).
+- **Sin sombras:** en todo tema de alto contraste (`IsHighContrast`, también el del sistema, donde `shadow` se asigna a `window`), `ShadowSpec.ColorIn` devuelve un color totalmente transparente.
 - **Colores del sistema:** `SystemHighContrastPalette` lee `SystemColors` al llamarse y `Capture()` congela una instantánea como `ThemePalette` (clave `system`). Tras `WM_SYSCOLORCHANGE` hay que tomar otra. Los pares garantizados `windowText`/`window` y `highlightText`/`highlight` los define todo tema de contraste de Windows; `highlight` sobre `window` es como Windows dibuja la selección y el foco. El `ThemeService` de M3 verificará el contraste con los colores reales del sistema.
 
 ## 8. Formas y foco
 
 - **Radios** (`Radii`): `Compact` 6, `Control` 8, `Button` 10, `Tile` 12, `LargeCard` 14, `Window` 16, `Panel` 18, `Modal` 20.
-- **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema.
+- **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema; en alto contraste devuelve transparente.
 - **Anillo de foco** (`FocusRing`): 3 px separados 2 px del control, en `focusRing`.
 
 ## 9. Código generado
@@ -265,4 +270,4 @@ La compilación de `Clicalo.UI.Wpf` compila además el código generado contra W
 
 - **Numeración de diagnósticos.** El plano (§8.4) numeraba CLCT001 «fuera de gamut sin regla» y CLCT003 «token ausente». Aquí CLCT001 es el color no válido, CLCT003 la pérdida por mapeo de gama y el token ausente pasa a CLCT005, con CLCT004, CLCT006 y CLCT007 para los demás errores de datos.
 - **Atenuado.** El plano menciona medir «con dimTo»; el catálogo (TEM-004, PQ-42) exime el estado atenuado. Se sigue el catálogo.
-- **Escritorio.** «Escritorio claro y oscuro» se concreta en negro y blanco puros, que acotan cualquier escritorio real.
+- **Escritorio.** «Escritorio claro y oscuro» se concreta en los 8 vértices del cubo sRGB: el negro y el blanco acotan la luminancia del fondo, y los vértices de color cubren el caso de un primer plano translúcido (§4).
