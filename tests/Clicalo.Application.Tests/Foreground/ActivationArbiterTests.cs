@@ -6,7 +6,7 @@ using static Clicalo.Application.Tests.Foreground.ForegroundWorld;
 namespace Clicalo.Application.Tests.Foreground;
 
 /// <summary>
-/// The orchestrator as <see cref="IActivationArbiter"/> for <c>ActivationGuard</c> (blueprint §3.5, deviation D-13):
+/// The orchestrator as <see cref="IActivationArbiter"/> for <c>ActivationGuard</c> (blueprint §3.5, deviation D-14):
 /// an activation is legitimate only for the target of the lease being granted or active, and a reported violation
 /// gives the foreground back to the last verified external window, or to the target of the active lease.
 /// </summary>

@@ -3,7 +3,7 @@ using Clicalo.Application.Ports;
 namespace Clicalo.Application.Foreground;
 
 /// <summary>
-/// The ports <see cref="ForegroundOrchestrator"/> works through (blueprint §3.6, deviation D-13). The composition root
+/// The ports <see cref="ForegroundOrchestrator"/> works through (blueprint §3.6, deviation D-14). The composition root
 /// passes the real adapters (Platform.Windows and UI.Wpf); tests pass fakes.
 /// </summary>
 public sealed record ForegroundPorts

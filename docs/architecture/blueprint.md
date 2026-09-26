@@ -264,7 +264,7 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
    - `InteractionStore`: solo el rol Surfaces, que publica `InteractionSnapshot` inmutable hacia Workspace.
    - `EngineHost`: solo el hilo Engine.
    - En Debug, `ThreadGuard.AssertSurfaces()`, `AssertEngine()`, etc. comprueban la afinidad. Los *roles* se comprueban aunque compartan dispatcher.
-   - Las superficies, su `OwnerAnchor` y `SurfaceRegistry` viven en **un único** hilo de UI (lo comprueban sus constructores): un propietario en otro hilo une las colas de entrada, un `AttachThreadInput` implícito que §3.6 prohíbe. El único *hook* de ventanas de ese hilo es `ActivationVeto`, un `WH_CBT` del propio hilo y de ámbito mínimo (§3.5, [D-14](deviations.md#d-14--no-activación-medida-en-s1)).
+   - Las superficies, su `OwnerAnchor` y `SurfaceRegistry` viven en **un único** hilo de UI (lo comprueban sus constructores): un propietario en otro hilo une las colas de entrada, un `AttachThreadInput` implícito que §3.6 prohíbe. El único *hook* de ventanas de ese hilo es `ActivationVeto`, un `WH_CBT` del propio hilo y de ámbito mínimo (§3.5, [D-15](deviations.md#d-15--no-activación-medida-en-s1)).
 
 3. **El buzón del motor tiene dos carriles.** `Priority` (ReleaseAll, eventos terminales, fin de contacto) se vacía siempre antes que `Normal`. Soltar nunca espera detrás de una macro.
 
@@ -404,7 +404,7 @@ public abstract class NonActivatingWindow : Window
 |---|---|
 | `WM_MOUSEACTIVATE` | `MA_NOACTIVATE` |
 | `WM_POINTERACTIVATE` | `PA_NOACTIVATE` |
-| `WM_WINDOWPOSCHANGING` | Añade `SWP_NOACTIVATE`, salvo durante una concesión `TextInput` o `KeyboardNavigation` sobre esa superficie. **No basta por sí solo** (medido en S1): el `Show` de WPF de `ShowPassive` y el `WM_DPICHANGED` reenviado van dentro de `ActivationVeto`, que rechaza `HCBT_ACTIVATE` de esa superficie solo mientras dura la llamada ([D-14](deviations.md#d-14--no-activación-medida-en-s1)) |
+| `WM_WINDOWPOSCHANGING` | Añade `SWP_NOACTIVATE`, salvo durante una concesión `TextInput` o `KeyboardNavigation` sobre esa superficie. **No basta por sí solo** (medido en S1): el `Show` de WPF de `ShowPassive` y el `WM_DPICHANGED` reenviado van dentro de `ActivationVeto`, que rechaza `HCBT_ACTIVATE` de esa superficie solo mientras dura la llamada ([D-15](deviations.md#d-15--no-activación-medida-en-s1)) |
 | `WM_ACTIVATE` (≠ `WA_INACTIVE`), `WM_NCACTIVATE(TRUE)`, `WM_ACTIVATEAPP(TRUE)` | `ActivationGuard.OnActivated(surface, msg)` |
 | `WM_DPICHANGED` | Aplica el rectángulo con `SWP_NOZORDER | SWP_NOACTIVATE` y lo marca como manejado (#7561). Antes lo reenvía a `HwndTarget` dentro de `ActivationVeto` para que WPF reescale (ACC-008), porque su `SetWindowPos` no lleva `SWP_NOACTIVATE` || SWP_NOACTIVATE` y lo marca como manejado (#7561) |
 | `WM_GETDPISCALEDSIZE` | Tamaño propio |
@@ -424,7 +424,7 @@ WM_ACTIVATE / WM_NCACTIVATE / WM_ACTIVATEAPP sobre hwnd ∈ SurfaceRegistry
         4 Debug y CI: Debug.Fail
 ```
 
-Una activación son varios mensajes (`WM_ACTIVATEAPP` a todas las ventanas del hilo, luego `WM_NCACTIVATE` y `WM_ACTIVATE`): `ActivationGuard` cuenta **una** violación por activación y la cierra con el `WA_INACTIVE` de esa superficie, con `WM_ACTIVATEAPP(FALSE)` o al destruirla. `WM_ACTIVATEAPP(TRUE)` solo cuenta en la superficie que está en primer plano, para que activar el Centro de control (otra ventana del hilo) no parezca una violación. `ReportViolation` vuelve enseguida, porque se llama dentro del procedimiento de ventana; el orquestador restaura desde el grupo de hilos, y con una concesión activa devuelve el primer plano a su destino en lugar de a `lastExternalForeground` ([D-16](deviations.md#d-16--primer-plano-implementado-en-m1)).
+Una activación son varios mensajes (`WM_ACTIVATEAPP` a todas las ventanas del hilo, luego `WM_NCACTIVATE` y `WM_ACTIVATE`): `ActivationGuard` cuenta **una** violación por activación y la cierra con el `WA_INACTIVE` de esa superficie, con `WM_ACTIVATEAPP(FALSE)` o al destruirla. `WM_ACTIVATEAPP(TRUE)` solo cuenta en la superficie que está en primer plano, para que activar el Centro de control (otra ventana del hilo) no parezca una violación. `ReportViolation` vuelve enseguida, porque se llama dentro del procedimiento de ventana; el orquestador restaura desde el grupo de hilos, y con una concesión activa devuelve el primer plano a su destino en lugar de a `lastExternalForeground` ([D-17](deviations.md#d-17--primer-plano-implementado-en-m1)).
 
 `SurfaceIntegrityCheck` se ejecuta cada 30 s y después de cada `WM_DPICHANGED`, `WM_DISPLAYCHANGE` o cambio de tema. Comprueba `GWL_EXSTYLE` y `HWND_TOPMOST` en cada superficie y los repara con `SWP_NOACTIVATE`. Todas las superficies comparten `OwnerAnchor`, así que sacar una de la banda *topmost* saca a toda la familia (S1): ninguna superficie pone `Topmost = false`.
 
@@ -1373,7 +1373,7 @@ public sealed class GestureRecognizer  // una instancia por superficie; sin asig
 - Un 0 desactiva cada comprobación del filtro, también `cancelMovePx` (TAC-005 lo muestra como «Desactivado»).
 - El deslizamiento se decide al levantar el dedo, con `dx > 60 px` estricto y `|dy| < 0,6·|dx|`.
 - Resolución del objetivo: gana el objetivo tocado; si los límites de varios se solapan, el de centro más cercano (REG-02); en un hueco del área extra, el más cercano por distancia al borde y, si empatan, el de centro más cercano (TAC-002).
-- Detalle de lo implementado en M1: [D-15](deviations.md#d-15--capa-de-punteros-implementada-en-m1).
+- Detalle de lo implementado en M1: [D-16](deviations.md#d-16--capa-de-punteros-implementada-en-m1).
 - **Fixtures:** trazas de puntero reales grabadas en el hardware del mantenedor (`tests/fixtures/pointer/*.json`), con temblor, palma, dos dedos y un deslizamiento que empieza sobre un Mantener. Se vuelven a grabar en cada pasada de aceptación con hardware (§10.2).
 
 ### 7.9 Cambio de app de extremo a extremo (PER-003)
@@ -1552,7 +1552,7 @@ data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion
   - `VoiceNumbering.Assign(listCount, perPage, stripCount)` numera de forma continua entre páginas; la fila fija y Fijos siguen tras N.
   - Con la opción activada, `AutomationProperties.Name` empieza por `"{n} "`.
   - Se relocaliza al cambiar de idioma.
-- **Invocar por UIA no activa la ventana.** Lo comprueban S3 y la regla UIA009. Cuando una invocación por UIA necesita primer plano (búsqueda), la gestiona la escalera de §3.6. `Invoke` vuelve enseguida y la ficha lanza su acción en el siguiente turno del dispatcher, para no bloquear a Acceso por voz mientras una concesión espera; `Toggle` y `ExpandCollapse` son síncronos. Un aviso cortés usa `AutomationNotificationProcessing.MostRecent` (las variantes `Important*` interrumpen al lector) y uno urgente `ImportantAll` ([D-17](deviations.md#d-17--ui-automation-implementada-en-m1)).
+- **Invocar por UIA no activa la ventana.** Lo comprueban S3 y la regla UIA009. Cuando una invocación por UIA necesita primer plano (búsqueda), la gestiona la escalera de §3.6. `Invoke` vuelve enseguida y la ficha lanza su acción en el siguiente turno del dispatcher, para no bloquear a Acceso por voz mientras una concesión espera; `Toggle` y `ExpandCollapse` son síncronos. Un aviso cortés usa `AutomationNotificationProcessing.MostRecent` (las variantes `Important*` interrumpen al lector) y uno urgente `ImportantAll` ([D-18](deviations.md#d-18--ui-automation-implementada-en-m1)).
 - **Además:** alto contraste del sistema, escala de texto del 100 al 150 %, `FocusVisual` en el modo teclado y ningún glifo usado como nombre (UIA008).
 
 ---

@@ -23,11 +23,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
 | D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | Repositorio privado en el plan gratuito, que no admite protección de ramas: *hook* local `pre-push` y *merge* solo por *squash* configurado en GitHub | M0 |
-| D-13 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
-| D-14 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación | M1 |
-| D-15 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
-| D-16 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
-| D-17 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
+| D-14 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
+| D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación | M1 |
+| D-16 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
+| D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
+| D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -244,7 +244,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   obligatorio, checks `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal, conversación
   resuelta y sin excepciones para administradores. Entonces esta entrada se elimina.
 
-## D-13 · Contratos de M1 para el primer plano
+## D-14 · Contratos de M1 para el primer plano
 
 - **Plano.** [§3.5](blueprint.md#35-ventanas-no-activables) pone `SurfaceId` junto a `NonActivatingWindow`
   (`Clicalo.UI.Wpf.Windowing`) y hace que `ActivationGuard` llame directamente a
@@ -267,7 +267,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Coste.** Tres interfaces más en Ports, todas pequeñas y con una sola implementación.
 - **Revisión.** Al cerrar S1 y S4; pendiente de ratificar junto con D-09.
 
-## D-14 · No activación medida en S1
+## D-15 · No activación medida en S1
 
 - **Plano.** La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) confía en añadir
   `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING` y aplica el rectángulo de `WM_DPICHANGED` sin pasar el mensaje a WPF;
@@ -296,7 +296,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** Al cerrar S1 con las filas manuales del equipo táctil; valorar un veto general entre
   `WM_WINDOWPOSCHANGING` y `WM_WINDOWPOSCHANGED` para cualquier `SetWindowPos` sin `SWP_NOACTIVATE`.
 
-## D-15 · Capa de punteros implementada en M1
+## D-16 · Capa de punteros implementada en M1
 
 - **Plano.** [§7.8](blueprint.md#78-filtro-táctil-y-gestos-domaintouch) y
   [§8.3](blueprint.md#83-entrada-táctil) describen `TouchFilter`, `GestureRecognizer` y `PointerInputSource` sin
@@ -323,7 +323,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   confirme.
 - **Revisión.** En S2, con trazas reales del equipo táctil.
 
-## D-16 · Primer plano implementado en M1
+## D-17 · Primer plano implementado en M1
 
 - **Plano.** [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano),
   [§7.9](blueprint.md#79-cambio-de-app-de-extremo-a-extremo-per-003) y la tabla de hilos de
@@ -357,7 +357,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Coste.** Más superficie pública en Application.Foreground; todas las adiciones son compatibles.
 - **Revisión.** Al cerrar S4 con las filas manuales (Acceso por voz, Narrador y Word).
 
-## D-17 · UI Automation implementada en M1
+## D-18 · UI Automation implementada en M1
 
 - **Plano.** [§8.6](blueprint.md#86-accesibilidad-uia-y-números-de-voz) y el contrato de `AnnouncementUrgency`
   (cortés = `ImportantMostRecent`).
