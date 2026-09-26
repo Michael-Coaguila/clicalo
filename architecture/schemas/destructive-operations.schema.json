@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Michael-Coaguila/clicalo/architecture/schemas/destructive-operations.schema.json",
+  "title": "Clícalo destructive operations",
+  "description": "Closed list of destructive document commands and use cases (REG-04, rule R4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "requirement", "commands", "useCases"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string", "minLength": 10 },
+    "requirement": { "type": "string", "pattern": "^[A-Z]{3}-[0-9]{3}$" },
+    "commands": { "$ref": "#/$defs/operations" },
+    "useCases": { "$ref": "#/$defs/operations" }
+  },
+  "$defs": {
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "description"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+          "description": { "type": "string", "minLength": 10 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "./schemas/undo-exemptions.schema.json",
+  "description": "Document commands exempt from recording an undo entry (REG-07, rule R7 of blueprint §4.4). Every other IDocumentCommand must return UndoIntent.Record for every generated document; the rule test applies all commands to generated documents and fails on any other intent. Each exemption states why undoing it would not be a user-visible data change.",
+  "requirement": "REG-07",
+  "exemptions": [
+    {
+      "command": "RecordUsage",
+      "scope": "always",
+      "justification": "Counting an execution is not an edit: it would flood the 20-entry history and is persisted apart in usage.json (§6.4, §6.5)."
+    },
+    {
+      "command": "SetPanelPosition",
+      "scope": "always",
+      "justification": "Moving the panel is placement, not data; undoing it would move the panel under the user's finger (§6.4)."
+    },
+    {
+      "command": "SetSetting",
+      "scope": "descriptorNotUndoable",
+      "justification": "Only for settings whose SettingDescriptor has Undoable = false (presentation and placement); every other setting records an undo entry (§6.3)."
+    },
+    {
+      "command": "FinishOnboarding",
+      "scope": "always",
+      "justification": "Finishing the welcome is a single one-way step; undoing it would reopen the welcome over the imported data (§6.3)."
+    }
+  ]
+}

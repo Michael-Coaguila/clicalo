@@ -1,0 +1,49 @@
+{
+  "$schema": "./schemas/destructive-operations.schema.json",
+  "description": "Closed list of destructive operations (REG-04, rule R4 of blueprint §4.4). Every listed document command implements IDestructiveCommand and every listed use case carries [Destructive]; both can only be dispatched with a ConfirmationToken issued by TwoStepConfirm (CLC0010). Architecture.Tests fails when a type implements IDestructiveCommand or carries [Destructive] without being listed, and when a listed type exists without the marker.",
+  "requirement": "REG-04",
+  "commands": [
+    {
+      "name": "DeleteShortcut",
+      "description": "Removes a shortcut from its list."
+    },
+    {
+      "name": "DeleteProfile",
+      "description": "Removes a profile and its shortcuts."
+    },
+    {
+      "name": "DeleteDuplicate",
+      "description": "Removes one appearance of a repeated shortcut."
+    },
+    {
+      "name": "ResetFrequents",
+      "description": "Clears usage, pins and hidden entries (raises UsageEpoch)."
+    },
+    {
+      "name": "ReplaceOnImport",
+      "description": "Replaces the library with an imported one."
+    },
+    {
+      "name": "RestoreBackup",
+      "description": "Replaces the document with a backup."
+    },
+    {
+      "name": "DeleteMacroStep",
+      "description": "Removes a step from a macro."
+    }
+  ],
+  "useCases": [
+    {
+      "name": "RollbackVersion",
+      "description": "Goes back to the previous installed version (N-1)."
+    },
+    {
+      "name": "UninstallKeepOrDeleteData",
+      "description": "Uninstalls from the Control Center, optionally deleting the user data."
+    },
+    {
+      "name": "UninstallSystemComponent",
+      "description": "Removes the elevated system component and its scheduled task."
+    }
+  ]
+}

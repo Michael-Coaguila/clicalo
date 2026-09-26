@@ -1,0 +1,167 @@
+{
+  "$schema": "./schemas/domain-modules.schema.json",
+  "description": "Capability modules of Clicalo.Domain and their allowed dependencies (blueprint §4.3). A module is the namespace Clicalo.Domain.<Module> and everything below it. A module may use any module it reaches through dependsOn (the relation is transitive), and the graph must stay acyclic. ModuleMatrixTests fails on any type outside a declared module and on any dependency edge the matrix does not allow.",
+  "rootNamespace": "Clicalo.Domain",
+  "modules": [
+    {
+      "name": "Primitives",
+      "group": "foundations",
+      "description": "Ids, LangCode, LocalizedText, ValueList and IIdGenerator.",
+      "dependsOn": []
+    },
+    {
+      "name": "Geometry",
+      "group": "foundations",
+      "description": "Physical and logical rectangles, points and placement math.",
+      "dependsOn": []
+    },
+    {
+      "name": "Messages",
+      "group": "foundations",
+      "description": "Generated MessageKey and message arguments (data/i18n).",
+      "dependsOn": []
+    },
+    {
+      "name": "Errors",
+      "group": "foundations",
+      "description": "Error, Result<T> and recovery hints.",
+      "dependsOn": ["Messages"],
+      "deviation": "§4.3 lists no dependency, but Error carries MessageKey and MessageArg (§6.1)."
+    },
+    {
+      "name": "Privacy",
+      "group": "foundations",
+      "description": "Sensitive<T>, redaction kinds and the [Sensitive] contract.",
+      "dependsOn": []
+    },
+    {
+      "name": "Keys",
+      "group": "foundations",
+      "description": "KeyId, KeyStroke, KeyChord, CanonicalChord and InjectionMode.",
+      "dependsOn": ["Primitives"]
+    },
+    {
+      "name": "Catalog",
+      "group": "foundations",
+      "description": "Generated catalogs (keys, categories, icons, blocked combos, system commands).",
+      "dependsOn": ["Keys", "Primitives"]
+    },
+    {
+      "name": "Library",
+      "group": "core",
+      "description": "The Library aggregate: profiles, shortcuts, actions and SecretText.",
+      "dependsOn": ["Keys", "Catalog", "Primitives", "Messages", "Privacy", "Errors"],
+      "deviation": "Errors added: Library operations return Result<Library> (§6.2)."
+    },
+    {
+      "name": "Settings",
+      "group": "core",
+      "description": "Settings, SettingDescriptor and SettingsSchema.",
+      "dependsOn": ["Primitives", "Messages"],
+      "deviation": "Messages added: SettingDescriptor carries its Label and Description keys (§6.3)."
+    },
+    {
+      "name": "ProfileResolution",
+      "group": "rules",
+      "description": "Which profile the panel shows for the foreground app (Auto/Fixed).",
+      "dependsOn": ["Library", "Settings"]
+    },
+    {
+      "name": "Frequents",
+      "group": "rules",
+      "description": "Usage log, pins, hidden entries and the Frequents projection.",
+      "dependsOn": ["Library"]
+    },
+    {
+      "name": "Duplicates",
+      "group": "rules",
+      "description": "Repeated shortcuts detection and DuplicatePolicy.",
+      "dependsOn": ["Library", "Keys"]
+    },
+    {
+      "name": "Search",
+      "group": "rules",
+      "description": "Panel search over the library and the catalogs.",
+      "dependsOn": ["Library", "Catalog"]
+    },
+    {
+      "name": "KeySafety",
+      "group": "rules",
+      "description": "Keyboard ledger rules and the key safety invariants.",
+      "dependsOn": ["Keys"]
+    },
+    {
+      "name": "StickyModifiers",
+      "group": "rules",
+      "description": "Sticky modifier keys.",
+      "dependsOn": ["Keys", "KeySafety"]
+    },
+    {
+      "name": "Touch",
+      "group": "rules",
+      "description": "TouchFilter and GestureRecognizer (pure).",
+      "dependsOn": ["Geometry", "Primitives"]
+    },
+    {
+      "name": "PanelLayout",
+      "group": "rules",
+      "description": "Rows, bar capacity, pages and PanelGeometry.Place.",
+      "dependsOn": ["Settings", "Geometry"]
+    },
+    {
+      "name": "VoiceNumbering",
+      "group": "rules",
+      "description": "Voice numbers of the visible controls.",
+      "dependsOn": ["PanelLayout"]
+    },
+    {
+      "name": "Icons",
+      "group": "rules",
+      "description": "Automatic icons for shortcuts and combos.",
+      "dependsOn": ["Catalog", "Keys"]
+    },
+    {
+      "name": "Dimming",
+      "group": "rules",
+      "description": "DimPolicy (pure).",
+      "dependsOn": ["Settings", "Primitives"]
+    },
+    {
+      "name": "Interaction",
+      "group": "rules",
+      "description": "InteractionState: NoticeQueue, CaptureState, TestModeState and InteractionReducer.",
+      "dependsOn": ["Messages", "Primitives", "Library"]
+    },
+    {
+      "name": "Execution",
+      "group": "execution",
+      "description": "ActivationPolicy, planners per ActionKind and EngineReducer.",
+      "dependsOn": ["Library", "KeySafety", "StickyModifiers", "Touch", "Settings", "Messages", "Errors", "Geometry"]
+    },
+    {
+      "name": "Document",
+      "group": "document",
+      "description": "UserDocument, IDocumentCommand and IDestructiveCommand, DocumentChange, UndoIntent, DomainContext and the document commands.",
+      "dependsOn": ["Library", "Settings", "Frequents", "Duplicates", "Errors", "Messages", "Catalog", "Primitives"],
+      "deviation": "Not in §4.3: UserDocument aggregates Library, Frequents, Duplicates and Settings (§6.3), so no listed module can own it without a cycle."
+    },
+    {
+      "name": "Migration.V1",
+      "group": "data",
+      "description": "Pure conversion of v1 profiles.json into the current model.",
+      "dependsOn": ["Library", "Keys", "Catalog", "Settings"]
+    },
+    {
+      "name": "Templates",
+      "group": "data",
+      "description": "Template model and its semantic validation (TemplateSchema).",
+      "dependsOn": ["Library", "Catalog", "Keys"]
+    },
+    {
+      "name": "Sharing",
+      "group": "data",
+      "description": "Shared profile packages.",
+      "dependsOn": ["Library", "Catalog", "Keys"]
+    }
+  ]
+}

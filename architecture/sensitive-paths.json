@@ -1,0 +1,121 @@
+{
+  "$schema": "./schemas/sensitive-paths.schema.json",
+  "description": "Paths whose change needs an ADR (blueprint §13): trust boundaries, persisted formats, public contracts, the process model, the framework, the license and signing. CI requires a new or changed file under docs/adr/ in any pull request that touches one of these globs ('*' within a path segment, '**' across segments).",
+  "paths": [
+    {
+      "pattern": "src/Clicalo.Platform.Core/Trust/**",
+      "category": "trust-boundary",
+      "reason": "Pinned public keys, signed file catalog and publisher checks (ADR-0009, ADR-0013)."
+    },
+    {
+      "pattern": "src/Clicalo.Launcher/**",
+      "category": "trust-boundary",
+      "reason": "Elevated launcher: verifies after copying and runs only the protected copy (ADR-0009)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Windows/SystemComponent/**",
+      "category": "trust-boundary",
+      "reason": "Installation of the elevated system component and its scheduled task (ADR-0009)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Windows/Elevation/**",
+      "category": "trust-boundary",
+      "reason": "Elevated relaunch after the signature check (ADR-0009)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Windows/SingleInstance/**",
+      "category": "trust-boundary",
+      "reason": "Named pipe with DACL, integrity label and two-way verification (ADR-0010)."
+    },
+    {
+      "pattern": "src/Clicalo.Application/Ipc/**",
+      "category": "trust-boundary",
+      "reason": "D13: the IPC server only depends on IShellNavigator (ADR-0010)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Core/Ipc/**",
+      "category": "public-contract",
+      "reason": "IPC request and response contract between instances (ADR-0010)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Windows/Secrets/**",
+      "category": "trust-boundary",
+      "reason": "DPAPI and Credential Manager (ADR-0008)."
+    },
+    {
+      "pattern": "src/Clicalo.Infrastructure/Updates/**",
+      "category": "trust-boundary",
+      "reason": "Signed manifest, anti-rollback and emergency switches (ADR-0012, ADR-0013)."
+    },
+    {
+      "pattern": "src/Clicalo.Infrastructure/Ai/**",
+      "category": "trust-boundary",
+      "reason": "Data that leaves the machine: exactly the four fields of PLA-008 (ADR-0014)."
+    },
+    {
+      "pattern": "src/Clicalo.App/app.manifest",
+      "category": "trust-boundary",
+      "reason": "Requested execution level and uiAccess (ADR-0009)."
+    },
+    {
+      "pattern": "src/Clicalo.Infrastructure/Persistence/**",
+      "category": "persisted-format",
+      "reason": "Document and usage formats, DTOs, JSON context and migrations (ADR-0007)."
+    },
+    {
+      "pattern": "src/Clicalo.Infrastructure/Backup/**",
+      "category": "persisted-format",
+      "reason": "Backup envelope and retention (ADR-0007)."
+    },
+    {
+      "pattern": "data/schemas/**",
+      "category": "persisted-format",
+      "reason": "Document, usage, sharing, AI template contract, release files and update manifest schemas."
+    },
+    {
+      "pattern": "docs/architecture/contracts.md",
+      "category": "public-contract",
+      "reason": "Command line, clicalo:// links and IPC: breaking them needs a major version."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Core/KeyLedger/**",
+      "category": "process-model",
+      "reason": "Ledger v2 layout shared with Sentinel: generation, mode and flags (ADR-0004)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Core/Injection/**",
+      "category": "process-model",
+      "reason": "InjectionGate and the generation fence (ADR-0004)."
+    },
+    {
+      "pattern": "src/Clicalo.Sentinel/**",
+      "category": "process-model",
+      "reason": "Guardian process: release from the ledger and relaunch policy (ADR-0004)."
+    },
+    {
+      "pattern": "src/Clicalo.UI.Wpf/Clicalo.UI.Wpf.csproj",
+      "category": "framework",
+      "reason": "The UI framework choice (ADR-0001)."
+    },
+    {
+      "pattern": "LICENSE",
+      "category": "license",
+      "reason": "MIT with DCO (ADR-0015)."
+    },
+    {
+      "pattern": "nuget.config",
+      "category": "signing",
+      "reason": "Package sources, source mapping and trusted signers (T12)."
+    },
+    {
+      "pattern": ".github/workflows/release*.yml",
+      "category": "signing",
+      "reason": "Code signing and the unsigned manifest hand-off (ADR-0013)."
+    },
+    {
+      "pattern": "architecture/sensitive-paths.json",
+      "category": "governance",
+      "reason": "Removing a path from this list must itself be decided by an ADR."
+    }
+  ]
+}
