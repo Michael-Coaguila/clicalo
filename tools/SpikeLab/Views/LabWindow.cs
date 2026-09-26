@@ -23,6 +23,7 @@ internal sealed class LabWindow : Window
     private readonly TextBlock _spikeLine = Line(18, FontWeights.SemiBold);
     private readonly TextBlock _reportLine = Line(15, FontWeights.Normal);
     private readonly StackPanel _components = new();
+    private readonly TextBlock _refusal = Line(16, FontWeights.SemiBold);
     private bool _closing;
 
     /// <summary>Creates the window for <paramref name="app"/>; <paramref name="argumentError"/> explains a bad command line.</summary>
@@ -65,6 +66,7 @@ internal sealed class LabWindow : Window
 
         app.Host.Board.Changed += (_, _) => _ = Dispatcher.BeginInvoke(ShowComponents);
         app.SessionStarted = () => _ = Dispatcher.BeginInvoke(OnSessionStarted);
+        app.StartRefused = reason => _ = Dispatcher.BeginInvoke(() => _refusal.Text = reason);
         app.ExitRequested = () => _ = Dispatcher.BeginInvoke(Close);
         ShowComponents();
     }
@@ -102,6 +104,8 @@ internal sealed class LabWindow : Window
         }
 
         _chooser.Children.Add(buttons);
+        _refusal.Foreground = Brushes.DarkRed;
+        _chooser.Children.Add(_refusal);
     }
 
     private void BuildControls()

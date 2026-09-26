@@ -3,6 +3,7 @@ using System.Text;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Clicalo.Domain.Touch;
+using Clicalo.TestKit.Windows;
 using Clicalo.Tools.SpikeLab.Composition;
 using Clicalo.Tools.SpikeLab.Reporting;
 using Clicalo.Tools.SpikeLab.Scripting;
@@ -15,6 +16,7 @@ namespace Clicalo.Tools.SpikeLab.Session;
 /// </summary>
 internal sealed class LabApp : IAsyncDisposable
 {
+    private DesktopSessionLock? _desktop;
     private bool _disposed;
 
     /// <summary>Creates the laboratory on the UI thread of <paramref name="dispatcher"/>.</summary>
@@ -38,6 +40,17 @@ internal sealed class LabApp : IAsyncDisposable
 
     /// <summary>Called on the UI thread when a session starts.</summary>
     public Action? SessionStarted { get; set; }
+
+    /// <summary>
+    /// Called on the UI thread when a spike cannot start because desktop tests are running: their InputProbe and this
+    /// session would take the foreground from each other.
+    /// </summary>
+    public Action<string>? StartRefused { get; set; }
+
+    /// <summary>What the control window says when desktop tests hold the desktop.</summary>
+    public const string DesktopBusy =
+        "Hay pruebas de escritorio en marcha (cl desk u otra sesión de SpikeLab) y se quitarían el primer plano con "
+        + "este guion. Espera a que terminen y vuelve a tocar el spike.";
 
     /// <summary>Called when the maintainer asks to leave (tray menu).</summary>
     public Action? ExitRequested { get; set; }
@@ -128,6 +141,14 @@ internal sealed class LabApp : IAsyncDisposable
             return;
         }
 
+        // Only one user of the desktop at a time: the desktop tests take the same lock (DesktopSessionLock).
+        _desktop ??= DesktopSessionLock.TryAcquire(TimeSpan.Zero);
+        if (_desktop is null)
+        {
+            StartRefused?.Invoke(DesktopBusy);
+            return;
+        }
+
         Session = new LabSession(Host, SpikeScripts.For(spike), ReportDirectory)
         {
             ExitRequested = () => ExitRequested?.Invoke(),
@@ -150,6 +171,7 @@ internal sealed class LabApp : IAsyncDisposable
         }
 
         await Host.DisposeAsync();
+        _desktop?.Dispose();
     }
 
     private sealed class SilentSink : ILabInputSink
