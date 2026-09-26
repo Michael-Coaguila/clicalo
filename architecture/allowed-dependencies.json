@@ -192,6 +192,29 @@
       ],
       "packageReferences": ["xunit.v3", "Shouldly"]
     },
+    "Clicalo.Windowing.IntegrationTests": {
+      "area": "tests",
+      "rule": "Real windows on a real desktop (blueprint §10.1): non-activation of the surfaces with synthetic finger, pen and mouse (S1), UI Automation with FlaUI (S3) and foreground leases per origin with the real adapters (S4).",
+      "platform": "windows",
+      "projectReferences": [
+        "Clicalo.UI.Wpf",
+        "Clicalo.Presentation",
+        "Clicalo.Application",
+        "Clicalo.Domain",
+        "Clicalo.Platform.Core",
+        "Clicalo.Platform.Windows",
+        "Clicalo.TestKit",
+        "Clicalo.TestKit.Windows"
+      ],
+      "packageReferences": [
+        "xunit.v3",
+        "Shouldly",
+        "FlaUI.UIA3",
+        "Axe.Windows",
+        "Microsoft.Extensions.TimeProvider.Testing"
+      ],
+      "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
+    },
     "Clicalo.Architecture.Tests": {
       "area": "tests",
       "rule": "Architecture rules over every product assembly (blueprint §4.4): the only test project allowed to reference Clicalo.App.",
@@ -230,6 +253,24 @@
       "platform": "windows",
       "projectReferences": [],
       "packageReferences": ["Microsoft.Windows.CsWin32"]
+    },
+    "SpikeLab": {
+      "area": "tools",
+      "rule": "Laboratory of the M1 blocking spikes S1, S3 and S4: a WPF app that composes the real UI.Wpf, Application, Platform.Windows and Domain pieces for manual and scripted runs. Never shipped. TestKit.Windows gives it InputProbe (the target window of the voice-origin cycles) and the guarded test injectors; CsWin32 for its own diagnostics.",
+      "platform": "windows",
+      "projectReferences": [
+        "Clicalo.UI.Wpf",
+        "Clicalo.Presentation",
+        "Clicalo.Application",
+        "Clicalo.Domain",
+        "Clicalo.Platform.Core",
+        "Clicalo.Platform.Windows",
+        "Clicalo.TestKit",
+        "Clicalo.TestKit.Windows",
+        "InputProbe"
+      ],
+      "packageReferences": ["Microsoft.Windows.CsWin32"],
+      "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
     },
     "Build": {
       "area": "build",

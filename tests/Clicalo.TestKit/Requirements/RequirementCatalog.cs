@@ -6,7 +6,8 @@ namespace Clicalo.TestKit.Requirements;
 
 /// <summary>
 /// The requirement identifiers declared in <c>docs/requirements/catalog.md</c>: requirements
-/// (<c>- **EJE-003 · MUST · …</c>) and edge cases (<c>- **EC-EJE-10.** …</c>).
+/// (<c>- **EJE-003 · MUST · …</c>, and the two-digit rules <c>- **REG-01 · MUST · …</c>) and edge cases
+/// (<c>- **EC-EJE-10.** …</c>).
 /// </summary>
 public sealed partial class RequirementCatalog
 {
@@ -52,7 +53,7 @@ public sealed partial class RequirementCatalog
     public bool Contains(string id) => Ids.Contains(id);
 
     [GeneratedRegex(
-        @"^- \*\*(?<id>[A-Z]{2,4}-\d{3}|EC-[A-Z]{2,4}-\d{2})(?: ·|\.\*\*)",
+        @"^- \*\*(?<id>[A-Z]{2,4}-\d{2,3}|EC-[A-Z]{2,4}-\d{2})(?: ·|\.\*\*)",
         RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
         matchTimeoutMilliseconds: 1000
     )]

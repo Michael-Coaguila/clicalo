@@ -26,10 +26,12 @@
     <Project Path="tests/Clicalo.Platform.IntegrationTests/Clicalo.Platform.IntegrationTests.csproj" />
     <Project Path="tests/Clicalo.TestKit/Clicalo.TestKit.csproj" />
     <Project Path="tests/Clicalo.TestKit.Windows/Clicalo.TestKit.Windows.csproj" />
+    <Project Path="tests/Clicalo.Windowing.IntegrationTests/Clicalo.Windowing.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Clicalo.DevCli/Clicalo.DevCli.csproj" />
     <Project Path="tools/InputProbe/InputProbe.csproj" />
+    <Project Path="tools/SpikeLab/SpikeLab.csproj" />
   </Folder>
   <Folder Name="/build/">
     <Project Path="build/Build.csproj" />
