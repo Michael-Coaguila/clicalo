@@ -12,7 +12,13 @@
   <ItemGroup Label="Shared math, compiled into the generator (a generator cannot load project references at run time)">
     <Compile Include="..\Clicalo.Design.Math\**\*.cs" Exclude="..\Clicalo.Design.Math\obj\**;..\Clicalo.Design.Math\bin\**" LinkBase="DesignMath" />
   </ItemGroup>
+  <ItemGroup Label="Analyzer release tracking (RS2008): every CLCC, CLCI and CLCT diagnostic is listed">
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Clicalo.Generators.Tests" />
+    <!-- cl i18n-check runs exactly the validation of the generator (blueprint §8.5): it reuses its Roslyn-free core. -->
+    <InternalsVisibleTo Include="Clicalo.DevCli" />
   </ItemGroup>
 </Project>

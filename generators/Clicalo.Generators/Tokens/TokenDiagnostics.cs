@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 
 namespace Clicalo.Generators.Tokens;
@@ -11,39 +12,90 @@ internal static class TokenDiagnostics
     private const string HelpLink =
         "https://github.com/Michael-Coaguila/clicalo/blob/main/docs/guides/design-tokens.md";
 
-    private static readonly Dictionary<string, DiagnosticDescriptor> ById = new(
-        StringComparer.Ordinal
-    )
+    private static readonly DiagnosticDescriptor InvalidColorDescriptor = new(
+        TokenIds.InvalidColor,
+        "Invalid color value",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct001"
+    );
+
+    private static readonly DiagnosticDescriptor ContrastTooLowDescriptor = new(
+        TokenIds.ContrastTooLow,
+        "Contrast below the required minimum",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct002"
+    );
+
+    private static readonly DiagnosticDescriptor OutOfGamutDescriptor = new(
+        TokenIds.OutOfGamut,
+        "Color too far outside the sRGB gamut",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct003"
+    );
+
+    private static readonly DiagnosticDescriptor MalformedFileDescriptor = new(
+        TokenIds.MalformedFile,
+        "Malformed design-token file",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct004"
+    );
+
+    private static readonly DiagnosticDescriptor UnknownTokenDescriptor = new(
+        TokenIds.UnknownToken,
+        "Unknown, duplicated or missing token",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct005"
+    );
+
+    private static readonly DiagnosticDescriptor StaleCorrectionDescriptor = new(
+        TokenIds.StaleCorrection,
+        "Stale contrast correction",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct006"
+    );
+
+    private static readonly DiagnosticDescriptor MissingFileDescriptor = new(
+        TokenIds.MissingFile,
+        "Design-token file missing",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLink + "#clct007"
+    );
+
+    private static readonly Dictionary<string, DiagnosticDescriptor> ById = new[]
     {
-        [TokenIds.InvalidColor] = Create(TokenIds.InvalidColor, "Invalid color value"),
-        [TokenIds.ContrastTooLow] = Create(
-            TokenIds.ContrastTooLow,
-            "Contrast below the required minimum"
-        ),
-        [TokenIds.OutOfGamut] = Create(TokenIds.OutOfGamut, "Color too far outside the sRGB gamut"),
-        [TokenIds.MalformedFile] = Create(TokenIds.MalformedFile, "Malformed design-token file"),
-        [TokenIds.UnknownToken] = Create(
-            TokenIds.UnknownToken,
-            "Unknown, duplicated or missing token"
-        ),
-        [TokenIds.StaleCorrection] = Create(TokenIds.StaleCorrection, "Stale contrast correction"),
-        [TokenIds.MissingFile] = Create(TokenIds.MissingFile, "Design-token file missing"),
-    };
+        InvalidColorDescriptor,
+        ContrastTooLowDescriptor,
+        OutOfGamutDescriptor,
+        MalformedFileDescriptor,
+        UnknownTokenDescriptor,
+        StaleCorrectionDescriptor,
+        MissingFileDescriptor,
+    }.ToDictionary(static d => d.Id, StringComparer.Ordinal);
 
     /// <summary>All descriptors, for tests and documentation.</summary>
     public static IEnumerable<DiagnosticDescriptor> All => ById.Values;
 
     /// <summary>Descriptor of an issue id.</summary>
     public static DiagnosticDescriptor For(string id) => ById[id];
-
-    private static DiagnosticDescriptor Create(string id, string title) =>
-        new(
-            id,
-            title,
-            "{0}",
-            Category,
-            DiagnosticSeverity.Error,
-            isEnabledByDefault: true,
-            helpLinkUri: HelpLink + "#" + id.ToLowerInvariant()
-        );
 }

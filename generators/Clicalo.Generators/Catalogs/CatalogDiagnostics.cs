@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 
 namespace Clicalo.Generators.Catalogs;
@@ -7,11 +6,6 @@ namespace Clicalo.Generators.Catalogs;
 /// Data errors of the catalogs in <c>data/catalogs</c>. They are compile errors located at the exact line and
 /// column of the JSON file, so a broken catalog never reaches a build (blueprint §1.1, idea 4).
 /// </summary>
-[SuppressMessage(
-    "MicrosoftCodeAnalysisReleaseTracking",
-    "RS2008:Enable analyzer release tracking",
-    Justification = "Release tracking needs AnalyzerReleases.Shipped.md and AnalyzerReleases.Unshipped.md registered as AdditionalFiles in the shared Clicalo.Generators.csproj, which this package does not own; requested from the integrator."
-)]
 internal static class CatalogDiagnostics
 {
     private const string Category = "Clicalo.Catalogs";
