@@ -57,8 +57,7 @@ Opción elegida: **«Extensibilidad solo por datos validados»**, porque cubre l
 
 - Las plantillas y los catálogos se validan contra sus esquemas en `Clicalo.Data.Tests` y al cargar.
 - La importación siempre pasa por vista previa con límites de tamaño, profundidad y recuento (amenaza T1).
-- `architecture/BannedSymbols.All.txt` prohíbe en `src/` toda sobrecarga de `Assembly.Load*`, `Assembly.UnsafeLoadFrom` y `AssemblyLoadContext.LoadFrom*` (RS0030); `Clicalo.Architecture.Tests` comprueba que la familia está completa y que una llamada da error en una compilación real.
-- La revisión de código rechaza cualquier intérprete de *scripts* y cualquier otra forma de cargar código.
+- La revisión de código rechaza cualquier carga dinámica de ensamblados o intérprete de *scripts*.
 
 ## Pros y contras de las opciones
 

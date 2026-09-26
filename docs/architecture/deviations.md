@@ -188,9 +188,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   `CancellationTokenSource(TimeSpan)`, `PeriodicTimer(TimeSpan)`, los `Timer` de `System.Threading` y
   `System.Timers`, `Guid.CreateVersion7` y `new Random()` sin semilla (regla «`TimeProvider` en todo» de
   §13); aplica `Window.Focus` como `UIElement.Focus` (enfocar un elemento activa su ventana); y prohíbe la
-  carga dinámica de ensamblados (`Assembly.Load*`, `AssemblyLoadContext.LoadFrom*`) para hacer cumplir
-  ADR-0017. A cambio, registra `ShellExecuteEx` como excepción en `Platform.Windows/Elevation`, que
-  §3.3 regla 2 necesita para relanzar elevado.
+  carga dinámica de ensamblados (`Assembly.Load*`, `Assembly.UnsafeLoadFrom`, `AssemblyLoadContext.LoadFrom*`)
+  para hacer cumplir ADR-0017. ADR-0017 no se edita (un ADR aceptado es inmutable): su «Confirmación» sigue
+  citando la revisión de código, y el mecanismo automático está descrito en
+  [enforcement.md](enforcement.md#listas-y-cableado). A cambio, registra `ShellExecuteEx` como excepción en
+  `Platform.Windows/Elevation`, que §3.3 regla 2 necesita para relanzar elevado.
 - **Motivo.** La tabla literal dejaba abiertas otras fuentes de tiempo no simulables y la carga de código.
 - **Coste.** Algún adaptador más tendrá que registrarse en `banned-api-exceptions.json`.
 - **Revisión.** Pendiente de ratificar junto con D-09.
