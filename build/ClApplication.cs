@@ -14,7 +14,7 @@ internal sealed class ClApplication(
     IReadOnlyCollection<string> keepOnClean
 )
 {
-    /// <summary>The time <c>cl fast</c> should stay under (blueprint Â§13).</summary>
+    /// <summary>The time <c>cl fast</c> should stay under (blueprint §13).</summary>
     public static readonly TimeSpan FastBudget = TimeSpan.FromSeconds(45);
 
     /// <summary>Exit code for a verb that failed or is not available yet.</summary>

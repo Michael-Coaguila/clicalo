@@ -3,7 +3,7 @@ using System.Text;
 namespace Clicalo.Build;
 
 /// <summary>
-/// The git part of <c>cl setup</c> (blueprint Â§13): repository settings, the DCO trailer hook and commit
+/// The git part of <c>cl setup</c> (blueprint §13): repository settings, the DCO trailer hook and commit
 /// signing with an SSH key the maintainer already has. It never creates, copies or reads private keys.
 /// </summary>
 internal sealed class GitSetup(RepoLayout layout, TextWriter output)

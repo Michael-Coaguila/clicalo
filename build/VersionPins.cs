@@ -6,7 +6,7 @@ using System.Xml.Linq;
 namespace Clicalo.Build;
 
 /// <summary>
-/// Enforces reproducible builds (NFR-014) and the supply-chain rules of blueprint Â§2.1, Â§10.5 and Â§12.2 T12:
+/// Enforces reproducible builds (NFR-014) and the supply-chain rules of blueprint §2.1, §10.5 and §12.2 T12:
 /// exact package versions only in <c>Directory.Packages.props</c>, exact tool and SDK versions, and every
 /// GitHub action pinned by full commit SHA with a version comment.
 /// </summary>

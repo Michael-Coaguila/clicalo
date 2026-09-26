@@ -271,8 +271,8 @@ internal static class Messages
         + "Key type: Signing Key.";
     public const string SigningStepAgent =
         "Opcional, para no escribir la frase de contraseña en cada commit: activa el servicio "
-        + "«OpenSSH Authentication Agent» de Windows, añade la clave con ssh-add y dile a git que use el "
-        + "ssh-keygen de Windows:";
+        + "«OpenSSH Authentication Agent» de Windows (las dos primeras órdenes, en PowerShell como "
+        + "administrador), añade la clave con ssh-add y dile a git que use el ssh-keygen de Windows:";
     public const string SigningStepRerun =
         "Ejecuta de nuevo cl setup: activará commit.gpgsign y tag.gpgsign en este repositorio.";
 }
