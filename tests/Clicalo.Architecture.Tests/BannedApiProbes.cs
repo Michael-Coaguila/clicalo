@@ -30,6 +30,42 @@ internal static class BannedApiProbes
         }
         """;
 
+    /// <summary>A product project named Clicalo.Application: All and Application lists.</summary>
+    public const string Application = """
+        namespace Clicalo.Application.Probes;
+
+        /// <summary>Uses banned APIs on purpose.</summary>
+        internal static class Probe
+        {
+            internal static string Read(string path) => System.IO.File.ReadAllText(path); // banned
+
+            internal static string? Variable() => System.Environment.GetEnvironmentVariable("PATH"); // banned
+
+            internal static void Nap() => System.Threading.Thread.Sleep(1); // banned
+
+            internal static string Combine(string a, string b) => System.IO.Path.Combine(a, b);
+
+            internal static int Processors() => System.Environment.ProcessorCount;
+        }
+        """;
+
+    /// <summary>A product project named Clicalo.Presentation: All and Presentation lists.</summary>
+    public const string Presentation = """
+        namespace Clicalo.Presentation.Probes;
+
+        /// <summary>Uses banned APIs on purpose.</summary>
+        internal sealed class Probe
+        {
+            internal System.Windows.Input.ICommand? Command { get; set; }
+
+            internal static bool Exists(string path) => System.IO.File.Exists(path); // banned
+
+            internal static int Block(System.Threading.Tasks.Task<int> task) => task.Result; // banned
+
+            internal static System.Guid Id() => System.Guid.NewGuid(); // banned
+        }
+        """;
+
     /// <summary>CsWin32 functions whose every generated overload the lists ban.</summary>
     public const string NativeMethods = """
         SendInput

@@ -196,6 +196,12 @@ public sealed class EnforcementBuild : IAsyncLifetime
         Project("banned-domain", "Clicalo.Domain", PortableTfm, properties: Product);
         Write("banned-domain/Clicalo.Domain/Probe.cs", BannedApiProbes.Domain);
 
+        Project("banned-application", "Clicalo.Application", PortableTfm, properties: Product);
+        Write("banned-application/Clicalo.Application/Probe.cs", BannedApiProbes.Application);
+
+        Project("banned-presentation", "Clicalo.Presentation", PortableTfm, properties: Product);
+        Write("banned-presentation/Clicalo.Presentation/Probe.cs", BannedApiProbes.Presentation);
+
         Project(
             "banned-surfaces",
             "Clicalo.UI.Wpf",

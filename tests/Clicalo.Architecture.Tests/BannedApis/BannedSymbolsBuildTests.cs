@@ -15,6 +15,18 @@ public sealed class BannedSymbolsBuildTests(EnforcementBuild build)
             .ShouldBe(BannedApiProbes.BannedLines(BannedApiProbes.Domain));
 
     [Fact]
+    [Trait("Req", "NFR-013")]
+    public void The_All_and_Application_lists_ban_their_apis_in_the_Application_project() =>
+        BannedLinesIn("banned-application", "Probe.cs")
+            .ShouldBe(BannedApiProbes.BannedLines(BannedApiProbes.Application));
+
+    [Fact]
+    [Trait("Req", "NFR-012")]
+    public void The_All_and_Presentation_lists_ban_their_apis_but_not_ICommand_in_Presentation() =>
+        BannedLinesIn("banned-presentation", "Probe.cs")
+            .ShouldBe(BannedApiProbes.BannedLines(BannedApiProbes.Presentation));
+
+    [Fact]
     [Trait("Req", "REG-01")]
     [Trait("Req", "SEG-007")]
     public void The_All_and_Surfaces_lists_ban_every_CsWin32_overload_and_WPF_popup_in_UI_Wpf() =>
