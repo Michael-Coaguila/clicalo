@@ -125,4 +125,85 @@ internal static class Stubs
             }
         }
         """;
+
+    /// <summary>The WPF surface CLC0006 looks at: text properties, attached setters, colors and brushes.</summary>
+    public const string Wpf = """
+        namespace System.Windows
+        {
+            public class DependencyProperty { }
+
+            public class DependencyObject
+            {
+                public void SetValue(DependencyProperty dp, object value) { }
+                public void SetCurrentValue(DependencyProperty dp, object value) { }
+            }
+
+            public class FrameworkElement : DependencyObject
+            {
+                public object ToolTip { get; set; }
+                public string Name { get; set; }
+            }
+
+            public static class MessageBox
+            {
+                public static void Show(string messageBoxText, string caption) { }
+            }
+        }
+
+        namespace System.Windows.Controls
+        {
+            public class TextBlock : System.Windows.FrameworkElement
+            {
+                public static readonly System.Windows.DependencyProperty TextProperty = new System.Windows.DependencyProperty();
+                public static readonly System.Windows.DependencyProperty TagProperty = new System.Windows.DependencyProperty();
+                public string Text { get; set; }
+            }
+
+            public class ContentControl : System.Windows.FrameworkElement
+            {
+                public object Content { get; set; }
+            }
+
+            public class Button : ContentControl { }
+
+            public static class ToolTipService
+            {
+                public static void SetToolTip(System.Windows.DependencyObject element, object value) { }
+                public static void SetPlacement(System.Windows.DependencyObject element, object value) { }
+            }
+        }
+
+        namespace System.Windows.Automation
+        {
+            public static class AutomationProperties
+            {
+                public static readonly System.Windows.DependencyProperty NameProperty = new System.Windows.DependencyProperty();
+                public static void SetName(System.Windows.DependencyObject element, string value) { }
+                public static void SetAutomationId(System.Windows.DependencyObject element, string value) { }
+            }
+        }
+
+        namespace System.Windows.Media
+        {
+            public struct Color
+            {
+                public static Color FromRgb(byte r, byte g, byte b) => default;
+                public static Color FromArgb(byte a, byte r, byte g, byte b) => default;
+            }
+
+            public static class Colors
+            {
+                public static Color Red => default;
+                public static Color Transparent => default;
+            }
+
+            public class Brush { }
+
+            public static class Brushes
+            {
+                public static Brush White => null;
+                public static Brush Transparent => null;
+            }
+        }
+        """;
 }

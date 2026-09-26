@@ -63,4 +63,34 @@ internal static class Descriptors
             + "Application and Presentation code must not write durations as numeric literals or local constants.",
         helpLinkUri: HelpBase + "clc0004"
     );
+
+    // ---- CLC0006 · Presentation (IDI-002, TEM-002) -----------------------------------------------------------
+
+    private const string PresentationTitle = "Visible text and colors come from data";
+
+    private const string PresentationDescription =
+        "Product text lives only in data/i18n and colors only in the theme tokens. "
+        + "Presentation and UI code must not assign literal text to visible properties or write literal colors.";
+
+    public static readonly DiagnosticDescriptor LiteralText = new(
+        DiagnosticIds.PresentationLiteral,
+        PresentationTitle,
+        "The literal text \"{0}\" reaches '{1}'; resolve a MessageKey from data/i18n instead (IDI-002)",
+        DiagnosticCategories.Presentation,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: PresentationDescription,
+        helpLinkUri: HelpBase + "clc0006"
+    );
+
+    public static readonly DiagnosticDescriptor LiteralColor = new(
+        DiagnosticIds.PresentationLiteral,
+        PresentationTitle,
+        "The literal color '{0}' bypasses the theme; use a token from data/tokens instead (TEM-002)",
+        DiagnosticCategories.Presentation,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: PresentationDescription,
+        helpLinkUri: HelpBase + "clc0006"
+    );
 }
