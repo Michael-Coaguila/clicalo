@@ -1,6 +1,7 @@
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Duplicates;
 using Clicalo.Domain.Frequents;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Tests.Generators;
@@ -190,6 +191,23 @@ public sealed class UserDocumentTests
     }
 
     [Fact]
+    [Trait("Req", "PER-008")]
+    public void Undoing_the_creation_of_a_profile_corrects_a_last_profile_that_points_to_it()
+    {
+        var excel = Profile("excel", "Excel", "excel.exe");
+        var created = Valid with
+        {
+            Library = Valid.Library.AddProfile(excel, ListPosition.End).Value,
+        };
+        var chosen = created with { Settings = created.Settings with { LastProfile = excel.Id } };
+
+        var undone = chosen.RestoreSlices(Valid, DocumentSlices.Library);
+
+        undone.Settings.LastProfile.ShouldBe(ProfileId.General);
+        undone.Validate().ShouldBeEmpty();
+    }
+
+    [Fact]
     [Trait("Req", "DAT-006")]
     public void Restoring_every_slice_of_itself_changes_nothing() =>
         Gen.Select(DomainGen.Document, DomainGen.Document)
@@ -203,7 +221,24 @@ public sealed class UserDocumentTests
                     );
                     restored.Library.ShouldBeSameAs(other.Library);
                     restored.Duplicates.ShouldBeSameAs(other.Duplicates);
-                    restored.Settings.ShouldBeSameAs(current.Settings);
+                    var dangling =
+                        current.Settings.LastProfile is { } last
+                        && !other.Library.TryGetProfile(last, out _);
+                    if (dangling)
+                    {
+                        restored.Settings.ShouldBe(
+                            current.Settings with
+                            {
+                                LastProfile = ProfileId.General,
+                            }
+                        );
+                    }
+                    else
+                    {
+                        restored.Settings.ShouldBeSameAs(current.Settings);
+                    }
+
+                    restored.Validate().ShouldBeEmpty();
                     SliceDiff
                         .Touched(current, restored)
                         .ShouldBe(
@@ -217,6 +252,7 @@ public sealed class UserDocumentTests
                                         ? DocumentSlices.None
                                         : DocumentSlices.Duplicates
                                 )
+                                | (dangling ? DocumentSlices.Settings : DocumentSlices.None)
                         );
                 },
                 iter: 2_000

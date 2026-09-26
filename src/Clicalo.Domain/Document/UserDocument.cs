@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Clicalo.Domain.Duplicates;
 using Clicalo.Domain.Frequents;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 
 namespace Clicalo.Domain.Document;
@@ -96,6 +97,11 @@ public sealed record UserDocument(
     /// epoch). Settings restore only their undoable leaves, so presentation and placement chosen afterwards stay
     /// (<see cref="SettingsSchema.WithUndoableFrom"/>). The revision is raised by the store, not here.
     /// </summary>
+    /// <remarks>
+    /// A last profile chosen after the undone step is kept, so it may point to a profile the restored library no
+    /// longer has (undoing the creation of a profile): it becomes General, as when that profile is deleted (PER-008),
+    /// and the document stays valid.
+    /// </remarks>
     /// <param name="before">The document of the undo entry.</param>
     /// <param name="slices">The slices the undone change touched.</param>
     public UserDocument RestoreSlices(UserDocument before, DocumentSlices slices)
@@ -147,6 +153,14 @@ public sealed record UserDocument(
         if (slices.HasFlag(DocumentSlices.Onboarding))
         {
             result = result with { Onboarding = before.Onboarding };
+        }
+
+        if (result.Settings.LastProfile is { } last && !result.Library.TryGetProfile(last, out _))
+        {
+            result = result with
+            {
+                Settings = result.Settings with { LastProfile = ProfileId.General },
+            };
         }
 
         return result;
