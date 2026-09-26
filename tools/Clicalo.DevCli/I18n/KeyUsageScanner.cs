@@ -17,6 +17,8 @@ internal static partial class KeyUsageScanner
 {
     private static readonly string[] SkippedFolders = ["bin", "obj"];
 
+    private static ReadOnlySpan<byte> Utf8ByteOrderMark => [0xEF, 0xBB, 0xBF];
+
     /// <param name="root">Repository root.</param>
     /// <param name="memberToKey">Generated member name → base key.</param>
     /// <returns>First usage of every used base key.</returns>
@@ -106,8 +108,11 @@ internal static partial class KeyUsageScanner
     )
     {
         var bytes = File.ReadAllBytes(file);
+
+        // Utf8JsonReader rejects a byte order mark, which editors on Windows often write.
+        var start = bytes.AsSpan().StartsWith(Utf8ByteOrderMark) ? Utf8ByteOrderMark.Length : 0;
         var reader = new Utf8JsonReader(
-            bytes,
+            bytes.AsSpan(start),
             new JsonReaderOptions
             {
                 CommentHandling = JsonCommentHandling.Skip,
@@ -133,7 +138,11 @@ internal static partial class KeyUsageScanner
                     && keys.Contains(value)
                 )
                 {
-                    var (line, column) = PositionOf(bytes, (int)reader.TokenStartIndex);
+                    var (line, column) = PositionOf(
+                        bytes,
+                        start,
+                        start + (int)reader.TokenStartIndex
+                    );
                     usages.TryAdd(value, new KeyUsage(value, file, line, column));
                 }
 
@@ -146,11 +155,11 @@ internal static partial class KeyUsageScanner
         }
     }
 
-    private static (int Line, int Column) PositionOf(byte[] utf8, int byteOffset)
+    private static (int Line, int Column) PositionOf(byte[] utf8, int contentStart, int byteOffset)
     {
         var line = 1;
-        var lineStart = 0;
-        for (var i = 0; i < byteOffset; i++)
+        var lineStart = contentStart;
+        for (var i = contentStart; i < byteOffset; i++)
         {
             if (utf8[i] == (byte)'\n')
             {
