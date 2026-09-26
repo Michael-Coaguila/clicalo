@@ -20,6 +20,9 @@ internal sealed class V1Anonymizer(PublicNames publicNames)
 {
     private const string ProfilesKey = "profiles";
 
+    /// <summary>The longest switch kept as written, without its dashes or slash (<c>/min</c>).</summary>
+    private const int MaxKeptSwitchLength = 3;
+
     private static readonly byte[] Bom = [0xEF, 0xBB, 0xBF];
 
     private static readonly HashSet<string> SettingKeys = new(StringComparer.Ordinal)
@@ -189,14 +192,15 @@ internal sealed class V1Anonymizer(PublicNames publicNames)
     }
 
     /// <summary>
-    /// A command-line switch such as <c>/c</c>, <c>-NoProfile</c> or <c>--new-window</c>: not personal, and it shows the
-    /// kind of command.
+    /// A short command-line switch such as <c>/c</c>, <c>/k</c> or <c>-c</c>: not personal, and it shows the kind of
+    /// command. A longer one (<c>--new-window</c>, but also <c>-juan</c>) may carry a name, so it is replaced like any
+    /// other word and keeps only its shape.
     /// </summary>
     private static bool IsSwitch(string word)
     {
         var start = word.StartsWith("--", StringComparison.Ordinal) ? 2 : 1;
         return word.Length > start
-            && word.Length <= 24
+            && word.Length - start <= MaxKeptSwitchLength
             && word[0] is '-' or '/'
             && char.IsAsciiLetter(word[start])
             && !word.AsSpan(start + 1).ContainsAnyExcept(SwitchChars);

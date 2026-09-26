@@ -32,7 +32,7 @@ public sealed class V1AnonymizerTests
                 { "label": "Copiar", "hotkey": "ctrl+c", "color": "#2980B9" },
                 { "label": "Llamar a Mamá", "hotkey": "ctrl+shift+m", "color": "#55ff00" },
                 { "label": "Correo", "type": "url", "action": "https://mail.example.com/u/juan.perez", "color": "#2980B9" },
-                { "label": "Diario", "type": "app", "action": "\"C:\\Users\\juan\\AppData\\Local\\diario.exe\" --open C:\\Users\\juan\\notas.txt" },
+                { "label": "Diario", "type": "app", "action": "\"C:\\Users\\juan\\AppData\\Local\\diario.exe\" --open -juan C:\\Users\\juan\\notas.txt" },
                 { "label": "Consola", "type": "app", "action": "cmd /c C:\\Users\\juan\\run.bat" },
                 { "label": "Bloc", "type": "app", "action": "C:\\Users\\juan\\Tools\\notepad.exe" },
                 { "type": "separator", "label": "" },
@@ -135,7 +135,9 @@ public sealed class V1AnonymizerTests
         app.Length.ShouldBe(((string)originals[3]["action"]!).Length);
         app[0].ShouldBe('"');
         app[2..4].ShouldBe(":\\");
-        app.ShouldContain(".exe\" --open ");
+        // Short switches stay; longer ones keep only their shape, since «-juan» is a switch too.
+        app.ShouldContain(".exe\" --");
+        app.ShouldNotContain("--open");
         app.ShouldEndWith(".txt");
 
         ((string)buttons[4]["action"]!).ShouldStartWith("cmd /c ");
