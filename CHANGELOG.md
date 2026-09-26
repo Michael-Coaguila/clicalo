@@ -9,7 +9,9 @@ Spanish and English are published with each release.
 
 ## [Unreleased]
 
-Milestone M0 · Foundations and harness, and milestone M1 · blocking spikes S1, S3 and S4 (in progress).
+Milestone M0 · Foundations and harness, milestone M1 · blocking spikes S1, S3 and S4 (closed by the maintainer's
+decision on real evidence, see `docs/testing/spikes/M1-closure.md`), and milestone M2 · Walking skeleton (in
+progress).
 
 ### Added
 
@@ -98,3 +100,15 @@ Milestone M0 · Foundations and harness, and milestone M1 · blocking spikes S1,
 - `DesktopSessionLock` (`Global\Clicalo.DesktopTests`): one desktop test run or SpikeLab session at a time; the helper
   processes a desktop test starts run inside its session. The final line of `cl` counts the `total` of `dotnet test`
   (skipped tests said apart), read from one `<AssemblyName>.trx` per test module.
+- Milestone M2 contracts (bodies still `NotImplementedException`, split among five packages in
+  `docs/testing/spikes/M2-ownership.md`): the Domain core (`Primitives`, `Errors` with `Result<T>`, `Privacy` with
+  `SecretText`, normalized `KeyChord` and `CanonicalChord`, the `Library` model with every action kind and the
+  `ShortcutLibrary` aggregate, `UserSettings` with the ranges of docs/02, `UserDocument` with its invariants and undo
+  slices, the `Commands` module, `KeySafety`, `Execution` with the two-lane `EngineEvent`, `EngineEffect`,
+  `EngineReducer` and `ActivationPolicy`, and `Migration.V1`); Application (`DocumentStore` with undo,
+  `PersistenceScheduler`, `EngineHost` and its mailbox, `TwoStepConfirm` and `ConfirmationToken`, and the engine and
+  persistence ports); Platform.Core (the ledger v2 layout, `InjectionGate`, `LowLevelInjector` and the Sentinel start
+  contract); Infrastructure (the `major.minor` envelope, `AtomicFile`, quarantine, repositories, backups, the v1
+  importer and `SafeZipReader`); and Sentinel's guardian loop. ADR-0018 (proposed) fixes the Sentinel start contract,
+  the ledger v2 layout and the document envelope 1.0.
+- Test projects `Clicalo.Infrastructure.Tests`, `Clicalo.Sentinel.Tests` and `Clicalo.Performance`.

@@ -28,6 +28,8 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-16 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
 | D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
 | D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
+| D-19 | Secuencia de los spikes | M1 cierra con todos los criterios de §15 superados; S5, S7, S9, S11, S6, S14, S8, S10, S12 y S15 dentro de M1 | M1 cerrado por decisión del usuario con la evidencia real; filas manuales de S1, S3 y S4 en la aceptación en hardware de M3; S5, S7, S9 y S11 en M2; S2 residual, S6 y S15 antes de M3; S12 en M3; S8, S10 y S14 antes de M5. Ningún criterio cambia | M1 |
+| D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -385,6 +387,70 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   corrige, pero no si cambia a otro formato.
 - **Revisión.** Con Narrador en la fila manual 9a (quizá `CurrentThenMostRecent`) y con cada actualización de WPF.
 
+## D-19 · Spikes resecuenciados al cerrar M1
+
+- **Plano.** [§14](blueprint.md#14-hoja-de-ruta-por-hitos) pone en M1 todos los spikes salvo S13 (primero S1, S3, S4 y
+  S2; después S5, S7, S15, S9, S6, S14, S8, S10, S11 y S12) y cierra M1 con «todos los criterios de §15 superados, o una
+  decisión registrada».
+- **Repositorio.**
+  - M1 se cierra con la **decisión registrada** del usuario (2026-09-26, «continuar») sobre la evidencia real:
+    473 toques reales sin ningún cambio de primer plano ni violación `reg01` (p95 15,7 ms) y todas las pruebas
+    automáticas de S1, S3 y S4 en verde en la CI. Las filas manuales de S1 (panel, Pestaña, burbuja, IME y menús), S3
+    (Acceso por voz y Narrador) y S4 (dictado) se repiten con el panel real en la aceptación en hardware de M3,
+    **midiendo automáticamente** ([M1-closure.md](../testing/spikes/M1-closure.md)).
+  - S5, S7, S9 y S11 se resuelven **dentro de M2** como pruebas (sus paquetes están en
+    [M2-ownership.md](../testing/spikes/M2-ownership.md)).
+  - S2 residual (el *dispatcher* con el Centro de control cargado; conectar y desconectar la pantalla táctil), S6 y S15,
+    **antes de M3**.
+  - S12, en la aceptación en hardware de M3.
+  - S8, S10 y S14, **antes de M5**.
+  - S13, en M7, como ya fijaba §15.1.
+- **Ningún criterio se rebaja.** Los criterios de éxito y las reglas «si falla» de
+  [§15.1](blueprint.md#151-spikes-con-criterio-de-éxito) y de cada guion siguen intactos; solo cambia el hito en que se
+  miden. En particular, si en M3 falla una fila de toque de S1 o S4, se reabre ADR-0001 antes de seguir con
+  funcionalidad.
+- **Motivo.** La sesión manual mostró que el laboratorio pedía al usuario contar y pulsar «Funcionó», y la tira-guía
+  acaparó los toques; repetir con el panel real y medición automática da mejor evidencia y respeta la preferencia del
+  usuario. Los spikes de M2 son de las piezas que M2 construye (arranque, inyección, guardián y persistencia).
+- **Coste.** M2 se construye sin la prueba manual del panel real (riesgo acotado: M2 no añade superficies y todo lo que
+  construye es independiente de la capa de UI). Las decisiones de *dispatchers* (S2), publicación (S5) y desenfoque (S6)
+  se documentan con datos más tarde de lo previsto.
+- **Revisión.** En la aceptación en hardware de M3, con las filas manuales hechas.
+
+## D-20 · Contratos de M2
+
+- **Plano.** [§6.1 a §6.6](blueprint.md#6-modelo-de-dominio-y-persistencia) y [§7.2 a §7.4](blueprint.md#72-política-de-activación-única-eje-001)
+  nombran los tipos del dominio y del motor; §4.3 la matriz de módulos.
+- **Repositorio.**
+  - `Library` es `ShortcutLibrary` y `Settings` es `UserSettings`: un tipo con el mismo nombre que su espacio de nombres
+    (`Clicalo.Domain.Library.Library`) hace ambiguas todas las referencias desde los módulos hermanos.
+  - `Error` es `Failure`, y las fábricas de `Result<T>` están en `Results`: `Error` es palabra reservada de Visual Basic
+    (CA1716) y un genérico no puede tener miembros estáticos (CA1000).
+  - `SecretText` vive en `Clicalo.Domain.Privacy` (donde lo buscan CLC0003 y `docs/guides/analyzers.md`), no en Library.
+  - Módulo nuevo `Clicalo.Domain.Commands` (`IDocumentCommand`, `IDestructiveCommand`, `UndoIntent`, `DocumentChange`,
+    `DomainContext`, `DomainEvent`, `BackupRequirement`): CLC0010 lo espera ahí y así no hay ciclo con `Document`.
+    `Library` suma `Timing` (el rango de `WaitStep`, I6) y `Migration.V1` suma `Document` (el conversor devuelve un
+    `UserDocument`); todo en `architecture/domain-modules.json`.
+  - `WebAction` es `UrlAction` (el tipo persistido es `url`); `InjectedKey` está en `Keys` porque lo necesita el
+    *ledger* lógico (`KeySafety` solo depende de `Keys`); el efecto que cuenta un uso es `EngineEffect.CountUsage`,
+    porque `RecordUsage` es el comando exento de `undo-exemptions.json`.
+  - `EngineState` no lleva teclas fijas (llegan en M3) y la distribución viaja en `ForegroundInfo`; `ActivationContext`
+    lleva `TestMode` como `bool` porque `Execution` no depende de `Interaction`.
+  - Los puertos del motor (`IInputInjector`, `IKeyLedger`, `IShellExecutor`, `IClipboardPaster`, `IEngineInbox`) y de
+    la persistencia (`IDocumentRepository`, `IUsageRepository`, `IAtomicFileWriter`, `IBackupService`) viven en
+    `Application.Ports`, como en [D-10](#d-10--puertos-en-applicationports-y-revelado-de-secretos). `IInputInjector` e
+    `IClipboardPaster` reciben el texto como `ReadOnlySpan<char>`: solo el motor llama a `WithRevealed`. El estado de un
+    envío es `InjectionStatus` (SpikeLab ya tiene un `InjectionOutcome`).
+  - `PersistenceScheduler` vive en `Application.Persistence`, separado de `Application.Store`, para que dos paquetes no
+    compartan carpeta.
+  - Sentinel recibe sus umbrales por la línea de órdenes, porque no puede leer `timings.json`
+    ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
+  - El arnés de `CatalogGeneratorHarness` compila también `Domain/Primitives`, del que ahora dependen `Keys` y `Catalog`.
+  - Proyectos de prueba nuevos: `Clicalo.Infrastructure.Tests`, `Clicalo.Sentinel.Tests` y `Clicalo.Performance`.
+- **Motivo.** Que los contratos compilen con las reglas de §4 (capas, módulos, analizadores) sin ambigüedades.
+- **Coste.** Nombres distintos de los del plano en seis tipos; la tabla de arriba es la traducción.
+- **Revisión.** Al cerrar M2; si el plano pasa a 1.2, se adoptan los nombres del repositorio.
+
 ## Puntos del plano pendientes de resolver
 
 No son desviaciones del repositorio, sino contradicciones o huecos detectados al redactar la documentación.
@@ -392,8 +458,8 @@ Se resuelven en el hito indicado; mientras tanto, esta es la interpretación vig
 
 | Punto | Detalle | Interpretación vigente | Cuándo se resuelve |
 |---|---|---|---|
-| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) respondía `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo). El plano ya lo recoge | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | M1, S6 |
-| Firma de todas las DLL | [§2.1](blueprint.md#21-stack-elegido) y [§11](blueprint.md#11-distribución-versionado-y-publicación) firman todas las DLL tras R2R; las condiciones de SignPath Foundation solo permiten firmar artefactos compilados desde el código propio | Se firman los ejecutables y ensamblados propios; la verificación de las DLL de terceros se decide en S8 y, si cambia, con un ADR que sustituya a ADR-0013 | M1, S8 |
+| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) respondía `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo). El plano ya lo recoge | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | Antes de M3, S6 ([D-19](#d-19--spikes-resecuenciados-al-cerrar-m1)) |
+| Firma de todas las DLL | [§2.1](blueprint.md#21-stack-elegido) y [§11](blueprint.md#11-distribución-versionado-y-publicación) firman todas las DLL tras R2R; las condiciones de SignPath Foundation solo permiten firmar artefactos compilados desde el código propio | Se firman los ejecutables y ensamblados propios; la verificación de las DLL de terceros se decide en S8 y, si cambia, con un ADR que sustituya a ADR-0013 | Antes de M5, S8 ([D-19](#d-19--spikes-resecuenciados-al-cerrar-m1)) |
 
 Resuelto al integrar M0: la numeración del catálogo (las preguntas abiertas son su sección 6, las
 propuestas pendientes la 6.1 y las discrepancias la 5; el catálogo y el plano ya se citan así).

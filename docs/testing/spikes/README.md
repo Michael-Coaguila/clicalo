@@ -99,6 +99,14 @@ trabajo: si crece o se pliega, conserva su borde de abajo (o el de arriba, si la
 
 Plegar, mover y arrastrar la tira no cuentan como repeticiones ni cambian «Última orden».
 
+## Lección de M1: el laboratorio debe contar solo
+
+En la sesión real del 2026-09-26 la tira-guía pidió contar y pulsar «Funcionó»: los toques acabaron en la propia tira
+(216 `NoTarget` y 78 `Debounced`) y ninguna fila del panel quedó registrada. Desde M3, la aceptación en hardware y
+cualquier laboratorio **cuentan solos**: detectan superficie, dispositivo y app objetivo, deciden con lo medido, no
+tienen botones de veredicto por repetición y no piden 20 repeticiones seguidas. Las reglas completas están en
+[M1-closure.md](M1-closure.md#lección-el-laboratorio-cuenta-solo); lo que sigue describe el SpikeLab de M1 tal como es.
+
 ## Cómo se cuentan las repeticiones
 
 Cada paso es una fila de la tabla de resultados de su guion. SpikeLab cuenta solo lo que corresponde al paso; lo que
