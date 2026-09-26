@@ -11,6 +11,12 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
     /// <summary>The trait that marks tests needing an interactive desktop.</summary>
     public const string DesktopTrait = "Requires=Desktop";
 
+    /// <summary>
+    /// The trait of desktop tests that inject keys reserved for the maintainer's dictation and voice tools (right Ctrl,
+    /// AltGr): <c>cl desk</c> runs them only in continuous integration, never on the maintainer's machine.
+    /// </summary>
+    public const string ReservedKeysTrait = "Injects=ReservedKeys";
+
     /// <summary>Tells desktop tests that the run is deliberate (they self-skip otherwise).</summary>
     public const string DesktopVariable = "CLICALO_DESKTOP_TESTS";
 
@@ -232,10 +238,7 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
                     "--results-directory",
                     layout.Relative(results),
                     "--report-xunit-trx",
-                    selection == TestSelection.DesktopOnly
-                        ? "--filter-trait"
-                        : "--filter-not-trait",
-                    DesktopTrait,
+                    .. FilterArguments(selection, context.Mode.Ci),
                     // A project may hold only desktop tests (or none of them): zero tests there is fine.
                     "--ignore-exit-code",
                     ZeroTestsExitCode.ToString(CultureInfo.InvariantCulture),
@@ -287,6 +290,24 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
                 );
             }
         );
+
+    /// <summary>
+    /// The xUnit trait filters of a test run: without the desktop tests, or only the desktop tests; outside continuous
+    /// integration the desktop tests that inject reserved keys (<see cref="ReservedKeysTrait"/>) are left out too.
+    /// </summary>
+    internal static string[] FilterArguments(TestSelection selection, bool ci) =>
+        selection switch
+        {
+            TestSelection.DesktopOnly when ci => ["--filter-trait", DesktopTrait],
+            TestSelection.DesktopOnly =>
+            [
+                "--filter-trait",
+                DesktopTrait,
+                "--filter-not-trait",
+                ReservedKeysTrait,
+            ],
+            _ => ["--filter-not-trait", DesktopTrait],
+        };
 
     /// <summary>
     /// Runs the i18n verbs of the developer CLI: <c>i18n-check</c> (the generator's validation, CLDR rules and unused

@@ -16,7 +16,9 @@ namespace Clicalo.TestKit.Windows.Input;
 /// <list type="number">
 /// <item>the batch is balanced and small (<see cref="KeyStrokeBatch.Validate"/>), so it cannot leave a key down;</item>
 /// <item>the target window exists and owns the foreground (<c>GetForegroundWindow() == target</c>);</item>
-/// <item>no modifier is held (physically or by another program), so the batch cannot combine with it.</item>
+/// <item>no modifier is held (physically or by another program), so the batch cannot combine with it;</item>
+/// <item>outside continuous integration, no right Ctrl and no right Alt (AltGr): the maintainer's dictation and voice
+/// tools capture them (<see cref="DesktopTestEnvironment.IsContinuousIntegration"/>).</item>
 /// </list>
 /// The batch is then sent with one atomic <c>SendInput</c> call, and the foreground is checked again afterwards.
 /// Every event carries <see cref="ExtraInfoMarker"/> in <c>dwExtraInfo</c>, so the probe's records can be filtered
@@ -39,7 +41,11 @@ public sealed class TestKeyboardInjector
         (VIRTUAL_KEY.VK_RWIN, "right Windows"),
     ];
 
+    private const ushort CtrlScanCode = 0x1D;
+    private const ushort AltScanCode = 0x38;
+
     private readonly Action<IReadOnlyList<KeyStroke>> _sendInput;
+    private readonly Func<bool> _reservedKeysAllowed;
     private int _sentBatches;
 
     /// <summary>Creates an injector bound to <paramref name="targetWindow"/>.</summary>
@@ -51,6 +57,18 @@ public sealed class TestKeyboardInjector
     /// injector's own tests, so that a broken guard can never type into the developer's foreground window.
     /// </summary>
     internal TestKeyboardInjector(nint targetWindow, Action<IReadOnlyList<KeyStroke>> sendInput)
+        : this(targetWindow, sendInput, static () => DesktopTestEnvironment.IsContinuousIntegration)
+    { }
+
+    /// <summary>
+    /// Creates an injector whose final step is <paramref name="sendInput"/> and that sends right Ctrl and right Alt only
+    /// while <paramref name="reservedKeysAllowed"/> says so. Used by the injector's own tests.
+    /// </summary>
+    internal TestKeyboardInjector(
+        nint targetWindow,
+        Action<IReadOnlyList<KeyStroke>> sendInput,
+        Func<bool> reservedKeysAllowed
+    )
     {
         if (targetWindow == 0)
         {
@@ -59,6 +77,7 @@ public sealed class TestKeyboardInjector
 
         TargetWindow = targetWindow;
         _sendInput = sendInput;
+        _reservedKeysAllowed = reservedKeysAllowed;
     }
 
     /// <summary>Creates an injector bound to the window of <paramref name="probe"/>.</summary>
@@ -111,10 +130,12 @@ public sealed class TestKeyboardInjector
     public void Send(IReadOnlyList<KeyStroke> batch)
     {
         KeyStrokeBatch.Validate(batch);
+        EnsureNoReservedKey(batch);
         EnsureTargetOwnsForeground();
         EnsureNoModifierHeld();
 
         var resolved = Resolve(batch);
+        EnsureNoReservedKey(resolved);
 
         // Last check immediately before the call keeps the window for a foreground change as small as possible.
         EnsureTargetOwnsForeground();
@@ -173,6 +194,31 @@ public sealed class TestKeyboardInjector
             dwExtraInfo = (nuint)ExtraInfoMarker,
         };
         return input;
+    }
+
+    /// <summary>
+    /// Right Ctrl and right Alt (AltGr), by virtual key or by extended scan code: the maintainer's dictation tools
+    /// (Wispr Flow, Typeless) and Voice access hook them, so they are only injected on a CI runner.
+    /// </summary>
+    private void EnsureNoReservedKey(IReadOnlyList<KeyStroke> resolved)
+    {
+        foreach (var stroke in resolved)
+        {
+            var reserved =
+                !stroke.IsUnicode
+                && (
+                    stroke.VirtualKey is VirtualKeyCode.RightControl or VirtualKeyCode.RightMenu
+                    || (stroke.IsExtended && stroke.ScanCode is CtrlScanCode or AltScanCode)
+                );
+            if (reserved && !_reservedKeysAllowed())
+            {
+                throw new InjectionRefusedException(
+                    "The batch holds right Ctrl or right Alt (AltGr), which the dictation and voice tools of this "
+                        + "machine capture: they are only injected in continuous integration (CI=true). Nothing was "
+                        + "injected."
+                );
+            }
+        }
     }
 
     private static void EnsureNoModifierHeld()

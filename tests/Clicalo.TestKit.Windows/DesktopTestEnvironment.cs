@@ -20,7 +20,30 @@ public static class DesktopTestEnvironment
         + Variable
         + "=1 on a machine where input may be injected into InputProbe.";
 
+    /// <summary>
+    /// Trait of the desktop tests that inject keys the maintainer's dictation and voice tools capture (right Ctrl,
+    /// AltGr): <c>[Trait(ReservedKeysTraitName, ReservedKeysTraitValue)]</c>. <c>cl desk</c> runs them only in
+    /// continuous integration, and <c>TestKeyboardInjector</c> refuses those keys anywhere else.
+    /// </summary>
+    public const string ReservedKeysTraitName = "Injects";
+
+    /// <summary>Value of <see cref="ReservedKeysTraitName"/> for the tests that inject reserved keys.</summary>
+    public const string ReservedKeysTraitValue = "ReservedKeys";
+
     /// <summary>True when <see cref="Variable"/> is <c>1</c>.</summary>
     public static bool IsEnabled =>
         string.Equals(Environment.GetEnvironmentVariable(Variable), "1", StringComparison.Ordinal);
+
+    /// <summary>
+    /// True in continuous integration (<c>CI=true</c> or <c>GITHUB_ACTIONS=true</c>): a disposable runner where right
+    /// Ctrl and AltGr may be injected. False on the maintainer's machine, whose dictation hooks capture them.
+    /// </summary>
+    public static bool IsContinuousIntegration => IsTrue("CI") || IsTrue("GITHUB_ACTIONS");
+
+    private static bool IsTrue(string variable) =>
+        string.Equals(
+            Environment.GetEnvironmentVariable(variable),
+            "true",
+            StringComparison.OrdinalIgnoreCase
+        );
 }
