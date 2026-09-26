@@ -29,4 +29,9 @@ public enum DocumentInvariant
 
     /// <summary>Revision and usage epoch are not negative.</summary>
     CountersNotNegative,
+
+    /// <summary>
+    /// Frequents are well formed: no pin twice, hidden ids sorted without repetitions (<c>FrequentsState.IsWellFormed</c>).
+    /// </summary>
+    FrequentsWellFormed,
 }

@@ -10,19 +10,38 @@ using Clicalo.Domain.Primitives;
 namespace Clicalo.Application.Store;
 
 /// <summary>
-/// The single writer of the user document (blueprint §6.4, ADR-0003): a short lock wraps only <c>Apply</c> and the
+/// The single writer of the user document (blueprint Â§6.4, ADR-0003): a short lock wraps only <c>Apply</c> and the
 /// history, with no I/O inside; <see cref="Current"/> is published with <c>Volatile.Write</c> and read without the lock
-/// from any thread. Undo restores only the slices the undone step touched, so undoing «delete shortcut» keeps the
-/// usage recorded afterwards; «Reset Frequents» touches usage too, so its undo restores usage, pins and hidden
+/// from any thread. <see cref="Changed"/> is raised outside the lock and always in revision order, even when several
+/// threads dispatch at once, so the save scheduler never takes an older document for the newest one. Undo restores only the slices the undone step touched, so undoing Â«delete shortcutÂ» keeps the
+/// usage recorded afterwards; Â«Reset FrequentsÂ» touches usage too, so its undo restores usage, pins and hidden
 /// (FRE-004). Destructive commands need a <see cref="ConfirmationToken"/> (REG-04, CLC0010).
 /// </summary>
-[SuppressMessage(
-    "Design",
-    "MA0025:Implement the functionality instead of throwing NotImplementedException",
-    Justification = "M2 contract; the domain package implements it (docs/testing/spikes/M2-ownership.md)."
-)]
+/// <remarks>
+/// <list type="bullet">
+/// <item>A change that touches no slice is not published: no revision, no event, no undo entry.</item>
+/// <item><c>Record(label, key)</c> joins the open top entry with the same key (keeping its original <c>Before</c>);
+/// otherwise it pushes a new entry and drops the oldest past 20 (DAT-006). An open entry that, once joined, would no
+/// longer change anything is dropped, so a draft discarded after being created leaves no trace (ATJ-011).</item>
+/// <item><c>Transparent</c> leaves the history alone (usage, presentation, positions); <c>Barrier</c> empties it.</item>
+/// <item><c>BeforeApply(kind)</c> takes an in-memory snapshot through <see cref="IBackupService.SnapshotNow"/> inside
+/// the lock, before publishing.</item>
+/// </list>
+/// Failures: the command's own, <c>store.destructive.unconfirmed</c>, <c>store.confirmation.mismatch</c> and
+/// <c>store.confirmation.spent</c> and <c>store.undo.empty</c>. Exceptions thrown by a command are defects and propagate
+/// without any change.
+/// </remarks>
 public sealed class DocumentStore
 {
+    private readonly Lock _gate = new();
+    private readonly UndoHistory _history = new();
+    private readonly Queue<DocumentChangedEventArgs> _outbox = new();
+    private readonly IIdGenerator _ids;
+    private readonly IBackupService _backups;
+    private readonly TimeProvider _time;
+    private UserDocument _current;
+    private bool _delivering;
+
     /// <summary>Creates the store with the document read at start-up.</summary>
     /// <param name="initial">The loaded document.</param>
     /// <param name="ids">Source of new ids for commands.</param>
@@ -33,41 +52,245 @@ public sealed class DocumentStore
         IIdGenerator ids,
         IBackupService backups,
         TimeProvider time
-    ) => throw new NotImplementedException();
+    )
+    {
+        ArgumentNullException.ThrowIfNull(initial);
+        ArgumentNullException.ThrowIfNull(ids);
+        ArgumentNullException.ThrowIfNull(backups);
+        ArgumentNullException.ThrowIfNull(time);
+        _current = initial;
+        _ids = ids;
+        _backups = backups;
+        _time = time;
+    }
 
-    /// <summary>Raised after every change, outside the lock, on the thread that caused it.</summary>
+    /// <summary>
+    /// Raised after every change, outside the lock and in revision order: one change at a time, on the thread that
+    /// caused it or, while another thread is delivering, on that thread right after the earlier changes. A listener
+    /// that dispatches gets its own change once it returns. Listeners must be quick and must not block on another
+    /// thread that dispatches.
+    /// </summary>
     public event EventHandler<DocumentChangedEventArgs>? Changed;
 
     /// <summary>The current document.</summary>
-    public UserDocument Current => throw new NotImplementedException();
+    public UserDocument Current => Volatile.Read(ref _current);
 
     /// <summary>Whether there is something to undo.</summary>
-    public bool CanUndo => throw new NotImplementedException();
+    public bool CanUndo
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _history.Count > 0;
+            }
+        }
+    }
 
-    /// <summary>What «Undo» names, or <see langword="null"/> when there is nothing to undo.</summary>
-    public MessageKey? UndoLabel => throw new NotImplementedException();
+    /// <summary>What Â«UndoÂ» names, or <see langword="null"/> when there is nothing to undo.</summary>
+    public MessageKey? UndoLabel
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _history.Top?.Label;
+            }
+        }
+    }
 
-    /// <summary>Applies a non-destructive command; a failure changes nothing.</summary>
+    /// <summary>
+    /// Applies a non-destructive command; a failure changes nothing. A destructive command that reaches this overload
+    /// through a base type is refused (<c>store.destructive.unconfirmed</c>).
+    /// </summary>
     /// <param name="command">The command.</param>
-    public Result<UserDocument> Dispatch(IDocumentCommand command) =>
-        throw new NotImplementedException();
+    public Result<UserDocument> Dispatch(IDocumentCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        return command is IDestructiveCommand
+            ? Results.Fail<UserDocument>(StoreFailures.Unconfirmed())
+            : Apply(command);
+    }
 
-    /// <summary>Applies a destructive command confirmed with two taps (REG-04).</summary>
+    /// <summary>
+    /// Applies a destructive command confirmed with two taps (REG-04). The token must have been confirmed for this
+    /// operation (its <see cref="ConfirmationSubject.Operation"/> is the command's type name) and not used yet: once
+    /// the command changes the document, the token is spent, so two taps never run it twice.
+    /// </summary>
     /// <param name="command">The command.</param>
     /// <param name="token">Proof of the second tap, issued by <see cref="TwoStepConfirm"/>.</param>
-    public Result<UserDocument> Dispatch(IDestructiveCommand command, ConfirmationToken token) =>
-        throw new NotImplementedException();
+    [SuppressMessage(
+        "Clicalo.Safety",
+        "CLC0010",
+        Justification = "The token of this very call was checked above; this is the single place that runs a confirmed destructive command."
+    )]
+    public Result<UserDocument> Dispatch(IDestructiveCommand command, ConfirmationToken token)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(token);
+        return string.Equals(
+            token.Subject.Operation,
+            command.GetType().Name,
+            StringComparison.Ordinal
+        )
+            ? Apply(command, token)
+            : Results.Fail<UserDocument>(StoreFailures.ConfirmationMismatch());
+    }
 
     /// <summary>Undoes the newest step; fails when there is nothing to undo.</summary>
-    public Result<UserDocument> Undo() => throw new NotImplementedException();
+    public Result<UserDocument> Undo()
+    {
+        DocumentChangedEventArgs change;
+        lock (_gate)
+        {
+            if (!_history.TryPop(out var entry))
+            {
+                return Results.Fail<UserDocument>(StoreFailures.NothingToUndo());
+            }
+
+            var before = _current;
+            var restored = before.RestoreSlices(entry.Before, entry.Slices) with
+            {
+                Revision = before.Revision + 1,
+            };
+            Volatile.Write(ref _current, restored);
+            change = new DocumentChangedEventArgs(
+                before,
+                restored,
+                SliceDiff.Touched(before, restored),
+                [],
+                ChangeOrigin.Undo
+            );
+            _outbox.Enqueue(change);
+        }
+
+        Deliver();
+        return Results.Ok(change.After);
+    }
 
     /// <summary>Seals the open undo entry (the editor switched to another shortcut or profile, EDI-021).</summary>
-    public void SealCoalescing() => throw new NotImplementedException();
+    public void SealCoalescing()
+    {
+        lock (_gate)
+        {
+            _history.Seal();
+        }
+    }
 
-    [SuppressMessage(
-        "CodeQuality",
-        "IDE0051:Remove unused private members",
-        Justification = "Keeps the event raised in the contract; the implementation replaces it."
-    )]
-    private void OnChanged(DocumentChangedEventArgs change) => Changed?.Invoke(this, change);
+    private Result<UserDocument> Apply(IDocumentCommand command, ConfirmationToken? token = null)
+    {
+        UserDocument result;
+        lock (_gate)
+        {
+            if (token is { IsSpent: true })
+            {
+                return Results.Fail<UserDocument>(StoreFailures.ConfirmationSpent());
+            }
+
+            var current = _current;
+            var context = new DomainContext(
+                _time.GetUtcNow(),
+                _ids,
+                current.Settings.Language,
+                current.Settings.Keyboard.AppsLanguage
+            );
+            var applied = command.Apply(current, context);
+            if (!applied.TryGetValue(out var change))
+            {
+                return Results.Fail<UserDocument>(applied.Failure);
+            }
+
+            var slices = SliceDiff.Touched(current, change.Next);
+            if (slices == DocumentSlices.None)
+            {
+                return Results.Ok(current);
+            }
+
+            if (change.Backup is BackupRequirement.BeforeApply backup)
+            {
+                _backups.SnapshotNow(current, backup.Kind);
+            }
+
+            switch (change.Undo)
+            {
+                case UndoIntent.Record record:
+                    RecordUndo(current, change.Next, slices, record);
+                    break;
+                case UndoIntent.Barrier:
+                    _history.Clear();
+                    break;
+            }
+
+            token?.Spend();
+            result = change.Next with { Revision = current.Revision + 1 };
+            Volatile.Write(ref _current, result);
+            _outbox.Enqueue(
+                new DocumentChangedEventArgs(
+                    current,
+                    result,
+                    slices,
+                    change.Events.IsDefault ? [] : change.Events,
+                    ChangeOrigin.Command
+                )
+            );
+        }
+
+        Deliver();
+        return Results.Ok(result);
+    }
+
+    private void RecordUndo(
+        UserDocument current,
+        UserDocument next,
+        DocumentSlices slices,
+        UndoIntent.Record record
+    )
+    {
+        var joins = _history.WouldJoin(record.CoalesceKey);
+        _history.Record(
+            new UndoEntry(current, slices, record.Label, record.CoalesceKey, Sealed: false)
+        );
+        if (
+            joins
+            && _history.Top is { } top
+            && next.RestoreSlices(top.Before, top.Slices).Equals(next)
+        )
+        {
+            // Undoing the joined entry would change nothing (a draft created and discarded): no trace (ATJ-011).
+            _history.TryPop(out _);
+        }
+    }
+
+    /// <summary>
+    /// Raises <see cref="Changed"/> for the queued changes, oldest first, one at a time: a thread that finds another
+    /// one delivering leaves its change to it, so listeners never see an older revision after a newer one.
+    /// </summary>
+    private void Deliver()
+    {
+        while (true)
+        {
+            DocumentChangedEventArgs? next;
+            lock (_gate)
+            {
+                if (_delivering || !_outbox.TryDequeue(out next))
+                {
+                    return;
+                }
+
+                _delivering = true;
+            }
+
+            try
+            {
+                Changed?.Invoke(this, next);
+            }
+            finally
+            {
+                lock (_gate)
+                {
+                    _delivering = false;
+                }
+            }
+        }
+    }
 }
