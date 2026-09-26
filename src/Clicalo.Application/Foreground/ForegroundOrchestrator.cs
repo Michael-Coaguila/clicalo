@@ -336,8 +336,7 @@ public sealed partial class ForegroundOrchestrator
         CancellationToken cancellationToken
     )
     {
-        var control = _ports.Control;
-        if (control.TrySetForeground(request.Target))
+        if (await TakeAsync(request.Target, cancellationToken).ConfigureAwait(false))
         {
             return Climb.Granted(LadderStep.Direct);
         }
@@ -346,14 +345,12 @@ public sealed partial class ForegroundOrchestrator
         {
             case LeaseOrigin.Touch or LeaseOrigin.Tray or LeaseOrigin.GlobalHotkey:
                 // Clícalo received the input (or WM_HOTKEY), so the right is there: one retry.
-                await Task.Delay(Timings.Foreground.RestoreRetryDelay, _time, cancellationToken)
-                    .ConfigureAwait(false);
                 if (Changed(start, request.Target))
                 {
                     return Climb.Denied(ForegroundDenialReason.ForegroundChanged);
                 }
 
-                return control.TrySetForeground(request.Target)
+                return await TakeAsync(request.Target, cancellationToken).ConfigureAwait(false)
                     ? Climb.Granted(LadderStep.DirectRetry)
                     : Climb.Denied(ForegroundDenialReason.RightsRefused);
 
@@ -366,7 +363,7 @@ public sealed partial class ForegroundOrchestrator
                 // instead (PRB-007).
                 if (request.Kind == LeaseKind.ControlCenter)
                 {
-                    control.FlashTaskbar(request.Target);
+                    _ports.Control.FlashTaskbar(request.Target);
                 }
 
                 return Climb.Denied(ForegroundDenialReason.RightsRefused);
@@ -414,7 +411,7 @@ public sealed partial class ForegroundOrchestrator
             return Climb.Denied(ForegroundDenialReason.ForegroundChanged);
         }
 
-        return arrived && _ports.Control.TrySetForeground(request.Target)
+        return arrived && await TakeAsync(request.Target, cancellationToken).ConfigureAwait(false)
             ? Climb.Granted(LadderStep.RightsHotkey)
             : Climb.Denied(ForegroundDenialReason.RightsRefused);
     }
@@ -433,8 +430,9 @@ public sealed partial class ForegroundOrchestrator
     }
 
     /// <summary>
-    /// Gives the foreground to <paramref name="window"/>, verified by <see cref="IForegroundControl.TrySetForeground"/>
-    /// (<c>GetForegroundWindow</c>), with one retry after <c>Timings.Foreground.RestoreRetryDelay</c>.
+    /// Gives the foreground to <paramref name="window"/>, verified with <c>GetForegroundWindow</c> (see
+    /// <see cref="TakeAsync"/>), with one retry: <see cref="RestoreOutcome.Restored"/> when the first attempt worked,
+    /// <see cref="RestoreOutcome.RestoredAfterRetry"/> when the retry did.
     /// </summary>
     private async ValueTask<RestoreOutcome> GiveBackAsync(
         WindowToken window,
@@ -447,26 +445,42 @@ public sealed partial class ForegroundOrchestrator
             return RestoreOutcome.Failed;
         }
 
-        var control = _ports.Control;
-        if (control.TrySetForeground(window))
+        if (await TakeAsync(window, cancellationToken).ConfigureAwait(false))
         {
             return RestoreOutcome.Restored;
         }
 
-        await Task.Delay(Timings.Foreground.RestoreRetryDelay, _time, cancellationToken)
-            .ConfigureAwait(false);
-        if (control.GetForeground() == window || control.TrySetForeground(window))
+        if (await TakeAsync(window, cancellationToken).ConfigureAwait(false))
         {
             return RestoreOutcome.RestoredAfterRetry;
         }
 
         if (flashOnFailure)
         {
-            control.FlashTaskbar(window);
+            _ports.Control.FlashTaskbar(window);
             return RestoreOutcome.Flashed;
         }
 
         return RestoreOutcome.Failed;
+    }
+
+    /// <summary>
+    /// One verified attempt: <c>SetForegroundWindow</c> and, when <c>GetForegroundWindow</c> does not show
+    /// <paramref name="window"/> yet, the same check once more after <c>Timings.Foreground.RestoreRetryDelay</c> without
+    /// calling again. The thread that owns a window activates it asynchronously when the call comes from another thread
+    /// (a surface on the UI thread, another app), so the first check often comes too early (measured in spike S4).
+    /// </summary>
+    private async ValueTask<bool> TakeAsync(WindowToken window, CancellationToken cancellationToken)
+    {
+        var control = _ports.Control;
+        if (control.TrySetForeground(window))
+        {
+            return true;
+        }
+
+        await Task.Delay(Timings.Foreground.RestoreRetryDelay, _time, cancellationToken)
+            .ConfigureAwait(false);
+        return control.GetForeground() == window;
     }
 
     /// <summary>
@@ -534,13 +548,14 @@ public sealed partial class ForegroundOrchestrator
     }
 
     /// <summary>
-    /// True when a verified external foreground change happened since <paramref name="start"/>, other than
-    /// <paramref name="target"/> itself coming to the front (a «Try now» target is an external app).
+    /// True when the user switched to another app since <paramref name="start"/>: a verified external change to a
+    /// window other than the one the request started from and other than <paramref name="target"/> itself (a «Try
+    /// now» target is an external app). A late report of the app that was already in front is not a switch.
     /// </summary>
     private bool Changed(ForegroundSnapshot start, WindowToken target)
     {
         var now = Current;
-        return now.Epoch != start.Epoch && now.Window != target;
+        return now.Epoch != start.Epoch && now.Window != start.Window && now.Window != target;
     }
 
     private void Publish(WindowToken active, WindowToken pending) =>
@@ -577,6 +592,8 @@ public sealed partial class ForegroundOrchestrator
                 if (
                     ReferenceEquals(Volatile.Read(ref _active), lease)
                     && change.Epoch.Value > lease.EpochAtAcquire.Value
+                    // A report that arrives after the lease took the front again is stale: the user is not elsewhere.
+                    && _ports.Control.GetForeground() != lease.Target
                 )
                 {
                     // The user chose another app: never take the foreground back from it.

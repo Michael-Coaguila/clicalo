@@ -76,8 +76,7 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
             Request(LeaseKind.TextInput, Search, origin),
             TestContext.Current.CancellationToken
         );
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        var result = await pending;
+        var result = await _world.CompleteAsync(pending.AsTask());
 
         result
             .ShouldBeOfType<LeaseResult.Denied>()
@@ -107,6 +106,25 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
             "set Search",
         ]);
         _world.Keys.RightsChords.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_first_attempt_that_Windows_completes_during_the_verification_delay_needs_no_chord()
+    {
+        var pending = _world.Orchestrator.AcquireAsync(
+            Request(LeaseKind.TextInput, Search, LeaseOrigin.UiaInvoke),
+            TestContext.Current.CancellationToken
+        );
+
+        // The surface's own thread finishes the switch after SetForegroundWindow returned.
+        _world.Control.Foreground = Search;
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        var result = await pending;
+
+        result.ShouldBeOfType<LeaseResult.Granted>().Lease.GrantedAt.ShouldBe(LadderStep.Direct);
+        _world.Control.Attempts.ShouldBe([Search], "verified again, not set again");
+        _world.Keys.RightsChords.ShouldBe(0);
+        _world.Hotkey.Armed.ShouldBe(0);
     }
 
     [Fact]
@@ -189,6 +207,21 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
             "the foreground now belongs to the app the user chose"
         );
         _world.Control.Foreground.ShouldBe(Chrome);
+    }
+
+    [Fact]
+    public async Task A_late_report_of_the_app_already_in_front_is_not_a_switch()
+    {
+        _world.Keys.OnRightsChord = () =>
+        {
+            _world.Monitor.SwitchTo(Word);
+            return _world.Keys.DeliverRights();
+        };
+
+        var lease = await _world.GrantAsync(LeaseKind.TextInput, Search, LeaseOrigin.UiaInvoke);
+
+        lease.GrantedAt.ShouldBe(LadderStep.RightsHotkey);
+        lease.PreviousForeground.ShouldBe(Word);
     }
 
     [Fact]

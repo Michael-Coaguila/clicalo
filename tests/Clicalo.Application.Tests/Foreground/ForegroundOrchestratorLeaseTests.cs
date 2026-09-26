@@ -151,6 +151,20 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
     }
 
     [Fact]
+    public async Task A_late_report_of_the_previous_app_does_not_end_the_lease()
+    {
+        var search = await _world.GrantAsync(LeaseKind.TextInput, Search);
+        var epoch = _world.Orchestrator.Current.Epoch;
+
+        // The report of Word coming back after the previous lease arrives only now, with the search already in front.
+        _world.Monitor.SwitchTo(Word, alsoForeground: false);
+
+        search.IsActive.ShouldBeTrue();
+        _world.Orchestrator.Current.Epoch.ShouldBe(epoch.Next());
+        _world.Orchestrator.IsActivationLeased(Search).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Going_back_to_the_previous_app_counts_as_restored()
     {
         var search = await _world.GrantAsync(LeaseKind.TextInput, Search);

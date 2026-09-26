@@ -60,7 +60,7 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
     }
 
     [Fact]
-    public async Task A_window_that_came_to_the_front_by_itself_during_the_retry_delay_counts()
+    public async Task A_first_attempt_that_Windows_completes_during_the_verification_delay_counts_as_restored()
     {
         var search = await _world.GrantAsync(LeaseKind.TextInput, Search);
         _world.Control.Script.Enqueue(false);
@@ -69,7 +69,10 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         _world.Control.Foreground = Word;
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
 
-        (await pending).ShouldBe(RestoreOutcome.RestoredAfterRetry);
+        (await pending).ShouldBe(
+            RestoreOutcome.Restored,
+            "the first attempt, verified once Windows finished"
+        );
         _world.Control.Attempts.ShouldBe([Search, Word], "verified, not set a second time");
     }
 
@@ -81,9 +84,8 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         _world.Control.Script.Enqueue(false);
 
         var pending = search.RestoreAsync(TestContext.Current.CancellationToken);
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
 
-        (await pending).ShouldBe(RestoreOutcome.Failed);
+        (await _world.CompleteAsync(pending.AsTask())).ShouldBe(RestoreOutcome.Failed);
         _world.Surfaces.Activatable.ShouldBeEmpty();
         search.IsActive.ShouldBeFalse();
         _world.Control.Flashed.ShouldBeEmpty();
@@ -99,9 +101,8 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         _world.Control.HasRights = false;
 
         var pending = tryNow.RestoreAsync(TestContext.Current.CancellationToken);
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
 
-        (await pending).ShouldBe(RestoreOutcome.Flashed);
+        (await _world.CompleteAsync(pending.AsTask())).ShouldBe(RestoreOutcome.Flashed);
         _world.Control.Flashed.ShouldBe([ControlCenter]);
         _world.Control.Foreground.ShouldBe(Notepad);
     }

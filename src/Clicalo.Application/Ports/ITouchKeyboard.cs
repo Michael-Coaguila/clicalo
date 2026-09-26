@@ -20,7 +20,10 @@ public interface ITouchKeyboard
     event EventHandler? OccludedAreaChanged;
 
     /// <summary>Shows the touch keyboard for the focused field of <paramref name="window"/>.</summary>
-    /// <returns>True when the keyboard is visible afterwards.</returns>
+    /// <returns>
+    /// True when Windows accepted the request. The keyboard then slides in: <see cref="OccludedAreaChanged"/> reports
+    /// when it covers the screen.
+    /// </returns>
     ValueTask<bool> ShowKeyboardAsync(WindowToken window, CancellationToken cancellationToken);
 
     /// <summary>Hides the touch keyboard if Clícalo showed it.</summary>

@@ -326,13 +326,19 @@
         },
         "RestoreRetryDelay": {
           "duration": "50ms",
-          "description": "Wait before the single retry when giving the foreground back is not verified by GetForegroundWindow. Provisional until spike S4 measures it.",
+          "description": "After a SetForegroundWindow that GetForegroundWindow does not confirm yet, wait this long and check again (the thread that owns the window activates it asynchronously); the single retry of a lease that takes or gives back the foreground follows the same wait. Provisional: S4 measured the first check failing and this one succeeding in 20 of 20 cycles.",
           "req": ["BUS-002", "CCM-004"],
           "source": "blueprint §3.6"
         },
         "RightsHotkeyTimeout": {
           "duration": "500ms",
           "description": "Longest wait for WM_HOTKEY after injecting the internal rights chord (step 2 of the ladder for UI Automation origins). Provisional until spike S4 measures it.",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        },
+        "TouchKeyboardPoll": {
+          "duration": "100ms",
+          "description": "While Clícalo has shown the touch keyboard, its covered area is sampled this often so the panel can move above it. Provisional until spike S4 measures it.",
           "req": ["BUS-002"],
           "source": "blueprint §3.6"
         }

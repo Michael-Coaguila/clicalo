@@ -1,5 +1,6 @@
 using Clicalo.Application.Foreground;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Timing;
 using Clicalo.TestKit.Time;
 using Microsoft.Extensions.Time.Testing;
 
@@ -21,6 +22,9 @@ internal sealed class ForegroundWorld : IDisposable
 
     public static readonly SurfaceId SearchSurface = new(SurfaceKind.Panel, 0);
     public static readonly SurfaceId PanelSurface = new(SurfaceKind.Panel, 1);
+
+    private static readonly TimeSpan ContinuationGrace = TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(5);
 
     private ForegroundOrchestrator? _orchestrator;
 
@@ -76,7 +80,7 @@ internal sealed class ForegroundWorld : IDisposable
         TimeSpan? idleTimeout = null
     ) => new(kind, target, origin, idleTimeout);
 
-    /// <summary>Acquires a lease that must be granted.</summary>
+    /// <summary>Acquires a lease that must be granted, moving the clock through every verification wait.</summary>
     public async Task<ForegroundLease> GrantAsync(
         LeaseKind kind,
         WindowToken target,
@@ -84,10 +88,7 @@ internal sealed class ForegroundWorld : IDisposable
         TimeSpan? idleTimeout = null
     )
     {
-        var result = await Orchestrator.AcquireAsync(
-            Request(kind, target, origin, idleTimeout),
-            TestContext.Current.CancellationToken
-        );
+        var result = await AcquireAsync(Request(kind, target, origin, idleTimeout));
         return result.ShouldBeOfType<LeaseResult.Granted>().Lease;
     }
 
@@ -98,12 +99,33 @@ internal sealed class ForegroundWorld : IDisposable
         LeaseOrigin origin
     )
     {
-        var result = await Orchestrator.AcquireAsync(
-            Request(kind, target, origin),
-            TestContext.Current.CancellationToken
-        );
+        var result = await AcquireAsync(Request(kind, target, origin));
         return result.ShouldBeOfType<LeaseResult.Denied>().Reason;
     }
+
+    /// <summary>
+    /// Runs <paramref name="pending"/> to the end, advancing the fake clock by <c>RestoreRetryDelay</c> while it
+    /// waits (each attempt is verified again after that delay), at most <paramref name="maxWaits"/> times.
+    /// </summary>
+    public async Task<T> CompleteAsync<T>(Task<T> pending, int maxWaits = 6)
+    {
+        for (var wait = 0; wait < maxWaits && !pending.IsCompleted; wait++)
+        {
+            // Continuations that hop to the thread pool (cancellation callbacks, the gate) run in real time.
+            _ = await Task.WhenAny(pending, Task.Delay(ContinuationGrace));
+            if (!pending.IsCompleted)
+            {
+                Time.Advance(Timings.Foreground.RestoreRetryDelay);
+            }
+        }
+
+        return await pending.WaitAsync(OperationTimeout);
+    }
+
+    private Task<LeaseResult> AcquireAsync(LeaseRequest request) =>
+        CompleteAsync(
+            Orchestrator.AcquireAsync(request, TestContext.Current.CancellationToken).AsTask()
+        );
 
     /// <summary>Clears the log, to look only at what happens next.</summary>
     public void Mark() => Log.Clear();
