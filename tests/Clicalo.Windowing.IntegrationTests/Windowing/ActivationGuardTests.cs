@@ -166,6 +166,39 @@ public sealed class ActivationGuardTests
             .ShouldBe([first.Id, second.Id]);
     }
 
+    [Fact]
+    [Trait("Req", "REG-01")]
+    public void A_violation_left_open_after_the_application_lost_the_activation_ends_with_the_next_activation()
+    {
+        using var failures = DebugFailures.Capture();
+        using var lab = SurfaceLab.Create();
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+        var bubble = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Bubble, 0, 64, 64)).Handle;
+
+        // One activation: WM_ACTIVATEAPP(TRUE) to every window of the thread, then the activation of the panel.
+        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+        Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(1, "one activation is one violation");
+
+        // The restore deactivates the application, and a late activation message opens a violation that no
+        // deactivation will ever end.
+        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+        Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(2);
+
+        // The next activation of the application is judged on its own, once.
+        Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
+        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+
+        lab.Guard.Violations.ShouldBe(3);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 3 : 0);
+    }
+
     private static nint Send(nint window, uint message, nint wParam) =>
         NativeSurface.SendMessageW(window, message, wParam, 0);
 }

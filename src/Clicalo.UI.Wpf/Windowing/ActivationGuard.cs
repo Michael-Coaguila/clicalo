@@ -37,6 +37,7 @@ public sealed class ActivationGuard
 
     private long _violations;
     private NonActivatingWindow? _openViolation;
+    private bool _applicationActive;
 
     /// <summary>Creates the guard that reports to <paramref name="arbiter"/> and stamps with <paramref name="timeProvider"/>.</summary>
     public ActivationGuard(IActivationArbiter arbiter, TimeProvider timeProvider)
@@ -75,7 +76,22 @@ public sealed class ActivationGuard
     {
         ArgumentNullException.ThrowIfNull(surface);
         var window = surface.SurfaceWindow;
-        if (window.IsNone || Arbiter.IsActivationLeased(window))
+        if (window.IsNone)
+        {
+            return false;
+        }
+
+        if (message == ActivationMessage.ActivateApp && !_applicationActive)
+        {
+            // WM_ACTIVATEAPP(TRUE) reaches this thread only when the application was inactive, first of all the
+            // messages of an activation. A violation still open here belongs to an earlier activation whose end never
+            // arrived (a lost deactivation, a late message after the restore): it is over, and this activation must
+            // be judged on its own instead of being swallowed as part of it.
+            _applicationActive = true;
+            _openViolation = null;
+        }
+
+        if (Arbiter.IsActivationLeased(window))
         {
             return false;
         }
@@ -125,6 +141,11 @@ public sealed class ActivationGuard
     /// </summary>
     internal bool OnDeactivated(NonActivatingWindow surface, ActivationMessage message)
     {
+        if (message == ActivationMessage.ActivateApp)
+        {
+            _applicationActive = false;
+        }
+
         var open = _openViolation;
         if (open is null)
         {
