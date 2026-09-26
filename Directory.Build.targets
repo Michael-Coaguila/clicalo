@@ -86,7 +86,8 @@
   >
     <PropertyGroup>
       <_ClicaloRepoRootFull>$([MSBuild]::NormalizeDirectory('$(RepoRoot)'))</_ClicaloRepoRootFull>
-      <_ClicaloReferencesStamp>$(IntermediateOutputPath)clicalo.references.stamp</_ClicaloReferencesStamp>
+      <!-- Absolute: property functions resolve relative paths against the process directory, not the project. -->
+      <_ClicaloReferencesStamp>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'clicalo.references.stamp'))</_ClicaloReferencesStamp>
     </PropertyGroup>
 
     <!-- Only references declared by a file of this repository (csproj, Directory.*.props/targets, wiring). -->
