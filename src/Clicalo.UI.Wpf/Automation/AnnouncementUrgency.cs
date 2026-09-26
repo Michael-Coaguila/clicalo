@@ -4,14 +4,14 @@ namespace Clicalo.UI.Wpf.Automation;
 public enum AnnouncementUrgency
 {
     /// <summary>
-    /// Waits for the current speech: the notice bar and the status bar (<c>LiveSetting.Polite</c>,
-    /// <c>AutomationNotificationProcessing.ImportantMostRecent</c>).
+    /// Waits for the current speech, and a newer notice replaces an older one still waiting: the notice bar and the
+    /// status bar (<c>LiveSetting.Polite</c>, <c>AutomationNotificationProcessing.MostRecent</c>).
     /// </summary>
     Polite,
 
     /// <summary>
-    /// Interrupts: the panic strip, errors and «No pude volver a {app}» (<c>LiveSetting.Assertive</c>,
-    /// <c>AutomationNotificationProcessing.ImportantAll</c>).
+    /// Interrupts, and none is dropped: the panic strip, errors and «No pude volver a {app}»
+    /// (<c>LiveSetting.Assertive</c>, <c>AutomationNotificationProcessing.ImportantAll</c>).
     /// </summary>
     Assertive,
 }

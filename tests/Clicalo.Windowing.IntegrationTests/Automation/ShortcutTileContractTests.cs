@@ -8,8 +8,9 @@ namespace Clicalo.Windowing.IntegrationTests.Automation;
 
 /// <summary>
 /// Smoke tests of the accessible tile (blueprint §8.6): the peer, created in process on the WPF thread, exposes the
-/// voice-numbered name and exactly the pattern of the tile. The S3 tests with FlaUI and a real window live next to
-/// them (docs/testing/spikes/S3.md).
+/// voice-numbered name and exactly the pattern of the tile. The detailed peer tests are in
+/// <see cref="ShortcutTilePeerTests"/>; the S3 tests with FlaUI and a real window live next to them
+/// (docs/testing/spikes/S3.md).
 /// </summary>
 public sealed class ShortcutTileContractTests
 {
@@ -49,6 +50,7 @@ public sealed class ShortcutTileContractTests
             var invoke = peer.GetPattern(PatternInterface.Invoke)
                 .ShouldBeAssignableTo<IInvokeProvider>();
             invoke!.Invoke();
+            WpfThread.DrainPendingWork();
 
             invoked.ShouldBe(1);
         });
