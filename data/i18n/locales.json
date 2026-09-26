@@ -1,0 +1,25 @@
+{
+  "default": "es",
+  "locales": [
+    {
+      "code": "es",
+      "culture": "es",
+      "nativeName": "Español",
+      "shortName": "ES",
+      "decimalSeparator": ",",
+      "plural": {
+        "one": "n = 1 @integer 1 @decimal 1.0, 1.00, 1.000"
+      }
+    },
+    {
+      "code": "en",
+      "culture": "en",
+      "nativeName": "English",
+      "shortName": "EN",
+      "decimalSeparator": ".",
+      "plural": {
+        "one": "i = 1 and v = 0 @integer 1"
+      }
+    }
+  ]
+}
