@@ -1,0 +1,30 @@
+// Banned APIs for Clicalo.Application, on top of BannedSymbols.All.txt (blueprint §4.1, §4.2 and §4.4).
+// Application orchestrates use cases, stores and actors; every OS resource (files, network, registry, processes,
+// environment) is reached through a port in Application.Ports. UI frameworks are out of reach by project reference;
+// the System.Windows namespace is banned too because a few of its types live in the BCL.
+
+T:System.IO.File;Reach files through a port (IDocumentRepository, IAtomicFileWriter...)
+T:System.IO.FileInfo;Reach files through a port
+T:System.IO.FileStream;Reach files through a port
+T:System.IO.FileSystemInfo;Reach files through a port
+T:System.IO.FileSystemWatcher;Reach files through a port
+T:System.IO.Directory;Reach directories through a port
+T:System.IO.DirectoryInfo;Reach directories through a port
+T:System.IO.DriveInfo;Reach drives through a port
+T:System.IO.RandomAccess;Reach files through a port
+N:System.IO.Pipes;IPC belongs to Platform (Application.Ipc only interprets requests)
+N:System.IO.MemoryMappedFiles;Shared memory belongs to Platform.Core (KeyLedger)
+N:System.Net.Http;The network belongs to Infrastructure behind ports
+N:System.Net.Sockets;The network belongs to Infrastructure behind ports
+N:Microsoft.Win32;The registry and OS handles belong to Platform.Windows behind ports
+N:System.Windows;Application has no UI framework types
+T:System.Diagnostics.Process;Processes belong to Platform.Windows behind ILauncher
+M:System.Environment.GetEnvironmentVariable(System.String);Read configuration through a port
+M:System.Environment.GetEnvironmentVariable(System.String,System.EnvironmentVariableTarget);Read configuration through a port
+M:System.Environment.GetEnvironmentVariables;Read configuration through a port
+M:System.Environment.GetEnvironmentVariables(System.EnvironmentVariableTarget);Read configuration through a port
+M:System.Environment.SetEnvironmentVariable(System.String,System.String);The process environment belongs to the composition root
+M:System.Environment.SetEnvironmentVariable(System.String,System.String,System.EnvironmentVariableTarget);The process environment belongs to the composition root
+M:System.Environment.GetFolderPath(System.Environment.SpecialFolder);Resolve locations through a port (IAppPaths)
+M:System.Environment.GetFolderPath(System.Environment.SpecialFolder,System.Environment.SpecialFolderOption);Resolve locations through a port (IAppPaths)
+P:System.Environment.CurrentDirectory;Resolve locations through a port (IAppPaths)

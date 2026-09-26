@@ -1,0 +1,83 @@
+{
+  "$schema": "./schemas/banned-api-exceptions.schema.json",
+  "description": "The only places where a banned API (RS0030, architecture/BannedSymbols.*.txt) may be used, each through a [SuppressMessage(\"ApiDesign\", \"RS0030:Do not use banned APIs\", Justification = \"...\")] at the narrowest scope. Architecture.Tests fails on any RS0030 suppression outside these paths, and its confined-API rules check in the compiled IL that each API is only called from the allowed namespace or type (blueprint §4.4, mechanism 3).",
+  "exceptions": [
+    {
+      "id": "foreground-control",
+      "paths": ["src/Clicalo.Platform.Windows/Foreground/ForegroundControl.cs"],
+      "apis": ["SetForegroundWindow", "AllowSetForegroundWindow"],
+      "justification": "The single adapter behind IForegroundControl: every foreground change goes through ForegroundOrchestrator leases (ADR-0005).",
+      "blueprint": "§3.6, §4.4"
+    },
+    {
+      "id": "tray-menu-host",
+      "paths": ["src/Clicalo.Platform.Windows/Tray/TrayMenuHost.cs"],
+      "apis": ["TrackPopupMenu", "TrackPopupMenuEx"],
+      "justification": "The tray menu opens only inside the TrayMenu lease, with verified restoration afterwards.",
+      "blueprint": "§3.6, §4.4"
+    },
+    {
+      "id": "injection",
+      "paths": ["src/Clicalo.Platform.Core/Injection/**"],
+      "apis": ["SendInput"],
+      "justification": "LowLevelInjector sends input only inside InjectionGate.TryRun, fenced by the engine generation (ADR-0004).",
+      "blueprint": "§3.2, §4.4, §7.7"
+    },
+    {
+      "id": "launch",
+      "paths": ["src/Clicalo.Platform.Windows/Launch/**"],
+      "apis": ["Process.Start", "ProcessStartInfo", "ShellExecute", "ShellExecuteEx", "IShellDispatch2"],
+      "justification": "ILauncher starts apps and web pages without a command interpreter, on the Shell thread (LOG-008, EJE-011).",
+      "blueprint": "§3.3, §4.4"
+    },
+    {
+      "id": "system-commands",
+      "paths": ["src/Clicalo.Platform.Windows/SystemCommands/**"],
+      "apis": ["ShellExecute", "IShellDispatch2", "System.Management"],
+      "justification": "ISystemCommandRunner runs system commands (brightness through WMI, shell verbs) on the Shell thread.",
+      "blueprint": "§3.1, §4.4"
+    },
+    {
+      "id": "elevation",
+      "paths": ["src/Clicalo.Platform.Windows/Elevation/**"],
+      "apis": ["ShellExecuteEx"],
+      "justification": "Relaunching elevated uses ShellExecuteEx(\"runas\") after WinVerifyTrust and the pinned publisher check; the table of §4.4 omits it but §3.3 rule 2 requires it.",
+      "blueprint": "§3.3"
+    },
+    {
+      "id": "atomic-file",
+      "paths": ["src/Clicalo.Infrastructure/Persistence/AtomicFile.cs"],
+      "apis": ["File.Write*", "File.Create", "FileStream (write)"],
+      "justification": "The implementation of IAtomicFileWriter: write, flush, ReplaceFileW and .prev (ADR-0007).",
+      "blueprint": "§4.4, §6.5"
+    },
+    {
+      "id": "log-sink",
+      "paths": ["src/Clicalo.Infrastructure/Logging/FixedNameRollingFileSink.cs"],
+      "apis": ["File.Write*", "File.Create", "FileStream (write)"],
+      "justification": "The rolling log file keeps a fixed name (clicalo.log, 5 x 1 MB) and cannot go through the atomic document writer.",
+      "blueprint": "§4.4, §9.4"
+    },
+    {
+      "id": "app-lifecycle",
+      "paths": ["src/Clicalo.App/Lifecycle/**"],
+      "apis": ["Environment.Exit", "Application.Shutdown"],
+      "justification": "IAppLifetime.ExitAsync releases every key before ending the process.",
+      "blueprint": "§4.4"
+    },
+    {
+      "id": "app-shutdown",
+      "paths": ["src/Clicalo.App/Shutdown/**"],
+      "apis": ["Task.Result", "Task.Wait", "GetAwaiter().GetResult()"],
+      "justification": "The last synchronous flush on process exit (session end, WM_ENDSESSION) cannot await.",
+      "blueprint": "§4.4, §6.4"
+    },
+    {
+      "id": "workspace-controls",
+      "paths": ["src/Clicalo.UI.Wpf/Workspace/**"],
+      "apis": ["Popup", "ContextMenu", "ToolTip", "ComboBox"],
+      "justification": "The Control Center and the welcome are normal activatable windows; BannedSymbols.Surfaces.txt protects the panel surfaces, which never take the focus.",
+      "blueprint": "§3.5, §3.6, §8.1"
+    }
+  ]
+}

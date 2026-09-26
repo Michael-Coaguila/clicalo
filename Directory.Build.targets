@@ -25,6 +25,35 @@
 
   <!--
     ============================================================
+    Mechanism 3: banned APIs (Microsoft.CodeAnalysis.BannedApiAnalyzers, RS0030).
+    All applies to every product project; the layer lists are selected by project name.
+    Per-file exceptions: [SuppressMessage] registered in architecture/banned-api-exceptions.json.
+    ============================================================
+  -->
+  <ItemGroup Condition="'$(ClicaloIsProductProject)' == 'true'" Label="Banned APIs">
+    <AdditionalFiles Include="$(ClicaloArchitectureDir)BannedSymbols.All.txt" />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Domain.txt"
+      Condition="'$(MSBuildProjectName)' == 'Clicalo.Domain'"
+    />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Application.txt"
+      Condition="'$(MSBuildProjectName)' == 'Clicalo.Application'"
+    />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Presentation.txt"
+      Condition="'$(MSBuildProjectName)' == 'Clicalo.Presentation'"
+    />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Surfaces.txt"
+      Condition="'$(MSBuildProjectName)' == 'Clicalo.UI.Wpf'"
+    />
+    <!-- Generated code (CsWin32 friendly overloads, XAML .g.cs, source generators) is not subject to the lists. -->
+    <GlobalAnalyzerConfigFiles Include="$(ClicaloArchitectureDir)BannedSymbols.globalconfig" />
+  </ItemGroup>
+
+  <!--
+    ============================================================
     Mechanism 1: reference whitelist.
     Compares the references declared by repository files (not the SDK-implicit or transitive ones, which follow
     from them) with architecture/allowed-dependencies.json and fails before any compilation with CLCA001.
