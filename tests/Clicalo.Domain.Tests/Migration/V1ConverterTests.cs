@@ -156,6 +156,26 @@ public sealed class V1ConverterTests
         });
 
     [Fact]
+    [Trait("Req", "MIG-008")]
+    [Trait("Req", "REP-002")]
+    public void Names_that_differ_only_in_case_or_spaces_are_the_same_name_for_repeated_keys() =>
+        DomainPending.Run(() =>
+        {
+            var document = V1File(
+                Profile("General", string.Empty, Hotkey("Copiar", "ctrl+c")),
+                Profile("Chrome", "chrome.exe", Hotkey(" COPIAR ", "ctrl+c"))
+            );
+            CanonicalChord
+                .TryFrom(KeyChord.Create([Key(KeyIds.Ctrl), Key(KeyIds.C)]), out var copy)
+                .ShouldBeTrue();
+
+            var conversion = V1Converter.Convert(document, V1Baseline.Context(Primary)).Value;
+
+            // The panel compares names trimmed and ignoring case, so this key must be in «It's fine» too.
+            conversion.Document.Duplicates.Ignored.ShouldBe([copy]);
+        });
+
+    [Fact]
     [Trait("Req", "MIG-004")]
     public void The_conversion_is_idempotent() =>
         DomainPending.Run(() =>

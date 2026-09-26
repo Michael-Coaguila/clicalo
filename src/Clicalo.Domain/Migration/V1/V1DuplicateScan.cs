@@ -73,14 +73,16 @@ internal static class V1DuplicateScan
     }
 
     /// <summary>
-    /// The earlier member of the first pair REP-002 flags (same list, or same name in every language), in one pass.
+    /// The earlier member of the first pair REP-002 flags (same list, or same name in Spanish and in English), in one
+    /// pass. Names are compared as the panel's repeated index compares them: trimmed and ignoring letter case, so no
+    /// key the panel would flag is left out of «It's fine».
     /// </summary>
     private static (Profile Profile, Shortcut Shortcut)? FirstRepeated(
         List<(Profile Profile, Shortcut Shortcut)> members
     )
     {
         var byList = new Dictionary<ProfileId, int>();
-        var byName = new Dictionary<LocalizedText, int>();
+        var byName = new Dictionary<(string Spanish, string English), int>();
         for (var i = 0; i < members.Count; i++)
         {
             if (byList.TryGetValue(members[i].Profile.Id, out var sameList))
@@ -88,15 +90,23 @@ internal static class V1DuplicateScan
                 return members[sameList];
             }
 
-            if (byName.TryGetValue(members[i].Shortcut.Name, out var sameName))
+            var name = NameKey(members[i].Shortcut.Name);
+            if (byName.TryGetValue(name, out var sameName))
             {
                 return members[sameName];
             }
 
             byList.Add(members[i].Profile.Id, i);
-            byName.Add(members[i].Shortcut.Name, i);
+            byName.Add(name, i);
         }
 
         return null;
     }
+
+    /// <summary>A key equal for names that REP-002 (c) considers the same, in Spanish and in English.</summary>
+    private static (string Spanish, string English) NameKey(LocalizedText name) =>
+        (
+            name.Get(LangCode.Es, LangCode.En).Trim().ToUpperInvariant(),
+            name.Get(LangCode.En, LangCode.Es).Trim().ToUpperInvariant()
+        );
 }
