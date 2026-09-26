@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Automation;
@@ -81,8 +82,6 @@ public sealed class ShortcutTilePeerTests
 
             peer.GetAutomationControlType().ShouldBe(AutomationControlType.Button);
             peer.GetClassName().ShouldBe(nameof(ShortcutTile));
-            peer.IsControlElement().ShouldBeTrue();
-            peer.IsContentElement().ShouldBeTrue();
             // WPF gives every UIElement SynchronizedInput (a testing aid, not an action): it is not a tile pattern.
             Enum.GetValues<PatternInterface>()
                 .Where(candidate =>
@@ -90,6 +89,43 @@ public sealed class ShortcutTilePeerTests
                     && peer.GetPattern(candidate) is not null
                 )
                 .ShouldBe([expected]);
+        });
+
+    [Fact]
+    [Trait("Req", "ACC-009")]
+    [Trait("Req", "REG-06")]
+    public void Only_a_visible_tile_is_in_the_control_view_so_a_hidden_one_gets_no_voice_number() =>
+        WpfThread.Invoke(() =>
+        {
+            var shown = new ShortcutTile { AccessibleName = "Negrita", VoiceNumber = 1 };
+            var collapsed = new ShortcutTile
+            {
+                AccessibleName = "Cursiva",
+                VoiceNumber = 2,
+                Visibility = Visibility.Collapsed,
+            };
+            var host = new StackPanel();
+            host.Children.Add(shown);
+            host.Children.Add(collapsed);
+
+            // A presentation source makes WPF visibility real; its window is created hidden and never shown.
+            using var source = new HwndSource(
+                new HwndSourceParameters("clicalo-peer-test") { WindowStyle = 0 }
+            )
+            {
+                RootVisual = host,
+            };
+
+            shown.IsVisible.ShouldBeTrue();
+            PeerOf(shown).IsControlElement().ShouldBeTrue();
+            PeerOf(shown).IsContentElement().ShouldBeTrue();
+            PeerOf(collapsed).IsControlElement().ShouldBeFalse();
+            PeerOf(collapsed).IsContentElement().ShouldBeFalse();
+
+            collapsed.Visibility = Visibility.Visible;
+            PeerOf(collapsed).IsControlElement().ShouldBeTrue();
+            source.RootVisual = null;
+            PeerOf(shown).IsControlElement().ShouldBeFalse();
         });
 
     [Fact]

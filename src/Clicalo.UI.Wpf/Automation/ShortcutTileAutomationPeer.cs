@@ -26,7 +26,8 @@ namespace Clicalo.UI.Wpf.Automation;
 /// </description></item>
 /// <item><description>
 /// The tile is a leaf: the texts of its template are not UI Automation children, so «clic Negrita» finds exactly
-/// one element.
+/// one element. It is a control and content element only while it is visible (WPF's own rule, kept on purpose): a
+/// collapsed or hidden tile must not get a voice number from «mostrar números» nor answer «clic Negrita».
 /// </description></item>
 /// <item><description>
 /// <c>IsKeyboardFocusable</c> is true only while the tile's window is active (a <c>TextInput</c> or
@@ -190,9 +191,6 @@ public sealed class ShortcutTileAutomationPeer(ShortcutTile owner)
             ? Tile.AccessibleState ?? string.Empty
             : explicitStatus;
     }
-
-    /// <summary>A tile is always a control and content element, so voice «mostrar números» numbers it.</summary>
-    protected override bool IsControlElementCore() => true;
 
     /// <summary>The tile is a leaf: its template texts are not separate UI Automation elements.</summary>
     protected override List<AutomationPeer>? GetChildrenCore() => null;
