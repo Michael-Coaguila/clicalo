@@ -14,4 +14,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Clicalo.DevCli.Tests" />
   </ItemGroup>
+  <ItemGroup Label="anonymize-v1 keeps only the reviewed public names">
+    <EmbeddedResource Include="AnonymizeV1/v1-public-names.json" LogicalName="Clicalo.DevCli.AnonymizeV1.v1-public-names.json" />
+  </ItemGroup>
 </Project>
