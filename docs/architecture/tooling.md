@@ -28,7 +28,7 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl build` | Compila la solución completa en Debug | M0 |
 | `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit). Objetivo: menos de 45 s; la línea final avisa si se supera | M0 |
 | `cl test` | Compila y ejecuta todas las pruebas salvo las de escritorio (`Requires=Desktop`) | M0 |
-| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva). Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr: las capturan las herramientas de dictado y voz del mantenedor | M0 |
+| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva), un módulo de pruebas cada vez porque cada uno toma el primer plano con su InputProbe. Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr: las capturan las herramientas de dictado y voz del mantenedor | M0 |
 | `cl fix` | Da formato al C# con CSharpier | M0 |
 | `cl check` | **Lo mismo que el trabajo `verify` de la CI.** Todo PR termina con él (ver abajo) | M0 |
 | `cl clean` | Vacía `artifacts/`, salvo la salida del propio orquestador, y dice qué archivos siguen en uso | M0 |

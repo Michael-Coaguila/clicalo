@@ -238,7 +238,7 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
                     "--results-directory",
                     layout.Relative(results),
                     "--report-xunit-trx",
-                    .. FilterArguments(selection, context.Mode.Ci),
+                    .. SelectionArguments(selection, context.Mode.Ci),
                     // A project may hold only desktop tests (or none of them): zero tests there is fine.
                     "--ignore-exit-code",
                     ZeroTestsExitCode.ToString(CultureInfo.InvariantCulture),
@@ -292,19 +292,29 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
         );
 
     /// <summary>
-    /// The xUnit trait filters of a test run: without the desktop tests, or only the desktop tests; outside continuous
-    /// integration the desktop tests that inject reserved keys (<see cref="ReservedKeysTrait"/>) are left out too.
+    /// How a test run selects its tests: without the desktop tests, or only the desktop tests. Desktop test modules run
+    /// one at a time, because each one takes the foreground with its own InputProbe and two at once would take it from
+    /// each other. Outside continuous integration the desktop tests that inject reserved keys
+    /// (<see cref="ReservedKeysTrait"/>) are left out too.
     /// </summary>
-    internal static string[] FilterArguments(TestSelection selection, bool ci) =>
+    internal static string[] SelectionArguments(TestSelection selection, bool ci) =>
         selection switch
         {
-            TestSelection.DesktopOnly when ci => ["--filter-trait", DesktopTrait],
+            TestSelection.DesktopOnly when ci =>
+            [
+                "--filter-trait",
+                DesktopTrait,
+                "--max-parallel-test-modules",
+                "1",
+            ],
             TestSelection.DesktopOnly =>
             [
                 "--filter-trait",
                 DesktopTrait,
                 "--filter-not-trait",
                 ReservedKeysTrait,
+                "--max-parallel-test-modules",
+                "1",
             ],
             _ => ["--filter-not-trait", DesktopTrait],
         };
