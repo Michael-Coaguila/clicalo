@@ -8,6 +8,7 @@ internal static class StoreFailures
 {
     public const string UnconfirmedCode = "store.destructive.unconfirmed";
     public const string ConfirmationMismatchCode = "store.confirmation.mismatch";
+    public const string ConfirmationSpentCode = "store.confirmation.spent";
     public const string NothingToUndoCode = "store.undo.empty";
 
     /// <summary>A destructive command dispatched without its token (REG-04; CLC0010 misses it through a base type).</summary>
@@ -15,6 +16,9 @@ internal static class StoreFailures
 
     /// <summary>A token confirmed for another operation.</summary>
     public static Failure ConfirmationMismatch() => Warning(ConfirmationMismatchCode, L.DelConfirm);
+
+    /// <summary>A token that already confirmed one run: each run needs its own two taps.</summary>
+    public static Failure ConfirmationSpent() => Warning(ConfirmationSpentCode, L.DelConfirm);
 
     /// <summary>Undo with an empty history.</summary>
     public static Failure NothingToUndo() =>

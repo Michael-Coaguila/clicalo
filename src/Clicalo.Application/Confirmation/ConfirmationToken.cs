@@ -18,4 +18,13 @@ public sealed class ConfirmationToken
 
     /// <summary>When the second tap happened.</summary>
     public DateTimeOffset ConfirmedAt { get; }
+
+    /// <summary>
+    /// Whether a destructive command already ran with this token: two taps confirm one operation, so the document
+    /// store refuses a second use (REG-04). Read and written only under the store's lock.
+    /// </summary>
+    internal bool IsSpent { get; private set; }
+
+    /// <summary>Marks the token as used by the command it confirmed.</summary>
+    internal void Spend() => IsSpent = true;
 }

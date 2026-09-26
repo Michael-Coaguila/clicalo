@@ -85,6 +85,25 @@ public sealed class DocumentStoreTests
     }
 
     [Fact]
+    [Trait("Req", "REG-04")]
+    public void Two_taps_run_a_destructive_command_once()
+    {
+        var harness = new StoreHarness(Document());
+        var token = harness.TokenFor(new DeleteShortcut(Bold));
+
+        harness
+            .Store.Dispatch(new DeleteShortcut(new ShortcutId("missing")), token)
+            .Failure.Code.ShouldBe("library.shortcut.not_found");
+        harness.Store.Dispatch(new DeleteShortcut(Bold), token).IsSuccess.ShouldBeTrue();
+        harness
+            .Store.Dispatch(new DeleteShortcut(Save), token)
+            .Failure.Code.ShouldBe("store.confirmation.spent");
+
+        harness.Store.Current.Library.TryLocate(Save, out _).ShouldBeTrue();
+        harness.Changes.Count.ShouldBe(1);
+    }
+
+    [Fact]
     [Trait("Req", "FRE-005")]
     [Trait("Req", "REG-04")]
     public void Undoing_a_deletion_restores_the_shortcut_among_its_pins_and_keeps_later_usage()
@@ -273,6 +292,33 @@ public sealed class DocumentStoreTests
         harness.Store.Current.Revision.ShouldBe(200);
         harness.Store.Current.Frequents.Usage.Entries[Copy].Count.ShouldBe(200);
         harness.Store.CanUndo.ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "REG-07")]
+    public void Changes_from_many_threads_reach_the_listeners_one_at_a_time_in_revision_order()
+    {
+        var harness = new StoreHarness(Document());
+        var revisions = new List<long>();
+        var inside = 0;
+        var overlapped = false;
+        harness.Store.Changed += (_, change) =>
+        {
+            overlapped |= Interlocked.Increment(ref inside) > 1;
+            revisions.Add(change.After.Revision);
+            Thread.SpinWait(2_000);
+            Interlocked.Decrement(ref inside);
+        };
+
+        Parallel.For(
+            0,
+            200,
+            new ParallelOptions { MaxDegreeOfParallelism = 8 },
+            _ => harness.Store.Dispatch(new RecordUsage(Copy)).IsSuccess.ShouldBeTrue()
+        );
+
+        overlapped.ShouldBeFalse();
+        revisions.ShouldBe(Enumerable.Range(1, 200).Select(r => (long)r));
     }
 
     [Fact]

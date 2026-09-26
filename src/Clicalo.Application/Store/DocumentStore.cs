@@ -10,10 +10,11 @@ using Clicalo.Domain.Primitives;
 namespace Clicalo.Application.Store;
 
 /// <summary>
-/// The single writer of the user document (blueprint §6.4, ADR-0003): a short lock wraps only <c>Apply</c> and the
+/// The single writer of the user document (blueprint Â§6.4, ADR-0003): a short lock wraps only <c>Apply</c> and the
 /// history, with no I/O inside; <see cref="Current"/> is published with <c>Volatile.Write</c> and read without the lock
-/// from any thread. Undo restores only the slices the undone step touched, so undoing «delete shortcut» keeps the
-/// usage recorded afterwards; «Reset Frequents» touches usage too, so its undo restores usage, pins and hidden
+/// from any thread. <see cref="Changed"/> is raised outside the lock and always in revision order, even when several
+/// threads dispatch at once, so the save scheduler never takes an older document for the newest one. Undo restores only the slices the undone step touched, so undoing Â«delete shortcutÂ» keeps the
+/// usage recorded afterwards; Â«Reset FrequentsÂ» touches usage too, so its undo restores usage, pins and hidden
 /// (FRE-004). Destructive commands need a <see cref="ConfirmationToken"/> (REG-04, CLC0010).
 /// </summary>
 /// <remarks>
@@ -27,16 +28,19 @@ namespace Clicalo.Application.Store;
 /// the lock, before publishing.</item>
 /// </list>
 /// Failures: the command's own, <c>store.destructive.unconfirmed</c>, <c>store.confirmation.mismatch</c> and
-/// <c>store.undo.empty</c>. Exceptions thrown by a command are defects and propagate without any change.
+/// <c>store.confirmation.spent</c> and <c>store.undo.empty</c>. Exceptions thrown by a command are defects and propagate
+/// without any change.
 /// </remarks>
 public sealed class DocumentStore
 {
     private readonly Lock _gate = new();
     private readonly UndoHistory _history = new();
+    private readonly Queue<DocumentChangedEventArgs> _outbox = new();
     private readonly IIdGenerator _ids;
     private readonly IBackupService _backups;
     private readonly TimeProvider _time;
     private UserDocument _current;
+    private bool _delivering;
 
     /// <summary>Creates the store with the document read at start-up.</summary>
     /// <param name="initial">The loaded document.</param>
@@ -60,7 +64,12 @@ public sealed class DocumentStore
         _time = time;
     }
 
-    /// <summary>Raised after every change, outside the lock, on the thread that caused it.</summary>
+    /// <summary>
+    /// Raised after every change, outside the lock and in revision order: one change at a time, on the thread that
+    /// caused it or, while another thread is delivering, on that thread right after the earlier changes. A listener
+    /// that dispatches gets its own change once it returns. Listeners must be quick and must not block on another
+    /// thread that dispatches.
+    /// </summary>
     public event EventHandler<DocumentChangedEventArgs>? Changed;
 
     /// <summary>The current document.</summary>
@@ -78,7 +87,7 @@ public sealed class DocumentStore
         }
     }
 
-    /// <summary>What «Undo» names, or <see langword="null"/> when there is nothing to undo.</summary>
+    /// <summary>What Â«UndoÂ» names, or <see langword="null"/> when there is nothing to undo.</summary>
     public MessageKey? UndoLabel
     {
         get
@@ -105,7 +114,8 @@ public sealed class DocumentStore
 
     /// <summary>
     /// Applies a destructive command confirmed with two taps (REG-04). The token must have been confirmed for this
-    /// operation: its <see cref="ConfirmationSubject.Operation"/> is the command's type name.
+    /// operation (its <see cref="ConfirmationSubject.Operation"/> is the command's type name) and not used yet: once
+    /// the command changes the document, the token is spent, so two taps never run it twice.
     /// </summary>
     /// <param name="command">The command.</param>
     /// <param name="token">Proof of the second tap, issued by <see cref="TwoStepConfirm"/>.</param>
@@ -123,7 +133,7 @@ public sealed class DocumentStore
             command.GetType().Name,
             StringComparison.Ordinal
         )
-            ? Apply(command)
+            ? Apply(command, token)
             : Results.Fail<UserDocument>(StoreFailures.ConfirmationMismatch());
     }
 
@@ -151,9 +161,10 @@ public sealed class DocumentStore
                 [],
                 ChangeOrigin.Undo
             );
+            _outbox.Enqueue(change);
         }
 
-        OnChanged(change);
+        Deliver();
         return Results.Ok(change.After);
     }
 
@@ -166,12 +177,16 @@ public sealed class DocumentStore
         }
     }
 
-    private Result<UserDocument> Apply(IDocumentCommand command)
+    private Result<UserDocument> Apply(IDocumentCommand command, ConfirmationToken? token = null)
     {
-        DocumentChangedEventArgs? published = null;
         UserDocument result;
         lock (_gate)
         {
+            if (token is { IsSpent: true })
+            {
+                return Results.Fail<UserDocument>(StoreFailures.ConfirmationSpent());
+            }
+
             var current = _current;
             var context = new DomainContext(
                 _time.GetUtcNow(),
@@ -206,18 +221,21 @@ public sealed class DocumentStore
                     break;
             }
 
+            token?.Spend();
             result = change.Next with { Revision = current.Revision + 1 };
             Volatile.Write(ref _current, result);
-            published = new DocumentChangedEventArgs(
-                current,
-                result,
-                slices,
-                change.Events.IsDefault ? [] : change.Events,
-                ChangeOrigin.Command
+            _outbox.Enqueue(
+                new DocumentChangedEventArgs(
+                    current,
+                    result,
+                    slices,
+                    change.Events.IsDefault ? [] : change.Events,
+                    ChangeOrigin.Command
+                )
             );
         }
 
-        OnChanged(published);
+        Deliver();
         return Results.Ok(result);
     }
 
@@ -243,5 +261,36 @@ public sealed class DocumentStore
         }
     }
 
-    private void OnChanged(DocumentChangedEventArgs change) => Changed?.Invoke(this, change);
+    /// <summary>
+    /// Raises <see cref="Changed"/> for the queued changes, oldest first, one at a time: a thread that finds another
+    /// one delivering leaves its change to it, so listeners never see an older revision after a newer one.
+    /// </summary>
+    private void Deliver()
+    {
+        while (true)
+        {
+            DocumentChangedEventArgs? next;
+            lock (_gate)
+            {
+                if (_delivering || !_outbox.TryDequeue(out next))
+                {
+                    return;
+                }
+
+                _delivering = true;
+            }
+
+            try
+            {
+                Changed?.Invoke(this, next);
+            }
+            finally
+            {
+                lock (_gate)
+                {
+                    _delivering = false;
+                }
+            }
+        }
+    }
 }
