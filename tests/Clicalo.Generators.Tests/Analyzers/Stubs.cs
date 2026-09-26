@@ -1,0 +1,288 @@
+namespace Clicalo.Generators.Tests.Analyzers;
+
+/// <summary>
+/// Minimal stand-ins for the framework and product types the rules are bound to. They reproduce only the shape the
+/// rules look at: metadata names, inheritance, member names and parameter names.
+/// </summary>
+internal static class Stubs
+{
+    /// <summary>WPF windows and <c>Clicalo.UI.Wpf.Windowing.NonActivatingWindow</c> (CLC0001).</summary>
+    public const string Windowing = """
+        namespace System.Windows
+        {
+            public enum Visibility : byte { Visible = 0, Hidden = 1, Collapsed = 2 }
+
+            public class UIElement
+            {
+                public Visibility Visibility { get; set; }
+                public bool Focus() => true;
+            }
+
+            public class Window : UIElement
+            {
+                public bool ShowActivated { get; set; }
+                public void Show() { }
+                public bool? ShowDialog() => null;
+                public bool Activate() => true;
+                public void Hide() { }
+            }
+        }
+
+        namespace Clicalo.UI.Wpf.Windowing
+        {
+            public abstract class NonActivatingWindow : System.Windows.Window
+            {
+                public void ShowPassive() { }
+                public void HidePassive() { }
+            }
+        }
+        """;
+
+    /// <summary>The part of <c>Microsoft.Extensions.Logging</c> the product uses (CLC0003).</summary>
+    public const string Logging = """
+        namespace Microsoft.Extensions.Logging
+        {
+            public enum LogLevel { Trace, Debug, Information, Warning, Error, Critical, None }
+
+            public readonly struct EventId
+            {
+                public EventId(int id) { Id = id; }
+                public int Id { get; }
+            }
+
+            public interface ILogger
+            {
+                void Log<TState>(LogLevel logLevel, EventId eventId, TState state, System.Exception exception, System.Func<TState, System.Exception, string> formatter);
+                bool IsEnabled(LogLevel logLevel);
+                System.IDisposable BeginScope<TState>(TState state);
+            }
+
+            public interface ILogger<out TCategoryName> : ILogger { }
+
+            public static class LoggerExtensions
+            {
+                public static void LogInformation(this ILogger logger, string message, params object[] args) { }
+                public static void LogError(this ILogger logger, System.Exception exception, string message, params object[] args) { }
+                public static System.IDisposable BeginScope(this ILogger logger, string messageFormat, params object[] args) => null;
+            }
+
+            public static class LoggerMessage
+            {
+                public static System.Action<ILogger, T1, System.Exception> Define<T1>(LogLevel logLevel, EventId eventId, string formatString) => null;
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Method)]
+            public sealed class LoggerMessageAttribute : System.Attribute
+            {
+                public LoggerMessageAttribute(int eventId, LogLevel level, string message) { }
+            }
+        }
+        """;
+
+    /// <summary><c>Clicalo.Domain.Privacy</c>: the sensitive wrapper types and the marker attribute (CLC0003).</summary>
+    public const string Privacy = """
+        namespace Clicalo.Domain.Privacy
+        {
+            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct | System.AttributeTargets.Interface)]
+            public sealed class SensitiveAttribute : System.Attribute { }
+
+            public enum RedactionKind { FreeText, WindowTitle, SearchQuery, Secret }
+
+            public sealed class Sensitive<T>
+            {
+                public Sensitive(T value, RedactionKind kind) { Value = value; Kind = kind; }
+                public T Value { get; }
+                public RedactionKind Kind { get; }
+                public T Reveal() => Value;
+                public override string ToString() => nameof(Sensitive<T>);
+            }
+
+            public sealed class SecretText
+            {
+                public int Length => 0;
+                public override string ToString() => nameof(SecretText);
+            }
+
+            [Sensitive]
+            public readonly record struct WindowTitle(string Value);
+
+            [Sensitive]
+            public abstract class CapturedInput { }
+
+            public sealed class CapturedKey : CapturedInput { }
+        }
+        """;
+
+    /// <summary><c>Clicalo.Domain.Timings</c>, as generated from data/catalogs/timings.json (CLC0004).</summary>
+    public const string Timings = """
+        namespace Clicalo.Domain
+        {
+            public static class Timings
+            {
+                public const int LongPressMs = 600;
+                public const int FlashMs = 240;
+                public const double DimDelaySeconds = 2.5;
+            }
+        }
+        """;
+
+    /// <summary>The WPF surface CLC0006 looks at: text properties, attached setters, colors and brushes.</summary>
+    public const string Wpf = """
+        namespace System.Windows
+        {
+            public class DependencyProperty { }
+
+            public class DependencyObject
+            {
+                public void SetValue(DependencyProperty dp, object value) { }
+                public void SetCurrentValue(DependencyProperty dp, object value) { }
+            }
+
+            public class FrameworkElement : DependencyObject
+            {
+                public object ToolTip { get; set; }
+                public string Name { get; set; }
+            }
+
+            public static class MessageBox
+            {
+                public static void Show(string messageBoxText, string caption) { }
+            }
+        }
+
+        namespace System.Windows.Controls
+        {
+            public class TextBlock : System.Windows.FrameworkElement
+            {
+                public static readonly System.Windows.DependencyProperty TextProperty = new System.Windows.DependencyProperty();
+                public static readonly System.Windows.DependencyProperty TagProperty = new System.Windows.DependencyProperty();
+                public string Text { get; set; }
+            }
+
+            public class ContentControl : System.Windows.FrameworkElement
+            {
+                public object Content { get; set; }
+            }
+
+            public class Button : ContentControl { }
+
+            public static class ToolTipService
+            {
+                public static void SetToolTip(System.Windows.DependencyObject element, object value) { }
+                public static void SetPlacement(System.Windows.DependencyObject element, object value) { }
+            }
+        }
+
+        namespace System.Windows.Automation
+        {
+            public static class AutomationProperties
+            {
+                public static readonly System.Windows.DependencyProperty NameProperty = new System.Windows.DependencyProperty();
+                public static void SetName(System.Windows.DependencyObject element, string value) { }
+                public static void SetAutomationId(System.Windows.DependencyObject element, string value) { }
+            }
+        }
+
+        namespace System.Windows.Media
+        {
+            public struct Color
+            {
+                public static Color FromRgb(byte r, byte g, byte b) => default;
+                public static Color FromArgb(byte a, byte r, byte g, byte b) => default;
+            }
+
+            public static class Colors
+            {
+                public static Color Red => default;
+                public static Color Transparent => default;
+            }
+
+            public class Brush { }
+
+            public static class Brushes
+            {
+                public static Brush White => null;
+                public static Brush Transparent => null;
+            }
+        }
+        """;
+
+    /// <summary>Document commands, the confirmation token (a class) and its issuer (CLC0010).</summary>
+    public const string Commands = """
+        namespace Clicalo.Domain.Commands
+        {
+            public interface IDocumentCommand { }
+            public interface IDestructiveCommand : IDocumentCommand { }
+            public sealed record DeleteShortcut(int Id) : IDestructiveCommand;
+            public sealed record RenameShortcut(int Id) : IDocumentCommand;
+        }
+
+        namespace Clicalo.Application.Confirmation
+        {
+            public class ConfirmationToken
+            {
+                internal ConfirmationToken(long serial) { Serial = serial; }
+                internal ConfirmationToken() : this(0) { }
+                public long Serial { get; }
+            }
+
+            public sealed class TwoStepConfirm
+            {
+                private long _next;
+                public void Arm(Clicalo.Domain.Commands.IDocumentCommand command) { }
+                public ConfirmationToken Confirm() => new ConfirmationToken(++_next);
+            }
+        }
+
+        namespace Clicalo.Application.Store
+        {
+            using Clicalo.Application.Confirmation;
+            using Clicalo.Domain.Commands;
+
+            public sealed class DocumentStore
+            {
+                public void Dispatch(IDocumentCommand command) { }
+                public void Dispatch(IDestructiveCommand command, ConfirmationToken token) { }
+                public void DispatchOptional(IDocumentCommand command, ConfirmationToken token = null) { }
+                public void DispatchAll(params IDocumentCommand[] commands) { }
+                public void DispatchBatch(System.Collections.Generic.IEnumerable<IDocumentCommand> commands) { }
+                public void Queue<TCommand>(TCommand command) where TCommand : IDocumentCommand { }
+                public void Remember(object value) { }
+                public void Keep<T>(T value) { }
+            }
+        }
+        """;
+
+    /// <summary>The same contracts with a struct token, to cover <c>default</c> and <c>Nullable</c> forgeries (CLC0010).</summary>
+    public const string CommandsWithStructToken = """
+        namespace Clicalo.Domain.Commands
+        {
+            public interface IDocumentCommand { }
+            public interface IDestructiveCommand : IDocumentCommand { }
+            public sealed record DeleteProfile(int Id) : IDestructiveCommand;
+        }
+
+        namespace Clicalo.Application.Confirmation
+        {
+            public readonly record struct ConfirmationToken(long Serial);
+
+            public sealed class TwoStepConfirm
+            {
+                public ConfirmationToken Confirm() => new ConfirmationToken(1);
+                public ConfirmationToken Empty() => default;
+            }
+        }
+
+        namespace Clicalo.Application.Store
+        {
+            using Clicalo.Application.Confirmation;
+            using Clicalo.Domain.Commands;
+
+            public sealed class DocumentStore
+            {
+                public void Dispatch(IDestructiveCommand command, ConfirmationToken token) { }
+                public void DispatchMaybe(IDestructiveCommand command, ConfirmationToken? token) { }
+            }
+        }
+        """;
+}

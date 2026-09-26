@@ -9,6 +9,10 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
+  <ItemGroup Label="Release tracking (RS2000-RS2008): every rule id is declared with its category and severity">
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Clicalo.Generators.Tests" />
   </ItemGroup>
