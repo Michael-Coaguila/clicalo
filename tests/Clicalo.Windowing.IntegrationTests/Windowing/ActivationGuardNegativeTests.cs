@@ -39,6 +39,11 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
         {
             var cursor = await desktop.PrepareAsync();
             var before = desktop.Lab.Guard.Violations;
+            var sequenceStart = panel.ActivationSequence.Count;
+            string Sequence() =>
+                " Panel messages this cycle: "
+                + string.Join(", ", panel.ActivationSequence.Skip(sequenceStart))
+                + ".";
 
             var answer = await desktop.Probe.RequestForegroundAsync(
                 panel.Handle,
@@ -52,6 +57,7 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
             await SurfaceDesktopFixture.WaitUntilAsync(
                 () => desktop.Lab.Guard.Violations > before,
                 Say($"Cycle {cycle}: ActivationGuard did not detect the forced activation.")
+                    + Sequence()
             );
             var events = await desktop.Probe.WaitForAsync(
                 cursor,
@@ -73,7 +79,7 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
             );
             desktop.Lab.Guard.Violations.ShouldBe(
                 before + 1,
-                Say($"Cycle {cycle}: one activation, one violation.")
+                Say($"Cycle {cycle}: one activation, one violation.") + Sequence()
             );
             NativeSurface
                 .HasExStyle(panel.Handle, NativeSurface.ExNoActivate)
@@ -84,7 +90,11 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
             violation.ProbableCause.ShouldBe(ActivationCause.External);
         }
 
-        desktop.Lab.Guard.Violations.ShouldBe(start + Cycles);
+        desktop.Lab.Guard.Violations.ShouldBe(
+            start + Cycles,
+            "late activation messages must not count: "
+                + string.Join(", ", panel.ActivationSequence)
+        );
         failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? Cycles : 0);
     }
 

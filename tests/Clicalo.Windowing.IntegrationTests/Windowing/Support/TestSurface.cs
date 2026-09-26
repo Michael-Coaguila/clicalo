@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.Application.Ports;
+using Clicalo.TestKit.Windows;
 using Clicalo.UI.Wpf.Windowing;
 
 namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
@@ -16,6 +17,7 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 public sealed class TestSurface : NonActivatingWindow
 {
     private readonly ConcurrentQueue<string> _activations = new();
+    private readonly ConcurrentQueue<string> _sequence = new();
     private int _pointerDowns;
     private int _pointerUps;
     private int _mouseDowns;
@@ -48,6 +50,13 @@ public sealed class TestSurface : NonActivatingWindow
     /// <c>WM_ACTIVATEAPP(TRUE)</c> and <c>WM_SETFOCUS</c>, by name.</summary>
     public IReadOnlyList<string> Activations => [.. _activations];
 
+    /// <summary>
+    /// Every activation message received, in order and in both directions (<c>WM_ACTIVATEAPP</c>, <c>WM_NCACTIVATE</c>,
+    /// <c>WM_ACTIVATE</c>), each with whether the surface owned the foreground at that moment: the diagnostic of the
+    /// negative test of <c>ActivationGuard</c>.
+    /// </summary>
+    public IReadOnlyList<string> ActivationSequence => [.. _sequence];
+
     public int PointerDowns => Volatile.Read(ref _pointerDowns);
 
     public int PointerUps => Volatile.Read(ref _pointerUps);
@@ -71,6 +80,7 @@ public sealed class TestSurface : NonActivatingWindow
 
     private nint Record(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
+        RecordSequence(hwnd, (uint)msg, wParam);
         switch ((uint)msg)
         {
             case NativeSurface.WmActivate when (wParam & 0xFFFF) != 0:
@@ -104,5 +114,27 @@ public sealed class TestSurface : NonActivatingWindow
         }
 
         return 0;
+    }
+
+    private void RecordSequence(nint hwnd, uint msg, nint wParam)
+    {
+        var name = msg switch
+        {
+            NativeSurface.WmActivateApp => "WM_ACTIVATEAPP",
+            NativeSurface.WmNcActivate => "WM_NCACTIVATE",
+            NativeSurface.WmActivate => "WM_ACTIVATE",
+            _ => null,
+        };
+        if (name is null)
+        {
+            return;
+        }
+
+        var active = msg == NativeSurface.WmActivate ? (wParam & 0xFFFF) != 0 : wParam != 0;
+        _sequence.Enqueue(
+            name
+                + (active ? "(TRUE)" : "(FALSE)")
+                + (ForegroundWindows.Current == hwnd ? " in front" : " not in front")
+        );
     }
 }

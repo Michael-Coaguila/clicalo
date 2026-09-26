@@ -7,11 +7,15 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing;
 
 /// <summary>
 /// <see cref="ActivationGuard"/> fed by the surfaces' own activation messages (blueprint §3.5). Headless: the messages
-/// are sent to surfaces that are never shown, so no window is really activated; the violations are expected and their
+/// are sent to surfaces that are never shown, so no window is really activated and the lab tells the guard which window
+/// owns the foreground (<see cref="SurfaceLab.SimulatedForeground"/>); the violations are expected and their
 /// <c>Debug.Fail</c> is recorded (<see cref="DebugFailures"/>).
 /// </summary>
 public sealed class ActivationGuardTests
 {
+    /// <summary>A window of another application, as the guard sees the foreground (never dereferenced).</summary>
+    private const nint AnotherApp = 0x7FFF_0010;
+
     [Fact]
     [Trait("Req", "REG-01")]
     public void An_activation_without_a_lease_is_one_violation_until_the_surface_is_deactivated()
@@ -20,6 +24,7 @@ public sealed class ActivationGuardTests
         using var lab = SurfaceLab.Create();
         var surface = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100));
         var window = surface.Handle;
+        lab.SimulatedForeground = window;
         NativeSurface.SetExStyle(
             window,
             NativeSurface.ExStyle(window) & ~NativeSurface.ExNoActivate
@@ -107,6 +112,7 @@ public sealed class ActivationGuardTests
         using var lab = SurfaceLab.Create();
         var surface = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100));
         var window = surface.Handle;
+        lab.SimulatedForeground = window;
 
         // One dispatcher operation each, as one message retrieval delivers one activation sequence.
         WpfThread.Invoke(() =>
@@ -157,8 +163,10 @@ public sealed class ActivationGuardTests
         var first = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Menu, 0, 120, 80));
         var second = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Menu, 1, 120, 80));
 
+        lab.SimulatedForeground = first.Handle;
         Send(first.Handle, NativeSurface.WmActivate, NativeSurface.Active);
         lab.Close(first);
+        lab.SimulatedForeground = second.Handle;
         Send(second.Handle, NativeSurface.WmActivate, NativeSurface.Active);
 
         lab.Guard.Violations.ShouldBe(2);
@@ -168,35 +176,71 @@ public sealed class ActivationGuardTests
 
     [Fact]
     [Trait("Req", "REG-01")]
-    public void A_violation_left_open_after_the_application_lost_the_activation_ends_with_the_next_activation()
+    public void A_late_activation_message_after_the_restore_is_kept_but_not_counted()
     {
         using var failures = DebugFailures.Capture();
         using var lab = SurfaceLab.Create();
         var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
         var bubble = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Bubble, 0, 64, 64)).Handle;
 
-        // One activation: WM_ACTIVATEAPP(TRUE) to every window of the thread, then the activation of the panel.
+        // One forced activation: WM_ACTIVATEAPP(TRUE) to every window of the thread, then the activation of the panel.
+        lab.SimulatedForeground = panel;
         Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
         Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
         Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
         Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
         lab.Guard.Violations.ShouldBe(1, "one activation is one violation");
 
-        // The restore deactivates the application, and a late activation message opens a violation that no
-        // deactivation will ever end.
+        // The restore gives the foreground back from the thread pool and the application is deactivated; a message of
+        // the activation that is only delivered now finds the foreground elsewhere.
+        lab.SimulatedForeground = AnotherApp;
         Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
         Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+        NativeSurface.SetExStyle(panel, NativeSurface.ExStyle(panel) & ~NativeSurface.ExNoActivate);
         Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(2);
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active)
+            .ShouldBe(0, "the late WM_ACTIVATE is still kept from WPF and DefWindowProc");
 
-        // The next activation of the application is judged on its own, once.
+        lab.Guard.Violations.ShouldBe(1, "a late message is not a second violation");
+        lab.Arbiter.Violations.Count.ShouldBe(1);
+        NativeSurface
+            .HasExStyle(panel, NativeSurface.ExNoActivate)
+            .ShouldBeTrue("the guard applies WS_EX_NOACTIVATE again");
+
+        // The next forced activation is judged on its own, once.
+        lab.SimulatedForeground = panel;
         Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
         Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
         Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
         Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
 
-        lab.Guard.Violations.ShouldBe(3);
-        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 3 : 0);
+        lab.Guard.Violations.ShouldBe(2);
+        lab.Arbiter.Violations.Count.ShouldBe(2);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    public void A_violation_whose_end_never_arrived_ends_with_the_next_activation_of_the_application()
+    {
+        using var failures = DebugFailures.Capture();
+        using var lab = SurfaceLab.Create();
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+
+        // An activation inside the application (no WM_ACTIVATEAPP) whose deactivation never reaches the panel.
+        lab.SimulatedForeground = panel;
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(1);
+
+        // The next activation of the application is judged on its own instead of being swallowed as part of it.
+        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+
+        lab.Guard.Violations.ShouldBe(2);
+        lab.Arbiter.Violations.Select(violation => violation.Message)
+            .ShouldBe([ActivationMessage.NcActivate, ActivationMessage.ActivateApp]);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
     }
 
     private static nint Send(nint window, uint message, nint wParam) =>

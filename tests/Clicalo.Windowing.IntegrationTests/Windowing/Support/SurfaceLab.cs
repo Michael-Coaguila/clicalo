@@ -1,4 +1,5 @@
 using Clicalo.Application.Ports;
+using Clicalo.TestKit.Windows;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Windowing;
 
@@ -12,12 +13,22 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 public sealed class SurfaceLab : IDisposable
 {
     private readonly List<TestSurface> _surfaces = [];
+    private nint _simulatedForeground;
 
     private SurfaceLab(RecordingArbiter arbiter, TimeProvider timeProvider)
     {
         Arbiter = arbiter;
         Anchor = new OwnerAnchor();
-        Guard = new ActivationGuard(arbiter, timeProvider);
+        Guard = new ActivationGuard(
+            arbiter,
+            timeProvider,
+            () =>
+                new WindowToken(
+                    Volatile.Read(ref _simulatedForeground) is var simulated and not 0
+                        ? simulated
+                        : ForegroundWindows.Current
+                )
+        );
         Registry = new SurfaceRegistry(Anchor, Guard);
         Integrity = new SurfaceIntegrityCheck(Registry, timeProvider);
     }
@@ -31,6 +42,16 @@ public sealed class SurfaceLab : IDisposable
     public SurfaceRegistry Registry { get; }
 
     public SurfaceIntegrityCheck Integrity { get; }
+
+    /// <summary>
+    /// The window the guard sees as the foreground, for the headless tests whose surfaces are never shown (the
+    /// activation of the foreground is simulated); zero, the default, is the real <c>GetForegroundWindow</c>.
+    /// </summary>
+    public nint SimulatedForeground
+    {
+        get => Volatile.Read(ref _simulatedForeground);
+        set => Volatile.Write(ref _simulatedForeground, value);
+    }
 
     /// <summary>Creates the lab on the WPF test thread.</summary>
     public static SurfaceLab Create(

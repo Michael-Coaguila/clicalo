@@ -29,23 +29,49 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// when a window that is not a surface (the Control Center under its lease) is activated, so it only counts on the
 /// surface that owns the foreground.
 /// </para>
+/// <para>
+/// An activation message for a surface that does not own the foreground (<c>GetForegroundWindow</c>) is not an
+/// activation of the foreground: it is a late message of an activation that has already ended (the orchestrator gives
+/// the foreground back from the thread pool while the UI thread still delivers the messages of the activation, so one
+/// may arrive after <c>WM_ACTIVATEAPP(FALSE)</c>), and nothing was taken from the app in front. It is kept from WPF and
+/// <c>WS_EX_NOACTIVATE</c> is applied again, but it neither opens nor counts a violation: one forced activation is
+/// exactly one violation.
+/// </para>
 /// </remarks>
 public sealed class ActivationGuard
 {
     /// <summary>Name of the violation counter in metrics and logs.</summary>
     public const string MetricName = "reg01.violations";
 
+    private readonly Func<WindowToken> _foregroundWindow;
     private long _violations;
     private NonActivatingWindow? _openViolation;
     private bool _applicationActive;
 
     /// <summary>Creates the guard that reports to <paramref name="arbiter"/> and stamps with <paramref name="timeProvider"/>.</summary>
     public ActivationGuard(IActivationArbiter arbiter, TimeProvider timeProvider)
+        : this(
+            arbiter,
+            timeProvider,
+            static () => new WindowToken((nint)PInvoke.GetForegroundWindow())
+        ) { }
+
+    /// <summary>
+    /// Creates the guard with the source of <c>GetForegroundWindow</c>: the headless tests, whose surfaces are never
+    /// shown, say which window owns the foreground.
+    /// </summary>
+    public ActivationGuard(
+        IActivationArbiter arbiter,
+        TimeProvider timeProvider,
+        Func<WindowToken> foregroundWindow
+    )
     {
         ArgumentNullException.ThrowIfNull(arbiter);
         ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(foregroundWindow);
         Arbiter = arbiter;
         Clock = timeProvider;
+        _foregroundWindow = foregroundWindow;
     }
 
     /// <summary>Violations detected since the process started (<see cref="MetricName"/>).</summary>
@@ -63,7 +89,8 @@ public sealed class ActivationGuard
     /// <summary>
     /// Called by the common hook of <paramref name="surface"/> for each activation message. Returns true when the
     /// activation is a violation: the first message of it has been reported, repaired and counted, and the later
-    /// messages of the same activation return true without counting again.
+    /// messages of the same activation return true without counting again. Also true, without counting, for a late
+    /// message of an activation that has already ended (the surface does not own the foreground).
     /// </summary>
     /// <param name="surface">The surface that received the message.</param>
     /// <param name="message">Which activation message.</param>
@@ -96,7 +123,8 @@ public sealed class ActivationGuard
             return false;
         }
 
-        if (message == ActivationMessage.ActivateApp && !OwnsForeground(window))
+        var ownsForeground = _foregroundWindow() == window;
+        if (message == ActivationMessage.ActivateApp && !ownsForeground)
         {
             // Another window of this thread is being activated: its own messages decide.
             return false;
@@ -104,6 +132,14 @@ public sealed class ActivationGuard
 
         if (_openViolation is not null)
         {
+            return true;
+        }
+
+        if (!ownsForeground)
+        {
+            // A late message of an activation that has already ended: the foreground is already elsewhere, so nothing
+            // is being taken from the app in front. Keep it from WPF and repair, without a second violation.
+            surface.ReapplyNonActivation();
             return true;
         }
 
@@ -169,9 +205,6 @@ public sealed class ActivationGuard
             _openViolation = null;
         }
     }
-
-    private static bool OwnsForeground(WindowToken window) =>
-        (nint)PInvoke.GetForegroundWindow() == window.Handle;
 
     /// <summary>Counts <paramref name="violation"/> and raises <see cref="ViolationDetected"/>.</summary>
     private void Record(ActivationViolation violation)
