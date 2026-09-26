@@ -3,8 +3,10 @@ namespace Clicalo.Build.Tests;
 /// <summary>Paths of <c>cl</c> that decide what to say without starting any process.</summary>
 public sealed class ClApplicationTests
 {
-    private const string VerbList =
-        "cl: las órdenes son setup, build, fast, test, desk, fix, check y clean";
+    private const string Verbs =
+        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import y adr-check";
+
+    private const string VerbList = "cl: las órdenes son " + Verbs;
 
     private static async Task<(int ExitCode, string Output)> RunAsync(params string[] args)
     {
@@ -31,7 +33,9 @@ public sealed class ClApplicationTests
         var (exitCode, output) = await RunAsync();
 
         exitCode.ShouldBe(0);
-        output.ShouldContain("check   La misma puerta que la CI");
+        output.ShouldContain("  check ");
+        output.ShouldContain("La misma puerta que la CI");
+        output.ShouldContain("  i18n-import ");
         LastLine(output).ShouldBe(VerbList);
     }
 
@@ -53,11 +57,7 @@ public sealed class ClApplicationTests
         var (exitCode, output) = await RunAsync("chek");
 
         exitCode.ShouldBe(ClApplication.UsageExitCode);
-        output
-            .Trim()
-            .ShouldBe(
-                "cl chek: orden desconocida; las órdenes son setup, build, fast, test, desk, fix, check y clean"
-            );
+        output.Trim().ShouldBe("cl chek: orden desconocida; las órdenes son " + Verbs);
     }
 
     [Fact]
@@ -87,5 +87,25 @@ public sealed class ClApplicationTests
 
         exitCode.ShouldBe(ClApplication.UsageExitCode);
         LastLine(output).ShouldStartWith("cl check: uso no válido; ");
+    }
+
+    [Fact]
+    public async Task Words_after_a_developer_cli_verb_are_its_options_not_options_of_cl()
+    {
+        var (exitCode, output) = await RunAsync("--dry-run", "i18n-import", "--check");
+
+        exitCode.ShouldBe(0);
+        LastLine(output)
+            .ShouldBe("cl i18n-import --check: simulación sin ejecutar nada (--dry-run)");
+    }
+
+    [Fact]
+    public async Task Listing_targets_shows_the_developer_cli_verbs()
+    {
+        var (exitCode, output) = await RunAsync("--list-targets");
+
+        exitCode.ShouldBe(0);
+        output.ShouldContain("i18n-check");
+        output.ShouldContain("adr-check");
     }
 }

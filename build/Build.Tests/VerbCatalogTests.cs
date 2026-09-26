@@ -54,6 +54,9 @@ public sealed class VerbCatalogTests
             "fix",
             "check",
             "clean",
+            "i18n-check",
+            "i18n-import",
+            "adr-check",
         ]);
 
     [Fact]
@@ -70,7 +73,34 @@ public sealed class VerbCatalogTests
     {
         foreach (var verb in VerbCatalog.Available.Concat(VerbCatalog.Future.Select(f => f.Name)))
         {
-            verb.ShouldMatch("^[a-z]+(-[a-z]+)?$");
+            // "i18n" is dictated as it is written in the documentation.
+            verb.ShouldMatch("^[a-z][a-z0-9]*(-[a-z]+)?$");
         }
     }
+
+    [Fact]
+    public void Everything_after_the_first_developer_cli_verb_goes_to_the_developer_cli()
+    {
+        var (cl, devCli) = VerbCatalog.SplitArguments([
+            "--verbose",
+            "i18n-check",
+            "--strict-unused",
+        ]);
+
+        cl.ShouldBe(["--verbose", "i18n-check"]);
+        devCli.ShouldBe(["--strict-unused"]);
+    }
+
+    [Fact]
+    public void Without_a_developer_cli_verb_every_argument_stays_with_cl()
+    {
+        var (cl, devCli) = VerbCatalog.SplitArguments(["check", "--dry-run"]);
+
+        cl.ShouldBe(["check", "--dry-run"]);
+        devCli.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void The_developer_cli_verbs_are_the_verbs_of_tools_Clicalo_DevCli() =>
+        VerbCatalog.DevCli.ShouldBe(["i18n-check", "i18n-import", "adr-check"]);
 }

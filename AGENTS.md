@@ -33,7 +33,7 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 5. **Un ADR si cambias un límite de confianza, un formato persistido o un contrato público** (o el
    framework, el modelo de procesos o de estado, la licencia o la firma). Ver [docs/adr](docs/adr/README.md).
    Las rutas están en `architecture/sensitive-paths.json` y el trabajo `adr` de la CI lo comprueba
-   (`dotnet run --project tools/Clicalo.DevCli -- adr-check --base main` en local).
+   (`cl adr-check --base main` en local).
 6. **Nunca rebajes un requisito.** Si uno parece inviable, propón el cambio con evidencia en la sección de
    propuestas pendientes del catálogo (§6.1); solo el usuario lo ratifica. Ver
    [cómo leer el catálogo](docs/requirements/README.md#cambiar-un-requisito).
@@ -126,10 +126,11 @@ Entre hilos solo cruzan objetos inmutables, y cada punto de mutación tiene un �
 
 ## Verbos de `cl`
 
-Disponibles desde M0: `setup`, `build`, `fast`, `test`, `desk`, `fix`, `check` y `clean`. Llegan después:
-`pr` (M1); `run`, `note` y `perf` (M2); `states`, `accept` y `trace` (M3); `beta` y `sign-manifest` (M5).
-Cada orden termina en una línea legible por Narrador. Las órdenes que no son de compilación viven en
-`tools/Clicalo.DevCli` (`i18n-check`, `i18n-import`, `adr-check`). Detalle, pasos de `cl check` y
+Disponibles desde M0: `setup`, `build`, `fast`, `test`, `desk`, `fix`, `check` y `clean`, más
+`i18n-check`, `i18n-import` y `adr-check`, que ejecutan la orden del mismo nombre de `tools/Clicalo.DevCli`
+con las opciones que se escriban detrás (`cl i18n-import --check`, `cl adr-check --base main`). Llegan
+después: `pr` (M1); `run`, `note` y `perf` (M2); `states`, `accept` y `trace` (M3); `beta` y
+`sign-manifest` (M5). Cada orden termina en una línea legible por Narrador. Detalle, pasos de `cl check` y
 variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 
 ## Dónde está cada cosa

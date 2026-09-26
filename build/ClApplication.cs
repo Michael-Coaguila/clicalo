@@ -29,14 +29,15 @@ internal sealed class ClApplication(
     /// <summary>Runs <c>cl</c> with <paramref name="args"/> and returns the process exit code.</summary>
     public async Task<int> RunAsync(IReadOnlyList<string> args)
     {
-        var (verbs, options, unknownOptions, showHelp) = CommandLine.Parse(args);
+        var (clArgs, devCliArgs) = VerbCatalog.SplitArguments(args);
+        var (verbs, options, unknownOptions, showHelp) = CommandLine.Parse(clArgs);
         var informational =
             showHelp
             || options.ListTargets
             || options.ListTree
             || options.ListDependencies
             || options.ListInputs;
-        var command = string.Join(' ', verbs);
+        var command = string.Join(' ', verbs.Concat(devCliArgs));
 
         if (verbs.Count == 0 && !informational && unknownOptions.Count == 0)
         {
@@ -67,7 +68,7 @@ internal sealed class ClApplication(
         var mode = OutputMode.Detect(options.Verbose);
         var context = new RunContext(output, mode);
         var steps = new BuildSteps(layout, context);
-        var targets = DefineTargets(new ClVerbs(steps, layout, keepOnClean));
+        var targets = DefineTargets(new ClVerbs(steps, layout, keepOnClean, devCliArgs));
 
         // Bullseye's own start, finish and summary-table lines repeat what the step lines and the final line
         // say; they are kept only where they are the point (listings, help, dry runs, --verbose).
@@ -184,6 +185,9 @@ internal sealed class ClApplication(
         targets.Add(VerbCatalog.Fix, Messages.FixDescription, verbs.FixAsync);
         targets.Add(VerbCatalog.Check, Messages.CheckDescription, verbs.CheckAsync);
         targets.Add(VerbCatalog.Clean, Messages.CleanDescription, verbs.CleanAsync);
+        targets.Add(VerbCatalog.I18nCheck, Messages.I18nCheckDescription, verbs.I18nCheckAsync);
+        targets.Add(VerbCatalog.I18nImport, Messages.I18nImportDescription, verbs.I18nImportAsync);
+        targets.Add(VerbCatalog.AdrCheck, Messages.AdrCheckDescription, verbs.AdrCheckAsync);
         foreach (var future in VerbCatalog.Future)
         {
             // Listed for discoverability; RunAsync answers "available in Mx" before Bullseye runs anything.
@@ -201,9 +205,10 @@ internal sealed class ClApplication(
     {
         if (listFirst)
         {
+            var width = VerbCatalog.Available.Max(verb => verb.Length) + 2;
             foreach (var verb in VerbCatalog.Available)
             {
-                await output.WriteLineAsync("  " + verb.PadRight(8) + DescriptionOf(verb));
+                await output.WriteLineAsync("  " + verb.PadRight(width) + DescriptionOf(verb));
             }
         }
 
@@ -221,6 +226,9 @@ internal sealed class ClApplication(
             VerbCatalog.Fix => Messages.FixDescription,
             VerbCatalog.Check => Messages.CheckDescription,
             VerbCatalog.Clean => Messages.CleanDescription,
+            VerbCatalog.I18nCheck => Messages.I18nCheckDescription,
+            VerbCatalog.I18nImport => Messages.I18nImportDescription,
+            VerbCatalog.AdrCheck => Messages.AdrCheckDescription,
             _ => string.Empty,
         };
 

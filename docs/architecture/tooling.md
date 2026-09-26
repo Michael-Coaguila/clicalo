@@ -32,6 +32,9 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl fix` | Da formato al C# con CSharpier | M0 |
 | `cl check` | **Lo mismo que el trabajo `verify` de la CI.** Todo PR termina con él (ver abajo) | M0 |
 | `cl clean` | Vacía `artifacts/`, salvo la salida del propio orquestador, y dice qué archivos siguen en uso | M0 |
+| `cl i18n-check [--strict-unused]` | Ejecuta `i18n-check` de `tools/Clicalo.DevCli` (ver abajo) | M0 |
+| `cl i18n-import [--check]` | Ejecuta `i18n-import` de `tools/Clicalo.DevCli`: reconstruye `data/i18n` o, con `--check`, solo compara | M0 |
+| `cl adr-check --base <ref>` | Ejecuta `adr-check` de `tools/Clicalo.DevCli`, lo mismo que el trabajo `adr` de la CI (`cl adr-check --base main` en local) | M0 |
 | `cl pr` | Abre el PR de la rama actual | M1 |
 | `cl run` | Arranca la app con datos aislados en `%TEMP%\clicalo-dev` | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
@@ -79,7 +82,10 @@ bloqueados para `cl clean`.
 
 ### `tools/Clicalo.DevCli`
 
-Aloja las órdenes que no son de compilación (`dotnet run --project tools/Clicalo.DevCli -- <verbo>`):
+Aloja las órdenes que no son de compilación. `cl` las expone con el mismo nombre: todo lo que se escribe
+después del verbo pasa tal cual a la herramienta (`cl i18n-import --check` equivale a
+`dotnet run --project tools/Clicalo.DevCli -- i18n-import --check`), y la orden termina con la línea final
+y el informe de errores de `cl`:
 
 | Verbo | Qué hace |
 |---|---|

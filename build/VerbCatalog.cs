@@ -14,10 +14,19 @@ internal static class VerbCatalog
     public const string Fix = "fix";
     public const string Check = "check";
     public const string Clean = "clean";
+    public const string I18nCheck = "i18n-check";
+    public const string I18nImport = "i18n-import";
+    public const string AdrCheck = "adr-check";
+
+    /// <summary>
+    /// Verbs that run a verb of <c>tools/Clicalo.DevCli</c> with the same name. Everything written after one of
+    /// them on the command line is passed to it (for example <c>cl i18n-import --check</c>).
+    /// </summary>
+    public static IReadOnlyList<string> DevCli { get; } = [I18nCheck, I18nImport, AdrCheck];
 
     /// <summary>Verbs implemented in M0, in the order they are listed to people.</summary>
     public static IReadOnlyList<string> Available { get; } =
-    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean];
+    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli];
 
     /// <summary>Verbs of later milestones (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =
@@ -41,6 +50,29 @@ internal static class VerbCatalog
         // Manifest signing with the hardware key ships with the update channel (M5).
         new("sign-manifest", "M5"),
     ];
+
+    /// <summary>Whether <paramref name="verb"/> runs a verb of the developer CLI.</summary>
+    public static bool IsDevCli(string verb) => DevCli.Contains(verb, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Splits a command line at the first developer CLI verb: <c>cl</c> parses what comes up to and including that
+    /// verb, and everything after it goes to the developer CLI untouched, so <c>cl i18n-import --check</c> passes
+    /// <c>--check</c> on instead of rejecting it as an option of <c>cl</c>.
+    /// </summary>
+    public static (IReadOnlyList<string> Cl, IReadOnlyList<string> DevCli) SplitArguments(
+        IReadOnlyList<string> args
+    )
+    {
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (IsDevCli(args[i]))
+            {
+                return ([.. args.Take(i + 1)], [.. args.Skip(i + 1)]);
+            }
+        }
+
+        return (args, []);
+    }
 
     /// <summary>Whether <paramref name="verb"/> is implemented.</summary>
     public static bool IsAvailable(string verb) => Available.Contains(verb, StringComparer.Ordinal);

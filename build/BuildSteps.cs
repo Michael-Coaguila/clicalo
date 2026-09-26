@@ -313,6 +313,33 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
             }
         );
 
+    /// <summary>
+    /// Runs <paramref name="verb"/> of the developer CLI with <paramref name="arguments"/> as one step named after the
+    /// verb (<c>cl i18n-check</c>, <c>cl i18n-import</c>, <c>cl adr-check</c>), with the same report as the i18n step.
+    /// </summary>
+    public Task DevCliAsync(string verb, IReadOnlyList<string> arguments) =>
+        context.Steps.RunAsync(
+            verb,
+            Messages.DevCliPurpose(verb),
+            () =>
+                RunDevCliAsync(
+                    [verb, .. arguments],
+                    verb switch
+                    {
+                        VerbCatalog.I18nCheck => Messages.I18nFailed,
+                        VerbCatalog.AdrCheck => Messages.AdrCheckFailed,
+                        _ => Messages.DevCliFailed(verb),
+                    },
+                    Messages.DevCliSection(verb),
+                    verb switch
+                    {
+                        VerbCatalog.I18nCheck => Messages.I18nHint,
+                        VerbCatalog.I18nImport => Messages.I18nImportHint,
+                        _ => Messages.AdrCheckHint,
+                    }
+                )
+        );
+
     private async Task RunDevCliAsync(string[] verb, string summary, string section, string hint)
     {
         string[] args =

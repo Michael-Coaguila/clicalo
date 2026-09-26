@@ -85,6 +85,30 @@
       "problemMatcher": []
     },
     {
+      "label": "cl i18n-check",
+      "detail": "Valida data/i18n igual que el generador, con las reglas CLDR y las claves sin uso.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["i18n-check"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl i18n-import",
+      "detail": "Reconstruye data/i18n desde el paquete de diseño con la receta revisada.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["i18n-import"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl adr-check",
+      "detail": "Exige un ADR si el cambio frente a main toca una ruta sensible.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["adr-check", "--base", "main"],
+      "problemMatcher": []
+    },
+    {
       "label": "cl: abrir el último error",
       "detail": "Abre artifacts/cl/last-error.md, el informe del último fallo.",
       "type": "shell",

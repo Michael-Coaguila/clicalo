@@ -28,6 +28,12 @@ internal static class Messages
         + "compilación Release sin advertencias, pruebas e i18n.";
     public const string CleanDescription =
         "Borra las salidas de compilación, los registros y los resultados de artifacts.";
+    public const string I18nCheckDescription =
+        "Valida data/i18n como el generador; con --strict-unused también falla por claves sin uso.";
+    public const string I18nImportDescription =
+        "Reconstruye data/i18n con la receta revisada; con --check no escribe y compara.";
+    public const string AdrCheckDescription =
+        "Exige un ADR si el cambio toca una ruta sensible; se usa con --base y la rama de comparación.";
 
     public static string FutureDescription(string milestone) => "Disponible en " + milestone + ".";
 
@@ -46,6 +52,9 @@ internal static class Messages
     public const string I18nPurpose = "comprobación de textos (i18n-check e i18n-import --check)";
     public const string CleanPurpose = "borrado de artifacts";
     public const string GitPurpose = "configuración de git, DCO y firma";
+
+    public static string DevCliPurpose(string verb) =>
+        "orden " + verb + " de la herramienta de desarrollo";
 
     public static string StepStarted(string step, string purpose) =>
         "Paso " + step + ": " + purpose + ".";
@@ -168,7 +177,17 @@ internal static class Messages
     public const string I18nImportSection = "Salida de i18n-import --check";
     public const string I18nImportHint =
         "Declara los textos nuevos en data/i18n/handoff-import.json y vuelve a importar con "
-        + "dotnet run --project tools/Clicalo.DevCli -- i18n-import. Ver docs/guides/i18n.md.";
+        + "cl i18n-import. Ver docs/guides/i18n.md.";
+
+    public const string AdrCheckFailed =
+        "El cambio toca una ruta sensible sin un ADR nuevo o cambiado (adr-check).";
+    public const string AdrCheckSection = "Salida de adr-check";
+    public const string AdrCheckHint =
+        "Escribe o actualiza un ADR en docs/adr (ver docs/adr/README.md), o pasa --base con la rama de comparación.";
+
+    public static string DevCliFailed(string verb) => "La orden " + verb + " falló.";
+
+    public static string DevCliSection(string verb) => "Salida de " + verb;
 
     public const string CleanFailed = "No se pudieron borrar algunos archivos de artifacts.";
     public const string CleanSection = "Rutas que siguen en uso";
