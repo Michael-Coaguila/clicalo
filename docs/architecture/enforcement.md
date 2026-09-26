@@ -167,7 +167,7 @@ Para añadir una excepción justificada: primero, confirma que el plano la permi
 
 ## 4. Analizadores propios
 
-`Directory.Build.targets` importa `generators/Clicalo.Analyzers/Clicalo.Analyzers.Wiring.targets` solo si existe. Ese archivo lo mantiene el paquete de los analizadores `CLC*` y decide a qué proyectos se aplican. Una referencia a `Clicalo.Analyzers` como componente del compilador ya está permitida en cualquier proyecto por la lista blanca (`analyzerProjects`).
+`Directory.Build.targets` importa siempre `generators/Clicalo.Analyzers/Clicalo.Analyzers.Wiring.targets` (sin condición: si el archivo desaparece, la compilación falla). Ese archivo lo mantiene el paquete de los analizadores `CLC*` y decide a qué proyectos se aplican. Una referencia a `Clicalo.Analyzers` como componente del compilador ya está permitida en cualquier proyecto por la lista blanca (`analyzerProjects`).
 
 ## 5. Facetas de `ActionKind`
 

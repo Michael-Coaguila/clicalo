@@ -3,7 +3,7 @@
     Shared targets: architecture enforcement (docs/architecture/enforcement.md, blueprint §4.4).
       1. ClicaloVerifyReferences: reference whitelist (architecture/allowed-dependencies.json), CLCA001.
       3. BannedSymbols.<Layer>.txt: banned APIs per layer (RS0030), wired for product projects only.
-      4. Clicalo.Analyzers wiring (CLC*), imported when that package provides it.
+      4. Clicalo.Analyzers wiring (CLC*).
     Mechanisms 2, 5 and 6 live in tests/Clicalo.Architecture.Tests.
   -->
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
@@ -176,12 +176,9 @@
 
   <!--
     ============================================================
-    Mechanism 4: product-rule analyzers (CLC*). The wiring file belongs to generators/Clicalo.Analyzers and is
-    imported only once that package provides it.
+    Mechanism 4: product-rule analyzers (CLC*). The wiring file belongs to generators/Clicalo.Analyzers; it filters
+    by path (src/ only) and skips the WPF temporary project. Unconditional, so losing it breaks the build loudly.
     ============================================================
   -->
-  <Import
-    Project="$(RepoRoot)generators\Clicalo.Analyzers\Clicalo.Analyzers.Wiring.targets"
-    Condition="Exists('$(RepoRoot)generators\Clicalo.Analyzers\Clicalo.Analyzers.Wiring.targets')"
-  />
+  <Import Project="$(RepoRoot)generators\Clicalo.Analyzers\Clicalo.Analyzers.Wiring.targets" />
 </Project>

@@ -89,6 +89,7 @@ Detalles:
 
    Los 10 proyectos de `src/` (incluidos Sentinel y Launcher, Native AOT) compilan con `Clicalo.Analyzers.dll` como
    `/analyzer` y ninguno tiene infracciones; ningún proyecto fuera de `src/` lo recibe.
+3. **Importación real tras integrar M0.** `Directory.Build.targets` importa el cableado sin condición. `dotnet build Clicalo.slnx` compila los 10 proyectos de `src/` con las reglas y sin infracciones, y un `ViewModel` de prueba en `src/Clicalo.Presentation` con `Title = "Hola mundo"` da `CLC0006` en su línea exacta.
 
 ## Suprimir una regla con justificación
 
