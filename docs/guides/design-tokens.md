@@ -94,6 +94,8 @@ Duraciones en milisegundos (`ms`) y su valor con reducir movimiento (`reducedMs`
 | `keyChip` | 120 | 0 | Teclas al grabar o probar |
 | `flash` | 240 | 240 | Destello tras ejecutar |
 
+`panelOpacity` es la misma duración que `Timings.Dimming.DimTransition` de `data/catalogs/timings.json`, que usa `DimPolicy`; y los tonos de `extra-tokens.json` → `categories.hues` son exactamente los ids de `data/catalogs/categories.json`. `CatalogConsistencyTests` (en `Clicalo.Data.Tests`) comprueba las dos cosas, para que un cambio en un archivo no deje al otro desfasado. Los tamaños S/M/L no son tokens: salen de `data/catalogs/sizes.json` (`Clicalo.Domain.Catalog.PanelSizes`).
+
 ## 3. Matemática del color (`Clicalo.Design.Math`)
 
 ### 3.1 Conversión
