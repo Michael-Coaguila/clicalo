@@ -51,7 +51,10 @@ public sealed class CanonicalChordTests
     [InlineData("delete alt ctrl")]
     [InlineData("lctrl lalt delete")]
     [InlineData("alt lctrl delete")]
-    public void A_blocked_combination_is_found_in_any_order_and_with_its_left_side(string keys)
+    [InlineData("rctrl alt delete")]
+    [InlineData("ctrl altgr delete")]
+    [InlineData("rctrl altgr delete")]
+    public void A_blocked_combination_is_found_in_any_order_and_on_either_side(string keys)
     {
         var blocked = Key(KeyIds.Ctrl, KeyIds.Alt, KeyIds.Delete).ForBlockedComparison();
 
@@ -62,13 +65,22 @@ public sealed class CanonicalChordTests
 
     [Fact]
     [Trait("Req", "EJE-014")]
-    public void The_right_side_is_not_the_blocked_left_one()
+    public void The_blocked_form_keeps_the_families_and_the_main_keys()
     {
         var blocked = Key(KeyIds.Ctrl, KeyIds.Alt, KeyIds.Delete).ForBlockedComparison();
 
+        Key(KeyIds.RightCtrl, KeyIds.Delete).ForBlockedComparison().ShouldNotBe(blocked);
+        Key(KeyIds.Ctrl, KeyIds.Shift, KeyIds.Delete).ForBlockedComparison().ShouldNotBe(blocked);
         Key(KeyIds.RightCtrl, KeyIds.Alt, KeyIds.Delete)
             .ForBlockedComparison()
-            .ShouldNotBe(blocked);
+            .Modifiers.ShouldBe(ChordModifiers.Ctrl | ChordModifiers.Alt);
+    }
+
+    [Fact]
+    public void Repeated_shortcuts_keep_the_side_that_blocked_combinations_ignore()
+    {
+        Key(KeyIds.RightCtrl, KeyIds.Alt, KeyIds.Delete)
+            .ShouldNotBe(Key(KeyIds.Ctrl, KeyIds.Alt, KeyIds.Delete));
     }
 
     [Theory]
@@ -100,6 +112,10 @@ public sealed class CanonicalChordTests
     [InlineData("ctrl+char:%2")]
     [InlineData("ctrl+char:%2b")]
     [InlineData("ctrl+%C3%B1")]
+    [InlineData("ctrl+S")]
+    [InlineData("ctrl+%73")]
+    [InlineData("ctrl+char:%C3%B1")]
+    [InlineData("CTRL+s")]
     public void A_text_outside_the_grammar_does_not_parse(string text) =>
         CanonicalChord.TryParse(text, out _).ShouldBeFalse();
 

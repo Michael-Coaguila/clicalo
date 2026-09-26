@@ -78,7 +78,10 @@ public readonly record struct CanonicalChord(ChordModifiers Modifiers, ValueList
         return true;
     }
 
-    /// <summary>Parses the text written by <see cref="ToStableString"/>.</summary>
+    /// <summary>
+    /// Parses the text written by <see cref="ToStableString"/>; any other spelling of the same key is refused, so a
+    /// persisted key has exactly one text.
+    /// </summary>
     /// <param name="text">The persisted text.</param>
     /// <param name="canonical">The canonical key.</param>
     public static bool TryParse(string text, out CanonicalChord canonical)
@@ -127,7 +130,15 @@ public readonly record struct CanonicalChord(ChordModifiers Modifiers, ValueList
             main.Add(key);
         }
 
-        canonical = new CanonicalChord(modifiers, new ValueList<KeyId>(main.ToImmutable()));
+        var parsed = new CanonicalChord(modifiers, new ValueList<KeyId>(main.ToImmutable()));
+
+        // One spelling per key: an upper-case key or an escape of a character that needs none is refused.
+        if (!string.Equals(parsed.ToStableString(), text, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        canonical = parsed;
         return true;
     }
 
@@ -164,23 +175,51 @@ public readonly record struct CanonicalChord(ChordModifiers Modifiers, ValueList
     }
 
     /// <summary>
-    /// The form compared with blocked combinations: a modifier without side counts as its left key (REP-001).
+    /// The form compared with blocked and special combinations: every modifier counts as its family whatever its side,
+    /// because Windows reserves them on both sides (catalog R-08: right Ctrl+Alt+Supr is as reserved as Ctrl+Alt+Supr,
+    /// and AltGr+Supr with Ctrl too). So «Ctrl» without side also equals left Ctrl here (REP-001), unlike the comparison
+    /// of repeated shortcuts, which keeps the side.
     /// </summary>
     public CanonicalChord ForBlockedComparison()
     {
         var modifiers = Modifiers;
-        modifiers = ToLeft(modifiers, ChordModifiers.Ctrl, ChordModifiers.LeftCtrl);
-        modifiers = ToLeft(modifiers, ChordModifiers.Alt, ChordModifiers.LeftAlt);
-        modifiers = ToLeft(modifiers, ChordModifiers.Shift, ChordModifiers.LeftShift);
-        modifiers = ToLeft(modifiers, ChordModifiers.Win, ChordModifiers.LeftWin);
+        modifiers = ToFamily(
+            modifiers,
+            ChordModifiers.Ctrl,
+            ChordModifiers.LeftCtrl,
+            ChordModifiers.RightCtrl
+        );
+        modifiers = ToFamily(
+            modifiers,
+            ChordModifiers.Alt,
+            ChordModifiers.LeftAlt,
+            ChordModifiers.RightAlt
+        );
+        modifiers = ToFamily(
+            modifiers,
+            ChordModifiers.Shift,
+            ChordModifiers.LeftShift,
+            ChordModifiers.RightShift
+        );
+        modifiers = ToFamily(
+            modifiers,
+            ChordModifiers.Win,
+            ChordModifiers.LeftWin,
+            ChordModifiers.RightWin
+        );
         return this with { Modifiers = modifiers };
     }
 
-    private static ChordModifiers ToLeft(
+    private static ChordModifiers ToFamily(
         ChordModifiers modifiers,
         ChordModifiers any,
-        ChordModifiers left
-    ) => (modifiers & any) == ChordModifiers.None ? modifiers : (modifiers & ~any) | left;
+        ChordModifiers left,
+        ChordModifiers right
+    )
+    {
+        var sided = left | right;
+        return (modifiers & sided) == ChordModifiers.None ? modifiers : (modifiers & ~sided) | any;
+    }
 
     private static ChordModifiers FlagOf(ModifierKind kind, KeySide side)
     {
