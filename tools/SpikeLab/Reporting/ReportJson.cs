@@ -38,6 +38,7 @@ internal static class ReportJson
             json.WriteString("windows", context.Machine.Windows);
             json.WriteString("architecture", context.Machine.Architecture);
             json.WriteString("labVersion", context.Machine.LabVersion);
+            WriteHardware(json, context.Machine);
             json.WriteEndObject();
 
             json.WriteStartObject("settings");
@@ -97,6 +98,41 @@ internal static class ReportJson
     /// <summary>The camelCase name of an enumeration value, as the report writes it.</summary>
     public static string Name<T>(T value)
         where T : struct, Enum => JsonNamingPolicy.CamelCase.ConvertName(value.ToString());
+
+    private static void WriteHardware(Utf8JsonWriter json, MachineInfo machine)
+    {
+        WriteOptional(json, "windowsBuild", machine.WindowsBuild);
+        WriteOptional(json, "windowsDisplayVersion", machine.WindowsDisplayVersion);
+
+        var input = machine.Input;
+        json.WriteStartObject("input");
+        json.WriteBoolean("touch", input.HasTouch);
+        json.WriteBoolean("integratedTouch", input.IntegratedTouch);
+        json.WriteBoolean("externalTouch", input.ExternalTouch);
+        json.WriteNumber("maxTouches", input.MaxTouches);
+        json.WriteBoolean("pen", input.HasPen);
+        json.WriteBoolean("digitizerReady", input.Ready);
+        json.WriteBoolean("mouse", input.MousePresent);
+        json.WriteEndObject();
+
+        json.WriteStartArray("monitors");
+        foreach (var monitor in machine.Monitors)
+        {
+            json.WriteStartObject();
+            json.WriteBoolean("primary", monitor.IsPrimary);
+            json.WriteNumber("left", monitor.Left);
+            json.WriteNumber("top", monitor.Top);
+            json.WriteNumber("width", monitor.Width);
+            json.WriteNumber("height", monitor.Height);
+            json.WriteNumber("workWidth", monitor.WorkWidth);
+            json.WriteNumber("workHeight", monitor.WorkHeight);
+            json.WriteNumber("dpi", monitor.Dpi);
+            json.WriteNumber("scalePercent", monitor.ScalePercent);
+            json.WriteEndObject();
+        }
+
+        json.WriteEndArray();
+    }
 
     private static void WriteSummary(Utf8JsonWriter json, ScriptSnapshot run)
     {

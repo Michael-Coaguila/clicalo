@@ -27,6 +27,28 @@ public sealed class ReportJsonTests
     }
 
     [Fact]
+    public void The_machine_has_the_windows_revision_the_input_hardware_and_the_monitors()
+    {
+        var machine = Root.GetProperty("machine");
+
+        machine.GetProperty("windows").GetString().ShouldBe("10.0.26200.6584 (25H2)");
+        machine.GetProperty("windowsBuild").GetString().ShouldBe("10.0.26200.6584");
+        machine.GetProperty("windowsDisplayVersion").GetString().ShouldBe("25H2");
+        var input = machine.GetProperty("input");
+        input.GetProperty("touch").GetBoolean().ShouldBeTrue();
+        input.GetProperty("maxTouches").GetInt32().ShouldBe(10);
+        input.GetProperty("pen").GetBoolean().ShouldBeTrue();
+        input.GetProperty("mouse").GetBoolean().ShouldBeTrue();
+        var monitors = machine.GetProperty("monitors").EnumerateArray().ToArray();
+        monitors.Length.ShouldBe(2);
+        monitors[0].GetProperty("primary").GetBoolean().ShouldBeTrue();
+        monitors[0].GetProperty("width").GetInt32().ShouldBe(2400);
+        monitors[0].GetProperty("workHeight").GetInt32().ShouldBe(1516);
+        monitors[0].GetProperty("scalePercent").GetInt32().ShouldBe(175);
+        monitors[1].GetProperty("scalePercent").GetInt32().ShouldBe(100);
+    }
+
+    [Fact]
     public void The_summary_counts_the_steps_by_verdict()
     {
         var summary = Root.GetProperty("summary");
