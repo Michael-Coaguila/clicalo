@@ -101,10 +101,10 @@ internal static partial class MsBuildErrorLog
             }
 
             list.Append(Markdown.Text(diagnostic.Message));
-            if (diagnostic.Project is not null)
+            if (ProjectWorthNaming(diagnostic) is { } project)
             {
                 list.Append(" (")
-                    .Append(Markdown.Text(Path.GetFileNameWithoutExtension(diagnostic.Project)))
+                    .Append(Markdown.Text(Path.GetFileNameWithoutExtension(project)))
                     .Append(')');
             }
 
@@ -144,6 +144,17 @@ internal static partial class MsBuildErrorLog
 
         return Markdown.Link(text, destination);
     }
+
+    /// <summary>
+    /// The "[project]" suffix, unless it adds nothing: restore errors are reported on the project file
+    /// itself, and solution-level entries only name what was built.
+    /// </summary>
+    private static string? ProjectWorthNaming(MsBuildDiagnostic diagnostic) =>
+        diagnostic.Project is { } project
+        && !string.Equals(project, diagnostic.Origin, StringComparison.OrdinalIgnoreCase)
+        && Path.GetExtension(project).ToUpperInvariant() is not (".SLN" or ".SLNX" or ".SLNF")
+            ? project
+            : null;
 
     private static bool IsUnder(string path, string root) =>
         path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)

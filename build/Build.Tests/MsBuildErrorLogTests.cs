@@ -98,6 +98,26 @@ public sealed class MsBuildErrorLogTests
     }
 
     [Fact]
+    public void The_project_suffix_is_omitted_when_it_only_names_the_solution_or_repeats_the_file()
+    {
+        var project = Path.Combine(Root, "tests", "Data.Tests.csproj");
+        MsBuildDiagnostic[] diagnostics =
+        [
+            new(project, null, null, "NU3034", "untrusted", Path.Combine(Root, "Clicalo.slnx")),
+            new(project, null, null, "NU1605", "downgrade", project),
+        ];
+
+        var markdown = MsBuildErrorLog.Render(
+            diagnostics,
+            RepoLayout.FromRoot(Root),
+            Path.Combine(Root, "artifacts", "cl")
+        );
+
+        markdown.ShouldNotContain("(Clicalo)");
+        markdown.ShouldNotContain("(Data.Tests)");
+    }
+
+    [Fact]
     public void Long_lists_are_truncated_with_a_pointer_to_the_log()
     {
         var diagnostics = Enumerable
