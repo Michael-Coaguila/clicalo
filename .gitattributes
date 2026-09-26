@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff2 binary
+*.zip binary
+# Verify snapshots must be byte-stable
+*.verified.txt text eol=lf
+*.verified.png binary

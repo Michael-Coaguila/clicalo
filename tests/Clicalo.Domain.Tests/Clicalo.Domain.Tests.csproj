@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pure domain rules, property-based tests. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Domain.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>

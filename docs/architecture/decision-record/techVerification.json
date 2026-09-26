@@ -1,0 +1,353 @@
+[
+  {
+    "lens": "Foco y táctil: panel siempre encima no activable con entrada táctil real (WPF .NET 10 + capa Win32 propia)",
+    "refuted": false,
+    "severity": "mayor",
+    "findings": [
+      {
+        "claim": "HwndKeyboardInputProvider.AcquireFocus de WPF no llama a SetFocus cuando la ventana tiene WS_EX_NOACTIVATE.",
+        "verdict": "sostenida",
+        "evidence": "En el código de dotnet/wpf (main, septiembre de 2026), AcquireFocus comprueba (windowStyle & WS_EX_NOACTIVATE) o IsInExclusiveMenuMode y, en ese caso, no llama a TrySetFocus. El comentario del código dice que hacerlo activaría la ventana. Consecuencia que el plan no recoge: mientras el estilo esté puesto, Keyboard.Focus(TextBox) no da a la ventana el foco Win32, así que TSF, el teclado táctil y Win+H no tienen un destino. El FocusBroker debe quitar WS_EX_NOACTIVATE (SetWindowLongPtr) antes de SetForegroundWindow y volver a ponerlo al devolver el foco. No debe dar por hecho que basta con activar.",
+        "sources": [
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/InterOp/HwndKeyboardInputProvider.cs"
+        ]
+      },
+      {
+        "claim": "Ningún otro camino de WPF (Popup, ToolTip, ContextMenu, cambio de DPI, Show) activa las ventanas no activables.",
+        "verdict": "refutada",
+        "evidence": "El cambio de DPI la refuta. En main, HwndTarget.OnDpiChanged sigue llamando a SetWindowPos(..., SWP_NOZORDER | SWP_ASYNCWINDOWPOS) sin SWP_NOACTIVATE. En cambio, OnDpiChangedAfterParent sí pasa SWP_NOACTIVATE. El issue #7561 sigue abierto (etiqueta Investigate, hito Future) y reconoce que una ventana inactiva se activa al cambiar de DPI. Además, Window.Activate() llama a SetForegroundWindow y, si ShowActivated vale true, Show activa la ventana. Popup con StaysOpen=false depende de Mouse.Capture(SubTree) para cerrarse al pulsar fuera, y la captura de una ventana en segundo plano está limitada (ver el hallazgo de SetCapture). Por tanto, ContextMenu, ComboBox y Popup dentro de superficies no activables no se cerrarán de forma fiable al tocar fuera. Tampoco reciben un evento de desactivación, porque la ventana nunca se activa.",
+        "sources": [
+          "https://github.com/dotnet/wpf/issues/7561",
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/InterOp/HwndTarget.cs",
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/Primitives/Popup.cs",
+          "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcapture"
+        ]
+      },
+      {
+        "claim": "Con WS_EX_NOACTIVATE más MA_NOACTIVATE y PA_NOACTIVATE, tocar la ventana con dedo, lápiz o mouse no cambia GetForegroundWindow.",
+        "verdict": "sostenida",
+        "evidence": "A nivel de API está documentado. WS_EX_NOACTIVATE hace que una ventana de nivel superior no pase a primer plano con un clic, y solo SetActiveWindow o SetForegroundWindow la activan. WM_POINTERACTIVATE admite PA_NOACTIVATE. Hay un matiz documentado: en multitoque, la oportunidad de activación solo llega con el primer puntero, y la ventana puede recibir entrada de punteros mientras está inactiva, lo cual es precisamente lo que buscamos. Falta la comprobación de extremo a extremo en WPF con apps reales (spike S1), sobre todo al moverla entre monitores con DPI distinto, porque #7561 la contradice.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles",
+          "https://learn.microsoft.com/en-us/windows/win32/inputmsg/wm-pointeractivate"
+        ]
+      },
+      {
+        "claim": "Arrastrar el panel, la barra de borde y la burbuja con SetWindowPos(SWP_NOACTIVATE) y mantener pulsado (hold) funcionan con mouse igual que con el dedo (implícito en la capa de ventanas).",
+        "verdict": "no verificada",
+        "evidence": "La documentación de SetCapture dice que solo la ventana en primer plano puede capturar el mouse. Si lo intenta una ventana en segundo plano, solo recibe los eventos que ocurren con el cursor sobre su parte visible. Una ventana WS_EX_NOACTIVATE nunca está en primer plano, así que un arrastre rápido con mouse (asa ⋮⋮, pestaña de borde, burbuja, deslizador) pierde los WM_MOUSEMOVE en cuanto el cursor sale de la ventana. Lo mismo pasa con mantener pulsado si el mouse se desplaza. Con el táctil no ocurre, porque la captura del puntero táctil es implícita en la ventana donde empezó el contacto. La propia página de SetCapture es ambigua (menciona la captura mientras el botón sigue pulsado), así que hay que medirlo.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcapture"
+        ]
+      },
+      {
+        "claim": "El margen de sombra no clicable se puede hacer con WM_NCHITTEST (spike S6: «SetWindowRgn o WM_NCHITTEST»).",
+        "verdict": "refutada",
+        "evidence": "HTTRANSPARENT solo reenvía el hit test a ventanas que están debajo y pertenecen al MISMO hilo. Por tanto, no deja pasar los clics a la app de otro proceso que hay bajo la sombra. Lo que sí está documentado para ventanas layered (AllowsTransparency=true usa UpdateLayeredWindow) es que los píxeles con alfa 0 dejan pasar los mensajes del mouse, y que WS_EX_TRANSPARENT ignora la forma de toda la ventana. Una sombra con alfa mayor que 0 sí captura clics y toques. Hay que usar SetWindowRgn o recortar la sombra.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-nchittest",
+          "https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features"
+        ]
+      },
+      {
+        "claim": "FocusBroker: SetForegroundWindow está permitido justo después de un toque en el panel, y se puede devolver el primer plano al HWND anterior.",
+        "verdict": "no verificada",
+        "evidence": "La documentación lo respalda: una de las condiciones que permiten SetForegroundWindow es que el proceso haya recibido el último evento de entrada, y otra es que sea el proceso en primer plano (esta cubre la devolución). Pero la misma página advierte de que un proceso puede ver denegado el primer plano aunque cumpla las condiciones. También exige que no haya menús activos y que el proceso en primer plano no haya llamado a LockSetForegroundWindow. Si falla, Windows solo hace parpadear el botón de la barra de tareas. Queda pendiente del S4, con reintento y un plan alternativo.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow"
+        ]
+      },
+      {
+        "claim": "Invocar el teclado táctil desde el panel con IInputPaneInterop o ITipInvocation.",
+        "verdict": "sostenida",
+        "evidence": "IInputPaneInterop::GetForWindow es una API documentada para apps de escritorio desde Windows 10 1607 (cubre 22H2), y Microsoft tiene una muestra oficial en WPF (TouchKeyboardNotifier). ITipInvocation no está documentada y conviene tratarla solo como plan alternativo. Falta verificar que InputPane.TryShow funcione en Windows 10 22H2 con el panel recién activado. La autoinvocación del teclado por el SO tras un foco táctil tampoco está garantizada cuando el foco lo pone el código y no el propio toque.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/api/inputpaneinterop/nn-inputpaneinterop-iinputpaneinterop"
+        ]
+      },
+      {
+        "claim": "SetWindowFeedbackSetting quita el círculo de retroalimentación táctil de Windows por ventana.",
+        "verdict": "sostenida",
+        "evidence": "La API existe desde Windows 8, funciona por HWND y recibe el tipo FEEDBACK_TYPE con un BOOL. Hay que llamarla en CADA HWND no activable (panel, barra, ventanita lateral y burbuja) y para cada tipo relevante: FEEDBACK_TOUCH_CONTACTVISUALIZATION, TOUCH_TAP, TOUCH_PRESSANDHOLD, TOUCH_DOUBLETAP, TOUCH_RIGHTTAP, GESTURE_PRESSANDTAP y los tipos FEEDBACK_PEN_*. No está verificado cómo interactúa con el ajuste global del usuario ni con Windows 10 22H2.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowfeedbacksetting"
+        ]
+      },
+      {
+        "claim": "Con DisableStylusAndTouchSupport=true, el toque promovido a mouse sigue funcionando en el Centro de control (ventana activable).",
+        "verdict": "sostenida",
+        "evidence": "HwndMouseInputProvider no filtra los mensajes del mouse promovidos desde el táctil: GetMessageExtraInfo se pasa tal cual al RawMouseInputReport. El filtrado de promoción estaba en la pila de stylus, que queda desactivada. Coste implícito: sin la pila táctil de WPF no hay eventos de manipulación, así que ScrollViewer.PanningMode deja de funcionar. El desplazamiento con el dedo en listas, el editor de macros y el asistente del Centro de control tiene que implementarse en la capa propia.",
+        "sources": [
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/InterOp/HwndMouseInputProvider.cs"
+        ]
+      },
+      {
+        "claim": "Acceso por voz («mostrar números», «clic 4», «clic Negrita») y Narrador encuentran e invocan controles de una ventana topmost WS_EX_NOACTIVATE que nunca pasa a primer plano, y la invocación por UIA no la activa.",
+        "verdict": "no verificada",
+        "evidence": "El único respaldo documental es parcial: la documentación de WS_EX_NOACTIVATE indica que la tecnología de asistencia (cita a Narrador) no debería activar la ventana, lo que favorece que la invocación por UIA no active. No pude obtener documentación de Microsoft sobre el ámbito de «mostrar números» (las páginas de soporte devolvieron 404). Si solo etiqueta la ventana activa, el panel no activable nunca quedaría numerado sin «en todas partes», o haría falta un modo activable para la voz. Es el riesgo más alto de este enfoque y afecta a cualquier framework, no solo a WPF.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles"
+        ]
+      },
+      {
+        "claim": "Crear o mostrar ventanas WPF no activables no altera la composición IME ni la distribución de teclado de la app en primer plano.",
+        "verdict": "no verificada",
+        "evidence": "No encontré ni evidencia a favor ni un bug equivalente al #22273 de Avalonia en WPF. El plan lo da por hecho sin pruebas, aunque es uno de los argumentos contra Avalonia. Requiere el caso IME del S1 (composición activa en japonés o chino y cambio de distribución) antes de usarlo como diferencia entre candidatas.",
+        "sources": []
+      },
+      {
+        "claim": "Respuesta de menos de 50 ms desde WM_POINTERDOWN hasta el frame presentado, con AllowsTransparency=true (ventana layered) y opacidad animada.",
+        "verdict": "no verificada",
+        "evidence": "Con AllowsTransparency, WPF presenta mediante UpdateLayeredWindow, que añade una copia desde la GPU a la memoria del sistema por frame, en lugar de la redirección normal de DWM. No hay mediciones públicas para .NET 10. Con 60 Hz el presupuesto es de unos 3 frames, así que es viable pero no está demostrado. Hay que medirlo en el S2 y el S6 con ETW, comparando AllowsTransparency con DWM más LWA_ALPHA.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features"
+        ]
+      }
+    ],
+    "requiredMitigations": [
+      "DPI (#7561 sigue abierto en main). En el hook de HwndSource, interceptar WM_WINDOWPOSCHANGING y, si la ventana es no activable, añadir SWP_NOACTIVATE a WINDOWPOS.flags. Además, en WM_DPICHANGED, aplicar nosotros mismos el rectángulo con SetWindowPos(SWP_NOZORDER | SWP_NOACTIVATE) y responder WM_GETDPISCALEDSIZE para que la llamada asíncrona de WPF (SWP_ASYNCWINDOWPOS) no mueva ni active la ventana. Criterio del S1: 50 cruces entre monitores de 100 % y 150 %, arrastrando con el dedo y con el mouse, sin ningún WM_ACTIVATE ni WM_KILLFOCUS en la app objetivo y sin saltos de posición.",
+      "NonActivatingWindow debe forzar ShowActivated=false, prohibir Window.Activate() y Show() activador (regla de analizador o ArchUnit sobre Clicalo.UI.Wpf) y aplicar WS_EX_NOACTIVATE en SourceInitialized, antes del primer Show. Hay que comprobar que cambiar Topmost no activa la ventana (SetWindowPos con SWP_NOACTIVATE).",
+      "Prohibir Popup, ContextMenu, ComboBox y ToolTip interactivos de WPF dentro de las superficies no activables. Las ventanitas emergentes, los menús y los desplegables se implementan como NonActivatingWindow propias. Para cerrarlas al tocar fuera: EVENT_SYSTEM_FOREGROUND y un WH_MOUSE_LL temporal solo mientras están abiertas (el callback solo encola). Criterio: se cierran al tocar fuera en 20 de 20 intentos con dedo y con mouse, sin robar el foco.",
+      "Arrastre y mantener pulsado con mouse en ventanas no activables. No depender de SetCapture. Durante el gesto, seguir el cursor con un temporizador de alta frecuencia (GetCursorPos más GetAsyncKeyState, o un WH_MOUSE_LL temporal) o usar el bucle de movimiento del sistema (HTCAPTION) si el S1 demuestra que no activa. Criterio: arrastre rápido a más de 3000 px/s sin perder el control ni activar la ventana.",
+      "FocusBroker. Secuencia explícita: guardar GetForegroundWindow, quitar WS_EX_NOACTIVATE, SetForegroundWindow en el mismo manejador del toque (mientras el proceso tiene «el último evento de entrada»), Keyboard.Focus(TextBox) y después InputPane.TryShow (IInputPaneInterop::GetForWindow) o SendInput Win+H. Al salir: SetForegroundWindow(hwndAnterior) y volver a poner WS_EX_NOACTIVATE. Si SetForegroundWindow devuelve FALSE, reintentar una vez y, si vuelve a fallar, anunciarlo con una región live y no quedarse a medias. ITipInvocation solo como plan alternativo. Criterio del S4: 20 ciclos seguidos sin fallos en Windows 10 22H2 y en Windows 11, con Word, Chrome y una app de la Tienda como objetivo.",
+      "Margen de sombra no clicable. Eliminar WM_NCHITTEST/HTTRANSPARENT como opción, porque solo funciona entre ventanas del mismo hilo. Usar SetWindowRgn ajustado al contorno visible o dibujar la sombra con alfa 0 fuera de la zona interactiva, aprovechando el hit test por alfa de las ventanas layered. Asegurar que el área de toque ampliada (hitSlopPx=14) queda siempre sobre píxeles con alfa mayor que 0 dentro del panel.",
+      "SetWindowFeedbackSetting en cada HWND no activable y para todos los FEEDBACK_TYPE táctiles y de lápiz (CONTACTVISUALIZATION, TAP, DOUBLETAP, PRESSANDHOLD, RIGHTTAP, GESTURE_PRESSANDTAP y PEN_*), aplicado en SourceInitialized. Hay que verificarlo visualmente en Windows 10 22H2 y en Windows 11.",
+      "Desplazamiento y paginación táctil propios en el Centro de control, porque con DisableStylusAndTouchSupport ScrollViewer.PanningMode no funciona. Hay que incluirlo en el alcance del S2 con un criterio de usabilidad: deslizar en listas de más de 200 elementos a 60 fps.",
+      "S3 ampliado, el más crítico. Comprobar si «mostrar números» de Acceso por voz etiqueta el panel no activable sin estar en primer plano y si «clic <nombre>» lo invoca por UIA o con un clic sintético (en ambos casos sin activar). Si solo etiqueta la ventana activa, diseñar y validar antes de escribir UI un «modo voz» documentado (por ejemplo, activar el panel con un comando de voz y devolver el foco), con su criterio de aceptación.",
+      "S1 con IME. Con composición activa en japonés (Microsoft IME) y en chino (Pinyin) en el Bloc de notas y en Word, crear, mostrar, ocultar y tocar las 4 superficies sin que se cancele la composición ni cambie la distribución. Es requisito para mantener el argumento contra Avalonia #22273.",
+      "S2 y S6: medir con ETW la latencia desde WM_POINTERDOWN hasta el frame presentado en ventanas AllowsTransparency=true, con opacidad del 30 % y durante la animación de 350 ms, frente a una ventana sin AllowsTransparency con LWA_ALPHA. Criterio: p95 < 50 ms en el hardware del mantenedor. Si no se cumple, usar el fondo DWM con esquinas redondeadas del sistema en Windows 11 y reservar AllowsTransparency para la burbuja."
+    ],
+    "summary": "No consigo refutar la elección de WPF en cuanto a foco y táctil. El código de WPF confirma el pilar principal: AcquireFocus no llama a SetFocus si la ventana tiene WS_EX_NOACTIVATE. Win32 documenta PA_NOACTIVATE y SetWindowFeedbackSetting, y el mouse promovido desde el táctil no se filtra cuando la pila de stylus está desactivada. Pero el plan tiene huecos concretos. (1) La afirmación de que ningún otro camino de WPF activa estas ventanas queda refutada: #7561 sigue abierto y HwndTarget.OnDpiChanged todavía llama a SetWindowPos sin SWP_NOACTIVATE, y los Popup, ContextMenu y ComboBox dependen de una captura del mouse que no funciona en ventanas en segundo plano. (2) SetCapture está documentado como exclusivo de la ventana en primer plano, así que el arrastre y el mantener pulsado con mouse en superficies no activables necesitan otra técnica. (3) La opción WM_NCHITTEST/HTTRANSPARENT del S6 para el margen de sombra no sirve entre procesos. (4) El FocusBroker tiene que quitar WS_EX_NOACTIVATE para que TSF reciba el foco, y SetForegroundWindow puede fallar. (5) Sin la pila táctil de WPF desaparece el desplazamiento táctil de ScrollViewer. Siguen sin verificar, y con riesgo alto, el ámbito de «mostrar números» de Acceso por voz sobre una ventana que nunca pasa a primer plano, la inmunidad al IME equivalente a Avalonia #22273 y la latencia de menos de 50 ms con ventanas layered. Todo tiene mitigación razonable dentro de la capa Win32 propia. No es bloqueante, pero es mayor: hay que ampliar los spikes S1–S4 y S6 con los criterios indicados antes de comprometer la UI."
+  },
+  {
+    "lens": "Accesibilidad (UI Automation, Acceso por voz, Narrador, alto contraste y herramientas de prueba)",
+    "refuted": false,
+    "severity": "mayor",
+    "findings": [
+      {
+        "claim": "WPF (.NET 10) expone UIA completo: nombres personalizados (AutomationProperties.Name con número de voz), ControlType y patrones Toggle, SelectionItem y ExpandCollapse mediante AutomationPeer propios, regiones live (LiveSetting) y avisos (RaiseNotificationEvent).",
+        "verdict": "sostenida",
+        "evidence": "AutomationProperties.LiveSetting está documentado desde .NET Framework 4.7.1 y windowsdesktop 3.0 hasta windowsdesktop-10.0/11.0. AutomationPeer.RaiseNotificationEvent está documentado para netframework-4.8.1 y windowsdesktop-6.0 a 11.0. En el código fuente de dotnet/wpf, ToggleButtonAutomationPeer implementa IToggleProvider y ComboBoxAutomationPeer implementa IExpandCollapseProvider. Las notas de WPF en .NET 10 indican menos asignaciones de memoria en UI Automation y correcciones de fallos con HighContrast (Fluent). No existe ninguna brecha de API para lo que pide el requisito 3.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/dotnet/api/system.windows.automation.automationproperties.livesetting",
+          "https://learn.microsoft.com/en-us/dotnet/api/system.windows.automation.peers.automationpeer.raisenotificationevent",
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Automation/Peers/ToggleButtonAutomationPeer.cs",
+          "https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net100"
+        ]
+      },
+      {
+        "claim": "HwndKeyboardInputProvider.AcquireFocus no llama a SetFocus cuando la ventana tiene WS_EX_NOACTIVATE.",
+        "verdict": "sostenida",
+        "evidence": "El código fuente actual (src/PresentationCore/System/Windows/InterOp/HwndKeyboardInputProvider.cs, en main) comprueba (windowStyle & WS_EX_NOACTIVATE) y en ese caso no llama a TrySetFocus. Devuelve result = (GetFocus() != 0), y GetFocus solo ve ventanas de la cola del propio hilo. Esto tiene una consecuencia de accesibilidad que la decisión no recoge: mientras el panel conserve WS_EX_NOACTIVATE y ninguna ventana de nuestro hilo tenga el foco Win32, Keyboard.Focus() sobre un control del panel falla. No se dibuja FocusVisual, no se emite AutomationFocusChangedEvent y el panel no puede tener «foco visible» ni ser operable por teclado. Además, Popup.PopupFilterMessage responde MA_NOACTIVATE, así que los desplegables tampoco activan la ventana.",
+        "sources": [
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/InterOp/HwndKeyboardInputProvider.cs",
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Controls/Primitives/Popup.cs"
+        ]
+      },
+      {
+        "claim": "La invocación por UIA (IInvokeProvider/IToggleProvider/IExpandCollapseProvider) sobre una ventana WPF WS_EX_NOACTIVATE no activa la ventana.",
+        "verdict": "sostenida",
+        "evidence": "Del lado de WPF se cumple. ButtonAutomationPeer.Invoke solo hace Dispatcher.BeginInvoke(AutomationButtonBaseClick). ToggleButtonAutomationPeer.Toggle llama a owner.OnToggle(). ComboBoxAutomationPeer.Expand fija IsDropDownOpen. Ninguno llama a Focus ni a Activate. Queda sin verificar si el cliente (Acceso por voz o Narrador) llama a SetFocus o SetForegroundWindow antes de invocar, o si simula un clic de mouse en lugar de usar el patrón. Eso lo cubre el spike S3.",
+        "sources": [
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Automation/Peers/ButtonAutomationPeer.cs",
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationFramework/System/Windows/Automation/Peers/ComboBoxAutomationPeer.cs"
+        ]
+      },
+      {
+        "claim": "Acceso por voz de Windows («mostrar números», «clic 4», «clic Negrita») encuentra e invoca los controles de una ventana topmost WS_EX_NOACTIVATE que nunca pasa a primer plano.",
+        "verdict": "no verificada",
+        "evidence": "Es un riesgo de plataforma que afecta a todas las candidatas, y la documentación oficial apunta en contra del comportamiento por defecto. Según Microsoft Support, las órdenes «show numbers, show numbers here/everywhere/<app name>» funcionan sobre la app en la que se está trabajando, o sobre la pantalla donde está esa app. Existen además variantes con alcance: «mostrar números en todas partes», «en la barra de tareas» y «en <app>». Como el panel nunca es la app activa, «mostrar números» y probablemente «clic Negrita» apuntarán a la app en primer plano, no a Clícalo. No hay evidencia de que «mostrar números en <app>» no active la ventana. Hay además un conflicto de diseño (docs/03-motor.md:113): el Name es «<n> <nombre>», pero con la superposición activa Acceso por voz asigna SU propia numeración, así que «clic 4» pulsaría la etiqueta 4 de Acceso por voz, que no coincide con el número dibujado por Clícalo. El criterio 09-criterios-de-aceptacion.md:61 puede no cumplirse tal como está redactado con ninguna tecnología.",
+        "sources": [
+          "https://support.microsoft.com/en-us/accessibility/windows/voice-access/use-voice-access-on-a-multi-display-setup",
+          "https://support.microsoft.com/en-us/accessibility/windows/voice-access/use-voice-to-interact-with-items-on-the-screen",
+          "https://support.microsoft.com/en-us/accessibility/windows/voice-access/voice-access-command-list"
+        ]
+      },
+      {
+        "claim": "El guion de pruebas y el spike S3 validan Acceso por voz en Windows 10 22H2 y en Windows 11.",
+        "verdict": "refutada",
+        "evidence": "Acceso por voz solo existe en Windows 11 22H2 y posteriores. En Windows 10 solo hay Reconocimiento de voz de Windows y dictado. El spike S3 y el guion manual («Acceso por voz ... en Windows 10 22H2 y Windows 11») piden algo imposible. En Windows 10 hay que probar con Reconocimiento de voz de Windows («mostrar números»), que tiene otra gramática y otro alcance. Además, Windows 10 22H2 está fuera de soporte desde el 14/10/2025 y el ESU para consumidores termina en octubre de 2026.",
+        "sources": [
+          "https://support.microsoft.com/en-us/accessibility/windows/voice-access/set-up-voice-access",
+          "https://support.microsoft.com/en-US/accessibility/windows/voice-access/voice-access-frequently-asked-questions-faqs"
+        ]
+      },
+      {
+        "claim": "Narrador lee los estados y los avisos (LiveRegionChanged/Notification) del panel no activable y se puede usar con exploración táctil y con teclado.",
+        "verdict": "no verificada",
+        "evidence": "Las API existen (ver arriba). Pero con WS_EX_NOACTIVATE el foco de teclado de WPF no puede entrar en el panel (AcquireFocus devuelve false), así que la navegación por teclado de Narrador, que sigue la ventana en primer plano, no llega al panel sin una activación explícita. En modo táctil, Narrador consume los gestos: toque largo de 600 ms, deslizar para paginar y mantener con repetición no llegan a la capa WM_POINTER propia. Solo llega el doble toque, que Narrador traduce en invocación o clic. Tampoco hay evidencia de que Narrador anuncie eventos de notificación o de región live emitidos por una ventana que no está en primer plano. No refuta WPF, pero sí la suposición de que basta con exponer los peers.",
+        "sources": [
+          "https://github.com/dotnet/wpf/blob/main/src/Microsoft.DotNet.Wpf/src/PresentationCore/System/Windows/InterOp/HwndKeyboardInputProvider.cs"
+        ]
+      },
+      {
+        "claim": "El tema de alto contraste respeta el alto contraste del sistema.",
+        "verdict": "refutada",
+        "evidence": "Lo que falla es la especificación de temas, no WPF. data/theme-palettes.json define «hc» con colores fijos (#000000, #FFFFFF, #FFE600), y docs/07 lo describe como negro, blanco y amarillo puros. Los temas de contraste de Windows 11 (Acuático, Desierto —claro—, Anochecer, Cielo nocturno) y los personalizados exigen usar los colores elegidos por el usuario. Aplicar un negro y amarillo fijo en «Auto» cuando el sistema está en alto contraste incumple la regla de respetar el alto contraste del sistema. WPF lo permite sin problemas con SystemColors.*BrushKey mediante DynamicResource, SystemParameters.HighContrast y WM_SYSCOLORCHANGE, pero la decisión dice que genera el diccionario de alto contraste desde theme-palettes.json, y eso reproduciría el error. Tampoco se contempla forzar la opacidad al 100 % y quitar las sombras en alto contraste.",
+        "sources": [
+          "C:\\Users\\maico\\OneDrive\\Documentos\\design_handoff_clicalo\\data\\theme-palettes.json",
+          "C:\\Users\\maico\\OneDrive\\Documentos\\design_handoff_clicalo\\docs\\07-diseno-accesibilidad-idioma.md"
+        ]
+      },
+      {
+        "claim": "Existen herramientas mantenidas para automatizar las pruebas de accesibilidad (Axe.Windows como puerta de CI, Accessibility Insights y FlaUI).",
+        "verdict": "no verificada",
+        "evidence": "Existen, pero están casi paradas. Axe.Windows: última versión v2.4.2 del 31/10/2024 (parche de CVE), casi dos años sin publicar; el repositorio no está archivado. Accessibility Insights for Windows: las últimas versiones son canary de octubre de 2024 (v1.1.3203.01). FlaUI: la última es la v5.0.0 del 25/02/2025, mantenida por pocas personas. Sirven hoy con WPF, cuyo UIA es estable, pero basar una puerta de CI de 5–10 años en Axe.Windows es arriesgado. Por ejemplo, no hay garantía de que se adapte a nuevas versiones de Windows 11.",
+        "sources": [
+          "https://github.com/Microsoft/axe-windows/releases",
+          "https://github.com/microsoft/accessibility-insights-windows/releases",
+          "https://github.com/FlaUI/FlaUI/releases"
+        ]
+      }
+    ],
+    "requiredMitigations": [
+      "Spike S3 ampliado con criterios de salida explícitos, en Windows 11 24H2/25H2 con el panel WS_EX_NOACTIVATE y una app de destino instrumentada en primer plano. (a) Qué etiqueta cada orden: «mostrar números», «mostrar números en todas partes» y «mostrar números en Clícalo». (b) Si «clic Negrita» y «clic 4», dichos sin superposición, llegan al panel. (c) Si alguna orden cambia GetForegroundWindow o envía WM_KILLFOCUS a la app de destino (registrarlo con SetWinEventHook EVENT_SYSTEM_FOREGROUND). (d) Si Acceso por voz invoca por patrón UIA o por clic simulado. Criterio de éxito: al menos una orden documentable invoca cualquier botón del panel sin cambiar el primer plano. Si no la hay, hay que diseñar y probar un «modo voz».",
+      "Resolver el conflicto de numeración. O el Name se queda como '<n> <nombre>' y la guía dice al usuario que diga «clic <n>» SIN superposición (verificando que Acceso por voz lo trata como coincidencia de nombre), o se renuncia a que «clic 4» coincida con la superposición de Acceso por voz. Hay que actualizar el criterio 09:61 con la orden exacta que funcione, y plantear atajos de voz de Acceso por voz (voice shortcuts) como alternativa documentada.",
+      "Diseñar un modo activable para teclado, conmutador, Narrador por teclado y voz: un atajo global (RegisterHotKey) y un botón «Modo teclado» que quite WS_EX_NOACTIVATE, llamen a SetForegroundWindow y a Keyboard.Focus en el primer botón, muestren FocusVisual y, con Esc o tras la acción, restauren WS_EX_NOACTIVATE y devuelvan el primer plano al HWND guardado. Hay que probar que AcquireFocus funciona tras quitar el estilo, porque con WS_EX_NOACTIVATE puesto devuelve false. Se puede reutilizar el FocusBroker de S4.",
+      "Dar equivalentes UIA a todos los gestos táctiles propios, porque Narrador en modo táctil y Acceso por voz no pueden hacer un toque largo de 600 ms, deslizar ni mantener pulsado. Toque largo → menú contextual expuesto con ExpandCollapse o un botón «Más opciones». Paginación → botones Anterior y Siguiente con Name y, opcionalmente, ScrollPattern. Mantener con repetición → un Toggle «bloquear pulsado» con ToggleState. Añadir pruebas FlaUI que comprueben que cada acción es alcanzable solo con patrones UIA.",
+      "Alto contraste del sistema: cuando SystemParameters.HighContrast sea true (en Auto), enlazar los tokens a SystemColors.WindowBrushKey, WindowTextBrushKey, HighlightBrushKey, HighlightTextBrushKey, HotTrackBrushKey, GrayTextBrushKey y ButtonFace/ButtonText con DynamicResource, y no usar la paleta «hc» fija. Esa paleta queda como tema manual «Alto contraste de Clícalo». En alto contraste, forzar la opacidad al 100 %, quitar las sombras, dar a los bordes el color del sistema y mostrar el foco con HighlightBrush. Probar en caliente con los cuatro temas de contraste de Windows 11, incluido Desierto (claro), escuchando WM_SYSCOLORCHANGE y WM_SETTINGCHANGE.",
+      "Corregir el guion manual y el S3: Acceso por voz solo en Windows 11. En Windows 10 22H2, probar con Reconocimiento de voz de Windows y el dictado Win+H, o reconsiderar el soporte de Windows 10 ahora que termina el ESU de consumidores (octubre de 2026).",
+      "Narrador: probar que los avisos (LiveSetting=Polite/Assertive con RaiseAutomationEvent(LiveRegionChanged) y RaiseNotificationEvent con ActivityId estable) se anuncian cuando el panel NO está en primer plano. Criterio: 10 de 10 avisos leídos con Word en primer plano. Si fallan, emitir los avisos críticos (pánico, Soltar todo) también como notificación del sistema o con NotificationProcessing ImportantMostRecent y comprobarlo.",
+      "Reducir la dependencia de herramientas casi paradas: la puerta de CI debe ser un conjunto propio de reglas sobre FlaUI.UIA3, o sobre UIAutomationClient por interop COM (Name no vacío y con número de voz, ControlType, patrones esperados por control, ToggleState y ExpandCollapseState coherentes, LiveSetting en la barra de avisos, BoundingRectangle ≥ objetivo táctil), más una instantánea del árbol UIA con Verify. Axe.Windows 2.4.2 queda como comprobación complementaria fijada. Documentar en un ADR el plan si FlaUI o Axe.Windows se abandonan (fork o cliente UIA3 directo)."
+    ],
+    "summary": "Desde el enfoque de accesibilidad, no he podido refutar que WPF sea la mejor base. Su proveedor UIA es el más completo del escritorio: LiveSetting desde 4.7.1, RaiseNotificationEvent en windowsdesktop 6–11, peers de Toggle y ExpandCollapse. El código fuente confirma que AcquireFocus respeta WS_EX_NOACTIVATE, que los Popups responden MA_NOACTIVATE y que Invoke, Toggle y Expand no dan el foco a la ventana. Aun así, hay problemas de fondo que afectan a cualquier tecnología y que la decisión pasa por alto. (1) Según la documentación oficial, las órdenes de Acceso por voz «mostrar números…» funcionan sobre la app en la que se trabaja. Un panel que nunca pasa a primer plano probablemente no recibe «mostrar números» ni «clic Negrita» por defecto. Además, la numeración propia del Name ('<n> <nombre>') choca con la de la superposición de Acceso por voz: el criterio 09:61 no está verificado y puede no cumplirse tal como está redactado. (2) Con WS_EX_NOACTIVATE el foco de teclado de WPF no entra en el panel, así que no hay foco visible, ni teclado, ni conmutador, ni navegación de Narrador por teclado sin un modo activable explícito. (3) Los gestos propios (toque largo, deslizar, mantener) no están disponibles bajo Narrador táctil ni por voz y necesitan equivalentes UIA. (4) La paleta de alto contraste fija, negra y amarilla, no respeta los temas de contraste del sistema (por ejemplo Desierto): hay que usar SystemColors. (5) Acceso por voz no existe en Windows 10, así que el S3 y el guion piden algo imposible. (6) Axe.Windows y Accessibility Insights no publican desde octubre de 2024 y FlaUI desde febrero de 2025, por lo que la puerta de CI necesita reglas propias. Severidad mayor, no bloqueante: todo tiene mitigación razonable dentro de WPF, y ninguna candidata lo resuelve mejor."
+  },
+  {
+    "lens": "Sostenibilidad: viabilidad a 5–10 años, rendimiento (arranque en frío y memoria), distribución (Velopack, canales, reversión, desinstalación, SmartScreen), seguridad (cadena de suministro, elevación, uiAccess, firma) y escalado a un equipo o comunidad open source",
+    "refuted": false,
+    "severity": "mayor",
+    "findings": [
+      {
+        "claim": "WPF seguirá incluido en .NET 12 y .NET 14 LTS con parches de seguridad al menos hasta 2030.",
+        "verdict": "no verificada",
+        "evidence": "Lo que sí está sostenido: .NET 10 LTS tiene soporte del 11-11-2025 al 14-11-2028, y WPF se publica en .NET 11 RC1 (septiembre de 2026). Pero las novedades de WPF en .NET 11 son solo tres correcciones de bugs y ninguna función nueva. La discusión #11188 sigue sin respuesta oficial, menciona que pasaron más de 4 meses sin commits que no fueran de bots y que se fue el responsable de ingeniería. No hay hoja de ruta publicada para .NET 12. Que WPF siga incluido es plausible (se sigue publicando y Visual Studio depende de él), pero nada documenta un compromiso hasta 2030. El riesgo real es que los bugs fuera de la capa propia (UIA, TSF, render, DWM) no se corrijan nunca.",
+        "sources": [
+          "https://github.com/dotnet/core/blob/main/release-notes/10.0/README.md",
+          "https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net110",
+          "https://github.com/dotnet/wpf/discussions/11188",
+          "https://platform.uno/articles/wpf-modernization-in-2026-a-source-backed-decision-guide/"
+        ]
+      },
+      {
+        "claim": "Con la configuración autocontenida más R2R, el panel se muestra en menos de 1 s en un arranque en frío manual; en el arranque con Windows se degrada a mostrar primero la burbuja.",
+        "verdict": "no verificada",
+        "evidence": "En dotnet/runtime #78379 (cerrado como «not planned»), una app WPF vacía y autocontenida tarda 2–3 s en el primer arranque tras encender Windows y 250–300 ms en caliente. Con el runtime instalado en el sistema (dependiente del framework) baja a unos 500 ms. La causa es que carga muchas DLL en serie en el hilo principal y Defender escanea cada una. Un benchmark de septiembre de 2026 pasa de 5,5 s a 2,5 s con R2R en una app WPF autocontenida. Es decir, el modo autocontenido que se eligió es justo la configuración con peor arranque en frío, y la decisión no incluye en el spike S5 el modo dependiente del framework con el runtime compartido ni el archivo único (single-file). Además, la documentación de .NET dice que una app autocontenida no recibe los parches de seguridad del runtime: el mantenedor tiene que publicar una versión de Clícalo cada mes, en cada Patch Tuesday de .NET.",
+        "sources": [
+          "https://github.com/dotnet/runtime/issues/78379",
+          "https://learn.microsoft.com/en-us/dotnet/core/deploying/",
+          "https://github.com/ray-amjad/hyperwhisper-app/issues/978"
+        ]
+      },
+      {
+        "claim": "La memoria residente con panel, barra, ventana lateral y burbuja se mantiene por debajo de unos 120 MB, con CPU cercana a 0 en reposo durante 8 horas.",
+        "verdict": "no verificada",
+        "evidence": "No encontré mediciones públicas de WPF en .NET 10 con 4 ventanas con AllowsTransparency. Cada ventana en capas mantiene su propio búfer de superficie a resolución física, así que la memoria crece con el DPI y el tamaño. WPF no admite recorte (trimming) ni Native AOT. La cifra de 60–120 MB es una inferencia y exige medirla.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/dotnet/core/deploying/"
+        ]
+      },
+      {
+        "claim": "Velopack 1.2.x permite canales stable y beta, bajada de versión explícita (AllowVersionDowngrade), instalación por usuario y firma integrada, y sus hooks de desinstalación no admiten UI.",
+        "verdict": "sostenida",
+        "evidence": "Velopack 1.2.158 es la estable del 21-09-2026 (licencia MIT, unas 2.300 estrellas, organización pequeña). UpdateOptions solo tiene AllowVersionDowngrade, ExplicitChannel y MaximumDeltasBeforeFallback. La bajada de versión exige que el paquete completo N−1 siga en el feed, no usa deltas y nunca se aplica sola al arrancar (hay que aplicarla explícitamente). Los hooks --veloapp-install/-updated/-obsolete/-uninstall no pueden mostrar UI, tienen un límite de 15–30 s y no hay hook posterior a la desinstalación. La firma la tiene que hacer el propio vpk (--signParams, --signTemplate, --azureTrustedSignFile) porque Update.exe y Setup.exe se firman en distintas fases del empaquetado.",
+        "sources": [
+          "https://www.nuget.org/packages/Velopack",
+          "https://docs.velopack.io/reference/cs/Velopack/UpdateOptions",
+          "https://docs.velopack.io/integrating/specific-version",
+          "https://docs.velopack.io/integrating/hooks",
+          "https://docs.velopack.io/packaging/signing",
+          "https://github.com/velopack/velopack"
+        ]
+      },
+      {
+        "claim": "La desinstalación que pregunta si conservar los datos se hace desde el Centro de control, y los logs y datos viven en %LocalAppData%\\Clicalo.",
+        "verdict": "refutada",
+        "evidence": "Velopack instala en %LocalAppData%\\{packId} y al desinstalar borra esa carpeta entera («the whole %LocalAppData%\\{packId} folder»). Si el packId es «Clicalo», los datos, logs y copias de seguridad de %LocalAppData%\\Clicalo se pierden. Además, la desinstalación normal se lanza desde Configuración › Aplicaciones o desde Programas y características, que llaman directamente al desinstalador de Velopack, sin pasar por el Centro de control y sin poder mostrar UI. En el camino más habitual la pregunta de conservar datos no aparece, y como están ahora los datos se borrarían en silencio. La propia documentación recomienda guardar lo que deba sobrevivir fuera de la carpeta raíz de instalación, por ejemplo en %AppData%\\{packId}.",
+        "sources": [
+          "https://docs.velopack.io/integrating/uninstalling",
+          "https://docs.velopack.io/integrating/preserved-files",
+          "https://docs.velopack.io/packaging/operating-systems/windows"
+        ]
+      },
+      {
+        "claim": "Las actualizaciones automáticas son «firmadas» y confiables (Authenticode más feed en GitHub Releases).",
+        "verdict": "refutada",
+        "evidence": "El cliente de Velopack no verifica ninguna firma de lo que descarga. Solo comprueba el hash SHA que viene en el mismo feed (issue #105), y UpdateOptions no tiene ninguna opción de verificar la firma o la clave. Con eso, si alguien compromete la cuenta o el token de GitHub Releases, puede publicar una actualización maliciosa que se instala sola. En una app que inyecta teclado, graba combinaciones con un hook LL y puede ejecutarse elevada, eso equivale a distribuir un keylogger. Authenticode sirve para SmartScreen, pero el actualizador no lo comprueba.",
+        "sources": [
+          "https://docs.velopack.io/reference/cs/Velopack/UpdateOptions",
+          "https://github.com/velopack/velopack/issues?q=signature+verification+update"
+        ]
+      },
+      {
+        "claim": "El inicio con Windows elevado se hace con una tarea programada con RunLevel Highest, sobre una instalación por usuario de Velopack (Setup.exe sin UAC en %LocalAppData%).",
+        "verdict": "refutada",
+        "evidence": "El binario que la tarea ejecuta con privilegios altos está en una carpeta que puede escribir cualquier proceso de integridad media del usuario. Un malware sin privilegios solo tiene que reemplazar %LocalAppData%\\Clicalo\\current\\Clicalo.exe (o una DLL cargada) para que se ejecute elevado en el siguiente inicio de sesión sin aviso de UAC. Es el patrón de MITRE ATT&CK T1574.010 (binarios ejecutados con más privilegios desde carpetas con permisos débiles, incluidos los que se lanzan en un evento como el arranque). Relanzar elevado desde una instalación por usuario tiene el mismo problema cuando se automatiza. Microsoft exige, justamente para uiAccess, estar instalado en una ubicación segura (Program Files).",
+        "sources": [
+          "https://attack.mitre.org/techniques/T1574/010/",
+          "https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-securityoverview",
+          "https://docs.velopack.io/packaging/installer"
+        ]
+      },
+      {
+        "claim": "uiAccess puede posponerse a una fase posterior (exige MSI por máquina en Program Files y un binario firmado).",
+        "verdict": "sostenida",
+        "evidence": "Los requisitos son correctos: firma Authenticode, instalación en %ProgramFiles% o System32 y manifiesto con uiAccess=true. Windows comprueba la firma siempre, sea cual sea la directiva. Velopack genera un MSI con WiX 5 y --instLocation PerMachine, pero no documenta si cada actualización por máquina pide UAC. Matiz importante: uiAccess no solo permite inyectar en ventanas elevadas; también permite ser la ventana más alta del orden Z en todo momento. Sin él, el panel «siempre encima» puede quedar tapado por el menú Inicio, los menús desplegables del sistema y algunas superficies a pantalla completa, lo que afecta al requisito 1 para un usuario que depende del panel.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-securityoverview",
+          "https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/settings-and-configuration",
+          "https://docs.velopack.io/packaging/installer"
+        ]
+      },
+      {
+        "claim": "El mantenedor puede acceder a una vía de firma válida para su país (SignPath Foundation si el proyecto es OSS con licencia OSI, o un OV en HSM en la nube), porque Azure Artifact Signing para particulares solo cubre EE. UU. y Canadá.",
+        "verdict": "sostenida",
+        "evidence": "Azure Artifact Signing solo admite particulares en EE. UU. y Canadá. Para organizaciones cubre EE. UU., Canadá, la UE, Reino Unido, Australia, Nueva Zelanda, Japón, Corea, Singapur, Suiza, Noruega e Israel, y ningún país de Latinoamérica. Condiciones de SignPath Foundation: licencia OSI sin licencia dual comercial, nada de código propietario, versiones ya publicadas, aprobación manual de CADA solicitud de firma, compilación verificable en CI, política de firma pública en la web, política de privacidad mostrada durante la instalación y MFA para todo el equipo. Riesgos pendientes: (1) vpk firma en varias fases, y no está documentado cómo encaja eso con la aprobación manual de SignPath, porque podría pedir varias aprobaciones por versión; (2) el Setup.exe de Velopack no muestra una política de privacidad; (3) desde el 1-3-2026 los certificados de firma duran como máximo 460 días, y la reputación de SmartScreen puede reiniciarse al renovarlos. Ni el EV evita ya SmartScreen.",
+        "sources": [
+          "https://learn.microsoft.com/en-us/azure/artifact-signing/faq",
+          "https://signpath.org/terms",
+          "https://docs.velopack.io/packaging/signing",
+          "https://www.certum.eu/en/news/shortening-code-signing-certificate-validity/",
+          "https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation",
+          "https://learn.microsoft.com/en-us/answers/questions/5900208/smartscreen-reputation-reset-following-ev-certific"
+        ]
+      },
+      {
+        "claim": "Cadena de suministro y dependencias sostenibles: CsWin32 0.3.x fijada, H.NotifyIcon.Wpf 2.x, FlaUI.UIA3 5.x, Axe.Windows 2.4.x y Microsoft.Extensions.AI 10.x.",
+        "verdict": "sostenida",
+        "evidence": "Existen y están vigentes: CsWin32 0.3.335 (21-09-2026, aunque sigue en 0.x sin versión 1.0) y Microsoft.Extensions.AI 10.10.0 (9-9-2026). Riesgos de un solo mantenedor o de abandono: Axe.Windows 2.4.2 es de noviembre de 2024 (casi 2 años sin publicar, con dependencias de Newtonsoft.Json y System.Drawing.Common 8); FlaUI.UIA3 5.0.0 es de febrero de 2025 y tiene un único propietario; H.NotifyIcon.Wpf 2.4.1 es de diciembre de 2025 y también tiene un único mantenedor. Velopack pertenece a una organización pequeña cuya financiación se limita a patrocinio. Ninguna de estas dependencias bloquea por sí sola, pero la puerta de CI de accesibilidad depende de una herramienta estancada.",
+        "sources": [
+          "https://www.nuget.org/packages/Microsoft.Windows.CsWin32",
+          "https://www.nuget.org/packages/Axe.Windows",
+          "https://www.nuget.org/packages/FlaUI.UIA3",
+          "https://www.nuget.org/packages/H.NotifyIcon.Wpf",
+          "https://www.nuget.org/packages/Microsoft.Extensions.AI",
+          "https://github.com/velopack/velopack"
+        ]
+      },
+      {
+        "claim": "La arquitectura (un solo lenguaje, un solo runtime, NuGet, monolito modular con fronteras impuestas) permite escalar de una persona a un equipo o comunidad open source durante 5–10 años.",
+        "verdict": "sostenida",
+        "evidence": "C#/.NET tiene una gran base de talento. Las fronteras hexagonales comprobadas por ArchUnitNET y los ViewModels sin tipos de WPF mantienen el coste de una migración futura (a Avalonia) en la capa de UI. Riesgos: el conocimiento de WPF envejece (no hay hoja de ruta: #11188), y la capa Win32 propia (3–5 mil líneas de interop delicado) concentra el riesgo de bus factor 1 si no se documenta y prueba. SignPath exige roles (autor, revisor, aprobador) y MFA, lo que empuja hacia una gobernanza sana, pero con un solo mantenedor el aprobador es él mismo.",
+        "sources": [
+          "https://github.com/dotnet/wpf/discussions/11188",
+          "https://signpath.org/terms"
+        ]
+      }
+    ],
+    "requiredMitigations": [
+      "Datos fuera de la carpeta de instalación: fijar un packId distinto del nombre de la carpeta de datos (p. ej., packId «Clicalo.App») y guardar perfiles, ajustes, copias y logs en %AppData%\\Clicalo (o en %LocalAppData%\\Clicalo.Data), NUNCA dentro de %LocalAppData%\\{packId}. Prueba de integración: instalar, crear datos, desinstalar desde Configuración › Aplicaciones y comprobar que los datos siguen ahí.",
+      "Desinstalación con la pregunta de conservar datos: por defecto se CONSERVAN los datos en cualquier desinstalación iniciada fuera de la app (el hook --veloapp-uninstall no pueda preguntar). Borrarlos solo desde Sistema › Desinstalar en el Centro de control, que pregunta, borra si se pide y lanza Update.exe --uninstall. Además, al reinstalar se detectan los datos huérfanos y se ofrece recuperarlos o borrarlos. Documentar la carpeta en la ayuda.",
+      "Verificar la integridad de las actualizaciones más allá del hash del feed: antes de aplicar, comprobar con WinVerifyTrust la firma Authenticode del .exe extraído del paquete y fijar el sujeto o la clave pública del editor. Mejor aún, firmar releases.json con una clave ed25519 (minisign) que no esté en GitHub y verificarla en un IUpdateSource propio. Proteger GitHub Releases con entornos protegidos, revisores obligatorios y tokens OIDC de corta duración. Criterio: un paquete con hash válido pero sin la firma esperada se rechaza en una prueba automática.",
+      "Eliminar la escalada de privilegios del inicio elevado: no crear nunca una tarea programada con RunLevel Highest ni automatizar el relanzamiento elevado de binarios en %LocalAppData%. Opciones: (a) el modo elevado y el inicio elevado solo se ofrecen con la instalación por máquina (MSI de vpk con --instLocation PerMachine en Program Files), o (b) un bróker elevado mínimo, firmado e instalado en Program Files, que solo expone por IPC autenticado las operaciones de inyección hacia apps elevadas, mientras la UI sigue en integridad media. Añadir una prueba que falle si la tarea elevada apunta a una ruta que el usuario puede escribir.",
+      "Replantear uiAccess como objetivo de la v1 del modo por máquina, no como algo para «más adelante»: sin uiAccess, el panel no queda por encima del menú Inicio ni de las superficies del sistema. Spike S8b: MSI por máquina con un binario uiAccess firmado, comprobar el orden Z sobre el menú Inicio, el Centro de actividades y una app a pantalla completa, la inyección en una app elevada sin relanzar, y si cada actualización por máquina pide UAC (y si Acceso por voz puede operar ese aviso).",
+      "Ampliar el spike S5 con una matriz completa: autocontenido R2R, R2R compuesto, autocontenido de archivo único con R2R y dependiente del framework (runtime compartido de escritorio .NET 10 instalado por el bootstrapper de Velopack con --framework net10.0-x64-desktop), en arranque en frío real tras reiniciar y con Defender activo. Criterio: primer frame del panel en menos de 1 s en arranque manual en frío. Elegir el modo con esos datos, no a priori, y registrar el resultado en un ADR.",
+      "Si se mantiene el modo autocontenido: automatizar (Renovate más un workflow programado) la recompilación, firma y publicación de Clícalo en cada Patch Tuesday de .NET que afecte al runtime o al escritorio, con un SLA documentado (p. ej., 7 días para CVE críticos), porque una app autocontenida no recibe esos parches por su cuenta.",
+      "Medir la memoria con presupuesto en CI: working set y bytes privados con las 4 ventanas creadas, con 100 % y 150 % de DPI y en dos monitores, más la CPU en reposo durante 8 horas (prueba nocturna en un runner propio). Umbrales: 120 MB de working set y menos del 0,5 % de CPU media. Si se superan, destruir las ventanas ocultas en lugar de solo ocultarlas.",
+      "Spike de firma: con el proveedor real (SignPath Foundation o un OV en la nube como Certum), ejecutar vpk pack con --signTemplate y medir cuántas aprobaciones manuales exige cada versión. Criterio: una sola aprobación por versión (con {{file...}} en lote) o un proceso documentado de no más de 2 aprobaciones. Incluir la política de privacidad y la política de firma de código exigidas por SignPath (enlace en la web y aviso en la primera ejecución o en el MSI).",
+      "Plan contra SmartScreen: publicar también en WinGet y en Microsoft Store como app Win32 (EXE o MSI) para evitar el aviso en la primera instalación; enviar cada versión al portal de envíos de Microsoft Defender; y planificar la renovación del certificado (460 días como máximo) sin cambiar de identidad del editor, porque la reputación puede reiniciarse.",
+      "Viabilidad de WPF: un ADR con criterios medibles para activar la migración (p. ej., que WPF no aparezca en .NET 12 RC, o que un bug de seguridad o accesibilidad crítico quede más de 6 meses sin corregir) y un inventario trimestral del estado de dotnet/wpf. Mantener la regla de ArchUnitNET de que Presentation, Application y Domain no referencian ningún ensamblado de WPF, para que la vía a Avalonia siga abierta.",
+      "Dependencias con un solo mantenedor: fijar versiones con lock y source mapping de NuGet (packageSourceMapping más trustedSigners), fijar las acciones de GitHub por SHA, activar OpenSSF Scorecard y tener prevista una alternativa: si Axe.Windows sigue sin publicar, sustituir la puerta de CI por reglas propias con FlaUI y UIA; si H.NotifyIcon se abandona, cambiarlo por un wrapper propio de Shell_NotifyIcon dentro de Platform.Windows."
+    ],
+    "summary": "WPF sobre .NET 10 no queda refutado como elección de framework desde el enfoque de sostenibilidad, pero el plan de distribución y seguridad tiene fallos concretos que hay que corregir antes de construir. (1) La desinstalación de Velopack borra entera la carpeta %LocalAppData%\\{packId} y se lanza desde Configuración sin UI. Con la ruta de datos y logs prevista (%LocalAppData%\\Clicalo) los datos se perderían en silencio, y la pregunta de conservar datos no aparece en el camino habitual. (2) Una tarea programada elevada que apunta a una instalación por usuario escribible es una escalada de privilegios (el patrón de MITRE T1574.010). El modo elevado exige instalación por máquina o un bróker firmado en Program Files, y uiAccess (que además permite mantener el panel por encima del menú Inicio) no debería posponerse. (3) Las actualizaciones de Velopack no verifican ninguna firma, solo el hash del mismo feed: hay que añadir la verificación del editor o un manifiesto firmado aparte. (4) El modo autocontenido es la configuración con peor arranque en frío (2–3 s, frente a unos 500 ms con el runtime compartido, según #78379) y obliga a publicar una versión cada mes por los parches de .NET; el spike S5 debe comparar también el modo dependiente del framework y el archivo único. (5) Que WPF siga hasta 2030 es plausible, pero no está verificado: en .NET 11 solo trae tres correcciones y no hay hoja de ruta. La vía de firma para un particular fuera de EE. UU. y Canadá se reduce a SignPath Foundation (con condiciones OSS estrictas y aprobación manual por versión, sin comprobar cómo encaja con vpk) o a un OV en la nube de 460 días como máximo, cuya reputación en SmartScreen puede reiniciarse. Severidad mayor, no bloqueante: todo tiene mitigación razonable dentro del mismo stack."
+  }
+]

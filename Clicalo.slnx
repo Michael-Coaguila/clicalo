@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Clicalo.App/Clicalo.App.csproj" />
+    <Project Path="src/Clicalo.Application/Clicalo.Application.csproj" />
+    <Project Path="src/Clicalo.Domain/Clicalo.Domain.csproj" />
+    <Project Path="src/Clicalo.Infrastructure/Clicalo.Infrastructure.csproj" />
+    <Project Path="src/Clicalo.Launcher/Clicalo.Launcher.csproj" />
+    <Project Path="src/Clicalo.Platform.Core/Clicalo.Platform.Core.csproj" />
+    <Project Path="src/Clicalo.Platform.Windows/Clicalo.Platform.Windows.csproj" />
+    <Project Path="src/Clicalo.Presentation/Clicalo.Presentation.csproj" />
+    <Project Path="src/Clicalo.Sentinel/Clicalo.Sentinel.csproj" />
+    <Project Path="src/Clicalo.UI.Wpf/Clicalo.UI.Wpf.csproj" />
+  </Folder>
+  <Folder Name="/generators/">
+    <Project Path="generators/Clicalo.Analyzers/Clicalo.Analyzers.csproj" />
+    <Project Path="generators/Clicalo.Design.Math/Clicalo.Design.Math.csproj" />
+    <Project Path="generators/Clicalo.Generators/Clicalo.Generators.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Clicalo.Application.Tests/Clicalo.Application.Tests.csproj" />
+    <Project Path="tests/Clicalo.Architecture.Tests/Clicalo.Architecture.Tests.csproj" />
+    <Project Path="tests/Clicalo.Data.Tests/Clicalo.Data.Tests.csproj" />
+    <Project Path="tests/Clicalo.Domain.Tests/Clicalo.Domain.Tests.csproj" />
+    <Project Path="tests/Clicalo.Generators.Tests/Clicalo.Generators.Tests.csproj" />
+    <Project Path="tests/Clicalo.Platform.IntegrationTests/Clicalo.Platform.IntegrationTests.csproj" />
+    <Project Path="tests/Clicalo.TestKit/Clicalo.TestKit.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Clicalo.DevCli/Clicalo.DevCli.csproj" />
+    <Project Path="tools/InputProbe/InputProbe.csproj" />
+  </Folder>
+  <Folder Name="/build/">
+    <Project Path="build/Build.csproj" />
+  </Folder>
+</Solution>

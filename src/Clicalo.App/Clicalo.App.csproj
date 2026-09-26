@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Composition root: Program, DI, lifecycle. Nothing references this project. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Clicalo</AssemblyName>
+    <RootNamespace>Clicalo.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>Clicalo.App.Program</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.UI.Wpf\Clicalo.UI.Wpf.csproj" />
+    <ProjectReference Include="..\Clicalo.Presentation\Clicalo.Presentation.csproj" />
+    <ProjectReference Include="..\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <ProjectReference Include="..\Clicalo.Platform.Windows\Clicalo.Platform.Windows.csproj" />
+    <ProjectReference Include="..\Clicalo.Infrastructure\Clicalo.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+  </ItemGroup>
+</Project>

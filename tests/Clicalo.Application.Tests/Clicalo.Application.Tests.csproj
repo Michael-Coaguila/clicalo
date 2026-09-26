@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Use cases, stores and actors with fake ports. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Application.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>

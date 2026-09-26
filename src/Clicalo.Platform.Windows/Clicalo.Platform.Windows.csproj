@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Win32/WinRT adapters implementing Application ports. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Clicalo.Platform.Windows</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Platform.IntegrationTests" />
+  </ItemGroup>
+</Project>

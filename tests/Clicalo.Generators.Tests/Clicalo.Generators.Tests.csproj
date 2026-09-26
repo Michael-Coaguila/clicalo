@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Snapshot tests for generators and analyzers. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Generators.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\generators\Clicalo.Generators\Clicalo.Generators.csproj" />
+    <ProjectReference Include="..\..\generators\Clicalo.Analyzers\Clicalo.Analyzers.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+  </ItemGroup>
+</Project>

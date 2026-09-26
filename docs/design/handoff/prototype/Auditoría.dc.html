@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block">
+<style>body{margin:0;background:oklch(0.17 0.01 260)}*{box-sizing:border-box}a{color:oklch(0.80 0.11 200)}a:hover{color:oklch(0.88 0.09 200)}</style>
+</helmet>
+<div style="min-height:100vh; font-family:'Atkinson Hyperlegible', system-ui, sans-serif; color:oklch(0.97 0.004 260); padding:48px 24px 80px 24px">
+  <div style="max-width:1080px; margin:0 auto; display:flex; flex-direction:column; gap:28px">
+    <div style="display:flex; flex-direction:column; gap:10px">
+      <span style="font-family:'JetBrains Mono', monospace; font-size:13px; color:oklch(0.80 0.11 200)">MACRO QUICK ACCESS · AUDITORÍA ANTES DE PASAR A CÓDIGO</span>
+      <h1 style="margin:0; font-size:40px; line-height:1.1; text-wrap:balance">Lo que falta, lo que falla y lo que aún no hemos decidido</h1>
+      <p style="margin:0; max-width:760px; font-size:17px; line-height:1.55; color:oklch(0.78 0.012 260); text-wrap:pretty">Revisión del <a href="Prototipo v3.dc.html">Prototipo v3</a> pantalla por pantalla, más lo que no se ve en la interfaz: Windows, accesibilidad, datos y distribución. Cada punto tiene prioridad y una propuesta concreta.</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px">
+      <sc-for list="{{ stats }}" as="st">
+        <button onClick="{{ st.on }}" style="display:flex; flex-direction:column; gap:4px; padding:16px; border-radius:14px; border:{{ st.border }}; background:{{ st.bg }}; color:oklch(0.97 0.004 260); font:inherit; cursor:pointer; text-align:left">
+          <span style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:{{ st.color }}"><span style="width:10px; height:10px; border-radius:5px; background:{{ st.color }}"></span>{{ st.label }}</span>
+          <span style="font-size:32px; font-weight:700">{{ st.n }}</span>
+          <span style="font-size:12px; color:oklch(0.74 0.012 260); line-height:1.35">{{ st.desc }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="padding:16px 18px; border-radius:14px; background:oklch(0.80 0.11 200 / 0.1); border:1px solid oklch(0.80 0.11 200 / 0.4); display:flex; gap:12px; align-items:flex-start">
+      <span style="font-family:'Material Symbols Rounded'; font-size:24px; line-height:1; color:oklch(0.80 0.11 200)">verified</span>
+      <div style="display:flex; flex-direction:column; gap:4px; font-size:14px; line-height:1.5">
+        <b>Comprobado y correcto</b>
+        <span style="color:oklch(0.8 0.01 260)">Traducciones completas: 558 textos en español y 558 en inglés, sin claves sin definir. Deshacer en todas las operaciones de borrado. Selector de perfil coherente en las tres vistas. Plantillas, Sistema y Acerca de sin elementos repetidos.</span>
+      </div>
+    </div>
+
+    <div style="position:sticky; top:0; z-index:5; margin:0 -24px; padding:10px 24px; background:oklch(0.17 0.01 260 / 0.94); backdrop-filter:blur(8px); display:flex; flex-wrap:wrap; gap:6px">
+      <sc-for list="{{ nav }}" as="n"><a href="{{ n.href }}" style="height:34px; display:flex; align-items:center; gap:6px; padding:0 12px; border-radius:17px; border:1px solid oklch(1 0 0 / 0.12); color:oklch(0.9 0.01 260); text-decoration:none; font-size:13px; font-weight:700; white-space:nowrap"><span style="font-family:'Material Symbols Rounded'; font-size:16px; line-height:1">{{ n.icon }}</span>{{ n.label }}<span style="color:oklch(0.7 0.012 260); font-weight:400">{{ n.count }}</span></a></sc-for>
+    </div>
+
+    <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="4">
+      <section id="{{ sec.id }}" style="display:flex; flex-direction:column; gap:12px; scroll-margin-top:64px">
+        <div style="display:flex; align-items:center; gap:12px; padding-top:12px">
+          <span style="width:44px; height:44px; flex:none; border-radius:12px; background:oklch(0.27 0.014 260); color:oklch(0.80 0.11 200); display:grid; place-items:center; font-family:'Material Symbols Rounded'; font-size:24px; line-height:1">{{ sec.icon }}</span>
+          <div style="display:flex; flex-direction:column; gap:2px"><h2 style="margin:0; font-size:24px">{{ sec.title }}</h2><span style="font-size:14px; color:oklch(0.74 0.012 260)">{{ sec.sub }}</span></div>
+        </div>
+        <sc-for list="{{ sec.items }}" as="it">
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:0; border-radius:14px; border:1px solid oklch(1 0 0 / 0.08); background:oklch(0.21 0.012 260); overflow:hidden">
+            <div style="grid-column:1 / -1; display:flex; align-items:center; gap:10px; padding:14px 16px 10px 16px">
+              <span style="flex:none; height:24px; display:flex; align-items:center; padding:0 9px; border-radius:12px; background:{{ it.pbg }}; color:{{ it.pfg }}; font-size:11px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase">{{ it.plabel }}</span>
+              <span style="font-size:16px; font-weight:700; line-height:1.3; text-wrap:pretty">{{ it.t }}</span>
+            </div>
+            <div style="padding:0 16px 14px 16px; display:flex; flex-direction:column; gap:4px">
+              <span style="font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:oklch(0.7 0.012 260)">Qué pasa</span>
+              <span style="font-size:14px; line-height:1.5; color:oklch(0.85 0.01 260); text-wrap:pretty">{{ it.why }}</span>
+            </div>
+            <div style="padding:0 16px 14px 16px; display:flex; flex-direction:column; gap:4px; border-left:1px solid oklch(1 0 0 / 0.06)">
+              <span style="font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:oklch(0.80 0.11 200)">Propuesta</span>
+              <span style="font-size:14px; line-height:1.5; color:oklch(0.92 0.01 260); text-wrap:pretty">{{ it.fix }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const P={b:{label:'Bloqueante',bg:'oklch(0.62 0.18 25 / 0.2)',fg:'oklch(0.8 0.14 25)',color:'oklch(0.72 0.17 25)',desc:'Sin esto la app falla o no sirve a quien la necesita.'},i:{label:'Importante',bg:'oklch(0.83 0.13 80 / 0.18)',fg:'oklch(0.86 0.12 80)',color:'oklch(0.83 0.13 80)',desc:'Se nota en el uso diario o confunde al usuario.'},m:{label:'Mejora',bg:'oklch(0.80 0.11 200 / 0.16)',fg:'oklch(0.85 0.09 200)',color:'oklch(0.80 0.11 200)',desc:'Pulido o funcionalidad extra, no urgente.'},d:{label:'Decisión tuya',bg:'oklch(0.75 0.12 300 / 0.18)',fg:'oklch(0.85 0.1 300)',color:'oklch(0.75 0.12 300)',desc:'No es técnica: necesito tu criterio antes de programar.'}};
+const S=[
+{id:'panel',icon:'grid_view',title:'Panel flotante',sub:'Vista completa y compacta, uso diario',items:[
+['b','Falta un botón de pánico «Soltar todas las teclas»','Con Mantener, Alternar o Teclas fijas, una tecla puede quedar pulsada si cambias de app, se bloquea la sesión o el panel falla. Para alguien que solo usa la pantalla táctil, un Ctrl pegado inutiliza el equipo.','Si hay algo pulsado, mostrar una franja roja fija: «Ctrl pulsado · Soltar todo». Además, soltar todo automáticamente al bloquear la sesión, al suspender el equipo y tras un tiempo máximo configurable (60 s por defecto).'],
+['i','Perfil sin atajos: el panel queda en blanco','Al crear un perfil vacío o borrar todos sus atajos, la cuadrícula aparece vacía, sin explicación.','Mostrar un estado vacío con icono, «Este perfil aún no tiene atajos» y un botón grande «Añadir atajo» que abra el editor.'],
+['i','«Frecuentes» no tiene reglas definidas','Hoy cuenta pulsaciones sin límite de tiempo. Un atajo muy usado hace meses se queda arriba para siempre, y no se puede quitar ni fijar.','Contar solo los últimos 30 días y mostrar los 9 primeros. Mantener pulsado un botón dará las opciones «Quitar de Frecuentes» y «Fijar aquí», y habrá un botón «Reiniciar» en General.'],
+['i','Dos reglas distintas para borrar','En el modo edición del panel, la × borra al instante (con deshacer); en el editor se pide confirmación en dos pasos.','Una sola regla: borrar un atajo siempre pide confirmación en dos pasos y siempre ofrece deshacer. En modo edición, la × pasa a «Confirmar» con el primer toque.'],
+['i','«Repetir» desaparece en la vista compacta','Está en la barra de avisos, que en la vista compacta solo aparece cuando hay un mensaje.','Añadir ↻ Repetir en la fila inferior de la vista compacta, junto a ★ y el perfil, y en el modo pestaña.'],
+['i','La búsqueda no está en la vista compacta ni en la pestaña','Solo existe en la vista completa. Justo quien usa la vista compacta, que tiene menos botones, es quien más la necesita.','Lupa en la cabecera de la vista compacta y en la barra del modo pestaña. Buscar también por voz (micrófono en el campo).'],
+['i','El panel puede quedar fuera de la pantalla','Al cambiar de tamaño o de vista, al desconectar un monitor o al cambiar la resolución, la posición guardada puede quedar fuera del área visible.','Ajustar la posición a la zona visible en cada cambio, y guardarla por monitor. Si el monitor ya no existe, volver al principal.'],
+['m','La burbuja minimizada no se atenúa','Al minimizar, la burbuja ignora la opacidad y el atenuado.','Aplicar la misma opacidad y atenuación, con un mínimo del 55 % para que siempre se encuentre.'],
+['m','Sugerencia «X no tiene perfil» solo en la vista completa','En la vista compacta y en la pestaña no se ve, así que el usuario no sabe que puede crear el perfil.','Mostrarla como un punto amarillo en el selector de perfil y dentro de su lista, con el botón «Crear perfil para Excel».']]},
+{id:'dock',icon:'view_sidebar',title:'Modo pestaña',sub:'Barra plegable en el borde',items:[
+['i','La posición de la pestaña se comparte entre los cuatro lados','Si la colocas abajo a la derecha y luego cambias al lado superior, aparece en una posición que no elegiste.','Guardar la posición por separado para cada lado.'],
+['i','Tocar la pestaña o arrastrarla, con temblor','Un toque con temblor puede moverla en vez de abrirla, porque el umbral de arrastre es fijo (6 px).','Usar como umbral el valor de «Cancelar si deslizas» de Precisión táctil. También se puede bloquear la posición desde Ajustes.'],
+['m','La primera vez no se explica qué es cada zona','La barra tiene cuatro zonas (controles, qué ver, atajos, herramientas). Sin guía, un usuario nuevo tiene que adivinar.','Mostrar una guía de 3 pasos la primera vez que se abre la pestaña, con la opción «No volver a mostrar».'],
+['m','Teclas fijas y búsqueda no existen en la pestaña','Quien usa solo la pestaña no puede hacer Ctrl + clic ni buscar.','Añadir ambos al grupo de herramientas, que se despliega como hoy 📌 Fijos.']]},
+{id:'cc',icon:'settings',title:'Centro de control en general',sub:'Lo que afecta a todas las secciones',items:[
+['b','Muchos botones por debajo de 44 px','Hay unos 30 botones de 28 a 40 px: flechas de páginas y de repetidas, cerrar la prueba, el lápiz del perfil, borrar teclas. Los interruptores (48×28) solo responden en el propio interruptor. Para quien usa el dedo con poca precisión, esto es lo más importante de toda la lista.','Mínimo de 44×44 px en todo lo tocable. Aunque se vean pequeños, cada botón responde en un área de 44 px. En las filas con interruptor, toda la fila cambia el ajuste, como ya ocurre en Ajustes rápidos.'],
+['i','Cambiar el nombre o las teclas no se puede deshacer','Deshacer solo cubre las operaciones grandes (borrar, mover, instalar). Si cambias las teclas por error, no hay vuelta atrás.','Agrupar las ediciones de un mismo atajo en un solo paso de deshacer: «Deshacer cambios en Negrita». El paso se cierra cuando pasas a otro atajo.'],
+['i','Un atajo nuevo sin nombre ni teclas se queda guardado','Si tocas «Crear el mío» y te vas, queda un botón vacío en el perfil.','Tratarlo como borrador: si al salir no tiene nombre ni teclas, se descarta en silencio. Si tiene solo una de las dos cosas, se guarda pero se marca «Incompleto».'],
+['i','Esc cierra la ventana aunque estés escribiendo','Al pulsar Esc para salir de un campo, se cierra todo el centro de control.','Si el foco está en un campo, Esc solo sale del campo. Un segundo Esc cierra la ventana.'],
+['i','Tamaño de la ventana fijo','Mide 1120×680 y no se puede mover ni redimensionar. En portátiles de 1366×768 queda muy justa con la barra de tareas.','En la app real, ventana redimensionable que recuerde su tamaño, con un mínimo de 760×520 y el menú lateral de solo iconos por debajo de 900 px.'],
+['i','No se ve qué tiene el foco','Con control por voz, conmutador o teclado en pantalla no se ve qué elemento está seleccionado.','Anillo de foco de 3 px en el color de acento en todos los elementos interactivos. En alto contraste, amarillo.']]},
+{id:'editor',icon:'tune',title:'Atajos (editor)',sub:'Crear y modificar atajos',items:[
+['b','Combinaciones que Windows no deja enviar','Windows bloquea Ctrl+Alt+Supr y Win+L cuando se envían desde un programa, y algunas como Win+G o Alt+Tab mantenido se comportan distinto. El usuario las asignará y pensará que la app está rota.','Mantener una lista de combinaciones bloqueadas o especiales. Al elegir una, el editor avisa: «Windows no permite enviar esta combinación desde una app», y propone una alternativa cuando existe (por ejemplo, un botón de bloquear que use la función del sistema).'],
+['i','Las macros no se pueden editar de verdad','Solo se añaden pasos de ejemplo fijos («Pulsar Ctrl + S», «Esperar 0,5 s»). No se puede cambiar su contenido, reordenarlos ni ajustar la espera.','Tocar un paso abre su propio editor: reutiliza el recuadro de combinación para las teclas y un control − / + para la espera en décimas de segundo. Reordenar con los mismos botones Antes / Después.'],
+['i','Mantener y Alternar sin tiempo máximo','Una tecla pulsada con «Alternar» se queda así aunque cambies de programa.','Añadir en «Más opciones» un «Soltar sola tras…» (por defecto 60 s) y la opción «Soltar al cambiar de app». Enlazado con el botón de pánico.'],
+['i','Texto: acentos, ñ y apps que bloquean pegar','Escribir un texto se puede hacer de dos formas: carácter a carácter o pegando. Cada una falla en programas distintos (acentos en unos, pegado bloqueado en otros).','Por defecto, escribir con caracteres Unicode, que respeta la ñ y los acentos sin depender del teclado. En «Más opciones», «Pegar en lugar de escribir» para textos largos.'],
+['i','Web y App sin selector','Hay que escribir la dirección o la ruta a mano, algo casi imposible sin teclado.','En App, un botón «Elegir programa» con la lista de apps instaladas y abiertas. En Web, sugerir las páginas abiertas en el navegador y validar la dirección.'],
+['i','Mouse: el desplazamiento no se ajusta','Subir y Bajar tienen una velocidad fija.','Añadir velocidad (lenta / normal / rápida) y dirección horizontal. Mantener el botón acelera progresivamente.'],
+['i','Números de voz: no enseña a usarlos','El editor muestra el número, pero no explica cómo activar el acceso por voz de Windows ni qué decir. Ya lo señalaste.','Un enlace «Cómo usarlo» con 3 pasos: activar Acceso por voz (Win + Ctrl + S), decir «mostrar números» o «clic 4», y la opción del panel. En código, esto depende de que los botones expongan su nombre al sistema (ver Windows).'],
+['m','La biblioteca de acciones es la misma para todos los perfiles','En el perfil de Word salen las mismas categorías que en el del navegador.','Añadir una primera categoría «Para Word», con las acciones de su plantilla que aún no tienes.'],
+['m','Reordenar arrastrando','Solo hay botones de posición. Son correctos para uso táctil, pero lentos si hay muchos atajos.','Mantener los botones y añadir arrastre para quien pueda hacerlo.']]},
+{id:'tpl',icon:'auto_awesome',title:'Empieza con atajos listos',sub:'Plantillas, IA y perfiles vacíos',items:[
+['i','La IA no tiene estados de error','No hay mensaje para «sin conexión», «servicio no disponible» o «límite alcanzado».','Tres mensajes claros con una salida en cada uno: reintentar, crear un perfil vacío o usar una plantilla parecida.'],
+['i','No se pueden ajustar los atajos antes de instalar','La vista previa solo permite marcar y desmarcar. Si la IA pone un nombre raro, hay que instalar y después editar.','Tocar un atajo en la vista previa permite cambiar su nombre y sus teclas ahí mismo.'],
+['i','El teclado detectado no cambia las plantillas','Aunque elijas «Office en inglés», la plantilla de Word sigue mostrando Ctrl+N para negrita.','Guardar cada plantilla con variantes por idioma y mostrar la que corresponde. Si no existe variante, avisar: «Plantilla revisada solo en español».'],
+['i','Privacidad de la IA','No se indica qué se envía ni a quién. Se envía el nombre de la app y el idioma, pero el usuario no lo sabe.','Una línea bajo el campo: «Se envía solo el nombre del programa y el idioma». La primera vez, pedir consentimiento y permitir desactivar la IA.'],
+['m','Compartir perfiles','No hay forma de pasarle un perfil a otra persona, algo muy útil en comunidades de accesibilidad.','Exportar un perfil como archivo o enlace, e importarlo aquí como una plantilla más, mostrando antes su vista previa.']]},
+{id:'general',icon:'display_settings',title:'General y panel',sub:'Idioma, aspecto y comportamiento',items:[
+['i','No sigue el tema de Windows','Si Windows está en alto contraste o en modo claro, la app no lo detecta.','Añadir la opción de tema «Como Windows» por defecto. Si Windows activa alto contraste, usarlo siempre.'],
+['i','Falta «Reducir movimiento»','Hay atenuado, transiciones y animaciones en la prueba. A algunas personas les molestan o marean.','Respetar la opción de Windows «Mostrar animaciones» y añadir un interruptor propio.'],
+['m','El texto no se escala por separado','El tamaño S/M/L cambia botones y texto a la vez. Hay quien necesita botones pequeños y letra grande.','Añadir «Tamaño de texto» independiente, del 100 % al 150 %.']]},
+{id:'touch',icon:'touch_app',title:'Precisión táctil',sub:'Filtros para toques imprecisos',items:[
+['b','Los ajustes solo funcionan en la zona de prueba','Los ajustes antirrebote, área extra, deslizamiento y contacto mínimo solo se aplican a la zona de prueba, no a los botones del panel ni de la pestaña.','En código, un único filtro de toques para todos los botones del panel y la pestaña, que lea estos valores. La zona de prueba debe usar exactamente el mismo código.'],
+['i','Toque largo y «Mantener» chocan','Si en el futuro el toque largo abre un menú (quitar de Frecuentes, editar…), no podrá usarse en botones de tipo Mantener, que ya usan la pulsación sostenida.','Decidir ahora: menú con toque largo en todos los botones salvo los de Mantener, que lo abren desde el modo edición. O menú con dos dedos.'],
+['m','«Probar» vive lejos de donde se usa','La zona de prueba está en el centro de control, pero los toques reales se hacen en el panel.','Añadir un «Modo prueba» en Ajustes rápidos: durante 30 s el panel muestra en cada botón si el toque se registró o se ignoró, sin enviar nada.']]},
+{id:'sys',icon:'verified_user',title:'Sistema',sub:'Actualizaciones, copias e inicio',items:[
+['i','No se puede volver a la versión anterior','Si una actualización falla con tu configuración, no hay salida.','Guardar la versión anterior y ofrecer «Volver a v2.0.0» durante 7 días. Antes de actualizar, hacer siempre una copia.'],
+['i','Copias: dónde se guardan y en qué formato','No está definido dónde se guardan ni si una copia antigua funcionará en una versión nueva.','Guardarlas en %APPDATA%\\MacroQuickAccess\\backups, en JSON con número de versión. Al importar, elegir «Combinar con lo actual» o «Reemplazar todo».'],
+['b','Pasar a la versión nueva sin perder nada','Quien ya usa la app tiene su profiles.json actual. Si la versión nueva no lo lee, pierde todos sus atajos.','Migración automática desde el formato actual (window_pos, perfiles, botones), con copia previa, y un mensaje «Importamos tus 12 perfiles».']]},
+{id:'about',icon:'favorite',title:'Acerca de y contacto',sub:'Historia, opinión y enlaces',items:[
+['i','El registro puede incluir datos personales','El log adjunto podría contener textos guardados (dirección, firma) o nombres de documentos.','Antes de enviarlo, ocultar los textos guardados y los títulos de ventana, y mostrar una vista previa del registro para revisarlo.'],
+['m','Correo público expuesto','Mostrar el correo completo en la app lo expone a spam.','Mantener el botón «Enviar por correo» y dejar el correo copiable, pero dar más peso a GitHub para los fallos. Confirmar si quieres que se muestre.'],
+['m','Enlaces sin verificar','Las direcciones de GitHub y LinkedIn son supuestas.','Sustituirlas por las reales antes de publicar.']]},
+{id:'onb',icon:'waving_hand',title:'Bienvenida',sub:'Primer arranque',items:[
+['i','No cubre lo que añadimos después','No pregunta la vista (completa, compacta o pestaña), no muestra el teclado detectado, no enseña a vincular apps ni explica los números de voz.','Añadir un paso «Cómo quieres el panel», con las tres vistas en miniatura, y en el paso de apps confirmar «Teclado: Español (LA) · Office en español».'],
+['i','«No puedo usar el teclado» debería adaptar más cosas','Hoy solo oculta «Grabar con teclado».','Además: activar Precisión táctil «Temblor leve», dar prioridad a la biblioteca y la IA frente a escribir, y ofrecer el dictado en todos los campos de texto.']]},
+{id:'win',icon:'terminal',title:'Windows y código',sub:'Lo que no se ve en la interfaz pero decide si funciona',items:[
+['b','El panel no debe quitar el foco a la app','Si al tocar un botón el panel se convierte en la ventana activa, el atajo se envía al propio panel y no a Word. Es el fallo más grave posible y no se ve en el prototipo.','Ventana siempre encima y que nunca se active (en Win32: WS_EX_NOACTIVATE + WS_EX_TOPMOST). El centro de control sí puede activarse, porque es una ventana aparte.'],
+['b','Apps ejecutadas como administrador','Windows impide que un programa normal envíe teclas a otro que se ejecuta como administrador. Con esas apps, el panel no hará nada.','Detectarlo y avisar: «Esta app se ejecuta como administrador. Activa "Iniciar como administrador" en Sistema». Esa opción debe existir.'],
+['i','Juegos y programas que ignoran las teclas simuladas','Algunos juegos y apps con protección leen el teclado a bajo nivel e ignoran el método normal de envío.','Añadir en el perfil una opción «Modo compatible» que envíe códigos de tecla físicos. Algunos anti-trampas los bloquearán igualmente, y hay que documentarlo.'],
+['i','Letras según la distribución del teclado','La misma tecla física es «ñ» en un teclado español y «;» en uno inglés. Enviar códigos fijos rompe los atajos con símbolos.','Traducir cada tecla con la distribución activa de la app en primer plano, no la del panel.'],
+['i','Detectar la app en primer plano sin fallos','Hay que ignorar el propio panel, el menú Inicio y las notificaciones. Las apps de la tienda de Windows aparecen todas como ApplicationFrameHost.exe.','Escuchar el evento del sistema de cambio de ventana en lugar de consultar cada cierto tiempo, filtrar esas ventanas y resolver el proceso real de las apps de la tienda.'],
+['b','Accesibilidad para el acceso por voz','El acceso por voz y los lectores de pantalla solo ven los botones si la interfaz expone su nombre al sistema. Tkinter apenas lo hace.','Elegir una tecnología de interfaz con buen soporte de accesibilidad en Windows (por ejemplo WinUI 3 o Qt 6 con su soporte de accesibilidad activado) y probar con Acceso por voz y Narrador antes de terminar.'],
+['i','Entrada táctil nativa','Si la interfaz trata el dedo como un mouse, pierde la presión, el tamaño de contacto y el multitoque, y Windows muestra su círculo de toque encima.','Usar la entrada táctil propia de Windows (WM_POINTER), desactivar el efecto visual del sistema sobre el panel y evitar que el teclado táctil aparezca al tocarlo.'],
+['i','Varias pantallas y escalado','Con pantallas de distinta escala (100 % y 150 %), el panel puede verse borroso o de tamaño incorrecto al moverlo.','Declarar la app compatible con escalado por monitor y recalcular tamaños al cambiar de pantalla.'],
+['i','Textos guardados sin protección','Tu firma, dirección o correo quedan en texto plano en el archivo de perfiles.','Guardar los botones de tipo Texto cifrados con la protección de datos de Windows (ligada a tu usuario).'],
+['m','Pruebas antes de publicar','No hay pruebas automáticas. Un cambio en la detección o el envío puede romper todo sin que se note.','Pruebas del envío de teclas contra una ventana de prueba, de la migración de perfiles y del filtro táctil. Son las tres piezas críticas.']]},
+{id:'dec',icon:'help',title:'Decisiones pendientes',sub:'Necesito tu criterio antes de programar',items:[
+['d','¿Cuántos atajos caben en «Siempre visible»?','Hoy no hay límite. Con más de 4 la fila se hace larga en tamaño S y en la vista compacta.','Mi propuesta: 4 en S y en compacta, hasta 8 en M/L, con páginas si hay más.'],
+['d','¿Frecuentes solo aprende, o también se fija a mano?','Afecta a si hace falta el menú de toque largo.','Mi propuesta: aprende sola, pero se puede fijar y quitar a mano.'],
+['d','¿Qué IA y quién la paga?','Generar plantillas necesita un servicio con coste. Es de código abierto: ¿clave propia del usuario, tu clave con límite, o solo plantillas sin conexión?','Mi propuesta: plantillas locales siempre disponibles, y la IA opcional con clave del usuario o un límite diario gratuito.'],
+['d','Tecnología para la versión nueva','Seguir con Python y Tkinter limita la accesibilidad y el táctil. Cambiar tiene un coste de reescritura.','Mi propuesta: separar el «motor» (detección, envío, perfiles) en Python, que ya funciona, y rehacer la interfaz con una tecnología accesible. Si prefieres, lo analizo a fondo.'],
+['d','Nombre, icono y marca','«Macro Quick Access» describe bien la función, pero no el propósito de accesibilidad.','Mantener el nombre o buscar uno que transmita autonomía. Solo cuenta antes de publicar.']]}
+];
+class Component extends DCLogic {
+  state={filter:null};
+  renderVals(){
+    const f=this.state.filter;
+    const sections=S.map(s=>({...s,items:s.items.filter(x=>!f||x[0]===f).map(([p,t,why,fix])=>({t,why,fix,plabel:P[p].label,pbg:P[p].bg,pfg:P[p].fg}))})).filter(s=>s.items.length);
+    const count=k=>S.reduce((n,s)=>n+s.items.filter(x=>x[0]===k).length,0);
+    return {
+      sections,
+      nav:sections.map(s=>({href:'#'+s.id,icon:s.icon,label:s.title,count:String(s.items.length)})),
+      stats:['b','i','m','d'].map(k=>({label:P[k].label,n:String(count(k)),desc:P[k].desc,color:P[k].color,bg:f===k?'oklch(0.27 0.014 260)':'oklch(0.21 0.012 260)',border:f===k?'2px solid '+P[k].color:'1px solid oklch(1 0 0 / 0.08)',on:()=>this.setState({filter:f===k?null:k})}))
+    };
+  }
+}
+</script>
+</body>
+</html>

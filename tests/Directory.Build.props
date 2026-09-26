@@ -1,0 +1,17 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <!-- Every project under tests/ is an xUnit v3 test executable, except the shared TestKit library. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Clicalo.TestKit'">
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Clicalo.TestKit'">
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+  </ItemGroup>
+</Project>

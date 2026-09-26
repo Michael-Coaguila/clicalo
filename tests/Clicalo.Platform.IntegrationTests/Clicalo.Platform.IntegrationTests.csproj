@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Real Win32 integration: input injected into tools/InputProbe (needs an interactive desktop). -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Platform.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Platform.Windows\Clicalo.Platform.Windows.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+
+  </ItemGroup>
+</Project>

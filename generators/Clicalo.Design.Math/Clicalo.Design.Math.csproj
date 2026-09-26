@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- OKLCH -> sRGB, gamut mapping and WCAG contrast. Source-linked into the generators, referenced by tests. -->
+  <PropertyGroup>
+    <RootNamespace>Clicalo.Design.Math</RootNamespace>
+  </PropertyGroup>
+</Project>

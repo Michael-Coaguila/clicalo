@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Guardian process: releases every key recorded in the KeyLedger when Clicalo.exe dies (ADR-0004). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>Clicalo.Sentinel</AssemblyName>
+    <RootNamespace>Clicalo.Sentinel</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+  </ItemGroup>
+</Project>

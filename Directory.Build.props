@@ -1,0 +1,63 @@
+<Project>
+  <!--
+    Shared build settings for every project in the repository.
+    Changing a setting here affects the whole product: see docs/architecture/tooling.md.
+  -->
+  <PropertyGroup Label="Repository">
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <ArtifactsPath>$(RepoRoot)artifacts</ArtifactsPath>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Language and quality gates">
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Required so that IDE0005 (unnecessary usings) is reported during build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <Deterministic>true</Deterministic>
+    <Features>strict</Features>
+  </PropertyGroup>
+
+  <PropertyGroup Label="CI" Condition="'$(CI)' == 'true' or '$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <RestoreLockedMode>true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Supply chain">
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Globalization">
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <NeutralLanguage>es</NeutralLanguage>
+    <SatelliteResourceLanguages>es;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Product metadata">
+    <Product>Clícalo</Product>
+    <Company>Clícalo</Company>
+    <Authors>Michael Coaguila</Authors>
+    <Copyright>© 2026 Michael Coaguila and Clícalo contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Michael-Coaguila/clicalo</RepositoryUrl>
+    <!-- Managed by release-please; do not edit by hand. -->
+    <VersionPrefix>2.0.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Well-known target frameworks">
+    <!-- Pure layers: no Windows APIs, portable and fast to test. -->
+    <ClicaloPortableTfm>net10.0</ClicaloPortableTfm>
+    <!-- Windows layers: WinRT projections need the 19041 SDK contract (Windows 10 2004+). -->
+    <ClicaloWindowsTfm>net10.0-windows10.0.19041.0</ClicaloWindowsTfm>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+</Project>

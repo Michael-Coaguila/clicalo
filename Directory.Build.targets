@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Shared targets. Architecture enforcement (ClicaloVerifyReferences) and
+    BannedSymbols wiring live here; see docs/architecture/blueprint.md §4.4.
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <!-- Tests may use literals and long names freely; product rules still apply to src/. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

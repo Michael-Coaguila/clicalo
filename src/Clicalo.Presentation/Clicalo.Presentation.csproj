@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- ViewModels without WPF: the UI framework is replaceable (ADR-0001). -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Presentation</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Layer rules, module matrix and product-rule tests (blueprint §4.4). -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Architecture.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.App\Clicalo.App.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Sentinel\Clicalo.Sentinel.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Launcher\Clicalo.Launcher.csproj" />
+    <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+  </ItemGroup>
+</Project>

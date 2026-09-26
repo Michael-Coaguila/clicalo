@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- `cl` build orchestration: one dictable verb per task, identical locally and in CI. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Build</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Bullseye" />
+    <PackageReference Include="SimpleExec" />
+  </ItemGroup>
+</Project>

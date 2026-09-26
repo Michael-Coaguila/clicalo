@@ -1,0 +1,107 @@
+# Clícalo — code style and analyzer configuration.
+# Formatting is owned by CSharpier (run `cl fix`); this file owns naming, style and analyzer severities.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,jsonc,yml,yaml,props,targets,csproj,slnx,xml,xaml,config,md}]
+indent_size = 2
+
+[*.{cmd,bat}]
+end_of_line = crlf
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# ---- Layout and namespaces -------------------------------------------------
+csharp_style_namespace_declarations = file_scoped:warning
+dotnet_diagnostic.IDE0161.severity = warning
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+# ---- Formatting is CSharpier's job ---------------------------------------
+dotnet_diagnostic.IDE0055.severity = none
+
+# ---- Language preferences ---------------------------------------------------
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+csharp_prefer_braces = true:warning
+dotnet_diagnostic.IDE0011.severity = warning
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+dotnet_diagnostic.IDE0003.severity = warning
+dotnet_diagnostic.IDE0009.severity = none
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_diagnostic.IDE0040.severity = warning
+dotnet_diagnostic.IDE0005.severity = warning
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+dotnet_diagnostic.IDE0290.severity = suggestion
+dotnet_diagnostic.IDE0028.severity = suggestion
+dotnet_diagnostic.IDE0300.severity = suggestion
+dotnet_diagnostic.IDE0301.severity = suggestion
+dotnet_diagnostic.IDE0305.severity = suggestion
+
+# ---- Naming ---------------------------------------------------------------
+dotnet_naming_rule.interfaces_start_with_i.symbols = interfaces
+dotnet_naming_rule.interfaces_start_with_i.style = prefix_i
+dotnet_naming_rule.interfaces_start_with_i.severity = warning
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_style.prefix_i.required_prefix = I
+dotnet_naming_style.prefix_i.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, private_protected
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+dotnet_naming_rule.constants_pascal.symbols = constants
+dotnet_naming_rule.constants_pascal.style = pascal
+dotnet_naming_rule.constants_pascal.severity = warning
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.required_modifiers = const
+dotnet_naming_style.pascal.capitalization = pascal_case
+
+# Naming rule order matters: constants must win over private fields.
+dotnet_naming_rule.constants_pascal.priority = 1
+dotnet_naming_rule.private_fields_underscore.priority = 2
+dotnet_naming_rule.interfaces_start_with_i.priority = 3
+
+# ---- .NET analyzers (latest-recommended) tuning ---------------------------
+# Product text never comes from literals (CLC0006); CA1303 would duplicate that rule badly.
+dotnet_diagnostic.CA1303.severity = none
+# ConfigureAwait policy is layer-specific (blueprint §3.2 rule 7) and enforced per layer, not globally.
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.MA0004.severity = none
+# Internal types are sealed by convention; the analyzer keeps us honest.
+dotnet_diagnostic.CA1852.severity = warning
+
+# ---- Meziantou tuning -------------------------------------------------------
+# TODO comments are allowed while spikes are running; tracked by issues instead.
+dotnet_diagnostic.MA0026.severity = none
+# Long methods are a review concern, not a build breaker.
+dotnet_diagnostic.MA0051.severity = suggestion
+# Culture-sensitive APIs must be explicit (i18n: ES uses comma decimals).
+dotnet_diagnostic.MA0011.severity = warning
+dotnet_diagnostic.MA0076.severity = warning
+
+[**/{generated,Generated,obj}/**.cs]
+generated_code = true

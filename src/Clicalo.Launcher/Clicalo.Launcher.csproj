@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- System component launcher: verifies and starts the protected elevated copy (ADR-0009). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>Clicalo.Launcher</AssemblyName>
+    <RootNamespace>Clicalo.Launcher</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+  </ItemGroup>
+</Project>

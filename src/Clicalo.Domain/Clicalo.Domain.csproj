@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pure domain: model, invariants, commands, EngineReducer. BCL only (blueprint §4.2). -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Domain</RootNamespace>
+    <ClicaloGeneratorProfile>Domain</ClicaloGeneratorProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\generators\Clicalo.Generators\Clicalo.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup Label="Data consumed by source generators (never edit generated code)">
+    <AdditionalFiles Include="$(RepoRoot)data\i18n\*.json" />
+    <AdditionalFiles Include="$(RepoRoot)data\catalogs\*.json" />
+    <CompilerVisibleProperty Include="ClicaloGeneratorProfile" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Domain.Tests" />
+  </ItemGroup>
+</Project>

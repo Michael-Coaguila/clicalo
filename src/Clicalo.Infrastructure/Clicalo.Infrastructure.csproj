@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Persistence, backups, catalog loading, AI, updates, logging. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <PackageReference Include="Velopack" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Infrastructure.Tests" />
+  </ItemGroup>
+</Project>

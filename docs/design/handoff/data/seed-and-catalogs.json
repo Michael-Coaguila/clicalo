@@ -1,0 +1,2217 @@
+{
+  "CAT": {
+    "edit": 230,
+    "hist": 60,
+    "file": 150,
+    "sel": 300,
+    "win": 25,
+    "voice": 190,
+    "nav": 270,
+    "fmt": 330,
+    "web": 200,
+    "text": 120
+  },
+  "MODS": [
+    "Ctrl",
+    "Alt",
+    "Shift",
+    "Win"
+  ],
+  "MOUSE": {
+    "sleft": [
+      "Desplazar ←",
+      "Scroll ←",
+      "keyboard_double_arrow_left"
+    ],
+    "sright": [
+      "Desplazar →",
+      "Scroll →",
+      "keyboard_double_arrow_right"
+    ],
+    "rclick": [
+      "Clic derecho",
+      "Right click",
+      "right_click"
+    ],
+    "dbl": [
+      "Doble clic",
+      "Double click",
+      "ads_click"
+    ],
+    "mid": [
+      "Clic central",
+      "Middle click",
+      "mouse"
+    ],
+    "drag": [
+      "Arrastrar",
+      "Drag",
+      "drag_pan"
+    ],
+    "sup": [
+      "Desplazar ↑",
+      "Scroll ↑",
+      "keyboard_double_arrow_up"
+    ],
+    "sdn": [
+      "Desplazar ↓",
+      "Scroll ↓",
+      "keyboard_double_arrow_down"
+    ]
+  },
+  "KEYG": {
+    "letters": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "L",
+      "M",
+      "N",
+      "Ñ",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U",
+      "V",
+      "W",
+      "X",
+      "Y",
+      "Z"
+    ],
+    "nums": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "0",
+      "+",
+      "−",
+      "/",
+      ".",
+      ",",
+      ";",
+      "="
+    ],
+    "fn": [
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "F7",
+      "F8",
+      "F9",
+      "F10",
+      "F11",
+      "F12"
+    ],
+    "numpad": [
+      "Num 0",
+      "Num 1",
+      "Num 2",
+      "Num 3",
+      "Num 4",
+      "Num 5",
+      "Num 6",
+      "Num 7",
+      "Num 8",
+      "Num 9",
+      "Num +",
+      "Num −",
+      "Num *",
+      "Num /",
+      "Num .",
+      "Num Enter",
+      "Bloq Num"
+    ],
+    "media": [
+      "Vol +",
+      "Vol −",
+      "Silencio",
+      "Play/Pausa",
+      "Siguiente",
+      "Anterior",
+      "Detener",
+      "Brillo +",
+      "Brillo −",
+      "Calculadora",
+      "Navegador",
+      "Correo",
+      "Bloq Mayús",
+      "Insert",
+      "Pausa",
+      "Bloq Despl",
+      "F13",
+      "F14",
+      "F15",
+      "F16",
+      "F17",
+      "F18",
+      "F19",
+      "F20",
+      "F21",
+      "F22",
+      "F23",
+      "F24"
+    ],
+    "mods2": [
+      "Ctrl izq.",
+      "Ctrl der.",
+      "Shift izq.",
+      "Shift der.",
+      "Alt izq.",
+      "AltGr"
+    ],
+    "special": [
+      "Enter",
+      "Tab",
+      "Esc",
+      "Space",
+      "Supr",
+      "Retroceso",
+      "Inicio",
+      "Fin",
+      "RePág",
+      "AvPág",
+      "←",
+      "→",
+      "↑",
+      "↓",
+      "ImprPant",
+      "Menú"
+    ]
+  },
+  "SEED": {
+    "global": [
+      {
+        "id": "dict",
+        "icon": "mic",
+        "es": "Dictar",
+        "en": "Dictate",
+        "keys": [
+          "Win",
+          "H"
+        ],
+        "cat": "voice",
+        "type": "toggle"
+      },
+      {
+        "id": "ptt",
+        "icon": "record_voice_over",
+        "es": "Hablar",
+        "en": "Talk",
+        "keys": [
+          "Ctrl",
+          "Space"
+        ],
+        "cat": "voice",
+        "type": "hold"
+      },
+      {
+        "id": "mute",
+        "icon": "mic_off",
+        "es": "Silenciar",
+        "en": "Mute",
+        "keys": [
+          "Win",
+          "Alt",
+          "K"
+        ],
+        "cat": "voice",
+        "type": "tap"
+      },
+      {
+        "id": "desk",
+        "icon": "desktop_windows",
+        "es": "Escritorio",
+        "en": "Desktop",
+        "keys": [
+          "Win",
+          "D"
+        ],
+        "cat": "win",
+        "type": "tap"
+      }
+    ],
+    "order": [
+      "general",
+      "word",
+      "browser",
+      "code"
+    ],
+    "profiles": {
+      "general": {
+        "es": "General",
+        "en": "General",
+        "icon": "apps",
+        "process": "",
+        "buttons": [
+          {
+            "id": "copy",
+            "icon": "content_copy",
+            "es": "Copiar",
+            "en": "Copy",
+            "keys": [
+              "Ctrl",
+              "C"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "paste",
+            "icon": "content_paste",
+            "es": "Pegar",
+            "en": "Paste",
+            "keys": [
+              "Ctrl",
+              "V"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "cut",
+            "icon": "content_cut",
+            "es": "Cortar",
+            "en": "Cut",
+            "keys": [
+              "Ctrl",
+              "X"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "undo",
+            "icon": "undo",
+            "es": "Deshacer",
+            "en": "Undo",
+            "keys": [
+              "Ctrl",
+              "Z"
+            ],
+            "cat": "hist",
+            "type": "tap"
+          },
+          {
+            "id": "redo",
+            "icon": "redo",
+            "es": "Rehacer",
+            "en": "Redo",
+            "keys": [
+              "Ctrl",
+              "Y"
+            ],
+            "cat": "hist",
+            "type": "tap"
+          },
+          {
+            "id": "save",
+            "icon": "save",
+            "es": "Guardar",
+            "en": "Save",
+            "keys": [
+              "Ctrl",
+              "S"
+            ],
+            "cat": "file",
+            "type": "tap"
+          },
+          {
+            "id": "selall",
+            "icon": "select_all",
+            "es": "Seleccionar todo",
+            "en": "Select all",
+            "keys": [
+              "Ctrl",
+              "A"
+            ],
+            "cat": "sel",
+            "type": "tap"
+          },
+          {
+            "id": "find",
+            "icon": "search",
+            "es": "Buscar",
+            "en": "Find",
+            "keys": [
+              "Ctrl",
+              "F"
+            ],
+            "cat": "sel",
+            "type": "tap"
+          },
+          {
+            "id": "alttab",
+            "icon": "swap_horiz",
+            "es": "Cambiar app",
+            "en": "Switch app",
+            "keys": [
+              "Alt",
+              "Tab"
+            ],
+            "cat": "win",
+            "type": "tap"
+          },
+          {
+            "id": "shift",
+            "icon": "keyboard_capslock",
+            "es": "Mayús fija",
+            "en": "Shift lock",
+            "keys": [
+              "Shift"
+            ],
+            "cat": "fmt",
+            "type": "toggle"
+          },
+          {
+            "id": "drag",
+            "icon": "pan_tool",
+            "es": "Clic sostenido",
+            "en": "Hold click",
+            "keys": [
+              "Clic izq."
+            ],
+            "cat": "nav",
+            "type": "toggle"
+          },
+          {
+            "id": "close",
+            "icon": "close",
+            "es": "Cerrar ventana",
+            "en": "Close window",
+            "keys": [
+              "Alt",
+              "F4"
+            ],
+            "cat": "win",
+            "type": "tap",
+            "confirm": true
+          }
+        ]
+      },
+      "word": {
+        "es": "Word",
+        "en": "Word",
+        "icon": "description",
+        "process": "WINWORD.EXE",
+        "buttons": [
+          {
+            "id": "bold",
+            "icon": "format_bold",
+            "es": "Negrita",
+            "en": "Bold",
+            "keys": [
+              "Ctrl",
+              "N"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "italic",
+            "icon": "format_italic",
+            "es": "Cursiva",
+            "en": "Italic",
+            "keys": [
+              "Ctrl",
+              "K"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "under",
+            "icon": "format_underlined",
+            "es": "Subrayar",
+            "en": "Underline",
+            "keys": [
+              "Ctrl",
+              "S"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "h1",
+            "icon": "title",
+            "es": "Título 1",
+            "en": "Heading 1",
+            "keys": [
+              "Ctrl",
+              "Alt",
+              "1"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "list",
+            "icon": "format_list_bulleted",
+            "es": "Viñetas",
+            "en": "Bullets",
+            "keys": [
+              "Ctrl",
+              "Shift",
+              "L"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "replace",
+            "icon": "find_replace",
+            "es": "Reemplazar",
+            "en": "Replace",
+            "keys": [
+              "Ctrl",
+              "L"
+            ],
+            "cat": "sel",
+            "type": "tap"
+          },
+          {
+            "id": "pdf",
+            "icon": "picture_as_pdf",
+            "es": "Guardar PDF",
+            "en": "Save PDF",
+            "keys": [],
+            "cat": "file",
+            "type": "macro",
+            "steps": [
+              {
+                "kind": "keys",
+                "keys": [
+                  "F12"
+                ]
+              },
+              {
+                "kind": "wait",
+                "ms": 500
+              },
+              {
+                "kind": "keys",
+                "keys": [
+                  "Alt",
+                  "T"
+                ]
+              },
+              {
+                "kind": "text",
+                "text": "PDF"
+              },
+              {
+                "kind": "keys",
+                "keys": [
+                  "Enter"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "spell",
+            "icon": "spellcheck",
+            "es": "Ortografía",
+            "en": "Spelling",
+            "keys": [
+              "F7"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "dictw",
+            "icon": "mic",
+            "es": "Dictado",
+            "en": "Dictation",
+            "keys": [
+              "Win",
+              "H"
+            ],
+            "cat": "voice",
+            "type": "tap"
+          }
+        ]
+      },
+      "browser": {
+        "es": "Navegador",
+        "en": "Browser",
+        "icon": "public",
+        "process": "chrome.exe",
+        "buttons": [
+          {
+            "id": "newtab",
+            "icon": "add",
+            "es": "Nueva pestaña",
+            "en": "New tab",
+            "keys": [
+              "Ctrl",
+              "T"
+            ],
+            "cat": "nav",
+            "type": "tap"
+          },
+          {
+            "id": "closetab",
+            "icon": "tab_close",
+            "es": "Cerrar pestaña",
+            "en": "Close tab",
+            "keys": [
+              "Ctrl",
+              "W"
+            ],
+            "cat": "win",
+            "type": "tap"
+          },
+          {
+            "id": "reopen",
+            "icon": "history",
+            "es": "Reabrir",
+            "en": "Reopen",
+            "keys": [
+              "Ctrl",
+              "Shift",
+              "T"
+            ],
+            "cat": "hist",
+            "type": "tap"
+          },
+          {
+            "id": "prev",
+            "icon": "arrow_back",
+            "es": "Atrás",
+            "en": "Back",
+            "keys": [
+              "Alt",
+              "←"
+            ],
+            "cat": "nav",
+            "type": "tap"
+          },
+          {
+            "id": "reload",
+            "icon": "refresh",
+            "es": "Recargar",
+            "en": "Reload",
+            "keys": [
+              "F5"
+            ],
+            "cat": "file",
+            "type": "tap"
+          },
+          {
+            "id": "urlbar",
+            "icon": "link",
+            "es": "Dirección",
+            "en": "Address bar",
+            "keys": [
+              "Ctrl",
+              "L"
+            ],
+            "cat": "sel",
+            "type": "tap"
+          },
+          {
+            "id": "zin",
+            "icon": "zoom_in",
+            "es": "Ampliar",
+            "en": "Zoom in",
+            "keys": [
+              "Ctrl",
+              "+"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "zout",
+            "icon": "zoom_out",
+            "es": "Reducir",
+            "en": "Zoom out",
+            "keys": [
+              "Ctrl",
+              "−"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "mail",
+            "icon": "mail",
+            "es": "Correo",
+            "en": "Mail",
+            "keys": [],
+            "cat": "web",
+            "type": "url",
+            "url": "mail.google.com"
+          },
+          {
+            "id": "copyb",
+            "icon": "content_copy",
+            "es": "Copiar",
+            "en": "Copy",
+            "keys": [
+              "Ctrl",
+              "C"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          }
+        ]
+      },
+      "code": {
+        "es": "VS Code",
+        "en": "VS Code",
+        "icon": "code",
+        "process": "Code.exe",
+        "buttons": [
+          {
+            "id": "term",
+            "icon": "terminal",
+            "es": "Terminal",
+            "en": "Terminal",
+            "keys": [
+              "Ctrl",
+              "ñ"
+            ],
+            "cat": "nav",
+            "type": "tap"
+          },
+          {
+            "id": "palette",
+            "icon": "keyboard_command_key",
+            "es": "Comandos",
+            "en": "Commands",
+            "keys": [
+              "Ctrl",
+              "Shift",
+              "P"
+            ],
+            "cat": "sel",
+            "type": "tap"
+          },
+          {
+            "id": "gofile",
+            "icon": "description",
+            "es": "Ir a archivo",
+            "en": "Go to file",
+            "keys": [
+              "Ctrl",
+              "P"
+            ],
+            "cat": "sel",
+            "type": "tap"
+          },
+          {
+            "id": "comment",
+            "icon": "code",
+            "es": "Comentar",
+            "en": "Comment",
+            "keys": [
+              "Ctrl",
+              "/"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "format",
+            "icon": "format_align_left",
+            "es": "Formatear",
+            "en": "Format",
+            "keys": [
+              "Shift",
+              "Alt",
+              "F"
+            ],
+            "cat": "fmt",
+            "type": "tap"
+          },
+          {
+            "id": "rename",
+            "icon": "edit",
+            "es": "Renombrar",
+            "en": "Rename",
+            "keys": [
+              "F2"
+            ],
+            "cat": "edit",
+            "type": "tap"
+          },
+          {
+            "id": "side",
+            "icon": "view_sidebar",
+            "es": "Panel lateral",
+            "en": "Sidebar",
+            "keys": [
+              "Ctrl",
+              "B"
+            ],
+            "cat": "win",
+            "type": "tap"
+          },
+          {
+            "id": "split",
+            "icon": "splitscreen_right",
+            "es": "Dividir",
+            "en": "Split",
+            "keys": [
+              "Ctrl",
+              "\\"
+            ],
+            "cat": "win",
+            "type": "tap"
+          }
+        ]
+      }
+    }
+  },
+  "TPL": [
+    {
+      "id": "excel",
+      "variants": true,
+      "es": "Excel",
+      "en": "Excel",
+      "icon": "table_chart",
+      "process": "EXCEL.EXE",
+      "cat": "file",
+      "buttons": [
+        {
+          "id": "x1",
+          "icon": "functions",
+          "es": "Autosuma",
+          "en": "AutoSum",
+          "keys": [
+            "Alt",
+            "="
+          ],
+          "cat": "edit",
+          "type": "tap"
+        },
+        {
+          "id": "x2",
+          "icon": "calendar_today",
+          "es": "Fecha hoy",
+          "en": "Today",
+          "keys": [
+            "Ctrl",
+            ";"
+          ],
+          "cat": "file",
+          "type": "tap"
+        },
+        {
+          "id": "x3",
+          "icon": "filter_alt",
+          "es": "Filtro",
+          "en": "Filter",
+          "keys": [
+            "Ctrl",
+            "Shift",
+            "L"
+          ],
+          "cat": "sel",
+          "type": "tap"
+        },
+        {
+          "id": "x4",
+          "icon": "add_row_below",
+          "es": "Insertar fila",
+          "en": "Insert row",
+          "keys": [
+            "Ctrl",
+            "+"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "x5",
+          "icon": "percent",
+          "es": "Porcentaje",
+          "en": "Percent",
+          "keys": [
+            "Ctrl",
+            "Shift",
+            "%"
+          ],
+          "cat": "fmt",
+          "type": "tap"
+        },
+        {
+          "id": "x6",
+          "icon": "edit",
+          "es": "Editar celda",
+          "en": "Edit cell",
+          "keys": [
+            "F2"
+          ],
+          "cat": "edit",
+          "type": "tap"
+        },
+        {
+          "id": "x7",
+          "icon": "table",
+          "es": "Crear tabla",
+          "en": "Make table",
+          "keys": [
+            "Ctrl",
+            "T"
+          ],
+          "cat": "fmt",
+          "type": "tap"
+        },
+        {
+          "id": "x8",
+          "icon": "save",
+          "es": "Guardar",
+          "en": "Save",
+          "keys": [
+            "Ctrl",
+            "G"
+          ],
+          "cat": "file",
+          "type": "tap",
+          "vk": {
+            "en": [
+              "Ctrl",
+              "S"
+            ]
+          }
+        },
+        {
+          "id": "x9",
+          "icon": "tab",
+          "es": "Hoja sig.",
+          "en": "Next sheet",
+          "keys": [
+            "Ctrl",
+            "AvPág"
+          ],
+          "cat": "win",
+          "type": "tap"
+        }
+      ]
+    },
+    {
+      "id": "ppt",
+      "es": "PowerPoint",
+      "en": "PowerPoint",
+      "icon": "slideshow",
+      "process": "POWERPNT.EXE",
+      "cat": "win",
+      "buttons": [
+        {
+          "id": "p1",
+          "icon": "play_arrow",
+          "es": "Presentar",
+          "en": "Present",
+          "keys": [
+            "F5"
+          ],
+          "cat": "file",
+          "type": "tap"
+        },
+        {
+          "id": "p2",
+          "icon": "add_box",
+          "es": "Nueva diapo.",
+          "en": "New slide",
+          "keys": [
+            "Ctrl",
+            "M"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "p3",
+          "icon": "content_copy",
+          "es": "Duplicar",
+          "en": "Duplicate",
+          "keys": [
+            "Ctrl",
+            "D"
+          ],
+          "cat": "edit",
+          "type": "tap"
+        },
+        {
+          "id": "p4",
+          "icon": "group_work",
+          "es": "Agrupar",
+          "en": "Group",
+          "keys": [
+            "Ctrl",
+            "G"
+          ],
+          "cat": "sel",
+          "type": "tap"
+        },
+        {
+          "id": "p5",
+          "icon": "arrow_forward",
+          "es": "Siguiente",
+          "en": "Next",
+          "keys": [
+            "→"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "p6",
+          "icon": "stop",
+          "es": "Terminar",
+          "en": "End show",
+          "keys": [
+            "Esc"
+          ],
+          "cat": "win",
+          "type": "tap"
+        }
+      ]
+    },
+    {
+      "id": "zoom",
+      "es": "Videollamada",
+      "en": "Video call",
+      "icon": "videocam",
+      "process": "Zoom.exe",
+      "cat": "voice",
+      "buttons": [
+        {
+          "id": "z1",
+          "icon": "mic_off",
+          "es": "Micrófono",
+          "en": "Mic",
+          "keys": [
+            "Alt",
+            "A"
+          ],
+          "cat": "voice",
+          "type": "toggle"
+        },
+        {
+          "id": "z2",
+          "icon": "videocam_off",
+          "es": "Cámara",
+          "en": "Camera",
+          "keys": [
+            "Alt",
+            "V"
+          ],
+          "cat": "voice",
+          "type": "tap"
+        },
+        {
+          "id": "z3",
+          "icon": "screen_share",
+          "es": "Compartir",
+          "en": "Share",
+          "keys": [
+            "Alt",
+            "S"
+          ],
+          "cat": "win",
+          "type": "tap"
+        },
+        {
+          "id": "z4",
+          "icon": "back_hand",
+          "es": "Levantar mano",
+          "en": "Raise hand",
+          "keys": [
+            "Alt",
+            "Y"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "z5",
+          "icon": "chat",
+          "es": "Chat",
+          "en": "Chat",
+          "keys": [
+            "Alt",
+            "H"
+          ],
+          "cat": "sel",
+          "type": "tap"
+        },
+        {
+          "id": "z6",
+          "icon": "call_end",
+          "es": "Salir",
+          "en": "Leave",
+          "keys": [
+            "Alt",
+            "Q"
+          ],
+          "cat": "win",
+          "type": "tap",
+          "confirm": true
+        }
+      ]
+    },
+    {
+      "id": "explorer",
+      "es": "Explorador",
+      "en": "Explorer",
+      "icon": "folder",
+      "process": "explorer.exe",
+      "cat": "file",
+      "buttons": [
+        {
+          "id": "e1",
+          "icon": "create_new_folder",
+          "es": "Nueva carpeta",
+          "en": "New folder",
+          "keys": [
+            "Ctrl",
+            "Shift",
+            "N"
+          ],
+          "cat": "file",
+          "type": "tap"
+        },
+        {
+          "id": "e2",
+          "icon": "edit",
+          "es": "Renombrar",
+          "en": "Rename",
+          "keys": [
+            "F2"
+          ],
+          "cat": "edit",
+          "type": "tap"
+        },
+        {
+          "id": "e3",
+          "icon": "arrow_upward",
+          "es": "Subir nivel",
+          "en": "Up",
+          "keys": [
+            "Alt",
+            "↑"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "e4",
+          "icon": "info",
+          "es": "Propiedades",
+          "en": "Properties",
+          "keys": [
+            "Alt",
+            "Enter"
+          ],
+          "cat": "sel",
+          "type": "tap"
+        },
+        {
+          "id": "e5",
+          "icon": "delete",
+          "es": "Papelera",
+          "en": "Delete",
+          "keys": [
+            "Supr"
+          ],
+          "cat": "win",
+          "type": "tap"
+        }
+      ]
+    },
+    {
+      "id": "outlook",
+      "es": "Correo",
+      "en": "Mail",
+      "icon": "mail",
+      "process": "OUTLOOK.EXE",
+      "cat": "web",
+      "buttons": [
+        {
+          "id": "o1",
+          "icon": "edit_square",
+          "es": "Nuevo correo",
+          "en": "New mail",
+          "keys": [
+            "Ctrl",
+            "U"
+          ],
+          "cat": "file",
+          "type": "tap"
+        },
+        {
+          "id": "o2",
+          "icon": "reply",
+          "es": "Responder",
+          "en": "Reply",
+          "keys": [
+            "Ctrl",
+            "R"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "o3",
+          "icon": "reply_all",
+          "es": "Resp. a todos",
+          "en": "Reply all",
+          "keys": [
+            "Ctrl",
+            "Shift",
+            "R"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "o4",
+          "icon": "forward",
+          "es": "Reenviar",
+          "en": "Forward",
+          "keys": [
+            "Ctrl",
+            "F"
+          ],
+          "cat": "nav",
+          "type": "tap"
+        },
+        {
+          "id": "o5",
+          "icon": "send",
+          "es": "Enviar",
+          "en": "Send",
+          "keys": [
+            "Alt",
+            "S"
+          ],
+          "cat": "file",
+          "type": "tap"
+        }
+      ]
+    },
+    {
+      "id": "notepad",
+      "es": "Bloc de notas",
+      "en": "Notepad",
+      "icon": "edit_note",
+      "process": "notepad.exe",
+      "cat": "edit",
+      "buttons": [
+        {
+          "id": "n1",
+          "icon": "schedule",
+          "es": "Fecha y hora",
+          "en": "Date/time",
+          "keys": [
+            "F5"
+          ],
+          "cat": "file",
+          "type": "tap"
+        },
+        {
+          "id": "n2",
+          "icon": "find_replace",
+          "es": "Reemplazar",
+          "en": "Replace",
+          "keys": [
+            "Ctrl",
+            "H"
+          ],
+          "cat": "sel",
+          "type": "tap"
+        },
+        {
+          "id": "n3",
+          "icon": "text_increase",
+          "es": "Zoom +",
+          "en": "Zoom in",
+          "keys": [
+            "Ctrl",
+            "+"
+          ],
+          "cat": "edit",
+          "type": "tap"
+        },
+        {
+          "id": "n4",
+          "icon": "wrap_text",
+          "es": "Ajuste línea",
+          "en": "Word wrap",
+          "keys": [
+            "Alt",
+            "O",
+            "W"
+          ],
+          "cat": "fmt",
+          "type": "tap"
+        }
+      ]
+    }
+  ],
+  "LIB": {
+    "edit": [
+      {
+        "id": "l_copy",
+        "icon": "content_copy",
+        "es": "Copiar",
+        "en": "Copy",
+        "keys": [
+          "Ctrl",
+          "C"
+        ],
+        "cat": "edit",
+        "type": "tap"
+      },
+      {
+        "id": "l_paste",
+        "icon": "content_paste",
+        "es": "Pegar",
+        "en": "Paste",
+        "keys": [
+          "Ctrl",
+          "V"
+        ],
+        "cat": "edit",
+        "type": "tap"
+      },
+      {
+        "id": "l_cut",
+        "icon": "content_cut",
+        "es": "Cortar",
+        "en": "Cut",
+        "keys": [
+          "Ctrl",
+          "X"
+        ],
+        "cat": "edit",
+        "type": "tap"
+      },
+      {
+        "id": "l_undo",
+        "icon": "undo",
+        "es": "Deshacer",
+        "en": "Undo",
+        "keys": [
+          "Ctrl",
+          "Z"
+        ],
+        "cat": "hist",
+        "type": "tap"
+      },
+      {
+        "id": "l_redo",
+        "icon": "redo",
+        "es": "Rehacer",
+        "en": "Redo",
+        "keys": [
+          "Ctrl",
+          "Y"
+        ],
+        "cat": "hist",
+        "type": "tap"
+      },
+      {
+        "id": "l_selall",
+        "icon": "select_all",
+        "es": "Seleccionar todo",
+        "en": "Select all",
+        "keys": [
+          "Ctrl",
+          "A"
+        ],
+        "cat": "sel",
+        "type": "tap"
+      },
+      {
+        "id": "l_clip",
+        "icon": "content_paste_search",
+        "es": "Portapapeles",
+        "en": "Clipboard",
+        "keys": [
+          "Win",
+          "V"
+        ],
+        "cat": "edit",
+        "type": "tap"
+      }
+    ],
+    "win": [
+      {
+        "id": "l_alttab",
+        "icon": "swap_horiz",
+        "es": "Cambiar app",
+        "en": "Switch app",
+        "keys": [
+          "Alt",
+          "Tab"
+        ],
+        "cat": "win",
+        "type": "tap"
+      },
+      {
+        "id": "l_task",
+        "icon": "view_carousel",
+        "es": "Vista de tareas",
+        "en": "Task view",
+        "keys": [
+          "Win",
+          "Tab"
+        ],
+        "cat": "win",
+        "type": "tap"
+      },
+      {
+        "id": "l_desk",
+        "icon": "desktop_windows",
+        "es": "Escritorio",
+        "en": "Desktop",
+        "keys": [
+          "Win",
+          "D"
+        ],
+        "cat": "win",
+        "type": "tap"
+      },
+      {
+        "id": "l_max",
+        "icon": "fullscreen",
+        "es": "Maximizar",
+        "en": "Maximize",
+        "keys": [
+          "Win",
+          "↑"
+        ],
+        "cat": "win",
+        "type": "tap"
+      },
+      {
+        "id": "l_left",
+        "icon": "align_horizontal_left",
+        "es": "Ajustar izq.",
+        "en": "Snap left",
+        "keys": [
+          "Win",
+          "←"
+        ],
+        "cat": "win",
+        "type": "tap"
+      },
+      {
+        "id": "l_right",
+        "icon": "align_horizontal_right",
+        "es": "Ajustar der.",
+        "en": "Snap right",
+        "keys": [
+          "Win",
+          "→"
+        ],
+        "cat": "win",
+        "type": "tap"
+      },
+      {
+        "id": "l_close",
+        "icon": "close",
+        "es": "Cerrar ventana",
+        "en": "Close window",
+        "keys": [
+          "Alt",
+          "F4"
+        ],
+        "cat": "win",
+        "type": "tap",
+        "confirm": true
+      }
+    ],
+    "mouse": [
+      {
+        "id": "l_rc",
+        "icon": "right_click",
+        "es": "Clic derecho",
+        "en": "Right click",
+        "keys": [],
+        "cat": "nav",
+        "type": "mouse",
+        "mouse": "rclick"
+      },
+      {
+        "id": "l_dbl",
+        "icon": "ads_click",
+        "es": "Doble clic",
+        "en": "Double click",
+        "keys": [],
+        "cat": "nav",
+        "type": "mouse",
+        "mouse": "dbl"
+      },
+      {
+        "id": "l_drag",
+        "icon": "drag_pan",
+        "es": "Arrastrar",
+        "en": "Drag",
+        "keys": [],
+        "cat": "nav",
+        "type": "toggle",
+        "mouse": "drag"
+      },
+      {
+        "id": "l_su",
+        "icon": "keyboard_double_arrow_up",
+        "es": "Desplazar ↑",
+        "en": "Scroll up",
+        "keys": [],
+        "cat": "nav",
+        "type": "hold",
+        "mouse": "sup"
+      },
+      {
+        "id": "l_sd",
+        "icon": "keyboard_double_arrow_down",
+        "es": "Desplazar ↓",
+        "en": "Scroll down",
+        "keys": [],
+        "cat": "nav",
+        "type": "hold",
+        "mouse": "sdn"
+      }
+    ],
+    "voice": [
+      {
+        "id": "l_dict",
+        "icon": "mic",
+        "es": "Dictar",
+        "en": "Dictate",
+        "keys": [
+          "Win",
+          "H"
+        ],
+        "cat": "voice",
+        "type": "toggle"
+      },
+      {
+        "id": "l_va",
+        "icon": "settings_voice",
+        "es": "Acceso por voz",
+        "en": "Voice access",
+        "keys": [
+          "Win",
+          "Ctrl",
+          "S"
+        ],
+        "cat": "voice",
+        "type": "tap"
+      },
+      {
+        "id": "l_ptt",
+        "icon": "record_voice_over",
+        "es": "Hablar",
+        "en": "Talk",
+        "keys": [
+          "Ctrl",
+          "Space"
+        ],
+        "cat": "voice",
+        "type": "hold"
+      },
+      {
+        "id": "l_narr",
+        "icon": "hearing",
+        "es": "Narrador",
+        "en": "Narrator",
+        "keys": [
+          "Win",
+          "Ctrl",
+          "Enter"
+        ],
+        "cat": "voice",
+        "type": "tap"
+      }
+    ],
+    "text": [
+      {
+        "id": "l_mail",
+        "icon": "alternate_email",
+        "es": "Mi correo",
+        "en": "My email",
+        "keys": [],
+        "cat": "text",
+        "type": "text",
+        "text": "nombre@correo.com"
+      },
+      {
+        "id": "l_sign",
+        "icon": "signature",
+        "es": "Mi firma",
+        "en": "My signature",
+        "keys": [],
+        "cat": "text",
+        "type": "text",
+        "text": "Saludos cordiales,\nMichael"
+      },
+      {
+        "id": "l_addr",
+        "icon": "home",
+        "es": "Mi dirección",
+        "en": "My address",
+        "keys": [],
+        "cat": "text",
+        "type": "text",
+        "text": "Av. Principal 123, Lima"
+      }
+    ],
+    "sys": [
+      {
+        "id": "l_shot",
+        "icon": "screenshot_region",
+        "es": "Captura",
+        "en": "Screenshot",
+        "keys": [
+          "Win",
+          "Shift",
+          "S"
+        ],
+        "cat": "sel",
+        "type": "tap"
+      },
+      {
+        "id": "l_osk",
+        "icon": "keyboard",
+        "es": "Teclado en pantalla",
+        "en": "On-screen keyboard",
+        "keys": [
+          "Win",
+          "Ctrl",
+          "O"
+        ],
+        "cat": "sel",
+        "type": "tap"
+      },
+      {
+        "id": "l_mag",
+        "icon": "zoom_in",
+        "es": "Lupa",
+        "en": "Magnifier",
+        "keys": [
+          "Win",
+          "+"
+        ],
+        "cat": "sel",
+        "type": "tap"
+      },
+      {
+        "id": "l_files",
+        "icon": "folder",
+        "es": "Explorador",
+        "en": "Explorer",
+        "keys": [
+          "Win",
+          "E"
+        ],
+        "cat": "file",
+        "type": "tap"
+      },
+      {
+        "id": "l_set",
+        "icon": "settings",
+        "es": "Configuración",
+        "en": "Settings",
+        "keys": [
+          "Win",
+          "I"
+        ],
+        "cat": "file",
+        "type": "tap"
+      },
+      {
+        "id": "l_lock",
+        "icon": "lock",
+        "es": "Bloquear",
+        "en": "Lock",
+        "keys": [
+          "Win",
+          "L"
+        ],
+        "cat": "win",
+        "type": "tap"
+      }
+    ]
+  },
+  "SCROLL": [
+    {
+      "id": "scu",
+      "icon": "keyboard_double_arrow_up",
+      "es": "Subir",
+      "en": "Scroll up",
+      "keys": [],
+      "cat": "nav",
+      "type": "hold",
+      "mouse": "sup"
+    },
+    {
+      "id": "scd",
+      "icon": "keyboard_double_arrow_down",
+      "es": "Bajar",
+      "en": "Scroll down",
+      "keys": [],
+      "cat": "nav",
+      "type": "hold",
+      "mouse": "sdn"
+    }
+  ],
+  "PROC": {
+    "taskmgr": "Taskmgr.exe",
+    "word": "WINWORD.EXE",
+    "browser": "chrome.exe",
+    "code": "Code.exe",
+    "excel": "EXCEL.EXE"
+  },
+  "KNOWN": [
+    "photoshop",
+    "spotify",
+    "teams",
+    "canva",
+    "whatsapp",
+    "obs",
+    "excel",
+    "word",
+    "chrome",
+    "outlook",
+    "zoom",
+    "powerpoint",
+    "illustrator",
+    "premiere",
+    "figma",
+    "notion",
+    "slack",
+    "discord",
+    "vlc",
+    "blender",
+    "gimp",
+    "steam",
+    "edge",
+    "firefox"
+  ],
+  "APPS": [
+    {
+      "id": "taskmgr",
+      "name": "Admin. de tareas",
+      "title": "Administrador de tareas",
+      "icon": "monitoring",
+      "profile": "taskmgr",
+      "admin": true
+    },
+    {
+      "id": "word",
+      "name": "Word",
+      "title": "Informe trimestral.docx — Word",
+      "icon": "description",
+      "profile": "word"
+    },
+    {
+      "id": "browser",
+      "name": "Chrome",
+      "title": "Nueva pestaña — Chrome",
+      "icon": "public",
+      "profile": "browser"
+    },
+    {
+      "id": "code",
+      "name": "VS Code",
+      "title": "main.py — VS Code",
+      "icon": "code",
+      "profile": "code"
+    },
+    {
+      "id": "excel",
+      "name": "Excel",
+      "title": "Presupuesto 2026.xlsx — Excel",
+      "icon": "table_chart",
+      "profile": "excel"
+    }
+  ],
+  "SIZES": {
+    "S": {
+      "foot": 9,
+      "w": 72,
+      "h": 66,
+      "icon": 20,
+      "label": 12,
+      "hb": 36,
+      "sh": 44,
+      "sicon": 18,
+      "slabel": 10,
+      "gap": 6
+    },
+    "M": {
+      "foot": 10,
+      "w": 92,
+      "h": 78,
+      "icon": 28,
+      "label": 14,
+      "hb": 40,
+      "sh": 60,
+      "sicon": 22,
+      "slabel": 11,
+      "gap": 8
+    },
+    "L": {
+      "foot": 11,
+      "w": 116,
+      "h": 98,
+      "icon": 34,
+      "label": 16,
+      "hb": 46,
+      "sh": 72,
+      "sicon": 26,
+      "slabel": 13,
+      "gap": 10
+    }
+  },
+  "PRESETS": {
+    "std": {
+      "min": 0,
+      "deb": 150,
+      "hit": 8,
+      "mov": 45
+    },
+    "leve": {
+      "min": 0,
+      "deb": 300,
+      "hit": 14,
+      "mov": 35
+    },
+    "fuerte": {
+      "min": 80,
+      "deb": 600,
+      "hit": 24,
+      "mov": 28
+    }
+  },
+  "ICONLIB": [
+    [
+      "content_copy",
+      "copiar copy duplicar"
+    ],
+    [
+      "content_paste",
+      "pegar paste"
+    ],
+    [
+      "content_cut",
+      "cortar cut"
+    ],
+    [
+      "undo",
+      "deshacer undo atras"
+    ],
+    [
+      "redo",
+      "rehacer redo"
+    ],
+    [
+      "save",
+      "guardar save"
+    ],
+    [
+      "picture_as_pdf",
+      "pdf exportar"
+    ],
+    [
+      "print",
+      "imprimir print"
+    ],
+    [
+      "search",
+      "buscar find search"
+    ],
+    [
+      "find_replace",
+      "reemplazar replace"
+    ],
+    [
+      "select_all",
+      "seleccionar todo select all"
+    ],
+    [
+      "format_bold",
+      "negrita bold"
+    ],
+    [
+      "format_italic",
+      "cursiva italic"
+    ],
+    [
+      "format_underlined",
+      "subrayar underline"
+    ],
+    [
+      "format_list_bulleted",
+      "viñetas lista bullets list"
+    ],
+    [
+      "format_list_numbered",
+      "numerada numbered"
+    ],
+    [
+      "title",
+      "titulo heading title"
+    ],
+    [
+      "format_align_left",
+      "alinear izquierda align left formatear format"
+    ],
+    [
+      "format_align_center",
+      "centrar center"
+    ],
+    [
+      "spellcheck",
+      "ortografia spelling"
+    ],
+    [
+      "mic",
+      "dictar dictado dictate mic voz"
+    ],
+    [
+      "mic_off",
+      "silenciar mute microfono"
+    ],
+    [
+      "record_voice_over",
+      "hablar talk push"
+    ],
+    [
+      "volume_up",
+      "volumen subir volume up"
+    ],
+    [
+      "volume_off",
+      "sin sonido mute audio"
+    ],
+    [
+      "play_arrow",
+      "reproducir play presentar"
+    ],
+    [
+      "pause",
+      "pausa pause"
+    ],
+    [
+      "skip_next",
+      "siguiente next"
+    ],
+    [
+      "skip_previous",
+      "anterior previous"
+    ],
+    [
+      "videocam",
+      "camara video"
+    ],
+    [
+      "screen_share",
+      "compartir pantalla share"
+    ],
+    [
+      "call_end",
+      "colgar salir leave"
+    ],
+    [
+      "chat",
+      "chat mensaje"
+    ],
+    [
+      "mail",
+      "correo mail email"
+    ],
+    [
+      "send",
+      "enviar send"
+    ],
+    [
+      "reply",
+      "responder reply"
+    ],
+    [
+      "forward",
+      "reenviar forward"
+    ],
+    [
+      "public",
+      "web navegador browser"
+    ],
+    [
+      "tab",
+      "pestaña tab"
+    ],
+    [
+      "add",
+      "nuevo nueva new add"
+    ],
+    [
+      "close",
+      "cerrar close"
+    ],
+    [
+      "refresh",
+      "recargar actualizar reload refresh"
+    ],
+    [
+      "arrow_back",
+      "atras back volver"
+    ],
+    [
+      "arrow_forward",
+      "adelante forward"
+    ],
+    [
+      "zoom_in",
+      "ampliar zoom in"
+    ],
+    [
+      "zoom_out",
+      "reducir zoom out"
+    ],
+    [
+      "fullscreen",
+      "pantalla completa maximizar fullscreen"
+    ],
+    [
+      "desktop_windows",
+      "escritorio desktop"
+    ],
+    [
+      "swap_horiz",
+      "cambiar app switch alt tab"
+    ],
+    [
+      "view_sidebar",
+      "panel lateral sidebar"
+    ],
+    [
+      "splitscreen_right",
+      "dividir split"
+    ],
+    [
+      "terminal",
+      "terminal consola console"
+    ],
+    [
+      "code",
+      "codigo code comentar"
+    ],
+    [
+      "keyboard_command_key",
+      "comandos command palette"
+    ],
+    [
+      "description",
+      "documento archivo file document"
+    ],
+    [
+      "folder",
+      "carpeta folder explorador"
+    ],
+    [
+      "create_new_folder",
+      "nueva carpeta new folder"
+    ],
+    [
+      "edit",
+      "editar renombrar edit rename"
+    ],
+    [
+      "delete",
+      "eliminar borrar papelera delete"
+    ],
+    [
+      "lock",
+      "bloquear lock"
+    ],
+    [
+      "settings",
+      "configuracion ajustes settings preferencias"
+    ],
+    [
+      "screenshot_region",
+      "captura screenshot"
+    ],
+    [
+      "calendar_today",
+      "fecha hoy date today"
+    ],
+    [
+      "schedule",
+      "hora tiempo time"
+    ],
+    [
+      "functions",
+      "suma autosuma sum"
+    ],
+    [
+      "filter_alt",
+      "filtro filter"
+    ],
+    [
+      "table",
+      "tabla table"
+    ],
+    [
+      "percent",
+      "porcentaje percent"
+    ],
+    [
+      "home",
+      "inicio home"
+    ],
+    [
+      "star",
+      "favorito star"
+    ],
+    [
+      "bolt",
+      "accion rapida quick"
+    ],
+    [
+      "text_fields",
+      "texto text escribir"
+    ],
+    [
+      "alternate_email",
+      "email arroba"
+    ],
+    [
+      "signature",
+      "firma signature"
+    ],
+    [
+      "right_click",
+      "clic derecho right click"
+    ],
+    [
+      "mouse",
+      "raton mouse clic"
+    ],
+    [
+      "drag_pan",
+      "arrastrar drag"
+    ],
+    [
+      "pan_tool",
+      "mantener hold mano"
+    ],
+    [
+      "keyboard",
+      "teclado keyboard tecla"
+    ],
+    [
+      "translate",
+      "traducir translate idioma"
+    ],
+    [
+      "brush",
+      "pincel brush dibujar"
+    ],
+    [
+      "palette",
+      "color paleta"
+    ],
+    [
+      "crop",
+      "recortar crop"
+    ],
+    [
+      "layers",
+      "capas layers"
+    ],
+    [
+      "music_note",
+      "musica spotify music"
+    ],
+    [
+      "back_hand",
+      "levantar mano raise hand"
+    ]
+  ],
+  "KEYICON": {
+    "ctrl+c": "content_copy",
+    "ctrl+v": "content_paste",
+    "ctrl+x": "content_cut",
+    "ctrl+z": "undo",
+    "ctrl+y": "redo",
+    "ctrl+s": "save",
+    "ctrl+g": "save",
+    "ctrl+p": "print",
+    "ctrl+f": "search",
+    "ctrl+b": "search",
+    "ctrl+a": "select_all",
+    "ctrl+e": "select_all",
+    "ctrl+t": "add",
+    "ctrl+w": "close",
+    "ctrl+n": "format_bold",
+    "f5": "refresh",
+    "alt+f4": "close",
+    "alt+tab": "swap_horiz",
+    "win+d": "desktop_windows",
+    "win+h": "mic"
+  },
+  "BLOCKED": {
+    "ctrl+alt+supr": "b",
+    "ctrl+alt+delete": "b",
+    "ctrl+alt+del": "b",
+    "win+l": "b",
+    "win+g": "s",
+    "alt+tab": "s",
+    "win+tab": "s",
+    "ctrl+shift+esc": "s"
+  },
+  "ICONS": [
+    "bolt",
+    "content_copy",
+    "content_paste",
+    "undo",
+    "save",
+    "search",
+    "mic",
+    "record_voice_over",
+    "keyboard",
+    "mouse",
+    "pan_tool",
+    "star",
+    "favorite",
+    "home",
+    "mail",
+    "public",
+    "folder",
+    "terminal",
+    "code",
+    "description",
+    "edit",
+    "delete",
+    "settings",
+    "play_arrow"
+  ]
+}

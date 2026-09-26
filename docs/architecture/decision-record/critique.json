@@ -1,0 +1,260 @@
+{
+  "verdict": "El plano es sólido en lo esencial. Los riesgos centrales tienen mecanismo: foco (REG-01), teclas pegadas (REG-03), datos (REG-08) y UIA (REG-06). La trazabilidad [Req], la persistencia y la IPC mínima están bien pensadas. Aun así, no está listo como «base normativa» por cuatro motivos.\n\n1. Incumple o rebaja requisitos MUST sin autoridad para hacerlo:\n   - SIS-002 (inicio elevado sin UAC) se aplaza a M7.\n   - NFR-001 recibe una excepción de «burbuja primero».\n   - PLA-008 pasa a enviar un quinto dato, el `install`.\n2. Faltan mecanismos para requisitos MUST concretos:\n   - modo compatible con scancodes, que además es criterio explícito de docs/09;\n   - punto objetivo del mouse (EJE-009);\n   - atenuado y sus excepciones;\n   - devolución del foco del CC y «Probar ahora».\n3. Hay contradicciones internas que romperían justo las garantías que presume:\n   - `ActivationGuard` depende de un *hook* WinEvent con `WINEVENT_SKIPOWNPROCESS`.\n   - La bandeja usa una ventana solo de mensajes, que no puede ponerse en primer plano como exige `TrackPopupMenu`, y además `SetForegroundWindow` está prohibido.\n   - «Reiniciar el hilo del motor» colgado no es posible en .NET y deja abierta una carrera que vuelve a pulsar teclas.\n   - El anti-rollback del manifiesto choca con ACT-005.\n   - La firma por OIDC no protege contra una cuenta de GitHub comprometida, que es justo el objetivo de D15.\n4. Para un producto que empieza con una persona hay sobreingeniería evidente: proxy de IA propio, laboratorio de 2 VM con nightly de 8 h, dos dispatchers antes de medir, KMS+OIDC+YubiKey, Stryker y SharpFuzz desde el principio, 31 ADR. Mientras tanto quedan sin prueba ARM64, el hardware táctil real y la fidelidad visual.\n\nNada de esto obliga a rehacer la arquitectura. Son correcciones puntuales y ADR que deben cerrarse antes de M2. Lo más urgente es la valla de generación del motor, el origen del punto del mouse, el modo compatible y la decisión sobre SIS-002 con el usuario.",
+  "gaps": [
+    {
+      "severity": "alta",
+      "area": "Motor / REG-03 (hilo del motor colgado)",
+      "problem": "§3.2 regla 6: cuando el motor deja de latir, EmergencyReleaser suelta desde el ledger y «después se reinicia el hilo del motor». En .NET no se puede abortar un hilo colgado. El hilo viejo sigue vivo y, si se desbloquea, ejecuta un `SendInput(down)` de un plan anterior después de la liberación de emergencia. El resultado es otra vez una tecla pegada, ahora sin titular lógico, y el nuevo `EngineState.Empty` la ignora. INV-2 e INV-3 no cubren esta carrera y la prueba de «muerte en cada paso» no la modela, porque ahí el proceso muere y aquí el hilo vuelve.",
+      "fix": "Añadir una valla de generación: `EngineGeneration` en el ledger (Interlocked) y en cada lote de `Inject`. El inyector hace compare-and-send, y el `EmergencyReleaser` incrementa la generación antes de soltar, así que un hilo zombi no puede inyectar nada. Si no se puede garantizar eso, escalar a reinicio del proceso (y que Sentinel suelte). Añadir al modelo CsCheck el evento «hilo congelado y reanudado tras la emergencia».",
+      "requirementIds": [
+        "REG-03",
+        "SEG-007",
+        "NFR-005",
+        "SEG-001"
+      ]
+    },
+    {
+      "severity": "alta",
+      "area": "Motor / modo compatible (scancodes)",
+      "problem": "`Profile.CompatMode` existe en el modelo, pero no llega ni a `ActivationContext` ni a `EngineConfig`, `InjectedKey` o los planificadores. §7.7 dice que siempre se envía «VK junto con KEYEVENTF_SCANCODE». Con esa marca, Windows ignora wVk, así que la frase es contradictoria y deja sin sentido el modo compatible. También hace que la traducción por distribución (VK) no se aplique como se describe. Uno de los criterios de docs/09 es «El modo compatible envía scancodes», y no tiene prueba ni sitio en la arquitectura.",
+      "fix": "Definir `InjectionMode {VirtualKey, ScanCode}` como parte del plan resuelto (perfil de origen → `ActivationContext` → `Inject`). En modo normal, VK más el scancode informativo, sin `KEYEVENTF_SCANCODE`; en modo compatible, solo scancode más `EXTENDEDKEY`. Añadir casos en InputProbe y S7 para ambos modos y el `[Req]` correspondiente.",
+      "requirementIds": [
+        "EJE-003",
+        "NFR-004",
+        "ATJ-004"
+      ]
+    },
+    {
+      "severity": "alta",
+      "area": "Motor / acciones de mouse",
+      "problem": "EJE-009 (MUST) pide actuar en «la última posición del puntero fuera de Clícalo». `MousePlanner` la da por conocida, pero ningún componente la captura. Al tocar el panel, Windows mueve el cursor al punto del toque, así que `GetCursorPos` en `WM_POINTERDOWN` devuelve un punto sobre el panel. Sin un `WH_MOUSE_LL` permanente (el plano solo lo usa de forma temporal) ni otro muestreo, el clic derecho o el desplazamiento acabarían sobre el propio panel.",
+      "fix": "Añadir un `PointerPositionTracker` en SysEvents. Una opción es `GetCursorPos` más `WindowFromPoint` en cada `WM_MOUSEMOVE` del sistema mediante un `WH_MOUSE_LL` pasivo, que no es de teclado y no incumple NFR-009. La otra es muestrear con `EVENT_OBJECT_LOCATIONCHANGE` del cursor (OBJID_CURSOR) y guardar el último punto fuera de `SurfaceRegistry`. Documentar el coste y el riesgo con el antivirus y añadir una prueba de integración con toque sintético.",
+      "requirementIds": [
+        "EJE-009",
+        "FIJ-006"
+      ]
+    },
+    {
+      "severity": "alta",
+      "area": "Seguridad / firma del manifiesto (D15, T5)",
+      "problem": "El manifiesto se firma con ECDSA en KMS «mediante OIDC» desde `release-core.yml`, protegido por el entorno `signing` con revisores. Con un único mantenedor, quien compromete su cuenta de GitHub puede lanzar el workflow, aprobar el entorno y obtener el token OIDC que firma en KMS. Queda sin cumplir justo el objetivo declarado de D15: que una cuenta de GitHub comprometida no controle las actualizaciones.",
+      "fix": "Hacer que la política del KMS exija un segundo factor fuera de GitHub, por ejemplo una aprobación en la consola del proveedor de nube con MFA de hardware. Otra opción es convertir la firma local con YubiKey (`cl sign-manifest`) en el camino principal para estable y dejar OIDC solo para beta. Corregir T5 y su riesgo residual para que reflejen el diseño real.",
+      "requirementIds": [
+        "ACT-003",
+        "NFR-009"
+      ]
+    },
+    {
+      "severity": "alta",
+      "area": "Elevación / MUST incumplido",
+      "problem": "SIS-002 (MUST) pide que iniciar con Windows y como administrador a la vez arranque elevado sin pedir UAC. El plano lo deja solo en la edición por máquina, que llega en M7, después de la 2.0. La 2.0 se publicaría sin cumplir un MUST. El motivo de seguridad es correcto, pero el plano no puede rebajar un requisito por su cuenta, y PQ-25 señala que el UAC en cada arranque es una barrera para quien usa la voz.",
+      "fix": "Opción A: adelantar a 2.0 una instalación mínima por máquina, por ejemplo un componente opcional firmado en `%ProgramFiles%` con su tarea `HighestAvailable`, instalado una vez con UAC desde Sistema › Inicio. Opción B: pedir al usuario una decisión explícita que rebaje SIS-002 a SHOULD para la 2.0, registrada en §7 del catálogo y en un ADR. No dejarlo implícito.",
+      "requirementIds": [
+        "SIS-002",
+        "EJE-013",
+        "LOG-007"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "REG-01 / ActivationGuard",
+      "problem": "§7.9 instala el WinEvent de primer plano con `WINEVENT_SKIPOWNPROCESS`, pero `ActivationGuard` (§3.5) se dispara precisamente con `EVENT_SYSTEM_FOREGROUND` sobre una ventana propia de `SurfaceRegistry`. Esos eventos se generan en hilos del propio proceso y ese filtro, muy probablemente, los descarta. El guardián de producción de la regla nº 1 no se enteraría nunca, y EC-EJE-05 (Clícalo en primer plano) tampoco se vería.",
+      "fix": "Detectar la activación dentro del proceso con `WM_ACTIVATE`/`WM_NCACTIVATE`/`WM_ACTIVATEAPP` en el *hook* común de `HwndSource`, que es más simple y determinista. Otra opción es un segundo `SetWinEventHook` sin el filtro, limitado al propio PID. Añadir una prueba negativa que fuerce una activación y compruebe que `reg01.violations` sube.",
+      "requirementIds": [
+        "REG-01"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Bandeja (D9) frente a REG-01 y las APIs prohibidas",
+      "problem": "La bandeja vive en SysEvents sobre una «ventana solo de mensajes» y usa `TrackPopupMenuEx`. La documentación de Shell_NotifyIcon exige llamar a `SetForegroundWindow` sobre la ventana propietaria antes de `TrackPopupMenu`, o el menú no se cierra bien. Una ventana `HWND_MESSAGE` no puede estar en primer plano, y además `SetForegroundWindow` está prohibido fuera de `FocusBroker`. Al cerrar el menú, el foco no vuelve a la app anterior (L-WIN-1: la bandeja activaba la ventana en la v1).",
+      "fix": "Usar una ventana de nivel superior oculta y propia para el menú. Pasar por `FocusBroker` con una concesión de tipo `TrayMenu` que devuelva el primer plano verificado al cerrar, y marcarla como excepción en `BannedSymbols`. Añadir una prueba en Windowing con el Bloc de notas activo, menú de bandeja y Soltar todo, comprobando que el foco vuelve al Bloc de notas.",
+      "requirementIds": [
+        "REG-01",
+        "BUR-003",
+        "REG-03"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Foco del CC y «Probar ahora»",
+      "problem": "`FocusBroker` solo modela concesiones para escribir en la búsqueda. Hay otros flujos que necesitan cambiar el primer plano de forma orquestada y no tienen dueño ni prueba:\n- CCM-004: al cerrar el CC, el foco vuelve a la app anterior.\n- PRB-004: ocultar el CC, activar la app destino, enviar a los 0,9 s y volver a los 2,6 s.\n- PRB-007: si no se recupera el primer plano, hacer parpadear la barra de tareas.\n- Abrir el CC desde el panel.\nCon `SetForegroundWindow` y `Window.Activate` prohibidos fuera de `FocusBroker`, ninguno tiene camino legal.",
+      "fix": "Generalizar `FocusBroker` a un `ForegroundOrchestrator` con concesiones tipadas (`TextInput`, `ControlCenter`, `TryNowTarget`, `TrayMenu`), cada una con restauración verificada, reintento y resultado. Modelar «Probar ahora» como un caso de uso de Application con temporizadores de `TimeProvider`. Añadir pruebas E2E para CCM-004 y PRB-004/007.",
+      "requirementIds": [
+        "CCM-004",
+        "PRB-004",
+        "PRB-006",
+        "PRB-007"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "FocusBroker por voz",
+      "problem": "`AcquireTextInputAsync` se documenta como algo que se llama «DENTRO del manejador del toque», que es cuando el proceso tiene el último evento de entrada. Si la búsqueda se abre por voz con UIA Invoke, o con un conmutador, Clícalo no recibió el último evento de entrada. El bloqueo de primer plano de Windows puede hacer fallar `SetForegroundWindow`, y REG-05 y BUS-003 exigen poder buscar y dictar sin teclado. S4 solo prueba la entrada por toque.",
+      "fix": "Extender S4 con la búsqueda abierta por Acceso por voz, por Narrador y por el atajo global (`RegisterHotKey` da derecho de primer plano). Documentar la estrategia de repliegue: `AllowSetForegroundWindow` o el mensaje de hotkey. Añadir un criterio de 20 de 20 por origen.",
+      "requirementIds": [
+        "BUS-002",
+        "BUS-003",
+        "REG-05",
+        "ACC-004"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Estado sin dueño entre superficies",
+      "problem": "El plano declara tres dueños de estado, pero hay estado transversal sin dueño ni hilo:\n- `NoticeQueue`, compartida entre el panel en Surfaces y la barra de estado del CC en Workspace (CCM-003);\n- el estado de captura (lo inicia el CC y se cancela desde el panel, ATJ-008);\n- Modo prueba;\n- el atenuado.\nEl atenuado (autoDim, dimLevel, 2,5 s, excepciones de DIS-06 y EJE-017 «el primer toque despierta y ejecuta») no aparece en ninguna parte del plano ni en `PanelSession`. Con dos dispatchers, esto es exactamente lo que genera carreras. Además, docs/09 exige verificar «el atenuado… y las excepciones».",
+      "fix": "Declarar un cuarto almacén, `InteractionState` (avisos, captura, prueba, atenuado y concesiones), con un único escritor (Surfaces) y publicación inmutable hacia Workspace. Añadir `DimPolicy` pura en Domain con una tabla de excepciones probada, y su `[Req]` para GEN-009, EJE-017 y SEG-002.",
+      "requirementIds": [
+        "AVI-002",
+        "CCM-003",
+        "ATJ-008",
+        "TAC-008",
+        "GEN-009",
+        "EJE-017",
+        "SEG-002"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Actualizaciones / anti-rollback frente a reversión",
+      "problem": "§9.3 rechaza todo manifiesto con `seq` menor que el último visto (anti-rollback), y a la vez promete «Volver a la versión anterior» (ACT-005) con `AllowVersionDowngrade`. No define cómo se distingue una bajada legítima pedida por el usuario de un ataque de bajada. Tampoco qué pasa con `minSafeVersion` y `revoked` cuando N−1 está revocada, ni cómo se relaciona con la regla de «estable nunca baja».",
+      "fix": "Separar las dos cosas: el anti-rollback se aplica al manifiesto (su `seq` nunca baja), mientras que la versión instalable puede bajar solo por acción explícita del usuario. El paquete N−1 se verifica con firma, está en la lista `rollbackAllowed` del manifiesto vigente y respeta `minSafeVersion`. Añadir una prueba de Infrastructure para una bajada legítima y otra para una bajada atacante.",
+      "requirementIds": [
+        "ACT-005",
+        "ACT-003",
+        "REG-04"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Privacidad de la IA",
+      "problem": "PLA-008 (MUST) y el texto [aiPrivacy] prometen enviar solo 4 datos. El plano añade un `install` UUID al proxy (§9.2 y §12.3 «4 campos más el install»). Es un quinto dato persistente y enlazable entre peticiones, y contradice el requisito y el consentimiento.",
+      "fix": "Quitar el `install` y limitar solo por HMAC(IP, sal diaria) más el presupuesto global. Si se mantiene, proponer al usuario el cambio de PLA-008 y del texto de consentimiento, y registrarlo como decisión del catálogo.",
+      "requirementIds": [
+        "PLA-008",
+        "LOG-002",
+        "PLA-004"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Persistencia / copias automáticas",
+      "problem": "`RecordUsage` modifica el documento en cada ejecución, y cualquier cambio programa la copia automática 30 s después, con 12 como máximo. Tras unos minutos de uso normal, las 12 copias rotativas solo contendrían cambios de uso y habrían desplazado las copias con cambios reales de configuración, lo que debilita REG-08. Además, cada toque provoca una reescritura completa del documento (hasta 2 MB) con write-through.",
+      "fix": "Excluir los cambios de la porción `Frequents.Usage` del disparo de la copia automática, o hacer la rotación por tiempo y por significancia. Valorar persistir `Usage` en un archivo propio que se guarde de forma diferida, sin salir del alcance de deshacer. Añadir pruebas con uso intensivo simulado.",
+      "requirementIds": [
+        "COP-003",
+        "REG-08",
+        "FRE-002",
+        "DAT-006"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Reglas R4, R5 y R7 sin mecanismo que las imponga",
+      "problem": "Las reglas 1, 2, 3, 6 y 8 tienen analizador o prueba. Las otras tres dependen de disciplina:\n- R4: `TwoStepConfirm` «se usa para» cuatro casos, pero nada garantiza que todo comando destructivo (borrar perfil, repetido, reiniciar Frecuentes, reemplazar al importar, versión anterior) pase por él.\n- R7: nada comprueba que todo `IDocumentCommand` de datos declare `Record` en lugar de `Transparent`.\n- R5: ninguna regla UIA comprueba que cada campo de texto libre tenga 🎤 (ACC-011).",
+      "fix": "Añadir metadatos `[Destructive]` en los comandos, más una prueba de arquitectura que exija que su intención en Presentation solo se despache desde `TwoStepConfirm`. Añadir una prueba que recorra todos los comandos y exija `Record` salvo una lista blanca justificada. Añadir la regla UIA010: todo Edit con texto libre tiene un botón hermano «Dictar» o «Pegar».",
+      "requirementIds": [
+        "REG-04",
+        "REG-05",
+        "REG-07",
+        "ACC-011"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "NFR-001 rebajado sin autoridad",
+      "problem": "§10.3 introduce una «excepción documentada» para el arranque al iniciar sesión (mostrar primero la burbuja si no se llega a 1 s), y ADR-0030 la recoge. NFR-001 es MUST («panel visible en menos de 1 s»). Además, el motor ignora toques hasta 2 s mientras espera al guardián, y ese retraso no está contemplado.",
+      "fix": "Tratar la excepción como una propuesta al usuario, no como una decisión técnica. Medir primero en S5. Dejar que el motor acepte toques desde el primer frame y marcar el soltado de ese breve periodo como cubierto por el soltado preventivo del arranque. Si hace falta, registrar el cambio de NFR-001 en el catálogo.",
+      "requirementIds": [
+        "NFR-001"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Pruebas: hardware táctil real, fidelidad visual y ARM64",
+      "problem": "docs/09 dice «probando en un equipo real con pantalla táctil». La puerta de publicación solo exige el guion manual de accesibilidad y un laboratorio de VM sin digitalizador (punteros sintéticos). Hay tres huecos:\n- No hay una pasada de aceptación con hardware táctil real: palma, círculo táctil, teclado táctil, `rcContact` real.\n- No hay regresión visual para «las tres vistas y los tres tamaños se ven como en el prototipo»; las instantáneas son del árbol UIA.\n- Se publica win-arm64, pero ningún runner es ARM64, aunque S6 cita un fallo específico de ARM64 (#11847).",
+      "fix": "Añadir al `release-verification.yml` una lista de docs/09 que se ejecute en el equipo táctil del mantenedor. Añadir instantáneas de renderizado (`RenderTargetBitmap` por estado, con Verify y tolerancia) en UI.Wpf.Tests. Para ARM64: una VM ARM64 en el laboratorio, o no publicar ARM64 hasta tenerla.",
+      "requirementIds": [
+        "NFR-011",
+        "ACC-007",
+        "NFR-007"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Sobreingeniería para una sola persona",
+      "problem": "Hay piezas cuyo coste fijo de operación no justifica ningún requisito en esta fase:\n- Proxy de IA propio con contenedor, `IQuotaStore`, presupuesto e interruptor. Es SHOULD y PQ-48 ya propone solo clave propia.\n- Laboratorio de 2 VM interactivas con nightly de 8 h de CPU y reinicios en frío.\n- Dos dispatchers diseñados antes de medir.\n- Firma KMS+OIDC con YubiKey de repliegue.\n- Stryker y SharpFuzz desde M0 y M6.\n- Gallery, 31 ADR iniciales, RFC y GOVERNANCE.\nTodo ello pesa sobre un único mantenedor que programa por voz, con *bus factor* de 1.",
+      "fix": "Priorizar el camino mínimo:\n- IA solo con clave propia en la 2.0 y proxy con ADR diferido.\n- Un único dispatcher con virtualización, pasando a dos solo si S2 mide una degradación.\n- Laboratorio con una sola máquina física táctil y ejecuciones bajo demanda.\n- Mutación y fuzzing después de la 2.0.\n- ADR solo para decisiones difíciles de revertir.\nMantener las fronteras y ArchUnit, que son baratas y sí permiten escalar.",
+      "requirementIds": [
+        "PLA-003",
+        "PLA-005"
+      ]
+    },
+    {
+      "severity": "media",
+      "area": "Distribución / actualizar desde una instancia elevada",
+      "problem": "Si Clícalo está elevado (EJE-013) al aplicar una actualización, `Update.exe` escribe en `%LocalAppData%\\Clicalo.App` con el token elevado. Los archivos quedan con propietario Administradores y las actualizaciones posteriores desde integridad media pueden fallar. El plano corrige la DACL de los datos, pero no la de la instalación. Además, Sentinel puede «relanzar si procede» durante la actualización o el traspaso elevado y competir con Update.exe o con la instancia elevada.",
+      "fix": "No aplicar actualizaciones desde una instancia elevada: aplazarlas o delegarlas a un relanzamiento en integridad media. Si se aplican, fijar el propietario y la DACL de la carpeta de instalación. Poner `CleanShutdown`/`NoRelaunch` en el ledger en `Terminal(Update|Relaunch|Exit)` y probarlo en S8 y S9.",
+      "requirementIds": [
+        "ACT-003",
+        "NFR-010",
+        "SIS-004"
+      ]
+    },
+    {
+      "severity": "baja",
+      "area": "Contradicciones menores",
+      "problem": "Varias incoherencias pequeñas en el plano:\n- Bucle de fallos del guardián: «3 en 10 min» en §3.1 frente a «3 fallos en 5 minutos» en S9.\n- El guion manual exige Acceso por voz en Windows 10 22H2, que no lo tiene (PQ-29: Reconocimiento de voz de Windows).\n- `SecretText.Reveal()` devuelve un string mientras §6.7 promete búferes que se limpian.\n- Las rutas de registro están en LocalAppData con nombres rotativos, mientras LOG-001 y ACE-003 piden `clicalo.log` en la carpeta de datos.\n- El interruptor [rSingle] de SIS-002 no tiene destino, aunque la instancia única se hace obligatoria (PQ-35).",
+      "fix": "Unificar los umbrales en `timings.json`. Guion con Reconocimiento de voz de Windows en Windows 10. Cambiar `Reveal` a `Reveal(Span<char>)` o `WithRevealed(Action<ReadOnlySpan<char>>)`. Nombre fijo `clicalo.log`. Decidir PQ-35 y quitar o dejar la fila.",
+      "requirementIds": [
+        "SIS-003",
+        "LOG-001",
+        "ACE-003",
+        "EDI-016",
+        "LOG-003"
+      ]
+    },
+    {
+      "severity": "baja",
+      "area": "Efectos del motor que bloquean",
+      "problem": "`EngineEffect` no tiene un efecto de acción de sistema (bloquear, brillo por WMI, EJE-016). `Launch` (ShellExecute, `IShellDispatch2`) lo interpreta `EngineHost` en el hilo Engine, que «nunca hace E/S». Un `ShellExecute` lento o WMI (#9752) bloquearía el buzón y retrasaría las liberaciones del carril Priority.",
+      "fix": "Añadir `SystemCommand(id)` a `EngineEffect`. Interpretar `Launch` y `SystemCommand` en un ejecutor aparte (ThreadPool o SysEvents) con resultado asíncrono (`LaunchCompleted`/`Failed`) de vuelta al buzón.",
+      "requirementIds": [
+        "EJE-011",
+        "EJE-016",
+        "NFR-003"
+      ]
+    },
+    {
+      "severity": "baja",
+      "area": "Acoplamiento del proxy con Domain",
+      "problem": "`Clicalo.AiProxy` depende del ensamblado `Clicalo.Domain` para validar. Cada cambio de Domain obliga a redesplegar el servidor y liga el contrato público de red a tipos internos, lo que complica mantener a la vez clientes de versiones distintas.",
+      "fix": "Extraer el contrato de plantilla IA como un JSON Schema versionado en `data/schemas`, con un validador pequeño y compartido (`Clicalo.Contracts.Templates`) y versión en la petición.",
+      "requirementIds": [
+        "PLA-008",
+        "LOG-006"
+      ]
+    },
+    {
+      "severity": "baja",
+      "area": "Distribución / desinstalación y límites de importación",
+      "problem": "Desinstalar desde Configuración de Windows no pregunta por los datos, porque los *hooks* de Velopack no tienen UI, y NFR-010 pide que se pregunte. El plano no fija el comportamiento por defecto en ese camino. Importar un `.zip` v1 (MIG-009) no tiene límites contra bombas zip, solo los 5 MiB de los archivos JSON compartidos.",
+      "fix": "Documentar y probar que la desinstalación desde Windows conserva siempre los datos y que al reinstalar se ofrece limpiarlos. Añadir límites de descompresión (tamaño total, número de entradas, relación de compresión) al importador v1 y un caso de fuzzing.",
+      "requirementIds": [
+        "NFR-010",
+        "MIG-009",
+        "LOG-006"
+      ]
+    },
+    {
+      "severity": "baja",
+      "area": "Cuota de IA y desenfoque",
+      "problem": "PLA-003 y EC-PLA-05 piden que la cuota se reinicie a medianoche local, pero el proxy cuenta por día con sal diaria del servidor (UTC). PAN-003 (SHOULD) pide desenfoque del fondo y S6 solo valida la opacidad con `AllowsTransparency`.",
+      "fix": "El servidor devuelve la cuota restante y el cliente la muestra, documentando que el día es UTC, o se cuenta por fecha local enviada. Añadir el desenfoque (DWM backdrop o su ausencia justificada) a S6.",
+      "requirementIds": [
+        "PLA-003",
+        "PAN-003"
+      ]
+    }
+  ]
+}

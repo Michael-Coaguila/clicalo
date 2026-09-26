@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Developer utilities behind `cl`: i18n-check, i18n-import, trace, notes, anonymize-v1, states. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.DevCli</RootNamespace>
+  </PropertyGroup>
+</Project>

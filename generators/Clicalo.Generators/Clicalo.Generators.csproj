@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Source generators: i18n keys, design tokens, catalogs and timings. Data errors become compile errors. -->
+  <PropertyGroup>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <RootNamespace>Clicalo.Generators</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Label="Shared math, compiled into the generator (a generator cannot load project references at run time)">
+    <Compile Include="..\Clicalo.Design.Math\**\*.cs" Exclude="..\Clicalo.Design.Math\obj\**;..\Clicalo.Design.Math\bin\**" LinkBase="DesignMath" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Generators.Tests" />
+  </ItemGroup>
+</Project>

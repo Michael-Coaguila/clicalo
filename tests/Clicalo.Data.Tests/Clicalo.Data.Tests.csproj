@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Validates data/ against data/schemas, i18n parity and design-token contrast. -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Data.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\generators\Clicalo.Design.Math\Clicalo.Design.Math.csproj" />
+    <PackageReference Include="JsonSchema.Net" />
+  </ItemGroup>
+</Project>

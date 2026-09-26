@@ -1,0 +1,15 @@
+{
+  "solution": {
+    "path": "Clicalo.slnx",
+    "projects": [
+      "src\\Clicalo.Domain\\Clicalo.Domain.csproj",
+      "src\\Clicalo.Application\\Clicalo.Application.csproj",
+      "src\\Clicalo.Presentation\\Clicalo.Presentation.csproj",
+      "generators\\Clicalo.Generators\\Clicalo.Generators.csproj",
+      "generators\\Clicalo.Design.Math\\Clicalo.Design.Math.csproj",
+      "tests\\Clicalo.Domain.Tests\\Clicalo.Domain.Tests.csproj",
+      "tests\\Clicalo.Application.Tests\\Clicalo.Application.Tests.csproj",
+      "tests\\Clicalo.TestKit\\Clicalo.TestKit.csproj"
+    ]
+  }
+}

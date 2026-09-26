@@ -1,0 +1,31 @@
+# Build output (UseArtifactsOutput)
+artifacts/
+bin/
+obj/
+
+# IDE
+.vs/
+*.user
+*.suo
+.idea/
+*.DotSettings.user
+
+# Test results and coverage
+TestResults/
+*.trx
+coverage*.xml
+*.received.*
+
+# Local dev data (cl run uses %TEMP%\clicalo-dev, but be safe)
+.dev-data/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Secrets never live in the repo
+*.pfx
+*.p12
+*.snk
+.env
