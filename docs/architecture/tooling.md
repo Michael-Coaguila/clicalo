@@ -26,7 +26,7 @@ abre en VS Code. VS Code tiene una tarea por verbo.
 |---|---|---|
 | `cl setup` | Prepara el equipo: restaura las herramientas locales y configura la firma SSH de los commits y el DCO | Ver [preparar el entorno](../guides/dev-setup.md) |
 | `cl build` | Compila la solución completa | `dotnet build Clicalo.slnx -m:2 -nodeReuse:false` |
-| `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application, Presentation y sus pruebas), en menos de 45 s | `dotnet test --solution Core.slnf` |
+| `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit), en menos de 45 s | `dotnet test --solution Core.slnf` |
 | `cl test` | Ejecuta las pruebas | `dotnet test --solution Clicalo.slnx` |
 | `cl desk` | Pruebas de integración de escritorio y E2E de humo (necesitan sesión interactiva) | — |
 | `cl fix` | Aplica el formato de CSharpier y las correcciones automáticas | `dotnet dnx csharpier@1.3.0 --yes -- format <rutas>` |
@@ -95,8 +95,9 @@ advertencia es un error.
 | Reglas de estilo del IDE (`.editorconfig`) | *Namespaces* de ámbito de archivo, sin `this.`, llaves obligatorias, modificadores de acceso, nombres (`_camelCase` en campos privados, `PascalCase` en constantes, prefijo `I` en interfaces) |
 | `Clicalo.Analyzers` (`CLC*`) | Reglas de producto: en M0, CLC0001, CLC0003, CLC0004, CLC0006 y CLC0010 |
 
-Convenciones que hacen cumplir: *namespaces* de ámbito de archivo, `sealed` por defecto (CA1852), un tipo
-por archivo, sin `this.` y `Nullable` activado.
+Convenciones que hacen cumplir: *namespaces* de ámbito de archivo, un tipo por archivo (MA0048), sin
+`this.` y `Nullable` activado. `sealed` por defecto lo impone CA1852 en los tipos internos; en los tipos
+públicos es una convención que se comprueba en revisión.
 
 **Supresiones.** Nunca se debilita un analizador en un archivo compartido (`.editorconfig`,
 `Directory.Build.props`). Una supresión local solo se admite con

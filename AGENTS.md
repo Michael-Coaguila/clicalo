@@ -60,14 +60,16 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 
 | API | Solo en | Alternativa |
 |---|---|---|
-| `SetForegroundWindow` | `Platform.Windows/Foreground/ForegroundControl.cs` | `IForegroundOrchestrator` |
+| `SetForegroundWindow`, `AllowSetForegroundWindow` | `Platform.Windows/Foreground/ForegroundControl.cs` | `IForegroundOrchestrator` |
 | `AttachThreadInput`, `LockSetForegroundWindow` | En ningún sitio | — |
 | `Window.Activate`, `Window.Focus` sobre ventanas | En ningún sitio | Concesión `ControlCenter` |
 | `TrackPopupMenu`, `TrackPopupMenuEx` | `Platform.Windows/Tray/TrayMenuHost.cs` | Concesión `TrayMenu` |
 | `PInvoke.SendInput` | `Platform.Core/Injection`, detrás de `InjectionGate` | `IInputInjector` |
-| `Process.Start`, `ShellExecute*`, WMI | `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` | `ILauncher`, `ISystemCommandRunner` |
+| `Process.Start`, `ProcessStartInfo` | `Platform.Windows/Launch` | `ILauncher` (sin intérprete) |
+| `ShellExecute*`, `IShellDispatch2`, WMI (`System.Management`) | `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` (hilo Shell) | `ILauncher`, `ISystemCommandRunner` |
 | Escritura de archivos | `Infrastructure/Persistence/AtomicFile.cs` y el *sink* de registros | `IAtomicFileWriter` |
-| `DateTime.Now`, `Stopwatch.StartNew`, `Thread.Sleep`, `Guid.NewGuid`, `Random.Shared` | Solo adaptadores | `TimeProvider`, `IIdGenerator` |
+| `DateTime.Now/UtcNow`, `DateTimeOffset.Now/UtcNow`, `Stopwatch.StartNew`, `Task.Delay` sin `TimeProvider`, `Thread.Sleep`, `Guid.NewGuid`, `Random.Shared` | Solo adaptadores | `TimeProvider`, `IIdGenerator` |
+| `Task.Result`, `Task.Wait`, `GetAwaiter().GetResult()` | `App/Shutdown` | `await` |
 | `Environment.Exit`, `Application.Shutdown` | `App/Lifecycle` | `IAppLifetime.ExitAsync` |
 | `Popup`, `ContextMenu`, `ToolTip` interactivo, `ComboBox` | Nunca en las superficies del panel | `NonActivatingWindow` hijas |
 

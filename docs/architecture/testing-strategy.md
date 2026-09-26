@@ -52,7 +52,8 @@ Testing Platform, con `Xunit` y `Shouldly` como *usings* globales (`tests/Direct
 | `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | *Ledger* v2 y relanzamiento; verificación tras la copia y `minSafeVersion` |
 | `Clicalo.E2E`, `Clicalo.Performance` | Previstos | Recorridos sobre la app publicada; presupuestos (`budgets.json`) |
 
-`Core.slnf` reúne Domain, Application, Presentation y sus pruebas para iterar rápido (`cl fast`).
+`Core.slnf` reúne Domain, Application y Presentation, los generadores que usan, sus pruebas y
+`Clicalo.TestKit` para iterar rápido (`cl fast`).
 
 ## Herramientas
 
