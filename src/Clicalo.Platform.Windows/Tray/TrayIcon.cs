@@ -3,6 +3,7 @@ using Clicalo.Platform.Windows.SysEvents;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Clicalo.Platform.Windows.Tray;
 
@@ -25,6 +26,7 @@ public sealed class TrayIcon : IDisposable
     private SysEventsWindow? _window;
     private string _tooltip = string.Empty;
     private bool _added;
+    private bool _wanted;
     private int _disposed;
 
     /// <summary>Creates the icon on <paramref name="thread"/>.</summary>
@@ -54,18 +56,23 @@ public sealed class TrayIcon : IDisposable
         return Thread.InvokeAsync(() =>
         {
             _tooltip = tooltip;
+            _wanted = true;
             if (_window is null)
             {
                 _window = Thread.CreateHiddenWindow();
                 _ = _window.AddHandler(CallbackMessage, OnCallback);
+                var taskbarCreated = PInvoke.RegisterWindowMessage("TaskbarCreated");
+
+                AllowFromExplorer(_window.Handle, taskbarCreated);
                 _ = _window.AddHandler(
-                    PInvoke.RegisterWindowMessage("TaskbarCreated"),
+                    taskbarCreated,
                     (_, _) =>
                     {
-                        // Explorer restarted: its notification area forgot every icon.
-                        if (_added)
+                        // Explorer (re)started: its notification area forgot every icon, or was not ready when the
+                        // icon was first added (sign-in).
+                        if (_wanted)
                         {
-                            _added = false;
+                            Volatile.Write(ref _added, false);
                             Add();
                         }
 
@@ -112,6 +119,7 @@ public sealed class TrayIcon : IDisposable
         {
             Thread.Post(() =>
             {
+                _wanted = false;
                 if (_added)
                 {
                     var data = Data();
@@ -128,6 +136,18 @@ public sealed class TrayIcon : IDisposable
             // The SysEvents loop has ended; the shell removes the icon of a destroyed window by itself.
         }
     }
+
+    /// <summary>
+    /// Lets <paramref name="message"/> through UIPI: an elevated Clícalo (EJE-013) would otherwise never hear the
+    /// <c>TaskbarCreated</c> broadcast of the medium-integrity Explorer and lose its icon when Explorer restarts.
+    /// </summary>
+    private static unsafe void AllowFromExplorer(HWND window, uint message) =>
+        _ = PInvoke.ChangeWindowMessageFilterEx(
+            window,
+            message,
+            WINDOW_MESSAGE_FILTER_ACTION.MSGFLT_ALLOW,
+            null
+        );
 
     private static PhysicalPoint Anchor(nint wParam) =>
         new((short)(wParam & 0xFFFF), (short)((wParam >> 16) & 0xFFFF));

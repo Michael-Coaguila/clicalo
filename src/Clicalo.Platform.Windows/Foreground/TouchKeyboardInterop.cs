@@ -47,7 +47,7 @@ internal static unsafe class TouchKeyboardInterop
             pane->Location(&area);
             return PhysicalRect.FromEdges(area.left, area.top, area.right, area.bottom);
         }
-        catch (COMException)
+        catch (Exception ex) when (IsComFailure(ex))
         {
             return PhysicalRect.Empty;
         }
@@ -88,7 +88,7 @@ internal static unsafe class TouchKeyboardInterop
             );
             return method(pane, &accepted).Succeeded && accepted != 0;
         }
-        catch (COMException)
+        catch (Exception ex) when (IsComFailure(ex))
         {
             return false;
         }
@@ -140,6 +140,18 @@ internal static unsafe class TouchKeyboardInterop
             _ = ((IUnknown*)tip)->Release();
         }
     }
+
+    /// <summary>
+    /// The exceptions a failed <c>HRESULT</c> becomes in the generated wrappers (<c>Marshal.ThrowExceptionForHR</c>
+    /// maps E_ACCESSDENIED, E_NOTIMPL, E_INVALIDARG and E_NOINTERFACE to other types than <see cref="COMException"/>).
+    /// </summary>
+    private static bool IsComFailure(Exception exception) =>
+        exception
+            is COMException
+                or UnauthorizedAccessException
+                or NotImplementedException
+                or ArgumentException
+                or InvalidCastException;
 
     /// <summary>
     /// COM for one call: joins the multithreaded apartment when the thread has none, and leaves it afterwards. On an

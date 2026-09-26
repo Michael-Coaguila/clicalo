@@ -71,6 +71,7 @@ NOTIFYICON_VERSION_4
 NIN_SELECT
 WM_CONTEXTMENU
 RegisterWindowMessage
+ChangeWindowMessageFilterEx
 LoadIcon
 IDI_APPLICATION
 CreatePopupMenu
