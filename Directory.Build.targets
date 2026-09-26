@@ -21,6 +21,15 @@
     <ClicaloIsProductProject
       Condition="'$(ClicaloIsProductProject)' == '' and $([MSBuild]::EnsureTrailingSlash('$(MSBuildProjectDirectory)').StartsWith($([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'src')), StringComparison.OrdinalIgnoreCase))"
       >true</ClicaloIsProductProject>
+    <!--
+      WPF markup compilation builds a temporary copy of a project whose XAML references its own types, named
+      <Project>_<random>_wpftmp, in the same folder. It is the same project: the layer lists apply to it by its real
+      name, and its references were already checked by the real project, which resolves them before markup compilation.
+    -->
+    <ClicaloIsWpfTemporaryProject>$(MSBuildProjectName.EndsWith('_wpftmp'))</ClicaloIsWpfTemporaryProject>
+    <ClicaloProjectName>$(MSBuildProjectName)</ClicaloProjectName>
+    <ClicaloProjectName Condition="'$(ClicaloIsWpfTemporaryProject)' == 'true'"
+      >$([System.Text.RegularExpressions.Regex]::Replace('$(MSBuildProjectName)', '_[^_]+_wpftmp$', ''))</ClicaloProjectName>
   </PropertyGroup>
 
   <!--
@@ -34,19 +43,19 @@
     <AdditionalFiles Include="$(ClicaloArchitectureDir)BannedSymbols.All.txt" />
     <AdditionalFiles
       Include="$(ClicaloArchitectureDir)BannedSymbols.Domain.txt"
-      Condition="'$(MSBuildProjectName)' == 'Clicalo.Domain'"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.Domain'"
     />
     <AdditionalFiles
       Include="$(ClicaloArchitectureDir)BannedSymbols.Application.txt"
-      Condition="'$(MSBuildProjectName)' == 'Clicalo.Application'"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.Application'"
     />
     <AdditionalFiles
       Include="$(ClicaloArchitectureDir)BannedSymbols.Presentation.txt"
-      Condition="'$(MSBuildProjectName)' == 'Clicalo.Presentation'"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.Presentation'"
     />
     <AdditionalFiles
       Include="$(ClicaloArchitectureDir)BannedSymbols.Surfaces.txt"
-      Condition="'$(MSBuildProjectName)' == 'Clicalo.UI.Wpf'"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.UI.Wpf'"
     />
     <!--
       Generated code (CsWin32 friendly overloads, XAML .g.cs, source generators) is not subject to the lists.
@@ -79,10 +88,15 @@
     </Task>
   </UsingTask>
 
+  <ItemGroup Label="Reference whitelist inputs for the Visual Studio fast up-to-date check">
+    <UpToDateCheckInput Include="$(ClicaloAllowedDependenciesFile)" />
+    <UpToDateCheckInput Include="$(ClicaloArchitectureDir)tasks\ClicaloVerifyReferences.cs" />
+  </ItemGroup>
+
   <Target
     Name="ClicaloVerifyReferences"
     BeforeTargets="ResolveProjectReferences"
-    Condition="'$(DesignTimeBuild)' != 'true'"
+    Condition="'$(DesignTimeBuild)' != 'true' and '$(ClicaloIsWpfTemporaryProject)' != 'true'"
   >
     <PropertyGroup>
       <_ClicaloRepoRootFull>$([MSBuild]::NormalizeDirectory('$(RepoRoot)'))</_ClicaloRepoRootFull>

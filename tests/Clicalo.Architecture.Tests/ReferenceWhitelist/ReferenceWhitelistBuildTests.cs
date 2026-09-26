@@ -91,6 +91,14 @@ public sealed class ReferenceWhitelistBuildTests(EnforcementBuild build)
         build.Compiled("allowed", "Clicalo.Domain").ShouldBeTrue(build.Result.Output);
     }
 
+    [Fact]
+    [Trait("Req", "NFR-014")]
+    public void The_temporary_project_of_WPF_markup_compilation_is_checked_as_its_real_project()
+    {
+        build.DiagnosticsOf("wpf-markup").ShouldBeEmpty(build.Result.Output);
+        build.Compiled("wpf-markup", "Clicalo.UI.Wpf").ShouldBeTrue(build.Result.Output);
+    }
+
     private Support.Diagnostic SingleError(string scenario, string code)
     {
         var diagnostics = build.DiagnosticsOf(scenario);

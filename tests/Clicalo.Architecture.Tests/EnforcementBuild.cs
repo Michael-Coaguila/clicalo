@@ -178,6 +178,17 @@ public sealed class EnforcementBuild : IAsyncLifetime
             """
         );
         Project("allowed", "Clicalo.Domain", PortableTfm, inSolution: false);
+
+        // XAML that uses a type of its own project makes WPF build a temporary <Project>_<random>_wpftmp copy.
+        Project(
+            "wpf-markup",
+            "Clicalo.UI.Wpf",
+            WindowsTfm,
+            properties: Product + "<UseWPF>true</UseWPF>"
+        );
+        Write("wpf-markup/Clicalo.UI.Wpf/MarkupView.xaml", WpfMarkup.View);
+        Write("wpf-markup/Clicalo.UI.Wpf/MarkupView.xaml.cs", WpfMarkup.CodeBehind);
+        Write("wpf-markup/Clicalo.UI.Wpf/MarkupBadge.cs", WpfMarkup.LocalType);
     }
 
     private void WriteBannedApiScenarios()
