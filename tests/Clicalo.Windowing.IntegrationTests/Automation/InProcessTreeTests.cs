@@ -65,29 +65,19 @@ public sealed class InProcessTreeTests
             );
         });
 
-    [Fact]
+    [Theory]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-009")]
-    public void The_tree_text_with_voice_numbers_matches_its_snapshot() =>
+    [InlineData(true)]
+    [InlineData(false)]
+    public void The_tree_text_matches_its_snapshot(bool voiceNumbers) =>
         WpfThread.Invoke(() =>
         {
             using var lab = new TileLab();
-            lab.SetVoiceNumbers(true);
+            lab.SetVoiceNumbers(voiceNumbers);
             lab.LayOut(LabSize);
 
-            TextSnapshot.Match(UiaTreeText.Format(Snapshot(lab)), "voice-numbers-on");
-        });
-
-    [Fact]
-    [Trait("Req", "REG-06")]
-    public void The_tree_text_without_voice_numbers_matches_its_snapshot() =>
-        WpfThread.Invoke(() =>
-        {
-            using var lab = new TileLab();
-            lab.SetVoiceNumbers(false);
-            lab.LayOut(LabSize);
-
-            TextSnapshot.Match(UiaTreeText.Format(Snapshot(lab)), "voice-numbers-off");
+            TextSnapshot.Match(UiaTreeText.Format(Snapshot(lab)), voiceNumbers ? "on" : "off");
         });
 
     private static UiaNode Snapshot(TileLab lab) =>
