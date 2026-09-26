@@ -52,7 +52,8 @@
         "verticalTileHeightPx": 50,
         "horizontalTileWidthPx": 62,
         "horizontalTileHeightPx": 58,
-        "tileIconPx": 20
+        "tileIconPx": 20,
+        "tileLabelPx": 10
       }
     },
     {
@@ -69,7 +70,8 @@
         "verticalTileHeightPx": 58,
         "horizontalTileWidthPx": 72,
         "horizontalTileHeightPx": 66,
-        "tileIconPx": 22
+        "tileIconPx": 22,
+        "tileLabelPx": 11
       }
     },
     {
@@ -86,7 +88,8 @@
         "verticalTileHeightPx": 70,
         "horizontalTileWidthPx": 88,
         "horizontalTileHeightPx": 78,
-        "tileIconPx": 26
+        "tileIconPx": 26,
+        "tileLabelPx": 12
       }
     }
   ]

@@ -129,7 +129,7 @@
         "autoRows": { "description": "Grid rows in Auto (CUA-001).", "$ref": "#/$defs/count" },
         "dock": {
           "type": "object",
-          "required": ["barWidthPx", "barHeightPx", "verticalTileHeightPx", "horizontalTileWidthPx", "horizontalTileHeightPx", "tileIconPx"],
+          "required": ["barWidthPx", "barHeightPx", "verticalTileHeightPx", "horizontalTileWidthPx", "horizontalTileHeightPx", "tileIconPx", "tileLabelPx"],
           "additionalProperties": false,
           "properties": {
             "barWidthPx": { "description": "Open vertical bar width (PES-005).", "$ref": "#/$defs/px" },
@@ -137,7 +137,8 @@
             "verticalTileHeightPx": { "$ref": "#/$defs/px" },
             "horizontalTileWidthPx": { "$ref": "#/$defs/px" },
             "horizontalTileHeightPx": { "$ref": "#/$defs/px" },
-            "tileIconPx": { "$ref": "#/$defs/px" }
+            "tileIconPx": { "$ref": "#/$defs/px" },
+            "tileLabelPx": { "$ref": "#/$defs/px" }
           }
         }
       }

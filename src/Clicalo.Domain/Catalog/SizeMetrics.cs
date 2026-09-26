@@ -66,4 +66,7 @@ public sealed record SizeMetrics
 
     /// <summary>Icon of an edge bar tile (PES-007).</summary>
     public required int DockTileIconPx { get; init; }
+
+    /// <summary>Name of an edge bar tile; layout raises it to <see cref="LayoutMetrics.MinTextPx"/> (PES-007).</summary>
+    public required int DockTileLabelPx { get; init; }
 }
