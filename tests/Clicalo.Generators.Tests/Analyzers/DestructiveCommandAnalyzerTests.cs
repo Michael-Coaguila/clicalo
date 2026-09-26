@@ -32,6 +32,33 @@ public sealed class DestructiveCommandAnalyzerTests
         );
 
     [Fact]
+    public Task A_batch_that_carries_a_destructive_command_needs_a_token_too() =>
+        Verify.VerifyAsync(
+            """
+            using System.Collections.Generic;
+            using Clicalo.Application.Store;
+            using Clicalo.Domain.Commands;
+
+            namespace Clicalo.Presentation.Editor;
+
+            public sealed class EditorViewModel(DocumentStore store)
+            {
+                public void Delete(int id, IDestructiveCommand[] pending, List<IDocumentCommand> history)
+                {
+                    store.DispatchAll(new IDocumentCommand[] { new RenameShortcut(id), {|CLC0010:new DeleteShortcut(id)|} });
+                    store.DispatchAll([new RenameShortcut(id), {|CLC0010:new DeleteShortcut(id)|}]);
+                    store.DispatchBatch([new RenameShortcut(id), .. {|CLC0010:pending|}]);
+                    store.DispatchBatch({|CLC0010:pending|});
+                    store.DispatchBatch([new RenameShortcut(id)]);
+                    history.Add(new DeleteShortcut(id));
+                    history.AddRange(pending);
+                }
+            }
+            """,
+            Stubs.Commands
+        );
+
+    [Fact]
     public Task Dispatching_with_the_token_issued_by_two_step_confirm_is_allowed() =>
         Verify.VerifyAsync(
             """

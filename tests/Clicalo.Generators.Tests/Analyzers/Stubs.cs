@@ -245,6 +245,7 @@ internal static class Stubs
                 public void Dispatch(IDestructiveCommand command, ConfirmationToken token) { }
                 public void DispatchOptional(IDocumentCommand command, ConfirmationToken token = null) { }
                 public void DispatchAll(params IDocumentCommand[] commands) { }
+                public void DispatchBatch(System.Collections.Generic.IEnumerable<IDocumentCommand> commands) { }
                 public void Queue<TCommand>(TCommand command) where TCommand : IDocumentCommand { }
                 public void Remember(object value) { }
                 public void Keep<T>(T value) { }

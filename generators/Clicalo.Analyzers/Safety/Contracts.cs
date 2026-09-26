@@ -14,6 +14,9 @@ internal sealed class Contracts
     private readonly ConcurrentDictionary<ITypeSymbol, bool> _acceptsCommands = new(
         SymbolEqualityComparer.Default
     );
+    private readonly ConcurrentDictionary<ITypeSymbol, bool> _acceptsCommandBatches = new(
+        SymbolEqualityComparer.Default
+    );
 
     public Contracts(
         INamedTypeSymbol? destructive,
@@ -58,7 +61,8 @@ internal sealed class Contracts
     /// The destructive command carried by <paramref name="argument"/> into a parameter that accepts commands, or null.
     /// A parameter accepts commands when its declared type (before generic substitution) is <c>IDestructiveCommand</c>,
     /// a command type, or one of the interfaces <c>IDestructiveCommand</c> extends (such as <c>IDocumentCommand</c>);
-    /// <c>object</c> and unconstrained generics (<c>ThrowIfNull</c>, collections) do not.
+    /// <c>object</c> and unconstrained generics (<c>ThrowIfNull</c>, <c>List&lt;T&gt;.Add</c>) do not. A parameter that
+    /// takes a batch of commands (an array, <c>params</c> or a sequence of them) carries every element it is given.
     /// </summary>
     public IOperation? DestructiveCommandIn(IArgumentOperation argument)
     {
@@ -68,14 +72,24 @@ internal sealed class Contracts
         }
 
         var declared = parameter.OriginalDefinition.Type;
-        if (argument.ArgumentKind == ArgumentKind.ParamArray)
+        if (AcceptsCommands(declared))
         {
-            if (
-                declared is IArrayTypeSymbol array
-                && AcceptsCommands(array.ElementType)
-                && argument.Value is IArrayCreationOperation { Initializer: { } initializer }
-            )
-            {
+            return IsDestructive(argument.Value) ? argument.Value : null;
+        }
+
+        return AcceptsCommandBatches(declared) ? DestructiveElementIn(argument.Value) : null;
+    }
+
+    /// <summary>
+    /// The first destructive element of a batch: an element of <c>new[] { … }</c>, of a collection expression or of an
+    /// implicit <c>params</c> array, or the whole value when its static element type is already destructive.
+    /// </summary>
+    private IOperation? DestructiveElementIn(IOperation value)
+    {
+        var operation = value.WithoutConversions();
+        switch (operation)
+        {
+            case IArrayCreationOperation { Initializer: { } initializer }:
                 foreach (var element in initializer.ElementValues)
                 {
                     if (IsDestructive(element))
@@ -83,16 +97,67 @@ internal sealed class Contracts
                         return element;
                     }
                 }
-            }
 
-            return null;
+                return null;
+            case ICollectionExpressionOperation collection:
+                foreach (var element in collection.Elements)
+                {
+                    // `[.. pending, delete]`: a spread carries the elements of its operand.
+                    var found =
+                        element is ISpreadOperation spread ? DestructiveElementIn(spread.Operand)
+                        : IsDestructive(element) ? element
+                        : null;
+                    if (found is not null)
+                    {
+                        return found;
+                    }
+                }
+
+                return null;
+            default:
+                return ElementType(operation.Type).IsOrImplements(Destructive!) ? operation : null;
         }
-
-        return AcceptsCommands(declared) && IsDestructive(argument.Value) ? argument.Value : null;
     }
 
     private bool IsDestructive(IOperation value) =>
         value.WithoutConversions().Type.IsOrImplements(Destructive!);
+
+    /// <summary>True for an array or a sequence (<c>IEnumerable&lt;T&gt;</c> and the types that implement it) of commands.</summary>
+    private bool AcceptsCommandBatches(ITypeSymbol declared) =>
+        _acceptsCommandBatches.GetOrAdd(
+            declared,
+            type => ElementType(type) is { } element && AcceptsCommands(element)
+        );
+
+    /// <summary>The element type of an array or of a type that is or implements <c>IEnumerable&lt;T&gt;</c>, or null.</summary>
+    private static ITypeSymbol? ElementType(ITypeSymbol? type)
+    {
+        switch (type)
+        {
+            case IArrayTypeSymbol array:
+                return array.ElementType;
+            case INamedTypeSymbol named when named.SpecialType != SpecialType.System_String:
+                if (IsSequence(named))
+                {
+                    return named.TypeArguments[0];
+                }
+
+                foreach (var implemented in named.AllInterfaces)
+                {
+                    if (IsSequence(implemented))
+                    {
+                        return implemented.TypeArguments[0];
+                    }
+                }
+
+                return null;
+            default:
+                return null;
+        }
+    }
+
+    private static bool IsSequence(INamedTypeSymbol type) =>
+        type.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T;
 
     // Runs for every argument of every call in src/, so the answer is cached per declared parameter type.
     private bool AcceptsCommands(ITypeSymbol declared) =>
