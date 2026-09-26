@@ -79,10 +79,14 @@ public sealed class PointerInputSourceTests(PointerDesktopFixture fixture)
         fixture.Arbiter.Violations.ShouldBeEmpty();
     }
 
+    /// <remarks>
+    /// Finger and pen only: a finger leaves when it lifts and the synthetic pen goes out of range. The mouse cannot be
+    /// checked this way: the guarded injector never moves it off this process's windows and puts the cursor back where
+    /// it was, which after the touch tests is usually on the surface, so neither the enter nor the leave is certain.
+    /// </remarks>
     [DesktopTheory]
     [InlineData(SyntheticPointerKind.Finger)]
     [InlineData(SyntheticPointerKind.Pen)]
-    [InlineData(SyntheticPointerKind.Mouse)]
     public async Task Entering_and_leaving_the_surface_is_reported(SyntheticPointerKind device)
     {
         await fixture.PrepareAsync();
