@@ -1,0 +1,16 @@
+#!/bin/sh
+# Local guard for main (deviation D-13): GitHub does not offer branch protection for private repositories on
+# the free plan, so this hook keeps the rule of blueprint section 13 on every clone that ran `cl setup`:
+# every change reaches main through a pull request merged with squash, after the CI is green.
+# Emergency override, recorded in the push itself: CLICALO_ALLOW_MAIN_PUSH=1 git push ...
+if [ "$CLICALO_ALLOW_MAIN_PUSH" = "1" ]; then
+  exit 0
+fi
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "cl: push directo a main bloqueado. Crea una rama, sube tus cambios y abre un PR (gh pr create)." >&2
+    echo "cl: direct push to main blocked. Push a branch and open a pull request (gh pr create)." >&2
+    exit 1
+  fi
+done
+exit 0
