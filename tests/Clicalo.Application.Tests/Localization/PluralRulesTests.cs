@@ -82,6 +82,7 @@ public sealed class PluralRulesTests
     [InlineData("n = 1 and")]
     [InlineData("n = 1 nor i = 2")]
     [InlineData("nn = 1")]
+    [InlineData("n = 123456789012345678901234567890")]
     public void Invalid_conditions_are_rejected(string condition) =>
         Should.Throw<FormatException>(() => PluralRule.Parse(condition));
 

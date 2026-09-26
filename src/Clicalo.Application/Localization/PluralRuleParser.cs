@@ -126,11 +126,14 @@ internal sealed class PluralRuleParser
             throw Error("expected a whole number");
         }
 
-        return decimal.Parse(
+        return decimal.TryParse(
             _text.AsSpan(start, _pos - start),
             NumberStyles.None,
-            CultureInfo.InvariantCulture
-        );
+            CultureInfo.InvariantCulture,
+            out var value
+        )
+            ? value
+            : throw Error("the number is too large");
     }
 
     private bool TrySymbol(string symbol)
