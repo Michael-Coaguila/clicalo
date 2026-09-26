@@ -21,6 +21,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-09 | Matriz de módulos de Domain | Tabla de §4.3 | Módulos `Document` y `Timing`, cuatro aristas nuevas y matriz transitiva | M0 |
 | D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
+| D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -196,6 +197,30 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Motivo.** La tabla literal dejaba abiertas otras fuentes de tiempo no simulables y la carga de código.
 - **Coste.** Algún adaptador más tendrá que registrarse en `banned-api-exceptions.json`.
 - **Revisión.** Pendiente de ratificar junto con D-09.
+
+## D-12 · Historial de M0 anterior a la protección de `main`
+
+- **Plano.** [§13](blueprint.md#13-convenciones-de-ingeniería) y
+  [CONTRIBUTING.md](../../CONTRIBUTING.md#flujo-de-trabajo): `main` protegida y con historial lineal, fusión
+  solo por *squash*, títulos en Conventional Commits con ámbitos de una lista cerrada y `Signed-off-by` (DCO,
+  [ADR-0015](../adr/0015-licencia-mit-y-dco.md)) en cada commit.
+- **Repositorio.** M0 se construyó en local, antes de que existieran el remoto, la protección de rama y los
+  trabajos `title` y `dco`. Su historial tiene:
+  - ocho fusiones `--no-ff`, una por paquete integrado (`2a933b1`, `f02a577`, `12961db`, `0639ec3`,
+    `531c5f3`, `dd29f6b`, `067183f` y `1f590c5`);
+  - tres commits con ámbitos que no están en la lista cerrada: `a131a97` y `cdd11de` (`arch`) y `287f959`
+    (`generators`);
+  - commits sin la línea `Signed-off-by`, porque el *hook* de `cl setup` no estaba instalado.
+- **Motivo.** Reescribir el historial (linealizarlo, cambiar mensajes o añadir `Signed-off-by` en nombre del
+  autor) es destructivo y solo puede hacerlo el mantenedor. Añadir `arch` y `generators` a la lista cerrada
+  para cubrir tres commits antiguos cambiaría la convención para todos los PR futuros.
+- **Coste.** El historial de M0 no sigue las convenciones que sí siguen los PR. Si se activa «Require linear
+  history» en la protección de `main` antes del primer *push*, GitHub rechazará subir las fusiones.
+- **Cómo se aplica.** El primer *push* de `main` se hace **antes** de activar la protección con «Require linear
+  history». Desde entonces todo entra por PR con *squash*: `pr-title.yml` comprueba el título y el trabajo
+  `dco` de `pr.yml` comprueba los commits del PR (solo `base..head`, nunca el historial ya publicado).
+- **Revisión.** Única: se cierra con el primer *push*. Si el mantenedor prefiere un historial limpio, puede
+  linealizarlo y corregir los mensajes antes de ese *push*; entonces esta entrada se elimina.
 
 ## Puntos del plano pendientes de resolver
 
