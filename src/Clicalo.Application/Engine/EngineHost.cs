@@ -155,7 +155,13 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                 Handle(new EngineEvent.Terminal(TerminalReason.Exit));
             }
 
-            _ports.Ledger.ClearMarks(KeyLedgerMarks.EngineAlive);
+            // A fenced host is a zombie: the ledger's EngineAlive mark belongs to the engine that replaced it, and
+            // clearing it would switch off the emergency releaser's watch over that engine (§3.2, rule 6).
+            if (!_fenced)
+            {
+                _ports.Ledger.ClearMarks(KeyLedgerMarks.EngineAlive);
+            }
+
             _mailbox.Complete();
         }
     }
@@ -377,7 +383,11 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                 _mailbox.Post(new EngineEvent.InjectFailed(inject.Effect, result.Win32Error));
                 break;
             case InjectionStatus.Failed:
+                // A release SendInput took only in part (the desktop switched in the middle of the batch): the logical
+                // ledger already forgot those keys, so keep the batch to send again on SessionResumed, as a refused
+                // one (INV-3). The events that did go are sent twice, and an extra release is harmless.
                 LogSendFailed(_logger, result.Status, result.EventsSent, result.Win32Error);
+                _mailbox.Post(new EngineEvent.ReleasesBlocked(inject.Events));
                 break;
         }
     }

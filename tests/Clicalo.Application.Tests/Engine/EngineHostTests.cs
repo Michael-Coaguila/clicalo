@@ -137,6 +137,41 @@ public sealed class EngineHostTests
     }
 
     [Fact]
+    [Trait("Req", "SEG-006")]
+    public void A_release_send_input_takes_only_in_part_comes_back_to_be_sent_again()
+    {
+        using var world = new HostWorld();
+        world.Injector.NextStatus = InjectionStatus.Failed;
+
+        world.Handle(new EngineEvent.Terminal(TerminalReason.Lock), HostWorld.Release());
+        world.Host.Pump();
+
+        world
+            .Seen.OfType<EngineEvent.ReleasesBlocked>()
+            .ShouldHaveSingleItem()
+            .Events.ShouldBe([InjectedEvent.KeyUp(HostWorld.Ctrl)]);
+        world.Seen.OfType<EngineEvent.InjectFailed>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "REG-03")]
+    public async Task A_fenced_loop_leaves_the_engine_alive_mark_to_the_engine_that_replaced_it()
+    {
+        using var world = new HostWorld();
+        world.Injector.NextStatus = InjectionStatus.Fenced;
+        world.Answers.Enqueue([HostWorld.Press()]);
+        using var stop = new CancellationTokenSource();
+        var engine = world.Host.StartOnDedicatedThread(stop.Token);
+
+        world.Host.Post(new EngineEvent.SessionResumed());
+        engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+
+        world.Host.IsStopped.ShouldBeTrue();
+        world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive).ShouldBeTrue();
+        await stop.CancelAsync();
+    }
+
+    [Fact]
     [Trait("Req", "REG-03")]
     public void A_fenced_host_stops_and_sends_nothing_more()
     {
