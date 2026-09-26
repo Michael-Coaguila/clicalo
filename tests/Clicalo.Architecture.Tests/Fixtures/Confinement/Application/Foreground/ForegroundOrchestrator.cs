@@ -7,9 +7,3 @@ public sealed class ForegroundOrchestrator(IForegroundControl control)
 {
     public bool Acquire(nint window) => control.TrySetForeground(window);
 }
-
-/// <summary>Fixture: a port declared outside Application.Ports.</summary>
-public interface IMisplacedPort
-{
-    void Run();
-}

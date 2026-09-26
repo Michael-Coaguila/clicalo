@@ -13,11 +13,3 @@ public sealed class LeakyAggregate
         return new Repository().Name;
     }
 }
-
-/// <summary>Fixture: a domain type that depends only on itself and the BCL.</summary>
-public sealed class CleanValue
-{
-    public int Value { get; } = 42;
-
-    public int Twice() => Value * 2;
-}

@@ -94,20 +94,3 @@ internal static partial class DotnetCli
     )]
     private static partial Regex DiagnosticLine();
 }
-
-/// <summary>Exit code, full output and parsed diagnostics of a CLI run.</summary>
-internal sealed record CliResult(
-    int ExitCode,
-    string Output,
-    ImmutableArray<Diagnostic> Diagnostics
-);
-
-/// <summary>An MSBuild diagnostic.</summary>
-internal sealed record Diagnostic(
-    string File,
-    int Line,
-    string Severity,
-    string Code,
-    string Message,
-    string Project
-);
