@@ -35,7 +35,7 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
    Las rutas están en `architecture/sensitive-paths.json` y el trabajo `adr` de la CI lo comprueba
    (`dotnet run --project tools/Clicalo.DevCli -- adr-check --base main` en local).
 6. **Nunca rebajes un requisito.** Si uno parece inviable, propón el cambio con evidencia en la sección de
-   preguntas abiertas del catálogo (la que el plano llama «§7»); solo el usuario lo ratifica. Ver
+   propuestas pendientes del catálogo (§6.1); solo el usuario lo ratifica. Ver
    [cómo leer el catálogo](docs/requirements/README.md#cambiar-un-requisito).
 
 ## Reglas de código

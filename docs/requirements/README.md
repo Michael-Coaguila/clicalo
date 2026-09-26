@@ -37,10 +37,9 @@ Qué es vinculante del paquete está resumido en
 | [9](catalog.md#9-textos-correcciones-y-claves-nuevas-necesarias) | Correcciones de textos y claves nuevas necesarias |
 | [10](catalog.md#10-fuera-de-alcance-no-son-requisitos) | Fuera de alcance |
 
-> **Numeración de «§7».** El plano y el propio catálogo citan «§7» (por ejemplo «§7 PQ-21») para referirse
-> a las preguntas abiertas y a las decisiones de producto. En el archivo actual esa sección es la **6**
-> («Preguntas abiertas»); la 7 es el esquema v1. Hasta que el catálogo se revise, lee «§7 PQ-nn» como la
-> pregunta PQ-nn de la sección 6.
+> **Numeración.** Las preguntas abiertas son la sección **6** y las propuestas pendientes de ratificar, la
+> **6.1**; las discrepancias, la **5**. Algunos documentos antiguos citan «§7 PQ-nn» o «§6 DIS-nn»: léelos
+> como la pregunta PQ-nn de la sección 6 y la discrepancia DIS-nn de la sección 5.
 
 ## Formato de un requisito
 

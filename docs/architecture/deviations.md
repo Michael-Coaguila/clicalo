@@ -18,6 +18,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-06 | Notación de trazabilidad | `[Req("ID")]` | `[Trait("Req", "ID")]` | M0 |
 | D-07 | Formato de `CHANGELOG.md` | El que genere release-please | Keep a Changelog, con release-please configurado para respetarlo | M0 |
 | D-08 | Nota de qué es vinculante del paquete | «Un README» en `docs/design/handoff/` | `LEEME-VINCULANTE.md`, sin tocar el `README.md` original | M0 |
+| D-09 | Matriz de módulos de Domain | Tabla de §4.3 | Módulos `Document` y `Timing`, cuatro aristas nuevas y matriz transitiva | M0 |
+| D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |
+| D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -26,8 +29,10 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   y [§10.2](blueprint.md#102-pruebas-de-accesibilidad-y-aceptación-en-hardware) lo usan para migraciones,
   importación v1, árbol UIA y renderizado.
 - **Repositorio.** Verify no está en `Directory.Packages.props`. Las instantáneas las compara un componente
-  propio de `Clicalo.TestKit`: texto con bytes estables y PNG con la tolerancia que ya fijaba el plano
-  (ΔE ≤ 2 por píxel y 0,5 % de píxeles distintos como máximo). Se conservan las convenciones
+  propio de `Clicalo.TestKit` (`TextSnapshot`) y de `Clicalo.TestKit.Windows` (`RenderSnapshot`): texto con
+  bytes estables y PNG con tolerancia. El plano fija ΔE ≤ 2 por píxel y 0,5 % de píxeles distintos como
+  máximo; en M0 la tolerancia es por canal (2 de 255) con el mismo 0,5 %, y el modo ΔE llega antes de las
+  primeras referencias de la UI (M3). Se conservan las convenciones
   `*.verified.*` y `*.received.*` que ya recogen `.gitattributes` y `.gitignore`. El detalle está en la
   [estrategia de pruebas](testing-strategy.md#instantáneas).
 - **Motivo.** El README de Verify establece que toda versión publicada después del 1 de septiembre de 2026
@@ -147,6 +152,49 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   las reglas del autor.
 - **Coste.** Ninguno.
 
+## D-09 · Matriz de módulos de Domain
+
+- **Plano.** [§4.3](blueprint.md#43-módulos-por-capacidad) fija los módulos de `Clicalo.Domain` y de qué
+  depende cada uno.
+- **Repositorio.** `architecture/domain-modules.json` añade el módulo `Document` (`UserDocument` y sus
+  comandos) y el módulo base `Timing` (lo que genera `timings.json`), y las aristas `Errors → Messages`,
+  `Library → Errors`, `Settings → Messages` y `Touch`, `Dimming` y `Execution → Timing`. La matriz es
+  transitiva: un módulo puede usar lo que alcanza por `dependsOn`. Cada fila que difiere de §4.3 lleva un
+  campo `deviation` con el motivo, y `ModuleMatrixTests` falla si una diferencia no lo lleva o si sobra.
+- **Motivo.** Sin esos módulos y aristas, los propios tipos de §6.1–§6.3 (un `Error` con `MessageKey`,
+  `Result<Library>`, `SettingDescriptor` con claves de texto) y los umbrales generados de NFR-020 violarían
+  la tabla.
+- **Coste.** Ninguno en tiempo de ejecución; la matriz queda algo más permisiva que la tabla literal.
+- **Revisión.** Pendiente de que el usuario la ratifique o de un ADR que actualice §4.3.
+
+## D-10 · Puertos en `Application.Ports` y revelado de secretos
+
+- **Plano.** El bloque de código de [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano) muestra `IForegroundControl`
+  e `ISurfaceActivationStyle` en `Application.Foreground`; §4.4 (punto 2) limita
+  `SecretText.WithRevealed` a la ejecución y al editor.
+- **Repositorio.** Los puertos viven en `Application.Ports`, como exige el propio §4.4 («puertos en
+  `Application.Ports`»). `WithRevealed` se permite también en `Application.Engine` (el motor envía el
+  texto) y en `Infrastructure.Persistence` (el *mapper* lo cifra, §6.7).
+- **Motivo.** Son los dos sitios donde §6.7 necesita el texto en claro; sin ellos, la regla obligaría a
+  duplicar el secreto en otro tipo.
+- **Coste.** Dos zonas más con acceso al secreto, ambas con pruebas de confinamiento.
+- **Revisión.** Pendiente de ratificar junto con D-09.
+
+## D-11 · Tabla de APIs prohibidas ampliada
+
+- **Plano.** La tabla de [§4.4](blueprint.md#44-cómo-se-hacen-cumplir-las-reglas).
+- **Repositorio.** `architecture/BannedSymbols.*.txt` va más allá de la tabla: prohíbe además
+  `DateTime.Today`, `Environment.TickCount`, `Stopwatch`, `Task.WaitAsync(TimeSpan)`,
+  `CancellationTokenSource(TimeSpan)`, `PeriodicTimer(TimeSpan)`, los `Timer` de `System.Threading` y
+  `System.Timers`, `Guid.CreateVersion7` y `new Random()` sin semilla (regla «`TimeProvider` en todo» de
+  §13); aplica `Window.Focus` como `UIElement.Focus` (enfocar un elemento activa su ventana); y prohíbe la
+  carga dinámica de ensamblados (`Assembly.Load*`, `AssemblyLoadContext.LoadFrom*`) para hacer cumplir
+  ADR-0017. A cambio, registra `ShellExecuteEx` como excepción en `Platform.Windows/Elevation`, que
+  §3.3 regla 2 necesita para relanzar elevado.
+- **Motivo.** La tabla literal dejaba abiertas otras fuentes de tiempo no simulables y la carga de código.
+- **Coste.** Algún adaptador más tendrá que registrarse en `banned-api-exceptions.json`.
+- **Revisión.** Pendiente de ratificar junto con D-09.
+
 ## Puntos del plano pendientes de resolver
 
 No son desviaciones del repositorio, sino contradicciones o huecos detectados al redactar la documentación.
@@ -154,6 +202,8 @@ Se resuelven en el hito indicado; mientras tanto, esta es la interpretación vig
 
 | Punto | Detalle | Interpretación vigente | Cuándo se resuelve |
 |---|---|---|---|
-| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) responde `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo) | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | M1, S6 |
+| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) respondía `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo). El plano ya lo recoge | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | M1, S6 |
 | Firma de todas las DLL | [§2.1](blueprint.md#21-stack-elegido) y [§11](blueprint.md#11-distribución-versionado-y-publicación) firman todas las DLL tras R2R; las condiciones de SignPath Foundation solo permiten firmar artefactos compilados desde el código propio | Se firman los ejecutables y ensamblados propios; la verificación de las DLL de terceros se decide en S8 y, si cambia, con un ADR que sustituya a ADR-0013 | M1, S8 |
-| Sección «§7» del catálogo | El plano y el catálogo citan «§7» para las preguntas abiertas y las decisiones de producto (PQ-nn), pero en el archivo esa sección es la 6 («Preguntas abiertas»); la 7 es el esquema v1. Las propuestas P1–P6 del plano aún no figuran en el catálogo | «§7» se lee como la sección de preguntas abiertas; P1–P6 se consultan en [§1.4 del plano](blueprint.md#14-propuestas-de-producto-pendientes-de-ratificar-por-el-usuario) (ver [cómo leer el catálogo](../requirements/README.md)) | Con la próxima revisión del catálogo, que ratifica el usuario |
+
+Resuelto al integrar M0: la numeración del catálogo (las preguntas abiertas son su sección 6, las
+propuestas pendientes la 6.1 y las discrepancias la 5; el catálogo y el plano ya se citan así).

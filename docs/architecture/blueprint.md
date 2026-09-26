@@ -4,7 +4,7 @@
 
 Las decisiones difíciles de revertir se recogen en un ADR (§16). Las reversibles se documentan en `docs/architecture/*.md`. Para cambiar una decisión con ADR se escribe un ADR nuevo; el plano nunca se edita sin él.
 
-**El plano no rebaja requisitos por su cuenta.** Si un requisito del catálogo parece inviable o inseguro, se formula una propuesta al usuario y se registra en §7 del catálogo (`docs/requirements/catalog.md`). Mientras el usuario no la ratifique, el requisito sigue vigente tal cual. §1.4 lista las propuestas abiertas.
+**El plano no rebaja requisitos por su cuenta.** Si un requisito del catálogo parece inviable o inseguro, se formula una propuesta al usuario y se registra en §6.1 del catálogo (`docs/requirements/catalog.md`). Mientras el usuario no la ratifique, el requisito sigue vigente tal cual. §1.4 lista las propuestas abiertas.
 
 **Fuentes:**
 - **Vinculantes:** las funcionalidades, los comportamientos, los flujos, los estados, los textos, las medidas táctiles y las reglas de producto y UX del Prototipo v4. También la Auditoría (60 hallazgos aceptados), el catálogo de requisitos derivado del paquete (`design_handoff_clicalo/docs/01..09`) y los datos de `data/*.json`.
@@ -104,7 +104,7 @@ La arquitectura se apoya en seis ideas:
 
 ### 1.4 Propuestas de producto pendientes de ratificar por el usuario
 
-Se registran en §7 del catálogo. Ninguna rebaja un requisito mientras no esté ratificada.
+Se registran en §6.1 del catálogo. Ninguna rebaja un requisito mientras no esté ratificada.
 
 | # | Requisito | Situación y propuesta | Mientras no se ratifique |
 |---|---|---|---|
@@ -140,7 +140,7 @@ Las versiones marcadas «x» se fijan de forma exacta al crear el repositorio. D
 | Actualizaciones | Velopack (NuGet + CLI `vpk` de la misma versión) | 1.2.x | Por usuario sin UAC, canales, deltas y fuente propia `IUpdateSource` con verificación de firma. |
 | Firma del manifiesto | ECDSA P-256 en una llave de hardware PIV (YubiKey 5 serie Nano o equivalente), mediante `cl sign-manifest` | — | Clave fuera de GitHub (D15). La verificación usa la BCL (`ECDsa`). |
 | Fuentes | Atkinson Hyperlegible, JetBrains Mono, Material Symbols Rounded (instancias estáticas FILL 0 y 1, recortadas) | Versionadas | El script de recorte en `/tools/fonts` es Python, se ejecuta a mano y su salida se versiona. No hay Python en la compilación. |
-| Pruebas | xUnit v3, Shouldly, Verify.XunitV3 (texto y PNG con comparador de tolerancia propio en TestKit), CsCheck, `FakeTimeProvider`, ArchUnitNET (`TngTech.ArchUnitNET.xUnitV3`), FlaUI.UIA3, Axe.Windows | 3.x / 4.x / — / 4.x / 10.x / — / 5.x / 2.4.x | Ver §10. Stryker.NET y SharpFuzz entran **después de la 2.0** (M7). |
+| Pruebas | xUnit v3, Shouldly, comparador de instantáneas propio en TestKit (texto y PNG con tolerancia; sustituye a Verify, [D-01](deviations.md)), CsCheck, `FakeTimeProvider`, ArchUnitNET (`TngTech.ArchUnitNET.xUnitV3`), FlaUI.UIA3, Axe.Windows | 4.x ([D-02](deviations.md)) / 4.x / — / 4.x / 10.x / — / 5.x / 2.4.x | Ver §10. Stryker.NET y SharpFuzz entran **después de la 2.0** (M7). |
 | Análisis | Meziantou.Analyzer, Microsoft.CodeAnalysis.BannedApiAnalyzers, NetAnalyzers del SDK y analizadores propios `Clicalo.Analyzers` | 2.x | Ver §4.4. |
 | Formato | CSharpier + `.editorconfig` | 1.x | Determinista y sin opciones, así que se puede dictar sin cuidar la sangría. |
 | Build | `cl` → Bullseye + SimpleExec (proyecto `build/`) | — | C# depurable, sin un DSL propio. |
@@ -407,7 +407,7 @@ public abstract class NonActivatingWindow : Window
 | `WM_ACTIVATE` (≠ `WA_INACTIVE`), `WM_NCACTIVATE(TRUE)`, `WM_ACTIVATEAPP(TRUE)` | `ActivationGuard.OnActivated(surface, msg)` |
 | `WM_DPICHANGED` | Aplica el rectángulo con `SWP_NOZORDER \| SWP_NOACTIVATE` y lo marca como manejado (#7561) |
 | `WM_GETDPISCALEDSIZE` | Tamaño propio |
-| `WM_NCHITTEST` | `HTTRANSPARENT` en el margen de sombra |
+| `WM_NCHITTEST` | Margen de sombra no clicable; el mecanismo se decide en S6 (`SetWindowRgn` ajustado al contorno o alfa 0 en ventana *layered*). `HTTRANSPARENT` no sirve: solo pasa el clic a ventanas del mismo hilo |
 
 **Prohibido en las superficies:** `Popup`, `ContextMenu`, `ToolTip` interactivo y `ComboBox`. Lo impiden `CLC0002` en XAML y `BannedSymbols.Surfaces.txt`. Los menús y desplegables son `NonActivatingWindow` hijas.
 
@@ -718,7 +718,7 @@ clicalo/
 │  ├─ architecture/ blueprint.md (este documento) · overview.md (arc42 ligero, C4 en Mermaid)
 │  │              threading.md · windowing.md · foreground.md · engine.md · persistence.md
 │  │              contracts.md · testing-strategy.md · tooling.md
-│  ├─ requirements/ catalog.md (catálogo del paquete; §7 = decisiones de producto)
+│  ├─ requirements/ catalog.md (catálogo del paquete; §6 = preguntas y propuestas de producto)
 │  │              traceability.md (generado en CI, no versionado)
 │  ├─ security/   threat-model.md · privacy.md
 │  ├─ guides/     dev-setup.md · voice-and-touch-workflow.md · testing.md · i18n.md
@@ -816,7 +816,7 @@ public sealed record KeyChord(ValueList<KeyStroke> Strokes); // ORDEN DE PULSACI
 public readonly record struct CanonicalChord(ModifierSet Modifiers, ValueList<KeyId> Main) // REP-001
 { public static CanonicalChord From(KeyChord c, KeyCatalog k); public string ToStableString(); }
 public enum InjectionMode : byte { VirtualKey, ScanCode }  // D24; ScanCode = «modo compatible»
-// Keys.Ctrl, Keys.A… son constantes GENERADAS desde data/catalogs/keys.json
+// KeyIds.Ctrl, KeyIds.A… (y KeyDefinitions.TryGet) son constantes GENERADAS desde data/catalogs/keys.json
 
 namespace Clicalo.Domain.Errors;
 public sealed record Error(string Code /* "persist.io.locked" */, MessageKey Message, ImmutableArray<MessageArg> Args,
@@ -975,7 +975,7 @@ public readonly record struct DimInputs(bool AutoDim, double Opacity, double Dim
     Search = 16, EditMode = 32, DockSideWindows = 64, ControlCenterOpen = 128, WelcomeOpen = 256 }
 public static class DimPolicy
 {
-    // Atenuado a DimTo 2,5 s después de que el dedo o el puntero salgan (Timings.DimDelay);
+    // Atenuado a DimTo 2,5 s después de que el dedo o el puntero salgan (Timings.Dimming.DimDelay);
     // se recupera al tocar o al pasar el cursor; nunca con cualquier bit de DimExceptions;
     // la burbuja nunca baja del 55 %; con pánico, la burbuja va al 100 %; transición 350 ms (0 con reduceMotion).
     public static DimDecision Evaluate(in DimInputs i);   // → TargetOpacity, Transition, NextEvaluationAt?
@@ -984,7 +984,7 @@ public static class DimPolicy
 
 - **EJE-017: el primer toque despierta *y* ejecuta.** El atenuado es solo visual. Ninguna capa de entrada consume un toque para «despertar», y lo comprueba una propiedad: para todo `DimState`, `ActivationPolicy.Decide` da el mismo resultado.
 - **SEG-002:** la franja de pánico y su superficie nunca se atenúan.
-- `DimPolicyTests` usa la **tabla completa de excepciones** de docs/04, con `[Req("GEN-009")]`, `[Req("EJE-017")]` y `[Req("SEG-002")]`.
+- `DimPolicyTests` usa la **tabla completa de excepciones** de docs/04, con `[Trait("Req", "GEN-009")]`, `[Trait("Req", "EJE-017")]` y `[Trait("Req", "SEG-002")]`.
 
 **`DocumentStore` y deshacer por porciones (20 entradas):**
 
@@ -1092,7 +1092,7 @@ public sealed class MigrationRunner(IReadOnlyList<IDocumentMigration> chain, IBa
 ```
 
 - La cadena es contigua. Hay pruebas de «sin huecos ni ciclos» y de `Apply(Apply(x)) == Apply(x)`.
-- **Fixtures inmutables por versión** en `tests/fixtures/schema/<major.minor>/`. Cada migración nueva se prueba desde **todas** las versiones anteriores, con Verify.
+- **Fixtures inmutables por versión** en `tests/fixtures/schema/<major.minor>/`. Cada migración nueva se prueba desde **todas** las versiones anteriores, con instantáneas de TestKit.
 
 **Importación desde Macro Quick Access (v1 → documento 1.0 de Clícalo 2.x):**
 - **Es una etapa aparte, no un eslabón de la cadena de migraciones.**
@@ -1326,14 +1326,15 @@ Notación:
 
 | Modo | `wVk` | `wScan` | Marcas | Resolución |
 |---|---|---|---|---|
-| `VirtualKey` (normal) | VK resuelto con la distribución del primer plano | Scancode **informativo** (`MapVirtualKeyEx(VK → VSC_EX)`), para las apps que lo leen de `lParam` | `KEYEVENTF_EXTENDEDKEY` si procede; **sin** `KEYEVENTF_SCANCODE` | `KeyId` → VK (con `VkKeyScanEx` para caracteres) |
-| `ScanCode` (compatible: juegos, escritorio remoto, máquinas virtuales) | 0 | Scancode resuelto | `KEYEVENTF_SCANCODE` + `KEYEVENTF_EXTENDEDKEY` si procede | `KeyId` → VK (distribución del primer plano) → `MapVirtualKeyEx(VK → VSC_EX)` |
+| `VirtualKey` (normal) | VK resuelto con la distribución del primer plano | Scancode **informativo**, para las apps que lo leen de `lParam`: el de `keys.win32.json` en las teclas fijas y `MapVirtualKeyEx(VK → VSC_EX)` solo en los caracteres de la distribución | `KEYEVENTF_EXTENDEDKEY` según `keys.win32.json` (`extended`); **sin** `KEYEVENTF_SCANCODE` | `KeyId` → VK (con `VkKeyScanEx` para caracteres) |
+| `ScanCode` (compatible: juegos, escritorio remoto, máquinas virtuales) | 0 | Scancode resuelto | `KEYEVENTF_SCANCODE` + `KEYEVENTF_EXTENDEDKEY` si procede | Teclas fijas: `scan` y `extended` de `keys.win32.json`. Caracteres: `KeyId` → VK con `VkKeyScanEx` (distribución del primer plano) → `MapVirtualKeyEx(VK → VSC_EX)` |
 
 - Los lados se envían con el VK izquierdo o derecho en modo normal, y con el scancode correspondiente (por ejemplo Ctrl derecho = `0x1D` + extendida) en modo compatible.
+- **`MapVirtualKeyEx(VK → VSC_EX)` no basta para las teclas fijas** (verificado en Windows 11 en-US por los paquetes de catálogos y de InputProbe): devuelve sin el prefijo `E0` las flechas, Insert, Supr, Inicio, Fin, RePág y AvPág (los códigos del teclado numérico), `0x54` (PetSis) para Impr Pant, `0x1C` para Intro del teclado numérico, Bloq Num sin la marca extendida y Pausa como `E1 1D`. Por eso las teclas fijas toman `scan` y `extended` de `keys.win32.json` en los dos modos; sin esa tabla, Mayús+flecha con Bloq Num activo rompe la selección y Raw Input ve teclas del teclado numérico. Pausa (prefijo `E1`) se envía siempre por VK. `tests/Clicalo.TestKit.Windows/Input/KeyboardLayouts.ToScanCode` aplica hoy la misma corrección en el inyector de pruebas.
 - `KEYEVENTF_UNICODE` se usa para Texto en ambos modos.
 - El mouse no depende del modo.
 - **Resolución con la distribución del hilo en primer plano.** `GetKeyboardLayout(GetWindowThreadProcessId(fg))` se captura en `KeyboardLayoutSnapshot` con cada cambio de primer plano y con `WM_INPUTLANGCHANGE`. El reductor usa esa tabla pura (la plataforma la construye con `VkKeyScanEx`/`MapVirtualKeyEx`). Si una tecla no existe en la distribución, no se envía nada y se avisa (EC-EJE-10).
-- **Intervalo:** `Timings.InjectInterEventDelay`, generado a partir de `timings.json`, empieza en 20 ms. Con 0, se hace un único `SendInput` atómico.
+- **Intervalo:** `Timings.Injection.InterEventDelay`, generado a partir de `timings.json`, empieza en 20 ms. Con 0, se hace un único `SendInput` atómico.
 - **MenuMaskKey:** al soltar Alt o Win **por seguridad** se envía antes `VK 0xE8`, así no se abre ni el menú Inicio ni la barra de menús. Win se mantiene durante toda la combinación y se suelta el último.
 - **SEG-008:** como mucho 4 Shift en una ventana de 1 s. El quinto se retrasa para no disparar las Teclas especiales de Windows.
 - **Pegar (EJE-008), en SysEvents (OLE STA):**
@@ -1341,7 +1342,7 @@ Notación:
   2. Colocar el texto con los formatos `ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory=0` y `CanUploadToCloudClipboard=0`.
   3. `ClipboardReady` → Ctrl+V (bajo la valla).
   4. A los 500 ms, restaurar el contenido original **solo si** el número de secuencia del portapapeles sigue siendo el nuestro.
-- **Pruebas:** InputProbe y S7 cubren los dos modos con es-ES, en-US, es-419 y AltGr. En modo compatible, InputProbe comprueba que `lParam` lleva el scancode y la marca extendida, y que el VK que ve la app es el que traduce su propia distribución. `[Req("EJE-003")]`, `[Req("ATJ-004")]`.
+- **Pruebas:** InputProbe y S7 cubren los dos modos con es-ES, en-US, es-419 y AltGr. En modo compatible, InputProbe comprueba que `lParam` lleva el scancode y la marca extendida, y que el VK que ve la app es el que traduce su propia distribución. `[Trait("Req", "EJE-003")]`, `[Trait("Req", "ATJ-004")]`.
 
 ### 7.8 Filtro táctil y gestos (Domain.Touch)
 
@@ -1361,7 +1362,7 @@ public sealed class GestureRecognizer  // una instancia por superficie; sin asig
 { public void Feed(in PointerFrame f, List<GestureEvent> output); public void OnTick(DateTimeOffset now, List<GestureEvent> output); }
 ```
 
-- `GestureConstants` se genera desde `timings.json` (NFR-020): `LongPress = 600 ms`, `SwipeMinPx = 60`, `SwipeSlope = 0.6`, `PostSwipeLock = 300 ms`, `DragThreshold = max(6, cancelMovePx)`.
+- `Timings.Touch.*` se genera desde `timings.json` (NFR-020): `LongPress = 600 ms`, `SwipeMinDistancePx = 60`, `SwipeMaxSlope = 0.6`, `PostSwipeLock = 300 ms`, `DragMinDistancePx` (el arrastre empieza en `max(DragMinDistancePx, cancelMovePx)`).
 - La zona de prueba (TAC-006) y el Modo prueba (TAC-008) llaman a `TouchFilter.Evaluate` directamente. No hay una segunda implementación.
 - `PalmLike` se calcula a partir de `rcContact`.
 - **Fixtures:** trazas de puntero reales grabadas en el hardware del mantenedor (`tests/fixtures/pointer/*.json`), con temblor, palma, dos dedos y un deslizamiento que empieza sobre un Mantener. Se vuelven a grabar en cada pasada de aceptación con hardware (§10.2).
@@ -1428,7 +1429,7 @@ Al tocar el panel, Windows lleva el cursor al punto del toque. Por eso `GetCurso
 - **Pruebas:**
   - Platform.IntegrationTests: el mouse sintético se coloca en el punto P del Bloc de notas de InputProbe; después, un toque sintético (`InjectSyntheticPointerInput`) en el panel ejecuta «clic derecho»; InputProbe debe recibir `WM_RBUTTONDOWN/UP` en P, en 20 de 20.
   - Lo mismo con desplazamiento (rueda) y `drag`.
-  - `[Req("EJE-009")]`, `[Req("FIJ-006")]`.
+  - `[Trait("Req", "EJE-009")]`, `[Trait("Req", "FIJ-006")]`.
 
 ---
 
@@ -1486,12 +1487,18 @@ DocumentStore + SessionStore + InteractionSnapshot + EngineSnapshot
 ### 8.4 Temas y tokens
 
 ```
-data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion}.json + sizes.json
-  → TokenGenerator (Clicalo.Design.Math: OKLCH→OKLab→sRGB lineal→sRGB; gamut CSS Color 4, ΔEOK < 0,02)
-    diagnósticos: CLCT001 fuera de gamut sin regla · CLCT002 contraste < mínimo (calculado sobre el fondo
-    compuesto real: panel α sobre escritorio claro y oscuro, y con dimTo) · CLCT003 token ausente en algún tema
-  → UI.Wpf (generado en C#, no en XAML): ThemeKeys · DarkTheme · LightTheme · ClicaloHcTheme ·
-    SystemHcTheme (→ SystemColors) · CategoryPalette(tint, wash) · Sizes S/M/L · Motion.* (con reduceMotion)
+data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion}.json
+  → TokenGenerator (Clicalo.Design.Math: OKLCH→OKLab→sRGB lineal→sRGB; gamut CSS Color 4, JND 0,02)
+    diagnósticos: CLCT001 color no válido · CLCT002 contraste < mínimo (sobre el fondo compuesto real en
+    8 bits: pila translúcida sobre los 8 vértices del cubo sRGB como escritorio, peor caso 1:1 si el primer
+    plano cruza la luminancia del fondo entre dos de ellos; atenuado exento, TEM-004/PQ-42) · CLCT003 mapeo
+    de gama con ΔEOK > maxDeltaEOK (también un color cromático con L = 0 o 1) · CLCT004 archivo mal formado
+    o miembro desconocido · CLCT005 token desconocido, ausente o sin decisión de contraste · CLCT006
+    corrección desfasada · CLCT007 archivo ausente
+  → UI.Wpf (generado en C#, no en XAML): ColorToken · CategoryToken · ThemePalette (Dark, Light,
+    HighContrast en ThemePalettes) · SystemHighContrastPalette (→ SystemColors, Capture()) · Radii ·
+    FocusRing · ShadowSpec/Shadows · MotionToken/Motion (con reducir movimiento); ver docs/guides/design-tokens.md
+  → Sizes S/M/L: data/catalogs/sizes.json → CatalogGenerator → Clicalo.Domain.Catalog.PanelSizes
   → ThemeService (uno por dispatcher): Auto lee AppsUseLightTheme y SystemParameters.HighContrast y escucha
     WM_SETTINGCHANGE, WM_SYSCOLORCHANGE y UISettings.ColorValuesChanged; el alto contraste del sistema tiene prioridad (TEM-001)
 ```
@@ -1514,7 +1521,7 @@ data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion
 - **Cultura:** `CultureInfo` para decimales y fechas. Comillas «» en español (hay prueba de estilo).
 - **Pseudolocalización `qps-ploc`** (+40 % de longitud) en `UI.Wpf.Tests` para detectar desbordamientos.
 - **Tercer idioma:** Weblate (formato i18next JSON v4). Añadir un idioma es añadir un archivo más una entrada en `locales.json` (IDI-006).
-- **Textos nuevos que exige esta revisión** (P6 y los avisos de foco denegado, si el paquete no tiene clave): entran por PR de i18n en ambos idiomas y se registran en §7 del catálogo.
+- **Textos nuevos que exige esta revisión** (P6 y los avisos de foco denegado, si el paquete no tiene clave): entran por PR de i18n en ambos idiomas y se registran en §6.1 del catálogo.
 
 ### 8.6 Accesibilidad, UIA y números de voz
 
@@ -1688,8 +1695,8 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 | Domain.Tests | Invariantes de `Library`, `KeyboardLedger`, `EngineReducer` (INV-1 a 12, incluido «congelar y reanudar»), `TouchFilter` y `GestureRecognizer`, `ActivationPolicy` por `Source`, `DimPolicy` (tabla de excepciones), `InteractionReducer`, resolución de perfil, Frecuentes, repetidos, capas, métricas, numeración, tokenizador v1, tabla de formas | Cada PR |
 | Application.Tests | `DocumentStore` (porciones, agrupación, 20 entradas, borrador sin rastro, `ConfirmationToken`), `EngineHost` con `PhysicalStateInjector` e `InjectionGate`, `ForegroundOrchestrator` con `FakeForegroundControl` (escalera por origen, concesiones y prioridades), `TryNowUseCase` con `FakeTimeProvider`, coordinadores, programador de guardado (uso intensivo) | Cada PR |
 | Presentation.Tests | VM contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente | Cada PR |
-| Infrastructure.Tests | DTO ↔ dominio, migraciones con fixtures, importación v1 (Verify), `SafeZipReader` con zips hostiles (CsCheck), `usage.json` y `usageEpoch`, `CrashingFileSystem`, cuarentena, DPAPI, cliente de IA con servidor falso y los 4 campos exactos, `SignedManifestSource` (firma incorrecta, `seq` menor, bajada legítima o atacante, revocada, `minSafeVersion`), `FixedNameRollingFileSink` | Cada PR |
-| UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con Verify y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos) | Cada PR (x64 y ARM64) |
+| Infrastructure.Tests | DTO ↔ dominio, migraciones con fixtures, importación v1 (instantáneas de TestKit), `SafeZipReader` con zips hostiles (CsCheck), `usage.json` y `usageEpoch`, `CrashingFileSystem`, cuarentena, DPAPI, cliente de IA con servidor falso y los 4 campos exactos, `SignedManifestSource` (firma incorrecta, `seq` menor, bajada legítima o atacante, revocada, `minSafeVersion`), `FixedNameRollingFileSink` | Cada PR |
+| UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con `RenderSnapshot` de TestKit y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos; hoy la tolerancia es por canal y el modo ΔE llega antes de las primeras referencias de la UI) | Cada PR (x64 y ARM64) |
 | Platform.IntegrationTests | Inyección en los dos modos con varias distribuciones, *hook* LL bajo presión de GC, `PointerPositionTracker` con toque sintético, sesión y suspensión, portapapeles, lanzador sin intérprete en el hilo Shell, ACL de la tarea elevada, escritura elevada y luego media | Alojado interactivo o equipo táctil |
 | Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
 | Sentinel.Tests | Lectura del *ledger* v2 (modos y generación), liberación con máscara, relanzamiento según las marcas, bucle de fallos (`timings.json`) | Equipo táctil |
@@ -1730,7 +1737,7 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 | UIA010 | Todo Edit de texto libre tiene un botón hermano con Invoke llamado «Dictar» (o «Pegar» en el campo de clave de IA) (ACC-011, REG-05) |
 
 **Además:**
-- Instantánea Verify del árbol UIA por ventana y estado. Un cambio de accesibilidad aparece en el diff del PR.
+- Instantánea de texto (TestKit) del árbol UIA por ventana y estado. Un cambio de accesibilidad aparece en el diff del PR.
 - Instantáneas de renderizado de la misma matriz, para verificar la fidelidad visual («las tres vistas y los tres tamaños se ven como en el prototipo»). Las referencias iniciales se aprueban comparándolas lado a lado con el Prototipo v4.
 - `StateMatrixFixture` recorre formas, CC por secciones, bienvenida por pasos, alto contraste, números de voz activados y apagados, atenuado y ES/EN.
 - Axe.Windows 2.4.x fijado, como apoyo.
@@ -1784,7 +1791,7 @@ Se guardan en `tests/Clicalo.Performance/budgets.json`, que está versionado.
 | UI.Wpf y Platform | — | — | Se cubren con integración, instantáneas y E2E |
 
 - **Mutación y *fuzzing*: después de la 2.0 (M7).** Stryker.NET semanal sobre Domain y `Application.Engine` (umbral del 70 %); SharpFuzz sobre el lector del documento, `SafeZipReader`, el importador v1 y el tokenizador. Antes de la 2.0 los cubren los generadores CsCheck de entradas hostiles.
-- **Trazabilidad:** atributo `[Req("SEG-007")]` más `cl trace`, que genera `traceability.md` a partir de `docs/requirements/catalog.md` y los resultados. Desde el hito RC, ningún MUST puede quedar sin prueba automática o sin entrada en el guion manual o en la aceptación en hardware.
+- **Trazabilidad:** rasgo `[Trait("Req", "SEG-007")]` ([D-06](deviations.md)) más `cl trace`, que genera `traceability.md` a partir de `docs/requirements/catalog.md` y los resultados. Desde el hito RC, ningún MUST puede quedar sin prueba automática o sin entrada en el guion manual o en la aceptación en hardware.
 - **Pruebas inestables:**
   - ningún reintento en unitarias ni en UI en proceso;
   - un reintento en escritorio, con un *issue* `flaky` automático;
@@ -1973,7 +1980,7 @@ release-publish.yml
   Un ADR aceptado no se edita: se sustituye por otro.
 - Las decisiones reversibles se documentan en la página de `docs/architecture/` que corresponda y se cambian con un PR normal. Ejemplos: número de dispatchers, modo de publicación o herramientas.
 - La CI exige un ADR si un PR toca una ruta de `architecture/sensitive-paths.json` (límites de confianza, formatos, contratos, Launcher, `Platform.Core/Trust`).
-- Los cambios de requisito o de texto de producto se registran en §7 del catálogo, y solo el usuario los ratifica.
+- Los cambios de requisito o de texto de producto se registran en §6.1 del catálogo, y solo el usuario los ratifica.
 - RFC: se introducen cuando haya 3 mantenedores.
 
 **Revisión:**
@@ -1989,7 +1996,7 @@ release-publish.yml
 **`AGENTS.md`** (con `CLAUDE.md` apuntando a él) contiene:
 - el mapa de capas y de hilos;
 - los verbos de `cl` y la regla «termina con `cl check`»;
-- «nunca edites lo generado», «`[Req]` en todo requisito tocado», «textos en ambos JSON», «un ADR si cambias un límite de confianza, un formato o un contrato» y «nunca rebajes un requisito: propón en §7 del catálogo».
+- «nunca edites lo generado», «`[Req]` en todo requisito tocado», «textos en ambos JSON», «un ADR si cambias un límite de confianza, un formato o un contrato» y «nunca rebajes un requisito: propón en §6.1 del catálogo».
 
 Como las reglas viven en los analizadores, un agente recibe el mismo error que una persona.
 

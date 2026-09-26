@@ -17,9 +17,9 @@
 1. **Instrucción del usuario.** Las recomendaciones de arquitectura, tecnología, APIs Win32 concretas y plan de fases del paquete **no son vinculantes**. Este catálogo no prescribe tecnología. Cuando menciona una API, lo hace solo como ejemplo de una capacidad que hace falta.
 2. **Las 8 reglas del README y su glosario.** Por ejemplo, «General se usa cuando la app no tiene perfil».
 3. **Auditoría.** Contiene **62** hallazgos, aunque el README dice 60. Todos están aceptados salvo la elección de tecnología.
-4. **Prototipo v4.** Manda en comportamiento, flujos, estados, textos, medidas y orden de los elementos. **Excepción:** no son requisito los defectos del prototipo, es decir, simulaciones, código muerto o fallos que violen una regla del README o un hallazgo aceptado. Cada caso se razona en §6.
+4. **Prototipo v4.** Manda en comportamiento, flujos, estados, textos, medidas y orden de los elementos. **Excepción:** no son requisito los defectos del prototipo, es decir, simulaciones, código muerto o fallos que violen una regla del README o un hallazgo aceptado. Cada caso se razona en §5.
 5. **docs 01–10.** Si dos docs se contradicen, prevalece el de número menor. Rellenan lo que el prototipo no define.
-6. **Decisiones de este catálogo.** Llevan la marca «Decisión», se usan donde ninguna fuente resuelve y se pueden revisar en §7.
+6. **Decisiones de este catálogo.** Llevan la marca «Decisión», se usan donde ninguna fuente resuelve y se pueden revisar en §6.
 
 ### 0.2 Prioridades
 
@@ -88,8 +88,8 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   En la vista Pestaña no hay cabecera ni botón de minimizar. **Acepta:** una tabla de transiciones cubierta por pruebas. ‹P4:42-43,273,373,387; script 1637,1697-1707,1727,1753,1756›
 - **PAN-002 · MUST · Ancho y posición.** Ancho = max(288, cols·w + (cols−1)·gap + 24), con w y gap de 72/6 en S, 92/8 en M y 116/10 en L. Por ejemplo, M con 3 columnas mide 316. Posición inicial arriba a la derecha: x = ancho útil − panel − 72; y = 40. El panel queda siempre **completo** dentro del área de trabajo del monitor, sin la barra de tareas y con un margen de 8 px. El alto máximo llega hasta 16 px por encima del borde inferior del área de trabajo. **Acepta:** en cualquier monitor, escala o posición de la barra de tareas, ningún píxel del panel sale del área de trabajo. ‹P4:43; script 1519-1521,1725; d04›
 - **PAN-003 · SHOULD · Estilo.** Radio 18, sombra 0 18 50 al 45 %, fondo del token `panel` semitransparente y desenfoque del fondo de unos 14 px, adaptado a los controles nativos (fidelidad visual media). En alto contraste no hay transparencia ni desenfoque (TEM-004). ‹P4:43›
-- **PAN-004 · MUST · Mover el panel.** El asa ⋮⋮ (visual 26, táctil 44, [move] «Mover panel») y la zona de icono y nombre del perfil arrastran el panel. Un gesto cuenta como arrastre cuando supera max(6 px, cancelMovePx). **Decisión:** es el mismo umbral que usan la burbuja y el asa de la Pestaña (§6 DIS-40). Un gesto que se convirtió en arrastre no cuenta como toque. La posición se guarda por monitor. ‹P4:45-46,374; script 1507-1513; AUD-11›
-- **PAN-005 · SHOULD · Mover sin arrastrar.** Hay una forma de recolocar el panel sin arrastrar, para voz y conmutador: una opción «Mover panel» con posiciones predefinidas (las 4 esquinas y el centro de cada borde) o con flechas por pasos. ‹Hueco; §7 PQ-21›
+- **PAN-004 · MUST · Mover el panel.** El asa ⋮⋮ (visual 26, táctil 44, [move] «Mover panel») y la zona de icono y nombre del perfil arrastran el panel. Un gesto cuenta como arrastre cuando supera max(6 px, cancelMovePx). **Decisión:** es el mismo umbral que usan la burbuja y el asa de la Pestaña (§5 DIS-40). Un gesto que se convirtió en arrastre no cuenta como toque. La posición se guarda por monitor. ‹P4:45-46,374; script 1507-1513; AUD-11›
+- **PAN-005 · SHOULD · Mover sin arrastrar.** Hay una forma de recolocar el panel sin arrastrar, para voz y conmutador: una opción «Mover panel» con posiciones predefinidas (las 4 esquinas y el centro de cada borde) o con flechas por pasos. ‹Hueco; §6 PQ-21›
 - **PAN-006 · MUST · Posición por monitor y recolocación.** La posición del panel, la burbuja y la pestaña se guarda por monitor, con un identificador de monitor que se mantenga entre arranques. Ante cualquier cambio de tamaño, vista, escala, resolución, orientación, monitor o posición y autoocultado de la barra de tareas, todas las superficies se recolocan dentro del área de trabajo. Si el monitor guardado no existe, pasan al principal. **Acepta:** al desconectar el monitor que contiene el panel, el panel aparece completo en el principal. ‹d04:102-104; AUD-07; AUD-55›
 - **PAN-007 · MUST · Orden vertical fijo de las capas.** De arriba abajo: cabecera, pánico, aviso de administrador, búsqueda, Ajustes rápidos, sugerencia, fila Siempre visible, Teclas fijas, selector de perfil, cuadrícula de perfiles, cuadrícula de atajos (con el menú contextual y los estados vacíos), fila inferior de Compacta o paginador, barra de avisos. ‹P4:44-269; d04 Estructura›
 - **PAN-008 · MUST · Exclusión y precedencia de capas.**
@@ -135,11 +135,11 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - (b) el campo toma el foco con el cursor dentro, para el teclado táctil o el dictado;
   - (c) antes de ejecutar un resultado, o al cerrar la búsqueda, el foco vuelve a la ventana memorizada y se comprueba antes de enviar nada;
   - (d) si no se puede devolver el foco, no se envía y se avisa.
-  El teclado táctil no debe tapar el panel: si lo tapa, el panel se recoloca (EC-BUS-01). **Acepta:** buscar «negr» desde Word y tocar el resultado aplica Negrita en Word y nunca escribe en el panel. ‹AUD-06; AUD-48; §7 PQ-01›
+  El teclado táctil no debe tapar el panel: si lo tapa, el panel se recoloca (EC-BUS-01). **Acepta:** buscar «negr» desde Word y tocar el resultado aplica Negrita en Word y nunca escribe en el panel. ‹AUD-06; AUD-48; §6 PQ-01›
 - **BUS-003 · MUST · Dictado en la búsqueda.** El campo tiene un botón 🎤 que pone el foco y abre el dictado de Windows. ‹AUD-06; d07:45; DIS-24›
-- **BUS-004 · MUST · Qué se busca.** Todos los perfiles y Siempre visible, en su orden, por subcadena del nombre ES, del nombre EN y de la combinación mostrada, **sin distinguir mayúsculas ni acentos** («numero» encuentra «Número»). **Decisión:** no se busca en el contenido de los botones Texto (privacidad). ‹P4 script 1541-1542; §6 DIS-41›
+- **BUS-004 · MUST · Qué se busca.** Todos los perfiles y Siempre visible, en su orden, por subcadena del nombre ES, del nombre EN y de la combinación mostrada, **sin distinguir mayúsculas ni acentos** («numero» encuentra «Número»). **Decisión:** no se busca en el contenido de los botones Texto (privacidad). ‹P4 script 1541-1542; §5 DIS-41›
 - **BUS-005 · MUST · Resultados.** Con texto: la cuadrícula muestra los resultados paginados y numerados como la normal. Bajo cada nombre aparece el perfil de origen («Siempre visible» si es global). Se aplican las ocultaciones de PAN-008 y la cabecera muestra «Buscar». Sin coincidencias se ve [noResults]. Con el campo abierto y vacío, el panel se ve igual que sin buscar. Tocar un resultado ejecuta la acción con su perfil de origen. ‹P4:191; script 1575,1714-1723›
-- **BUS-006 · SHOULD · Búsqueda desde la barra.** 🔍 en la barra de la Pestaña abre la vista Completa con la búsqueda. **Decisión:** es una expansión **temporal**: al ejecutar un resultado o cerrar la búsqueda, se vuelve a la Pestaña. Expandir ⤢ sí cambia la vista guardada. ‹P4 script 1753; §6 DIS-42›
+- **BUS-006 · SHOULD · Búsqueda desde la barra.** 🔍 en la barra de la Pestaña abre la vista Completa con la búsqueda. **Decisión:** es una expansión **temporal**: al ejecutar un resultado o cerrar la búsqueda, se vuelve a la Pestaña. Expandir ⤢ sí cambia la vista guardada. ‹P4 script 1753; §5 DIS-42›
 
 ### 2.4 CUA · Cuadrícula de atajos, fichas y paginación
 
@@ -148,7 +148,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Filas máximas: la preferencia elegida (1, 2 o 3). En Auto son 2 en S y 3 en M/L.
   - Filas visibles = max(1, min(filas máximas, filas **completas** que caben)). «Las que caben» se **mide** sobre el espacio real hasta el borde inferior, así que bajar el panel reduce las filas y crea páginas.
   **Acepta:** una prueba con medidas simuladas cubre S/M/L, 100–150 % de texto y distintas posiciones. ‹P4 script 1549-1556; d04 §10›
-- **CUA-002 · MUST · Solo filas enteras, sin desplazamiento.** La cuadrícula nunca muestra filas cortadas ni se desplaza. Si falta espacio, solo se encoge la zona de la cuadrícula. Si no cabe ni una fila entera, se aplica CUA-003 y, si sigue sin caber, el panel se desplaza hacia arriba hasta que quepa una fila. ‹d04; d09:122; §6 DIS-11›
+- **CUA-002 · MUST · Solo filas enteras, sin desplazamiento.** La cuadrícula nunca muestra filas cortadas ni se desplaza. Si falta espacio, solo se encoge la zona de la cuadrícula. Si no cabe ni una fila entera, se aplica CUA-003 y, si sigue sin caber, el panel se desplaza hacia arriba hasta que quepa una fila. ‹d04; d09:122; §5 DIS-11›
 - **CUA-003 · MUST · Falta de espacio con alerta.** Si se ve el pánico o el aviso de administrador y no cabe una fila entera (alto útil + 2 < alto de ficha + 6), se ocultan la fila Siempre visible y el selector de perfil hasta que desaparezca la alerta. Se decide midiendo. ‹P4 script 1420-1422; d04 §10›
 - **CUA-004 · MUST · Paginación en Completa.**
   - Por página caben columnas × filas atajos. La página actual se ajusta si deja de existir.
@@ -163,7 +163,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Icono:** 20/28/34 en el color de su categoría.
   - **Nombre:** 12/14/16 en negrita, por la escala de texto, en líneas equilibradas.
   - **Línea de teclas:** monoespaciada, en muted, con recorte; solo con «Mostrar teclas» activo y fuera de Compacta.
-    - Texto: «…» con hasta 16 caracteres. **Decisión:** si el texto está marcado como privado, se muestra «Texto» sin contenido (§7 PQ-30).
+    - Texto: «…» con hasta 16 caracteres. **Decisión:** si el texto está marcado como privado, se muestra «Texto» sin contenido (§6 PQ-30).
     - Mouse: el nombre de la acción. Web y App: el destino. Macro: «—».
     - En Frecuentes y en la búsqueda, el perfil de origen.
   - **Insignia** arriba a la derecha: MANTENER, ALTERNAR/ACTIVO, número de pasos, WEB, APP, TXT o 📌 si está fijado en Frecuentes. Pulsar y Mouse no llevan insignia.
@@ -193,7 +193,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - En edición no hay Mantener, toque largo ni Repetir.
   - ✓ sale y quita el aviso.
   ‹P4:53,215-220; script 1536-1537,1723-1724,1918›
-- **CUA-013 · MUST · × en Frecuentes y en la búsqueda.** **Decisión:** en Frecuentes, la × de edición **quita de Frecuentes**; no borra el atajo de su perfil. En la búsqueda no hay ×. ‹EC; §6 DIS-43›
+- **CUA-013 · MUST · × en Frecuentes y en la búsqueda.** **Decisión:** en Frecuentes, la × de edición **quita de Frecuentes**; no borra el atajo de su perfil. En la búsqueda no hay ×. ‹EC; §5 DIS-43›
 - **CUA-014 · MUST · Menú contextual.**
   - **Cómo se abre:**
     - con el dedo quieto 600 ms sobre una ficha que no sea Mantener, fuera del modo edición, en la cuadrícula, la fila fija, la barra o la ventana Fijos;
@@ -230,8 +230,8 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - (b) Mouse del panel (clic derecho, doble, central y arrastrar): se envían con el clic (Ctrl+clic).
   - (c) Mantener y Alternar: se añaden mientras el botón está pulsado.
   - (d) Texto, Web, App y Macro: **no** se aplican y siguen pendientes.
-  Después, las de estado 1 se sueltan y las bloqueadas siguen. ‹d03 §6; [modOnce]; §6 DIS-12›
-- **FIJ-007 · SHOULD · Teclas fijas con un clic físico.** Un clic físico fuera del panel con teclas fijas en estado 1 las consume y las suelta. Requiere observar el clic del sistema solo mientras haya alguna tecla en estado 1. ‹d03 §6; §7 PQ-15›
+  Después, las de estado 1 se sueltan y las bloqueadas siguen. ‹d03 §6; [modOnce]; §5 DIS-12›
+- **FIJ-007 · SHOULD · Teclas fijas con un clic físico.** Un clic físico fuera del panel con teclas fijas en estado 1 las consume y las suelta. Requiere observar el clic del sistema solo mientras haya alguna tecla en estado 1. ‹d03 §6; §6 PQ-15›
 
 ### 2.6 AVI · Barra de avisos, Repetir y Deshacer (panel)
 
@@ -252,7 +252,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Cuentan Pulsar, Texto, Mouse, Macro, Web, App y Sistema ejecutados desde el panel. **No cuentan** Mantener ni Alternar.
   - Pasa por el filtro táctil de su propio botón ↻ y **vuelve a pedir** confirmación si el atajo la tiene.
   - El atajo se busca **por id** en el momento de repetir: si se editó, se usa la versión actual; si se borró, ↻ se desactiva.
-  ‹P4:266,319; script 1404,1713,1753; §6 DIS-19›
+  ‹P4:266,319; script 1404,1713,1753; §5 DIS-19›
 - **AVI-005 · MUST · Deshacer desde el panel.** Todo cambio de datos hecho desde el panel muestra Deshacer durante 6 s: borrar con la ×, instalar desde la sugerencia, crear un perfil, fijar, quitar. La pila guarda 20 estados (DAT-006). ‹P4:1432-1433›
 
 ### 2.7 VCO · Vista Compacta
@@ -295,7 +295,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   Leyenda [activeLegend]. Se desplaza si supera el 46 % de la pantalla (Completa) o el 40 % (Compacta), sin que el desplazamiento dispare fichas (TAC-004). ‹P4:173-188,225-240,352-368; script 1709,1720,1755›
 - **SEL-004 · MUST · Elegir un perfil.** Muestra ese perfil y, si no es Frecuentes, pasa a ser lastProfile. Vuelve a la página 1 en el panel y en la barra, y cierra la cuadrícula, la búsqueda y las ventanas al costado. No cambia Auto/Fijo. ‹P4 script 1502›
 - **SEL-005 · SHOULD · Aviso de sugerencia en el selector.** Si hay una sugerencia de perfil pendiente para la app activa, el botón de perfil muestra un punto amarillo con su nombre accesible. ‹AUD-09; DIS-24›
-- **SEL-006 · MUST · Acceso sin la fila del selector.** Con `showTabsRow` desactivado en Completa, se llega a Frecuentes y a otros perfiles tocando el título de la cabecera, que abre la cuadrícula de perfiles e incluye ★ Frecuentes. ‹EC; §7 PQ-27›
+- **SEL-006 · MUST · Acceso sin la fila del selector.** Con `showTabsRow` desactivado en Completa, se llega a Frecuentes y a otros perfiles tocando el título de la cabecera, que abre la cuadrícula de perfiles e incluye ★ Frecuentes. ‹EC; §6 PQ-27›
 
 ### 2.9 PES · Vista Pestaña (asa, barra y ventanas al costado)
 
@@ -306,7 +306,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   ‹P4:273-278; script 1745,1761; DIS-13›
 - **PES-002 · MUST · Tocar y arrastrar el asa.** Tocar abre la barra y la despierta. Arrastrar a partir de max(6 px, cancelMovePx) la mueve a lo largo del borde, guarda la posición por lado y no abre la barra. Se evitan los gestos de borde de Windows: la zona de arrastre no empieza en el píxel del borde (EC-PES-03). ‹P4 script 1462-1463,1503-1505›
 - **PES-003 · SHOULD · Bloquear la posición del asa.** Opción en General › Modo pestaña que impide arrastrar el asa; el toque sigue abriendo la barra. Necesita textos nuevos (§9). ‹AUD-11; DIS-24›
-- **PES-004 · MUST · Opacidad del asa.** **Decisión:** el asa usa la opacidad del usuario y el atenuado, con un mínimo del 55 % en ambos casos, igual que la burbuja. ‹P4:1761; d04:99; §6 DIS-07›
+- **PES-004 · MUST · Opacidad del asa.** **Decisión:** el asa usa la opacidad del usuario y el atenuado, con un mínimo del 55 % en ambos casos, igual que la burbuja. ‹P4:1761; d04:99; §5 DIS-07›
 - **PES-005 · MUST · Barra abierta.**
   - Vertical: 76/88/108 de ancho en S/M/L, centrada en su borde, con un alto máximo igual al área útil − 24.
   - Horizontal: 58/66/78 de alto, centrada, a 12 px del borde (abajo, sobre la barra de tareas), con un ancho máximo igual a la pantalla − 40.
@@ -338,7 +338,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   5. candado de plegado: [pinOff] «Se pliega» o [pinOn] «Abierta», con fondo accent, [pinOffA]/[pinOnA] y patrón Toggle;
   6. ⏶ Subir y ⏷ Bajar: desplazamiento de tipo Mantener, que cuenta como pulsado mientras se mantiene.
   ‹P4:316-343; AUD-13; DIS-24›
-- **PES-009 · SHOULD · Ajustes rápidos desde la barra.** Botón `tune` en herramientas que abre Ajustes rápidos al costado, incluida la fila Lado de la pestaña (AJR-005). ‹DIS-22; §7 PQ-07›
+- **PES-009 · SHOULD · Ajustes rápidos desde la barra.** Botón `tune` en herramientas que abre Ajustes rápidos al costado, incluida la fila Lado de la pestaña (AJR-005). ‹DIS-22; §6 PQ-07›
 - **PES-010 · MUST · Ventana «Fijos».** Ventana de 230 px pegada al botón 📌, alineada por abajo, a 16 px hacia el interior y con un alto máximo igual a la pantalla − 140, con desplazamiento. Lleva la cabecera 📌 [always] y los atajos en 2 columnas de 68 (icono de 24, nombre de 12). Tras usar un atajo se cierra, salvo con Mantener o Alternar. Admite toque largo. Mientras está abierta, la barra no se atenúa. ‹P4:321-335›
 - **PES-011 · MUST · Cuadrícula de perfiles al costado.** Ventana de 236 px pegada a la barra, alineada por arriba, a 8 px, con un alto máximo igual a la pantalla − 140. Lleva la cabecera [pickProfile] y el mismo contenido que SEL-003 (fichas de 96 como mínimo). Mientras está abierta, oculta la guía y la barra no se atenúa. ‹P4:352-368›
 - **PES-012 · MUST · Repliegue automático.** Con «Se pliega», la barra se pliega 900 ms después de ejecutar una acción, incluido soltar un Mantener. No se pliega al activar o desactivar un Alternar ni con el primer toque de una confirmación. Con «Abierta», nunca se pliega sola. En General aparece como [autoHide], con la lógica invertida. ‹P4 script 1404,1448-1449,1766›
@@ -353,7 +353,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - aviso de app elevada con su botón;
   - aviso fijo de captura con Cancelar;
   - Deshacer.
-  Tiene la misma semántica *live*. **Acepta:** cada aviso de AVI-002 es visible en la Pestaña. ‹EC-PES-01; §6 DIS-45›
+  Tiene la misma semántica *live*. **Acepta:** cada aviso de AVI-002 es visible en la Pestaña. ‹EC-PES-01; §5 DIS-45›
 - **PES-015 · SHOULD · Guía de primera vez.**
   - **Cuándo aparece:** al abrir la barra mientras `coachDone` sea falso y no haya ventanas al costado.
   - **Forma:** tarjeta accent de 260 al costado, alineada con la parte superior de la barra.
@@ -361,7 +361,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Al terminar u omitir:** coachDone = verdadero.
   - Se puede volver a ver desde General › Primeros pasos, con el texto nuevo «Ver la guía de la pestaña».
   ‹P4:344-351; AUD-12›
-- **PES-016 · MUST · Varios monitores.** La barra vive en el monitor donde está el panel. La posición del asa se guarda por monitor y por lado. ‹§7 PQ-18›
+- **PES-016 · MUST · Varios monitores.** La barra vive en el monitor donde está el panel. La posición del asa se guarda por monitor y por lado. ‹§6 PQ-18›
 
 ### 2.10 BUR · Burbuja y bandeja
 
@@ -374,8 +374,8 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Ocultar:** si se oculta con algo pulsado, **se suelta todo** con [releasedAll].
   - **Salir:** suelta todo.
   ‹P4:385-387; d01:62; DIS-36›
-- **BUR-004 · SHOULD · Pausar.** Pausar oculta el panel, suspende el cambio automático de perfil y bloquea todo envío hasta «Reanudar». Al pausar se suelta todo, y el icono de bandeja muestra el estado. Hacen falta textos nuevos. ‹d01:62; §7 PQ-19›
-- **BUR-005 · MUST · Recuperar el panel sin teclado.** Cualquier forma de ocultar el panel se puede deshacer con el dedo y por voz: desde el icono de bandeja o con la orden «clic Clícalo». Existe un atajo global opcional, que no está en conflicto con Ctrl+Shift+M (Silenciar en Teams). ‹v1 lección; §7 PQ-22›
+- **BUR-004 · SHOULD · Pausar.** Pausar oculta el panel, suspende el cambio automático de perfil y bloquea todo envío hasta «Reanudar». Al pausar se suelta todo, y el icono de bandeja muestra el estado. Hacen falta textos nuevos. ‹d01:62; §6 PQ-19›
+- **BUR-005 · MUST · Recuperar el panel sin teclado.** Cualquier forma de ocultar el panel se puede deshacer con el dedo y por voz: desde el icono de bandeja o con la orden «clic Clícalo». Existe un atajo global opcional, que no está en conflicto con Ctrl+Shift+M (Silenciar en Teams). ‹v1 lección; §6 PQ-22›
 
 ### 2.11 AJR · Ajustes rápidos
 
@@ -418,7 +418,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Se suelta** al levantar el dedo o al cancelarse el contacto, con el aviso «{teclas} [released]», el destello y el repliegue de la barra. **Decisión:** salir del botón no suelta mientras el contacto siga dentro del área extra del propio botón. Más allá de ella, sí suelta.
   - No tiene menú de toque largo. En edición no presiona nada.
   ‹P4 script 1470-1473; DIS-20›
-- **EJE-005 · MUST · Mantener por voz, teclado o conmutador.** Invocado sin duración de contacto (patrón Invoke), un Mantener se comporta como un Alternar: la primera invocación presiona, con aviso fijo, pánico y límite de tiempo, y la segunda suelta. ‹EC; §7 PQ-02›
+- **EJE-005 · MUST · Mantener por voz, teclado o conmutador.** Invocado sin duración de contacto (patrón Invoke), un Mantener se comporta como un Alternar: la primera invocación presiona, con aviso fijo, pánico y límite de tiempo, y la segunda suelta. ‹EC; §6 PQ-02›
 - **EJE-006 · MUST · Varios contactos.** Cada contacto se sigue por separado. Se admiten varios Mantener a la vez (por ejemplo, Shift mantenido más otro botón), y cada uno se suelta al terminar **su** contacto. **Acepta:** dos dedos en dos Mantener; levantar el primero suelta solo el primero. ‹EC-EJE-01›
 - **EJE-007 · MUST · Alternar.** Cada toque aceptado invierte el estado:
   - activo: teclas presionadas, insignia ACTIVO, borde de 2 y aviso «{nombre} · [latched]» (icono lock);
@@ -430,7 +430,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Salto de línea: **decisión**, se envía como Enter.
   - Aviso: «[typed] «{16 primeros caracteres}…»», o «Texto escrito» si es privado.
   ‹d03:33-35; AUD-23›
-- **EJE-009 · MUST · Mouse.** Hay 8 acciones: clic derecho, doble clic, clic central, arrastrar (Alternar) y desplazar ↑ ↓ ← →. Los desplazamientos repiten cada 60, 40 o 25 ms (lento, normal, rápido) con aceleración progresiva mientras se mantienen. **Punto objetivo (decisión):** la última posición del puntero **fuera** de las ventanas de Clícalo. Tras el toque, el puntero vuelve allí antes de actuar, y la rueda actúa sobre la ventana bajo ese punto. Aviso: el nombre de la acción. ‹d03:36-39; AUD-25; §7 PQ-03›
+- **EJE-009 · MUST · Mouse.** Hay 8 acciones: clic derecho, doble clic, clic central, arrastrar (Alternar) y desplazar ↑ ↓ ← →. Los desplazamientos repiten cada 60, 40 o 25 ms (lento, normal, rápido) con aceleración progresiva mientras se mantienen. **Punto objetivo (decisión):** la última posición del puntero **fuera** de las ventanas de Clícalo. Tras el toque, el puntero vuelve allí antes de actuar, y la rueda actúa sobre la ventana bajo ese punto. Aviso: el nombre de la acción. ‹d03:36-39; AUD-25; §6 PQ-03›
 - **EJE-010 · MUST · Macro.**
   - Ejecuta los pasos en orden: teclas, espera, texto o mouse.
   - Mientras dura, el botón muestra el estado «ejecutando» (paso i/n) con un aviso fijo.
@@ -452,9 +452,9 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Si no se puede saber si la app está elevada (proceso protegido), no se muestra aviso de administrador: se intenta el envío y, si falla, se avisa.
   ‹P4:65-70; d03:41; DIS-15; AUD-49›
 - **EJE-014 · MUST · Combinaciones bloqueadas en el panel.** Un atajo cuya clave es «bloqueada» (Ctrl+Alt+Supr) no envía nada y avisa [blockedB] al tocarlo. Win+L se sustituye por la acción de sistema «Bloquear equipo» (EJE-016). ‹AUD-20›
-- **EJE-015 · MUST · Atajo incompleto en el panel.** Tocarlo no envía nada y avisa con el texto nuevo «Este atajo está incompleto · Toca ✏ para completarlo». ‹AUD-16; §7›
-- **EJE-016 · SHOULD · Acciones de sistema.** Tipo interno para acciones que no se pueden enviar como teclas: Bloquear equipo, y brillo + y − en los equipos que lo permitan (si no, se ocultan). Se ofrecen en la biblioteca, en lugar de Win+L y de las teclas Brillo. ‹AUD-20; seed l_lock; §6 DIS-35›
-- **EJE-017 · MUST · Primer toque sobre el panel atenuado.** El primer toque despierta el panel **y** ejecuta (comportamiento del prototipo). ‹P4; §7 PQ-11›
+- **EJE-015 · MUST · Atajo incompleto en el panel.** Tocarlo no envía nada y avisa con el texto nuevo «Este atajo está incompleto · Toca ✏ para completarlo». ‹AUD-16; §9›
+- **EJE-016 · SHOULD · Acciones de sistema.** Tipo interno para acciones que no se pueden enviar como teclas: Bloquear equipo, y brillo + y − en los equipos que lo permitan (si no, se ocultan). Se ofrecen en la biblioteca, en lugar de Win+L y de las teclas Brillo. ‹AUD-20; seed l_lock; §5 DIS-35›
+- **EJE-017 · MUST · Primer toque sobre el panel atenuado.** El primer toque despierta el panel **y** ejecuta (comportamiento del prototipo). ‹P4; §6 PQ-11›
 
 ### 2.13 SEG · Seguridad de teclas
 
@@ -502,7 +502,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Word→Chrome muestra Navegador en la página 1;
   - Word→Administrador de tareas muestra General;
   - en Fijo o en Frecuentes no cambia nada.
-  ‹d03:13-16; README glosario; §6 DIS-01›
+  ‹d03:13-16; README glosario; §5 DIS-01›
 - **PER-004 · MUST · Perfil de retorno (retProf).** En orden:
   1. el perfil de la app activa, si está en Auto y existe;
   2. lastProfile, si sigue existiendo;
@@ -534,7 +534,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **FRE-001 · MUST · Composición.**
   1. Primero los fijados, en el orden en que se fijaron, si siguen existiendo.
   2. Después los no fijados y no ocultos con al menos un uso en los **últimos 30 días**, de más a menos usos. Desempate: el uso más reciente y, después, el orden de los perfiles.
-  Se muestran como máximo 9 en total. Si hay más de 9 fijados, se muestran los 9 primeros y el menú de fijar avisa del límite (texto nuevo). Entran atajos de cualquier perfil y de Siempre visible. **Decisión:** se excluyen los que ya se ven en la fila Siempre visible, para no mostrarlos dos veces (§7 PQ-23). ‹d03:86-87; P4 script 1543›
+  Se muestran como máximo 9 en total. Si hay más de 9 fijados, se muestran los 9 primeros y el menú de fijar avisa del límite (texto nuevo). Entran atajos de cualquier perfil y de Siempre visible. **Decisión:** se excluyen los que ya se ven en la fila Siempre visible, para no mostrarlos dos veces (§6 PQ-23). ‹d03:86-87; P4 script 1543›
 - **FRE-002 · MUST · Registro de uso.** Cada ejecución efectiva guarda una marca de tiempo del atajo, dentro del documento de datos para que funcione Deshacer.
   - Cuentan Pulsar, Texto, Mouse, Macro, Web, App y Sistema. **Decisión:** Mantener cuenta una vez al soltar y Alternar al activarse.
   - No cuentan los toques filtrados, el primer toque de confirmación, el Modo prueba ni «Probar ahora».
@@ -563,7 +563,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Una fila por aparición: icono, nombre · perfil, y «[editingNow]» con borde warn en la actual. Tocar una fila la abre.
   - 🗑 «[delFrom]»: dos toques (3,5 s) y deshacer. Si se borra la actual, se abre otra, preferentemente fuera de Siempre visible.
   - Consejo: [dupAdvG] si alguna está en Siempre visible, [dupAdvSame] si todas se llaman igual, [dupAdvDiff] en otro caso.
-  - «[moveAlways]» (solo en los dos primeros casos): conserva la de Siempre visible, o mueve allí la actual, y borra las de los perfiles **que tengan el mismo nombre en algún idioma**. **Decisión:** no borra atajos con otro nombre (§6 DIS-49). Tiene deshacer y avisa [moved].
+  - «[moveAlways]» (solo en los dos primeros casos): conserva la de Siempre visible, o mueve allí la actual, y borra las de los perfiles **que tengan el mismo nombre en algún idioma**. **Decisión:** no borra atajos con otro nombre (§5 DIS-49). Tiene deshacer y avisa [moved].
   - «[itsFine2]»: añade la clave a dupIgnored, con deshacer, avisa [dupKept] y pasa a la siguiente.
   ‹P4:521-546; script 1482-1491,1822-1830›
 - **REP-006 · SHOULD · Cambiar la combinación desde un repetido.** «Cambiar la combinación» ([useOther]) guarda la combinación actual, vacía las teclas y muestra la franja «[replaceMsg]» con [keepOld], que la restaura y avisa [keptOld]. ‹P4:587-593; d05; DIS-33›
@@ -583,7 +583,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - (3) si el antirrebote es mayor que 0 y hubo un toque **aceptado** en ese mismo botón hace menos del antirrebote, se ignora como [tDouble];
   - (4) si no, se acepta y se guarda su hora.
   Los toques ignorados no reinician la ventana y los demás botones nunca se bloquean. **Área extra:** un toque en un hueco a menos del área extra activa el botón más cercano; si hay empate, el de centro más próximo. El filtro se evalúa antes que la edición, la confirmación y Alternar. En Mantener, el contacto mínimo retrasa el inicio del mantenido, y el antirrebote se aplica al inicio. **Acepta:** la misma tabla de entrada y salida da el mismo resultado en el panel, la barra, las ventanas al costado, la zona de prueba y el Modo prueba. ‹d03:99-104; AUD-37 (bloqueante); DIS-20›
-- **TAC-003 · SHOULD · Respuesta ante un toque ignorado.** **Decisión:** un toque ignorado en uso normal no ejecuta nada, pero da una respuesta discreta (un leve contorno o vibración de 150 ms, sin sonido), para que quien tiene temblor sepa que no se envió. Se puede desactivar. ‹§7 PQ-12›
+- **TAC-003 · SHOULD · Respuesta ante un toque ignorado.** **Decisión:** un toque ignorado en uso normal no ejecuta nada, pero da una respuesta discreta (un leve contorno o vibración de 150 ms, sin sonido), para que quien tiene temblor sepa que no se envió. Se puede desactivar. ‹§6 PQ-12›
 - **TAC-004 · MUST · Desplazar sin disparar.** En las zonas que se desplazan (cuadrícula de perfiles, ventanas al costado, CC), un gesto que supera cancelar si deslizas desplaza y no activa nada. ‹EC›
 - **TAC-005 · MUST · Sección Precisión táctil del CC.** Título [touchTitle] y [touchSub]. 4 tarjetas de preset con nombre ([pStd]…) y descripción ([dStd]…), con selección también indicada sin color. Deslizadores con nombre, valor monoespaciado en accent, explicación y botones − / + de 44:
   - antirrebote: 0–1000, en pasos de 50;
@@ -599,7 +599,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Mensaje del último toque: [testIdle], [tOk], [tShort], [tDouble] o «deslizaste».
   - Usa **el mismo** filtro que TAC-002.
   ‹P4:1055-1063; DIS-51›
-- **TAC-007 · SHOULD · Alcance del filtro fuera del panel.** **Decisión:** el filtro **no** se aplica al CC ni a la bienvenida, que son ventanas normales. Sus objetivos grandes y la confirmación en dos toques bastan. ‹§7 PQ-17›
+- **TAC-007 · SHOULD · Alcance del filtro fuera del panel.** **Decisión:** el filtro **no** se aplica al CC ni a la bienvenida, que son ventanas normales. Sus objetivos grandes y la confirmación en dos toques bastan. ‹§6 PQ-17›
 - **TAC-008 · MUST · Modo prueba (30 s).**
   - **Al activarlo:** desde Ajustes rápidos; cierra la hoja y muestra el aviso fijo [tmStart].
   - **Durante 30 s:** todo toque pasa el filtro y **no se envía nada**, tampoco con Mantener, Alternar, teclas fijas ni Repetir. Cada toque marca la ficha 700 ms con ✓ en blanco sobre verde, o ⊘ sobre rojo, y avisa [tmOk], [tShort] o [tDouble]. Los aceptados cuentan para el antirrebote.
@@ -624,7 +624,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   6. Acerca de y contacto (favorite).
   Elementos de 46 visual (44 táctil) con texto de 15 en negrita. El seleccionado lleva fondo accentWash y texto accent, **y** estado de selección accesible. Por debajo de 1240 de ancho, el menú mide 72 y muestra solo iconos, con el contador en la esquina y los nombres accesibles completos. ‹P4:402-411; d05:12›
 - **CCM-003 · MUST · Barra de estado.** Franja inferior de 48 como mínimo con icono y el último mensaje. En reposo muestra [saved]. [undo] (táctil 44) aparece si el mensaje se puede deshacer y la pila no está vacía; deshacer avisa [restoredU]. Duraciones como AVI-002. Los mensajes del panel también se ven aquí, porque el estado de mensajes es compartido. ‹P4:1223-1227›
-- **CCM-004 · MUST · Relación con el panel.** **Decisión:** mientras el CC está abierto, el panel sigue visible y encima, no se atenúa y no tapa los controles del CC: si se solapan, el CC se abre desplazado. Al cerrar el CC, el foco vuelve a la app que estaba en primer plano antes de abrirlo. ‹DIS-39; §7 PQ-16›
+- **CCM-004 · MUST · Relación con el panel.** **Decisión:** mientras el CC está abierto, el panel sigue visible y encima, no se atenúa y no tapa los controles del CC: si se solapan, el CC se abre desplazado. Al cerrar el CC, el foco vuelve a la app que estaba en primer plano antes de abrirlo. ‹DIS-39; §6 PQ-16›
 - **CCM-005 · MUST · Diseño adaptable.** Umbral de 1240 px. Por debajo, las columnas se apilan (General, Plantillas, Acerca de) o se estrechan (Atajos: 180/flexible/400 pasa a 150/flexible/340). Nada se corta en el ancho mínimo. ‹d05:24; EC-CC›
 
 ### 2.19 ATJ · Centro de control › Atajos (perfiles, vinculación y biblioteca)
@@ -746,7 +746,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   ‹P4:630-649; script 1835-1841; DIS-35›
 - **EDI-014 · MUST · Web y App.**
   - Campo monoespaciado con [url] o [appPath] y 🎤.
-  - Chips [openTabs] o [pickProgram]. «Elegir programa» lista las apps instaladas y abiertas reales, incluidas las de la Tienda. «Páginas abiertas» es COULD (§7 PQ-31).
+  - Chips [openTabs] o [pickProgram]. «Elegir programa» lista las apps instaladas y abiertas reales, incluidas las de la Tienda. «Páginas abiertas» es COULD (§6 PQ-31).
   - Validación de Web: se admiten http y https, dominios con ñ, localhost, IP, puertos y parámetros. Si no es válida, borde warn y [badUrl].
   ‹P4:650-657; script 1847-1848; DIS-57›
 - **EDI-015 · MUST · Fijar en Siempre visible.** Fila completa tocable con 📌, [pinAll2], la descripción [pinAllOn2]/[pinAllOff2] y un interruptor (Toggle).
@@ -758,9 +758,9 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **[autoRelease]:** 30 s, 1 min, 2 min, [never] o «Como en General» (por defecto), con [autoReleaseD] corregido para que no prometa soltar siempre al cambiar de app. Solo en Mantener y Alternar.
   - **[textMethod]:** [tmType] o [tmPaste], con 🔒 [textEnc]. Solo en Texto.
   - **Número de voz:** el número y «[voiceLine1] «clic n» [voiceLine2] «clic {nombre}»», o [voiceOff].
-  - **Plegable «[voiceHowT]»:** [vh1], [vh2] y [vh3], adaptado a Windows 10 (§7 PQ-29).
+  - **Plegable «[voiceHowT]»:** [vh1], [vh2] y [vh3], adaptado a Windows 10 (§6 PQ-29).
   ‹P4:665-682; script 1843-1845›
-- **EDI-017 · SHOULD · Pedir confirmación.** Interruptor «Pedir confirmación antes de ejecutar» (`confirm`) en Más opciones. Hoy solo lo traen la semilla y las plantillas. Necesita textos nuevos. ‹§7 PQ-32›
+- **EDI-017 · SHOULD · Pedir confirmación.** Interruptor «Pedir confirmación antes de ejecutar» (`confirm`) en Más opciones. Hoy solo lo traen la semilla y las plantillas. Necesita textos nuevos. ‹§6 PQ-32›
 - **EDI-018 · SHOULD · Frecuentes desde el editor.** Interruptor «Fijado en Frecuentes» en Más opciones, que da acceso a los atajos Mantener (CUA-015). ‹AUD-38›
 - **EDI-019 · MUST · Pie del editor.** Tres botones de 48 en proporción 1,2 : 1 : 1,2:
   - [Probar] (principal, play_arrow): abre y cierra la tarjeta Probar.
@@ -794,7 +794,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Alternar se activa y se desactiva a los 1,5 s.
   - Un atajo con confirmación pide confirmarlo en el CC antes de probar.
   - Un atajo bloqueado no se prueba.
-  ‹P4:701-717; script 1816-1817; §7 PQ-33›
+  ‹P4:701-717; script 1816-1817; §6 PQ-33›
 - **PRB-005 · MUST · Cancelar la prueba.** Cerrar la tarjeta o seleccionar otro atajo cancela la animación, los temporizadores y la pregunta. ‹P4 script 1587,1798›
 - **PRB-006 · MUST · Efectos laterales de la prueba.** La prueba no cuenta para Frecuentes, no cambia la última acción de Repetir, no vincula un perfil que está en modo captura, no dispara el soltado por cambio de app y no cambia el perfil del panel. ‹EC-PRB›
 - **PRB-007 · MUST · Destinos especiales.**
@@ -894,7 +894,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   ‹P4:830-860›
 - **GEN-011 · MUST · Confirmación al tocar.** [fbSound/D] y [fbFlash/D], activos por defecto. ‹P4:863-870›
 - **GEN-012 · MUST · Seguridad de teclas.** [safeMax] (30 s, 1 min por defecto, 2 min o Nunca) con [safeMaxD], y [safeSwitch/D] (activo). «Nunca» no desactiva Soltar todo ni el soltado por eventos del sistema. ‹P4:873-875›
-- **GEN-013 · MUST · Reducir movimiento y Reiniciar Frecuentes.** [reduceM/D] (TEM-006) y [resetFreq/D] (FRE-004). **Decisión:** se reubican en una tarjeta «Accesibilidad y datos», en lugar de quedar bajo Seguridad de teclas. ‹P4:876-877; §7 PQ-34›
+- **GEN-013 · MUST · Reducir movimiento y Reiniciar Frecuentes.** [reduceM/D] (TEM-006) y [resetFreq/D] (FRE-004). **Decisión:** se reubican en una tarjeta «Accesibilidad y datos», en lugar de quedar bajo Seguridad de teclas. ‹P4:876-877; §6 PQ-34›
 - **GEN-014 · MUST · Primeros pasos.** [seeWelcome/D] cierra el CC y abre la bienvenida en el paso 0. Incluye además «Ver la guía de la pestaña» (PES-015) y el ajuste «No puedo usar el teclado» (BIE-005). ‹P4:879-884›
 - **GEN-015 · SHOULD · Sección IA.** Estado del consentimiento, activar o desactivar la IA, clave propia y cuota (PLA-003/004). Textos nuevos. ‹AUD-32›
 
@@ -911,7 +911,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   ‹P4:1159-1167; d08:56-62; AUD-49›
 - **SIS-003 · MUST · Instancia única.** Una sola instancia por **sesión de usuario**. Una segunda ejecución entrega sus argumentos a la instancia en marcha, que se muestra. Ver PQ-35 sobre desactivarlo. ‹d01:64-65; EC›
 - **SIS-004 · MUST · Recuperación automática.** Tras un fallo, la app se vuelve a abrir, suelta las teclas y, si el documento está dañado, restaura la última copia válida con un aviso. ‹d08:8-10›
-- **SIS-005 · SHOULD · Convivencia con Macro Quick Access.** Si detecta Macro Quick Access en ejecución o en el inicio de Windows, ofrece cerrarlo y desactivar su inicio, para evitar doble inyección. ‹§7 PQ-36›
+- **SIS-005 · SHOULD · Convivencia con Macro Quick Access.** Si detecta Macro Quick Access en ejecución o en el inicio de Windows, ofrece cerrarlo y desactivar su inicio, para evitar doble inyección. ‹§6 PQ-36›
 
 ### 2.25 ACT · Actualizaciones
 
@@ -939,7 +939,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   ‹P4:1127-1138; d02:96; DIS-67›
 - **COP-003 · MUST · Copia automática.** [rAuto/D], con el texto corregido para decir «a los 30 s de cada cambio». Se hace una copia 30 s después de cada cambio, con un máximo de 12 automáticas. Las manuales y las previas a actualizar o migrar **no** rotan con las automáticas. ‹d02:95; DIS-68›
 - **COP-004 · MUST · Historial.** [backupHist] con fecha relativa localizada, tipo (Automática, Manual, Antes de actualizar, Antes de migrar) y los recuentos **de esa copia**. [Restaurar]: dos toques con [confirmB] durante 3,5 s. Restaurar hace antes una copia del estado actual, avisa «Copia restaurada: {fecha}» y ofrece deshacer. Si no hay copias: «Sin copias aún». ‹P4:1140-1156; DIS-69›
-- **COP-005 · MUST · Esquemas y textos cifrados.** Una copia o importación de un esquema más nuevo no se aplica: avisa. Los textos cifrados que no se pueden descifrar en este equipo o usuario se importan como «Texto no disponible · vuelve a escribirlo», con el atajo marcado incompleto. ‹d02; COP; §7 PQ-37›
+- **COP-005 · MUST · Esquemas y textos cifrados.** Una copia o importación de un esquema más nuevo no se aplica: avisa. Los textos cifrados que no se pueden descifrar en este equipo o usuario se importan como «Texto no disponible · vuelve a escribirlo», con el atajo marcado incompleto. ‹d02; COP; §6 PQ-37›
 
 ### 2.27 ACE · Acerca de y opinión
 
@@ -950,7 +950,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - el registro depurado se guarda como archivo y se abre su carpeta con el archivo seleccionado;
   - [fbSendD] indica que hay que adjuntarlo;
   - alternativa: «Reportar en GitHub».
-  Si no hay app de correo, se copia el mensaje al portapapeles y se avisa. ‹P4:1208-1209; DIS-71; §7 PQ-38›
+  Si no hay app de correo, se copia el mensaje al portapapeles y se avisa. ‹P4:1208-1209; DIS-71; §6 PQ-38›
 - **ACE-005 · MUST · Escríbeme directamente.** [fbDirect], el correo con botón para copiarlo ([copiedEmail], táctil 44), [fbPromise], [fbGh/D] y [fbContrib/D]. Las URL y el correo son configurables y se verifican antes de publicar. ‹P4:1211-1219; AUD-44-45›
 
 ### 2.28 BIE · Bienvenida
@@ -966,7 +966,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
     - noKeyboardUser = No puedo usar el teclado;
     - tamaño L si marca temblor.
   - Volver con Atrás y cambiar las opciones recalcula los efectos.
-  - **Decisión:** para un usuario nuevo no hay nada preseleccionado (§7 PQ-39).
+  - **Decisión:** para un usuario nuevo no hay nada preseleccionado (§6 PQ-39).
   - **«No puedo usar el teclado»** oculta [recPhys], pone el preset leve, destaca la biblioteca y la IA frente a escribir (la biblioteca se abre en lugar del recuadro vacío al crear) y garantiza 🎤 en todos los campos. Se puede cambiar después en General.
   ‹P4:1248-1254; script 1903; AUD-47›
 - **BIE-006 · MUST · Paso 2.** [ob2t] y [ob2b]. Línea del teclado detectado, que se puede cambiar (PLA-009). Chips de selección múltiple (48) con las plantillas locales, en las que se convierten Word, Navegador y VS Code (CAT-003). Las marcadas se instalan **al pulsar Empezar** y se vinculan a su proceso, en un único paso de deshacer y un único aviso. ‹P4:1255-1262; script 1905; DIS-74›
@@ -1006,7 +1006,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - `ctrl+shift+esc` se conserva con el aviso de combinación especial.
   - Los 8 atajos que nunca funcionaron en v1 (§8.5) se migran con el significado **que dice su nombre** y se marcan «Revisar» en el informe (PQ-40).
   ‹EC; §8.5›
-- **MIG-008 · MUST · Repetidos de la migración.** Los repetidos que surgen solo por la migración (mismo nombre en perfiles distintos) no inundan de avisos: la regla REP-002(c) solo marca repetidos entre perfiles si alguno está en Siempre visible o si están en la misma lista. **Decisión:** se aplica REP-002 tal cual y, tras migrar, las claves repetidas se añaden a dupIgnored, se listan en el informe y se pueden revisar. ‹DIS-80; §7 PQ-41›
+- **MIG-008 · MUST · Repetidos de la migración.** Los repetidos que surgen solo por la migración (mismo nombre en perfiles distintos) no inundan de avisos: la regla REP-002(c) solo marca repetidos entre perfiles si alguno está en Siempre visible o si están en la misma lista. **Decisión:** se aplica REP-002 tal cual y, tras migrar, las claves repetidas se añaden a dupIgnored, se listan en el informe y se pueden revisar. ‹DIS-80; §6 PQ-41›
 - **MIG-009 · MUST · Importar archivos v1 en cualquier momento.** Importar acepta también archivos v1: cualquier `profiles.json`, `profiles.backup.en.json`, `profiles.backup.es.json` (con `_nota`) y el `.zip` de respaldo que contiene un `profiles.json`. Siempre con vista previa, copia y deshacer. ‹v1 edit_panel.py:1241-1291›
 
 ### 2.31 LOG · Registros, privacidad y seguridad
@@ -1021,7 +1021,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   Se depura al escribir, no al enviar. ‹d08:18-21; AUD-43›
 - **LOG-002 · MUST · Nada sale sin acción del usuario.** Nada sale del equipo sin una acción explícita del usuario: no hay telemetría. La IA, con consentimiento, envía solo lo de PLA-008. ‹d08›
 - **LOG-003 · MUST · Textos cifrados en reposo.** Los textos de Texto y de los pasos de texto de macro se cifran ligados a la cuenta de Windows. La clave de la IA va al almacén de credenciales del sistema. Nada de eso aparece en claro en el documento, las copias ni el registro. ‹d02:3; d08:23-24; AUD-56›
-- **LOG-004 · MUST · Privacidad del Texto.** Un atajo Texto puede marcarse «privado» (por defecto, activado si parece una contraseña o correo, y a elección del usuario). Si es privado, no se muestra en la ficha, en los avisos ni en la búsqueda. ‹EC; §7 PQ-30›
+- **LOG-004 · MUST · Privacidad del Texto.** Un atajo Texto puede marcarse «privado» (por defecto, activado si parece una contraseña o correo, y a elección del usuario). Si es privado, no se muestra en la ficha, en los avisos ni en la búsqueda. ‹EC; §6 PQ-30›
 - **LOG-005 · MUST · Datos de ejemplo sin datos personales.** Los textos de ejemplo de la biblioteca (correo, firma, dirección) son marcadores para rellenar, no datos del autor. ‹DIS-81›
 - **LOG-006 · MUST · Contenido importado no confiable.** Perfiles compartidos, copias ajenas, plantillas de la comunidad y respuestas de la IA se validan contra el esquema, con límites de tamaño y tipos permitidos. Nada se ejecuta al importar. ‹NFR›
 - **LOG-007 · MUST · Elevación solo a petición.** Clícalo solo se eleva cuando el usuario lo pide. La comunicación entre instancias no acepta órdenes de otros usuarios ni de procesos menos privilegiados. ‹NFR›
@@ -1037,7 +1037,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Alto contraste: #FFE600 sobre #333000, o los colores del sistema.
   - Conversión a sRGB con un mapeo de gamut definido, porque 11 colores quedan fuera.
   ‹seed CAT; theme-palettes›
-- **TEM-004 · MUST · Contraste.** Texto a 4,5:1 o más y elementos gráficos a 3:1 o más en los 3 temas, medidos sobre el fondo compuesto real (panel semitransparente al 100 % de opacidad del usuario). Hoy fallan en el tema claro warn, accent sobre cardHi, peligro y los bordes line: se corrigen conservando el tono. En alto contraste no hay transparencia ni desenfoque. El estado atenuado queda exento mientras dure, porque vuelve a la opacidad normal al tocarlo (§7 PQ-42). ‹d07:39; DIS-84›
+- **TEM-004 · MUST · Contraste.** Texto a 4,5:1 o más y elementos gráficos a 3:1 o más en los 3 temas, medidos sobre el fondo compuesto real (panel semitransparente al 100 % de opacidad del usuario). Hoy fallan en el tema claro warn, accent sobre cardHi, peligro y los bordes line: se corrigen conservando el tono. En alto contraste no hay transparencia ni desenfoque. El estado atenuado queda exento mientras dure, porque vuelve a la opacidad normal al tocarlo (§6 PQ-42). ‹d07:39; DIS-84›
 - **TEM-005 · MUST · Tipografía e iconos incluidos en la app.** Atkinson Hyperlegible 400/700 para la interfaz, JetBrains Mono 500 para teclas y procesos, y Material Symbols Rounded con el eje FILL para los estados activos. Todo empaquetado, sin red, con versión fijada y licencias incluidas. Cada nombre de icono de los datos existe en la versión incluida y hay un icono de respaldo. ‹d07:9-14; DIS-85›
 - **TEM-006 · MUST · Reducir movimiento.** Con el ajuste propio o con las animaciones de Windows desactivadas, todas las transiciones pasan a 0 ms: opacidad 350, escala 80, fondo 150, puntos 200, interruptores 150, bienvenida, progreso y Probar. El destello de 240 ms se mantiene como cambio de color sin animación. ‹d07:43; AUD-35›
 - **TEM-007 · MUST · Tamaño mínimo de texto.** Ningún texto baja de 11 px lógicos al 100 %. Las insignias de 8, las teclas en S de 9 y las etiquetas de 10 suben a 11, y el recorte o el alto se ajustan. ‹d07:14; DIS-27›
@@ -1086,7 +1086,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **ACC-003 · MUST · El estado nunca solo por color.** Toda selección, estado o alerta lleva además icono, texto o marca, y un estado accesible: tarjetas de opción, ACTIVO, armado, Auto/Fijo, 📌 y teclas fijas. ‹d07:44›
 - **ACC-004 · MUST · Todo operable sin puntero.** Con teclado y conmutador: orden de tabulación lógico en el CC y la bienvenida. En el panel no activable, operación completa por UI Automation (Invoke, acción secundaria del menú) y por voz. ‹d07:42›
 - **ACC-005 · MUST · Deslizadores sin arrastrar.** Todos tienen − / + discretos, teclado y RangeValue. ‹NFR analista 2›
-- **ACC-006 · SHOULD · Tiempos ajustables.** La ventana de confirmación (3 s y 3,5 s) y la duración de los avisos se pueden alargar (×1, ×2, ×3) en General, y Deshacer sigue disponible (AVI-003). ‹WCAG 2.2.1; §7 PQ-43›
+- **ACC-006 · SHOULD · Tiempos ajustables.** La ventana de confirmación (3 s y 3,5 s) y la duración de los avisos se pueden alargar (×1, ×2, ×3) en General, y Deshacer sigue disponible (AVI-003). ‹WCAG 2.2.1; §6 PQ-43›
 - **ACC-007 · MUST · Entrada táctil nativa.** El toque se trata como toque y no como mouse emulado: contacto, varios dedos, sin el círculo de toque de Windows y sin el clic derecho que simula mantener el dedo. Tocar el panel no abre el teclado táctil, salvo en el campo de búsqueda. **Decisión:** un contacto con un área muy grande (palma) se ignora. ‹AUD-54›
 - **ACC-008 · MUST · DPI por monitor.** Nitidez y tamaño lógico correctos en cada monitor. Al pasar de uno a otro se recalcula sin verse borroso. Un panel a caballo entre dos monitores usa la escala del que contiene su centro. ‹AUD-55›
 - **ACC-009 · MUST · Números de voz.** Con [voiceNums] activo, cada ficha de la cuadrícula, la barra, la fila fija y la ventana Fijos muestra su número (fondo warn con texto oscuro) y su nombre accesible pasa a ser «{n} {nombre}». ‹d03:112-113; DIS-14›
@@ -1095,7 +1095,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Búsqueda y Frecuentes: por orden de resultado.
   - **Decisión:** la fila Siempre visible y la ventana Fijos continúan tras el total de la lista actual (N+1…N+k), con números estables al paginar.
   - El editor muestra el número de la posición en el perfil.
-  ‹P4 script 1533,1626; §7 PQ-10›
+  ‹P4 script 1533,1626; §6 PQ-10›
 - **ACC-011 · MUST · Dictado.** Hay un botón 🎤 junto a todo campo de texto libre:
   - búsqueda, nombre, texto, Web, App, pasos, nombre de perfil, renombrar en vista previa, IA y opinión;
   - en la clave de la IA, en su lugar, un botón **Pegar**.
@@ -1116,7 +1116,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - El contenido inicial no genera repetidos: se elimina el `copyb` duplicado del Navegador.
   - Plantillas: Excel 9, PowerPoint 6, Videollamada 6, Explorador 5, Correo 5 y Bloc de notas 4.
   - Biblioteca: Edición 7, Ventanas 7, Mouse 5, Voz 4, Textos 3 y Sistema 6, con «Bloquear» como acción de sistema.
-  ‹seed; DIS-92; §7 PQ-44›
+  ‹seed; DIS-92; §6 PQ-44›
 - **CAT-004 · MUST · Datos del catálogo válidos.** Todo botón del catálogo usa teclas válidas:
   - «Clic izq.» pasa a mouse:drag;
   - «ñ» pasa a «Ñ»;
@@ -1124,7 +1124,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - los pasos de macro llevan `kind`.
   Una prueba automática valida el catálogo. ‹DIS-93›
 - **CAT-005 · SHOULD · Variantes por idioma.** Las plantillas que dependen del idioma de Office (Word, PowerPoint, Correo, Excel) tienen variante EN. El mapa combinación→icono se separa por idioma de programas (en ES, Ctrl+N es negrita; en EN, Ctrl+B). ‹DIS-53; DIS-94›
-- **CAT-006 · COULD · Plantillas como archivos independientes.** Cada plantilla es un archivo con versión, autoría, idiomas revisados y procesos, para aceptar contribuciones mediante revisión. Un perfil puede vincular **varios** procesos (por ejemplo, Navegador con chrome, msedge y firefox): pendiente de decisión (§7 PQ-45). ‹escala›
+- **CAT-006 · COULD · Plantillas como archivos independientes.** Cada plantilla es un archivo con versión, autoría, idiomas revisados y procesos, para aceptar contribuciones mediante revisión. Un perfil puede vincular **varios** procesos (por ejemplo, Navegador con chrome, msedge y firefox): pendiente de decisión (§6 PQ-45). ‹escala›
 - **CAT-007 · MUST · Explorador de archivos.** El perfil de `explorer.exe` solo se activa con ventanas de carpeta, no con el escritorio ni la barra de tareas. ‹EC; v1›
 
 ---
@@ -1132,7 +1132,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 ## 3. Requisitos no funcionales
 
 - **NFR-001 · MUST · Rendimiento.** Panel visible en menos de 1 s desde el arranque. Del toque al envío, menos de 50 ms. El destello y el aviso no retrasan el envío. ‹d01:50›
-- **NFR-002 · SHOULD · Latencia del cambio de perfil.** Menos de 300 ms desde el cambio de ventana en primer plano (la v1 tardaba hasta 1,5 s), sin parpadeo. ‹§7 PQ-46›
+- **NFR-002 · SHOULD · Latencia del cambio de perfil.** Menos de 300 ms desde el cambio de ventana en primer plano (la v1 tardaba hasta 1,5 s), sin parpadeo. ‹§6 PQ-46›
 - **NFR-003 · MUST · Nunca bloquear la interfaz.** Enviar teclas, generar con IA, copiar, importar, descargar o enumerar apps nunca bloquea la interfaz del panel ni la del CC. Todas son operaciones asíncronas que muestran su estado.
 - **NFR-004 · MUST · Una única ruta de envío.** Pulsación y liberación explícitas, lados, tecla extendida, Unicode y traducción con la **distribución de la ventana en primer plano**. Hay un intervalo entre eventos medido y ajustable, cuyo valor inicial está por validar: unos 15 ms según docs y 20 ms según la experiencia de v1. Las combinaciones con Win mantienen Win toda la combinación y nunca la dejan sola. Las combinaciones de solo modificadores (Alt der., Ctrl der., Ctrl+Win) funcionan. La posición del cursor no afecta al envío. ‹lecciones v1; d03›
 - **NFR-005 · MUST · Robustez ante excepciones.** Ninguna excepción en el manejo de un evento cierra la app. Si algo falla a mitad de un envío, se suelta todo.
@@ -1420,7 +1420,30 @@ Cada pregunta lleva una **propuesta por defecto** que se aplica si no hay respue
 | PQ-48 | IA: proveedor y quién paga la cuota gratuita | La IA es opcional; sin un servicio intermedio propio no hay cuota gratuita, solo clave propia. Las plantillas locales siempre funcionan. | PLA-* |
 | PQ-49 | Identidad de tecla: física, virtual o carácter | Identificador canónico de tecla (posición y virtual) con traducción según la distribución destino. Los símbolos que dependen de la distribución se guardan como carácter y se resuelven al enviar. | CAT-001, NFR-004 |
 | PQ-50 | Categoría de color: ¿la elige el usuario? | SHOULD: selector de las 10 categorías en el editor (textos nuevos). | EDI |
-| PQ-51 | Claves huérfanas (vista «Tira», filtros de plantillas, detectar apps nuevas, modos seguir, fijo y frecuentes) | Se eliminan (§10). | IDI-005 |
+| PQ-51 | Claves huérfanas (vista «Tira», filtros de plantillas, detectar apps nuevas, modos seguir, fijo y frecuentes) | Se eliminan (§10). Mientras el usuario no lo ratifique, M0 las conserva en `data/i18n/allow-unused.txt` (ver R-02 en §6.1). | IDI-005 |
+
+### 6.1 Propuestas pendientes de ratificar
+
+Propuestas del plano (P1–P6, [§1.4](../architecture/blueprint.md#14-propuestas-de-producto-pendientes-de-ratificar-por-el-usuario)) y decisiones tomadas al construir M0 que cambian textos, datos o el aspecto del producto. **Ninguna rebaja un requisito.** Mientras el usuario no las ratifique o rechace, rige la columna «Mientras tanto».
+
+| ID | Propuesta | Mientras tanto | Afecta a |
+|---|---|---|---|
+| P1 | NFR-001 (panel en menos de 1 s) en el arranque al iniciar sesión: sin excepción. Solo si S5 demuestra que no se puede cumplir, se propone mostrar primero la burbuja. | NFR-001 es puerta de publicación sin excepciones. | NFR-001 |
+| P2 | Quitar la fila «Una sola ventana» [rSingle] de Sistema: la instancia única es obligatoria por seguridad. | La fila no se construye; [rSingle] está en `allow-unused.txt`. | PQ-35, SIS-003 |
+| P3 | La 2.0 sale solo con clave propia de IA; la cuota gratuita llega con el proxy (ADR-0014). | Los flujos PLA con cuota no se muestran. | PLA-003, PQ-48 |
+| P4 | SIS-002 se cumple en la 2.0 con el componente de sistema; solo si S14 fracasa se pediría rebajarlo a SHOULD. | Se cumple. | SIS-002 |
+| P5 | ARM64 se publica en beta desde el principio y en estable tras la aceptación en un equipo ARM64 físico. | ARM64 solo en beta. | Distribución |
+| P6 | Al desinstalar desde Configuración de Windows no hay UI y siempre se conservan los datos; la pregunta se hace en Sistema › Desinstalar y, al reinstalar, en la bienvenida. Requiere dos textos nuevos. | Se implementa así. | NFR-010 |
+| R-01 | Textos de plural nuevos (forma `_one`, ES y EN) de comboN, instNoteSome, sugLine, dupHead, twMacro y addMissing; claves nuevas migTProfiles y migTShortcuts; migT pasa a «Importado desde tu versión anterior: {profiles} y {shortcuts}». twMacro_one omite «uno tras otro» (un solo paso). | Están en `data/i18n` (receta `handoff-import.json`); con los argumentos de muestra, el texto visible es idéntico al del paquete. | §9, IDI-001, IDI-004 |
+| R-02 | Las claves huérfanas de §10 se conservan en M0 en `allow-unused.txt` en lugar de borrarse. §10 dice «49 claves», pero su lista tiene 58. | Se conservan hasta que se decida PQ-51. | PQ-51, IDI-005 |
+| R-03 | Etiquetas nuevas de los catálogos: kgMods «Modificadores»/«Modifiers», kgFn «F1–F12», y las categorías catEdit «Edición»/«Editing», catHist «Historial»/«History», catFile «Archivo»/«File», catSel «Selección»/«Selection», catWin «Ventanas»/«Windows», catVoice «Voz»/«Voice», catNav «Navegación»/«Navigation», catFmt «Formato»/«Formatting», catWeb «Web» y catText «Texto»/«Text». | Están en `data/i18n`. | CAT-001, PQ-50 |
+| R-04 | Etiquetas ES/EN de teclas, acciones de mouse, iconos y comandos de sistema como dato en `data/catalogs` (con nombre hablado para los glifos), frente a la letra de IDI-002 e IDI-006, que pide todo texto en `data/i18n`. | Viven en los catálogos. | IDI-002, IDI-006, UIA008 |
+| R-05 | Corrección de contraste de TEM-004 también en el tema oscuro (líneas, texto sobre peligro, insignia de categoría activa); separar aviso y peligro en relleno y texto (warn/warnText, danger/dangerText); éxito blanco en alto contraste. Cambia el aspecto: las líneas pasan de α 0,14/0,16 a 0,34/0,43. | Corregido en `data/tokens` (correcciones mínimas documentadas en `extra-tokens.json`). | TEM-002, TEM-004 |
+| R-06 | Subir y Bajar brillo en la sección Sistema de la biblioteca (EJE-016), lo que lleva Sistema de 6 a 8 elementos frente al recuento de CAT-003. | Los comandos existen en `system-commands.json`, pero no están en la biblioteca. | EJE-016, CAT-003 |
+| R-07 | Variantes EN añadidas a las plantillas Word (Negrita Ctrl+B, Cursiva Ctrl+I, Subrayado Ctrl+U, Reemplazar Ctrl+H) y Correo (Nuevo mensaje Ctrl+Shift+M), y reparto de `combo-icons` por idioma (Ctrl+G guardar en ES y Ctrl+S en EN). | Así en `data/content` y `data/catalogs`. | CAT-004, CAT-005 |
+| R-08 | Las combinaciones bloqueadas o especiales se comparan sin el lado del modificador (Ctrl der.+Alt+Supr está tan reservada como Ctrl+Alt+Supr), a diferencia de REP-001 para los repetidos. | Así en `blocked-combos.json` y sus pruebas. | EJE-014, REP-001 |
+| R-09 | Autoría de las plantillas incluidas: el nombre personal del autor o «Clícalo». | `authors` es «Michael Coaguila». | CAT-006 |
+| R-10 | Herramientas de dictado con gancho de teclado (Wispr Flow, Typeless) pueden tragarse el AltGr o el Ctrl derecho que inyecta Clícalo: se observó en la prueba S7-lite de M0. Propuesta: un aviso o una nota en la ayuda. | Se valida en S7 con el equipo sin esas herramientas. | PQ-47, NFR-004 |
 
 ---
 

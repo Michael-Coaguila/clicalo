@@ -108,7 +108,7 @@
       "group": "rules",
       "description": "TouchFilter and GestureRecognizer (pure).",
       "dependsOn": ["Geometry", "Primitives", "Timing"],
-      "deviation": "Timing added: GestureConstants come from timings.json (§7.8)."
+      "deviation": "Timing added: the gesture thresholds are Timings.Touch.* from timings.json (§7.8)."
     },
     {
       "name": "PanelLayout",
@@ -133,7 +133,7 @@
       "group": "rules",
       "description": "DimPolicy (pure).",
       "dependsOn": ["Settings", "Primitives", "Timing"],
-      "deviation": "Timing added: the dimming delay is Timings.DimDelay (§6.4)."
+      "deviation": "Timing added: the dimming delay is Timings.Dimming.DimDelay (§6.4)."
     },
     {
       "name": "Interaction",
@@ -146,7 +146,7 @@
       "group": "execution",
       "description": "ActivationPolicy, planners per ActionKind and EngineReducer.",
       "dependsOn": ["Library", "KeySafety", "StickyModifiers", "Touch", "Settings", "Messages", "Errors", "Geometry", "Timing"],
-      "deviation": "Timing added: the delay between injected events is Timings.InjectInterEventDelay (§7.7)."
+      "deviation": "Timing added: the delay between injected events is Timings.Injection.InterEventDelay (§7.7)."
     },
     {
       "name": "Document",
