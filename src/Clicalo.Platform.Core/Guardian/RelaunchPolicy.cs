@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Clicalo.Platform.Core.KeyLedger;
 
 namespace Clicalo.Platform.Core.Guardian;
@@ -8,11 +7,6 @@ namespace Clicalo.Platform.Core.Guardian;
 /// (updates and the elevated handover), and into safe mode when the crashes inside the window reach the threshold
 /// (<c>Timings.App.CrashLoop</c>, spike S9). Pure, shared by Sentinel and the main process's start-up.
 /// </summary>
-[SuppressMessage(
-    "Design",
-    "MA0025:Implement the functionality instead of throwing NotImplementedException",
-    Justification = "M2 contract; the engine package implements it (docs/testing/spikes/M2-ownership.md)."
-)]
 public static class RelaunchPolicy
 {
     /// <summary>Decides.</summary>
@@ -27,5 +21,26 @@ public static class RelaunchPolicy
         DateTimeOffset now,
         int crashLoopCount,
         TimeSpan crashLoopWindow
-    ) => throw new NotImplementedException();
+    )
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(crashLoopCount);
+        if ((marks & (LedgerMarks.CleanShutdown | LedgerMarks.NoRelaunch)) != LedgerMarks.None)
+        {
+            return RelaunchDecision.None;
+        }
+
+        // This crash counts too: the loop is reached when it is the crashLoopCount-th inside the window.
+        var inWindow = 1;
+        foreach (var crash in recentCrashes)
+        {
+            if (crash <= now && now - crash <= crashLoopWindow)
+            {
+                inWindow++;
+            }
+        }
+
+        return inWindow >= crashLoopCount
+            ? RelaunchDecision.RelaunchInSafeMode
+            : RelaunchDecision.Relaunch;
+    }
 }

@@ -260,6 +260,18 @@
           "description": "At most one engine snapshot reaches the UI per this interval (about one frame).",
           "req": ["NFR-001"],
           "source": "blueprint §3.2 rule 5"
+        },
+        "ScrollAccelerationEvery": {
+          "count": 8,
+          "description": "A held scroll action speeds up every this many wheel steps: its repeat interval shrinks by a quarter each time (engine package).",
+          "req": ["EJE-009"],
+          "source": "docs/03 «con aceleración progresiva»"
+        },
+        "ScrollRepeatFloor": {
+          "duration": "15ms",
+          "description": "The accelerated repeat interval of a held scroll action never goes below this (engine package).",
+          "req": ["EJE-009"],
+          "source": "docs/03 «con aceleración progresiva»"
         }
       }
     },

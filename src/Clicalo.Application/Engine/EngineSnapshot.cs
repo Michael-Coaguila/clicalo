@@ -1,6 +1,7 @@
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.StickyModifiers;
 
 namespace Clicalo.Application.Engine;
 
@@ -26,4 +27,7 @@ public sealed record EngineSnapshot(
     /// <summary>A new engine: nothing held.</summary>
     public static EngineSnapshot Empty { get; } =
         new([], null, null, TestMode: false, Paused: false, 0);
+
+    /// <summary>The levels of the sticky modifiers row (FIJ-005: released, once, locked).</summary>
+    public StickyState Sticky { get; init; } = StickyState.Empty;
 }

@@ -14,4 +14,12 @@ public sealed record EngineHostPorts(
     IShellExecutor Shell,
     IClipboardPaster Clipboard,
     IEngineObserver Observer
-);
+)
+{
+    /// <summary>
+    /// Releases everything the <b>physical</b> ledger records, under the gate with the given generation
+    /// (<c>InjectionGate.TryReleaseEverything</c>): what an engine that caught an exception releases (NFR-005), since
+    /// its logical state may be the broken part. When absent, the host releases what its last good state held.
+    /// </summary>
+    public Func<EngineGeneration, bool>? ReleaseRecorded { get; init; }
+}
