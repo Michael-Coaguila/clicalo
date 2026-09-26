@@ -1,0 +1,185 @@
+// Banned APIs for every product project under src/ (blueprint §4.4, mechanism 3; docs/architecture/enforcement.md).
+// Format: <documentation comment id>;<why and what to use instead>. Every overload is listed: an id without a
+// parameter list only matches the parameterless overload. Architecture.Tests proves that every id resolves and that
+// each banned family is complete. Exceptions: [SuppressMessage] in the files registered in banned-api-exceptions.json.
+
+// ---- Time and randomness: TimeProvider and IIdGenerator (§4.4, §13) --------------------------------------------
+P:System.DateTime.Now;Read the clock through TimeProvider (GetLocalNow)
+P:System.DateTime.UtcNow;Read the clock through TimeProvider (GetUtcNow)
+P:System.DateTime.Today;Read the clock through TimeProvider (GetLocalNow().Date)
+P:System.DateTimeOffset.Now;Read the clock through TimeProvider (GetLocalNow)
+P:System.DateTimeOffset.UtcNow;Read the clock through TimeProvider (GetUtcNow)
+P:System.Environment.TickCount;Measure time through TimeProvider (GetTimestamp)
+P:System.Environment.TickCount64;Measure time through TimeProvider (GetTimestamp)
+M:System.Diagnostics.Stopwatch.StartNew;Measure time through TimeProvider (GetTimestamp and GetElapsedTime)
+M:System.Diagnostics.Stopwatch.#ctor;Measure time through TimeProvider (GetTimestamp and GetElapsedTime)
+M:System.Diagnostics.Stopwatch.GetTimestamp;Measure time through TimeProvider (GetTimestamp)
+M:System.Diagnostics.Stopwatch.GetElapsedTime(System.Int64);Measure time through TimeProvider (GetElapsedTime)
+M:System.Threading.Tasks.Task.Delay(System.Int32);Wait with Task.Delay(TimeSpan, TimeProvider) or a scheduled timer, never on the system clock
+M:System.Threading.Tasks.Task.Delay(System.Int32,System.Threading.CancellationToken);Wait with Task.Delay(TimeSpan, TimeProvider, CancellationToken)
+M:System.Threading.Tasks.Task.Delay(System.TimeSpan);Wait with Task.Delay(TimeSpan, TimeProvider)
+M:System.Threading.Tasks.Task.Delay(System.TimeSpan,System.Threading.CancellationToken);Wait with Task.Delay(TimeSpan, TimeProvider, CancellationToken)
+M:System.Threading.Tasks.Task.WaitAsync(System.TimeSpan);Use WaitAsync(TimeSpan, TimeProvider)
+M:System.Threading.Tasks.Task.WaitAsync(System.TimeSpan,System.Threading.CancellationToken);Use WaitAsync(TimeSpan, TimeProvider, CancellationToken)
+M:System.Threading.Tasks.Task`1.WaitAsync(System.TimeSpan);Use WaitAsync(TimeSpan, TimeProvider)
+M:System.Threading.Tasks.Task`1.WaitAsync(System.TimeSpan,System.Threading.CancellationToken);Use WaitAsync(TimeSpan, TimeProvider, CancellationToken)
+M:System.Threading.CancellationTokenSource.#ctor(System.Int32);Use new CancellationTokenSource(TimeSpan, TimeProvider)
+M:System.Threading.CancellationTokenSource.#ctor(System.TimeSpan);Use new CancellationTokenSource(TimeSpan, TimeProvider)
+M:System.Threading.PeriodicTimer.#ctor(System.TimeSpan);Use new PeriodicTimer(TimeSpan, TimeProvider)
+T:System.Threading.Timer;Use TimeProvider.CreateTimer
+T:System.Timers.Timer;Use TimeProvider.CreateTimer
+M:System.Threading.Thread.Sleep(System.Int32);Never block a thread: schedule a timer through TimeProvider (§3.2 rule 4)
+M:System.Threading.Thread.Sleep(System.TimeSpan);Never block a thread: schedule a timer through TimeProvider (§3.2 rule 4)
+M:System.Guid.NewGuid;Create ids through IIdGenerator
+M:System.Guid.CreateVersion7;Create ids through IIdGenerator
+M:System.Guid.CreateVersion7(System.DateTimeOffset);Create ids through IIdGenerator
+P:System.Random.Shared;Take randomness as a dependency (seeded Random) so results are reproducible
+M:System.Random.#ctor;Pass an explicit seed so results are reproducible
+
+// ---- Blocking on tasks: await (except App/Shutdown) --------------------------------------------------------------
+P:System.Threading.Tasks.Task`1.Result;Await the task
+P:System.Threading.Tasks.ValueTask`1.Result;Await the task
+M:System.Threading.Tasks.Task.Wait;Await the task
+M:System.Threading.Tasks.Task.Wait(System.Int32);Await the task
+M:System.Threading.Tasks.Task.Wait(System.Int32,System.Threading.CancellationToken);Await the task
+M:System.Threading.Tasks.Task.Wait(System.Threading.CancellationToken);Await the task
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan);Await the task
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan,System.Threading.CancellationToken);Await the task
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[]);Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAll(System.ReadOnlySpan{System.Threading.Tasks.Task});Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.Int32);Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.Int32,System.Threading.CancellationToken);Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.Threading.CancellationToken);Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAll(System.Threading.Tasks.Task[],System.TimeSpan);Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAll(System.Collections.Generic.IEnumerable{System.Threading.Tasks.Task},System.Threading.CancellationToken);Await Task.WhenAll
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[]);Await Task.WhenAny
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.Int32);Await Task.WhenAny
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.Int32,System.Threading.CancellationToken);Await Task.WhenAny
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.Threading.CancellationToken);Await Task.WhenAny
+M:System.Threading.Tasks.Task.WaitAny(System.Threading.Tasks.Task[],System.TimeSpan);Await Task.WhenAny
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.TaskAwaiter`1.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.ValueTaskAwaiter.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.ValueTaskAwaiter`1.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.ConfiguredTaskAwaitable.ConfiguredTaskAwaiter.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.ConfiguredTaskAwaitable`1.ConfiguredTaskAwaiter.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter.GetResult;Await the task instead of GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.ConfiguredValueTaskAwaitable`1.ConfiguredValueTaskAwaiter.GetResult;Await the task instead of GetAwaiter().GetResult()
+
+// ---- Processes: ILauncher, no command interpreter (LOG-008; only Platform.Windows/Launch) ---------------------
+M:System.Diagnostics.Process.Start;Launch through ILauncher (no command interpreter, LOG-008)
+M:System.Diagnostics.Process.Start(System.Diagnostics.ProcessStartInfo);Launch through ILauncher (no command interpreter, LOG-008)
+M:System.Diagnostics.Process.Start(System.String);Launch through ILauncher (no command interpreter, LOG-008)
+M:System.Diagnostics.Process.Start(System.String,System.Collections.Generic.IEnumerable{System.String});Launch through ILauncher (no command interpreter, LOG-008)
+M:System.Diagnostics.Process.Start(System.String,System.String);Launch through ILauncher (no command interpreter, LOG-008)
+M:System.Diagnostics.Process.Start(System.String,System.String,System.Security.SecureString,System.String);Launch through ILauncher (no command interpreter, LOG-008)
+M:System.Diagnostics.Process.Start(System.String,System.String,System.String,System.Security.SecureString,System.String);Launch through ILauncher (no command interpreter, LOG-008)
+T:System.Diagnostics.ProcessStartInfo;Launch through ILauncher (no command interpreter, LOG-008)
+
+// ---- File writes: IAtomicFileWriter (only Persistence/AtomicFile.cs and Logging/FixedNameRollingFileSink.cs) ---
+M:System.IO.File.WriteAllBytes(System.String,System.Byte[]);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllBytes(System.String,System.ReadOnlySpan{System.Byte});Write through IAtomicFileWriter
+M:System.IO.File.WriteAllBytesAsync(System.String,System.Byte[],System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllBytesAsync(System.String,System.ReadOnlyMemory{System.Byte},System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllLines(System.String,System.Collections.Generic.IEnumerable{System.String});Write through IAtomicFileWriter
+M:System.IO.File.WriteAllLines(System.String,System.Collections.Generic.IEnumerable{System.String},System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllLines(System.String,System.String[]);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllLines(System.String,System.String[],System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllLinesAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Text.Encoding,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllLinesAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllText(System.String,System.ReadOnlySpan{System.Char});Write through IAtomicFileWriter
+M:System.IO.File.WriteAllText(System.String,System.ReadOnlySpan{System.Char},System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllText(System.String,System.String);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllText(System.String,System.String,System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllTextAsync(System.String,System.ReadOnlyMemory{System.Char},System.Text.Encoding,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllTextAsync(System.String,System.ReadOnlyMemory{System.Char},System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllTextAsync(System.String,System.String,System.Text.Encoding,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.WriteAllTextAsync(System.String,System.String,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllBytes(System.String,System.Byte[]);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllBytes(System.String,System.ReadOnlySpan{System.Byte});Write through IAtomicFileWriter
+M:System.IO.File.AppendAllBytesAsync(System.String,System.Byte[],System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllBytesAsync(System.String,System.ReadOnlyMemory{System.Byte},System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllLines(System.String,System.Collections.Generic.IEnumerable{System.String});Write through IAtomicFileWriter
+M:System.IO.File.AppendAllLines(System.String,System.Collections.Generic.IEnumerable{System.String},System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllLinesAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Text.Encoding,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllLinesAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllText(System.String,System.ReadOnlySpan{System.Char});Write through IAtomicFileWriter
+M:System.IO.File.AppendAllText(System.String,System.ReadOnlySpan{System.Char},System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllText(System.String,System.String);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllText(System.String,System.String,System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllTextAsync(System.String,System.ReadOnlyMemory{System.Char},System.Text.Encoding,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllTextAsync(System.String,System.ReadOnlyMemory{System.Char},System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllTextAsync(System.String,System.String,System.Text.Encoding,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendAllTextAsync(System.String,System.String,System.Threading.CancellationToken);Write through IAtomicFileWriter
+M:System.IO.File.AppendText(System.String);Write through IAtomicFileWriter
+M:System.IO.File.Create(System.String);Write through IAtomicFileWriter
+M:System.IO.File.Create(System.String,System.Int32);Write through IAtomicFileWriter
+M:System.IO.File.Create(System.String,System.Int32,System.IO.FileOptions);Write through IAtomicFileWriter
+M:System.IO.File.CreateText(System.String);Write through IAtomicFileWriter
+M:System.IO.File.Open(System.String,System.IO.FileMode);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.File.Open(System.String,System.IO.FileMode,System.IO.FileAccess);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.File.Open(System.String,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.File.Open(System.String,System.IO.FileStreamOptions);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.File.OpenHandle(System.String,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare,System.IO.FileOptions,System.Int64);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.File.OpenWrite(System.String);Write through IAtomicFileWriter
+M:System.IO.FileInfo.AppendText;Write through IAtomicFileWriter
+M:System.IO.FileInfo.Create;Write through IAtomicFileWriter
+M:System.IO.FileInfo.CreateText;Write through IAtomicFileWriter
+M:System.IO.FileInfo.Open(System.IO.FileMode);Read with FileInfo.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileInfo.Open(System.IO.FileMode,System.IO.FileAccess);Read with FileInfo.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileInfo.Open(System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare);Read with FileInfo.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileInfo.Open(System.IO.FileStreamOptions);Read with FileInfo.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileInfo.OpenWrite;Write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(Microsoft.Win32.SafeHandles.SafeFileHandle,System.IO.FileAccess);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(Microsoft.Win32.SafeHandles.SafeFileHandle,System.IO.FileAccess,System.Int32);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(Microsoft.Win32.SafeHandles.SafeFileHandle,System.IO.FileAccess,System.Int32,System.Boolean);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.IntPtr,System.IO.FileAccess);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.IntPtr,System.IO.FileAccess,System.Boolean);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.IntPtr,System.IO.FileAccess,System.Boolean,System.Int32);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.IntPtr,System.IO.FileAccess,System.Boolean,System.Int32,System.Boolean);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileMode);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileMode,System.IO.FileAccess);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare,System.Int32);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare,System.Int32,System.Boolean);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare,System.Int32,System.IO.FileOptions);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.FileStream.#ctor(System.String,System.IO.FileStreamOptions);Read with File.OpenRead; write through IAtomicFileWriter
+M:System.IO.StreamWriter.#ctor(System.String);Write through IAtomicFileWriter
+M:System.IO.StreamWriter.#ctor(System.String,System.Boolean);Write through IAtomicFileWriter
+M:System.IO.StreamWriter.#ctor(System.String,System.Boolean,System.Text.Encoding);Write through IAtomicFileWriter
+M:System.IO.StreamWriter.#ctor(System.String,System.Boolean,System.Text.Encoding,System.Int32);Write through IAtomicFileWriter
+M:System.IO.StreamWriter.#ctor(System.String,System.IO.FileStreamOptions);Write through IAtomicFileWriter
+M:System.IO.StreamWriter.#ctor(System.String,System.Text.Encoding,System.IO.FileStreamOptions);Write through IAtomicFileWriter
+
+// ---- Process exit: IAppLifetime.ExitAsync guarantees Release all (only App/Lifecycle) -------------------------
+M:System.Environment.Exit(System.Int32);Exit through IAppLifetime.ExitAsync (it releases every key first)
+M:System.Windows.Application.Shutdown;Exit through IAppLifetime.ExitAsync (it releases every key first)
+M:System.Windows.Application.Shutdown(System.Int32);Exit through IAppLifetime.ExitAsync (it releases every key first)
+
+// ---- Console: ILogger ------------------------------------------------------------------------------------------
+T:System.Console;Log through ILogger; there is no console
+
+// ---- Foreground: IForegroundOrchestrator (SetForegroundWindow only in Platform.Windows/Foreground/ForegroundControl.cs)
+M:Windows.Win32.PInvoke.SetForegroundWindow(Windows.Win32.Foundation.HWND);Change the foreground through IForegroundOrchestrator leases (§3.6)
+M:Windows.Win32.PInvoke.AllowSetForegroundWindow(System.UInt32);Change the foreground through IForegroundOrchestrator leases (§3.6)
+M:Windows.Win32.PInvoke.AttachThreadInput(System.UInt32,System.UInt32,Windows.Win32.Foundation.BOOL);Forbidden everywhere: fragile and can hang (§3.6)
+M:Windows.Win32.PInvoke.LockSetForegroundWindow(Windows.Win32.UI.WindowsAndMessaging.FOREGROUND_WINDOW_LOCK_CODE);Forbidden everywhere (§3.6)
+M:System.Windows.Window.Activate;Windows are never activated directly: ControlCenter lease (§3.6)
+M:System.Windows.UIElement.Focus;Focusing an element activates its window: use Keyboard.Focus under a TextInput or KeyboardNavigation lease (§3.6)
+
+// ---- Tray menu: TrayMenu lease (only Platform.Windows/Tray/TrayMenuHost.cs) ----------------------------------------
+M:Windows.Win32.PInvoke.TrackPopupMenu(System.Runtime.InteropServices.SafeHandle,Windows.Win32.UI.WindowsAndMessaging.TRACK_POPUP_MENU_FLAGS,System.Int32,System.Int32,Windows.Win32.Foundation.HWND,System.Nullable{Windows.Win32.Foundation.RECT});Open menus through TrayMenuHost and the TrayMenu lease
+M:Windows.Win32.PInvoke.TrackPopupMenu(Windows.Win32.UI.WindowsAndMessaging.HMENU,Windows.Win32.UI.WindowsAndMessaging.TRACK_POPUP_MENU_FLAGS,System.Int32,System.Int32,System.Int32,Windows.Win32.Foundation.HWND,Windows.Win32.Foundation.RECT*);Open menus through TrayMenuHost and the TrayMenu lease
+M:Windows.Win32.PInvoke.TrackPopupMenuEx(System.Runtime.InteropServices.SafeHandle,System.UInt32,System.Int32,System.Int32,Windows.Win32.Foundation.HWND,System.Nullable{Windows.Win32.UI.WindowsAndMessaging.TPMPARAMS});Open menus through TrayMenuHost and the TrayMenu lease
+M:Windows.Win32.PInvoke.TrackPopupMenuEx(Windows.Win32.UI.WindowsAndMessaging.HMENU,System.UInt32,System.Int32,System.Int32,Windows.Win32.Foundation.HWND,Windows.Win32.UI.WindowsAndMessaging.TPMPARAMS*);Open menus through TrayMenuHost and the TrayMenu lease
+
+// ---- Input injection: IInputInjector behind InjectionGate (only Platform.Core/Injection) ----------------------
+M:Windows.Win32.PInvoke.SendInput(System.ReadOnlySpan{Windows.Win32.UI.Input.KeyboardAndMouse.INPUT},System.Int32);Inject through IInputInjector (InjectionGate fences every SendInput, ADR-0004)
+M:Windows.Win32.PInvoke.SendInput(System.UInt32,Windows.Win32.UI.Input.KeyboardAndMouse.INPUT*,System.Int32);Inject through IInputInjector (InjectionGate fences every SendInput, ADR-0004)
+
+// ---- Shell execution and WMI: ILauncher, ISystemCommandRunner (only Platform.Windows/Launch, SystemCommands) ----
+M:Windows.Win32.PInvoke.ShellExecute(Windows.Win32.Foundation.HWND,System.String,System.String,System.String,System.String,Windows.Win32.UI.WindowsAndMessaging.SHOW_WINDOW_CMD);Launch through ILauncher on the Shell thread
+M:Windows.Win32.PInvoke.ShellExecute(Windows.Win32.Foundation.HWND,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR,Windows.Win32.UI.WindowsAndMessaging.SHOW_WINDOW_CMD);Launch through ILauncher on the Shell thread
+T:Windows.Win32.UI.Shell.SHELLEXECUTEINFOW;ShellExecuteEx: launch through ILauncher on the Shell thread
+T:Windows.Win32.UI.Shell.IShellDispatch2;Launch through ILauncher on the Shell thread
+N:System.Management;WMI runs only behind ISystemCommandRunner on the Shell thread

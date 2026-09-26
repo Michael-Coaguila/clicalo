@@ -1,13 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Layer rules, module matrix and product-rule tests (blueprint §4.4). -->
+  <!-- Architecture enforcement (blueprint §4.4): layer, port and module rules, banned APIs, registries. -->
   <PropertyGroup>
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
     <RootNamespace>Clicalo.Architecture.Tests</RootNamespace>
+    <!-- Compiles the pure policy of the ClicaloVerifyReferences MSBuild task without its MSBuild adapter. -->
+    <DefineConstants>$(DefineConstants);CLICALO_REFERENCE_POLICY_TESTS</DefineConstants>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup Label="Every product assembly, so the rules see the whole architecture">
     <ProjectReference Include="..\..\src\Clicalo.App\Clicalo.App.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.UI.Wpf\Clicalo.UI.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Presentation\Clicalo.Presentation.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Platform.Windows\Clicalo.Platform.Windows.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Infrastructure\Clicalo.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Clicalo.Sentinel\Clicalo.Sentinel.csproj" />
     <ProjectReference Include="..\..\src\Clicalo.Launcher\Clicalo.Launcher.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+  <ItemGroup Label="Source of the ClicaloVerifyReferences MSBuild task (architecture/tasks)">
+    <Compile
+      Include="$(RepoRoot)architecture\tasks\ClicaloVerifyReferences.cs"
+      Link="ReferenceWhitelist\ClicaloVerifyReferences.cs"
+    />
   </ItemGroup>
 </Project>

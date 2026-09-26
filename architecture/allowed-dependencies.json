@@ -1,0 +1,226 @@
+{
+  "$schema": "./schemas/allowed-dependencies.schema.json",
+  "description": "Reference whitelist per project (blueprint §4.2 and §4.4, mechanism 1). The ClicaloVerifyReferences target in Directory.Build.targets compares every ProjectReference, PackageReference, GlobalPackageReference, FrameworkReference and assembly Reference declared by a repository file with this list and fails the build with CLCA001 before compiling. Only references declared in repository files are checked: transitive and SDK-implicit references follow from them. Change this file only with a justification (docs/architecture/enforcement.md).",
+  "analyzerProjects": {
+    "description": "Roslyn components referenced with OutputItemType=\"Analyzer\" and ReferenceOutputAssembly=\"false\". They run inside the compiler and add no runtime dependency, so any project may use them that way. Referencing their assembly requires a normal entry.",
+    "projects": ["Clicalo.Analyzers", "Clicalo.Generators"]
+  },
+  "globalPackages": {
+    "description": "Packages declared once as GlobalPackageReference in Directory.Packages.props: analyzers applied to every project.",
+    "packages": ["Meziantou.Analyzer", "Microsoft.CodeAnalysis.BannedApiAnalyzers"]
+  },
+  "projects": {
+    "Clicalo.Domain": {
+      "area": "src",
+      "rule": "Pure domain: model, invariants, commands and EngineReducer. BCL only (System.Collections.Immutable and Frozen included); never System.IO, System.Net or Microsoft.Win32 (blueprint §4.2).",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": []
+    },
+    "Clicalo.Application": {
+      "area": "src",
+      "rule": "Use cases, ports, stores, EngineHost and ForegroundOrchestrator. Depends on Domain and the logging abstractions only; never on Presentation, UI, Platform, Infrastructure or WPF (blueprint §4.2).",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.Domain"],
+      "packageReferences": ["Microsoft.Extensions.Logging.Abstractions"]
+    },
+    "Clicalo.Presentation": {
+      "area": "src",
+      "rule": "ViewModels without WPF, so the UI framework stays replaceable (ADR-0001). Depends on Application, Domain and CommunityToolkit.Mvvm; never on System.Windows*, Platform or Infrastructure (blueprint §4.2).",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.Application", "Clicalo.Domain"],
+      "packageReferences": ["CommunityToolkit.Mvvm"]
+    },
+    "Clicalo.UI.Wpf": {
+      "area": "src",
+      "rule": "The only WPF-aware layer: views, automation peers, windowing, pointer input and theming. Depends on Presentation, Application (UI port types only), Domain, WPF and CsWin32 (Windowing/ and Pointer/ only); never on Platform.Windows or Infrastructure (blueprint §4.2).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Presentation", "Clicalo.Application", "Clicalo.Domain"],
+      "packageReferences": ["Microsoft.Windows.CsWin32"],
+      "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
+    },
+    "Clicalo.Platform.Core": {
+      "area": "src",
+      "rule": "AOT-safe core shared with Sentinel and Launcher (KeyLedger, InjectionGate, LowLevelInjector, IPC contracts, Trust). BCL and CsWin32 only (blueprint §4.2).",
+      "platform": "windows",
+      "projectReferences": [],
+      "packageReferences": ["Microsoft.Windows.CsWin32"]
+    },
+    "Clicalo.Platform.Windows": {
+      "area": "src",
+      "rule": "Win32 and WinRT adapters implementing Application ports. Depends on Application (ports), Domain, Platform.Core and CsWin32; WinRT projections come from the Windows TFM. Never on Presentation, UI, Infrastructure or WPF (blueprint §4.2).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Application", "Clicalo.Domain", "Clicalo.Platform.Core"],
+      "packageReferences": ["Microsoft.Windows.CsWin32"]
+    },
+    "Clicalo.Infrastructure": {
+      "area": "src",
+      "rule": "Persistence, backups, catalogs, AI, updates and logging. Depends on Application (ports), Domain, Platform.Core (Trust only), Serilog, Velopack, Microsoft.Extensions.AI with HTTP resilience, and DPAPI; never on Presentation, UI, Platform.Windows or WPF (blueprint §4.2, §2).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Application", "Clicalo.Domain", "Clicalo.Platform.Core"],
+      "packageReferences": [
+        "Microsoft.Extensions.AI",
+        "Microsoft.Extensions.Http.Resilience",
+        "Serilog",
+        "System.Security.Cryptography.ProtectedData",
+        "Velopack"
+      ]
+    },
+    "Clicalo.App": {
+      "area": "src",
+      "rule": "Composition root: Program, DI and lifecycle. May depend on every product project; nothing references it (blueprint §4.2).",
+      "platform": "windows",
+      "projectReferences": [
+        "Clicalo.UI.Wpf",
+        "Clicalo.Presentation",
+        "Clicalo.Application",
+        "Clicalo.Domain",
+        "Clicalo.Platform.Core",
+        "Clicalo.Platform.Windows",
+        "Clicalo.Infrastructure"
+      ],
+      "packageReferences": [
+        "Microsoft.Extensions.DependencyInjection",
+        "Microsoft.Extensions.Logging",
+        "Serilog.Extensions.Logging"
+      ],
+      "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
+    },
+    "Clicalo.Sentinel": {
+      "area": "src",
+      "rule": "Native AOT guardian that releases the keys recorded in the ledger (ADR-0004). Platform.Core only (blueprint §4.2).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Platform.Core"],
+      "packageReferences": []
+    },
+    "Clicalo.Launcher": {
+      "area": "src",
+      "rule": "Native AOT system component launcher (ADR-0009). Platform.Core only, and only its Trust module (blueprint §4.2).",
+      "platform": "windows",
+      "projectReferences": ["Clicalo.Platform.Core"],
+      "packageReferences": []
+    },
+    "Clicalo.Generators": {
+      "area": "generators",
+      "rule": "Source generators run inside the compiler: netstandard2.0 and the Roslyn API only. Clicalo.Design.Math is source-linked, not referenced.",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": ["Microsoft.CodeAnalysis.CSharp", "Microsoft.CodeAnalysis.Analyzers"]
+    },
+    "Clicalo.Analyzers": {
+      "area": "generators",
+      "rule": "Product-rule analyzers (CLC*) run inside the compiler: netstandard2.0 and the Roslyn API only.",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": ["Microsoft.CodeAnalysis.CSharp", "Microsoft.CodeAnalysis.Analyzers"]
+    },
+    "Clicalo.Design.Math": {
+      "area": "generators",
+      "rule": "OKLCH, gamut mapping and WCAG contrast: pure math, no dependencies.",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": []
+    },
+    "Clicalo.TestKit": {
+      "area": "tests",
+      "rule": "Shared test helpers (fakes, fixtures, snapshots). Referenced by test projects only.",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": ["Microsoft.Extensions.TimeProvider.Testing"]
+    },
+    "Clicalo.Domain.Tests": {
+      "area": "tests",
+      "rule": "Tests the Domain layer only (blueprint §10.1).",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.Domain", "Clicalo.TestKit"],
+      "packageReferences": ["xunit.v3", "Shouldly", "CsCheck", "Microsoft.Extensions.TimeProvider.Testing"]
+    },
+    "Clicalo.Application.Tests": {
+      "area": "tests",
+      "rule": "Tests the Application layer with fake ports (blueprint §10.1).",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.Application", "Clicalo.Domain", "Clicalo.TestKit"],
+      "packageReferences": ["xunit.v3", "Shouldly", "CsCheck", "Microsoft.Extensions.TimeProvider.Testing"]
+    },
+    "Clicalo.Data.Tests": {
+      "area": "tests",
+      "rule": "Validates data/ against its schemas, i18n parity and token contrast (blueprint §10.1).",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.TestKit", "Clicalo.Design.Math"],
+      "packageReferences": ["xunit.v3", "Shouldly", "JsonSchema.Net"]
+    },
+    "Clicalo.Generators.Tests": {
+      "area": "tests",
+      "rule": "Snapshot tests for source generators and analyzers.",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.TestKit", "Clicalo.Generators", "Clicalo.Analyzers", "Clicalo.Design.Math"],
+      "packageReferences": [
+        "xunit.v3",
+        "Shouldly",
+        "Microsoft.CodeAnalysis.CSharp",
+        "Microsoft.CodeAnalysis.CSharp.Analyzer.Testing",
+        "Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing",
+        "Microsoft.CodeAnalysis.CSharp.Workspaces"
+      ]
+    },
+    "Clicalo.Platform.IntegrationTests": {
+      "area": "tests",
+      "rule": "Real Win32 integration against tools/InputProbe (blueprint §10.1).",
+      "platform": "windows",
+      "projectReferences": [
+        "Clicalo.Platform.Core",
+        "Clicalo.Platform.Windows",
+        "Clicalo.Application",
+        "Clicalo.Domain",
+        "Clicalo.TestKit"
+      ],
+      "packageReferences": ["xunit.v3", "Shouldly"]
+    },
+    "Clicalo.Architecture.Tests": {
+      "area": "tests",
+      "rule": "Architecture rules over every product assembly (blueprint §4.4): the only test project allowed to reference Clicalo.App.",
+      "platform": "windows",
+      "projectReferences": [
+        "Clicalo.App",
+        "Clicalo.UI.Wpf",
+        "Clicalo.Presentation",
+        "Clicalo.Application",
+        "Clicalo.Domain",
+        "Clicalo.Platform.Core",
+        "Clicalo.Platform.Windows",
+        "Clicalo.Infrastructure",
+        "Clicalo.Sentinel",
+        "Clicalo.Launcher",
+        "Clicalo.TestKit"
+      ],
+      "packageReferences": [
+        "xunit.v3",
+        "Shouldly",
+        "TngTech.ArchUnitNET.xUnitV3",
+        "JsonSchema.Net",
+        "Microsoft.CodeAnalysis.CSharp"
+      ]
+    },
+    "Clicalo.DevCli": {
+      "area": "tools",
+      "rule": "Developer utilities behind cl (i18n-check, trace, notes...). No product dependency.",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": []
+    },
+    "InputProbe": {
+      "area": "tools",
+      "rule": "Instrumented raw Win32 window (no WPF) used as the physical truth of integration tests.",
+      "platform": "windows",
+      "projectReferences": [],
+      "packageReferences": ["Microsoft.Windows.CsWin32"]
+    },
+    "Build": {
+      "area": "build",
+      "rule": "cl build orchestration (Bullseye and SimpleExec).",
+      "platform": "portable",
+      "projectReferences": [],
+      "packageReferences": ["Bullseye", "SimpleExec"]
+    }
+  }
+}

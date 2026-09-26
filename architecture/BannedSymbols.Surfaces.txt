@@ -1,0 +1,12 @@
+// Banned APIs for Clicalo.UI.Wpf, on top of BannedSymbols.All.txt (blueprint §3.5, REG-01).
+// The panel surfaces never take the focus: popups, context menus, interactive tooltips and combo boxes create
+// activatable windows, so menus and drop-downs are child NonActivatingWindows instead. CLC0002 enforces the same rule
+// in XAML. Workspace windows (Control Center, welcome) may use these controls through a [SuppressMessage] registered
+// in architecture/banned-api-exceptions.json for src/Clicalo.UI.Wpf/Workspace/.
+
+T:System.Windows.Controls.Primitives.Popup;Surfaces use child NonActivatingWindows instead of popups (§3.5)
+T:System.Windows.Controls.ContextMenu;Surfaces use the NonActivatingWindow context menu (§3.5, §8.1)
+P:System.Windows.FrameworkElement.ContextMenu;Surfaces use the NonActivatingWindow context menu (§3.5, §8.1)
+T:System.Windows.Controls.ToolTip;An interactive ToolTip is a popup window; surfaces use child NonActivatingWindows (§3.5)
+T:System.Windows.Controls.ComboBox;Drop-downs are child NonActivatingWindows on surfaces (§3.5)
+T:System.Windows.MessageBox;A message box activates a window: use notices or TwoStepConfirm (REG-01, REG-04)

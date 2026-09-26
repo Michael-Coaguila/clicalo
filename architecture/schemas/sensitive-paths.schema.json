@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Michael-Coaguila/clicalo/architecture/schemas/sensitive-paths.schema.json",
+  "title": "Clícalo sensitive paths",
+  "description": "Paths whose change requires an ADR (blueprint §13).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "paths"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string", "minLength": 10 },
+    "paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pattern", "category", "reason"],
+        "properties": {
+          "pattern": {
+            "description": "Repository-relative glob with forward slashes: '*' within a segment, '**' across segments.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._][A-Za-z0-9._/*-]*$"
+          },
+          "category": {
+            "enum": [
+              "trust-boundary",
+              "persisted-format",
+              "public-contract",
+              "framework",
+              "process-model",
+              "license",
+              "signing",
+              "governance"
+            ]
+          },
+          "reason": { "type": "string", "minLength": 10 }
+        }
+      }
+    }
+  }
+}

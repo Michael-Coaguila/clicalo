@@ -1,10 +1,187 @@
 <Project>
   <!--
-    Shared targets. Architecture enforcement (ClicaloVerifyReferences) and
-    BannedSymbols wiring live here; see docs/architecture/blueprint.md §4.4.
+    Shared targets: architecture enforcement (docs/architecture/enforcement.md, blueprint §4.4).
+      1. ClicaloVerifyReferences: reference whitelist (architecture/allowed-dependencies.json), CLCA001.
+      3. BannedSymbols.<Layer>.txt: banned APIs per layer (RS0030), wired for product projects only.
+      4. Clicalo.Analyzers wiring (CLC*), imported when that package provides it.
+    Mechanisms 2, 5 and 6 live in tests/Clicalo.Architecture.Tests.
   -->
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <!-- Tests may use literals and long names freely; product rules still apply to src/. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+
+  <PropertyGroup Label="Architecture enforcement">
+    <ClicaloArchitectureDir>$(RepoRoot)architecture\</ClicaloArchitectureDir>
+    <ClicaloAllowedDependenciesFile>$(ClicaloArchitectureDir)allowed-dependencies.json</ClicaloAllowedDependenciesFile>
+    <!--
+      Product projects are the ones under src/. A project outside src/ can opt in explicitly
+      (the architecture tests do so to prove the wiring on generated projects).
+    -->
+    <ClicaloIsProductProject
+      Condition="'$(ClicaloIsProductProject)' == '' and $([MSBuild]::EnsureTrailingSlash('$(MSBuildProjectDirectory)').StartsWith($([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'src')), StringComparison.OrdinalIgnoreCase))"
+      >true</ClicaloIsProductProject>
+    <!--
+      WPF markup compilation builds a temporary copy of a project whose XAML references its own types, named
+      <Project>_<random>_wpftmp, in the same folder. It is the same project: the layer lists apply to it by its real
+      name, and its references were already checked by the real project, which resolves them before markup compilation.
+    -->
+    <ClicaloIsWpfTemporaryProject>$(MSBuildProjectName.EndsWith('_wpftmp'))</ClicaloIsWpfTemporaryProject>
+    <ClicaloProjectName>$(MSBuildProjectName)</ClicaloProjectName>
+    <ClicaloProjectName Condition="'$(ClicaloIsWpfTemporaryProject)' == 'true'"
+      >$([System.Text.RegularExpressions.Regex]::Replace('$(MSBuildProjectName)', '_[^_]+_wpftmp$', ''))</ClicaloProjectName>
+  </PropertyGroup>
+
+  <!--
+    ============================================================
+    Mechanism 3: banned APIs (Microsoft.CodeAnalysis.BannedApiAnalyzers, RS0030).
+    All applies to every product project; the layer lists are selected by project name.
+    Per-file exceptions: [SuppressMessage] registered in architecture/banned-api-exceptions.json.
+    ============================================================
+  -->
+  <ItemGroup Condition="'$(ClicaloIsProductProject)' == 'true'" Label="Banned APIs">
+    <AdditionalFiles Include="$(ClicaloArchitectureDir)BannedSymbols.All.txt" />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Domain.txt"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.Domain'"
+    />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Application.txt"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.Application'"
+    />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Presentation.txt"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.Presentation'"
+    />
+    <AdditionalFiles
+      Include="$(ClicaloArchitectureDir)BannedSymbols.Surfaces.txt"
+      Condition="'$(ClicaloProjectName)' == 'Clicalo.UI.Wpf'"
+    />
+    <!--
+      Generated code (CsWin32 friendly overloads, XAML .g.cs, source generators) is not subject to the lists.
+      EditorConfigFiles, not GlobalAnalyzerConfigFiles: the SDK turns the latter into EditorConfigFiles while it
+      evaluates Microsoft.Managed.Core.targets, before this file is imported.
+    -->
+    <EditorConfigFiles Include="$(ClicaloArchitectureDir)BannedSymbols.globalconfig" />
+  </ItemGroup>
+
+  <!--
+    ============================================================
+    Mechanism 1: reference whitelist.
+    Compares the references declared by repository files (not the SDK-implicit or transitive ones, which follow
+    from them) with architecture/allowed-dependencies.json and fails before any compilation with CLCA001.
+    The check re-runs only when the declared references, the policy or the task change (fingerprint stamp),
+    so incremental builds stay free. Design-time builds skip it; every real build (CLI, CI, IDE) runs it.
+    ============================================================
+  -->
+  <UsingTask
+    TaskName="Clicalo.Architecture.Tasks.ClicaloVerifyReferences"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll"
+  >
+    <Task>
+      <Code
+        Type="Class"
+        Language="cs"
+        Source="$(ClicaloArchitectureDir)tasks\ClicaloVerifyReferences.cs"
+      />
+    </Task>
+  </UsingTask>
+
+  <ItemGroup Label="Reference whitelist inputs for the Visual Studio fast up-to-date check">
+    <UpToDateCheckInput Include="$(ClicaloAllowedDependenciesFile)" />
+    <UpToDateCheckInput Include="$(ClicaloArchitectureDir)tasks\ClicaloVerifyReferences.cs" />
+  </ItemGroup>
+
+  <Target
+    Name="ClicaloVerifyReferences"
+    BeforeTargets="ResolveProjectReferences"
+    Condition="'$(DesignTimeBuild)' != 'true' and '$(ClicaloIsWpfTemporaryProject)' != 'true'"
+  >
+    <PropertyGroup>
+      <_ClicaloRepoRootFull>$([MSBuild]::NormalizeDirectory('$(RepoRoot)'))</_ClicaloRepoRootFull>
+      <!-- Absolute: property functions resolve relative paths against the process directory, not the project. -->
+      <_ClicaloReferencesStamp>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'clicalo.references.stamp'))</_ClicaloReferencesStamp>
+    </PropertyGroup>
+
+    <!-- Only references declared by a file of this repository (csproj, Directory.*.props/targets, wiring). -->
+    <ItemGroup>
+      <_ClicaloDeclaredReference
+        Include="@(ProjectReference)"
+        ClicaloKind="Project"
+        ClicaloDefiningFile="%(ProjectReference.DefiningProjectFullPath)"
+        Condition="$([System.String]::Copy('%(ProjectReference.DefiningProjectDirectory)').StartsWith('$(_ClicaloRepoRootFull)', StringComparison.OrdinalIgnoreCase))"
+      />
+      <_ClicaloDeclaredReference
+        Include="@(PackageReference)"
+        ClicaloKind="Package"
+        ClicaloDefiningFile="%(PackageReference.DefiningProjectFullPath)"
+        Condition="$([System.String]::Copy('%(PackageReference.DefiningProjectDirectory)').StartsWith('$(_ClicaloRepoRootFull)', StringComparison.OrdinalIgnoreCase))"
+      />
+      <_ClicaloDeclaredReference
+        Include="@(GlobalPackageReference)"
+        ClicaloKind="GlobalPackage"
+        ClicaloDefiningFile="%(GlobalPackageReference.DefiningProjectFullPath)"
+        Condition="$([System.String]::Copy('%(GlobalPackageReference.DefiningProjectDirectory)').StartsWith('$(_ClicaloRepoRootFull)', StringComparison.OrdinalIgnoreCase))"
+      />
+      <_ClicaloDeclaredReference
+        Include="@(FrameworkReference)"
+        ClicaloKind="Framework"
+        ClicaloDefiningFile="%(FrameworkReference.DefiningProjectFullPath)"
+        Condition="$([System.String]::Copy('%(FrameworkReference.DefiningProjectDirectory)').StartsWith('$(_ClicaloRepoRootFull)', StringComparison.OrdinalIgnoreCase))"
+      />
+      <_ClicaloDeclaredReference
+        Include="@(Reference)"
+        ClicaloKind="Assembly"
+        ClicaloDefiningFile="%(Reference.DefiningProjectFullPath)"
+        Condition="$([System.String]::Copy('%(Reference.DefiningProjectDirectory)').StartsWith('$(_ClicaloRepoRootFull)', StringComparison.OrdinalIgnoreCase))"
+      />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <_ClicaloReferencesFingerprint>$(MSBuildProjectName)|$(TargetFramework)|$(UseWPF)|$(UseWindowsForms)|@(_ClicaloDeclaredReference->'%(ClicaloKind):%(Identity):%(OutputItemType):%(ReferenceOutputAssembly)', ',')|$([MSBuild]::StableStringHash($([System.IO.File]::ReadAllText('$(ClicaloAllowedDependenciesFile)'))))|$([MSBuild]::StableStringHash($([System.IO.File]::ReadAllText('$(ClicaloArchitectureDir)tasks\ClicaloVerifyReferences.cs'))))</_ClicaloReferencesFingerprint>
+      <_ClicaloReferencesFingerprint>$(_ClicaloReferencesFingerprint.Replace(';', ','))</_ClicaloReferencesFingerprint>
+      <_ClicaloReferencesPrevious Condition="Exists('$(_ClicaloReferencesStamp)')"
+        >$([System.IO.File]::ReadAllText('$(_ClicaloReferencesStamp)').Trim())</_ClicaloReferencesPrevious>
+    </PropertyGroup>
+
+    <Clicalo.Architecture.Tasks.ClicaloVerifyReferences
+      Condition="'$(_ClicaloReferencesFingerprint)' != '$(_ClicaloReferencesPrevious)'"
+      PolicyFile="$(ClicaloAllowedDependenciesFile)"
+      RepositoryRoot="$(RepoRoot)"
+      ProjectName="$(MSBuildProjectName)"
+      ProjectFile="$(MSBuildProjectFullPath)"
+      TargetPlatformIdentifier="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))"
+      UseWpf="$([MSBuild]::ValueOrDefault('$(UseWPF)', 'false'))"
+      UseWindowsForms="$([MSBuild]::ValueOrDefault('$(UseWindowsForms)', 'false'))"
+      References="@(_ClicaloDeclaredReference)"
+    />
+
+    <MakeDir
+      Directories="$(IntermediateOutputPath)"
+      Condition="'$(_ClicaloReferencesFingerprint)' != '$(_ClicaloReferencesPrevious)'"
+    />
+    <WriteLinesToFile
+      Condition="'$(_ClicaloReferencesFingerprint)' != '$(_ClicaloReferencesPrevious)'"
+      File="$(_ClicaloReferencesStamp)"
+      Lines="$(_ClicaloReferencesFingerprint)"
+      Overwrite="true"
+      WriteOnlyWhenDifferent="true"
+    />
+    <ItemGroup>
+      <FileWrites Include="$(_ClicaloReferencesStamp)" />
+      <_ClicaloDeclaredReference Remove="@(_ClicaloDeclaredReference)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    ============================================================
+    Mechanism 4: product-rule analyzers (CLC*). The wiring file belongs to generators/Clicalo.Analyzers and is
+    imported only once that package provides it.
+    ============================================================
+  -->
+  <Import
+    Project="$(RepoRoot)generators\Clicalo.Analyzers\Clicalo.Analyzers.Wiring.targets"
+    Condition="Exists('$(RepoRoot)generators\Clicalo.Analyzers\Clicalo.Analyzers.Wiring.targets')"
+  />
 </Project>

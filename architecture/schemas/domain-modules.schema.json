@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Michael-Coaguila/clicalo/architecture/schemas/domain-modules.schema.json",
+  "title": "Clícalo Domain module matrix",
+  "description": "Capability modules of the Domain layer and their allowed dependencies (acyclic, transitive).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "rootNamespace", "modules"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string", "minLength": 10 },
+    "rootNamespace": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)*$" },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "group", "description", "dependsOn"],
+        "properties": {
+          "name": { "$ref": "#/$defs/module" },
+          "group": { "enum": ["foundations", "core", "rules", "execution", "document", "data"] },
+          "description": { "type": "string", "minLength": 10 },
+          "dependsOn": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/module" }
+          },
+          "deviation": {
+            "description": "Why this row differs from blueprint §4.3.",
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "module": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)*$" }
+  }
+}

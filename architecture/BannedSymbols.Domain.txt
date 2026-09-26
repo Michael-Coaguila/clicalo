@@ -1,0 +1,12 @@
+// Banned APIs for Clicalo.Domain, on top of BannedSymbols.All.txt (blueprint §4.2 and §4.4, mechanism 3).
+// Domain is pure and deterministic: no I/O, no network, no registry and no process environment. Namespace ids
+// (N:) also cover their child namespaces. Domain has no exceptions.
+
+N:System.IO;Domain is pure: files and streams belong to Infrastructure behind ports
+N:System.Net;Domain is pure: the network belongs to Infrastructure behind ports
+N:Microsoft.Win32;Domain is pure: the registry and OS handles belong to Platform.Windows behind ports
+T:System.Environment;Domain is pure: pass what it needs (culture, paths, clock) as values or through DomainContext
+T:System.Diagnostics.Process;Domain is pure: processes belong to Platform.Windows behind ILauncher
+T:System.Runtime.InteropServices.Marshal;Domain is pure: interop belongs to Platform
+T:System.Runtime.InteropServices.NativeLibrary;Domain is pure: interop belongs to Platform
+T:System.AppContext;Domain is pure: configuration arrives as values

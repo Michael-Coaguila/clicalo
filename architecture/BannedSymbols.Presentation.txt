@@ -1,0 +1,49 @@
+// Banned APIs for Clicalo.Presentation, on top of BannedSymbols.All.txt (blueprint §4.2, §8.2 and ADR-0001).
+// ViewModels never touch a UI framework, so the framework stays replaceable. Presentation targets a portable
+// framework and cannot reference WPF, so these entries are defence in depth; the BCL types of the System.Windows
+// namespaces are banned one by one because System.Windows.Input.ICommand (portable MVVM contract used by
+// CommunityToolkit.Mvvm) must stay available. ViewModels have no OS access either: that is Application's job.
+
+N:System.Windows.Automation;UI Automation peers belong to UI.Wpf
+N:System.Windows.Controls;Controls belong to UI.Wpf; expose state and commands instead
+N:System.Windows.Data;Bindings and converters belong to UI.Wpf
+N:System.Windows.Documents;Documents belong to UI.Wpf
+N:System.Windows.Forms;Presentation has no UI framework types
+N:System.Windows.Interop;Window handles belong to UI.Wpf Windowing
+N:System.Windows.Markup;XAML belongs to UI.Wpf
+N:System.Windows.Media;Brushes, colors and visuals belong to UI.Wpf Theming (expose semantic tokens)
+N:System.Windows.Navigation;Navigation belongs to UI.Wpf
+N:System.Windows.Shapes;Shapes belong to UI.Wpf
+N:System.Windows.Threading;Dispatchers belong to UI.Wpf; ViewModels receive immutable snapshots on the right thread
+N:System.Xaml;XAML belongs to UI.Wpf
+N:Microsoft.Win32;Dialogs, registry and OS handles belong to UI.Wpf or Platform.Windows
+T:System.Windows.Application;Presentation has no UI framework types
+T:System.Windows.Clipboard;The clipboard is a port (IClipboard)
+T:System.Windows.DependencyObject;ViewModels are plain observable objects (CommunityToolkit.Mvvm)
+T:System.Windows.DependencyProperty;ViewModels are plain observable objects (CommunityToolkit.Mvvm)
+T:System.Windows.FrameworkElement;Presentation has no UI framework types
+T:System.Windows.MessageBox;Dialogs are notices or TwoStepConfirm, never modal windows
+T:System.Windows.Point;Use Domain.Geometry types
+T:System.Windows.Rect;Use Domain.Geometry types
+T:System.Windows.Size;Use Domain.Geometry types
+T:System.Windows.Thickness;Layout belongs to UI.Wpf
+T:System.Windows.UIElement;Presentation has no UI framework types
+T:System.Windows.Visibility;Expose a boolean or a state; UI.Wpf maps it to Visibility
+T:System.Windows.Window;Presentation has no UI framework types
+T:System.Windows.Input.CommandManager;Use CommunityToolkit.Mvvm commands and NotifyCanExecuteChanged
+T:System.Windows.Input.Cursor;Cursors belong to UI.Wpf
+T:System.Windows.Input.Cursors;Cursors belong to UI.Wpf
+T:System.Windows.Input.FocusManager;Focus belongs to UI.Wpf and the ForegroundOrchestrator leases
+T:System.Windows.Input.Key;Keys are Domain.Keys.KeyId
+T:System.Windows.Input.Keyboard;Keyboard state belongs to UI.Wpf
+T:System.Windows.Input.ModifierKeys;Modifiers are Domain.Keys types
+T:System.Windows.Input.Mouse;Pointer state belongs to UI.Wpf Pointer
+T:System.Windows.Input.RoutedCommand;Use CommunityToolkit.Mvvm commands
+T:System.Windows.Input.RoutedUICommand;Use CommunityToolkit.Mvvm commands
+T:System.IO.File;ViewModels reach files through Application use cases
+T:System.IO.FileInfo;ViewModels reach files through Application use cases
+T:System.IO.FileStream;ViewModels reach files through Application use cases
+T:System.IO.Directory;ViewModels reach directories through Application use cases
+T:System.IO.DirectoryInfo;ViewModels reach directories through Application use cases
+N:System.Net.Http;ViewModels reach the network through Application use cases
+T:System.Diagnostics.Process;ViewModels launch through Application use cases (ILauncher)

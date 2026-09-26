@@ -1,0 +1,8 @@
+# Global analyzer configuration for the banned-API lists (architecture/BannedSymbols.*.txt).
+# Wired by Directory.Build.targets for product projects only.
+is_global = true
+
+# Generated code is not subject to the lists: CsWin32 friendly overloads call the raw P/Invoke they wrap, XAML
+# .g.cs declares fields for named controls and source generators emit data. The architecture tests still check the
+# compiled IL of every product assembly, so confined APIs cannot hide in generated code.
+dotnet_banned_api_analyzer.exclude_generated_code = true
