@@ -10,3 +10,5 @@
 # Verify snapshots must be byte-stable
 *.verified.txt text eol=lf
 *.verified.png binary
+# NuGet writes lock files with CRLF on Windows; keep the checkout identical to avoid spurious diffs
+**/packages.lock.json text eol=crlf
