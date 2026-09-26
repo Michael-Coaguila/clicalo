@@ -36,6 +36,18 @@
           "duration": "150ms",
           "description": "Length of the discreet outline or vibration that signals an ignored touch.",
           "req": ["TAC-003"]
+        },
+        "PalmContactMinPx": {
+          "px": 120,
+          "description": "A contact whose area (rcContact) reaches this width or height, in logical pixels (about 32 mm), is a palm and never counts. Provisional until spike S2 records real traces on the maintainer's touch screen.",
+          "req": ["ACC-007"],
+          "source": "blueprint §7.8"
+        },
+        "PointerStampMaxAge": {
+          "duration": "1s",
+          "description": "A pointer frame is dated when Windows recorded it (its performance counter); if that is older than this when the window procedure reads it (a stalled UI thread or a bogus counter), it is dated now instead.",
+          "req": ["NFR-001"],
+          "source": "blueprint §7.1"
         }
       }
     },

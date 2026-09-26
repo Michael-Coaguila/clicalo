@@ -70,4 +70,9 @@ WM_POINTERENTER
 WM_POINTERLEAVE
 WM_POINTERCAPTURECHANGED
 WM_POINTERWHEEL
+EnableMouseInPointer
+IsMouseInPointerEnabled
+GetWindowFeedbackSetting
+TOUCH_MASK_CONTACTAREA
+WM_NCDESTROY
 // ---- end of Pointer ----

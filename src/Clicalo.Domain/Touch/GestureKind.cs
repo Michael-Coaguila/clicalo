@@ -19,9 +19,9 @@ public enum GestureKind
     HoldEnd,
 
     /// <summary>
-    /// A horizontal swipe of at least <c>Timings.Touch.SwipeMinDistancePx</c> (60 logical px) with
-    /// |dy| &lt; <c>Timings.Touch.SwipeMaxSlope</c> × |dx|; targets then ignore touches for
-    /// <c>Timings.Touch.PostSwipeLock</c>.
+    /// A horizontal swipe of more than <c>Timings.Touch.SwipeMinDistancePx</c> (60 logical px) with
+    /// |dy| &lt; <c>Timings.Touch.SwipeMaxSlope</c> × |dx| (CUA-005), reported when the contact lifts; targets then
+    /// ignore touches for <c>Timings.Touch.PostSwipeLock</c>.
     /// </summary>
     Swipe,
 

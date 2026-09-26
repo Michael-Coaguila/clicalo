@@ -8,9 +8,13 @@ namespace Clicalo.UI.Wpf.Pointer;
 /// <summary>
 /// Process and window setup of the own pointer layer (blueprint §8.3, ADR-0006): WPF's stylus and touch stacks are
 /// switched off (they hang at logon #3147, lose touch on topmost windows after a device change #2054 and die with
-/// WMI #9752), so touch arrives only as <c>WM_POINTER*</c> to <see cref="PointerInputSource"/>, and the touch
-/// feedback circle of Windows is disabled on every surface (ACC-007).
+/// WMI #9752), so touch arrives only as <c>WM_POINTER*</c> to <see cref="PointerInputSource"/>, the mouse is routed
+/// through the same messages, and the touch feedback circle of Windows is disabled on every surface (ACC-007).
 /// </summary>
+/// <remarks>
+/// At start-up, before the first WPF window: <see cref="DisableStylusAndTouchSupport"/> and
+/// <see cref="EnableMouseInPointer"/>. Per window, before its first show: <see cref="DisableTouchFeedback"/>.
+/// </remarks>
 public static class PointerSetup
 {
     /// <summary>The <see cref="AppContext"/> switch that turns off WPF's stylus and touch support.</summary>
@@ -37,6 +41,9 @@ public static class PointerSetup
     public static bool IsStylusAndTouchSupportDisabled =>
         AppContext.TryGetSwitch(DisableStylusAndTouchSupportSwitch, out var disabled) && disabled;
 
+    /// <summary>True when the mouse of this process arrives as <c>WM_POINTER*</c> (<see cref="EnableMouseInPointer"/>).</summary>
+    public static bool IsMouseInPointerEnabled => PInvoke.IsMouseInPointerEnabled();
+
     /// <summary>
     /// Sets <see cref="DisableStylusAndTouchSupportSwitch"/> for the process. Must run before the first WPF
     /// window or <c>Application</c> is created; the executables also set it in their runtime configuration
@@ -44,6 +51,17 @@ public static class PointerSetup
     /// </summary>
     public static void DisableStylusAndTouchSupport() =>
         AppContext.SetSwitch(DisableStylusAndTouchSupportSwitch, true);
+
+    /// <summary>
+    /// Routes the mouse (and the precision touchpad) of the whole process through <c>WM_POINTER*</c>
+    /// (<c>EnableMouseInPointer</c>), so <see cref="PointerInputSource"/> turns a mouse click on a surface into the
+    /// same frames as a finger (finger, pen and mouse in spike S1). Pointer messages that no source consumes still reach
+    /// WPF as ordinary mouse messages through <c>DefWindowProc</c>, so activatable windows (Control Center) keep their
+    /// mouse input. Process-wide and permanent: call it once at start-up, before the first window.
+    /// </summary>
+    /// <returns>True when the mouse arrives as pointer messages (now or already before the call).</returns>
+    public static bool EnableMouseInPointer() =>
+        IsMouseInPointerEnabled || PInvoke.EnableMouseInPointer(true);
 
     /// <summary>
     /// Disables every <c>FEEDBACK_TYPE</c> of <c>SetWindowFeedbackSetting</c> on <paramref name="window"/>: no touch
@@ -73,5 +91,37 @@ public static class PointerSetup
         }
 
         return allDisabled;
+    }
+
+    /// <summary>
+    /// True when every <c>FEEDBACK_TYPE</c> is explicitly disabled on <paramref name="window"/> itself
+    /// (<c>GetWindowFeedbackSetting</c>): what <see cref="DisableTouchFeedback"/> leaves behind, checked by the S1
+    /// tests and available to the surface integrity check.
+    /// </summary>
+    public static unsafe bool IsTouchFeedbackDisabled(WindowToken window)
+    {
+        if (window.IsNone)
+        {
+            throw new ArgumentException("The window cannot be empty.", nameof(window));
+        }
+
+        foreach (var feedback in FeedbackTypes)
+        {
+            BOOL enabled = true;
+            var size = (uint)sizeof(BOOL);
+            var configured = PInvoke.GetWindowFeedbackSetting(
+                (HWND)window.Handle,
+                feedback,
+                0,
+                &size,
+                &enabled
+            );
+            if (!configured || enabled)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
