@@ -53,6 +53,19 @@ public sealed partial class BannedApiExceptionsTests
     }
 
     [Theory]
+    [InlineData("dotnet_diagnostic.RS0030.severity = none", true)]
+    [InlineData("dotnet_analyzer_diagnostic.category-ApiDesign.severity = silent", true)]
+    [InlineData("dotnet_analyzer_diagnostic.severity = suggestion", true)]
+    [InlineData("<NoWarn>$(NoWarn);RS0030</NoWarn>", true)]
+    [InlineData("<WarningsNotAsErrors>RS0030</WarningsNotAsErrors>", true)]
+    [InlineData("dotnet_analyzer_diagnostic.severity = warning", false)]
+    [InlineData("<NoWarn>$(NoWarn);CS1591</NoWarn>", false)]
+    public void The_configuration_check_recognises_each_way_to_weaken_RS0030(
+        string setting,
+        bool weakens
+    ) => Rs0030Setting().IsMatch(setting).ShouldBe(weakens);
+
+    [Theory]
     [InlineData(
         "[SuppressMessage(\"ApiDesign\", \"RS0030:Do not use banned APIs\", Justification = \"The adapter of IForegroundControl.\")]",
         SuppressionKind.Scoped
@@ -85,15 +98,62 @@ public sealed partial class BannedApiExceptionsTests
         "#pragma warning disable CS1591, RS0030 // Justified in the file header.",
         SuppressionKind.Unrestored
     )]
+    [InlineData(
+        "#pragma warning disable // Every warning of this file, RS0030 included.\nx();\n#pragma warning restore",
+        SuppressionKind.Blanket
+    )]
+    [InlineData(
+        """
+            [SuppressMessage(
+                "ApiDesign",
+                "RS0030:Do not use banned APIs",
+                Justification = "The adapter of IForegroundControl."
+            )]
+            static void X() { }
+            """,
+        SuppressionKind.Scoped
+    )]
+    [InlineData(
+        """
+            [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+                "ApiDesign",
+                "RS0030"
+            )]
+            static void X() { }
+            """,
+        SuppressionKind.Unjustified
+    )]
+    [InlineData(
+        """
+            [module:
+                SuppressMessage("ApiDesign", "RS0030", Justification = "Everything is allowed here.")]
+            """,
+        SuppressionKind.Global
+    )]
     public void The_scanner_classifies_each_suppression(string source, SuppressionKind expected) =>
         SuppressionScanner.Scan("src/X.cs", source).ShouldHaveSingleItem().Kind.ShouldBe(expected);
 
     [Fact]
-    public void The_scanner_ignores_other_diagnostics_and_comments() =>
+    public void The_scanner_reports_the_line_where_the_suppression_starts() =>
         SuppressionScanner
             .Scan(
                 "src/X.cs",
-                "#pragma warning disable CA1822 // RS0030 is not this one\n// SuppressMessage RS0030 in prose\n"
+                "namespace N;\n\nstatic class C\n{\n    [SuppressMessage(\n        \"ApiDesign\",\n        \"RS0030\"\n    )]\n    static void X() { }\n}\n"
+            )
+            .ShouldHaveSingleItem()
+            .Line.ShouldBe(5);
+
+    [Fact]
+    public void The_scanner_ignores_other_diagnostics_comments_and_strings() =>
+        SuppressionScanner
+            .Scan(
+                "src/X.cs",
+                """
+                #pragma warning disable CA1822 // RS0030 is not this one
+                // SuppressMessage RS0030 in prose
+                [SuppressMessage("Design", "CA1062", Justification = "Mentions RS0030 only here.")]
+                static string Text() => "[SuppressMessage(\"ApiDesign\", \"RS0030\")]";
+                """
             )
             .ShouldBeEmpty();
 
@@ -135,105 +195,9 @@ public sealed partial class BannedApiExceptionsTests
         || relative.Contains("/bin/", StringComparison.Ordinal);
 
     [GeneratedRegex(
-        @"RS0030\s*\.severity|<(?:NoWarn|WarningsNotAsErrors)>[^<]*RS0030",
+        @"RS0030\s*\.severity|dotnet_analyzer_diagnostic\.(?:category-ApiDesign\.)?severity\s*=\s*(?:none|silent|suggestion)|<(?:NoWarn|WarningsNotAsErrors)>[^<]*RS0030",
         RegexOptions.CultureInvariant,
         matchTimeoutMilliseconds: 1000
     )]
     private static partial Regex Rs0030Setting();
-}
-
-/// <summary>How an RS0030 suppression is written.</summary>
-public enum SuppressionKind
-{
-    /// <summary>A justified [SuppressMessage], or a justified pragma restored in the same file.</summary>
-    Scoped,
-
-    /// <summary>No justification.</summary>
-    Unjustified,
-
-    /// <summary>A pragma that is never restored, so it covers the rest of the file.</summary>
-    Unrestored,
-
-    /// <summary>An assembly-level suppression.</summary>
-    Global,
-}
-
-/// <summary>Finds the RS0030 suppressions of a C# source file.</summary>
-internal static partial class SuppressionScanner
-{
-    public static IEnumerable<SuppressionFinding> Scan(string file, string source)
-    {
-        var lines = source.ReplaceLineEndings("\n").Split('\n');
-        for (var i = 0; i < lines.Length; i++)
-        {
-            var line = lines[i];
-            var code = line.Split("//", 2)[0];
-            if (
-                Pragma().Match(line) is { Success: true } pragma
-                && string.Equals(pragma.Groups["action"].Value, "disable", StringComparison.Ordinal)
-                && Rs0030().IsMatch(code)
-            )
-            {
-                var justified =
-                    line.Contains("//", StringComparison.Ordinal)
-                    && line.Split("//", 2)[1].Trim().Length >= 10;
-                var restored = lines
-                    .Skip(i + 1)
-                    .Any(l =>
-                        Pragma().Match(l) is { Success: true } p
-                        && string.Equals(
-                            p.Groups["action"].Value,
-                            "restore",
-                            StringComparison.Ordinal
-                        )
-                        && Rs0030().IsMatch(l.Split("//", 2)[0])
-                    );
-                var kind =
-                    !justified ? SuppressionKind.Unjustified
-                    : restored ? SuppressionKind.Scoped
-                    : SuppressionKind.Unrestored;
-                yield return new SuppressionFinding(file, i + 1, kind);
-            }
-            else if (
-                code.Contains("SuppressMessage", StringComparison.Ordinal) && Rs0030().IsMatch(code)
-            )
-            {
-                var kind =
-                    AssemblyTarget().IsMatch(code) ? SuppressionKind.Global
-                    : Justification().IsMatch(code) ? SuppressionKind.Scoped
-                    : SuppressionKind.Unjustified;
-                yield return new SuppressionFinding(file, i + 1, kind);
-            }
-        }
-    }
-
-    [GeneratedRegex(
-        @"^\s*#\s*pragma\s+warning\s+(?<action>disable|restore)\b",
-        RegexOptions.CultureInvariant,
-        matchTimeoutMilliseconds: 1000
-    )]
-    private static partial Regex Pragma();
-
-    [GeneratedRegex(@"\bRS0030\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex Rs0030();
-
-    [GeneratedRegex(
-        @"\[\s*(?:assembly|module)\s*:",
-        RegexOptions.CultureInvariant,
-        matchTimeoutMilliseconds: 1000
-    )]
-    private static partial Regex AssemblyTarget();
-
-    [GeneratedRegex(
-        @"Justification\s*=\s*""[^""]{10,}""",
-        RegexOptions.CultureInvariant,
-        matchTimeoutMilliseconds: 1000
-    )]
-    private static partial Regex Justification();
-}
-
-/// <summary>An RS0030 suppression found in a source file.</summary>
-internal sealed record SuppressionFinding(string File, int Line, SuppressionKind Kind)
-{
-    public override string ToString() => File + "(" + Line + "): " + Kind + " RS0030 suppression";
 }
