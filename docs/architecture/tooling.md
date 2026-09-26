@@ -57,8 +57,8 @@ Los mismos pasos, en este orden, en local y en la CI; el primero que falla detie
 
 ### Línea final e informe de errores
 
-Cada orden termina en **una sola línea para Narrador**, por ejemplo «cl check: correcto en 2 min 10 s;
-1226 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El informe
+Cada orden termina en **una sola línea para Narrador**, por ejemplo «cl check: correcto en 1 min 22 s;
+1219 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El informe
 `artifacts/cl/last-error.md` es Markdown con encabezados y listas (sin tablas ni colores) y recoge el error
 exacto: errores de MSBuild con enlace a la línea, pruebas fallidas con mensaje y pila (leídas del TRX),
 archivos sin formato o firmas NuGet rechazadas (NU3034). Se borra al empezar cada orden, así que nunca queda
