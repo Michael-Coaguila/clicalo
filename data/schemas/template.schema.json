@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/template.schema.json",
+  "title": "Clícalo profile template",
+  "description": "One installable profile template per file, so the community can contribute through review (CAT-006). Its id equals the file name and, with the version, forms the CatalogRef of installed shortcuts (DAT-004).",
+  "type": "object",
+  "required": ["id", "version", "authors", "appsLanguages", "name", "icon", "processes", "shortcuts"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "id": { "$ref": "common.schema.json#/$defs/itemId" },
+    "version": { "description": "Increases with every change of the template.", "type": "integer", "minimum": 1 },
+    "authors": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "appsLanguages": {
+      "description": "Program languages whose shortcuts were reviewed; tap variants override the keys for a language (CAT-005, PLA-015 [onlyEs]).",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/langCode" }
+    },
+    "name": { "$ref": "common.schema.json#/$defs/localizedText" },
+    "icon": { "$ref": "common.schema.json#/$defs/iconId" },
+    "category": { "$ref": "common.schema.json#/$defs/categoryId" },
+    "processes": {
+      "description": "Processes the profile binds to (PER-002). Several per profile await decision PQ-45.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/processName" }
+    },
+    "shortcuts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "shortcut.schema.json#/$defs/shortcut" }
+    }
+  }
+}

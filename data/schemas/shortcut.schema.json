@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/shortcut.schema.json",
+  "title": "Clícalo content shortcut",
+  "description": "A shortcut shipped as content (library, seed, templates). Mirrors the closed action hierarchy of the domain (blueprint §6.2). Content is untrusted and is also validated when loaded (LOG-006).",
+  "$defs": {
+    "shortcut": {
+      "type": "object",
+      "required": ["id", "name", "icon", "category", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/itemId" },
+        "name": { "$ref": "common.schema.json#/$defs/localizedText" },
+        "icon": { "$ref": "common.schema.json#/$defs/iconId" },
+        "category": { "$ref": "common.schema.json#/$defs/categoryId" },
+        "action": { "$ref": "#/$defs/action" },
+        "confirm": { "description": "The first tap arms and the second executes (EJE-002).", "type": "boolean" }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["tap", "hold", "toggle", "text", "mouse", "macro", "web", "app", "system"] }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "tap" } } }, "then": { "$ref": "#/$defs/tapAction" } },
+        { "if": { "properties": { "type": { "enum": ["hold", "toggle"] } } }, "then": { "$ref": "#/$defs/keysAction" } },
+        { "if": { "properties": { "type": { "const": "text" } } }, "then": { "$ref": "#/$defs/textAction" } },
+        { "if": { "properties": { "type": { "const": "mouse" } } }, "then": { "$ref": "#/$defs/mouseAction" } },
+        { "if": { "properties": { "type": { "const": "macro" } } }, "then": { "$ref": "#/$defs/macroAction" } },
+        { "if": { "properties": { "type": { "const": "web" } } }, "then": { "$ref": "#/$defs/webAction" } },
+        { "if": { "properties": { "type": { "const": "app" } } }, "then": { "$ref": "#/$defs/appAction" } },
+        { "if": { "properties": { "type": { "const": "system" } } }, "then": { "$ref": "#/$defs/systemAction" } }
+      ]
+    },
+    "tapAction": {
+      "type": "object",
+      "required": ["type", "keys"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "tap" },
+        "keys": { "$ref": "common.schema.json#/$defs/keyChord" },
+        "variants": {
+          "description": "Combination to use when the user's programs are in another language (CAT-005).",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "common.schema.json#/$defs/langCode" },
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/keyChord" }
+        }
+      }
+    },
+    "keysAction": {
+      "type": "object",
+      "required": ["type", "keys"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["hold", "toggle"] },
+        "keys": { "$ref": "common.schema.json#/$defs/keyChord" }
+      }
+    },
+    "textAction": {
+      "type": "object",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "text" },
+        "text": { "description": "Text to type. Empty in placeholders the user must fill (LOG-005).", "type": "string" },
+        "method": { "enum": ["type", "paste"] },
+        "hint": { "description": "Example shown while the text is empty (EDI-006).", "$ref": "common.schema.json#/$defs/localizedText" }
+      }
+    },
+    "mouseAction": {
+      "type": "object",
+      "required": ["type", "mouse"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "mouse" },
+        "mouse": { "$ref": "common.schema.json#/$defs/mouseActionId" },
+        "speed": { "type": "string", "pattern": "^[a-z]+$" }
+      }
+    },
+    "macroAction": {
+      "type": "object",
+      "required": ["type", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "macro" },
+        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/macroStep" } }
+      }
+    },
+    "macroStep": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["keys", "wait", "text", "mouse"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "keys" } } },
+          "then": {
+            "required": ["keys"],
+            "additionalProperties": false,
+            "properties": { "kind": true, "keys": { "$ref": "common.schema.json#/$defs/keyChord" } }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "wait" } } },
+          "then": {
+            "required": ["ms"],
+            "additionalProperties": false,
+            "properties": { "kind": true, "ms": { "description": "Bounds are Timings.Macro.MacroWaitRange.", "type": "integer", "minimum": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "text" } } },
+          "then": {
+            "required": ["text"],
+            "additionalProperties": false,
+            "properties": { "kind": true, "text": { "type": "string", "minLength": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "mouse" } } },
+          "then": {
+            "required": ["mouse"],
+            "additionalProperties": false,
+            "properties": { "kind": true, "mouse": { "$ref": "common.schema.json#/$defs/mouseActionId" } }
+          }
+        }
+      ]
+    },
+    "webAction": {
+      "type": "object",
+      "required": ["type", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "web" },
+        "url": { "description": "Only http and https (EJE-011, LOG-008).", "type": "string", "pattern": "^https?://[^\\s/$.?#][^\\s]*$" }
+      }
+    },
+    "appAction": {
+      "type": "object",
+      "required": ["type", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "app" },
+        "target": { "type": "string", "minLength": 1 }
+      }
+    },
+    "systemAction": {
+      "type": "object",
+      "required": ["type", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "system" },
+        "command": { "$ref": "common.schema.json#/$defs/systemCommandId" }
+      }
+    }
+  }
+}

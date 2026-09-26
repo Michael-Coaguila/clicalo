@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/system-commands.schema.json",
+  "title": "Clícalo system commands",
+  "description": "Actions that cannot be sent as keys (EJE-016), executed on the Shell thread.",
+  "type": "object",
+  "required": ["catalogVersion", "commands"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "icon", "label", "availability"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/systemCommandId" },
+          "icon": { "$ref": "common.schema.json#/$defs/iconId" },
+          "label": { "$ref": "common.schema.json#/$defs/localizedText" },
+          "availability": {
+            "description": "always, or the device capability the command needs; commands without it are hidden.",
+            "enum": ["always", "brightnessControl"]
+          }
+        }
+      }
+    }
+  }
+}

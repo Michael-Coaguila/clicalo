@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/sizes.schema.json",
+  "title": "Clícalo panel sizes",
+  "description": "Measures of the S, M and L sizes (docs/04) and the size-independent layout measures, in logical pixels. Generated as Clicalo.Domain.Catalog.PanelSizes; every numeric leaf becomes a property named after its path.",
+  "type": "object",
+  "required": ["catalogVersion", "layout", "sizes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "layout": {
+      "type": "object",
+      "required": ["minTouchTargetPx", "minTextPx", "textScaleTileGrowth", "panel", "bubble", "dock"],
+      "additionalProperties": false,
+      "properties": {
+        "minTouchTargetPx": { "description": "Smallest touch target (REG-02).", "$ref": "#/$defs/px" },
+        "minTextPx": { "description": "Smallest text at 100 % (TEM-007); design sizes below it are raised.", "$ref": "#/$defs/px" },
+        "textScaleTileGrowth": {
+          "description": "Tile height grows by (scale − 1) × label × this factor (CUA-011).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "panel": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minWidthPx", "chromeWidthPx", "workAreaMarginPx", "bottomMarginPx", "initialRightOffsetPx", "initialTopPx",
+            "maxGridRows", "compactTileReductionPx", "compactStripCapacity", "dragHandleWidthPx", "autoFixedButtonPx",
+            "noticeBarHeightPx", "pageDotActiveWidthPx", "pageDotSizePx", "profileTileHeightPx", "contextMenuRowHeightPx",
+            "editDeleteButtonPx"
+          ],
+          "properties": {
+            "minWidthPx": { "description": "Panel width = max(this, cols·w + (cols−1)·gap + chrome) (PAN-002).", "$ref": "#/$defs/px" },
+            "chromeWidthPx": { "$ref": "#/$defs/px" },
+            "workAreaMarginPx": { "description": "Margin to the work area edges (PAN-002).", "$ref": "#/$defs/px" },
+            "bottomMarginPx": { "description": "Free space kept above the bottom of the work area (PAN-002).", "$ref": "#/$defs/px" },
+            "initialRightOffsetPx": { "description": "Initial x = work area width − panel − this (PAN-002).", "$ref": "#/$defs/px" },
+            "initialTopPx": { "$ref": "#/$defs/px" },
+            "maxGridRows": { "description": "Largest row preference (CUA-001).", "$ref": "#/$defs/count" },
+            "compactTileReductionPx": { "description": "Compact tiles are this much lower (VCO-001).", "$ref": "#/$defs/px" },
+            "compactStripCapacity": { "description": "Always-visible row capacity in the Compact view (FIJ-003).", "$ref": "#/$defs/count" },
+            "dragHandleWidthPx": { "$ref": "#/$defs/px" },
+            "autoFixedButtonPx": { "$ref": "#/$defs/px" },
+            "noticeBarHeightPx": { "$ref": "#/$defs/px" },
+            "pageDotActiveWidthPx": { "$ref": "#/$defs/px" },
+            "pageDotSizePx": { "$ref": "#/$defs/px" },
+            "profileTileHeightPx": { "$ref": "#/$defs/px" },
+            "contextMenuRowHeightPx": { "$ref": "#/$defs/px" },
+            "editDeleteButtonPx": { "$ref": "#/$defs/px" }
+          }
+        },
+        "bubble": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["diameterPx", "iconPx"],
+          "properties": {
+            "diameterPx": { "$ref": "#/$defs/px" },
+            "iconPx": { "$ref": "#/$defs/px" }
+          }
+        },
+        "dock": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "handleThicknessPx", "handleVerticalLengthPx", "handleHorizontalLengthPx", "scrollbarGutterPx",
+            "handlePositionMinPercent", "handlePositionMaxPercent"
+          ],
+          "properties": {
+            "handleThicknessPx": { "$ref": "#/$defs/px" },
+            "handleVerticalLengthPx": { "$ref": "#/$defs/px" },
+            "handleHorizontalLengthPx": { "$ref": "#/$defs/px" },
+            "scrollbarGutterPx": { "$ref": "#/$defs/px" },
+            "handlePositionMinPercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "handlePositionMaxPercent": { "type": "integer", "minimum": 0, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "sizes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/size" }
+    }
+  },
+  "$defs": {
+    "px": { "type": "integer", "minimum": 0 },
+    "count": { "type": "integer", "minimum": 1 },
+    "size": {
+      "type": "object",
+      "required": ["id", "labelKey", "tile", "gapPx", "headerButton", "strip", "autoRows", "dock"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+        "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" },
+        "tile": {
+          "type": "object",
+          "required": ["widthPx", "heightPx", "iconPx", "labelPx", "keysPx"],
+          "additionalProperties": false,
+          "properties": {
+            "widthPx": { "$ref": "#/$defs/px" },
+            "heightPx": { "$ref": "#/$defs/px" },
+            "iconPx": { "$ref": "#/$defs/px" },
+            "labelPx": { "$ref": "#/$defs/px" },
+            "keysPx": { "$ref": "#/$defs/px" }
+          }
+        },
+        "gapPx": { "$ref": "#/$defs/px" },
+        "headerButton": {
+          "type": "object",
+          "required": ["widthPx", "heightPx"],
+          "additionalProperties": false,
+          "properties": {
+            "widthPx": { "$ref": "#/$defs/px" },
+            "heightPx": { "$ref": "#/$defs/px" }
+          }
+        },
+        "strip": {
+          "type": "object",
+          "required": ["heightPx", "iconPx", "labelPx", "capacity"],
+          "additionalProperties": false,
+          "properties": {
+            "heightPx": { "$ref": "#/$defs/px" },
+            "iconPx": { "$ref": "#/$defs/px" },
+            "labelPx": { "$ref": "#/$defs/px" },
+            "capacity": { "$ref": "#/$defs/count" }
+          }
+        },
+        "autoRows": { "description": "Grid rows in Auto (CUA-001).", "$ref": "#/$defs/count" },
+        "dock": {
+          "type": "object",
+          "required": ["barWidthPx", "barHeightPx", "verticalTileHeightPx", "horizontalTileWidthPx", "horizontalTileHeightPx", "tileIconPx"],
+          "additionalProperties": false,
+          "properties": {
+            "barWidthPx": { "description": "Open vertical bar width (PES-005).", "$ref": "#/$defs/px" },
+            "barHeightPx": { "description": "Open horizontal bar height (PES-005).", "$ref": "#/$defs/px" },
+            "verticalTileHeightPx": { "$ref": "#/$defs/px" },
+            "horizontalTileWidthPx": { "$ref": "#/$defs/px" },
+            "horizontalTileHeightPx": { "$ref": "#/$defs/px" },
+            "tileIconPx": { "$ref": "#/$defs/px" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/seed.schema.json",
+  "title": "Clícalo initial content",
+  "description": "Content of a new document: the Always visible row and the General profile (CAT-003, PQ-44). Other sample profiles are templates installed from the welcome.",
+  "type": "object",
+  "required": ["catalogVersion", "alwaysVisible", "general"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "alwaysVisible": {
+      "type": "array",
+      "items": { "$ref": "shortcut.schema.json#/$defs/shortcut" }
+    },
+    "general": {
+      "type": "object",
+      "required": ["name", "icon", "shortcuts"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/localizedText" },
+        "icon": { "$ref": "common.schema.json#/$defs/iconId" },
+        "shortcuts": {
+          "type": "array",
+          "items": { "$ref": "shortcut.schema.json#/$defs/shortcut" }
+        }
+      }
+    }
+  }
+}

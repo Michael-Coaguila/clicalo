@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/common.schema.json",
+  "title": "Clícalo shared catalog definitions",
+  "description": "Definitions shared by every catalog and content schema. Referenced through relative $ref.",
+  "$defs": {
+    "schemaRef": {
+      "description": "Editor hint pointing at the schema of the file. Ignored by the product.",
+      "type": "string"
+    },
+    "catalogVersion": {
+      "description": "Monotonic version of a catalog; stored in CatalogRef when content is copied into a document (DAT-004).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "langCode": {
+      "description": "Language code (IDI-006 allows more languages than es and en).",
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    },
+    "localizedText": {
+      "description": "Text per language. Spanish and English are mandatory (IDI-001); other languages may be added.",
+      "type": "object",
+      "required": ["es", "en"],
+      "propertyNames": { "$ref": "#/$defs/langCode" },
+      "additionalProperties": { "type": "string", "minLength": 1, "pattern": "\\S" }
+    },
+    "localizedWords": {
+      "description": "Lower-case search words per language, accents included (CAT-002).",
+      "type": "object",
+      "required": ["es", "en"],
+      "propertyNames": { "$ref": "#/$defs/langCode" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "type": "string", "pattern": "^[^\\sA-Z]+$" }
+      }
+    },
+    "messageKey": {
+      "description": "Key of a product text in data/i18n/strings.<lang>.json.",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*$"
+    },
+    "keyId": {
+      "description": "Canonical, persisted key identity: a lower-case name (ctrl, a, num.add) or a layout-dependent character (char:ñ) resolved when sending (PQ-49).",
+      "type": "string",
+      "pattern": "^(?:[a-z0-9]+(?:\\.[a-z0-9]+)*|char:[^\\sA-Za-z0-9])$"
+    },
+    "keyChord": {
+      "description": "Keys in press order (EJE-003); released in reverse order.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/keyId" }
+    },
+    "iconId": {
+      "description": "Material Symbols Rounded icon name listed in data/catalogs/icons.json.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "categoryId": {
+      "description": "Colour category listed in data/catalogs/categories.json.",
+      "type": "string",
+      "pattern": "^[a-z]+$"
+    },
+    "itemId": {
+      "description": "Stable identifier of a catalog item, unique within its file; part of CatalogRef.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "systemCommandId": {
+      "description": "System command listed in data/catalogs/system-commands.json.",
+      "type": "string",
+      "pattern": "^[a-z]+(?:\\.[a-z]+)*$"
+    },
+    "mouseActionId": {
+      "description": "Mouse action listed in data/catalogs/mouse.json.",
+      "type": "string",
+      "pattern": "^[a-z]+$"
+    },
+    "processName": {
+      "description": "Executable file name without path, in lower case (PER-002 compares without case).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9 ._+-]*\\.exe$"
+    },
+    "duration": {
+      "description": "Non-negative duration with an explicit unit: ms, s, min, h or d (for example 600ms, 2.5s, 10min).",
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:ms|s|min|h|d)$"
+    }
+  }
+}

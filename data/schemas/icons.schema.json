@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/icons.schema.json",
+  "title": "Clícalo icon library",
+  "description": "Icons offered by the icon picker, with search words per language (CAT-002, EDI-004). The order of «icons» is the order suggestIcons walks (EDI-005).",
+  "type": "object",
+  "required": ["catalogVersion", "defaults", "featured", "profileFeatured", "icons"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "defaults": {
+      "description": "Icon of a new shortcut and of a new profile without suggestion (EDI-005).",
+      "type": "object",
+      "required": ["shortcut", "profile"],
+      "additionalProperties": false,
+      "properties": {
+        "shortcut": { "$ref": "common.schema.json#/$defs/iconId" },
+        "profile": { "$ref": "common.schema.json#/$defs/iconId" }
+      }
+    },
+    "featured": {
+      "description": "Icons shown first in the shortcut icon picker when there is no search (EDI-004).",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/iconId" }
+    },
+    "profileFeatured": {
+      "description": "Base icons of the profile icon grid (ATJ-004, PLA-010).",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/iconId" }
+    },
+    "icons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "tags"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/iconId" },
+          "tags": { "$ref": "common.schema.json#/$defs/localizedWords" }
+        }
+      }
+    }
+  }
+}
