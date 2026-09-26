@@ -1,5 +1,8 @@
+using System.Collections.Immutable;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Execution.Internal;
@@ -34,6 +37,28 @@ internal static class MousePlanner
             return;
         }
 
+        // FIJ-006 (b): the active sticky modifiers are held around the click (Ctrl+click), then used up.
+        var modifiers = StickyKeys(step, origin);
+        HolderId? holder = null;
+        if (!modifiers.IsEmpty)
+        {
+            holder = HolderId.ForTap(step.NextSequence());
+            var (deadline, inherits) = step.GlobalDeadline();
+            var item = KeyPlanner.Template(
+                step,
+                holder.Value,
+                HoldOrigin.Tap,
+                origin,
+                null,
+                deadline,
+                inherits
+            ) with
+            {
+                Keys = new ValueList<InjectedKey>(modifiers),
+            };
+            step.Press(step.State.Keys.Acquire(item), holder.Value, origin);
+        }
+
         step.Emit(
             new EngineEffect.MouseAction(
                 mouse.Op,
@@ -42,8 +67,28 @@ internal static class MousePlanner
                 origin.Epoch
             )
         );
+        if (holder is { } pressed)
+        {
+            step.Release(step.State.Keys.Release(pressed), pressed);
+            StickyPlanner.Consume(step);
+        }
+
         step.CountUsage(origin);
     }
+
+    /// <summary>The physical keys of the active sticky modifiers (empty when none is active).</summary>
+    private static ImmutableArray<InjectedKey> StickyKeys(
+        EngineStep step,
+        ExecutionOrigin origin
+    ) =>
+        KeyResolver.TryResolve(
+            StickyPlanner.Active(step),
+            origin.Injection,
+            step.Layout,
+            out var keys
+        )
+            ? keys
+            : [];
 
     /// <summary>A scroll under a contact: one step now, then one per interval until the contact ends (EJE-009).</summary>
     public static void StartScroll(
@@ -165,6 +210,7 @@ internal static class MousePlanner
                 origin.Epoch
             )
         );
+        // FIJ-006 (b): the active sticky modifiers are held with the button for the whole drag.
         var (deadline, inherits) = step.Deadline(shortcut.Options.MaxHold);
         var item = KeyPlanner.Template(
             step,
@@ -176,9 +222,11 @@ internal static class MousePlanner
             inherits
         ) with
         {
+            Keys = new ValueList<InjectedKey>(StickyKeys(step, origin)),
             Buttons = MouseButtons.Left,
         };
         step.Press(step.State.Keys.Acquire(item), holder, origin);
+        StickyPlanner.Consume(step);
         step.Notice(EngineNotices.Latched);
         step.CountUsage(origin);
     }

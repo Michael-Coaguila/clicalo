@@ -18,10 +18,17 @@ internal static class KeyPlanner
     /// Tap: press in the saved order, release in reverse order, one event per pause (EJE-003). Its keys are held by a
     /// Tap holder while it runs, so a key another holder keeps is neither pressed again nor released under it.
     /// </summary>
-    public static void Tap(EngineStep step, ExecutionOrigin origin, KeyChord chord) =>
-        Tap(step, origin, chord.Strokes, countsUsage: true);
+    public static void Tap(EngineStep step, ExecutionOrigin origin, KeyChord chord)
+    {
+        // FIJ-006 (a): the active sticky modifiers go first; the ones at «once» are used up.
+        if (Tap(step, origin, StickyPlanner.Compose(step, chord.Strokes), countsUsage: true))
+        {
+            StickyPlanner.Consume(step);
+        }
+    }
 
-    public static void Tap(
+    /// <summary>A Tap of exactly <paramref name="strokes"/>; <see langword="false"/> when nothing was planned.</summary>
+    public static bool Tap(
         EngineStep step,
         ExecutionOrigin origin,
         ValueList<KeyStroke> strokes,
@@ -31,12 +38,12 @@ internal static class KeyPlanner
         if (!KeyResolver.TryResolve(strokes, origin.Injection, step.Layout, out var keys))
         {
             step.Notice(EngineNotices.Incomplete, NoticeUrgency.Assertive);
-            return;
+            return false;
         }
 
         if (keys.IsEmpty)
         {
-            return;
+            return false;
         }
 
         var holder = HolderId.ForTap(step.NextSequence());
@@ -59,6 +66,7 @@ internal static class KeyPlanner
                     )
                 )
         );
+        return true;
     }
 
     /// <summary>A Hold under a contact: presses when the contact starts, releases when it ends (EJE-004, INV-9).</summary>
@@ -168,7 +176,9 @@ internal static class KeyPlanner
         Message notice
     )
     {
-        if (!KeyResolver.TryResolve(chord.Strokes, origin.Injection, step.Layout, out var keys))
+        // FIJ-006 (c): the active sticky modifiers are added while the button is held.
+        var strokes = StickyPlanner.Compose(step, chord.Strokes);
+        if (!KeyResolver.TryResolve(strokes, origin.Injection, step.Layout, out var keys))
         {
             step.Notice(EngineNotices.Incomplete, NoticeUrgency.Assertive);
             return;
@@ -179,6 +189,7 @@ internal static class KeyPlanner
             return;
         }
 
+        StickyPlanner.Consume(step);
         var (deadline, inherits) = step.Deadline(shortcut.Options.MaxHold);
         var template = Template(step, holder, kind, origin, contact, deadline, inherits);
         step.Enqueue(

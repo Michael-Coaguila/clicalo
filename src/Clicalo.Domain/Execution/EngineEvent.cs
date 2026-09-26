@@ -172,6 +172,21 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
+    /// <summary>A tap on a key of the sticky modifiers row: 0 → 1 → 2 → 0 (FIJ-005).</summary>
+    /// <param name="Modifier">The modifier.</param>
+    public sealed record StickyTapped(ModifierKind Modifier) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Normal;
+    }
+
+    /// <summary>The sticky modifiers row was switched off: every sticky modifier is released (FIJ-005).</summary>
+    public sealed record ClearSticky : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Priority;
+    }
+
     /// <summary>A system command finished on the Shell thread.</summary>
     /// <param name="Effect">The effect.</param>
     /// <param name="Succeeded">Whether it worked.</param>

@@ -128,6 +128,13 @@ internal sealed record EngineOp(EngineOpKind Kind, int A, int B)
             case EngineOpKind.Resume:
                 engine.Apply(new EngineEvent.SessionResumed());
                 break;
+            case EngineOpKind.Sticky:
+                engine.Apply(
+                    B % 7 == 0
+                        ? new EngineEvent.ClearSticky()
+                        : new EngineEvent.StickyTapped((Clicalo.Domain.Keys.ModifierKind)(A % 4))
+                );
+                break;
         }
     }
 }

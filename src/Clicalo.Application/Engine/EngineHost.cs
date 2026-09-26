@@ -486,7 +486,10 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             _state.TestMode,
             _state.Paused,
             _state.Version
-        );
+        )
+        {
+            Sticky = _state.Sticky,
+        };
         Volatile.Write(ref _snapshot, snapshot);
         _publishedVersion = _state.Version;
         _lastPublishTicks = now;

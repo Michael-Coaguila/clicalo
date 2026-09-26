@@ -48,4 +48,13 @@ internal static class EngineNotices
 
     /// <summary>A web address is opening (EJE-011).</summary>
     public static Message Opened => L.Opened;
+
+    /// <summary>A sticky modifier joins the next tap or click (FIJ-005).</summary>
+    public static Message StickyOnce => L.ModOnce;
+
+    /// <summary>A sticky modifier is locked (FIJ-005).</summary>
+    public static Message StickyLocked => L.ModLock;
+
+    /// <summary>A sticky modifier was released (FIJ-005).</summary>
+    public static Message StickyOff => L.ModOff;
 }

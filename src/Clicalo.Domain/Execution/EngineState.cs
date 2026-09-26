@@ -1,13 +1,14 @@
 using System.Collections.Immutable;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.StickyModifiers;
 using Clicalo.Domain.Touch;
 
 namespace Clicalo.Domain.Execution;
 
 /// <summary>
 /// The whole state of the engine (blueprint §7.3), owned by the engine thread only. What must survive a crash goes
-/// to the physical ledger, not here. Sticky modifiers join it in M3.
+/// to the physical ledger, not here.
 /// </summary>
 /// <param name="Keys">The logical ledger.</param>
 /// <param name="Armed">The shortcut waiting for its confirmation tap.</param>
@@ -69,6 +70,9 @@ public sealed record EngineState(
 
     /// <summary>How many press batches <see cref="PressEffects"/> remembers.</summary>
     public const int PressMemory = 64;
+
+    /// <summary>The sticky modifiers of the panel row (FIJ-005, FIJ-006).</summary>
+    public StickyState Sticky { get; init; } = StickyState.Empty;
 
     /// <summary>
     /// Releases the secure desktop refused (a locked session): sent again when the session comes back (INV-3,

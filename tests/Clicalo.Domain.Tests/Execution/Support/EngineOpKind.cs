@@ -19,4 +19,5 @@ internal enum EngineOpKind
     Config,
     Mode,
     Resume,
+    Sticky,
 }

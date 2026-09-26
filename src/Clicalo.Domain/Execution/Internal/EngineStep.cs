@@ -148,6 +148,7 @@ internal sealed class EngineStep
             Macro = null,
             Scroll = null,
             Armed = null,
+            Sticky = StickyModifiers.StickyState.Empty,
         };
         if (cancelPastes)
         {

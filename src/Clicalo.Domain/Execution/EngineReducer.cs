@@ -89,6 +89,12 @@ public static class EngineReducer
             case EngineEvent.SessionResumed:
                 SessionResumed(step);
                 break;
+            case EngineEvent.StickyTapped tapped when !step.State.Paused && !step.State.TestMode:
+                StickyPlanner.Tap(step, tapped.Modifier);
+                break;
+            case EngineEvent.ClearSticky:
+                StickyPlanner.Clear(step);
+                break;
             case EngineEvent.ClipboardReady ready:
                 TextPlanner.ClipboardReady(step, ready.Effect);
                 break;
@@ -360,6 +366,7 @@ public static class EngineReducer
         {
             var item = step.State.Keys.Items[holder];
             step.CancelHolder(holder);
+            StickyPlanner.Expired(step, holder);
             if (item.Origin != HoldOrigin.Tap && item.DeadlineTicks is { } deadline)
             {
                 var seconds =

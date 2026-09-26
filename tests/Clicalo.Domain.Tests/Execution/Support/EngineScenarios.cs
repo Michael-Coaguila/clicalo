@@ -75,7 +75,8 @@ internal static class EngineScenarios
                 < 92 => new EngineOp(EngineOpKind.TestMode, a, b),
                 < 94 => new EngineOp(EngineOpKind.Pause, a, b),
                 < 96 => new EngineOp(EngineOpKind.Config, a, b),
-                < 98 => new EngineOp(EngineOpKind.Mode, a, b),
+                < 97 => new EngineOp(EngineOpKind.Mode, a, b),
+                < 99 => new EngineOp(EngineOpKind.Sticky, a, b),
                 _ => new EngineOp(EngineOpKind.Resume, a, b),
             }
     );
