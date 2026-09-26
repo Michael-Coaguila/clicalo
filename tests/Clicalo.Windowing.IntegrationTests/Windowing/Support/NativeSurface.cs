@@ -53,9 +53,6 @@ internal static class NativeSurface
     public const nint HitNowhere = 0;
     public const nint HitClient = 1;
 
-    /// <summary><c>DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2</c>.</summary>
-    public const nint PerMonitorAwareV2 = -4;
-
     private const uint MonitorPrimary = 1;
 
     /// <summary>The extended style of <paramref name="window"/>.</summary>
@@ -179,11 +176,6 @@ internal static class NativeSurface
     [DllImport("user32.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     public static extern uint GetDpiForWindow(nint window);
-
-    [DllImport("user32.dll", ExactSpelling = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool SetProcessDpiAwarenessContext(nint context);
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

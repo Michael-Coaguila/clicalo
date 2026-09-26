@@ -9,6 +9,8 @@
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>Clicalo.Windowing.IntegrationTests</RootNamespace>
+    <!-- Per-monitor DPI awareness v2 from the first instruction, as the product (§3.7, ACC-008). -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Clicalo.UI.Wpf\Clicalo.UI.Wpf.csproj" />
@@ -22,5 +24,11 @@
     <PackageReference Include="FlaUI.UIA3" />
     <PackageReference Include="Axe.Windows" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+  <ItemGroup Label="Own pointer layer (blueprint §8.3): WPF's stylus and touch stacks are off from the first instruction">
+    <RuntimeHostConfigurationOption
+      Include="Switch.System.Windows.Input.Stylus.DisableStylusAndTouchSupport"
+      Value="true"
+    />
   </ItemGroup>
 </Project>
