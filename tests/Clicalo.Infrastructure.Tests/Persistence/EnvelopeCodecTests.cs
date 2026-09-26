@@ -191,6 +191,35 @@ public sealed class EnvelopeCodecTests
         }
     }
 
+    [Theory]
+    [Trait("Req", "DAT-003")]
+    [InlineData(0xFF)]
+    [InlineData(0xC3)]
+    [InlineData(0x00)]
+    [InlineData((int)'"')]
+    public void A_damaged_byte_anywhere_never_throws_it_is_read_or_unreadable(int damage)
+    {
+        var bytes = EnvelopeCodec.Write(
+            Envelope(new JsonObject { ["text"] = "Ñandú", ["n"] = 12 }, seq: 3)
+        );
+
+        for (var index = 0; index < bytes.Length; index++)
+        {
+            var damaged = bytes.ToArray();
+            damaged[index] = (byte)damage;
+
+            var read = EnvelopeCodec.Read(
+                damaged,
+                DocumentFormats.Document,
+                DocumentFormats.DocumentSchema
+            );
+
+            read.ShouldNotBeNull(
+                string.Create(CultureInfo.InvariantCulture, $"byte {index} set to {damage}")
+            );
+        }
+    }
+
     [Fact]
     public void Any_payload_round_trips_with_a_matching_hash() =>
         Gen.Dictionary(

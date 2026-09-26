@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Unicode;
 using Clicalo.Domain.Errors;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
@@ -101,11 +102,17 @@ public sealed class ProfileShareCodec
             return Fail(PersistenceFailures.ImportTooLargeCode);
         }
 
+        var text = JsonText.WithoutBom(utf8);
+        if (!Utf8.IsValid(text))
+        {
+            return Fail(PersistenceFailures.ImportUnreadableCode);
+        }
+
         JsonNode? root;
         try
         {
             root = JsonNode.Parse(
-                JsonText.WithoutBom(utf8),
+                text,
                 nodeOptions: null,
                 documentOptions: JsonText.Strict(Timings.Import.ShareMaxDepth)
             );

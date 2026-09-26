@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Unicode;
 
 namespace Clicalo.Infrastructure.Persistence;
 
@@ -25,11 +26,19 @@ public static class EnvelopeCodec
     )
     {
         ArgumentException.ThrowIfNullOrEmpty(format);
+        var text = JsonText.WithoutBom(utf8);
+        if (!Utf8.IsValid(text))
+        {
+            // A damaged byte (bit rot, a torn sector) is not valid UTF-8: System.Text.Json only notices when a string
+            // is read, and then it throws InvalidOperationException instead of JsonException (DAT-003).
+            return new EnvelopeReadResult.Unreadable("utf8");
+        }
+
         JsonNode? root;
         try
         {
             root = JsonNode.Parse(
-                JsonText.WithoutBom(utf8),
+                text,
                 nodeOptions: null,
                 documentOptions: JsonText.Strict()
             );

@@ -112,6 +112,18 @@ public sealed class ProfileShareCodecTests
 
     [Fact]
     [Trait("Req", "LOG-006")]
+    public void A_file_with_invalid_utf8_is_refused_not_thrown()
+    {
+        var json = Encoding.UTF8.GetBytes("{\"type\":\"profile-share\",\"profile\":{}}");
+        json[10] = 0xFF;
+
+        ProfileShareCodec
+            .Import(json, new SequentialIds())
+            .Failure.Code.ShouldBe("import.unreadable");
+    }
+
+    [Fact]
+    [Trait("Req", "LOG-006")]
     public void A_file_over_the_size_limit_is_refused_before_parsing()
     {
         var big = new byte[(5 * 1024 * 1024) + 1];
