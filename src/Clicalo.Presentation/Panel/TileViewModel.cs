@@ -77,19 +77,15 @@ public sealed class TileViewModel : ObservableObject
         DateTimeOffset at
     ) => _ = _controller.Tapped(_model.Binding, contactId, device, summary, at);
 
-    /// <summary>A hold started on the tile.</summary>
+    /// <summary>
+    /// A hold started on the tile. Its end belongs to the contact, not to the tile
+    /// (<see cref="PanelViewModel.HoldEnded"/>, INV-9).
+    /// </summary>
     /// <param name="contactId">The pointer id that owns the hold.</param>
     /// <param name="device">Finger, pen or mouse.</param>
     /// <param name="at">When it started.</param>
     public void HoldStarted(uint contactId, PointerKind device, DateTimeOffset at) =>
         _ = _controller.HoldStarted(_model.Binding, contactId, device, at);
-
-    /// <summary>The contact of a hold ended.</summary>
-    /// <param name="contactId">The pointer id.</param>
-    /// <param name="summary">Duration, displacement and palm.</param>
-    /// <param name="reason">Why it ended.</param>
-    public void HoldEnded(uint contactId, ContactSummary summary, HoldEndReason reason) =>
-        _ = _controller.HoldEnded(contactId, summary, reason);
 
     /// <summary>A UI Automation Invoke or Toggle (voice, keyboard or switch, EJE-005).</summary>
     public void Invoke() => _ = _controller.Invoked(_model.Binding);

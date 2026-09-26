@@ -88,6 +88,58 @@ public sealed class PanelViewModelTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-005")]
+    public void A_tile_whose_behavior_changes_is_laid_out_again_so_its_pattern_follows()
+    {
+        var changes = 0;
+        _panel.Tiles.CollectionChanged += (_, _) => changes++;
+        var profile = PanelTestData.Profile();
+        var hold = profile.Shortcuts[1];
+        var nowTap = profile with
+        {
+            Shortcuts = new ValueList<Clicalo.Domain.Library.Shortcut>([
+                profile.Shortcuts[0],
+                hold with
+                {
+                    Action = profile.Shortcuts[0].Action,
+                },
+                profile.Shortcuts[2],
+                profile.Shortcuts[3],
+            ]),
+        };
+
+        _panel.Apply(PanelProjector.Project(nowTap, LangCode.Es, LangCode.Es));
+
+        changes.ShouldBeGreaterThan(0, "the surface rebuilds the tile with the Invoke pattern");
+        Tile(PanelTestData.HoldCtrl).Behavior.ShouldBe(TileBehavior.Tap);
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-006")]
+    [Trait("Req", "SEG-007")]
+    public void A_hold_ends_by_its_contact_even_when_its_tile_left_the_panel_meanwhile()
+    {
+        Tile(PanelTestData.HoldCtrl).HoldStarted(5, PointerKind.Finger, DateTimeOffset.UnixEpoch);
+        var profile = PanelTestData.Profile();
+        _panel.Apply(
+            PanelProjector.Project(
+                profile with
+                {
+                    Shortcuts = new ValueList<Clicalo.Domain.Library.Shortcut>([
+                        profile.Shortcuts[0],
+                    ]),
+                },
+                LangCode.Es,
+                LangCode.Es
+            )
+        );
+
+        _panel.HoldEnded(5, Quick, HoldEndReason.Lifted);
+
+        _engine.Events[^1].ShouldBe(new EngineEvent.ContactEnded(5, Quick, Cancelled: false));
+    }
+
+    [Fact]
     [Trait("Req", "EJE-003")]
     [Trait("Req", "EJE-004")]
     [Trait("Req", "EJE-005")]
@@ -99,7 +151,7 @@ public sealed class PanelViewModelTests
 
         copy.Tapped(7, PointerKind.Pen, Quick, DateTimeOffset.UnixEpoch);
         hold.HoldStarted(8, PointerKind.Finger, DateTimeOffset.UnixEpoch);
-        hold.HoldEnded(8, Quick, HoldEndReason.LeftTarget);
+        _panel.HoldEnded(8, Quick, HoldEndReason.LeftTarget);
         shift.Invoke();
 
         var events = _engine.Events;

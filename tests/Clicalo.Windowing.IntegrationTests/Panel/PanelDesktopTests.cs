@@ -4,6 +4,7 @@ using Clicalo.Application.Session;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Primitives;
+using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows;
 using Clicalo.TestKit.Windows.Input;
 using Clicalo.TestKit.Windows.Probe;
@@ -46,7 +47,7 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
             SyntheticPointerKind.Pen,
             SyntheticPointerKind.Mouse,
         };
-        var latencies = new List<TimeSpan>();
+        var latencies = new List<(SyntheticPointerKind Kind, TimeSpan Latency)>();
         var violationsBefore = fixture.Lab.Guard.Violations;
         for (var tap = 0; tap < Taps; tap++)
         {
@@ -70,7 +71,7 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
 
             // From Windows recording the lift (the frame's performance counter is the tap's timestamp) to the mailbox,
             // as the gesture tests of M1 measure it: the synthetic gesture's own frames are not the panel's time.
-            latencies.Add(postedAt - activation.Request.At);
+            latencies.Add((kinds[tap % kinds.Length], postedAt - activation.Request.At));
             fixture.Probe.IsForeground.ShouldBeTrue(
                 Describe(tap, "the probe keeps the foreground")
             );
@@ -87,14 +88,39 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
 
         (fixture.Lab.Guard.Violations - violationsBefore).ShouldBe(0, "reg01.violations");
         fixture.Lab.Arbiter.Violations.ShouldBeEmpty();
-        var p95 = Percentile(latencies, 0.95);
-        TestContext.Current.TestOutputHelper?.WriteLine(
-            string.Create(
-                CultureInfo.InvariantCulture,
-                $"Lift → engine mailbox over {latencies.Count} taps: p50 {Percentile(latencies, 0.5).TotalMilliseconds:0.0} ms, p95 {p95.TotalMilliseconds:0.0} ms, max {latencies.Max().TotalMilliseconds:0.0} ms."
-            )
+        var all = latencies.Select(static sample => sample.Latency).ToList();
+        var p95 = Percentile(all, 0.95);
+
+        // Per device too: a slow path of one device (the pen's hover and leave frames, the mouse routed through
+        // WM_POINTER) must be visible in the CI log without another run.
+        var summary = string.Join(
+            "; ",
+            new[] { ("all", all) }
+                .Concat(
+                    kinds.Select(kind =>
+                        (
+                            kind.ToString(),
+                            latencies
+                                .Where(sample => sample.Kind == kind)
+                                .Select(static sample => sample.Latency)
+                                .ToList()
+                        )
+                    )
+                )
+                .Select(static group =>
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{group.Item1}: p50 {Percentile(group.Item2, 0.5).TotalMilliseconds:0.0} ms, p95 {Percentile(group.Item2, 0.95).TotalMilliseconds:0.0} ms, max {group.Item2.Max().TotalMilliseconds:0.0} ms"
+                    )
+                )
         );
-        p95.ShouldBeLessThanOrEqualTo(PanelLatencyBudget);
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            "Lift → engine mailbox over "
+                + all.Count.ToString(CultureInfo.InvariantCulture)
+                + " taps: "
+                + summary
+        );
+        p95.ShouldBeLessThanOrEqualTo(PanelLatencyBudget, summary);
     }
 
     [DesktopFact]
@@ -126,6 +152,61 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         end.Cancelled.ShouldBeFalse("the finger lifted");
         end.Summary.Duration.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(400));
         fixture.Probe.IsForeground.ShouldBeTrue();
+    }
+
+    [DesktopFact]
+    [Trait("Req", "EJE-006")]
+    [Trait("Req", "SEG-007")]
+    public async Task A_hold_whose_tile_leaves_the_panel_under_the_finger_still_releases_its_own_contact()
+    {
+        _ = await fixture.PrepareAsync();
+        var at = fixture.TileCenter(PanelTestData.HoldCtrl);
+        var profile = PanelTestData.Profile();
+        var onlyCopy = profile with
+        {
+            Shortcuts = new ValueList<Clicalo.Domain.Library.Shortcut>([profile.Shortcuts[0]]),
+        };
+
+        try
+        {
+            using var finger = PanelDesktopFixture.CreatePointer(SyntheticPointerKind.Finger);
+            var holding = Task.Run(
+                () => finger.Hold(at.X, at.Y, TimeSpan.FromMilliseconds(900)),
+                TestContext.Current.CancellationToken
+            );
+            await PanelDesktopFixture.WaitUntilAsync(
+                () => fixture.Engine.Count > 0,
+                "the hold never started"
+            );
+
+            // The tile that holds leaves the panel while the finger rests where it was (the grid keeps its columns,
+            // so the finger stays on the panel): the lift must still reach the engine for that contact.
+            WpfThread.Invoke(() =>
+                fixture.ViewModel.Apply(PanelProjector.Project(onlyCopy, LangCode.Es, LangCode.Es))
+            );
+            await holding;
+            await PanelDesktopFixture.WaitUntilAsync(
+                () => fixture.Engine.Count >= 2,
+                "the end of the hold never reached the engine"
+            );
+
+            var start = fixture.Engine.Events[0].ShouldBeOfType<EngineEvent.Activation>();
+            start.Shortcut.Id.ShouldBe(PanelTestData.HoldCtrl);
+            fixture
+                .Engine.Events.OfType<EngineEvent.ContactEnded>()
+                .ShouldContain(
+                    ended => ended.ContactId == start.Request.ContactId,
+                    "the contact that pressed releases (INV-9)"
+                );
+            fixture.Probe.IsForeground.ShouldBeTrue();
+        }
+        finally
+        {
+            WpfThread.Invoke(() =>
+                fixture.ViewModel.Apply(PanelProjector.Project(profile, LangCode.Es, LangCode.Es))
+            );
+            WpfThread.Invoke(WpfThread.DrainPendingWork);
+        }
     }
 
     [DesktopFact]

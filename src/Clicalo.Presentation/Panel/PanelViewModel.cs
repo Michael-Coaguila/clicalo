@@ -98,11 +98,14 @@ public sealed class PanelViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(model);
         _model = model;
         var existing = Tiles.ToDictionary(static tile => tile.Id);
+
+        // A tile whose behavior changed counts as a new layout too: the surface picks the tile's UI Automation pattern
+        // (Invoke or Toggle) and its touch target kind when it builds the control.
         var sameOrder =
             existing.Count == model.Tiles.Length
             && model
-                .Tiles.Select(static tile => tile.Id)
-                .SequenceEqual(Tiles.Select(static tile => tile.Id));
+                .Tiles.Select(static tile => (tile.Id, tile.Behavior))
+                .SequenceEqual(Tiles.Select(static tile => (tile.Id, tile.Behavior)));
         if (sameOrder)
         {
             foreach (var tile in model.Tiles)
@@ -183,6 +186,17 @@ public sealed class PanelViewModel : ObservableObject
             localizer.Format(L.ReleaseAll)
         );
     }
+
+    /// <summary>
+    /// The contact of a hold ended (EJE-004, EJE-006): lifted, cancelled, out of the extra hit area or reset. It goes to
+    /// the engine by contact, not through a tile (INV-9), so the keys are released even when the tile that started the
+    /// hold was rebuilt, moved or removed while the finger rested on it.
+    /// </summary>
+    /// <param name="contactId">The pointer id that owns the hold.</param>
+    /// <param name="summary">Duration, displacement and palm.</param>
+    /// <param name="reason">Why it ended.</param>
+    public void HoldEnded(uint contactId, ContactSummary summary, HoldEndReason reason) =>
+        _ = _controller.HoldEnded(contactId, summary, reason);
 
     /// <summary>Formats every text again in the current language (IDI-001).</summary>
     public void Relocalize()

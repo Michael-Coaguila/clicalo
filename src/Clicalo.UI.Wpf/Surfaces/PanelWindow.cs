@@ -10,6 +10,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel;
@@ -45,6 +46,9 @@ namespace Clicalo.UI.Wpf.Surfaces;
 )]
 public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
 {
+    /// <summary>The target identifier of «Release all»; the tiles take the ones after it.</summary>
+    private const int ReleaseAllTargetId = 0;
+
     private readonly PanelViewModel _viewModel;
     private readonly TimeProvider _time;
     private readonly SizeMetrics _size;
@@ -55,8 +59,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     private readonly ShortcutTile _releaseAll;
     private readonly TextBlock _noticeText;
     private readonly List<TileView> _tiles = [];
-    private readonly List<Target> _targets = [];
-    private readonly Dictionary<uint, TileViewModel> _holds = [];
+    private readonly Dictionary<int, Target> _targets = [];
+    private readonly Dictionary<ShortcutId, int> _targetIds = [];
     private readonly ContactTracker _contacts = new();
     private ThemeScope? _themeScope;
     private GestureHost? _gestures;
@@ -226,11 +230,17 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         }
 
         // The gestures of this frame are delivered before the contacts that ended in it are forgotten, so a tap still
-        // has its device and summary.
-        _gestures?.OnFrame(frame);
-        foreach (var sample in frame.Samples)
+        // has its device and summary. A gesture handler that throws never leaves an ended contact behind.
+        try
         {
-            _contacts.Forget(sample);
+            _gestures?.OnFrame(frame);
+        }
+        finally
+        {
+            foreach (var sample in frame.Samples)
+            {
+                _contacts.Forget(sample);
+            }
         }
     }
 
@@ -392,7 +402,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         }
 
         _tiles.Clear();
-        _holds.Clear();
     }
 
     private static void Paint(ShortcutTile control, TileViewModel viewModel)
@@ -416,6 +425,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         {
             Add(
                 tile.Control,
+                TargetIdOf(tile.ViewModel.Id),
                 tile.ViewModel.Behavior == TileBehavior.Hold
                     ? TouchTargetKind.Hold
                     : TouchTargetKind.Tap,
@@ -425,12 +435,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
 
         if (_panicStrip.Visibility == Visibility.Visible)
         {
-            Add(_releaseAll, TouchTargetKind.Tap, null);
+            Add(_releaseAll, ReleaseAllTargetId, TouchTargetKind.Tap, null);
         }
 
         gestures.Recognizer.SetTargets(targets.ToImmutable());
 
-        void Add(FrameworkElement element, TouchTargetKind kind, TileViewModel? tile)
+        void Add(FrameworkElement element, int id, TouchTargetKind kind, TileViewModel? tile)
         {
             var bounds = PhysicalBounds(element);
             if (bounds.IsEmpty)
@@ -438,9 +448,25 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 return;
             }
 
-            targets.Add(new GestureTarget(new TouchTargetId(_targets.Count), bounds, kind));
-            _targets.Add(new Target(tile));
+            targets.Add(new GestureTarget(new TouchTargetId(id), bounds, kind));
+            _targets[id] = new Target(tile);
         }
+    }
+
+    /// <summary>
+    /// The target identifier of a tile, stable while the panel lives: a contact that went down before the tiles were
+    /// rebuilt or reordered keeps its target in the recognizer (PAN-009) and still lifts on the shortcut it touched,
+    /// and the filter memory of the recognizer (TAC-002) stays with its tile.
+    /// </summary>
+    private int TargetIdOf(ShortcutId shortcut)
+    {
+        if (!_targetIds.TryGetValue(shortcut, out var id))
+        {
+            id = ReleaseAllTargetId + 1 + _targetIds.Count;
+            _targetIds[shortcut] = id;
+        }
+
+        return id;
     }
 
     private static PhysicalRect PhysicalBounds(FrameworkElement element)
@@ -484,7 +510,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 break;
 
             case GestureKind.HoldStart when TargetOf(gesture)?.Tile is { } held:
-                _holds[gesture.PointerId] = held;
                 held.HoldStarted(
                     gesture.PointerId,
                     _contacts.DeviceOf(gesture.PointerId),
@@ -493,10 +518,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 break;
 
             case GestureKind.HoldEnd:
-                // The contact that started the hold owns it (INV-9); even when the tile is gone, the engine releases.
-                var holder = _holds.GetValueOrDefault(gesture.PointerId) ?? TargetOf(gesture)?.Tile;
-                _holds.Remove(gesture.PointerId);
-                holder?.HoldEnded(
+                // The contact that started the hold owns it (INV-9): its end reaches the engine by contact, never
+                // through a tile, so it is posted even when the tiles were rebuilt, moved or removed meanwhile.
+                _viewModel.HoldEnded(
                     gesture.PointerId,
                     _contacts.Summarize(gesture.PointerId, gesture.Timestamp, DpiScale()),
                     gesture.HoldEnd
@@ -506,9 +530,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     }
 
     private Target? TargetOf(GestureEvent gesture) =>
-        gesture.Target is { } id && id.Value >= 0 && id.Value < _targets.Count
-            ? _targets[id.Value]
-            : null;
+        gesture.Target is { } id ? _targets.GetValueOrDefault(id.Value) : null;
 
     private void PlaceInitially()
     {
