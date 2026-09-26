@@ -52,6 +52,8 @@ SECURITY_MANDATORY_HIGH_RID
 RegisterHotKey
 UnregisterHotKey
 WM_HOTKEY
+GetAsyncKeyState
+VIRTUAL_KEY
 
 // ---- Foreground: TouchKeyboard ----
 CoCreateInstance

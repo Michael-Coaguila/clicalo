@@ -107,9 +107,51 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
             "arm",
             "send rights chord",
             "hotkey",
+            "wait for release",
             "set Search",
         ]);
         _world.Keys.RightsChords.ShouldBe(1);
+    }
+
+    [Fact]
+    [Trait("Req", "BUS-002")]
+    public async Task The_retry_after_WM_HOTKEY_waits_for_the_release_of_the_chord_and_goes_on_without_it()
+    {
+        // The releases of the chord go to the thread in front when Windows processes them: taking the foreground
+        // first would hand a Ctrl release to the surface and leave Ctrl down in the app (spike S4).
+        var releasedBeforeTheRetry = false;
+        _world.Hotkey.ChordReleased = () => false;
+        _world.Control.DuringAttempt = _ =>
+            releasedBeforeTheRetry = _world.Log.Contains(
+                "wait for release",
+                StringComparer.Ordinal
+            );
+
+        var lease = await _world.GrantAsync(LeaseKind.TextInput, Search, LeaseOrigin.UiaInvoke);
+
+        lease.GrantedAt.ShouldBe(
+            LadderStep.RightsHotkey,
+            "a key held by the user does not block the ladder"
+        );
+        releasedBeforeTheRetry.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Without_WM_HOTKEY_nothing_waits_for_the_release()
+    {
+        _world.Keys.OnRightsChord = () =>
+        {
+            _world.Hotkey.TimeOut();
+            return true;
+        };
+        _world.Mark();
+
+        var reason = await _world.DenyAsync(LeaseKind.TextInput, Search, LeaseOrigin.UiaInvoke);
+
+        reason.ShouldBe(ForegroundDenialReason.RightsRefused);
+        _world.Log.ShouldNotContain(entry =>
+            string.Equals(entry, "wait for release", StringComparison.Ordinal)
+        );
     }
 
     [Fact]

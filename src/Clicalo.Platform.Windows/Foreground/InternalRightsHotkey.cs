@@ -103,6 +103,24 @@ public sealed class InternalRightsHotkey : IInternalRightsHotkey, IDisposable
         return new ValueTask<bool>(waiter.Task);
     }
 
+    /// <inheritdoc />
+    public async ValueTask<bool> WaitForChordReleaseAsync(CancellationToken cancellationToken)
+    {
+        var started = Clock.GetTimestamp();
+        while (!IsChordReleased())
+        {
+            if (Clock.GetElapsedTime(started) >= Timings.Foreground.RightsHotkeyTimeout)
+            {
+                return false;
+            }
+
+            await Task.Delay(Timings.Foreground.ChordReleasePoll, Clock, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
     /// <summary>Unregisters the chord and ends every pending wait with false.</summary>
     public void Dispose()
     {
@@ -130,6 +148,15 @@ public sealed class InternalRightsHotkey : IInternalRightsHotkey, IDisposable
             Volatile.Write(ref _registered, 0);
         }
     }
+
+    /// <summary>True when the left modifiers of the chord and F24 are all up (the high bit of <c>GetAsyncKeyState</c>).</summary>
+    private static bool IsChordReleased() =>
+        IsUp(VIRTUAL_KEY.VK_LCONTROL)
+        && IsUp(VIRTUAL_KEY.VK_LMENU)
+        && IsUp(VIRTUAL_KEY.VK_LSHIFT)
+        && IsUp((VIRTUAL_KEY)VirtualKey);
+
+    private static bool IsUp(VIRTUAL_KEY key) => PInvoke.GetAsyncKeyState((int)key) >= 0;
 
     private bool OnHotkey(nint wParam, nint lParam)
     {

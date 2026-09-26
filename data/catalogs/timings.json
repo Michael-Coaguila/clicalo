@@ -348,6 +348,12 @@
           "req": ["BUS-002"],
           "source": "blueprint §3.6"
         },
+        "ChordReleasePoll": {
+          "duration": "2ms",
+          "description": "After WM_HOTKEY of the internal rights chord, the keys of the chord are sampled this often (GetAsyncKeyState) until they are all up, at most RightsHotkeyTimeout, before the foreground is taken: each key message goes to the thread in front when the system processes it, so the releases must reach the app that received the presses (spike S4: a left Ctrl release that arrived after the retry went to the new foreground).",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        },
         "TouchKeyboardPoll": {
           "duration": "100ms",
           "description": "While Clícalo has shown the touch keyboard, its covered area is sampled this often so the panel can move above it. Provisional until spike S4 measures it.",

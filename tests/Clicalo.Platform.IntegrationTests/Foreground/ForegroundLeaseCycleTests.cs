@@ -152,6 +152,16 @@ public sealed class ForegroundLeaseCycleTests : IClassFixture<ForegroundDesktopF
         ProbeInput.ReservedKeyPresses(events).ShouldBeEmpty("no F24 press reaches an app (S4)");
         ProbeEvents.TypedChars(events).ShouldBeEmpty("no character reaches an app (S4)");
         ProbeInput.KeyMenus(events).ShouldBeEmpty("no menu opens in the app (S4)");
+        foreach (var key in ProbeInput.ChordModifiers(events).GroupBy(key => key.SideVirtualKey))
+        {
+            key.Count(message => message.IsRelease)
+                .ShouldBe(
+                    key.Count(message => message.IsPress),
+                    $"every {key.Key} the app received pressed is released in the app too, or it stays down there (S4): "
+                        + ProbeInput.Summary(ProbeInput.ChordModifiers(events))
+                );
+        }
+
         TestContext.Current.TestOutputHelper?.WriteLine(
             "Chord messages seen by the probe: "
                 + ProbeInput.Summary(

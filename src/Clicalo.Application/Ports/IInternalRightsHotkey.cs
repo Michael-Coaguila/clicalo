@@ -21,4 +21,14 @@ public interface IInternalRightsHotkey
     /// throws <see cref="OperationCanceledException"/> when <paramref name="cancellationToken"/> is cancelled.
     /// </summary>
     ValueTask<bool> WaitForRightsAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Waits until every key of the reserved chord is up again (<c>GetAsyncKeyState</c>), sampled every
+    /// <c>Timings.Foreground.ChordReleasePoll</c> for at most <c>Timings.Foreground.RightsHotkeyTimeout</c>. Call it
+    /// after <c>WM_HOTKEY</c> and before taking the foreground: the system hands each key message to the thread in front
+    /// when it processes the key, so a release processed after the foreground moved would reach the new window and
+    /// leave the modifier down in the app that received the press (spike S4).
+    /// </summary>
+    /// <returns>True when every key is up; false when the wait ended first (the ladder goes on anyway).</returns>
+    ValueTask<bool> WaitForChordReleaseAsync(CancellationToken cancellationToken);
 }

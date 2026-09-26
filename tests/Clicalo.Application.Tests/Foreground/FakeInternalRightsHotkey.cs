@@ -34,6 +34,16 @@ internal sealed class FakeInternalRightsHotkey(ForegroundWorld world) : IInterna
         return new ValueTask<bool>(pending.Task);
     }
 
+    /// <summary>What waiting for the release of the chord answers; true (every key up) by default.</summary>
+    public Func<bool> ChordReleased { get; set; } = static () => true;
+
+    public ValueTask<bool> WaitForChordReleaseAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        world.Write("wait for release");
+        return new ValueTask<bool>(ChordReleased());
+    }
+
     /// <summary>The <c>WM_HOTKEY</c> of the reserved chord arrives.</summary>
     public void Arrive()
     {

@@ -436,6 +436,12 @@ public sealed partial class ForegroundOrchestrator
         }
 
         var arrived = await rights.ConfigureAwait(false);
+        if (arrived)
+        {
+            // The releases of the chord must reach the app that received its presses before the foreground moves.
+            _ = await hotkey.WaitForChordReleaseAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         if (Changed(start, request.Target))
         {
             return Climb.Denied(ForegroundDenialReason.ForegroundChanged);
