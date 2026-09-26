@@ -48,8 +48,12 @@
       Include="$(ClicaloArchitectureDir)BannedSymbols.Surfaces.txt"
       Condition="'$(MSBuildProjectName)' == 'Clicalo.UI.Wpf'"
     />
-    <!-- Generated code (CsWin32 friendly overloads, XAML .g.cs, source generators) is not subject to the lists. -->
-    <GlobalAnalyzerConfigFiles Include="$(ClicaloArchitectureDir)BannedSymbols.globalconfig" />
+    <!--
+      Generated code (CsWin32 friendly overloads, XAML .g.cs, source generators) is not subject to the lists.
+      EditorConfigFiles, not GlobalAnalyzerConfigFiles: the SDK turns the latter into EditorConfigFiles while it
+      evaluates Microsoft.Managed.Core.targets, before this file is imported.
+    -->
+    <EditorConfigFiles Include="$(ClicaloArchitectureDir)BannedSymbols.globalconfig" />
   </ItemGroup>
 
   <!--
