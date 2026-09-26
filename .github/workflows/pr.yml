@@ -93,6 +93,47 @@ jobs:
         shell: pwsh
         run: dotnet run --project tools/Clicalo.DevCli -- adr-check --base HEAD^1
 
+  dco:
+    name: dco
+    # ADR-0015: every commit of a pull request carries the Developer Certificate of Origin line
+    # `Signed-off-by: Name <author email>`. Only the pull request's own commits are checked (base..head), never
+    # the history that is already on main.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history, so both ends of base..head are present.
+          fetch-depth: 0
+
+      - name: Signed-off-by on every commit
+        shell: bash
+        env:
+          # Passed through the environment, never interpolated into the script (injection-safe).
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          count=0
+          for sha in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            count=$((count + 1))
+            author=$(git show -s --format='%ae' "$sha")
+            signoffs=$(git show -s --format='%(trailers:key=Signed-off-by,valueonly)' "$sha")
+            # Case-insensitive: the sign-off must name the commit's author email.
+            if [[ "${signoffs,,}" != *"<${author,,}>"* ]]; then
+              echo "::error title=DCO::El commit ${sha:0:12} no lleva «Signed-off-by: Nombre <$author>». Añádelo con git commit --amend -s (o git rebase --signoff) y vuelve a subir la rama; cl setup instala un hook que lo pone solo."
+              missing=$((missing + 1))
+            fi
+          done
+          if [ "$missing" -gt 0 ]; then
+            echo "dco: $missing de $count commits sin Signed-off-by de su autor."
+            exit 1
+          fi
+          echo "dco: $count commits en el PR, todos con Signed-off-by de su autor."
+
   verify-arm64:
     name: verify (arm64)
     # Hosted ARM64 runners and the analyses below are free only for public repositories (today it is private).

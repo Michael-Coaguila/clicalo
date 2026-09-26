@@ -198,8 +198,9 @@ pruebas) están acotadas a `tests/`.
 ## Integración continua
 
 Workflows previstos ([§10.5 del plano](blueprint.md#105-cicd)). En M0 existen `pr.yml` (trabajos
-`verify (x64)` = `cl check` y `adr` = `adr-check` en cada PR; `verify (arm64)`, CodeQL y Scorecard solo
-con el repositorio público) y `pr-title.yml` (título en Conventional Commits):
+`verify (x64)` = `cl check`, `adr` = `adr-check` y `dco` (cada commit del PR con `Signed-off-by` de su autor,
+[ADR-0015](../adr/0015-licencia-mit-y-dco.md)) en cada PR; `verify (arm64)`, CodeQL y Scorecard solo con el
+repositorio público) y `pr-title.yml` (título en Conventional Commits):
 
 | Workflow | Cuándo | Qué hace |
 |---|---|---|

@@ -18,7 +18,8 @@ ADR si toca:
 - la licencia;
 - la firma.
 
-La CI exigirá un ADR cuando un PR toque una ruta de `architecture/sensitive-paths.json`.
+El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando un PR toca una ruta de
+`architecture/sensitive-paths.json` (error `CLCA010`); en local se comprueba con `cl adr-check --base main`.
 
 ## Reglas
 

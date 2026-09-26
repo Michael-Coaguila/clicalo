@@ -59,9 +59,9 @@ git commit -s -m "fix(touch): ignore palm contacts larger than the threshold"
 
 Además, los commits se firman con SSH. `cl setup` instala un *hook* que añade `Signed-off-by` a cada commit
 y activa la firma si ya tienes una clave SSH de firma; los pasos están en
-[preparar el entorno](docs/guides/dev-setup.md#4-cl-setup). El trabajo `dco` de la CI, que rechazará los
-commits sin `Signed-off-by`, se activará cuando el historial de M0 quede cubierto (hoy esos commits no lo
-llevan).
+[preparar el entorno](docs/guides/dev-setup.md#4-cl-setup). El trabajo `dco` de la CI rechaza el PR si
+alguno de sus commits no lleva `Signed-off-by` con el correo de su autor. Solo revisa los commits del PR,
+no el historial de `main`: los commits de M0, anteriores a este trabajo, no llevan esa línea.
 
 ### Antes de abrir el PR
 
@@ -85,8 +85,9 @@ llevan).
 
 Si tu cambio toca un límite de confianza (IPC, elevación, actualizaciones, firma, contenido importado), un
 formato persistido o un contrato público, el framework, el modelo de procesos o de estado, la licencia o la
-firma, necesita un [ADR](docs/adr/README.md). La CI lo exigirá cuando un PR toque una ruta de
-`architecture/sensitive-paths.json`.
+firma, necesita un [ADR](docs/adr/README.md). El trabajo `adr` de la CI exige un ADR nuevo o cambiado en
+`docs/adr/` cuando un PR toca una ruta de `architecture/sensitive-paths.json` (error `CLCA010`); en local
+se comprueba con `cl adr-check --base main`.
 
 ### Requisitos: nunca se rebajan
 
@@ -153,8 +154,9 @@ Report accessibility barriers or bugs with the issue forms, write app shortcut t
 
 Every commit needs a [Developer Certificate of Origin](https://developercertificate.org/) sign-off, added
 with `git commit -s`. Commits are also signed with SSH. `cl setup` installs a hook that adds the sign-off
-and turns on signing when you already have an SSH signing key. The CI `dco` job, which will reject commits
-without `Signed-off-by`, is turned on once the M0 history is covered (those commits do not carry it).
+and turns on signing when you already have an SSH signing key. The CI `dco` job rejects a PR when any of its
+commits lacks a `Signed-off-by` line with its author's email. It only checks the PR's own commits, not the
+history of `main`: the M0 commits, which predate the job, do not carry it.
 
 ### Before opening a PR
 
@@ -172,7 +174,9 @@ without `Signed-off-by`, is turned on once the M0 history is covered (those comm
 ### ADRs and requirements
 
 Changes to a trust boundary, a persisted format or public contract, the UI framework, the process or state
-model, the license or code signing need an [ADR](docs/adr/README.md). No PR or ADR may lower a catalog
+model, the license or code signing need an [ADR](docs/adr/README.md). The CI `adr` job requires a new or
+changed ADR in `docs/adr/` when a PR touches a path of `architecture/sensitive-paths.json` (error
+`CLCA010`); run `cl adr-check --base main` to check it locally. No PR or ADR may lower a catalog
 requirement: open a proposal with evidence instead; only the product owner can ratify it.
 
 ### Review
