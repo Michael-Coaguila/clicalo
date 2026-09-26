@@ -1,0 +1,9 @@
+{
+  "$schema": "../schemas/system-commands.schema.json",
+  "catalogVersion": 1,
+  "commands": [
+    { "id": "lock", "icon": "lock", "label": { "es": "Bloquear equipo", "en": "Lock computer" }, "availability": "always" },
+    { "id": "brightness.up", "icon": "brightness_high", "label": { "es": "Subir brillo", "en": "Brightness up" }, "availability": "brightnessControl" },
+    { "id": "brightness.down", "icon": "brightness_low", "label": { "es": "Bajar brillo", "en": "Brightness down" }, "availability": "brightnessControl" }
+  ]
+}

@@ -1,0 +1,937 @@
+{
+  "$schema": "../schemas/keys.schema.json",
+  "catalogVersion": 1,
+  "groups": [
+    { "id": "mods", "labelKey": "kgMods" },
+    { "id": "sides", "labelKey": "kgSides" },
+    { "id": "letters", "labelKey": "kgLetters" },
+    { "id": "nums", "labelKey": "kgNums" },
+    { "id": "fn", "labelKey": "kgFn" },
+    { "id": "special", "labelKey": "kgSpecial" },
+    { "id": "numpad", "labelKey": "kgNumpad" },
+    { "id": "media", "labelKey": "kgMedia" }
+  ],
+  "keys": [
+    {
+      "id": "ctrl",
+      "codeName": "Ctrl",
+      "group": "mods",
+      "label": { "es": "Ctrl", "en": "Ctrl" },
+      "short": { "es": "Ctl", "en": "Ctl" },
+      "modifier": "ctrl",
+      "aliases": ["control"]
+    },
+    {
+      "id": "alt",
+      "codeName": "Alt",
+      "group": "mods",
+      "label": { "es": "Alt", "en": "Alt" },
+      "modifier": "alt"
+    },
+    {
+      "id": "shift",
+      "codeName": "Shift",
+      "group": "mods",
+      "label": { "es": "Shift", "en": "Shift" },
+      "short": { "es": "⇧", "en": "⇧" },
+      "modifier": "shift",
+      "aliases": ["mayús"]
+    },
+    {
+      "id": "win",
+      "codeName": "Win",
+      "group": "mods",
+      "label": { "es": "Win", "en": "Win" },
+      "modifier": "win",
+      "aliases": ["windows", "winleft"]
+    },
+    {
+      "id": "lctrl",
+      "codeName": "LeftCtrl",
+      "group": "sides",
+      "label": { "es": "Ctrl izq.", "en": "Left Ctrl" },
+      "short": { "es": "Ctl izq.", "en": "L Ctl" },
+      "modifier": "ctrl",
+      "sideOf": "ctrl",
+      "side": "left",
+      "aliases": ["ctrlleft"]
+    },
+    {
+      "id": "rctrl",
+      "codeName": "RightCtrl",
+      "group": "sides",
+      "label": { "es": "Ctrl der.", "en": "Right Ctrl" },
+      "short": { "es": "Ctl der.", "en": "R Ctl" },
+      "modifier": "ctrl",
+      "sideOf": "ctrl",
+      "side": "right",
+      "aliases": ["ctrlright"]
+    },
+    {
+      "id": "lshift",
+      "codeName": "LeftShift",
+      "group": "sides",
+      "label": { "es": "Shift izq.", "en": "Left Shift" },
+      "short": { "es": "⇧ izq.", "en": "L ⇧" },
+      "modifier": "shift",
+      "sideOf": "shift",
+      "side": "left",
+      "aliases": ["shiftleft"]
+    },
+    {
+      "id": "rshift",
+      "codeName": "RightShift",
+      "group": "sides",
+      "label": { "es": "Shift der.", "en": "Right Shift" },
+      "short": { "es": "⇧ der.", "en": "R ⇧" },
+      "modifier": "shift",
+      "sideOf": "shift",
+      "side": "right",
+      "aliases": ["shiftright"]
+    },
+    {
+      "id": "lalt",
+      "codeName": "LeftAlt",
+      "group": "sides",
+      "label": { "es": "Alt izq.", "en": "Left Alt" },
+      "modifier": "alt",
+      "sideOf": "alt",
+      "side": "left",
+      "aliases": ["altleft"]
+    },
+    {
+      "id": "altgr",
+      "codeName": "AltGr",
+      "group": "sides",
+      "label": { "es": "AltGr", "en": "AltGr" },
+      "labelWithoutAltGr": { "es": "Alt der.", "en": "Right Alt" },
+      "modifier": "alt",
+      "sideOf": "alt",
+      "side": "right",
+      "aliases": ["altright", "ralt"]
+    },
+    {
+      "id": "rwin",
+      "codeName": "RightWin",
+      "group": "sides",
+      "label": { "es": "Win der.", "en": "Right Win" },
+      "modifier": "win",
+      "sideOf": "win",
+      "side": "right",
+      "aliases": ["winright"]
+    },
+    {
+      "id": "a",
+      "codeName": "A",
+      "group": "letters",
+      "label": { "es": "A", "en": "A" }
+    },
+    {
+      "id": "b",
+      "codeName": "B",
+      "group": "letters",
+      "label": { "es": "B", "en": "B" }
+    },
+    {
+      "id": "c",
+      "codeName": "C",
+      "group": "letters",
+      "label": { "es": "C", "en": "C" }
+    },
+    {
+      "id": "d",
+      "codeName": "D",
+      "group": "letters",
+      "label": { "es": "D", "en": "D" }
+    },
+    {
+      "id": "e",
+      "codeName": "E",
+      "group": "letters",
+      "label": { "es": "E", "en": "E" }
+    },
+    {
+      "id": "f",
+      "codeName": "F",
+      "group": "letters",
+      "label": { "es": "F", "en": "F" }
+    },
+    {
+      "id": "g",
+      "codeName": "G",
+      "group": "letters",
+      "label": { "es": "G", "en": "G" }
+    },
+    {
+      "id": "h",
+      "codeName": "H",
+      "group": "letters",
+      "label": { "es": "H", "en": "H" }
+    },
+    {
+      "id": "i",
+      "codeName": "I",
+      "group": "letters",
+      "label": { "es": "I", "en": "I" }
+    },
+    {
+      "id": "j",
+      "codeName": "J",
+      "group": "letters",
+      "label": { "es": "J", "en": "J" }
+    },
+    {
+      "id": "k",
+      "codeName": "K",
+      "group": "letters",
+      "label": { "es": "K", "en": "K" }
+    },
+    {
+      "id": "l",
+      "codeName": "L",
+      "group": "letters",
+      "label": { "es": "L", "en": "L" }
+    },
+    {
+      "id": "m",
+      "codeName": "M",
+      "group": "letters",
+      "label": { "es": "M", "en": "M" }
+    },
+    {
+      "id": "n",
+      "codeName": "N",
+      "group": "letters",
+      "label": { "es": "N", "en": "N" }
+    },
+    {
+      "id": "char:ñ",
+      "codeName": "NTilde",
+      "group": "letters",
+      "label": { "es": "Ñ", "en": "Ñ" },
+      "aliases": ["ntilde"]
+    },
+    {
+      "id": "o",
+      "codeName": "O",
+      "group": "letters",
+      "label": { "es": "O", "en": "O" }
+    },
+    {
+      "id": "p",
+      "codeName": "P",
+      "group": "letters",
+      "label": { "es": "P", "en": "P" }
+    },
+    {
+      "id": "q",
+      "codeName": "Q",
+      "group": "letters",
+      "label": { "es": "Q", "en": "Q" }
+    },
+    {
+      "id": "r",
+      "codeName": "R",
+      "group": "letters",
+      "label": { "es": "R", "en": "R" }
+    },
+    {
+      "id": "s",
+      "codeName": "S",
+      "group": "letters",
+      "label": { "es": "S", "en": "S" }
+    },
+    {
+      "id": "t",
+      "codeName": "T",
+      "group": "letters",
+      "label": { "es": "T", "en": "T" }
+    },
+    {
+      "id": "u",
+      "codeName": "U",
+      "group": "letters",
+      "label": { "es": "U", "en": "U" }
+    },
+    {
+      "id": "v",
+      "codeName": "V",
+      "group": "letters",
+      "label": { "es": "V", "en": "V" }
+    },
+    {
+      "id": "w",
+      "codeName": "W",
+      "group": "letters",
+      "label": { "es": "W", "en": "W" }
+    },
+    {
+      "id": "x",
+      "codeName": "X",
+      "group": "letters",
+      "label": { "es": "X", "en": "X" }
+    },
+    {
+      "id": "y",
+      "codeName": "Y",
+      "group": "letters",
+      "label": { "es": "Y", "en": "Y" }
+    },
+    {
+      "id": "z",
+      "codeName": "Z",
+      "group": "letters",
+      "label": { "es": "Z", "en": "Z" }
+    },
+    {
+      "id": "1",
+      "codeName": "D1",
+      "group": "nums",
+      "label": { "es": "1", "en": "1" }
+    },
+    {
+      "id": "2",
+      "codeName": "D2",
+      "group": "nums",
+      "label": { "es": "2", "en": "2" }
+    },
+    {
+      "id": "3",
+      "codeName": "D3",
+      "group": "nums",
+      "label": { "es": "3", "en": "3" }
+    },
+    {
+      "id": "4",
+      "codeName": "D4",
+      "group": "nums",
+      "label": { "es": "4", "en": "4" }
+    },
+    {
+      "id": "5",
+      "codeName": "D5",
+      "group": "nums",
+      "label": { "es": "5", "en": "5" }
+    },
+    {
+      "id": "6",
+      "codeName": "D6",
+      "group": "nums",
+      "label": { "es": "6", "en": "6" }
+    },
+    {
+      "id": "7",
+      "codeName": "D7",
+      "group": "nums",
+      "label": { "es": "7", "en": "7" }
+    },
+    {
+      "id": "8",
+      "codeName": "D8",
+      "group": "nums",
+      "label": { "es": "8", "en": "8" }
+    },
+    {
+      "id": "9",
+      "codeName": "D9",
+      "group": "nums",
+      "label": { "es": "9", "en": "9" }
+    },
+    {
+      "id": "0",
+      "codeName": "D0",
+      "group": "nums",
+      "label": { "es": "0", "en": "0" }
+    },
+    {
+      "id": "char:+",
+      "codeName": "Plus",
+      "group": "nums",
+      "label": { "es": "+", "en": "+" },
+      "spoken": { "es": "Más", "en": "Plus" },
+      "aliases": ["plus"]
+    },
+    {
+      "id": "char:-",
+      "codeName": "Minus",
+      "group": "nums",
+      "label": { "es": "−", "en": "−" },
+      "spoken": { "es": "Menos", "en": "Minus" },
+      "aliases": ["-", "minus"]
+    },
+    {
+      "id": "char:/",
+      "codeName": "Slash",
+      "group": "nums",
+      "label": { "es": "/", "en": "/" },
+      "spoken": { "es": "Barra", "en": "Slash" },
+      "aliases": ["slash"]
+    },
+    {
+      "id": "char:.",
+      "codeName": "Period",
+      "group": "nums",
+      "label": { "es": ".", "en": "." },
+      "spoken": { "es": "Punto", "en": "Period" },
+      "aliases": ["period", "dot"]
+    },
+    {
+      "id": "char:,",
+      "codeName": "Comma",
+      "group": "nums",
+      "label": { "es": ",", "en": "," },
+      "spoken": { "es": "Coma", "en": "Comma" },
+      "aliases": ["comma"]
+    },
+    {
+      "id": "char:;",
+      "codeName": "Semicolon",
+      "group": "nums",
+      "label": { "es": ";", "en": ";" },
+      "spoken": { "es": "Punto y coma", "en": "Semicolon" },
+      "aliases": ["semicolon"]
+    },
+    {
+      "id": "char:=",
+      "codeName": "EqualsSign",
+      "group": "nums",
+      "label": { "es": "=", "en": "=" },
+      "spoken": { "es": "Igual", "en": "Equals" },
+      "aliases": ["equals", "equal"]
+    },
+    {
+      "id": "char:`",
+      "codeName": "Grave",
+      "group": "nums",
+      "label": { "es": "`", "en": "`" },
+      "spoken": { "es": "Acento grave", "en": "Grave accent" },
+      "aliases": ["grave", "backquote"]
+    },
+    {
+      "id": "char:\\",
+      "codeName": "Backslash",
+      "group": "nums",
+      "label": { "es": "\\", "en": "\\" },
+      "spoken": { "es": "Barra invertida", "en": "Backslash" },
+      "aliases": ["backslash"]
+    },
+    {
+      "id": "char:[",
+      "codeName": "LeftBracket",
+      "group": "nums",
+      "label": { "es": "[", "en": "[" },
+      "spoken": { "es": "Corchete de apertura", "en": "Left bracket" },
+      "aliases": ["lbracket"]
+    },
+    {
+      "id": "char:]",
+      "codeName": "RightBracket",
+      "group": "nums",
+      "label": { "es": "]", "en": "]" },
+      "spoken": { "es": "Corchete de cierre", "en": "Right bracket" },
+      "aliases": ["rbracket"]
+    },
+    {
+      "id": "char:'",
+      "codeName": "Apostrophe",
+      "group": "nums",
+      "label": { "es": "'", "en": "'" },
+      "spoken": { "es": "Apóstrofo", "en": "Apostrophe" },
+      "aliases": ["apostrophe", "quote"]
+    },
+    {
+      "id": "char:#",
+      "codeName": "Hash",
+      "group": "nums",
+      "label": { "es": "#", "en": "#" },
+      "spoken": { "es": "Almohadilla", "en": "Hash" },
+      "aliases": ["hash"]
+    },
+    {
+      "id": "char:%",
+      "codeName": "Percent",
+      "group": "nums",
+      "label": { "es": "%", "en": "%" },
+      "spoken": { "es": "Porcentaje", "en": "Percent" },
+      "aliases": ["percent"]
+    },
+    {
+      "id": "f1",
+      "codeName": "F1",
+      "group": "fn",
+      "label": { "es": "F1", "en": "F1" }
+    },
+    {
+      "id": "f2",
+      "codeName": "F2",
+      "group": "fn",
+      "label": { "es": "F2", "en": "F2" }
+    },
+    {
+      "id": "f3",
+      "codeName": "F3",
+      "group": "fn",
+      "label": { "es": "F3", "en": "F3" }
+    },
+    {
+      "id": "f4",
+      "codeName": "F4",
+      "group": "fn",
+      "label": { "es": "F4", "en": "F4" }
+    },
+    {
+      "id": "f5",
+      "codeName": "F5",
+      "group": "fn",
+      "label": { "es": "F5", "en": "F5" }
+    },
+    {
+      "id": "f6",
+      "codeName": "F6",
+      "group": "fn",
+      "label": { "es": "F6", "en": "F6" }
+    },
+    {
+      "id": "f7",
+      "codeName": "F7",
+      "group": "fn",
+      "label": { "es": "F7", "en": "F7" }
+    },
+    {
+      "id": "f8",
+      "codeName": "F8",
+      "group": "fn",
+      "label": { "es": "F8", "en": "F8" }
+    },
+    {
+      "id": "f9",
+      "codeName": "F9",
+      "group": "fn",
+      "label": { "es": "F9", "en": "F9" }
+    },
+    {
+      "id": "f10",
+      "codeName": "F10",
+      "group": "fn",
+      "label": { "es": "F10", "en": "F10" }
+    },
+    {
+      "id": "f11",
+      "codeName": "F11",
+      "group": "fn",
+      "label": { "es": "F11", "en": "F11" }
+    },
+    {
+      "id": "f12",
+      "codeName": "F12",
+      "group": "fn",
+      "label": { "es": "F12", "en": "F12" }
+    },
+    {
+      "id": "enter",
+      "codeName": "Enter",
+      "group": "special",
+      "label": { "es": "Enter", "en": "Enter" },
+      "aliases": ["return", "intro"]
+    },
+    {
+      "id": "tab",
+      "codeName": "Tab",
+      "group": "special",
+      "label": { "es": "Tab", "en": "Tab" }
+    },
+    {
+      "id": "esc",
+      "codeName": "Escape",
+      "group": "special",
+      "label": { "es": "Esc", "en": "Esc" },
+      "aliases": ["escape"]
+    },
+    {
+      "id": "space",
+      "codeName": "Space",
+      "group": "special",
+      "label": { "es": "Espacio", "en": "Space" },
+      "aliases": ["spacebar"]
+    },
+    {
+      "id": "delete",
+      "codeName": "Delete",
+      "group": "special",
+      "label": { "es": "Supr", "en": "Delete" },
+      "aliases": ["del", "suprimir"]
+    },
+    {
+      "id": "backspace",
+      "codeName": "Backspace",
+      "group": "special",
+      "label": { "es": "Retroceso", "en": "Backspace" },
+      "aliases": ["bksp"]
+    },
+    {
+      "id": "home",
+      "codeName": "Home",
+      "group": "special",
+      "label": { "es": "Inicio", "en": "Home" }
+    },
+    {
+      "id": "end",
+      "codeName": "End",
+      "group": "special",
+      "label": { "es": "Fin", "en": "End" }
+    },
+    {
+      "id": "pageup",
+      "codeName": "PageUp",
+      "group": "special",
+      "label": { "es": "RePág", "en": "PgUp" }
+    },
+    {
+      "id": "pagedown",
+      "codeName": "PageDown",
+      "group": "special",
+      "label": { "es": "AvPág", "en": "PgDn" }
+    },
+    {
+      "id": "left",
+      "codeName": "Left",
+      "group": "special",
+      "label": { "es": "←", "en": "←" },
+      "spoken": { "es": "Flecha izquierda", "en": "Left arrow" },
+      "aliases": ["arrowleft"]
+    },
+    {
+      "id": "right",
+      "codeName": "Right",
+      "group": "special",
+      "label": { "es": "→", "en": "→" },
+      "spoken": { "es": "Flecha derecha", "en": "Right arrow" },
+      "aliases": ["arrowright"]
+    },
+    {
+      "id": "up",
+      "codeName": "Up",
+      "group": "special",
+      "label": { "es": "↑", "en": "↑" },
+      "spoken": { "es": "Flecha arriba", "en": "Up arrow" },
+      "aliases": ["arrowup"]
+    },
+    {
+      "id": "down",
+      "codeName": "Down",
+      "group": "special",
+      "label": { "es": "↓", "en": "↓" },
+      "spoken": { "es": "Flecha abajo", "en": "Down arrow" },
+      "aliases": ["arrowdown"]
+    },
+    {
+      "id": "printscreen",
+      "codeName": "PrintScreen",
+      "group": "special",
+      "label": { "es": "ImprPant", "en": "PrtScn" },
+      "aliases": ["prtsc", "snapshot"]
+    },
+    {
+      "id": "menu",
+      "codeName": "Menu",
+      "group": "special",
+      "label": { "es": "Menú", "en": "Menu" },
+      "aliases": ["apps", "contextmenu"]
+    },
+    {
+      "id": "num.0",
+      "codeName": "Num0",
+      "group": "numpad",
+      "label": { "es": "Num 0", "en": "Num 0" },
+      "aliases": ["num0"]
+    },
+    {
+      "id": "num.1",
+      "codeName": "Num1",
+      "group": "numpad",
+      "label": { "es": "Num 1", "en": "Num 1" },
+      "aliases": ["num1"]
+    },
+    {
+      "id": "num.2",
+      "codeName": "Num2",
+      "group": "numpad",
+      "label": { "es": "Num 2", "en": "Num 2" },
+      "aliases": ["num2"]
+    },
+    {
+      "id": "num.3",
+      "codeName": "Num3",
+      "group": "numpad",
+      "label": { "es": "Num 3", "en": "Num 3" },
+      "aliases": ["num3"]
+    },
+    {
+      "id": "num.4",
+      "codeName": "Num4",
+      "group": "numpad",
+      "label": { "es": "Num 4", "en": "Num 4" },
+      "aliases": ["num4"]
+    },
+    {
+      "id": "num.5",
+      "codeName": "Num5",
+      "group": "numpad",
+      "label": { "es": "Num 5", "en": "Num 5" },
+      "aliases": ["num5"]
+    },
+    {
+      "id": "num.6",
+      "codeName": "Num6",
+      "group": "numpad",
+      "label": { "es": "Num 6", "en": "Num 6" },
+      "aliases": ["num6"]
+    },
+    {
+      "id": "num.7",
+      "codeName": "Num7",
+      "group": "numpad",
+      "label": { "es": "Num 7", "en": "Num 7" },
+      "aliases": ["num7"]
+    },
+    {
+      "id": "num.8",
+      "codeName": "Num8",
+      "group": "numpad",
+      "label": { "es": "Num 8", "en": "Num 8" },
+      "aliases": ["num8"]
+    },
+    {
+      "id": "num.9",
+      "codeName": "Num9",
+      "group": "numpad",
+      "label": { "es": "Num 9", "en": "Num 9" },
+      "aliases": ["num9"]
+    },
+    {
+      "id": "num.add",
+      "codeName": "NumAdd",
+      "group": "numpad",
+      "label": { "es": "Num +", "en": "Num +" },
+      "spoken": { "es": "Num más", "en": "Num plus" },
+      "aliases": ["num+", "add"]
+    },
+    {
+      "id": "num.subtract",
+      "codeName": "NumSubtract",
+      "group": "numpad",
+      "label": { "es": "Num −", "en": "Num −" },
+      "spoken": { "es": "Num menos", "en": "Num minus" },
+      "aliases": ["num-", "subtract"]
+    },
+    {
+      "id": "num.multiply",
+      "codeName": "NumMultiply",
+      "group": "numpad",
+      "label": { "es": "Num *", "en": "Num *" },
+      "spoken": { "es": "Num por", "en": "Num multiply" },
+      "aliases": ["num*", "multiply"]
+    },
+    {
+      "id": "num.divide",
+      "codeName": "NumDivide",
+      "group": "numpad",
+      "label": { "es": "Num /", "en": "Num /" },
+      "spoken": { "es": "Num entre", "en": "Num divide" },
+      "aliases": ["num/", "divide"]
+    },
+    {
+      "id": "num.decimal",
+      "codeName": "NumDecimal",
+      "group": "numpad",
+      "label": { "es": "Num .", "en": "Num ." },
+      "spoken": { "es": "Num decimal", "en": "Num decimal" },
+      "aliases": ["decimal"]
+    },
+    {
+      "id": "num.enter",
+      "codeName": "NumEnter",
+      "group": "numpad",
+      "label": { "es": "Num Enter", "en": "Num Enter" },
+      "aliases": ["numenter"]
+    },
+    {
+      "id": "numlock",
+      "codeName": "NumLock",
+      "group": "numpad",
+      "label": { "es": "Bloq Num", "en": "Num Lock" }
+    },
+    {
+      "id": "volume.up",
+      "codeName": "VolumeUp",
+      "group": "media",
+      "label": { "es": "Vol +", "en": "Vol +" },
+      "spoken": { "es": "Subir volumen", "en": "Volume up" },
+      "aliases": ["volumeup"]
+    },
+    {
+      "id": "volume.down",
+      "codeName": "VolumeDown",
+      "group": "media",
+      "label": { "es": "Vol −", "en": "Vol −" },
+      "spoken": { "es": "Bajar volumen", "en": "Volume down" },
+      "aliases": ["volumedown"]
+    },
+    {
+      "id": "volume.mute",
+      "codeName": "VolumeMute",
+      "group": "media",
+      "label": { "es": "Silencio", "en": "Mute" },
+      "aliases": ["volumemute"]
+    },
+    {
+      "id": "media.playpause",
+      "codeName": "MediaPlayPause",
+      "group": "media",
+      "label": { "es": "Play/Pausa", "en": "Play/Pause" },
+      "spoken": { "es": "Reproducir o pausar", "en": "Play or pause" },
+      "aliases": ["playpause"]
+    },
+    {
+      "id": "media.next",
+      "codeName": "MediaNext",
+      "group": "media",
+      "label": { "es": "Siguiente", "en": "Next track" },
+      "aliases": ["nexttrack"]
+    },
+    {
+      "id": "media.previous",
+      "codeName": "MediaPrevious",
+      "group": "media",
+      "label": { "es": "Anterior", "en": "Previous track" },
+      "aliases": ["prevtrack"]
+    },
+    {
+      "id": "media.stop",
+      "codeName": "MediaStop",
+      "group": "media",
+      "label": { "es": "Detener", "en": "Stop" },
+      "aliases": ["mediastop"]
+    },
+    {
+      "id": "launch.calculator",
+      "codeName": "LaunchCalculator",
+      "group": "media",
+      "label": { "es": "Calculadora", "en": "Calculator" }
+    },
+    {
+      "id": "launch.browser",
+      "codeName": "LaunchBrowser",
+      "group": "media",
+      "label": { "es": "Navegador", "en": "Browser" },
+      "aliases": ["browserhome"]
+    },
+    {
+      "id": "launch.mail",
+      "codeName": "LaunchMail",
+      "group": "media",
+      "label": { "es": "Correo", "en": "Mail" },
+      "aliases": ["launchmail"]
+    },
+    {
+      "id": "capslock",
+      "codeName": "CapsLock",
+      "group": "media",
+      "label": { "es": "Bloq Mayús", "en": "Caps Lock" },
+      "aliases": ["caps"]
+    },
+    {
+      "id": "insert",
+      "codeName": "Insert",
+      "group": "media",
+      "label": { "es": "Insert", "en": "Insert" },
+      "aliases": ["ins"]
+    },
+    {
+      "id": "pause",
+      "codeName": "Pause",
+      "group": "media",
+      "label": { "es": "Pausa", "en": "Pause" },
+      "aliases": ["break"]
+    },
+    {
+      "id": "scrolllock",
+      "codeName": "ScrollLock",
+      "group": "media",
+      "label": { "es": "Bloq Despl", "en": "Scroll Lock" },
+      "aliases": ["scroll"]
+    },
+    {
+      "id": "f13",
+      "codeName": "F13",
+      "group": "media",
+      "label": { "es": "F13", "en": "F13" }
+    },
+    {
+      "id": "f14",
+      "codeName": "F14",
+      "group": "media",
+      "label": { "es": "F14", "en": "F14" }
+    },
+    {
+      "id": "f15",
+      "codeName": "F15",
+      "group": "media",
+      "label": { "es": "F15", "en": "F15" }
+    },
+    {
+      "id": "f16",
+      "codeName": "F16",
+      "group": "media",
+      "label": { "es": "F16", "en": "F16" }
+    },
+    {
+      "id": "f17",
+      "codeName": "F17",
+      "group": "media",
+      "label": { "es": "F17", "en": "F17" }
+    },
+    {
+      "id": "f18",
+      "codeName": "F18",
+      "group": "media",
+      "label": { "es": "F18", "en": "F18" }
+    },
+    {
+      "id": "f19",
+      "codeName": "F19",
+      "group": "media",
+      "label": { "es": "F19", "en": "F19" }
+    },
+    {
+      "id": "f20",
+      "codeName": "F20",
+      "group": "media",
+      "label": { "es": "F20", "en": "F20" }
+    },
+    {
+      "id": "f21",
+      "codeName": "F21",
+      "group": "media",
+      "label": { "es": "F21", "en": "F21" }
+    },
+    {
+      "id": "f22",
+      "codeName": "F22",
+      "group": "media",
+      "label": { "es": "F22", "en": "F22" }
+    },
+    {
+      "id": "f23",
+      "codeName": "F23",
+      "group": "media",
+      "label": { "es": "F23", "en": "F23" }
+    },
+    {
+      "id": "f24",
+      "codeName": "F24",
+      "group": "media",
+      "label": { "es": "F24", "en": "F24" }
+    }
+  ]
+}

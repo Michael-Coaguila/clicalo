@@ -1,0 +1,93 @@
+{
+  "$schema": "../schemas/sizes.schema.json",
+  "catalogVersion": 1,
+  "layout": {
+    "minTouchTargetPx": 44,
+    "minTextPx": 11,
+    "textScaleTileGrowth": 1.6,
+    "panel": {
+      "minWidthPx": 288,
+      "chromeWidthPx": 24,
+      "workAreaMarginPx": 8,
+      "bottomMarginPx": 16,
+      "initialRightOffsetPx": 72,
+      "initialTopPx": 40,
+      "maxGridRows": 3,
+      "compactTileReductionPx": 16,
+      "compactStripCapacity": 4,
+      "dragHandleWidthPx": 26,
+      "autoFixedButtonPx": 36,
+      "noticeBarHeightPx": 40,
+      "pageDotActiveWidthPx": 24,
+      "pageDotSizePx": 10,
+      "profileTileHeightPx": 76,
+      "contextMenuRowHeightPx": 44,
+      "editDeleteButtonPx": 32
+    },
+    "bubble": {
+      "diameterPx": 64,
+      "iconPx": 30
+    },
+    "dock": {
+      "handleThicknessPx": 32,
+      "handleVerticalLengthPx": 116,
+      "handleHorizontalLengthPx": 128,
+      "scrollbarGutterPx": 18,
+      "handlePositionMinPercent": 8,
+      "handlePositionMaxPercent": 92
+    }
+  },
+  "sizes": [
+    {
+      "id": "S",
+      "labelKey": "sizeS",
+      "tile": { "widthPx": 72, "heightPx": 66, "iconPx": 20, "labelPx": 12, "keysPx": 9 },
+      "gapPx": 6,
+      "headerButton": { "widthPx": 32, "heightPx": 36 },
+      "strip": { "heightPx": 44, "iconPx": 18, "labelPx": 10, "capacity": 4 },
+      "autoRows": 2,
+      "dock": {
+        "barWidthPx": 76,
+        "barHeightPx": 58,
+        "verticalTileHeightPx": 50,
+        "horizontalTileWidthPx": 62,
+        "horizontalTileHeightPx": 58,
+        "tileIconPx": 20
+      }
+    },
+    {
+      "id": "M",
+      "labelKey": "sizeM",
+      "tile": { "widthPx": 92, "heightPx": 78, "iconPx": 28, "labelPx": 14, "keysPx": 10 },
+      "gapPx": 8,
+      "headerButton": { "widthPx": 32, "heightPx": 40 },
+      "strip": { "heightPx": 60, "iconPx": 22, "labelPx": 11, "capacity": 8 },
+      "autoRows": 3,
+      "dock": {
+        "barWidthPx": 88,
+        "barHeightPx": 66,
+        "verticalTileHeightPx": 58,
+        "horizontalTileWidthPx": 72,
+        "horizontalTileHeightPx": 66,
+        "tileIconPx": 22
+      }
+    },
+    {
+      "id": "L",
+      "labelKey": "sizeL",
+      "tile": { "widthPx": 116, "heightPx": 98, "iconPx": 34, "labelPx": 16, "keysPx": 11 },
+      "gapPx": 10,
+      "headerButton": { "widthPx": 40, "heightPx": 46 },
+      "strip": { "heightPx": 72, "iconPx": 26, "labelPx": 13, "capacity": 8 },
+      "autoRows": 3,
+      "dock": {
+        "barWidthPx": 108,
+        "barHeightPx": 78,
+        "verticalTileHeightPx": 70,
+        "horizontalTileWidthPx": 88,
+        "horizontalTileHeightPx": 78,
+        "tileIconPx": 26
+      }
+    }
+  ]
+}
