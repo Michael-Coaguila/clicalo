@@ -28,9 +28,8 @@ public readonly struct Srgb : IEquatable<Srgb>
 
     public static bool operator !=(Srgb left, Srgb right) => !left.Equals(right);
 
-    /// <summary>True when every color channel lies in [−tolerance, 1 + tolerance].</summary>
-    public bool IsInGamut(double tolerance = 0d) =>
-        IsInRange(R, tolerance) && IsInRange(G, tolerance) && IsInRange(B, tolerance);
+    /// <summary>True when every color channel lies in [0, 1] (exact, as the CSS Color 4 gamut check).</summary>
+    public bool IsInGamut() => IsInRange(R) && IsInRange(G) && IsInRange(B);
 
     /// <summary>Clamps every channel (and alpha) to [0, 1]: the CSS Color 4 <c>clip</c> operation.</summary>
     public Srgb Clip() => new(Clamp01(R), Clamp01(G), Clamp01(B), Clamp01(Alpha));
@@ -77,8 +76,7 @@ public readonly struct Srgb : IEquatable<Srgb>
     internal static byte ToByte(double channel) =>
         (byte)System.Math.Floor((Clamp01(channel) * 255d) + 0.5d);
 
-    private static bool IsInRange(double channel, double tolerance) =>
-        channel >= -tolerance && channel <= 1d + tolerance;
+    private static bool IsInRange(double channel) => channel is >= 0d and <= 1d;
 
     private static double Clamp01(double value) =>
         value < 0d ? 0d

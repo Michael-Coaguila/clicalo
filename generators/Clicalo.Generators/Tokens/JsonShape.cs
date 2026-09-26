@@ -25,21 +25,6 @@ internal static class JsonShape
         return Expect(document, node, kind, "'" + name + "'", issues) ? node : null;
     }
 
-    /// <summary>Like <see cref="Required"/>, but an absent member is not an error.</summary>
-    public static JsonNode? Optional(
-        TokenDocument document,
-        JsonNode parent,
-        string name,
-        JsonKind kind,
-        TokenIssues issues
-    )
-    {
-        var node = parent[name];
-        return node is not null && Expect(document, node, kind, "'" + name + "'", issues)
-            ? node
-            : null;
-    }
-
     public static bool Expect(
         TokenDocument document,
         JsonNode node,
