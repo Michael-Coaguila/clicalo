@@ -1,0 +1,26 @@
+{
+  // Debugging the `cl` orchestrator itself (build/). The app gets its launch configuration with `cl run` (M2).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "cl: depurar una orden",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "cl: compilar el orquestador",
+      "program": "${workspaceFolder}/artifacts/bin/Build/debug/Build.dll",
+      "args": ["${input:clVerb}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ],
+  "inputs": [
+    {
+      "id": "clVerb",
+      "type": "pickString",
+      "description": "Orden de cl que se va a depurar",
+      "options": ["check", "build", "fast", "test", "desk", "fix", "clean", "setup"],
+      "default": "check"
+    }
+  ]
+}

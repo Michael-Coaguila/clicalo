@@ -1,0 +1,26 @@
+# Files CSharpier must not touch (gitignore syntax). `cl fix` formats, `cl check` verifies.
+
+# Build output, including every generated source under obj/.
+artifacts/
+**/bin/
+**/obj/
+
+# Generated code is never edited or formatted by hand (NFR-015).
+**/Generated/
+**/generated/
+*.g.cs
+*.generated.cs
+
+# The original design handoff is read-only reference material (blueprint §5).
+docs/design/handoff/
+
+# CSharpier formats C# only. MSBuild, NuGet and XAML files keep their hand-written layout:
+# its XML printer splits one-line items and moves closing brackets to their own line, which reads
+# worse aloud and churns every project file (see build/ and the M0 decisions).
+*.csproj
+*.props
+*.targets
+*.slnx
+*.config
+*.xml
+*.xaml

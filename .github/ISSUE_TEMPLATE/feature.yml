@@ -1,0 +1,49 @@
+name: "Idea o mejora · Feature or improvement"
+description: "Propón algo nuevo o una forma mejor de hacer algo. · Suggest something new or a better way to do something."
+title: "[Idea · Feature]: "
+labels: ["type/feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cuéntanos el problema antes que la solución: así podemos buscar la que mejor encaje con el táctil y la voz. Puedes escribir en español o en inglés.
+
+        Tell us about the problem before the solution: that way we can find the one that best fits touch and voice. Spanish or English are both fine.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Qué problema tienes · What problem you have"
+      description: "Qué intentas conseguir y qué te lo impide hoy. · What you are trying to achieve and what stops you today."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Qué propones · What you suggest"
+      description: "Cómo te imaginas que funcionaría, con el dedo, con la voz o con tu forma de acceso. · How you imagine it working, with a finger, by voice or with your way of access."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Qué haces ahora (opcional) · What you do today (optional)"
+      description: "Otras formas que has probado para conseguirlo. · Other ways you have tried."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: access
+    attributes:
+      label: "Tu forma de acceso (opcional) · Your way of access (optional)"
+      multiple: true
+      options:
+        - "Pantalla táctil · Touch screen"
+        - "Voz · Voice"
+        - "Lector de pantalla · Screen reader"
+        - "Conmutadores · Switches"
+        - "Ratón y teclado · Mouse and keyboard"
+    validations:
+      required: false

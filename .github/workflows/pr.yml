@@ -1,0 +1,181 @@
+# Pull-request and main gate (blueprint §10.5). The `verify` job runs exactly `cl check`, the same command
+# maintainers run locally, so a green `cl check` on a PC means a green check here.
+#
+# Rules for this file (blueprint §10.5, §12.2 T12 and T14; `cl check` enforces the first one):
+# - every action is pinned by full commit SHA with its version as a comment (Renovate keeps both current);
+# - permissions are read-only at the top and widened per job only where a job needs it;
+# - no pull_request_target, no secrets: pull requests from forks run read-only;
+# - no top-level env or defaults (OpenSSF Scorecard rejects published results otherwise).
+name: pr
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per pull request (a new push cancels the old run); pushes to main never cancel each other.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (x64)
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: cl check
+        shell: pwsh
+        run: .\cl.cmd check
+
+      - name: Upload cl report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cl-report-x64
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  verify-arm64:
+    name: verify (arm64)
+    # Hosted ARM64 runners and the analyses below are free only for public repositories (today it is private).
+    if: github.event.repository.private == false
+    runs-on: windows-11-arm
+    timeout-minutes: 40
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: cl check
+        shell: pwsh
+        run: .\cl.cmd check
+
+      - name: Upload cl report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cl-report-arm64
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  codeql:
+    name: codeql (${{ matrix.language }})
+    if: github.event.repository.private == false
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            build-mode: manual
+            runner: windows-2025
+          - language: actions
+            build-mode: none
+            runner: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: cl build
+        if: matrix.language == 'csharp'
+        shell: pwsh
+        env:
+          CI: true
+          # The extractor must see every compiler invocation, not a shared compiler server.
+          UseSharedCompilation: false
+        run: .\cl.cmd build
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: /language:${{ matrix.language }}
+
+  scorecard:
+    name: scorecard
+    # Scorecard supports push to the default branch; results are published for public repositories only.
+    if: github.event.repository.private == false && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+      id-token: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: scorecard.sarif

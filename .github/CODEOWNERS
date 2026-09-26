@@ -1,0 +1,45 @@
+# Code owners (blueprint §13, "Revisión"). The last matching pattern wins.
+# Today there is one maintainer and a green CI is enough to merge; the sections below name the paths that
+# will require a maintainer (and, with a team, two reviews) because they guard a trust boundary, a
+# persisted format, the injection engine or the supply chain.
+
+# Default owner of everything.
+*                                                   @Michael-Coaguila
+
+# ---- Sensitive paths of blueprint §13 -------------------------------------------------------------------
+/src/Clicalo.Platform.Core/                         @Michael-Coaguila
+/src/Clicalo.Platform.Windows/Input/                @Michael-Coaguila
+/src/Clicalo.Platform.Windows/Foreground/           @Michael-Coaguila
+/src/Clicalo.Platform.Windows/SystemComponent/      @Michael-Coaguila
+/src/Clicalo.Sentinel/                              @Michael-Coaguila
+/src/Clicalo.Launcher/                              @Michael-Coaguila
+/src/Clicalo.UI.Wpf/Windowing/                      @Michael-Coaguila
+/src/Clicalo.Application/Foreground/                @Michael-Coaguila
+/src/Clicalo.Application/Ipc/                       @Michael-Coaguila
+/src/Clicalo.Infrastructure/Persistence/            @Michael-Coaguila
+/src/Clicalo.Infrastructure/Updates/                @Michael-Coaguila
+/generators/Clicalo.Analyzers/                      @Michael-Coaguila
+/.github/workflows/                                 @Michael-Coaguila
+/nuget.config                                       @Michael-Coaguila
+/Directory.Packages.props                           @Michael-Coaguila
+
+# ---- The rules and the gate themselves -------------------------------------------------------------------
+# Changing any of these changes what every other pull request is checked against.
+/.github/CODEOWNERS                                 @Michael-Coaguila
+/.github/renovate.json5                             @Michael-Coaguila
+/architecture/                                      @Michael-Coaguila
+/build/                                             @Michael-Coaguila
+/cl.cmd                                             @Michael-Coaguila
+/cl.ps1                                             @Michael-Coaguila
+/.config/dotnet-tools.json                          @Michael-Coaguila
+/global.json                                        @Michael-Coaguila
+/Directory.Build.props                              @Michael-Coaguila
+/Directory.Build.targets                            @Michael-Coaguila
+/.editorconfig                                      @Michael-Coaguila
+/docs/adr/                                          @Michael-Coaguila
+/docs/security/                                     @Michael-Coaguila
+/SECURITY.md                                        @Michael-Coaguila
+
+# Templates and localization accept community reviewers (blueprint §13); add them here when they join:
+# /data/i18n/                  @Michael-Coaguila @<translation-reviewers>
+# /data/content/templates/     @Michael-Coaguila @<template-reviewers>

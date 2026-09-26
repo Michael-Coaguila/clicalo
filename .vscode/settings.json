@@ -1,0 +1,38 @@
+{
+  // Blueprint §13: autosave, CSharpier on save and one task per `cl` verb (tasks.json).
+  // onFocusChange (not afterDelay) because VS Code only formats on save when the save is not delayed.
+  // Only C# is formatted on save: data/, schemas and project files keep their hand-written layout, which
+  // VS Code's built-in JSON and XML formatters would otherwise rewrite on every save.
+  "files.autoSave": "onFocusChange",
+  "editor.formatOnSave": false,
+  "[csharp]": {
+    "editor.defaultFormatter": "csharpier.csharpier-vscode",
+    "editor.formatOnSave": true
+  },
+  // Same as .editorconfig: trailing spaces are meaningful line breaks in Markdown.
+  "[markdown]": {
+    "files.trimTrailingWhitespace": false
+  },
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "task.saveBeforeRun": "always",
+  "dotnet.defaultSolution": "Clicalo.slnx",
+
+  // Failure reports and setup notes open rendered, so Narrator can move through them by headings.
+  "workbench.editorAssociations": {
+    "**/artifacts/cl/*.md": "vscode.markdown.preview.editor"
+  },
+
+  // Build output and the read-only design handoff stay out of search and file watching.
+  "search.exclude": {
+    "**/artifacts": true,
+    "docs/design/handoff/**": true
+  },
+  "files.watcherExclude": {
+    "**/artifacts/**": true
+  },
+  "files.readonlyInclude": {
+    "docs/design/handoff/**": true
+  }
+}

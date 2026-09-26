@@ -1,0 +1,38 @@
+# The `title` check of blueprint §10.5: the pull request title becomes the squash commit, so it must follow
+# Conventional Commits with the closed types and scopes of blueprint §13.
+# It lives apart from pr.yml on purpose: it has to re-run when the title is edited, and an edit must never
+# re-run, cancel or override the code checks of the same commit.
+name: pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: title
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Conventional Commits title
+        shell: bash
+        env:
+          # Passed through the environment, never interpolated into the script (injection-safe).
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          types='feat|fix|perf|a11y|i18n|refactor|test|build|ci|docs|chore|revert'
+          scopes='panel|tab|bubble|cc|editor|templates|ai|engine|keysafety|touch|platform|windowing|foreground|data|migration|updates|launcher|i18n|theme|a11y|build|deps'
+          pattern="^(${types})(\((${scopes})\))?!?: [^[:space:]].*$"
+          revert='^Revert ".+"$'
+          if [[ "$TITLE" =~ $pattern || "$TITLE" =~ $revert ]]; then
+            echo "Título correcto: $TITLE"
+            exit 0
+          fi
+          echo "::error title=Título del PR::El título debe seguir Conventional Commits, por ejemplo «feat(panel): add compact view». Tipos: ${types//|/, }. Ámbitos (opcionales): ${scopes//|/, }. Usa ! solo si rompe un contrato público (blueprint §13)."
+          exit 1

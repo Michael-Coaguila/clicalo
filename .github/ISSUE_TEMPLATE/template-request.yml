@@ -1,0 +1,62 @@
+name: "Pedir una plantilla · Template request"
+description: "Pide atajos listos para una aplicación. · Ask for ready-made shortcuts for an application."
+title: "[Plantilla · Template]: "
+labels: ["type/template", "area/templates"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Las plantillas son conjuntos de atajos revisados para una aplicación (Word, el navegador, VS Code…). Puedes escribir en español o en inglés.
+
+        Templates are reviewed sets of shortcuts for an application (Word, the browser, VS Code…). Spanish or English are both fine.
+
+  - type: input
+    id: app
+    attributes:
+      label: "Aplicación · Application"
+      description: "Nombre y, si lo sabes, versión. · Name and, if you know it, version."
+      placeholder: "LibreOffice Writer 25.2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: shortcuts
+    attributes:
+      label: "Qué atajos necesitas · Which shortcuts you need"
+      description: "Uno por línea, con lo que hace y, si la sabes, la combinación de teclas. · One per line, with what it does and, if you know it, the key combination."
+      # A placeholder, not a prefilled value: nobody has to find and delete the example before sending.
+      placeholder: "Negrita · Bold: Ctrl+N / Ctrl+B"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layout
+    attributes:
+      label: "Distribución de tu teclado · Your keyboard layout"
+      description: "Algunas combinaciones cambian según la distribución. · Some combinations change with the layout."
+      options:
+        - "Español (España) · Spanish (Spain)"
+        - "Español (Latinoamérica) · Spanish (Latin America)"
+        - "Inglés (Estados Unidos) · English (United States)"
+        - "Inglés (Reino Unido) · English (United Kingdom)"
+        - "Otra · Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: app-language
+    attributes:
+      label: "Idioma de la aplicación · Application language"
+      options:
+        - "Español · Spanish"
+        - "Inglés · English"
+        - "Otro · Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: "Para qué la usarías (opcional) · What you would use it for (optional)"
+    validations:
+      required: false

@@ -1,0 +1,10 @@
+{
+  // Everything `cl` and the repository conventions rely on inside VS Code.
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "csharpier.csharpier-vscode",
+    "editorconfig.editorconfig",
+    "github.vscode-github-actions",
+    "davidanson.vscode-markdownlint"
+  ]
+}
