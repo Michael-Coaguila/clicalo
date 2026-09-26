@@ -469,12 +469,18 @@ internal static class TokenEmitter
         if (model.ColorTokens.Contains("shadow"))
         {
             w.Summary(
-                "The shadow color of <paramref name=\"palette\"/> with this elevation's opacity applied."
+                "The shadow color of <paramref name=\"palette\"/> with this elevation's opacity applied; fully "
+                    + "transparent in high contrast, which has no translucency or blur (TEM-004)."
             );
             w.Line("public " + Color + " ColorIn(ThemePalette palette)");
             w.Open();
             w.Line("global::System.ArgumentNullException.ThrowIfNull(palette);");
             w.Line("var color = palette.Shadow;");
+            w.Line("if (palette.IsHighContrast)");
+            w.Open();
+            w.Line("return " + Color + ".FromArgb(0, color.R, color.G, color.B);");
+            w.Close();
+            w.Blank();
             w.Line(
                 "return "
                     + Color

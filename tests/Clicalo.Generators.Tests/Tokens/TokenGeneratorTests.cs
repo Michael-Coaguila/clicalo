@@ -213,6 +213,10 @@ public sealed class TokenGeneratorTests
         Invoke(shadow, "ColorIn", generated.Static("ThemePalettes", "HighContrast"))
             .ToString()
             .ShouldBe("#00000000");
+        // The Windows contrast theme maps shadow to an opaque system color; high contrast still has no shadow.
+        Invoke(shadow, "ColorIn", generated.Invoke("SystemHighContrastPalette", "Capture"))
+            .ToString()
+            .ShouldBe("#00" + WpfStubs.SystemColorHex("WindowColor")[3..]);
     }
 
     private static string Source(GeneratorDriverRunResult result, string hintName) =>
