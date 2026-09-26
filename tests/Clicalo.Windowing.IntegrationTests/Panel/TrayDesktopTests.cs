@@ -142,10 +142,15 @@ public sealed class TrayDesktopTests(PanelDesktopFixture fixture)
         }
     }
 
+    // Only menus of this process: the test never invokes anything in another app's menu.
     private static AutomationElement? FindEntry(UIA3Automation automation, string name) =>
         automation
             .GetDesktop()
-            .FindAllChildren(condition => condition.ByClassName(PopupMenuClass))
+            .FindAllChildren(condition =>
+                condition
+                    .ByClassName(PopupMenuClass)
+                    .And(condition.ByProcessId(Environment.ProcessId))
+            )
             .Select(menu => menu.FindFirstDescendant(condition => condition.ByName(name)))
             .FirstOrDefault(found => found is not null);
 }

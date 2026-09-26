@@ -51,8 +51,12 @@ public sealed class TouchToSendInputTests
             {
                 await probe.EnsureForegroundAsync(EventTimeout, cancellationToken);
                 var cursor = probe.Cursor;
-                var started = Stopwatch.GetTimestamp();
+
+                // A tap activates when the finger lifts (EJE-001): the clock starts when the lift was handed to
+                // Windows, which is when Tap returns. Starting it before Tap would add the synthetic gesture's own
+                // frames (a sleep of SyntheticPointer.FrameInterval between the down and the up) to Clícalo's time.
                 finger.Tap(x, y);
+                var lifted = Stopwatch.GetTimestamp();
                 var events = await probe.WaitForAsync(
                     cursor,
                     static received =>
@@ -61,12 +65,11 @@ public sealed class TouchToSendInputTests
                     cancellationToken
                 );
                 var keys = events.OfType<KeyMessageEvent>().ToList();
-                latencies.Add(
-                    Stopwatch.GetElapsedTime(
-                        started,
-                        keys.First(static key => key.IsPress).Timestamp
-                    )
+                var latency = Stopwatch.GetElapsedTime(
+                    lifted,
+                    keys.First(static key => key.IsPress).Timestamp
                 );
+                latencies.Add(latency > TimeSpan.Zero ? latency : TimeSpan.Zero);
                 probe.IsForeground.ShouldBeTrue("the tap never takes the foreground (REG-01)");
                 foreach (var key in keys.GroupBy(static key => key.VirtualKey))
                 {
