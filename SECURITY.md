@@ -23,7 +23,10 @@ Cuando se publique la 2.0, recibirán correcciones de seguridad la última versi
 pestaña **Security**, botón **Report a vulnerability**
 ([enlace directo](https://github.com/Michael-Coaguila/clicalo/security/advisories/new);
 [cómo funciona](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)).
-Mientras el repositorio sea privado, solo pueden usarlo las personas con acceso.
+GitHub solo ofrece ese informe privado en repositorios públicos. Mientras este repositorio sea privado, el
+botón y el enlace no existen: si tienes acceso, avisa al mantenedor en privado, por el mismo canal por el que
+te dio acceso, y nunca en un *issue*. Antes de hacer público el repositorio se activa el informe privado
+(**Settings › Code security › Private vulnerability reporting**) y se añade aquí un correo de seguridad.
 
 Incluye, si puedes:
 
@@ -76,7 +79,11 @@ Once 2.0 ships, the latest stable and the latest beta receive security fixes.
 **Do not open a public issue.** Use GitHub private vulnerability reporting: **Security** tab, **Report a
 vulnerability** ([direct link](https://github.com/Michael-Coaguila/clicalo/security/advisories/new);
 [how it works](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)).
-While the repository is private, only people with access can use it.
+GitHub only offers private reporting on public repositories. While this repository is private, the button
+and the link do not exist: if you have access, tell the maintainer privately, through the same channel they
+used to give you access, and never in an issue. Before the repository goes public, private reporting is
+turned on (**Settings › Code security › Private vulnerability reporting**) and a security email is added
+here.
 
 Please include the Clícalo and Windows versions (and whether Clícalo was elevated or had the system
 component installed), the trust boundary that is crossed, reproduction steps, impact, and whether the issue

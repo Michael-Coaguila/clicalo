@@ -161,8 +161,9 @@ públicos es una convención que se comprueba en revisión.
 **Supresiones.** Nunca se debilita un analizador en un archivo compartido (`.editorconfig`,
 `Directory.Build.props`). Una supresión local solo se admite con
 `[SuppressMessage("Categoría", "Id", Justification = "motivo real")]` sobre el símbolo concreto. Las
-relajaciones de `tests/.editorconfig` (nombres de prueba como frases, varios tipos por archivo en las
-pruebas) están acotadas a `tests/`.
+relajaciones de los proyectos de prueba (nombres de prueba como frases, varios tipos por archivo en las
+pruebas) están acotadas a ellos: `tests/.editorconfig` y su copia `build/Build.Tests/.editorconfig`, que
+`TestEditorConfigTests` obliga a mantener idéntica.
 
 ## Generadores de código
 

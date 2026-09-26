@@ -72,6 +72,7 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 | `Process.Start`, `ProcessStartInfo` | `Platform.Windows/Launch` | `ILauncher` (sin intérprete) |
 | `Assembly.Load*`, `AssemblyLoadContext.LoadFrom*` | En ningún sitio (ADR-0017) | Datos validados |
 | `ShellExecute*`, `IShellDispatch2`, WMI (`System.Management`) | `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` (hilo Shell) | `ILauncher`, `ISystemCommandRunner` |
+| `ShellExecuteEx` con `runas` | También `Platform.Windows/Elevation`, tras verificar la firma con `WinVerifyTrust` (D-11) | Relanzamiento elevado verificado |
 | Escritura de archivos | `Infrastructure/Persistence/AtomicFile.cs` y el *sink* de registros | `IAtomicFileWriter` |
 | `DateTime.Now/UtcNow`, `DateTimeOffset.Now/UtcNow`, `Stopwatch.StartNew`, `Task.Delay` sin `TimeProvider`, `Thread.Sleep`, `Guid.NewGuid`, `Random.Shared` | Solo adaptadores | `TimeProvider`, `IIdGenerator` |
 | `Task.Result`, `Task.Wait`, `GetAwaiter().GetResult()` | `App/Shutdown` | `await` |

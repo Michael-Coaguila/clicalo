@@ -62,7 +62,7 @@ vez; si falla, el detalle está en `artifacts\cl\last-error.md`. Todos los verbo
 | `architecture/` | Reglas de arquitectura como datos (dependencias permitidas, módulos, APIs prohibidas) |
 | `build/` | Los destinos de `cl` |
 | `tools/` | InputProbe (ventana de prueba Win32) y `Clicalo.DevCli` |
-| `assets/` | Fuentes tipográficas e iconos |
+| `assets/` | Fuentes tipográficas e iconos (vacía en M0; llegan con la UI) |
 | `docs/` | Arquitectura, ADR, requisitos, seguridad, guías y el paquete de diseño original |
 
 ### Documentación

@@ -11,16 +11,17 @@ explica dónde pedir ayuda mientras tanto y cuando haya versiones publicadas.
 
 | Necesito… | Dónde |
 |---|---|
-| Informar de un fallo | Un *issue* con el formulario «Fallo» |
-| Informar de una **barrera de accesibilidad** (algo que no puedes hacer con el dedo, la voz, Narrador o un conmutador) | Un *issue* con el formulario «Barrera de accesibilidad». Tienen prioridad |
-| Proponer una función o una plantilla para una app | Un *issue* con el formulario «Nueva función» o «Plantilla» |
-| Ayudar con una traducción | Un *issue* con el formulario «Traducción» |
+| Informar de un fallo | Un *issue* con el formulario «Error · Bug» |
+| Informar de una **barrera de accesibilidad** (algo que no puedes hacer con el dedo, la voz, Narrador o un conmutador) | Un *issue* con el formulario «Barrera de accesibilidad · Accessibility barrier». Tienen prioridad |
+| Proponer una función o una plantilla para una app | Un *issue* con el formulario «Idea o mejora · Feature or improvement» o «Pedir una plantilla · Template request» |
+| Ayudar con un texto o una traducción | Un *issue* con el formulario «Texto o traducción · Text or translation» |
 | Informar de una vulnerabilidad | **Nunca en un *issue* público**: sigue [SECURITY.md](SECURITY.md) |
 | Informar de una conducta inapropiada | Sigue el [código de conducta](CODE_OF_CONDUCT.md) |
 | Contribuir con código o documentación | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-Los formularios de *issue* están diseñados para rellenarse con el teclado en pantalla o por dictado. Si
-alguno no te resulta accesible, eso también es un fallo que queremos conocer.
+Los nombres entre comillas son exactamente los de los botones de GitHub, para poder nombrarlos por voz. Los
+formularios de *issue* están diseñados para rellenarse con el teclado en pantalla o por dictado. Si alguno no
+te resulta accesible, eso también es un fallo que queremos conocer.
 
 Cuando la app esté publicada, **Acerca de › Opinión** abrirá tu correo con un mensaje ya preparado, y podrás
 adjuntar el registro depurado tras ver exactamente qué contiene (nunca se envía nada solo; ver
@@ -44,7 +45,9 @@ preguntas generales; las vulnerabilidades tienen los plazos de [SECURITY.md](SEC
 Clícalo is at milestone M0 of its rebuild: **there are no user releases yet**.
 
 - **Bugs, accessibility barriers, feature ideas, templates and translations:** open an issue with the
-  matching form. Accessibility barriers get priority.
+  matching form: «Error · Bug», «Barrera de accesibilidad · Accessibility barrier», «Idea o mejora · Feature
+  or improvement», «Pedir una plantilla · Template request» or «Texto o traducción · Text or translation».
+  Accessibility barriers get priority.
 - **Security vulnerabilities:** never in a public issue; follow [SECURITY.md](SECURITY.md#english).
 - **Conduct concerns:** follow the [code of conduct](CODE_OF_CONDUCT.md#english).
 - **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md#english).
