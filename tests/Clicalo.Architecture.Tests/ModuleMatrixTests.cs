@@ -11,6 +11,46 @@ public sealed class ModuleMatrixTests
         [("Keys", []), ("Library", ["Keys"]), ("Migration.V1", ["Library"])]
     );
 
+    /// <summary>The table of blueprint §4.3, row by row.</summary>
+    private static readonly Dictionary<string, string[]> Blueprint = new(StringComparer.Ordinal)
+    {
+        ["Primitives"] = [],
+        ["Geometry"] = [],
+        ["Messages"] = [],
+        ["Errors"] = [],
+        ["Privacy"] = [],
+        ["Keys"] = ["Primitives"],
+        ["Catalog"] = ["Keys", "Primitives"],
+        ["Library"] = ["Keys", "Catalog", "Primitives", "Messages", "Privacy"],
+        ["Settings"] = ["Primitives"],
+        ["ProfileResolution"] = ["Library", "Settings"],
+        ["Frequents"] = ["Library"],
+        ["Duplicates"] = ["Library", "Keys"],
+        ["Search"] = ["Library", "Catalog"],
+        ["KeySafety"] = ["Keys"],
+        ["StickyModifiers"] = ["Keys", "KeySafety"],
+        ["Touch"] = ["Geometry", "Primitives"],
+        ["PanelLayout"] = ["Settings", "Geometry"],
+        ["VoiceNumbering"] = ["PanelLayout"],
+        ["Icons"] = ["Catalog", "Keys"],
+        ["Dimming"] = ["Settings", "Primitives"],
+        ["Interaction"] = ["Messages", "Primitives", "Library"],
+        ["Execution"] =
+        [
+            "Library",
+            "KeySafety",
+            "StickyModifiers",
+            "Touch",
+            "Settings",
+            "Messages",
+            "Errors",
+            "Geometry",
+        ],
+        ["Migration.V1"] = ["Library", "Keys", "Catalog", "Settings"],
+        ["Templates"] = ["Library", "Catalog", "Keys"],
+        ["Sharing"] = ["Library", "Catalog", "Keys"],
+    };
+
     [Fact]
     [Trait("Req", "NFR-012")]
     public void The_domain_module_matrix_is_valid_and_acyclic() =>
@@ -26,6 +66,22 @@ public sealed class ModuleMatrixTests
             .From(document)
             .Rule(Product.Domain, "the matrix of §4.3 is acyclic and closed")
             .Check(Product.Architecture);
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-012")]
+    public void Every_row_that_differs_from_the_blueprint_table_states_its_deviation()
+    {
+        var modules = ArchitectureDocuments.DomainModules().Modules;
+
+        Blueprint.Keys.Except(modules.Select(m => m.Name), StringComparer.Ordinal).ShouldBeEmpty();
+        foreach (var module in modules)
+        {
+            var same =
+                Blueprint.TryGetValue(module.Name, out var dependsOn)
+                && dependsOn.ToHashSet(StringComparer.Ordinal).SetEquals(module.DependsOn);
+            (module.Deviation is null).ShouldBe(same, module.Name);
+        }
     }
 
     [Fact]

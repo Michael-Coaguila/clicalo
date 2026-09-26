@@ -35,6 +35,13 @@
       "dependsOn": []
     },
     {
+      "name": "Timing",
+      "group": "foundations",
+      "description": "Generated Timings constants and their value types (data/catalogs/timings.json, NFR-020).",
+      "dependsOn": [],
+      "deviation": "Not in §4.3: every time or count threshold lives in timings.json and is generated as constants (§13, NFR-020); the catalog generator emits them into Clicalo.Domain.Timing."
+    },
+    {
       "name": "Keys",
       "group": "foundations",
       "description": "KeyId, KeyStroke, KeyChord, CanonicalChord and InjectionMode.",
@@ -100,7 +107,8 @@
       "name": "Touch",
       "group": "rules",
       "description": "TouchFilter and GestureRecognizer (pure).",
-      "dependsOn": ["Geometry", "Primitives"]
+      "dependsOn": ["Geometry", "Primitives", "Timing"],
+      "deviation": "Timing added: GestureConstants come from timings.json (§7.8)."
     },
     {
       "name": "PanelLayout",
@@ -124,7 +132,8 @@
       "name": "Dimming",
       "group": "rules",
       "description": "DimPolicy (pure).",
-      "dependsOn": ["Settings", "Primitives"]
+      "dependsOn": ["Settings", "Primitives", "Timing"],
+      "deviation": "Timing added: the dimming delay is Timings.DimDelay (§6.4)."
     },
     {
       "name": "Interaction",
@@ -136,7 +145,8 @@
       "name": "Execution",
       "group": "execution",
       "description": "ActivationPolicy, planners per ActionKind and EngineReducer.",
-      "dependsOn": ["Library", "KeySafety", "StickyModifiers", "Touch", "Settings", "Messages", "Errors", "Geometry"]
+      "dependsOn": ["Library", "KeySafety", "StickyModifiers", "Touch", "Settings", "Messages", "Errors", "Geometry", "Timing"],
+      "deviation": "Timing added: the delay between injected events is Timings.InjectInterEventDelay (§7.7)."
     },
     {
       "name": "Document",

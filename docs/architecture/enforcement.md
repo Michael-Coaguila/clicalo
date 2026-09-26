@@ -180,7 +180,7 @@ La prueba de facetas (§4.4 punto 5) recorre los subtipos de `ShortcutAction` y 
 
 ## Registros de apoyo
 
-- **`domain-modules.json`.** Matriz de módulos de Domain. Un módulo es `Clicalo.Domain.<Módulo>` y todo lo que cuelga de él, y puede usar los módulos que alcanza por `dependsOn` (la relación es transitiva, como indica la tabla de §4.3). La matriz debe ser acíclica, y todo tipo de Domain debe estar en un módulo declarado. Las filas que difieren del plano llevan `deviation` con el motivo.
+- **`domain-modules.json`.** Matriz de módulos de Domain. Un módulo es `Clicalo.Domain.<Módulo>` y todo lo que cuelga de él, y puede usar los módulos que alcanza por `dependsOn` (la relación es transitiva, como indica la tabla de §4.3). La matriz debe ser acíclica, y todo tipo de Domain debe estar en un módulo declarado. Las filas que difieren de la tabla de §4.3 llevan `deviation` con el motivo, y `ModuleMatrixTests` compara fila a fila con esa tabla: una diferencia sin `deviation`, o un `deviation` sin diferencia, hace fallar la prueba.
 - **`sensitive-paths.json`.** Globs de rutas cuyo cambio exige un ADR (§13): límites de confianza, formatos persistidos, contratos públicos, modelo de procesos, framework, licencia y firma. La comprobación de ADR de la CI de PR (`pr.yml`) lo leerá. La propia lista es sensible: quitar una ruta también exige un ADR.
 
 ---
@@ -191,6 +191,7 @@ La prueba de facetas (§4.4 punto 5) recorre los subtipos de `ShortcutAction` y 
 |---|---|---|
 | Módulo `Document` | Se añade a la matriz (Library, Settings, Frequents, Duplicates, Errors, Messages, Catalog y Primitives) | `UserDocument` agrega Library, Frequents, Duplicates y Settings (§6.3). Ningún módulo de §4.3 puede contenerlo sin crear un ciclo |
 | Aristas nuevas en la matriz | `Errors → Messages`, `Library → Errors`, `Settings → Messages` | `Error` lleva `MessageKey` (§6.1), las operaciones de `Library` devuelven `Result<Library>` (§6.2) y `SettingDescriptor` lleva claves de texto (§6.3) |
+| Módulo `Timing` | Se añade a los fundamentos, sin dependencias, con aristas desde `Touch`, `Dimming` y `Execution` | Todo umbral vive en `timings.json` y se genera como constantes en `Clicalo.Domain.Timing` (§13, NFR-020). Los gestos (§7.8), el atenuado (§6.4) y el intervalo de inyección (§7.7) los usan. Otra arista hacia `Timing` se declara cuando su módulo la necesite |
 | Matriz transitiva | Un módulo puede usar lo que alcanza por `dependsOn` | La tabla de §4.3 omite `Primitives` en módulos que usan `ProfileId` o `ShortcutId`: solo tiene sentido transitiva |
 | `ICommand` en Presentation | Permitido | `System.Windows.Input.ICommand` vive en la BCL (`System.ObjectModel`) y es el contrato que implementa CommunityToolkit.Mvvm |
 | `SecretText.WithRevealed` | Además de Execution y el editor del CC (`Presentation.ControlCenter.Editor`), lo pueden llamar `Application.Engine` y `Infrastructure.Persistence` | §6.7: el motor copia el texto para enviarlo y el mapper lo necesita en claro para cifrarlo con DPAPI |
