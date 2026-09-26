@@ -79,12 +79,13 @@ public sealed class ActivationArbiterTests : IDisposable
     }
 
     [Fact]
-    public void A_violation_gives_the_foreground_back_to_the_last_verified_external_window()
+    public async Task A_violation_gives_the_foreground_back_to_the_last_verified_external_window()
     {
         // The panel was activated from outside: it owns the foreground now, so Clícalo may give it back.
         _world.Control.Foreground = Panel;
 
         Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        await _world.Orchestrator.ViolationRestore;
 
         _world.Control.Attempts.ShouldBe([Word]);
         _world.Control.Foreground.ShouldBe(Word);
@@ -132,6 +133,7 @@ public sealed class ActivationArbiterTests : IDisposable
         _world.Mark();
 
         Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        await _world.Orchestrator.ViolationRestore;
 
         _world.Log.ShouldBe(["set Search"], "the search keeps the foreground, not Word");
         _world.Control.Foreground.ShouldBe(Search);
@@ -145,12 +147,34 @@ public sealed class ActivationArbiterTests : IDisposable
         using var world = new ForegroundWorld(seedWord: false);
 
         world.Orchestrator.ReportViolation(Violation(Panel, PanelSurface));
+        await world.Orchestrator.ViolationRestore;
         await world.Orchestrator.RestoreAfterViolationAsync(
             WindowToken.None,
             TestContext.Current.CancellationToken
         );
 
         world.Control.Attempts.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Reporting_a_violation_returns_before_the_foreground_is_touched()
+    {
+        // ActivationGuard reports from inside the surface's window procedure: nothing may happen on that thread.
+        _world.Control.Foreground = Panel;
+        var reporter = Environment.CurrentManagedThreadId;
+        var reporting = true;
+        var attemptedInsideTheReport = false;
+        _world.Control.DuringAttempt = _ =>
+            attemptedInsideTheReport |=
+                Volatile.Read(ref reporting) && Environment.CurrentManagedThreadId == reporter;
+
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        Volatile.Write(ref reporting, false);
+        await _world.Orchestrator.ViolationRestore;
+
+        attemptedInsideTheReport.ShouldBeFalse();
+        _world.Control.Attempts.ShouldBe([Word]);
+        _world.Control.Foreground.ShouldBe(Word);
     }
 
     private ActivationViolation Violation(WindowToken window, SurfaceId surface) =>

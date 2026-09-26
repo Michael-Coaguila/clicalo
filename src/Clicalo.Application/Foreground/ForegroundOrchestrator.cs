@@ -41,6 +41,7 @@ public sealed partial class ForegroundOrchestrator
     private Leased _leased = Leased.Nothing;
     private ForegroundLease? _active;
     private int _disposed;
+    private Task _violationRestore = Task.CompletedTask;
 
     /// <summary>Creates the orchestrator and starts following <see cref="ForegroundPorts.Monitor"/>.</summary>
     /// <param name="ports">The adapters it works through.</param>
@@ -145,8 +146,15 @@ public sealed partial class ForegroundOrchestrator
         }
 
         LogViolation(_logger, violation.Surface, violation.Message, violation.ProbableCause);
-        _ = RestoreAfterViolationInBackgroundAsync();
+
+        // ActivationGuard calls this inside the surface's window procedure on the UI thread: return at once and give
+        // the foreground back from the thread pool. Awaiting the free gate here would complete synchronously and call
+        // SetForegroundWindow inside that window procedure, on a thread that never changes the foreground (§3.2, §3.5).
+        Volatile.Write(ref _violationRestore, Task.Run(RestoreAfterViolationInBackgroundAsync));
     }
+
+    /// <summary>The latest restoration started by <see cref="ReportViolation"/>; tests await it.</summary>
+    internal Task ViolationRestore => Volatile.Read(ref _violationRestore);
 
     /// <summary>
     /// Ends the active lease because of a terminal event of the engine (release all, panic, exit), restoring according
