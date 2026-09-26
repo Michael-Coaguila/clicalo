@@ -69,11 +69,16 @@ public static class TextSnapshot
         throw SnapshotMismatchException.For(location, verifiedPath, receivedPath, detail);
     }
 
-    /// <summary>Line endings to <c>\n</c> and exactly one trailing <c>\n</c> (none for empty text).</summary>
+    /// <summary>
+    /// <c>\r\n</c> and <c>\r</c> become <c>\n</c>, and the text ends with exactly one <c>\n</c> (none for empty text).
+    /// Other Unicode line breaks (U+0085, U+2028, U+2029, form feed) are content and are kept as they are.
+    /// </summary>
     public static string Normalize(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var unified = text.ReplaceLineEndings("\n").TrimEnd('\n');
+        var unified = text.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .TrimEnd('\n');
         return unified.Length == 0 ? string.Empty : unified + "\n";
     }
 }

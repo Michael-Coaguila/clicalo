@@ -40,7 +40,8 @@ public static class WpfThread
 
     /// <summary>
     /// Lets the dispatcher run everything queued above <see cref="DispatcherPriority.Background"/> (layout,
-    /// data binding, rendering, <c>Loaded</c>). Call it on the WPF thread before capturing a visual.
+    /// data binding, rendering and, for elements hosted in a window, <c>Loaded</c>). Call it on the WPF thread before
+    /// capturing a visual.
     /// </summary>
     public static void DrainPendingWork()
     {

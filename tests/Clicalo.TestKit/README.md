@@ -21,7 +21,7 @@ TextSnapshot.Match(textoGenerado, "menu");
 ```
 
 - Compara con `Snapshots/<ArchivoDePrueba>.<Método>.<nombre>.verified.txt`, junto al archivo de la prueba. Cada archivo de prueba contiene una sola clase, así que su nombre identifica la clase.
-- Normaliza antes de comparar y de escribir: saltos de línea `\n` y exactamente un `\n` final. Usa UTF-8 sin BOM. Así los archivos son idénticos en cualquier equipo (ver `.gitattributes`).
+- Normaliza antes de comparar y de escribir: `\r\n` y `\r` pasan a `\n`, y el texto acaba en exactamente un `\n`. Los demás saltos de Unicode (U+0085, U+2028, U+2029 y el salto de página) son contenido y se conservan. Usa UTF-8 sin BOM. Así los archivos son idénticos en cualquier equipo (ver `.gitattributes`).
 - Si no coincide, escribe `<…>.received.txt`, que git ignora por el patrón `*.received.*`, y falla con la primera línea distinta. Los caracteres invisibles (NBSP, controles, formato) se muestran como `\uXXXX`.
 - **Aceptar:** se revisa el `.received.txt` y se vuelve a ejecutar con `CLICALO_ACCEPT_SNAPSHOTS=1`, o se renombra a `.verified.txt`. En CI (`CI` o `GITHUB_ACTIONS` a `true`) la variable se rechaza: un *pipeline* nunca aprueba su propia salida.
 - Se descartó Verify por su licencia de pago renovable (`docs/architecture/deviations.md`).
@@ -41,7 +41,7 @@ RenderSnapshot.Match(() => new MiControl(), "normal", RenderSnapshotOptions.Defa
 
 ```csharp
 var time = TestTime.CreateProvider();           // lunes 5-1-2026 09:00 UTC, zona local UTC
-var limite = time.After(umbral);             // un umbral generado desde timings.json
+var limite = time.After(umbral);                // un umbral generado desde timings.json
 time.AdvanceToJustBefore(limite);               // un tick antes: todavía no
 time.AdvanceTo(limite);                         // justo a tiempo: se dispara
 time.AdvanceInSteps(TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(40));
@@ -56,5 +56,7 @@ time.AdvanceInSteps(TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(40));
 - **`TestKeyboardInjector` (solo para pruebas; el real llega en M2 en Platform.Core):**
   - antes de cada lote comprueba que la ventana de la sonda existe y tiene el primer plano, y que no hay ningún modificador pulsado; si algo falla, no envía nada;
   - solo acepta lotes pequeños y equilibrados (cada pulsación se suelta dentro del mismo lote) y los envía con un único `SendInput`;
-  - marca cada evento con `dwExtraInfo = 0x434C4B31` para distinguirlo de la entrada física.
+  - marca cada evento con `dwExtraInfo = 0x434C4B31` para distinguirlo de la entrada física;
+  - en modo VK completa el scancode informativo y la marca extendida con la distribución de la sonda (`KeyboardLayouts.ToScanCode`). `MapVirtualKeyEx` no basta: devuelve las teclas de navegación (flechas, Inicio, Fin, RePág, AvPág, Insert y Supr) como las del teclado numérico, sin E0; Impr Pant como PetSis, y Bloq Num sin la marca extendida. Sin esa marca, Raw Input ve la tecla numérica y, con Bloq Num activo, Windows envuelve Mayús+flecha en liberaciones sintéticas de Mayús que rompen la selección;
+  - sus propias pruebas sustituyen `SendInput` por un registrador (constructor interno), así que una barrera rota nunca escribe en la ventana activa del equipo que ejecuta las pruebas.
 - **Esperar eventos:** `SendInput` es asíncrono, así que no hay una barrera exacta entre inyectar y observar. Las pruebas esperan los eventos previstos (`CollectAsync`) y un periodo de calma de 150 ms para detectar extras.

@@ -50,7 +50,7 @@ public sealed class TextSnapshotTests
         File.WriteAllText(location.VerifiedPath("txt"), "same\nprice 5 €\nend\n");
 
         var failure = Should.Throw<SnapshotMismatchException>(() =>
-            TextSnapshot.Match("same\nprice 5 €\nend\n", location, SnapshotMode.Verify)
+            TextSnapshot.Match("same\nprice 5\u00A0€\nend\n", location, SnapshotMode.Verify)
         );
 
         failure.Message.ShouldContain("does not match");
@@ -95,6 +95,7 @@ public sealed class TextSnapshotTests
     [InlineData("a\rb\n\n\n", "a\nb\n")]
     [InlineData("", "")]
     [InlineData("\n", "")]
+    [InlineData("a\u2028b\u0085c\fd", "a\u2028b\u0085c\fd\n")]
     public void Text_is_normalized_to_LF_with_one_final_newline(string input, string expected) =>
         TextSnapshot.Normalize(input).ShouldBe(expected);
 
