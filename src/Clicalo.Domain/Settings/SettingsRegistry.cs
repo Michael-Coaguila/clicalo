@@ -267,8 +267,8 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.DockPinOpen,
                 Presentation,
-                L.PinBar,
-                null,
+                L.AutoHide,
+                L.AutoHideD,
                 s => s.Dock.PinOpen,
                 (s, v) => s with { Dock = s.Dock with { PinOpen = v } }
             ),
@@ -376,8 +376,8 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.AutoSuggestProfiles,
                 Behavior,
-                L.AsTitle,
-                L.AsDesc,
+                L.AutoSuggest,
+                null,
                 s => s.AutoSuggestProfiles,
                 (s, v) => s with { AutoSuggestProfiles = v }
             ),
@@ -482,8 +482,8 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.SingleInstance,
                 Behavior,
-                L.RSingle,
                 L.RSingleD,
+                null,
                 s => s.Reliability.SingleInstance,
                 (s, v) => s with { Reliability = s.Reliability with { SingleInstance = v } }
             ),

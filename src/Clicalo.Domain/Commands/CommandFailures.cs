@@ -36,7 +36,7 @@ internal static class CommandFailures
 
     public static Failure StepNotFound() => Warning(StepNotFoundCode, L.Steps);
 
-    public static Failure NotRepeated() => Warning(NotRepeatedCode, L.DupTitle);
+    public static Failure NotRepeated() => Warning(NotRepeatedCode, L.DupSummary);
 
     public static Failure UnknownSetting() => Warning(UnknownSettingCode, L.Saved);
 
