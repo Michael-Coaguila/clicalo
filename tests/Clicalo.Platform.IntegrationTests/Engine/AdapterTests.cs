@@ -137,6 +137,50 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-009")]
+    [Trait("Req", "SEG-001")]
+    public void A_click_send_input_takes_only_in_part_leaves_no_button_down()
+    {
+        var (ledger, sender, injector) = Create();
+        using (ledger)
+        {
+            // The move and the button down go; the button up does not.
+            sender.TakeNext = 2;
+
+            injector
+                .Mouse(new EngineGeneration(1), MouseOp.RightClick, new PhysicalPoint(640, 480))
+                .Status.ShouldBe(InjectionStatus.Failed);
+
+            sender.Batches.Count.ShouldBe(2);
+            sender.Batches[1].ShouldBe([LowLevelInput.ButtonUp(LedgerMouseButtons.Right)]);
+            sender.Buttons.ShouldBe(LedgerMouseButtons.None);
+            ledger.MouseButtons.ShouldBe(LedgerMouseButtons.None);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-008")]
+    [Trait("Req", "SEG-001")]
+    public void A_text_send_input_takes_only_in_part_leaves_no_enter_down()
+    {
+        var (ledger, sender, injector) = Create();
+        using (ledger)
+        {
+            // «a», then Enter down; Enter up and «b» do not go.
+            sender.TakeNext = 2;
+
+            injector
+                .TypeText(new EngineGeneration(1), "a\nb")
+                .Status.ShouldBe(InjectionStatus.Failed);
+
+            sender.Batches.Count.ShouldBe(2);
+            sender.Batches[1].ShouldBe([LowLevelInput.KeyUp(InputMapping.Enter)]);
+            sender.IsEmpty.ShouldBeTrue();
+            ledger.Snapshot().Slots.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
     [Trait("Req", "EJE-007")]
     public void A_drag_only_moves_its_button_is_held_through_the_ledger()
     {

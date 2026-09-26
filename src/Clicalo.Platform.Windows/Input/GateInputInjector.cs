@@ -70,7 +70,7 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
         try
         {
             var count = InputMapping.FillText(text, rented);
-            return Result(gate.TryInject(generation.Value, rented.AsSpan(0, count)), count);
+            return SendBalanced(generation, rented.AsSpan(0, count));
         }
         finally
         {
@@ -128,7 +128,7 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
                 break;
         }
 
-        return Result(gate.TryInject(generation.Value, inputs[..count]), count);
+        return SendBalanced(generation, inputs[..count]);
     }
 
     /// <summary>The injection result of a gate outcome for a batch of <paramref name="count"/> inputs.</summary>
@@ -150,6 +150,68 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
         return sent == 0 && outcome.Send.LastError == InjectionGate.AccessDenied
             ? new InjectionResult(InjectionStatus.Blocked, 0, outcome.Send.LastError)
             : new InjectionResult(InjectionStatus.Failed, sent, outcome.Send.LastError);
+    }
+
+    /// <summary>
+    /// Sends a batch that releases everything it presses (a text's Enter, a click). When <c>SendInput</c> takes only
+    /// part of it, a key or button whose press went but whose release did not would stay down with no holder in the
+    /// engine to release it, so its release goes at once in a second batch (an extra release is harmless).
+    /// </summary>
+    private InjectionResult SendBalanced(
+        EngineGeneration generation,
+        ReadOnlySpan<LowLevelInput> inputs
+    )
+    {
+        var outcome = gate.TryInject(generation.Value, inputs);
+        var sent = Math.Clamp(outcome.Send.Sent, 0, inputs.Length);
+        if (outcome.Result == GateResult.Ran && sent > 0 && sent < inputs.Length)
+        {
+            ReleaseLeftovers(generation, inputs[..sent]);
+        }
+
+        return Result(outcome, inputs.Length);
+    }
+
+    private void ReleaseLeftovers(EngineGeneration generation, ReadOnlySpan<LowLevelInput> sent)
+    {
+        var keys = new List<PhysicalKey>();
+        var buttons = new List<LedgerMouseButtons>();
+        foreach (var input in sent)
+        {
+            switch (input.Kind)
+            {
+                case LowLevelInputKind.KeyDown:
+                    keys.Add(input.Key);
+                    break;
+                case LowLevelInputKind.KeyUp:
+                    keys.Remove(input.Key);
+                    break;
+                case LowLevelInputKind.MouseButtonDown:
+                    buttons.Add(input.Button);
+                    break;
+                case LowLevelInputKind.MouseButtonUp:
+                    buttons.Remove(input.Button);
+                    break;
+            }
+        }
+
+        if (keys.Count == 0 && buttons.Count == 0)
+        {
+            return;
+        }
+
+        var releases = new List<LowLevelInput>(keys.Count + buttons.Count);
+        for (var i = buttons.Count - 1; i >= 0; i--)
+        {
+            releases.Add(LowLevelInput.ButtonUp(buttons[i]));
+        }
+
+        for (var i = keys.Count - 1; i >= 0; i--)
+        {
+            releases.Add(LowLevelInput.KeyUp(keys[i]));
+        }
+
+        gate.TryInject(generation.Value, [.. releases]);
     }
 
     private static unsafe PhysicalPoint? ForegroundClientCentre()
