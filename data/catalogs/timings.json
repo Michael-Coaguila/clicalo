@@ -504,6 +504,12 @@
           "req": ["DAT-002"],
           "source": "blueprint §6.5"
         },
+        "UnsavedNoticeAfter": {
+          "duration": "3s",
+          "description": "A save that keeps failing becomes the visible «not saved» state this long after its first failed attempt started; shorter locks (antivirus, indexer) stay silent.",
+          "req": ["DAT-002"],
+          "source": "blueprint §15.1 (S11)"
+        },
         "UndoDepth": {
           "count": 20,
           "description": "Entries kept in the undo history.",
