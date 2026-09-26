@@ -42,6 +42,34 @@ internal static class JsonShape
         return false;
     }
 
+    /// <summary>
+    /// Reports every data member of <paramref name="node"/> that is not in <paramref name="allowed"/>: in an object
+    /// of fixed shape an unknown member (a typo, or a field the generator does not support) would be ignored silently.
+    /// </summary>
+    public static void AllowOnly(
+        TokenDocument document,
+        JsonNode node,
+        TokenIssues issues,
+        params string[] allowed
+    )
+    {
+        foreach (var member in DataMembers(node))
+        {
+            if (System.Array.IndexOf(allowed, member.Key) < 0)
+            {
+                issues.Malformed(
+                    document,
+                    member.Value,
+                    "unknown member '"
+                        + member.Key
+                        + "'; the allowed members are "
+                        + string.Join(", ", allowed)
+                        + "."
+                );
+            }
+        }
+    }
+
     /// <summary>Members that carry data (skips <c>$comment</c> and friends).</summary>
     public static IEnumerable<KeyValuePair<string, JsonNode>> DataMembers(JsonNode node)
     {

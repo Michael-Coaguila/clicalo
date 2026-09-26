@@ -49,6 +49,7 @@ internal static class MotionReader
                 continue;
             }
 
+            JsonShape.AllowOnly(document, member.Value, issues, "ms", "reducedMs", "use");
             var ms = Milliseconds(document, member.Value, "ms", issues);
             var reduced = Milliseconds(document, member.Value, "reducedMs", issues);
             var use = JsonShape.Required(document, member.Value, "use", JsonKind.String, issues);

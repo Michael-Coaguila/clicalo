@@ -46,6 +46,7 @@ internal sealed class TokenModelBuilder
             return;
         }
 
+        CheckRootMembers();
         ReadGamutLimit();
         var names = ReadThemeNames();
         ReadPalettes(names);
@@ -158,9 +159,53 @@ internal sealed class TokenModelBuilder
         return ok;
     }
 
+    private void CheckRootMembers()
+    {
+        JsonShape.AllowOnly(
+            Extra,
+            Extra.Root,
+            _issues,
+            "themes",
+            "colors",
+            "categories",
+            "corrections",
+            "radii",
+            "shadows",
+            "focusRing",
+            "gamutMapping"
+        );
+        var pairs = _documents[TokenFiles.ContrastPairs];
+        JsonShape.AllowOnly(
+            pairs,
+            pairs.Root,
+            _issues,
+            "minimums",
+            "backdrops",
+            "decorative",
+            "pairs"
+        );
+        var map = _documents[TokenFiles.HighContrastSystemMap];
+        JsonShape.AllowOnly(
+            map,
+            map.Root,
+            _issues,
+            "systemColors",
+            "tokens",
+            "categories",
+            "guaranteedPairs"
+        );
+        var motion = _documents[TokenFiles.Motion];
+        JsonShape.AllowOnly(motion, motion.Root, _issues, "durations");
+    }
+
     private void ReadGamutLimit()
     {
         var gamut = JsonShape.Required(Extra, Extra.Root, "gamutMapping", JsonKind.Object, _issues);
+        if (gamut is not null)
+        {
+            JsonShape.AllowOnly(Extra, gamut, _issues, "maxDeltaEOK");
+        }
+
         var max = gamut is null
             ? null
             : JsonShape.Required(Extra, gamut, "maxDeltaEOK", JsonKind.Number, _issues);
@@ -472,6 +517,7 @@ internal sealed class TokenModelBuilder
 
     private void ApplyCorrection(ThemeDraft draft, string key, JsonNode correction)
     {
+        JsonShape.AllowOnly(Extra, correction, _issues, "from", "to", "requirement", "reason");
         var requirement = JsonShape.Required(
             Extra,
             correction,
@@ -794,6 +840,16 @@ internal sealed class TokenModelBuilder
             return;
         }
 
+        JsonShape.AllowOnly(
+            Extra,
+            categories,
+            _issues,
+            "hues",
+            "tintChroma",
+            "washLightness",
+            "washChroma",
+            "highContrast"
+        );
         var hues = JsonShape.Required(Extra, categories, "hues", JsonKind.Object, _issues);
         var tintChroma = JsonShape.Required(
             Extra,
@@ -834,6 +890,7 @@ internal sealed class TokenModelBuilder
             return;
         }
 
+        JsonShape.AllowOnly(Extra, highContrast, _issues, "tint", "wash");
         var hcTint = JsonShape.Required(Extra, highContrast, "tint", JsonKind.String, _issues);
         var hcWash = JsonShape.Required(Extra, highContrast, "wash", JsonKind.String, _issues);
         foreach (var hue in JsonShape.DataMembers(hues))
@@ -1004,6 +1061,11 @@ internal sealed class TokenModelBuilder
         }
 
         var ring = JsonShape.Required(Extra, Extra.Root, "focusRing", JsonKind.Object, _issues);
+        if (ring is not null)
+        {
+            JsonShape.AllowOnly(Extra, ring, _issues, "thickness", "offset");
+        }
+
         var thickness = ring is null
             ? null
             : JsonShape.Required(Extra, ring, "thickness", JsonKind.Number, _issues);
@@ -1039,6 +1101,7 @@ internal sealed class TokenModelBuilder
             return;
         }
 
+        JsonShape.AllowOnly(Extra, shadow, _issues, "offsetX", "offsetY", "blur", "opacity");
         var x = JsonShape.Required(Extra, shadow, "offsetX", JsonKind.Number, _issues);
         var y = JsonShape.Required(Extra, shadow, "offsetY", JsonKind.Number, _issues);
         var blur = JsonShape.Required(Extra, shadow, "blur", JsonKind.Number, _issues);

@@ -94,6 +94,7 @@ internal static class SystemColorMapReader
         );
         if (categories is not null)
         {
+            JsonShape.AllowOnly(document, categories, issues, "tint", "wash");
             var tint = JsonShape.Required(document, categories, "tint", JsonKind.String, issues);
             var wash = JsonShape.Required(document, categories, "wash", JsonKind.String, issues);
             model.SystemCategoryTint =
@@ -140,6 +141,7 @@ internal static class SystemColorMapReader
                 continue;
             }
 
+            JsonShape.AllowOnly(document, member.Value, issues, "win32", "wpf", "role");
             JsonShape.Required(document, member.Value, "win32", JsonKind.String, issues);
             JsonShape.Required(document, member.Value, "role", JsonKind.String, issues);
             var wpf = JsonShape.Required(document, member.Value, "wpf", JsonKind.String, issues);
@@ -189,6 +191,7 @@ internal static class SystemColorMapReader
                 continue;
             }
 
+            JsonShape.AllowOnly(document, pair, issues, "foreground", "background", "basis");
             JsonShape.Required(document, pair, "basis", JsonKind.String, issues);
             foreach (var side in new[] { "foreground", "background" })
             {

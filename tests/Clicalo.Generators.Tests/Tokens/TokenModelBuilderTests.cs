@@ -186,6 +186,34 @@ public sealed class TokenModelBuilderTests
         (issue.Line, issue.Column).ShouldBe(TokenTestData.PositionOf(files[Extra], "\"0.12\""));
     }
 
+    [Theory]
+    [InlineData(Extra, "\"to\": 0.84,", "\"to\": 0.84, \"bogus\": 1,", "bogus")]
+    [InlineData(Extra, "\"opacity\": 0.5 }", "\"opacity\": 0.5, \"spread\": 4 }", "spread")]
+    [InlineData(Extra, "\"themes\": {", "\"theme\": 1, \"themes\": {", "theme")]
+    [InlineData(Pairs, "\"kind\": \"text\",", "\"kind\": \"text\", \"min\": 7,", "min")]
+    [InlineData(
+        SystemMap,
+        "\"basis\": \"Par de texto",
+        "\"note\": \"x\", \"basis\": \"Par de texto",
+        "note"
+    )]
+    [InlineData(TokenFiles.Motion, "\"ms\": 350,", "\"ms\": 350, \"easing\": \"ease\",", "easing")]
+    public void CLCT004_rejects_unknown_members_of_fixed_shape_objects(
+        string file,
+        string find,
+        string replace,
+        string member
+    )
+    {
+        var files = TokenTestData.With(file, find, replace);
+
+        var issue = TokenTestData.Build(files).Issues.ShouldHaveSingleItem();
+
+        issue.Id.ShouldBe(TokenIds.MalformedFile);
+        issue.Path.ShouldBe(TokenTestData.Directory + file);
+        issue.Message.ShouldContain("unknown member '" + member + "'");
+    }
+
     [Fact]
     [Trait("Req", "TEM-004")]
     public void CLCT004_rejects_a_minimum_below_wcag_aa()

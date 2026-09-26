@@ -233,7 +233,7 @@ Todos son errores. El mensaje dice qué falla y cómo arreglarlo.
 
 ### CLCT004
 
-**Archivo mal formado.** JSON no válido (con la posición del error), un miembro que falta o de tipo equivocado, un nombre que no es camelCase, un mínimo de contraste por debajo de WCAG AA, una duración no entera, etc.
+**Archivo mal formado.** JSON no válido (con la posición del error), un miembro que falta o de tipo equivocado, un miembro desconocido en un objeto de forma fija (una errata que se ignoraría en silencio), un nombre que no es camelCase, un mínimo de contraste por debajo de WCAG AA, una duración no entera, etc.
 
 ### CLCT005
 

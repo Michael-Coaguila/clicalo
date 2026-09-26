@@ -147,6 +147,7 @@ internal static class ContrastChecker
             return null;
         }
 
+        JsonShape.AllowOnly(document, minimums, issues, "text", "graphic");
         var text = ReadMinimum(document, minimums, "text", Wcag.MinimumTextContrast, issues);
         var graphic = ReadMinimum(
             document,
@@ -265,6 +266,7 @@ internal static class ContrastChecker
                 continue;
             }
 
+            JsonShape.AllowOnly(document, pair, issues, "kind", "foreground", "backgrounds", "use");
             var kind = JsonShape.Required(document, pair, "kind", JsonKind.String, issues);
             var foreground = JsonShape.Required(
                 document,
