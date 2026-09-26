@@ -1,10 +1,17 @@
 {
   // Blueprint §13: autosave, CSharpier on save and one task per `cl` verb (tasks.json).
   // onFocusChange (not afterDelay) because VS Code only formats on save when the save is not delayed.
+  // Only C# is formatted on save: data/, schemas and project files keep their hand-written layout, which
+  // VS Code's built-in JSON and XML formatters would otherwise rewrite on every save.
   "files.autoSave": "onFocusChange",
-  "editor.formatOnSave": true,
+  "editor.formatOnSave": false,
   "[csharp]": {
-    "editor.defaultFormatter": "csharpier.csharpier-vscode"
+    "editor.defaultFormatter": "csharpier.csharpier-vscode",
+    "editor.formatOnSave": true
+  },
+  // Same as .editorconfig: trailing spaces are meaningful line breaks in Markdown.
+  "[markdown]": {
+    "files.trimTrailingWhitespace": false
   },
   "files.eol": "\n",
   "files.insertFinalNewline": true,
