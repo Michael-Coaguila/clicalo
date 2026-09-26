@@ -46,7 +46,9 @@ public sealed class EngineMailboxTests
         using var stop = new CancellationTokenSource();
         stop.Cancel();
 
-        Should.Throw<OperationCanceledException>(() => mailbox.WaitForEvent(Timeout.InfiniteTimeSpan, stop.Token));
+        Should.Throw<OperationCanceledException>(() =>
+            mailbox.WaitForEvent(Timeout.InfiniteTimeSpan, stop.Token)
+        );
     }
 
     [Fact]

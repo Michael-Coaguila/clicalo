@@ -278,7 +278,7 @@ public sealed class InjectionGate
                         _ledger.CommitDown(slots[i]);
                         break;
                     case LowLevelInputKind.KeyDown:
-                        _ledger.CommitUp(slots[i]);
+                        _ledger.RollbackDown(slots[i]);
                         break;
                     case LowLevelInputKind.KeyUp when slots[i] >= 0 && i < sent:
                         _ledger.CommitUp(slots[i]);
@@ -326,7 +326,7 @@ public sealed class InjectionGate
                     {
                         if (batch[j].Kind == LowLevelInputKind.KeyDown)
                         {
-                            _ledger.CommitUp(slots[j]);
+                            _ledger.RollbackDown(slots[j]);
                         }
                     }
 

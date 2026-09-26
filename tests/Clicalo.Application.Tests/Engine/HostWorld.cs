@@ -34,7 +34,10 @@ internal sealed class HostWorld : IDisposable
         Func<EngineGeneration, bool>? releaseRecorded = null
     )
     {
-        Ports = new EngineHostPorts(Injector, Ledger, Shell, Shell, Observer) { ReleaseRecorded = releaseRecorded };
+        Ports = new EngineHostPorts(Injector, Ledger, Shell, Shell, Observer)
+        {
+            ReleaseRecorded = releaseRecorded,
+        };
         Host = new EngineHost(
             Ports,
             Generation,
@@ -48,7 +51,8 @@ internal sealed class HostWorld : IDisposable
 
     public static EngineGeneration Generation { get; } = new(7);
 
-    public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
+    public FakeTimeProvider Time { get; } =
+        new(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
 
     public FakeInjector Injector { get; } = new();
 
@@ -79,7 +83,11 @@ internal sealed class HostWorld : IDisposable
             KeyboardLayoutSnapshot.Empty
         );
 
-    public static EngineState WithForeground(EngineState state) => state with { Foreground = Notepad };
+    public static EngineState WithForeground(EngineState state) =>
+        state with
+        {
+            Foreground = Notepad,
+        };
 
     /// <summary>A state whose ledger holds Shift for a contact.</summary>
     public static EngineState HoldingShift()
@@ -94,17 +102,34 @@ internal sealed class HostWorld : IDisposable
             0,
             null
         );
-        return WithForeground(EngineState.Empty with { Keys = KeyboardLedger.Empty.Acquire(item).Ledger });
+        return WithForeground(
+            EngineState.Empty with
+            {
+                Keys = KeyboardLedger.Empty.Acquire(item).Ledger,
+            }
+        );
     }
 
     public static EngineEffect.Inject Press(long epoch = 3, params InjectedEvent[] events) =>
-        new(events.Length == 0 ? [InjectedEvent.KeyDown(Ctrl)] : [.. events], epoch, null, IsRelease: false, IsInternal: false)
+        new(
+            events.Length == 0 ? [InjectedEvent.KeyDown(Ctrl)] : [.. events],
+            epoch,
+            null,
+            IsRelease: false,
+            IsInternal: false
+        )
         {
             Effect = new EffectId(42),
         };
 
     public static EngineEffect.Inject Release(params InjectedEvent[] events) =>
-        new(events.Length == 0 ? [InjectedEvent.KeyUp(Ctrl)] : [.. events], null, null, IsRelease: true, IsInternal: false);
+        new(
+            events.Length == 0 ? [InjectedEvent.KeyUp(Ctrl)] : [.. events],
+            null,
+            null,
+            IsRelease: true,
+            IsInternal: false
+        );
 
     /// <summary>Queues an event and processes the mailbox once.</summary>
     public void Handle(EngineEvent engineEvent, params EngineEffect[] answer)
@@ -116,7 +141,12 @@ internal sealed class HostWorld : IDisposable
 
     public void Dispose() => Host.Dispose();
 
-    private EngineTransition Script(EngineState state, EngineEvent engineEvent, EngineConfig config, long now)
+    private EngineTransition Script(
+        EngineState state,
+        EngineEvent engineEvent,
+        EngineConfig config,
+        long now
+    )
     {
         Seen.Add(engineEvent);
         if (ThrowOn is { } type && type.IsInstanceOfType(engineEvent))

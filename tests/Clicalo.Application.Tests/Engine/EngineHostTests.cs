@@ -52,7 +52,10 @@ public sealed class EngineHostTests
         world.Host.Pump();
 
         world.Injector.Batches.ShouldBeEmpty();
-        world.Seen.OfType<EngineEvent.InjectFailed>().ShouldHaveSingleItem().Effect.ShouldBe(new EffectId(42));
+        world
+            .Seen.OfType<EngineEvent.InjectFailed>()
+            .ShouldHaveSingleItem()
+            .Effect.ShouldBe(new EffectId(42));
     }
 
     [Fact]
@@ -75,7 +78,9 @@ public sealed class EngineHostTests
     [Trait("Req", "TAC-008")]
     public void Nothing_but_releases_goes_out_in_test_mode()
     {
-        using var world = new HostWorld(HostWorld.WithForeground(EngineState.Empty with { TestMode = true }));
+        using var world = new HostWorld(
+            HostWorld.WithForeground(EngineState.Empty with { TestMode = true })
+        );
 
         world.Handle(
             new EngineEvent.SessionResumed(),
@@ -109,7 +114,10 @@ public sealed class EngineHostTests
         world.Handle(new EngineEvent.SessionResumed(), HostWorld.Press());
         world.Host.Pump();
 
-        world.Seen.OfType<EngineEvent.InjectFailed>().ShouldHaveSingleItem().Win32Error.ShouldBe(87);
+        world
+            .Seen.OfType<EngineEvent.InjectFailed>()
+            .ShouldHaveSingleItem()
+            .Win32Error.ShouldBe(87);
     }
 
     [Fact]
@@ -122,7 +130,10 @@ public sealed class EngineHostTests
         world.Handle(new EngineEvent.Terminal(TerminalReason.Lock), HostWorld.Release());
         world.Host.Pump();
 
-        world.Seen.OfType<EngineEvent.ReleasesBlocked>().ShouldHaveSingleItem().Events.Length.ShouldBe(1);
+        world
+            .Seen.OfType<EngineEvent.ReleasesBlocked>()
+            .ShouldHaveSingleItem()
+            .Events.Length.ShouldBe(1);
     }
 
     [Fact]
@@ -149,7 +160,12 @@ public sealed class EngineHostTests
 
         world.Handle(
             new EngineEvent.SessionResumed(),
-            new EngineEffect.TypeText(new EffectId(1), SecretText.From("Â¡Hola, Ã±andÃº!"), 3, null),
+            new EngineEffect.TypeText(
+                new EffectId(1),
+                SecretText.From("Â¡Hola, Ã±andÃº!"),
+                3,
+                null
+            ),
             new EngineEffect.ClipboardPaste(new EffectId(2), SecretText.From("pegar"), 3)
         );
 
@@ -167,7 +183,10 @@ public sealed class EngineHostTests
 
         world.Handle(
             new EngineEvent.SessionResumed(),
-            new EngineEffect.Launch(new EffectId(1), new LaunchRequest.OpenUrl(new Uri("https://example.com"))),
+            new EngineEffect.Launch(
+                new EffectId(1),
+                new LaunchRequest.OpenUrl(new Uri("https://example.com"))
+            ),
             new EngineEffect.SystemCommand(new EffectId(2), new SystemCommandId("lock"))
         );
 
@@ -185,10 +204,17 @@ public sealed class EngineHostTests
 
         world.Handle(
             new EngineEvent.SessionResumed(),
-            new EngineEffect.MouseAction(MouseOp.RightClick, ScrollSpeed.Normal, new PhysicalPoint(10, 20), 3)
+            new EngineEffect.MouseAction(
+                MouseOp.RightClick,
+                ScrollSpeed.Normal,
+                new PhysicalPoint(10, 20),
+                3
+            )
         );
 
-        world.Injector.MouseActions.ShouldBe([(MouseOp.RightClick, (PhysicalPoint?)new PhysicalPoint(10, 20))]);
+        world.Injector.MouseActions.ShouldBe([
+            (MouseOp.RightClick, (PhysicalPoint?)new PhysicalPoint(10, 20)),
+        ]);
     }
 
     [Fact]
@@ -198,14 +224,20 @@ public sealed class EngineHostTests
         using var world = new HostWorld();
         var due = world.Time.GetTimestamp() + TimeSpan.FromMilliseconds(500).Ticks;
 
-        world.Handle(new EngineEvent.SessionResumed(), new EngineEffect.Schedule(new TimerKey("macro"), due));
+        world.Handle(
+            new EngineEvent.SessionResumed(),
+            new EngineEffect.Schedule(new TimerKey("macro"), due)
+        );
         world.Time.Advance(TimeSpan.FromMilliseconds(499));
         world.Host.Pump();
         world.Seen.OfType<EngineEvent.TimerFired>().ShouldBeEmpty();
 
         world.Time.Advance(TimeSpan.FromMilliseconds(1));
         world.Host.Pump();
-        world.Seen.OfType<EngineEvent.TimerFired>().ShouldHaveSingleItem().Key.ShouldBe(new TimerKey("macro"));
+        world
+            .Seen.OfType<EngineEvent.TimerFired>()
+            .ShouldHaveSingleItem()
+            .Key.ShouldBe(new TimerKey("macro"));
     }
 
     [Fact]
@@ -214,8 +246,14 @@ public sealed class EngineHostTests
         using var world = new HostWorld();
         var due = world.Time.GetTimestamp() + TimeSpan.FromMilliseconds(100).Ticks;
 
-        world.Handle(new EngineEvent.SessionResumed(), new EngineEffect.Schedule(new TimerKey("scroll"), due));
-        world.Handle(new EngineEvent.SessionResumed(), new EngineEffect.CancelTimer(new TimerKey("scroll")));
+        world.Handle(
+            new EngineEvent.SessionResumed(),
+            new EngineEffect.Schedule(new TimerKey("scroll"), due)
+        );
+        world.Handle(
+            new EngineEvent.SessionResumed(),
+            new EngineEffect.CancelTimer(new TimerKey("scroll"))
+        );
         world.Time.Advance(TimeSpan.FromSeconds(1));
         world.Host.Pump();
 
@@ -233,7 +271,9 @@ public sealed class EngineHostTests
         world.Host.Pump();
 
         world.Ledger.Heartbeats.Count.ShouldBe(2);
-        (world.Ledger.Heartbeats[1] - world.Ledger.Heartbeats[0]).ShouldBe(Timings.Engine.LedgerHeartbeatInterval.Ticks);
+        (world.Ledger.Heartbeats[1] - world.Ledger.Heartbeats[0]).ShouldBe(
+            Timings.Engine.LedgerHeartbeatInterval.Ticks
+        );
     }
 
     [Fact]
@@ -245,7 +285,10 @@ public sealed class EngineHostTests
         world.Handle(new EngineEvent.SessionResumed());
         world.Handle(new EngineEvent.SessionResumed());
         world.Observer.Snapshots.Count.ShouldBe(1);
-        world.Observer.Snapshots[0].Held.ShouldHaveSingleItem().Holder.ShouldBe(HolderId.ForContact(1));
+        world
+            .Observer.Snapshots[0]
+            .Held.ShouldHaveSingleItem()
+            .Holder.ShouldBe(HolderId.ForContact(1));
 
         world.Time.Advance(Timings.Engine.SnapshotCoalescing);
         world.Host.Pump();
@@ -257,11 +300,16 @@ public sealed class EngineHostTests
     [Trait("Req", "NFR-005")]
     public void An_exception_releases_what_was_held_resets_the_state_and_says_so()
     {
-        using var world = new HostWorld(HostWorld.HoldingShift()) { ThrowOn = typeof(EngineEvent.SessionResumed) };
+        using var world = new HostWorld(HostWorld.HoldingShift())
+        {
+            ThrowOn = typeof(EngineEvent.SessionResumed),
+        };
 
         world.Handle(new EngineEvent.SessionResumed());
 
-        world.Injector.Batches.ShouldHaveSingleItem().Events.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
+        world
+            .Injector.Batches.ShouldHaveSingleItem()
+            .Events.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
         world.Host.State.IsQuiet.ShouldBeTrue();
         world.Host.State.Foreground.ShouldBe(HostWorld.Notepad);
         world.Observer.Notices.ShouldHaveSingleItem().Urgency.ShouldBe(NoticeUrgency.Assertive);
@@ -318,7 +366,10 @@ public sealed class EngineHostTests
     [InlineData(TerminalReason.Update, KeyLedgerMarks.CleanShutdown | KeyLedgerMarks.NoRelaunch)]
     [InlineData(TerminalReason.Lock, KeyLedgerMarks.None)]
     [Trait("Req", "SEG-006")]
-    public void Terminal_events_leave_the_marks_sentinel_reads(TerminalReason reason, KeyLedgerMarks marks)
+    public void Terminal_events_leave_the_marks_sentinel_reads(
+        TerminalReason reason,
+        KeyLedgerMarks marks
+    )
     {
         using var world = new HostWorld();
 
@@ -343,7 +394,9 @@ public sealed class EngineHostTests
 
         world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive).ShouldBeFalse();
         world.Ledger.Marks.HasFlag(KeyLedgerMarks.CleanShutdown).ShouldBeTrue();
-        world.Injector.Batches.SelectMany(static b => b.Events).ShouldContain(InjectedEvent.KeyUp(HostWorld.Shift));
+        world
+            .Injector.Batches.SelectMany(static b => b.Events)
+            .ShouldContain(InjectedEvent.KeyUp(HostWorld.Shift));
         world.Host.Post(new EngineEvent.ReleaseAll(ReleaseReason.User)).ShouldBeFalse();
     }
 

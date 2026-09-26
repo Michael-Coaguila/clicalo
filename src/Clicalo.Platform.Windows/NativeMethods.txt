@@ -83,3 +83,13 @@ TrackPopupMenuEx
 EndMenu
 WM_ENTERMENULOOP
 WM_EXITMENULOOP
+
+// engine
+// ---- Input: mouse target, keyboard layout snapshots, start-up release and emergency restart ----
+GetClientRect
+ClientToScreen
+VkKeyScanEx
+MapVirtualKeyEx
+GetKeyboardLayout
+TerminateProcess
+GetCurrentProcess

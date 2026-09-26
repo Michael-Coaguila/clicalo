@@ -29,7 +29,11 @@ internal sealed class FakeInjector : IInputInjector
         return Result(text.Length);
     }
 
-    public InjectionResult Mouse(EngineGeneration generation, MouseOp operation, PhysicalPoint? target)
+    public InjectionResult Mouse(
+        EngineGeneration generation,
+        MouseOp operation,
+        PhysicalPoint? target
+    )
     {
         MouseActions.Add((operation, target));
         return Result(1);

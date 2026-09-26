@@ -459,6 +459,39 @@ public sealed unsafe class KeyLedgerSection : IDisposable
         PInvoke.CloseHandle(_mapping);
     }
 
+    /// <summary>
+    /// Undoes a <see cref="TryBeginDown"/> whose key never reached <c>SendInput</c>: drops that reference only, so a key
+    /// that was already down (another press, or a release still pending) stays recorded; a slot the undone press
+    /// created goes back to free.
+    /// </summary>
+    internal void RollbackDown(int slot)
+    {
+        ThrowIfReadOnly();
+        CheckSlot(slot);
+        BeginWrite();
+        try
+        {
+            if (State(slot) == LedgerSlotState.Free)
+            {
+                return;
+            }
+
+            var count = RefCount(slot);
+            if (count <= 1)
+            {
+                Free(slot);
+            }
+            else
+            {
+                SetRefCount(slot, (ushort)(count - 1));
+            }
+        }
+        finally
+        {
+            EndWrite();
+        }
+    }
+
     /// <summary>Frees a slot whatever its reference count (the emergency release and Sentinel release every holder).</summary>
     internal void ForceFree(int slot)
     {
