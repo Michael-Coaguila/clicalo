@@ -236,7 +236,7 @@ public sealed class HandoffFidelityTests
                 (
                     Combo: Keys.Canonical(
                         b.Key.Split('+').Select(s => Keys.Resolve(s)!.Id),
-                        genericIsLeft: true
+                        ignoreSides: true
                     ),
                     Level: Ordinal.Is(b.Value!.GetValue<string>(), "b") ? "blocked" : "special"
                 )
@@ -249,7 +249,7 @@ public sealed class HandoffFidelityTests
             .AsArray()
             .Select(c =>
                 (
-                    Combo: Keys.Canonical(Strings(c!["keys"]!), genericIsLeft: true),
+                    Combo: Keys.Canonical(Strings(c!["keys"]!), ignoreSides: true),
                     Level: c["level"]!.GetValue<string>()
                 )
             )

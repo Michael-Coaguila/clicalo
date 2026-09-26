@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/blocked-combos.schema.json",
   "title": "Clícalo blocked and special combinations",
-  "description": "Combinations Windows reserves (blocked: never sent, EJE-014) or treats specially (special: the editor recommends testing them, EDI-007). Compared by canonical key (REP-001), where Ctrl without side equals left Ctrl.",
+  "description": "Combinations Windows reserves (blocked: never sent, EJE-014) or treats specially (special: the editor recommends testing them, EDI-007). Compared by canonical key (REP-001) ignoring the side of the modifiers: Windows reserves these combinations with either Ctrl, Alt, Shift or Win key, so Ctrl+Alt+Delete also covers right Ctrl and AltGr.",
   "type": "object",
   "required": ["catalogVersion", "combos"],
   "additionalProperties": false,

@@ -196,12 +196,12 @@ public sealed class ContentIntegrityTests
     {
         var blocked = BlockedCombos()
             .Where(b => Ordinal.Is(b.Level, "blocked"))
-            .Select(b => Keys.Canonical(b.Keys, genericIsLeft: true))
+            .Select(b => Keys.Canonical(b.Keys, ignoreSides: true))
             .ToHashSet(StringComparer.Ordinal);
 
         var offending = ContentCatalog
             .Shortcuts.Where(s => s.Keys is not null)
-            .Where(s => blocked.Contains(Keys.Canonical(s.Keys!, genericIsLeft: true)))
+            .Where(s => blocked.Contains(Keys.Canonical(s.Keys!, ignoreSides: true)))
             .Select(s => s.Where);
 
         offending.ShouldBeEmpty();
@@ -212,7 +212,7 @@ public sealed class ContentIntegrityTests
     public void Blocked_combinations_are_listed_once_in_canonical_form()
     {
         BlockedCombos()
-            .Select(b => Keys.Canonical(b.Keys, genericIsLeft: true))
+            .Select(b => Keys.Canonical(b.Keys, ignoreSides: true))
             .ShouldBeUnique(StringComparer.Ordinal);
     }
 

@@ -57,9 +57,10 @@ internal sealed class KeyCatalog
 
     /// <summary>
     /// Canonical key of a combination (REP-001): modifiers as a set with their side, main keys in order.
-    /// With <paramref name="genericIsLeft"/>, a modifier without side counts as its left key (blocked combos).
+    /// With <paramref name="ignoreSides"/>, every modifier counts as its family whatever its side: Windows reserves
+    /// the blocked and special combinations on both sides (Ctrl+Alt+Supr also with right Ctrl or AltGr).
     /// </summary>
-    public string Canonical(IEnumerable<string> keyIds, bool genericIsLeft = false)
+    public string Canonical(IEnumerable<string> keyIds, bool ignoreSides = false)
     {
         var modifiers = new SortedSet<string>(StringComparer.Ordinal);
         var main = new List<string>();
@@ -72,8 +73,7 @@ internal sealed class KeyCatalog
                 continue;
             }
 
-            var side = key.Side ?? (genericIsLeft ? "left" : "any");
-            modifiers.Add(key.Modifier + ":" + side);
+            modifiers.Add(ignoreSides ? key.Modifier : key.Modifier + ":" + (key.Side ?? "any"));
         }
 
         return string.Join("+", modifiers) + "|" + string.Join("+", main);
