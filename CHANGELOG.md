@@ -56,3 +56,11 @@ Milestone M0 · Foundations and harness (in progress).
 - GitHub workflows: `pr.yml` (`verify` = `cl check`, `adr`, `dco`, and ARM64, CodeQL and Scorecard for the
   public repository), `pr-title.yml` (Conventional Commits titles) and `s0.yml` (spike S0, desktop tests on
   hosted runners); Renovate, CODEOWNERS, issue forms, a pull request template and VS Code tasks.
+- Milestone M1 contracts for the blocking spikes S1, S3 and S4: `Clicalo.Domain.Geometry` (physical points and
+  rectangles), `Clicalo.Domain.Touch` (pointer frames, touch settings and targets, `GestureRecognizer`,
+  `TouchFilter`), the foreground leases of `Clicalo.Application.Foreground`, the foreground and surface ports of
+  `Clicalo.Application.Ports`, `NonActivatingWindow` and its registry, guard and integrity check in
+  `Clicalo.UI.Wpf.Windowing`, the pointer layer setup in `Clicalo.UI.Wpf.Pointer`, the accessible `ShortcutTile`
+  and `LiveAnnouncer` in `Clicalo.UI.Wpf.Automation`, and the SysEvents, foreground and tray adapters of
+  `Clicalo.Platform.Windows`; the `Clicalo.Windowing.IntegrationTests` project and the `tools/SpikeLab`
+  laboratory; the spike scripts and the package ownership map in `docs/testing/spikes/`.

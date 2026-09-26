@@ -22,6 +22,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
+| D-13 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -221,6 +222,29 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   `dco` de `pr.yml` comprueba los commits del PR (solo `base..head`, nunca el historial ya publicado).
 - **Revisión.** Única: se cierra con el primer *push*. Si el mantenedor prefiere un historial limpio, puede
   linealizarlo y corregir los mensajes antes de ese *push*; entonces esta entrada se elimina.
+
+## D-13 · Contratos de M1 para el primer plano
+
+- **Plano.** [§3.5](blueprint.md#35-ventanas-no-activables) pone `SurfaceId` junto a `NonActivatingWindow`
+  (`Clicalo.UI.Wpf.Windowing`) y hace que `ActivationGuard` llame directamente a
+  `Orchestrator.RestoreAfterViolation`; [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano)
+  declara `IForegroundControl` e `ISurfaceActivationStyle` y describe el atajo interno de derechos y Win+H como
+  efectos que inyecta el motor.
+- **Repositorio.**
+  - `SurfaceId` (con `SurfaceKind`) y `WindowToken` viven en `Clicalo.Application.Ports`, porque los usan los
+    puertos y Application no ve UI.Wpf. `NonActivatingWindow.Id` los expone igual.
+  - `IActivationArbiter` (Ports), que implementa `ForegroundOrchestrator`: es lo que `ActivationGuard` llama
+    (`IsActivationLeased` y `ReportViolation`), porque UI.Wpf solo puede usar de Application los tipos de
+    `Application.Ports` (§4.2, regla de ArchUnit).
+  - `ISurfaceLookup` (Ports), que implementa `SurfaceRegistry`: traduce el `WindowToken` destino de una concesión
+    a su `SurfaceId`, que es lo que pide `ISurfaceActivationStyle`.
+  - `IInternalKeyEffects` (Ports): el envío del atajo interno (Ctrl+Alt+Shift+F24) y de Win+H. En M2 lo implementa
+    el motor tras `InjectionGate`; en M1, implementaciones de prueba protegidas.
+  - `ForegroundLease` añade la propiedad `Target`; `IForegroundMonitor`, `IInternalRightsHotkey` e `ITouchKeyboard`
+    son los puertos que el plano nombra sin firma.
+- **Motivo.** Sin estas piezas, los tipos de §3.5 y §3.6 no compilan respetando las reglas de capas de §4.2 y §4.4.
+- **Coste.** Tres interfaces más en Ports, todas pequeñas y con una sola implementación.
+- **Revisión.** Al cerrar S1 y S4; pendiente de ratificar junto con D-09.
 
 ## Puntos del plano pendientes de resolver
 
