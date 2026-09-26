@@ -39,7 +39,25 @@ public sealed class StringsParityTests
             .Select(static e => I18nData.BaseKey(e.Key))
             .Where(k => !handoff.Contains(k))
             .Distinct(StringComparer.Ordinal)
-            .ShouldBe(["migTProfiles", "migTShortcuts"]);
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
+                // Key-group and category labels of data/catalogs (keys.json, categories.json).
+                "catEdit",
+                "catFile",
+                "catFmt",
+                "catHist",
+                "catNav",
+                "catSel",
+                "catText",
+                "catVoice",
+                "catWeb",
+                "catWin",
+                "kgFn",
+                "kgMods",
+                // Nested plural quantities of migT.
+                "migTProfiles",
+                "migTShortcuts",
+            ]);
         entries
             .Where(static e => I18nData.Category(e.Key) is not null)
             .Select(static e => I18nData.BaseKey(e.Key))
