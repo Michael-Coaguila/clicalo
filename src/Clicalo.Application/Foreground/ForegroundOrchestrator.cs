@@ -145,7 +145,7 @@ public sealed partial class ForegroundOrchestrator
         }
 
         LogViolation(_logger, violation.Surface, violation.Message, violation.ProbableCause);
-        _ = RestoreAfterViolationInBackgroundAsync(Current.Window);
+        _ = RestoreAfterViolationInBackgroundAsync();
     }
 
     /// <summary>
@@ -631,12 +631,35 @@ public sealed partial class ForegroundOrchestrator
         }
     }
 
-    private async Task RestoreAfterViolationInBackgroundAsync(WindowToken expected)
+    /// <summary>
+    /// The reaction to a reported violation, decided inside the gate: the foreground goes back to the target of the
+    /// active lease when there is one (a surface activated during a text input lease must not end that lease by sending
+    /// the user back to the app, which the monitor would then report as an app switch), and otherwise to the last
+    /// verified external window (blueprint §3.5).
+    /// </summary>
+    private async Task RestoreAfterViolationInBackgroundAsync()
     {
         try
         {
-            await RestoreAfterViolationAsync(expected, CancellationToken.None)
-                .ConfigureAwait(false);
+            await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+            try
+            {
+                var expected = Volatile.Read(ref _active)?.Target ?? Current.Window;
+                if (!expected.IsNone)
+                {
+                    var outcome = await GiveBackAsync(
+                            expected,
+                            flashOnFailure: false,
+                            CancellationToken.None
+                        )
+                        .ConfigureAwait(false);
+                    LogViolationRestored(_logger, expected, outcome);
+                }
+            }
+            finally
+            {
+                _gate.Release();
+            }
         }
         catch (ObjectDisposedException)
         {

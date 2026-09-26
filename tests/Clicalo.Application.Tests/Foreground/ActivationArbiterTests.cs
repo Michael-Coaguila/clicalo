@@ -8,7 +8,7 @@ namespace Clicalo.Application.Tests.Foreground;
 /// <summary>
 /// The orchestrator as <see cref="IActivationArbiter"/> for <c>ActivationGuard</c> (blueprint §3.5, deviation D-13):
 /// an activation is legitimate only for the target of the lease being granted or active, and a reported violation
-/// gives the foreground back to the last verified external window.
+/// gives the foreground back to the last verified external window, or to the target of the active lease.
 /// </summary>
 [Trait("Req", "REG-01")]
 public sealed class ActivationArbiterTests : IDisposable
@@ -121,6 +121,22 @@ public sealed class ActivationArbiterTests : IDisposable
         Arbiter.ReportViolation(Violation(Search, SearchSurface));
 
         _world.Log.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_violation_during_a_lease_gives_the_foreground_back_to_its_target_and_keeps_it()
+    {
+        _world.Control.HasRights = true;
+        var search = await _world.GrantAsync(LeaseKind.TextInput, Search);
+        _world.Control.Foreground = Panel;
+        _world.Mark();
+
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+
+        _world.Log.ShouldBe(["set Search"], "the search keeps the foreground, not Word");
+        _world.Control.Foreground.ShouldBe(Search);
+        search.IsActive.ShouldBeTrue("a violation elsewhere does not end the text input");
+        Arbiter.IsActivationLeased(Search).ShouldBeTrue();
     }
 
     [Fact]

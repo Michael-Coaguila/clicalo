@@ -107,13 +107,23 @@ public sealed class ForegroundLease : IAsyncDisposable
 
     /// <summary>
     /// Postpones the idle timeout (<see cref="LeaseRequest.IdleTimeout"/>): call it on every interaction with the
-    /// target, such as a key typed into the search. No effect once the lease has ended or without a timeout.
+    /// target, such as a key typed into the search. No effect once the lease has ended or without a timeout. May be
+    /// called from any thread, also while the lease is ending.
     /// </summary>
     public void KeepAlive()
     {
-        if (IsActive && IdleTimeout is { } idle)
+        if (!IsActive || IdleTimeout is not { } idle)
+        {
+            return;
+        }
+
+        try
         {
             _ = Volatile.Read(ref _idleTimer)?.Change(idle, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The lease ended on another thread between the check and the call: nothing to postpone.
         }
     }
 
