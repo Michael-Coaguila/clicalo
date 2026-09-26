@@ -22,6 +22,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
+| D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | Repositorio privado en el plan gratuito, que no admite protección de ramas: *hook* local `pre-push` y *merge* solo por *squash* configurado en GitHub | M0 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -221,6 +222,22 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   `dco` de `pr.yml` comprueba los commits del PR (solo `base..head`, nunca el historial ya publicado).
 - **Revisión.** Única: se cierra con el primer *push*. Si el mantenedor prefiere un historial limpio, puede
   linealizarlo y corregir los mensajes antes de ese *push*; entonces esta entrada se elimina.
+
+## D-13 · Protección de `main` sin reglas de GitHub
+
+- **Plano.** [§13](blueprint.md#13-convenciones-de-ingeniería): `main` protegida, siempre en verde e historial
+  lineal; todo entra por PR con *squash* y con los checks obligatorios.
+- **Repositorio.** GitHub no ofrece protección de ramas ni *rulesets* para repositorios privados en el plan
+  gratuito (la API responde 403: «Upgrade to GitHub Pro or make this repository public»). Mientras tanto:
+  - el repositorio solo admite *squash* (título del PR como commit, mensajes de los commits como cuerpo, con
+    sus `Signed-off-by`) y borra la rama al fusionar;
+  - `build/githooks/pre-push`, que instala `cl setup`, bloquea el *push* directo a `main` en cada clon. Se
+    salta solo con `CLICALO_ALLOW_MAIN_PUSH=1`, para emergencias.
+- **Coste.** Es una protección de disciplina, no de servidor: un clon sin `cl setup` o la interfaz web de
+  GitHub pueden saltársela, y los checks no son obligatorios para fusionar.
+- **Revisión.** Al hacer público el repositorio (o con GitHub Pro) se activa la protección real: PR
+  obligatorio, checks `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal, conversación
+  resuelta y sin excepciones para administradores. Entonces esta entrada se elimina.
 
 ## Puntos del plano pendientes de resolver
 
