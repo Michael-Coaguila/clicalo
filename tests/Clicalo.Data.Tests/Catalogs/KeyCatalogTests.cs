@@ -159,32 +159,99 @@ public sealed class KeyCatalogTests
         Keys.Resolve("minus")!.Id.ShouldBe("char:-");
     }
 
-    [Fact]
-    [Trait("Req", "MIG-005")]
-    public void The_keys_used_by_version_1_exist()
-    {
-        foreach (
-            var spelling in new[]
-            {
-                "`",
-                "\\",
-                "[",
-                "]",
-                "'",
-                "#",
-                "ctrlright",
-                "altright",
-                "winright",
-                "num+",
-                "num-",
-                "pgdn",
-                "prtsc",
-                "apps",
-            }
-        )
+    /// <summary>
+    /// Every token of the version 1 key table (catalog §7.3) and the catalog key it becomes. «winleft» is the
+    /// generic Win, which is already sent as the left key.
+    /// </summary>
+    public static TheoryData<string, string> Version1Tokens() =>
+        new()
         {
-            Keys.Resolve(spelling).ShouldNotBeNull(spelling);
-        }
+            { "ctrl", "ctrl" },
+            { "ctrlleft", "lctrl" },
+            { "ctrlright", "rctrl" },
+            { "alt", "alt" },
+            { "altleft", "lalt" },
+            { "altright", "altgr" },
+            { "shift", "shift" },
+            { "shiftleft", "lshift" },
+            { "shiftright", "rshift" },
+            { "win", "win" },
+            { "winleft", "win" },
+            { "winright", "rwin" },
+            { "ñ", "char:ñ" },
+            { "tab", "tab" },
+            { "enter", "enter" },
+            { "return", "enter" },
+            { "esc", "esc" },
+            { "escape", "esc" },
+            { "space", "space" },
+            { "delete", "delete" },
+            { "del", "delete" },
+            { "backspace", "backspace" },
+            { "insert", "insert" },
+            { "home", "home" },
+            { "end", "end" },
+            { "pageup", "pageup" },
+            { "pgup", "pageup" },
+            { "pagedown", "pagedown" },
+            { "pgdn", "pagedown" },
+            { "left", "left" },
+            { "right", "right" },
+            { "up", "up" },
+            { "down", "down" },
+            { "printscreen", "printscreen" },
+            { "prtsc", "printscreen" },
+            { "pause", "pause" },
+            { "capslock", "capslock" },
+            { "numlock", "numlock" },
+            { "scrolllock", "scrolllock" },
+            { "apps", "menu" },
+            { "+", "char:+" },
+            { "plus", "char:+" },
+            { "-", "char:-" },
+            { "minus", "char:-" },
+            { "=", "char:=" },
+            { ",", "char:," },
+            { ".", "char:." },
+            { ";", "char:;" },
+            { "/", "char:/" },
+            { "slash", "char:/" },
+            { "grave", "char:`" },
+            { "`", "char:`" },
+            { "backslash", "char:\\" },
+            { "\\", "char:\\" },
+            { "[", "char:[" },
+            { "]", "char:]" },
+            { "'", "char:'" },
+            { "#", "char:#" },
+            { "num0", "num.0" },
+            { "num9", "num.9" },
+            { "num+", "num.add" },
+            { "add", "num.add" },
+            { "num-", "num.subtract" },
+            { "subtract", "num.subtract" },
+            { "num*", "num.multiply" },
+            { "multiply", "num.multiply" },
+            { "num/", "num.divide" },
+            { "divide", "num.divide" },
+            { "decimal", "num.decimal" },
+            { "volumeup", "volume.up" },
+            { "volumedown", "volume.down" },
+            { "volumemute", "volume.mute" },
+            { "playpause", "media.playpause" },
+            { "nexttrack", "media.next" },
+            { "prevtrack", "media.previous" },
+            { "stop", "media.stop" },
+            { "f13", "f13" },
+            { "f24", "f24" },
+        };
+
+    [Theory]
+    [MemberData(nameof(Version1Tokens))]
+    [Trait("Req", "MIG-005")]
+    public void Every_version_1_token_resolves_to_its_catalog_key(string token, string keyId)
+    {
+        Keys.Resolve(token).ShouldNotBeNull(token)!.Id.ShouldBe(keyId, token);
     }
 
     [Fact]
