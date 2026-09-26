@@ -1,0 +1,49 @@
+namespace Clicalo.Application.Session;
+
+/// <summary>
+/// The only way a <see cref="PanelSession"/> changes (blueprint §6.4): a pure function covered by a transition table.
+/// An action that changes nothing returns the same instance, so observers can tell a real change by reference.
+/// </summary>
+public static class PanelSessionReducer
+{
+    /// <summary>Applies <paramref name="action"/> to <paramref name="session"/>.</summary>
+    /// <param name="session">The current session.</param>
+    /// <param name="action">The intention.</param>
+    /// <returns>The next session, or <paramref name="session"/> itself when nothing changes.</returns>
+    public static PanelSession Reduce(PanelSession session, SessionAction action)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(action);
+        return action switch
+        {
+            SessionAction.Show => WithPresence(session, PanelPresence.Visible),
+            SessionAction.Hide => WithPresence(session, PanelPresence.Hidden),
+            SessionAction.ToggleVisibility => WithPresence(
+                session,
+                session.Presence == PanelPresence.Visible
+                    ? PanelPresence.Hidden
+                    : PanelPresence.Visible
+            ),
+            SessionAction.ShowProfile show when show.Profile != session.View => session with
+            {
+                View = show.Profile,
+                Version = session.Version + 1,
+            },
+            SessionAction.ShowProfile => session,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(action),
+                action.GetType().Name,
+                "Unknown session action."
+            ),
+        };
+    }
+
+    private static PanelSession WithPresence(PanelSession session, PanelPresence presence) =>
+        session.Presence == presence
+            ? session
+            : session with
+            {
+                Presence = presence,
+                Version = session.Version + 1,
+            };
+}
