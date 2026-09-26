@@ -85,70 +85,70 @@ public sealed unsafe class GuardianProcess : IDisposable
         var command = (commandLine.ToString() + '\0').ToCharArray();
         var startup = new STARTUPINFOEXW();
         startup.StartupInfo.cb = (uint)sizeof(STARTUPINFOEXW);
-        nuint listSize = 0;
-        byte[]? list = null;
         var handles = inheritedHandles.ToArray();
-        var flags = (PROCESS_CREATION_FLAGS)0;
-        fixed (nint* handleList = handles)
-        fixed (char* commandText = command)
-        fixed (char* application = executable)
+        if (handles.Length == 0)
         {
-            try
+            fixed (char* commandText = command)
+            fixed (char* application = executable)
             {
-                if (handles.Length > 0)
+                return Create(application, commandText, inherit: false, default, &startup);
+            }
+        }
+
+        // The attribute list lives in native memory, so it cannot move between its initialization, CreateProcess and
+        // DeleteProcThreadAttributeList; it is deleted only once it was initialized, and freed in any case.
+        nuint listSize = 0;
+        PInvoke.InitializeProcThreadAttributeList(default, 1, 0, &listSize);
+        var list = NativeMemory.AllocZeroed(listSize);
+        var initialized = false;
+        try
+        {
+            startup.lpAttributeList = new LPPROC_THREAD_ATTRIBUTE_LIST(list);
+            if (
+                !PInvoke.InitializeProcThreadAttributeList(startup.lpAttributeList, 1, 0, &listSize)
+            )
+            {
+                throw new Win32Exception(Marshal.GetLastSystemError());
+            }
+
+            initialized = true;
+            fixed (nint* handleList = handles)
+            fixed (char* commandText = command)
+            fixed (char* application = executable)
+            {
+                // The handle list is read by CreateProcess, so it stays pinned until the process exists.
+                if (
+                    !PInvoke.UpdateProcThreadAttribute(
+                        startup.lpAttributeList,
+                        0,
+                        PInvoke.PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                        handleList,
+                        (nuint)(handles.Length * sizeof(nint)),
+                        null,
+                        null
+                    )
+                )
                 {
-                    PInvoke.InitializeProcThreadAttributeList(default, 1, 0, &listSize);
-                    list = new byte[(int)listSize];
-                    fixed (byte* listMemory = list)
-                    {
-                        startup.lpAttributeList = new LPPROC_THREAD_ATTRIBUTE_LIST(listMemory);
-                        if (
-                            !PInvoke.InitializeProcThreadAttributeList(
-                                startup.lpAttributeList,
-                                1,
-                                0,
-                                &listSize
-                            )
-                        )
-                        {
-                            throw new Win32Exception(Marshal.GetLastSystemError());
-                        }
-
-                        if (
-                            !PInvoke.UpdateProcThreadAttribute(
-                                startup.lpAttributeList,
-                                0,
-                                PInvoke.PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-                                handleList,
-                                (nuint)(handles.Length * sizeof(nint)),
-                                null,
-                                null
-                            )
-                        )
-                        {
-                            throw new Win32Exception(Marshal.GetLastSystemError());
-                        }
-
-                        flags = (PROCESS_CREATION_FLAGS)ExtendedStartupInfoPresent;
-                        return Create(
-                            application,
-                            commandText,
-                            handles.Length > 0,
-                            flags,
-                            &startup
-                        );
-                    }
+                    throw new Win32Exception(Marshal.GetLastSystemError());
                 }
 
-                return Create(application, commandText, inherit: false, flags, &startup);
+                return Create(
+                    application,
+                    commandText,
+                    inherit: true,
+                    (PROCESS_CREATION_FLAGS)ExtendedStartupInfoPresent,
+                    &startup
+                );
             }
-            finally
+        }
+        finally
+        {
+            if (initialized)
             {
-                if (!startup.lpAttributeList.IsNull)
-                {
-                    PInvoke.DeleteProcThreadAttributeList(startup.lpAttributeList);
-                }
+                PInvoke.DeleteProcThreadAttributeList(startup.lpAttributeList);
             }
+
+            NativeMemory.Free(list);
         }
     }
 

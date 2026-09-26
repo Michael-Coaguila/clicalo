@@ -136,11 +136,16 @@ public sealed partial class SentinelSupervisor : IDisposable
 
     private void Launch()
     {
-        var parent = GuardianHandles.DuplicateCurrentProcessForChild();
-        var ledger = _ledger.DuplicateForGuardian();
-        var (read, write) = GuardianHandles.CreateHeartbeatPipe();
+        nint parent = 0;
+        nint ledger = 0;
+        nint read = 0;
+        nint write = 0;
         try
         {
+            // Inside the try: a failure after the first duplicate still closes the handles already made.
+            parent = GuardianHandles.DuplicateCurrentProcessForChild();
+            ledger = _ledger.DuplicateForGuardian();
+            (read, write) = GuardianHandles.CreateHeartbeatPipe();
             var crashLoop = Timings.App.CrashLoop;
             var info = new SentinelStartInfo(
                 parent,
