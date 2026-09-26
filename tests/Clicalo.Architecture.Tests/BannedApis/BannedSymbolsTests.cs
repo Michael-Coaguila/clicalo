@@ -254,7 +254,27 @@ public sealed class BannedSymbolsTests
                     IsGetResult
                 )
             )
-            .Concat(Members("System.Windows.Application", m => m.Name is "Shutdown"));
+            .Concat(Members("System.Windows.Application", m => m.Name is "Shutdown"))
+            .Concat(
+                Members(
+                    "System.Reflection.Assembly",
+                    m =>
+                        m.Name
+                            is "Load"
+                                or "LoadFile"
+                                or "LoadFrom"
+                                or "LoadWithPartialName"
+                                or "ReflectionOnlyLoad"
+                                or "ReflectionOnlyLoadFrom"
+                                or "UnsafeLoadFrom"
+                )
+            )
+            .Concat(
+                Members(
+                    "System.Runtime.Loader.AssemblyLoadContext",
+                    m => m.Name.StartsWith("LoadFrom", StringComparison.Ordinal)
+                )
+            );
 
     private static List<string> Members(string metadataName, Func<ISymbol, bool> select)
     {

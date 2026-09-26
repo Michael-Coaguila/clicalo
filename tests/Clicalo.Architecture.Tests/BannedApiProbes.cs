@@ -26,6 +26,8 @@ internal static class BannedApiProbes
 
             internal static System.Guid Id() => System.Guid.NewGuid(); // banned
 
+            internal static object Plugin(string path) => System.Reflection.Assembly.LoadFrom(path); // banned
+
             internal static int Pure() => System.Math.Max(1, 2);
         }
         """;

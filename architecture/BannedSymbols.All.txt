@@ -156,6 +156,25 @@ M:System.Environment.Exit(System.Int32);Exit through IAppLifetime.ExitAsync (it 
 M:System.Windows.Application.Shutdown;Exit through IAppLifetime.ExitAsync (it releases every key first)
 M:System.Windows.Application.Shutdown(System.Int32);Exit through IAppLifetime.ExitAsync (it releases every key first)
 
+// ---- Dynamic code loading: no code plugins (ADR-0017) -----------------------------------------------------------
+M:System.Reflection.Assembly.Load(System.Byte[]);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.Load(System.Byte[],System.Byte[]);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.Load(System.Reflection.AssemblyName);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.Load(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.LoadFile(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.LoadFrom(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.LoadFrom(System.String,System.Byte[],System.Configuration.Assemblies.AssemblyHashAlgorithm);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.LoadWithPartialName(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.ReflectionOnlyLoad(System.Byte[]);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.ReflectionOnlyLoad(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.ReflectionOnlyLoadFrom(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Reflection.Assembly.UnsafeLoadFrom(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyName(System.Reflection.AssemblyName);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath(System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Runtime.Loader.AssemblyLoadContext.LoadFromNativeImagePath(System.String,System.String);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Runtime.Loader.AssemblyLoadContext.LoadFromStream(System.IO.Stream);ADR-0017: extensibility is data-only; never load code at run time
+M:System.Runtime.Loader.AssemblyLoadContext.LoadFromStream(System.IO.Stream,System.IO.Stream);ADR-0017: extensibility is data-only; never load code at run time
+
 // ---- Console: ILogger ------------------------------------------------------------------------------------------
 T:System.Console;Log through ILogger; there is no console
 
