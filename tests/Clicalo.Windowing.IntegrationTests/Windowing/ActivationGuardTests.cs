@@ -278,6 +278,48 @@ public sealed class ActivationGuardTests
 
     [Fact]
     [Trait("Req", "REG-01")]
+    public void A_violation_ends_when_the_foreground_is_seen_outside_the_process()
+    {
+        // Spike S1, cycle 7 of a Debug run: the deactivation of cycle 6 never arrived, and the lone WM_NCACTIVATE(TRUE)
+        // of the next forced activation, with the panel in front, was swallowed as part of the open violation.
+        using var failures = DebugFailures.Capture();
+        var clock = new FakeTimeProvider();
+        using var lab = SurfaceLab.Create(timeProvider: clock);
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+
+        lab.SimulatedForeground = panel;
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(1);
+
+        // A stale deactivation delivered while the panel is still in front does not end it.
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Inactive);
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(1, "the same activation");
+
+        // The restore worked, but no deactivation message arrives: the watch sees the foreground outside.
+        lab.SimulatedForeground = AnotherApp;
+        LetTheGuardJudge(clock);
+        lab.SimulatedForeground = panel;
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(2, "the next forced activation is not swallowed");
+        lab.Arbiter.Violations[^1]
+            .ProbableCause.ShouldBe(
+                ActivationCause.External,
+                "the foreground was last seen in another application"
+            );
+
+        // A deactivation message seen with the foreground outside ends it at once.
+        lab.SimulatedForeground = AnotherApp;
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Inactive);
+        lab.SimulatedForeground = panel;
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+
+        lab.Guard.Violations.ShouldBe(3);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 3 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
     [Trait("Req", "CCM-004")]
     public void An_activation_while_another_window_of_the_process_is_in_front_counts_at_once()
     {

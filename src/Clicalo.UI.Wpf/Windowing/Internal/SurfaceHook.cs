@@ -20,8 +20,9 @@ namespace Clicalo.UI.Wpf.Windowing.Internal;
 /// then (measured in S1), so this keeps the flags honest for the rest of the chain but does not by itself stop a
 /// <c>SetWindowPos</c> without <c>SWP_NOACTIVATE</c>: the product never makes one, and WPF's known one is
 /// <c>WM_DPICHANGED</c> below.</description></item>
-/// <item><term><c>WM_ACTIVATE</c>, <c>WM_NCACTIVATE(TRUE)</c>, <c>WM_ACTIVATEAPP(TRUE)</c></term><description>To
-/// <see cref="ActivationGuard.OnActivated"/>. A <c>WM_ACTIVATE</c> the guard judges a violation is handled here, so
+/// <item><term><c>WM_ACTIVATE</c>, <c>WM_NCACTIVATE</c>, <c>WM_ACTIVATEAPP</c></term><description>To
+/// <see cref="ActivationGuard.OnActivated"/> when they activate, and to <c>ActivationGuard.OnDeactivated</c> when they
+/// deactivate. A <c>WM_ACTIVATE</c> the guard judges a violation is handled here, so
 /// neither WPF nor <c>DefWindowProc</c> reacts to it; its matching <c>WA_INACTIVE</c> is swallowed too.</description></item>
 /// <item><term><c>WM_DPICHANGED</c></term><description>Handled here (#7561): WPF's <c>HwndTarget</c> answers it with
 /// <c>SetWindowPos(SWP_NOZORDER | SWP_ASYNCWINDOWPOS)</c>, which activates the surface. The hook notes the probable
@@ -66,15 +67,15 @@ internal sealed unsafe class SurfaceHook(NonActivatingWindow surface, SurfaceReg
                 break;
 
             case PInvoke.WM_NCACTIVATE:
-                if (wParam != 0)
-                {
-                    _ = registry.Guard.OnActivated(
-                        surface,
-                        ActivationMessage.NcActivate,
-                        registry.Hints.Current
-                    );
-                }
-
+                // Only watched: the frame is drawn by DefWindowProc either way.
+                _ =
+                    wParam != 0
+                        ? registry.Guard.OnActivated(
+                            surface,
+                            ActivationMessage.NcActivate,
+                            registry.Hints.Current
+                        )
+                        : registry.Guard.OnDeactivated(surface, ActivationMessage.NcActivate);
                 break;
 
             case PInvoke.WM_ACTIVATEAPP:
