@@ -1,19 +1,20 @@
-// Reference whitelist check (blueprint §4.4, mechanism 1).
+// Reference whitelist check (blueprint §4.4, mechanism 1; docs/architecture/enforcement.md).
 //
 // This single file is the source of the ClicaloVerifyReferences MSBuild task. RoslynCodeTaskFactory compiles it on
 // demand for the MSBuild that runs the build (.NET in the CLI, .NET Framework in Visual Studio), so it only uses the
-// netstandard2.0 surface: no records, no init accessors and no System.Text.Json. Clicalo.Architecture.Tests links the
-// same file with CLICALO_REFERENCE_POLICY_TESTS defined to unit test the policy under the repository analyzers; that
-// symbol removes the thin MSBuild adapter and keeps the pure policy.
+// netstandard2.0 surface: no records, no init accessors, no spans and no System.Text.Json. Clicalo.Architecture.Tests
+// links the same file with CLICALO_REFERENCE_POLICY_TESTS defined, which removes the thin MSBuild adapter and keeps
+// the pure policy, so the policy is unit tested under the repository analyzers.
 #nullable enable
 
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Text;
 #if !CLICALO_REFERENCE_POLICY_TESTS
+// RoslynCodeTaskFactory compiles without implicit usings; the test project has them.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 #endif
@@ -43,8 +44,9 @@ public sealed class ClicaloVerifyReferences : Task
     /// <summary>The project targets a platform its layer does not allow.</summary>
     internal const string WrongPlatformCode = "CLCA003";
 
-    private const string WpfFramework = "Microsoft.WindowsDesktop.App.WPF";
-    private const string WindowsFormsFramework = "Microsoft.WindowsDesktop.App.WindowsForms";
+    internal const string WpfFramework = "Microsoft.WindowsDesktop.App.WPF";
+    internal const string WindowsFormsFramework = "Microsoft.WindowsDesktop.App.WindowsForms";
+
     private const string EnforcementGuide = "docs/architecture/enforcement.md";
 
 #if !CLICALO_REFERENCE_POLICY_TESTS
@@ -64,7 +66,7 @@ public sealed class ClicaloVerifyReferences : Task
     [Required]
     public string ProjectFile { get; set; } = string.Empty;
 
-    /// <summary><c>$(TargetPlatformIdentifier)</c>: empty for portable frameworks, <c>windows</c> for Windows ones.</summary>
+    /// <summary>OS platform of the target framework: empty for portable frameworks, <c>windows</c> otherwise.</summary>
     public string TargetPlatformIdentifier { get; set; } = string.Empty;
 
     /// <summary><c>$(UseWPF)</c>, which adds the WPF framework reference.</summary>
@@ -74,8 +76,8 @@ public sealed class ClicaloVerifyReferences : Task
     public bool UseWindowsForms { get; set; }
 
     /// <summary>
-    /// References declared by repository files, with <c>ClicaloKind</c> metadata
-    /// (Project, Package, GlobalPackage, Framework or Assembly).
+    /// References declared by repository files, with <c>ClicaloKind</c> (Project, Package, GlobalPackage, Framework
+    /// or Assembly) and <c>ClicaloDefiningFile</c> metadata.
     /// </summary>
     public ITaskItem[] References { get; set; } = Array.Empty<ITaskItem>();
 
@@ -83,15 +85,6 @@ public sealed class ClicaloVerifyReferences : Task
     public override bool Execute()
     {
         var policyPath = Path.GetFullPath(PolicyFile);
-        var project = new ProjectFacts(
-            ProjectName,
-            ProjectFile,
-            TargetPlatformIdentifier,
-            UseWpf,
-            UseWindowsForms,
-            DisplayPath(RepositoryRoot, policyPath)
-        );
-
         Policy policy;
         try
         {
@@ -118,21 +111,34 @@ public sealed class ClicaloVerifyReferences : Task
             return false;
         }
 
-        var references = new List<DeclaredReference>(References.Length);
-        foreach (var item in References)
+        var project = new ProjectFacts(
+            ProjectName,
+            ProjectFile,
+            TargetPlatformIdentifier,
+            UseWpf,
+            UseWindowsForms,
+            DisplayPath(RepositoryRoot, policyPath)
+        );
+        var references = References.Select(item =>
         {
-            references.Add(
-                new DeclaredReference(
-                    ParseKind(item.GetMetadata("ClicaloKind")),
-                    ReferenceName(item),
-                    IsAnalyzerOnly(
-                        item.GetMetadata("OutputItemType"),
-                        item.GetMetadata("ReferenceOutputAssembly")
-                    ),
-                    item.GetMetadata("ClicaloDefiningFile")
-                )
+            var kind = ParseKind(item.GetMetadata("ClicaloKind"));
+            var name = kind switch
+            {
+                ReferenceKind.Project => item.GetMetadata("Filename"),
+                ReferenceKind.Assembly => AssemblyName(item.ItemSpec),
+                _ => item.ItemSpec,
+            };
+            var analyzerOnly = IsAnalyzerOnly(
+                item.GetMetadata("OutputItemType"),
+                item.GetMetadata("ReferenceOutputAssembly")
             );
-        }
+            return new DeclaredReference(
+                kind,
+                name,
+                analyzerOnly,
+                item.GetMetadata("ClicaloDefiningFile")
+            );
+        });
 
         foreach (var finding in Evaluate(policy, project, references))
         {
@@ -151,32 +157,7 @@ public sealed class ClicaloVerifyReferences : Task
 
         return !Log.HasLoggedErrors;
     }
-
-    private static string ReferenceName(ITaskItem item)
-    {
-        var kind = ParseKind(item.GetMetadata("ClicaloKind"));
-        if (kind == ReferenceKind.Project)
-        {
-            return item.GetMetadata("Filename");
-        }
-
-        return kind == ReferenceKind.Assembly ? AssemblyName(item.ItemSpec) : item.ItemSpec;
-    }
 #endif
-
-    /// <summary>
-    /// Simple name of an assembly <c>Reference</c>: <c>Foo</c> for <c>Foo, Version=1.0</c> and for <c>lib\Foo.dll</c>.
-    /// </summary>
-    internal static string AssemblyName(string itemSpec)
-    {
-        if (itemSpec.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            return Path.GetFileNameWithoutExtension(itemSpec);
-        }
-
-        var comma = itemSpec.IndexOf(',');
-        return (comma < 0 ? itemSpec : itemSpec.Substring(0, comma)).Trim();
-    }
 
     /// <summary>Kinds of reference the policy governs.</summary>
     internal enum ReferenceKind
@@ -197,19 +178,20 @@ public sealed class ClicaloVerifyReferences : Task
         Assembly,
     }
 
-    /// <summary>Maps the <c>ClicaloKind</c> metadata to a <see cref="ReferenceKind"/>.</summary>
-    internal static ReferenceKind ParseKind(string value)
-    {
-        foreach (ReferenceKind kind in Enum.GetValues(typeof(ReferenceKind)))
+    /// <summary>Maps the <c>ClicaloKind</c> metadata set by Directory.Build.targets to a <see cref="ReferenceKind"/>.</summary>
+    internal static ReferenceKind ParseKind(string value) =>
+        value switch
         {
-            if (string.Equals(kind.ToString(), value, StringComparison.OrdinalIgnoreCase))
-            {
-                return kind;
-            }
-        }
-
-        throw new ArgumentException("Unknown reference kind '" + value + "'.", nameof(value));
-    }
+            "Project" => ReferenceKind.Project,
+            "Package" => ReferenceKind.Package,
+            "GlobalPackage" => ReferenceKind.GlobalPackage,
+            "Framework" => ReferenceKind.Framework,
+            "Assembly" => ReferenceKind.Assembly,
+            _ => throw new ArgumentException(
+                "Unknown reference kind '" + value + "'.",
+                nameof(value)
+            ),
+        };
 
     /// <summary>
     /// True for a reference that only loads a Roslyn component into the compiler
@@ -218,6 +200,18 @@ public sealed class ClicaloVerifyReferences : Task
     internal static bool IsAnalyzerOnly(string outputItemType, string referenceOutputAssembly) =>
         string.Equals(outputItemType, "Analyzer", StringComparison.OrdinalIgnoreCase)
         && string.Equals(referenceOutputAssembly, "false", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Simple name of an assembly <c>Reference</c>: <c>Foo</c> for <c>Foo, Version=1.0</c> and <c>lib\Foo.dll</c>.</summary>
+    internal static string AssemblyName(string itemSpec)
+    {
+        if (itemSpec.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.GetFileNameWithoutExtension(itemSpec);
+        }
+
+        var comma = itemSpec.IndexOf(',');
+        return (comma < 0 ? itemSpec : itemSpec.Substring(0, comma)).Trim();
+    }
 
     /// <summary>Evaluates the declared references of one project against the policy.</summary>
     internal static IReadOnlyList<Finding> Evaluate(
@@ -229,35 +223,28 @@ public sealed class ClicaloVerifyReferences : Task
         var findings = new List<Finding>();
         if (!policy.Projects.TryGetValue(project.Name, out var rule))
         {
-            findings.Add(
-                new Finding(
-                    UndeclaredProjectCode,
-                    "Project '"
-                        + project.Name
-                        + "' is not declared in "
-                        + project.PolicyDisplayPath
-                        + ". Every project declares its area, rule, platform and allowed references there; see "
-                        + EnforcementGuide
-                        + ".",
-                    project.ProjectFile,
-                    0,
-                    0
-                )
+            var message = Format(
+                "Project '{0}' is not declared in {1}. Every project declares its area, rule, platform and allowed "
+                    + "references there; see {2}.",
+                project.Name,
+                project.PolicyDisplayPath,
+                EnforcementGuide
             );
+            findings.Add(new Finding(UndeclaredProjectCode, message, project.ProjectFile, 0, 0));
             return findings;
         }
 
-        CheckPlatform(rule, project, findings);
+        var platformFinding = CheckPlatform(rule, project);
+        if (platformFinding is not null)
+        {
+            findings.Add(platformFinding);
+        }
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var reference in ImplicitFrameworks(project).Concat(references))
+        foreach (var reference in ImpliedFrameworks(project).Concat(references))
         {
-            if (!seen.Add(reference.Kind + "|" + reference.Name + "|" + reference.AnalyzerOnly))
-            {
-                continue;
-            }
-
-            if (!IsAllowed(policy, rule, reference))
+            var key = Format("{0}|{1}|{2}", reference.Kind, reference.Name, reference.AnalyzerOnly);
+            if (seen.Add(key) && !IsAllowed(policy, rule, reference))
             {
                 findings.Add(Forbidden(policy, rule, project, reference));
             }
@@ -266,7 +253,7 @@ public sealed class ClicaloVerifyReferences : Task
         return findings;
     }
 
-    private static IEnumerable<DeclaredReference> ImplicitFrameworks(ProjectFacts project)
+    private static IEnumerable<DeclaredReference> ImpliedFrameworks(ProjectFacts project)
     {
         if (project.UseWpf)
         {
@@ -291,71 +278,40 @@ public sealed class ClicaloVerifyReferences : Task
         }
     }
 
-    private static void CheckPlatform(
-        ProjectRule rule,
-        ProjectFacts project,
-        List<Finding> findings
-    )
+    private static Finding? CheckPlatform(ProjectRule rule, ProjectFacts project)
     {
-        var isWindows = string.Equals(
-            project.TargetPlatformIdentifier,
-            "windows",
-            StringComparison.OrdinalIgnoreCase
-        );
-        var isPortable = project.TargetPlatformIdentifier.Length == 0;
-        var ok = rule.Platform switch
-        {
-            Platforms.Portable => isPortable,
-            Platforms.Windows => isWindows,
-            _ => true,
-        };
+        var actual = project.TargetPlatformIdentifier;
+        var portable = string.Equals(rule.Platform, Platforms.Portable, StringComparison.Ordinal);
+        var ok = portable
+            ? actual.Length == 0
+            : string.Equals(actual, "windows", StringComparison.OrdinalIgnoreCase);
         if (ok)
         {
-            return;
+            return null;
         }
 
-        var actual = isPortable
-            ? "a portable framework"
-            : "platform '" + project.TargetPlatformIdentifier + "'";
-        var (line, column) = Locate(project.ProjectFile, "<TargetFramework");
-        findings.Add(
-            new Finding(
-                WrongPlatformCode,
-                "Project '"
-                    + project.Name
-                    + "' must target "
-                    + (
-                        rule.Platform == Platforms.Portable
-                            ? "a portable framework (no OS platform)"
-                            : "Windows"
-                    )
-                    + " but targets "
-                    + actual
-                    + ". Rule for "
-                    + project.Name
-                    + ": "
-                    + rule.Rule
-                    + " See "
-                    + EnforcementGuide
-                    + ".",
-                project.ProjectFile,
-                line,
-                column
-            )
+        var message = Format(
+            "Project '{0}' must target {1} but targets {2}. Rule for {0}: {3} See {4}.",
+            project.Name,
+            portable ? "a portable framework (no OS platform)" : "Windows",
+            actual.Length == 0 ? "a portable framework" : "the '" + actual + "' platform",
+            rule.Rule,
+            EnforcementGuide
         );
+        var (line, column) = Locate(project.ProjectFile, "<TargetFramework");
+        return new Finding(WrongPlatformCode, message, project.ProjectFile, line, column);
     }
 
     private static bool IsAllowed(Policy policy, ProjectRule rule, DeclaredReference reference) =>
         reference.Kind switch
         {
             ReferenceKind.Project => rule.ProjectReferences.Contains(reference.Name)
-                || reference.AnalyzerOnly && policy.AnalyzerProjects.Contains(reference.Name),
+                || (reference.AnalyzerOnly && policy.AnalyzerProjects.Contains(reference.Name)),
             ReferenceKind.Package => rule.PackageReferences.Contains(reference.Name)
                 || policy.GlobalPackages.Contains(reference.Name),
             ReferenceKind.GlobalPackage => policy.GlobalPackages.Contains(reference.Name),
             ReferenceKind.Framework => rule.FrameworkReferences.Contains(reference.Name),
-            ReferenceKind.Assembly => rule.AssemblyReferences.Contains(reference.Name),
-            _ => false,
+            _ => rule.AssemblyReferences.Contains(reference.Name),
         };
 
     private static Finding Forbidden(
@@ -365,32 +321,56 @@ public sealed class ClicaloVerifyReferences : Task
         DeclaredReference reference
     )
     {
-        var (what, allowedLabel, allowed) = reference.Kind switch
+        string what;
+        string allowedLabel;
+        SortedSet<string> allowed;
+        switch (reference.Kind)
         {
-            ReferenceKind.Project => (
-                reference.AnalyzerOnly ? "Analyzer project reference" : "Project reference",
-                "project references",
-                reference.AnalyzerOnly
-                    ? Union(rule.ProjectReferences, policy.AnalyzerProjects)
-                    : rule.ProjectReferences
-            ),
-            ReferenceKind.Package => (
-                "Package reference",
-                "package references",
-                rule.PackageReferences
-            ),
-            ReferenceKind.GlobalPackage => (
-                "Global package reference",
-                "global packages",
-                policy.GlobalPackages
-            ),
-            ReferenceKind.Framework => (
-                "Framework reference",
-                "framework references",
-                rule.FrameworkReferences
-            ),
-            _ => ("Assembly reference", "assembly references", rule.AssemblyReferences),
-        };
+            case ReferenceKind.Project when reference.AnalyzerOnly:
+                what = "Analyzer project reference";
+                allowedLabel = "project and analyzer references";
+                allowed = new SortedSet<string>(
+                    rule.ProjectReferences,
+                    StringComparer.OrdinalIgnoreCase
+                );
+                allowed.UnionWith(policy.AnalyzerProjects);
+                break;
+            case ReferenceKind.Project:
+                (what, allowedLabel, allowed) = (
+                    "Project reference",
+                    "project references",
+                    rule.ProjectReferences
+                );
+                break;
+            case ReferenceKind.Package:
+                (what, allowedLabel, allowed) = (
+                    "Package reference",
+                    "package references",
+                    rule.PackageReferences
+                );
+                break;
+            case ReferenceKind.GlobalPackage:
+                (what, allowedLabel, allowed) = (
+                    "Global package reference",
+                    "global packages",
+                    policy.GlobalPackages
+                );
+                break;
+            case ReferenceKind.Framework:
+                (what, allowedLabel, allowed) = (
+                    "Framework reference",
+                    "framework references",
+                    rule.FrameworkReferences
+                );
+                break;
+            default:
+                (what, allowedLabel, allowed) = (
+                    "Assembly reference",
+                    "assembly references",
+                    rule.AssemblyReferences
+                );
+                break;
+        }
 
         var message = new StringBuilder()
             .Append(what)
@@ -400,27 +380,34 @@ public sealed class ClicaloVerifyReferences : Task
             .Append(
                 reference.Origin.Length == 0 ? string.Empty : " (" + reference.Origin + "=true)"
             )
-            .Append(" is not allowed in '")
-            .Append(project.Name)
-            .Append("'. ")
-            .Append(project.PolicyDisplayPath)
-            .Append(" allows ")
-            .Append(allowedLabel)
-            .Append(": ")
-            .Append(Describe(allowed))
-            .Append(". Rule for ")
-            .Append(project.Name)
-            .Append(": ")
-            .Append(rule.Rule);
-        if (reference.Kind == ReferenceKind.Assembly)
-        {
-            message.Append(" Prefer a PackageReference or a ProjectReference.");
-        }
-
-        message
-            .Append(" If the dependency is intended, change the whitelist with a justification (")
-            .Append(EnforcementGuide)
-            .Append(").");
+            .Append(
+                Format(
+                    " is not allowed in '{0}'. {1} allows ",
+                    project.Name,
+                    project.PolicyDisplayPath
+                )
+            )
+            .Append(
+                Format(
+                    "{0}: {1}. Rule for {2}: {3}",
+                    allowedLabel,
+                    Describe(allowed),
+                    project.Name,
+                    rule.Rule
+                )
+            )
+            .Append(
+                reference.Kind == ReferenceKind.Assembly
+                    ? " Prefer a PackageReference or a ProjectReference."
+                    : ""
+            )
+            .Append(
+                Format(
+                    " If the dependency is intended, change the whitelist with a justification ({0}).",
+                    EnforcementGuide
+                )
+            )
+            .ToString();
 
         var file =
             reference.DefiningFile.Length == 0 ? project.ProjectFile : reference.DefiningFile;
@@ -428,21 +415,17 @@ public sealed class ClicaloVerifyReferences : Task
             file,
             reference.Origin.Length == 0 ? reference.Name : "<" + reference.Origin
         );
-        return new Finding(ForbiddenReferenceCode, message.ToString(), file, line, column);
-    }
-
-    private static SortedSet<string> Union(SortedSet<string> first, SortedSet<string> second)
-    {
-        var union = new SortedSet<string>(first, StringComparer.OrdinalIgnoreCase);
-        union.UnionWith(second);
-        return union;
+        return new Finding(ForbiddenReferenceCode, message, file, line, column);
     }
 
     private static string Describe(SortedSet<string> names) =>
         names.Count == 0 ? "(none)" : string.Join(", ", names);
 
+    private static string Format(string format, params object[] args) =>
+        string.Format(CultureInfo.InvariantCulture, format, args);
+
     /// <summary>
-    /// Best-effort position (1-based) of <paramref name="text"/> in <paramref name="file"/>, so IDEs jump to the line
+    /// Best-effort 1-based position of <paramref name="text"/> in <paramref name="file"/>, so IDEs jump to the line
     /// that declares the reference. Returns (0, 0) when the file or the text cannot be found.
     /// </summary>
     internal static (int Line, int Column) Locate(string file, string text)
@@ -453,14 +436,14 @@ public sealed class ClicaloVerifyReferences : Task
         }
 
         var lines = File.ReadAllLines(file);
-        var candidates = new[]
-        {
+        string[] candidates =
+        [
             "\"" + text + "\"",
             "\\" + text + ".csproj\"",
             "/" + text + ".csproj\"",
             "\"" + text + ".csproj\"",
             text,
-        };
+        ];
         foreach (var candidate in candidates)
         {
             for (var i = 0; i < lines.Length; i++)
@@ -479,12 +462,8 @@ public sealed class ClicaloVerifyReferences : Task
     /// <summary>Repository-relative path with forward slashes, or the full path when outside the repository.</summary>
     internal static string DisplayPath(string repositoryRoot, string path)
     {
-        var root = Path.GetFullPath(repositoryRoot);
-        if (!root.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
-        {
-            root += Path.DirectorySeparatorChar;
-        }
-
+        var root =
+            Path.GetFullPath(repositoryRoot).TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
         return path.StartsWith(root, StringComparison.OrdinalIgnoreCase)
             ? path.Substring(root.Length).Replace('\\', '/')
             : path;
@@ -501,128 +480,86 @@ public sealed class ClicaloVerifyReferences : Task
     }
 
     /// <summary>Facts about the project being built.</summary>
-    internal sealed class ProjectFacts
+    internal sealed class ProjectFacts(
+        string name,
+        string projectFile,
+        string targetPlatformIdentifier,
+        bool useWpf,
+        bool useWindowsForms,
+        string policyDisplayPath
+    )
     {
-        public ProjectFacts(
-            string name,
-            string projectFile,
-            string targetPlatformIdentifier,
-            bool useWpf,
-            bool useWindowsForms,
-            string policyDisplayPath
-        )
-        {
-            Name = name;
-            ProjectFile = projectFile;
-            TargetPlatformIdentifier = targetPlatformIdentifier;
-            UseWpf = useWpf;
-            UseWindowsForms = useWindowsForms;
-            PolicyDisplayPath = policyDisplayPath;
-        }
+        public string Name { get; } = name;
 
-        public string Name { get; }
+        public string ProjectFile { get; } = projectFile;
 
-        public string ProjectFile { get; }
+        public string TargetPlatformIdentifier { get; } = targetPlatformIdentifier;
 
-        public string TargetPlatformIdentifier { get; }
+        public bool UseWpf { get; } = useWpf;
 
-        public bool UseWpf { get; }
+        public bool UseWindowsForms { get; } = useWindowsForms;
 
-        public bool UseWindowsForms { get; }
-
-        public string PolicyDisplayPath { get; }
+        public string PolicyDisplayPath { get; } = policyDisplayPath;
     }
 
     /// <summary>A reference declared by a repository file.</summary>
-    internal sealed class DeclaredReference
+    internal sealed class DeclaredReference(
+        ReferenceKind kind,
+        string name,
+        bool analyzerOnly,
+        string definingFile,
+        string origin = ""
+    )
     {
-        public DeclaredReference(
-            ReferenceKind kind,
-            string name,
-            bool analyzerOnly,
-            string definingFile,
-            string origin = ""
-        )
-        {
-            Kind = kind;
-            Name = name;
-            AnalyzerOnly = analyzerOnly;
-            DefiningFile = definingFile;
-            Origin = origin;
-        }
-
-        public ReferenceKind Kind { get; }
+        public ReferenceKind Kind { get; } = kind;
 
         /// <summary>Project name, package id, framework name or assembly name.</summary>
-        public string Name { get; }
+        public string Name { get; } = name;
 
-        public bool AnalyzerOnly { get; }
+        public bool AnalyzerOnly { get; } = analyzerOnly;
 
-        /// <summary>File that declares the reference (<c>DefiningProjectFullPath</c>).</summary>
-        public string DefiningFile { get; }
+        /// <summary>File that declares the reference.</summary>
+        public string DefiningFile { get; } = definingFile;
 
         /// <summary>Property that implies the reference (<c>UseWPF</c>), or empty for an item.</summary>
-        public string Origin { get; }
+        public string Origin { get; } = origin;
     }
 
     /// <summary>A policy violation, reported as an MSBuild error.</summary>
-    internal sealed class Finding
+    internal sealed class Finding(string code, string message, string file, int line, int column)
     {
-        public Finding(string code, string message, string file, int line, int column)
-        {
-            Code = code;
-            Message = message;
-            File = file;
-            Line = line;
-            Column = column;
-        }
+        public string Code { get; } = code;
 
-        public string Code { get; }
+        public string Message { get; } = message;
 
-        public string Message { get; }
+        public string File { get; } = file;
 
-        public string File { get; }
+        public int Line { get; } = line;
 
-        public int Line { get; }
-
-        public int Column { get; }
+        public int Column { get; } = column;
     }
 
     /// <summary>The rule of one project.</summary>
-    internal sealed class ProjectRule
+    internal sealed class ProjectRule(
+        string rule,
+        string platform,
+        SortedSet<string> projectReferences,
+        SortedSet<string> packageReferences,
+        SortedSet<string> frameworkReferences,
+        SortedSet<string> assemblyReferences
+    )
     {
-        public ProjectRule(
-            string name,
-            string rule,
-            string platform,
-            SortedSet<string> projectReferences,
-            SortedSet<string> packageReferences,
-            SortedSet<string> frameworkReferences,
-            SortedSet<string> assemblyReferences
-        )
-        {
-            Name = name;
-            Rule = rule;
-            Platform = platform;
-            ProjectReferences = projectReferences;
-            PackageReferences = packageReferences;
-            FrameworkReferences = frameworkReferences;
-            AssemblyReferences = assemblyReferences;
-        }
+        public string Rule { get; } = rule;
 
-        public string Name { get; }
+        public string Platform { get; } = platform;
 
-        public string Rule { get; }
+        public SortedSet<string> ProjectReferences { get; } = projectReferences;
 
-        public string Platform { get; }
+        public SortedSet<string> PackageReferences { get; } = packageReferences;
 
-        public SortedSet<string> ProjectReferences { get; }
+        public SortedSet<string> FrameworkReferences { get; } = frameworkReferences;
 
-        public SortedSet<string> PackageReferences { get; }
-
-        public SortedSet<string> FrameworkReferences { get; }
-
-        public SortedSet<string> AssemblyReferences { get; }
+        public SortedSet<string> AssemblyReferences { get; } = assemblyReferences;
     }
 
     /// <summary>The parsed <c>allowed-dependencies.json</c>.</summary>
@@ -648,9 +585,7 @@ public sealed class ClicaloVerifyReferences : Task
         /// <summary>Parses and validates the policy; throws <see cref="PolicyFormatException"/> with a position.</summary>
         public static Policy Parse(string json)
         {
-            var root = JsonReader.Parse(json);
-            root.Expect(JsonKind.Object, "the document");
-
+            var root = JsonReader.Parse(json).Expect(JsonKind.Object, "The document");
             var analyzers = Names(
                 root.Required("analyzerProjects").Expect(JsonKind.Object, "analyzerProjects"),
                 "projects"
@@ -659,23 +594,13 @@ public sealed class ClicaloVerifyReferences : Task
                 root.Required("globalPackages").Expect(JsonKind.Object, "globalPackages"),
                 "packages"
             );
-
-            var projectsNode = root.Required("projects").Expect(JsonKind.Object, "projects");
             var projects = new Dictionary<string, ProjectRule>(StringComparer.OrdinalIgnoreCase);
-            foreach (var member in projectsNode.Members)
+            foreach (
+                var member in root.Required("projects").Expect(JsonKind.Object, "projects").Members
+            )
             {
                 var node = member.Value.Expect(JsonKind.Object, "projects." + member.Key);
-                var platform = node.Required("platform")
-                    .Expect(JsonKind.String, member.Key + ".platform");
-                if (platform.Text != Platforms.Portable && platform.Text != Platforms.Windows)
-                {
-                    throw new PolicyFormatException(
-                        member.Key + ".platform must be \"portable\" or \"windows\".",
-                        platform.Line,
-                        platform.Column
-                    );
-                }
-
+                node.Required("area").Expect(JsonKind.String, member.Key + ".area");
                 var rule = node.Required("rule").Expect(JsonKind.String, member.Key + ".rule");
                 if (rule.Text.Trim().Length == 0)
                 {
@@ -686,19 +611,39 @@ public sealed class ClicaloVerifyReferences : Task
                     );
                 }
 
-                node.Required("area").Expect(JsonKind.String, member.Key + ".area");
-                projects.Add(
-                    member.Key,
-                    new ProjectRule(
-                        member.Key,
-                        rule.Text,
-                        platform.Text,
-                        Names(node, "projectReferences"),
-                        Names(node, "packageReferences"),
-                        OptionalNames(node, "frameworkReferences"),
-                        OptionalNames(node, "assemblyReferences")
-                    )
+                var platform = node.Required("platform")
+                    .Expect(JsonKind.String, member.Key + ".platform");
+                if (
+                    !string.Equals(platform.Text, Platforms.Portable, StringComparison.Ordinal)
+                    && !string.Equals(platform.Text, Platforms.Windows, StringComparison.Ordinal)
+                )
+                {
+                    throw new PolicyFormatException(
+                        member.Key + ".platform must be \"portable\" or \"windows\".",
+                        platform.Line,
+                        platform.Column
+                    );
+                }
+
+                var projectRule = new ProjectRule(
+                    rule.Text,
+                    platform.Text,
+                    Names(node, "projectReferences"),
+                    Names(node, "packageReferences"),
+                    OptionalNames(node, "frameworkReferences"),
+                    OptionalNames(node, "assemblyReferences")
                 );
+                if (projects.ContainsKey(member.Key))
+                {
+                    throw new PolicyFormatException(
+                        "Project '" + member.Key + "' is declared twice (names ignore case).",
+                        member.Value.Line,
+                        member.Value.Column
+                    );
+                }
+
+                // Dictionary.TryAdd does not exist in netstandard2.0, which RoslynCodeTaskFactory compiles against.
+                projects[member.Key] = projectRule;
             }
 
             return new Policy(analyzers, globals, projects);
@@ -737,25 +682,12 @@ public sealed class ClicaloVerifyReferences : Task
     }
 
     /// <summary>The policy file is not valid JSON or does not have the expected shape.</summary>
-    internal sealed class PolicyFormatException : Exception
+    internal sealed class PolicyFormatException(string message, int line, int column)
+        : Exception(Format("{0} (line {1}, column {2})", message, line, column))
     {
-        public PolicyFormatException(string message, int line, int column)
-            : base(
-                message
-                    + " (line "
-                    + line.ToString(CultureInfo.InvariantCulture)
-                    + ", column "
-                    + column.ToString(CultureInfo.InvariantCulture)
-                    + ")"
-            )
-        {
-            Line = line;
-            Column = column;
-        }
+        public int Line { get; } = line;
 
-        public int Line { get; }
-
-        public int Column { get; }
+        public int Column { get; } = column;
     }
 
     /// <summary>JSON value kinds.</summary>
@@ -781,42 +713,29 @@ public sealed class ClicaloVerifyReferences : Task
     }
 
     /// <summary>A JSON value with its 1-based position.</summary>
-    internal sealed class JsonValue
+    internal sealed class JsonValue(JsonKind kind, int line, int column, string text = "")
     {
-        public JsonValue(JsonKind kind, int line, int column)
-        {
-            Kind = kind;
-            Line = line;
-            Column = column;
-        }
+        public JsonKind Kind { get; } = kind;
 
-        public JsonKind Kind { get; }
+        public int Line { get; } = line;
 
-        public int Line { get; }
-
-        public int Column { get; }
+        public int Column { get; } = column;
 
         /// <summary>String value, or the raw literal of numbers and booleans.</summary>
-        public string Text { get; set; } = string.Empty;
+        public string Text { get; } = text;
 
-        public List<JsonValue> Items { get; } = new List<JsonValue>();
+        public List<JsonValue> Items { get; } = [];
 
-        public List<KeyValuePair<string, JsonValue>> Members { get; } =
-            new List<KeyValuePair<string, JsonValue>>();
+        public List<KeyValuePair<string, JsonValue>> Members { get; } = [];
 
-        public JsonValue Expect(JsonKind kind, string what)
-        {
-            if (Kind != kind)
-            {
-                throw new PolicyFormatException(
-                    what + " must be " + Article(kind) + " but is " + Article(Kind) + ".",
+        public JsonValue Expect(JsonKind expected, string what) =>
+            Kind == expected
+                ? this
+                : throw new PolicyFormatException(
+                    Format("{0} must be {1} but is {2}.", what, Article(expected), Article(Kind)),
                     Line,
                     Column
                 );
-            }
-
-            return this;
-        }
 
         public JsonValue Required(string property) =>
             Optional(property)
@@ -826,18 +745,10 @@ public sealed class ClicaloVerifyReferences : Task
                 Column
             );
 
-        public JsonValue? Optional(string property)
-        {
-            foreach (var member in Members)
-            {
-                if (string.Equals(member.Key, property, StringComparison.Ordinal))
-                {
-                    return member.Value;
-                }
-            }
-
-            return null;
-        }
+        public JsonValue? Optional(string property) =>
+            Members
+                .FirstOrDefault(m => string.Equals(m.Key, property, StringComparison.Ordinal))
+                .Value;
 
         private static string Article(JsonKind kind) =>
             kind switch
@@ -861,55 +772,42 @@ public sealed class ClicaloVerifyReferences : Task
 
         private JsonReader(string text) => _text = text;
 
+        private int Column => _index - _lineStart + 1;
+
         public static JsonValue Parse(string text)
         {
             var reader = new JsonReader(text);
-            reader.SkipWhitespace();
-            if (reader._index < text.Length && text[reader._index] == '﻿')
+            if (text.Length > 0 && text[0] == '﻿')
             {
-                reader._index++;
-                reader._lineStart = reader._index;
+                reader._index = reader._lineStart = 1;
             }
 
             var value = reader.ReadValue();
             reader.SkipWhitespace();
-            if (reader._index != text.Length)
-            {
-                throw reader.Error("Unexpected content after the JSON document.");
-            }
-
-            return value;
+            return reader._index == text.Length
+                ? value
+                : throw reader.Error("Unexpected content after the document.");
         }
-
-        private int Column => _index - _lineStart + 1;
 
         private JsonValue ReadValue()
         {
             SkipWhitespace();
             if (_index >= _text.Length)
             {
-                throw Error("Unexpected end of the JSON document.");
+                throw Error("Unexpected end of the document.");
             }
 
-            switch (_text[_index])
+            var (line, column) = (_line, Column);
+            return _text[_index] switch
             {
-                case '{':
-                    return ReadObject();
-                case '[':
-                    return ReadArray();
-                case '"':
-                    var line = _line;
-                    var column = Column;
-                    return new JsonValue(JsonKind.String, line, column) { Text = ReadString() };
-                case 't':
-                    return ReadLiteral("true", JsonKind.Boolean);
-                case 'f':
-                    return ReadLiteral("false", JsonKind.Boolean);
-                case 'n':
-                    return ReadLiteral("null", JsonKind.Null);
-                default:
-                    return ReadNumber();
-            }
+                '{' => ReadObject(),
+                '[' => ReadArray(),
+                '"' => new JsonValue(JsonKind.String, line, column, ReadString()),
+                't' => ReadLiteral("true", JsonKind.Boolean),
+                'f' => ReadLiteral("false", JsonKind.Boolean),
+                'n' => ReadLiteral("null", JsonKind.Null),
+                _ => ReadNumber(),
+            };
         }
 
         private JsonValue ReadObject()
@@ -923,7 +821,7 @@ public sealed class ClicaloVerifyReferences : Task
             }
 
             var keys = new HashSet<string>(StringComparer.Ordinal);
-            while (true)
+            do
             {
                 SkipWhitespace();
                 if (_index >= _text.Length || _text[_index] != '"')
@@ -931,15 +829,14 @@ public sealed class ClicaloVerifyReferences : Task
                     throw Error("Expected a property name.");
                 }
 
-                var keyLine = _line;
-                var keyColumn = Column;
+                var (line, column) = (_line, Column);
                 var key = ReadString();
                 if (!keys.Add(key))
                 {
                     throw new PolicyFormatException(
                         "Duplicate property '" + key + "'.",
-                        keyLine,
-                        keyColumn
+                        line,
+                        column
                     );
                 }
 
@@ -951,16 +848,9 @@ public sealed class ClicaloVerifyReferences : Task
 
                 value.Members.Add(new KeyValuePair<string, JsonValue>(key, ReadValue()));
                 SkipWhitespace();
-                if (TryConsume('}'))
-                {
-                    return value;
-                }
+            } while (TryConsume(','));
 
-                if (!TryConsume(','))
-                {
-                    throw Error("Expected ',' or '}'.");
-                }
-            }
+            return TryConsume('}') ? value : throw Error("Expected ',' or '}'.");
         }
 
         private JsonValue ReadArray()
@@ -973,20 +863,13 @@ public sealed class ClicaloVerifyReferences : Task
                 return value;
             }
 
-            while (true)
+            do
             {
                 value.Items.Add(ReadValue());
                 SkipWhitespace();
-                if (TryConsume(']'))
-                {
-                    return value;
-                }
+            } while (TryConsume(','));
 
-                if (!TryConsume(','))
-                {
-                    throw Error("Expected ',' or ']'.");
-                }
-            }
+            return TryConsume(']') ? value : throw Error("Expected ',' or ']'.");
         }
 
         private string ReadString()
@@ -1014,54 +897,61 @@ public sealed class ClicaloVerifyReferences : Task
                     continue;
                 }
 
-                if (_index + 1 >= _text.Length)
-                {
-                    break;
-                }
-
-                var escape = _text[_index + 1];
-                _index += 2;
-                switch (escape)
-                {
-                    case '"':
-                    case '\\':
-                    case '/':
-                        builder.Append(escape);
-                        break;
-                    case 'b':
-                        builder.Append('\b');
-                        break;
-                    case 'f':
-                        builder.Append('\f');
-                        break;
-                    case 'n':
-                        builder.Append('\n');
-                        break;
-                    case 'r':
-                        builder.Append('\r');
-                        break;
-                    case 't':
-                        builder.Append('\t');
-                        break;
-                    case 'u'
-                        when _index + 4 <= _text.Length
-                            && int.TryParse(
-                                _text.Substring(_index, 4),
-                                NumberStyles.AllowHexSpecifier,
-                                CultureInfo.InvariantCulture,
-                                out var code
-                            ):
-                        builder.Append((char)code);
-                        _index += 4;
-                        break;
-                    default:
-                        _index -= 2;
-                        throw Error("Invalid escape sequence.");
-                }
+                builder.Append(ReadEscape());
             }
 
             throw Error("Unterminated string.");
         }
+
+        private char ReadEscape()
+        {
+            var escape = _index + 1 < _text.Length ? _text[_index + 1] : '\0';
+            var unescaped = escape switch
+            {
+                '"' => '"',
+                '\\' => '\\',
+                '/' => '/',
+                'b' => '\b',
+                'f' => '\f',
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                _ => '\0',
+            };
+            if (unescaped != '\0')
+            {
+                _index += 2;
+                return unescaped;
+            }
+
+            var code = 0;
+            for (var i = 0; escape == 'u' && i < 4; i++)
+            {
+                var digit = _index + 2 + i < _text.Length ? HexValue(_text[_index + 2 + i]) : -1;
+                if (digit < 0)
+                {
+                    break;
+                }
+
+                code = (code * 16) + digit;
+                if (i == 3)
+                {
+                    _index += 6;
+                    return (char)code;
+                }
+            }
+
+            throw Error("Invalid escape sequence.");
+        }
+
+        private static int HexValue(char c) =>
+            c switch
+            {
+                >= '0' and <= '9' => c - '0',
+                >= 'a' and <= 'f' => c - 'a' + 10,
+                >= 'A' and <= 'F' => c - 'A' + 10,
+                _ => -1,
+            };
 
         private JsonValue ReadLiteral(string literal, JsonKind kind)
         {
@@ -1070,21 +960,16 @@ public sealed class ClicaloVerifyReferences : Task
                 throw Error("Invalid literal.");
             }
 
-            var value = new JsonValue(kind, _line, Column) { Text = literal };
+            var value = new JsonValue(kind, _line, Column, literal);
             _index += literal.Length;
             return value;
         }
 
         private JsonValue ReadNumber()
         {
-            var start = _index;
-            var value = new JsonValue(JsonKind.Number, _line, Column);
+            var (start, line, column) = (_index, _line, Column);
             TryConsume('-');
-            if (TryConsume('0'))
-            {
-                // A leading zero cannot be followed by more digits.
-            }
-            else if (!ConsumeDigits())
+            if (!TryConsume('0') && !ConsumeDigits())
             {
                 throw Error("Invalid value.");
             }
@@ -1094,22 +979,21 @@ public sealed class ClicaloVerifyReferences : Task
                 throw Error("Expected digits after the decimal point.");
             }
 
-            if (_index < _text.Length && (_text[_index] == 'e' || _text[_index] == 'E'))
+            if (TryConsume('e') || TryConsume('E'))
             {
-                _index++;
-                if (!TryConsume('+'))
-                {
-                    TryConsume('-');
-                }
-
+                _ = TryConsume('+') || TryConsume('-');
                 if (!ConsumeDigits())
                 {
                     throw Error("Expected digits in the exponent.");
                 }
             }
 
-            value.Text = _text.Substring(start, _index - start);
-            return value;
+            return new JsonValue(
+                JsonKind.Number,
+                line,
+                column,
+                _text.Substring(start, _index - start)
+            );
         }
 
         private bool ConsumeDigits()
@@ -1136,7 +1020,7 @@ public sealed class ClicaloVerifyReferences : Task
 
         private void SkipWhitespace()
         {
-            while (_index < _text.Length)
+            for (; _index < _text.Length; _index++)
             {
                 var c = _text[_index];
                 if (c == '\n')
@@ -1148,12 +1032,9 @@ public sealed class ClicaloVerifyReferences : Task
                 {
                     return;
                 }
-
-                _index++;
             }
         }
 
-        private PolicyFormatException Error(string message) =>
-            new PolicyFormatException(message, _line, Column);
+        private PolicyFormatException Error(string message) => new(message, _line, Column);
     }
 }
