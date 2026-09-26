@@ -32,6 +32,7 @@
     <Project Path="tools/Clicalo.DevCli/Clicalo.DevCli.csproj" />
     <Project Path="tools/InputProbe/InputProbe.csproj" />
     <Project Path="tools/SpikeLab/SpikeLab.csproj" />
+    <Project Path="tools/SpikeLab/Tests/SpikeLab.Tests.csproj" />
   </Folder>
   <Folder Name="/build/">
     <Project Path="build/Build.csproj" />

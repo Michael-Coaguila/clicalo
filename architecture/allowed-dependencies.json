@@ -272,6 +272,13 @@
       "packageReferences": ["Microsoft.Windows.CsWin32"],
       "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
     },
+    "SpikeLab.Tests": {
+      "area": "tools",
+      "rule": "Unit tests of the spike laboratory (script engine, verdicts, automatic checks, reports and the guarded lab injector). Headless: no window shown, no injected input.",
+      "platform": "windows",
+      "projectReferences": ["SpikeLab"],
+      "packageReferences": ["xunit.v3", "Shouldly", "Microsoft.Extensions.TimeProvider.Testing"]
+    },
     "Build": {
       "area": "build",
       "rule": "cl build orchestration (Bullseye and SimpleExec).",
