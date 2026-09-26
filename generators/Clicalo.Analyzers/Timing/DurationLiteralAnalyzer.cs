@@ -9,7 +9,8 @@ namespace Clicalo.Analyzers.Timing;
 /// <summary>
 /// CLC0004 (NFR-020): in <c>Clicalo.Application*</c> and <c>Clicalo.Presentation*</c> every duration comes from
 /// <c>Clicalo.Domain.Timings</c>. A numeric constant used as a duration (see <see cref="DurationApis"/>) is an
-/// error whether it is passed to a call, assigned to a member or used to initialize a member or a local.
+/// error whether it is passed to a call, assigned to a member, used to initialize a member or a local, or compared
+/// with a duration as a threshold (<c>elapsed.TotalMilliseconds &gt;= 600</c>).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DurationLiteralAnalyzer : DiagnosticAnalyzer
@@ -48,6 +49,7 @@ public sealed class DurationLiteralAnalyzer : DiagnosticAnalyzer
                 OperationKind.SimpleAssignment,
                 OperationKind.CompoundAssignment
             );
+            block.RegisterOperationAction(c => AnalyzeComparison(c, apis), OperationKind.Binary);
             block.RegisterOperationAction(
                 c => AnalyzeInitializer(c, apis),
                 OperationKind.PropertyInitializer,
@@ -114,6 +116,61 @@ public sealed class DurationLiteralAnalyzer : DiagnosticAnalyzer
         {
             Report(context, assignment.Value.Syntax, member.Name);
         }
+    }
+
+    private static void AnalyzeComparison(OperationAnalysisContext context, DurationApis apis)
+    {
+        var comparison = (IBinaryOperation)context.Operation;
+        if (
+            comparison.OperatorKind
+            is BinaryOperatorKind.Equals
+                or BinaryOperatorKind.NotEquals
+                or BinaryOperatorKind.LessThan
+                or BinaryOperatorKind.LessThanOrEqual
+                or BinaryOperatorKind.GreaterThan
+                or BinaryOperatorKind.GreaterThanOrEqual
+        )
+        {
+            ReportThreshold(context, apis, comparison.LeftOperand, comparison.RightOperand);
+            ReportThreshold(context, apis, comparison.RightOperand, comparison.LeftOperand);
+        }
+    }
+
+    /// <summary>
+    /// <c>holdMs &gt;= 600</c> hides a threshold. Comparing with zero is a sign check (<c>delayMs &gt; 0</c>), not a
+    /// threshold, and stays allowed.
+    /// </summary>
+    private static void ReportThreshold(
+        OperationAnalysisContext context,
+        DurationApis apis,
+        IOperation duration,
+        IOperation threshold
+    )
+    {
+        if (
+            DurationNameOf(duration) is { } name
+            && !ConstantValues.IsZero(threshold.ConstantValue.Value)
+            && apis.IsLiteralDuration(threshold)
+        )
+        {
+            Report(context, threshold.Syntax, name);
+        }
+    }
+
+    /// <summary>The name of the member, local or parameter a compared value reads, when that name marks a duration.</summary>
+    private static string? DurationNameOf(IOperation operand)
+    {
+        var (name, type) = operand.WithoutConversions() switch
+        {
+            IPropertyReferenceOperation p => (p.Property.Name, p.Property.Type),
+            IFieldReferenceOperation f => (f.Field.Name, f.Field.Type),
+            ILocalReferenceOperation l => (l.Local.Name, l.Local.Type),
+            IParameterReferenceOperation p => (p.Parameter.Name, p.Parameter.Type),
+            _ => (null, null),
+        };
+        return name is not null && type is not null && DurationApis.IsDurationMember(name, type)
+            ? name
+            : null;
     }
 
     private static void AnalyzeInitializer(OperationAnalysisContext context, DurationApis apis)

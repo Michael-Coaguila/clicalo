@@ -88,6 +88,34 @@ public sealed class DurationLiteralAnalyzerTests
         );
 
     [Fact]
+    public Task Literal_thresholds_compared_with_durations_are_errors() =>
+        Verify.VerifyAsync(
+            """
+            using System;
+            using System.Diagnostics;
+            using Clicalo.Domain;
+
+            namespace Clicalo.Application.Engine;
+
+            public static class Press
+            {
+                public static bool IsLong(TimeSpan held, Stopwatch watch, long heldMs, double delaySeconds) =>
+                    held.TotalMilliseconds >= {|CLC0004:600|}
+                    || {|CLC0004:1_000|} < watch.ElapsedMilliseconds
+                    || heldMs == {|CLC0004:250|}
+                    || delaySeconds > {|CLC0004:2.5|};
+
+                public static bool IsValid(TimeSpan held, long heldMs, int count) =>
+                    heldMs > 0
+                    && held.TotalMilliseconds >= Timings.LongPressMs
+                    && heldMs < Timings.FlashMs * 2
+                    && count > 3;
+            }
+            """,
+            Stubs.Timings
+        );
+
+    [Fact]
     public Task Timings_constants_and_runtime_values_are_allowed() =>
         Verify.VerifyAsync(
             """

@@ -55,12 +55,12 @@ internal static class Descriptors
     public static readonly DiagnosticDescriptor DurationLiteral = new(
         DiagnosticIds.DurationLiteral,
         "Durations come from Timings",
-        "The duration '{0}' passed to '{1}' is a literal; use a constant generated in Clicalo.Domain.Timings from data/catalogs/timings.json (NFR-020)",
+        "The duration '{0}' used for '{1}' is a literal; use a constant generated in Clicalo.Domain.Timings from data/catalogs/timings.json (NFR-020)",
         DiagnosticCategories.Timing,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Every time threshold is defined once in timings.json and generated as a constant. "
-            + "Application and Presentation code must not write durations as numeric literals or local constants.",
+            + "Application and Presentation code must not write durations or duration thresholds as numeric literals or local constants.",
         helpLinkUri: HelpBase + "clc0004"
     );
 
