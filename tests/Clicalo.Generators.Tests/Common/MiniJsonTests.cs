@@ -7,7 +7,9 @@ public sealed class MiniJsonTests
     [Fact]
     public void Parses_nested_values_and_keeps_member_order()
     {
-        var root = MiniJson.Parse("""{ "b": [1, 2.5, -3e2], "a": { "x": "ñá 😀", "y": true, "z": null } }""");
+        var root = MiniJson.Parse(
+            """{ "b": [1, 2.5, -3e2], "a": { "x": "ñá 😀", "y": true, "z": null } }"""
+        );
 
         root.Kind.ShouldBe(JsonKind.Object);
         root.Members.Select(m => m.Key).ShouldBe(["b", "a"]);

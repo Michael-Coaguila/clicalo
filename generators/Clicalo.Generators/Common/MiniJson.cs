@@ -137,7 +137,11 @@ internal static class MiniJson
                 var key = ReadString();
                 if (!seen.Add(key))
                 {
-                    throw new JsonParseException($"Duplicate property '{key}'.", keyLine, keyColumn);
+                    throw new JsonParseException(
+                        $"Duplicate property '{key}'.",
+                        keyLine,
+                        keyColumn
+                    );
                 }
 
                 SkipWhitespace();

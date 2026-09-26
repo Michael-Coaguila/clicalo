@@ -70,7 +70,12 @@ internal sealed class JsonNode
         value = 0;
         return Kind == JsonKind.Number
             && NumberText is not null
-            && long.TryParse(NumberText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out value);
+            && long.TryParse(
+                NumberText,
+                NumberStyles.AllowLeadingSign,
+                CultureInfo.InvariantCulture,
+                out value
+            );
     }
 
     internal static JsonNode Null(int line, int column) => new(JsonKind.Null, line, column);
@@ -87,6 +92,9 @@ internal sealed class JsonNode
     internal static JsonNode Array(List<JsonNode> items, int line, int column) =>
         new(JsonKind.Array, line, column) { Items = items };
 
-    internal static JsonNode Object(List<KeyValuePair<string, JsonNode>> members, int line, int column) =>
-        new(JsonKind.Object, line, column) { Members = members };
+    internal static JsonNode Object(
+        List<KeyValuePair<string, JsonNode>> members,
+        int line,
+        int column
+    ) => new(JsonKind.Object, line, column) { Members = members };
 }

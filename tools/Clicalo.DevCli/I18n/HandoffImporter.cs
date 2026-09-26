@@ -189,7 +189,13 @@ internal static partial class HandoffImporter
 
             if (!entry.Text.IsEmpty)
             {
-                CheckLanguages(recipe, entry.Text.Keys, "added." + entry.Key + ".text", true, errors);
+                CheckLanguages(
+                    recipe,
+                    entry.Text.Keys,
+                    "added." + entry.Key + ".text",
+                    true,
+                    errors
+                );
                 continue;
             }
 
