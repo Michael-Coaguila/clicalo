@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Media;
+using Clicalo.Domain.Geometry;
 using Clicalo.Tools.SpikeLab.Scripting;
 using Clicalo.Tools.SpikeLab.Views;
 using Clicalo.UI.Wpf.Windowing;
@@ -78,6 +80,7 @@ internal sealed class GuideStripSurface : LabSurface
             _bottom = area.Bottom - ToPhysical(LabLayout.StripBottomGap);
         }
 
+        LimitHeight(area);
         KeepInsideWorkArea(_anchoredAtBottom ? _bottom : null);
     }
 
@@ -96,7 +99,31 @@ internal sealed class GuideStripSurface : LabSurface
     }
 
     /// <inheritdoc />
-    protected override void OnResized() => KeepInsideWorkArea(_anchoredAtBottom ? _bottom : null);
+    protected override void OnResized()
+    {
+        var bounds = Bounds();
+        LimitHeight(bounds.IsEmpty ? bounds : WorkAreas.Of(bounds));
+        KeepInsideWorkArea(_anchoredAtBottom ? _bottom : null);
+    }
+
+    /// <summary>
+    /// Never taller than the work area of its monitor: the whole instruction gives up lines before the buttons leave
+    /// the screen (<see cref="GuideView"/> keeps the buttons in their own row).
+    /// </summary>
+    private void LimitHeight(PhysicalRect area)
+    {
+        if (area.IsEmpty)
+        {
+            return;
+        }
+
+        var scale = VisualTreeHelper.GetDpi(this).DpiScaleY;
+        var limit = LabLayout.StripMaximumHeight(area.Height / scale);
+        if (!MaxHeight.Equals(limit))
+        {
+            MaxHeight = limit;
+        }
+    }
 
     private void RememberBottom()
     {

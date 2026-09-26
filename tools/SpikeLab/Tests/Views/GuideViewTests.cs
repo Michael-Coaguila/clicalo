@@ -202,6 +202,40 @@ public sealed class GuideViewTests
         });
 
     [Fact]
+    public void At_its_maximum_height_the_whole_instruction_gives_up_lines_and_the_buttons_stay() =>
+        WpfThread.Invoke(() =>
+        {
+            var view = new GuideView(
+                (tile, width, height) => TileFactory.Create(tile, width, height)
+            );
+            view.Update(
+                Model(stepAction: "Forzar activación del panel") with
+                {
+                    Instruction = string.Join(" ", Enumerable.Repeat(LongestInstruction(), 4)),
+                }
+            );
+            view.ShowsFullInstruction = true;
+            Layout(view);
+            var unlimited = view.DesiredSize.Height;
+
+            // A strip limited to less than it wants, as the window's MaxHeight does on a short work area.
+            var limit = Math.Round(unlimited * 0.6);
+            view.Measure(new Size(LabLayout.StripPreferredWidth, limit));
+            view.Arrange(new Rect(0, 0, LabLayout.StripPreferredWidth, limit));
+            view.UpdateLayout();
+
+            view.RenderSize.Height.ShouldBeLessThanOrEqualTo(limit);
+            foreach (var tile in Tiles(view).Where(tile => tile.Visibility == Visibility.Visible))
+            {
+                var bottom = tile.TranslatePoint(new Point(0, tile.ActualHeight), view).Y;
+                bottom.ShouldBeLessThanOrEqualTo(
+                    limit + 0.5,
+                    $"«{tile.AccessibleName}» must stay inside the strip"
+                );
+            }
+        });
+
+    [Fact]
     public void The_handles_are_named_thumbs_of_at_least_44_px_without_their_glyph() =>
         WpfThread.Invoke(() =>
         {

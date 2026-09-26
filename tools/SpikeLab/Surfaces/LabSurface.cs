@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
@@ -37,6 +38,7 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     private PointerInputSource? _pointer;
     private DragState? _drag;
     private nint _handle;
+    private bool _resizeQueued;
 
     /// <summary>Creates the surface <paramref name="id"/> in <paramref name="group"/>.</summary>
     protected LabSurface(
@@ -62,13 +64,7 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         // Moving a window runs no layout pass: without this, the touch targets keep their old screen position after a
         // drag of the handle (S1 row 30) or after the panel moves above the touch keyboard (EC-BUS-01).
         LocationChanged += (_, _) => RefreshTargets();
-        SizeChanged += (_, _) =>
-        {
-            if (IsShown)
-            {
-                OnResized();
-            }
-        };
+        SizeChanged += (_, _) => QueueResized();
     }
 
     /// <summary>«Panel#0», «Dock#0»…</summary>
@@ -143,8 +139,7 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
             return;
         }
 
-        var wanted = bottom is { } edge ? bounds with { Top = edge - bounds.Height } : bounds;
-        var inside = LabLayout.Inside(wanted, area);
+        var inside = LabLayout.KeepInside(bounds, area, bottom);
         if (inside != bounds)
         {
             TryMove(inside);
@@ -162,7 +157,9 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
     protected virtual void OnDragEnded() => KeepInsideWorkArea();
 
     /// <summary>
-    /// The shown surface changed size (its content changed). Nothing by default: the surfaces under test are only
+    /// The shown surface changed size (its content changed), once its window has the new size: WPF raises
+    /// <c>SizeChanged</c> of a <c>SizeToContent</c> window before its <c>HwndSource</c> resizes the window, so
+    /// <see cref="Bounds"/> would still give the old size there. Nothing by default: the surfaces under test are only
     /// moved when they appear and when a drag ends, never in the middle of a DPI change (S1 row 30).
     /// </summary>
     protected virtual void OnResized() { }
@@ -389,6 +386,31 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
 
         pointer.Dispose();
         gestures!.Dispose();
+    }
+
+    /// <summary>
+    /// Runs <see cref="OnResized"/> after the layout pass that raised <c>SizeChanged</c> has resized the window. Several
+    /// changes in a row run it once.
+    /// </summary>
+    private void QueueResized()
+    {
+        if (!IsShown || _resizeQueued)
+        {
+            return;
+        }
+
+        _resizeQueued = true;
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            () =>
+            {
+                _resizeQueued = false;
+                if (IsShown)
+                {
+                    OnResized();
+                }
+            }
+        );
     }
 
     private void RefreshTargets()

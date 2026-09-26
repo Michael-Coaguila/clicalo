@@ -115,6 +115,21 @@ internal static class LabLayout
             Top = (int)Fit(rect.Top, rect.Height, area.Top, area.Bottom),
         };
 
+    /// <summary>
+    /// Where a surface of <paramref name="bounds"/> (physical pixels, with its current size) goes to stay inside
+    /// <paramref name="area"/>: with <paramref name="bottom"/>, its bottom edge goes there first (the guide strip keeps
+    /// its bottom edge while it grows or folds). Never resized.
+    /// </summary>
+    public static PhysicalRect KeepInside(PhysicalRect bounds, PhysicalRect area, int? bottom) =>
+        Inside(bottom is { } edge ? bounds with { Top = edge - bounds.Height } : bounds, area);
+
+    /// <summary>
+    /// The tallest guide strip, in logical pixels: the work area (<paramref name="areaHeight"/>, logical pixels) less
+    /// <see cref="StripBottomGap"/> above and below, so its buttons never leave it.
+    /// </summary>
+    public static double StripMaximumHeight(double areaHeight) =>
+        Math.Max(0, areaHeight - (2 * StripBottomGap));
+
     /// <summary>True when the center of <paramref name="rect"/> is in the lower half of <paramref name="area"/>.</summary>
     public static bool IsInLowerHalf(PhysicalRect rect, PhysicalRect area) =>
         rect.Center.Y >= area.Center.Y;

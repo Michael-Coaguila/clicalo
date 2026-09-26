@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
@@ -126,6 +127,56 @@ public sealed class LabLayoutTests
         LabLayout
             .Inside(new Rect(10, 10, 20, 20), new Rect(0, 0, 100, 100))
             .ShouldBe(new Rect(10, 10, 20, 20));
+    }
+
+    [Fact]
+    public void The_strip_keeps_its_bottom_edge_while_it_grows_and_folds()
+    {
+        // The maintainer's screen (S3, measured with UI Automation): the strip starts 571 px tall, 853 with the whole
+        // instruction and 336 folded. WPF resizes it keeping its top edge; the strip then puts its bottom edge back.
+        var area = new PhysicalRect(0, 0, 2400, 1516);
+        const int Bottom = 1516 - 14;
+        var strip = new PhysicalRect(28, Bottom - 571, 1334, 571);
+
+        foreach (var height in (ReadOnlySpan<int>)[853, 336, 571, 853])
+        {
+            var resized = strip with { Height = height };
+            strip = LabLayout.KeepInside(resized, area, Bottom);
+
+            strip.Bottom.ShouldBe(
+                Bottom,
+                height.ToString(CultureInfo.InvariantCulture) + " px tall"
+            );
+            strip.Left.ShouldBe(28);
+            strip.Height.ShouldBe(height, "it is moved, never resized");
+        }
+
+        LabLayout
+            .KeepInside(strip with { Height = 1600 }, area, Bottom)
+            .Top.ShouldBe(0, "taller than the work area: its top goes to the top");
+        LabLayout
+            .KeepInside(new PhysicalRect(28, 14, 1334, 853), area, bottom: null)
+            .ShouldBe(
+                new PhysicalRect(28, 14, 1334, 853),
+                "in the upper half it keeps its top edge"
+            );
+    }
+
+    [Theory]
+    [MemberData(nameof(Screens))]
+    public void The_strip_is_never_taller_than_the_work_area(double width, double height)
+    {
+        var area = new Rect(0, 0, width, height);
+
+        var limit = LabLayout.StripMaximumHeight(area.Height);
+
+        limit.ShouldBe(area.Height - (2 * LabLayout.StripBottomGap));
+        LabLayout
+            .Inside(
+                new Rect(LabLayout.Gap, area.Bottom - LabLayout.StripBottomGap - limit, 760, limit),
+                area
+            )
+            .Bottom.ShouldBeLessThanOrEqualTo(area.Bottom);
     }
 
     [Fact]

@@ -118,7 +118,19 @@ internal sealed class GuideView : Border
         buttons.Children.Add(_stepAction);
         buttons.Children.Add(Small(addTile(LabTiles.Guide[4], 104, 56)));
 
-        var layout = new StackPanel();
+        // The details take what is left: when the strip reaches its maximum height (the work area), the instruction
+        // gives up lines and the notice and the buttons stay on screen.
+        _details.ClipToBounds = true;
+        var layout = new Grid();
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Grid.SetRow(_details, 1);
+        Grid.SetRow(Notice, 2);
+        Grid.SetRow(buttons, 3);
         layout.Children.Add(top);
         layout.Children.Add(_details);
         layout.Children.Add(Notice);
