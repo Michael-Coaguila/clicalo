@@ -46,6 +46,7 @@ CallNextHookEx
 WINDOWS_HOOK_ID
 HCBT_ACTIVATE
 GetCurrentThreadId
+GetWindowThreadProcessId
 // ---- end of Windowing ----
 
 // ---- Pointer (PointerInputSource, PointerSetup) ----

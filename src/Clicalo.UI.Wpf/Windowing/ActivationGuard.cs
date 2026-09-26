@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Windows.Threading;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Timing;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 
 namespace Clicalo.UI.Wpf.Windowing;
 
@@ -30,12 +33,18 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// surface that owns the foreground.
 /// </para>
 /// <para>
-/// An activation message for a surface that does not own the foreground (<c>GetForegroundWindow</c>) is not an
-/// activation of the foreground: it is a late message of an activation that has already ended (the orchestrator gives
-/// the foreground back from the thread pool while the UI thread still delivers the messages of the activation, so one
-/// may arrive after <c>WM_ACTIVATEAPP(FALSE)</c>), and nothing was taken from the app in front. It is kept from WPF and
-/// <c>WS_EX_NOACTIVATE</c> is applied again, but it neither opens nor counts a violation: one forced activation is
-/// exactly one violation.
+/// A <c>WM_NCACTIVATE(TRUE)</c> or <c>WM_ACTIVATE</c> for a surface that does not own the foreground
+/// (<c>GetForegroundWindow</c>) is judged by who does. A window of this process without a lease (another surface,
+/// the <see cref="OwnerAnchor"/>) means the foreground was taken from the app in front: a violation now. A window
+/// outside the process may mean two things that the message alone cannot tell apart: a late message of an activation
+/// that has already ended (the orchestrator gives the foreground back from the thread pool while the UI thread still
+/// delivers the messages of the activation) or a real activation that <c>GetForegroundWindow</c> does not confirm
+/// yet (spike S1 saw a lone <c>WM_ACTIVATE</c> of a forced activation arrive that way). The message is kept from WPF
+/// and <c>WS_EX_NOACTIVATE</c> is applied again at once, and the judgment is deferred: once the UI thread has
+/// delivered what it had queued and, if the foreground is still outside the process, once more after
+/// <c>Timings.Windowing.ActivationRecheck</c>. A window of this process in front without a lease then is one
+/// violation, reported from there; anything else was a late message and counts nothing. One forced activation is
+/// exactly one violation either way.
 /// </para>
 /// </remarks>
 public sealed class ActivationGuard
@@ -47,6 +56,11 @@ public sealed class ActivationGuard
     private long _violations;
     private NonActivatingWindow? _openViolation;
     private bool _applicationActive;
+    private NonActivatingWindow? _pendingSurface;
+    private ActivationMessage _pendingMessage;
+    private ActivationCause _pendingCause;
+    private int _pendingGeneration;
+    private ITimer? _recheck;
 
     /// <summary>Creates the guard that reports to <paramref name="arbiter"/> and stamps with <paramref name="timeProvider"/>.</summary>
     public ActivationGuard(IActivationArbiter arbiter, TimeProvider timeProvider)
@@ -83,14 +97,14 @@ public sealed class ActivationGuard
     /// <summary>The orchestrator side that decides whether an activation is leased.</summary>
     public IActivationArbiter Arbiter { get; }
 
-    /// <summary>Clock for <see cref="ActivationViolation.DetectedAt"/>.</summary>
+    /// <summary>Clock for <see cref="ActivationViolation.DetectedAt"/> and for the deferred judgment.</summary>
     public TimeProvider Clock { get; }
 
     /// <summary>
     /// Called by the common hook of <paramref name="surface"/> for each activation message. Returns true when the
-    /// activation is a violation: the first message of it has been reported, repaired and counted, and the later
-    /// messages of the same activation return true without counting again. Also true, without counting, for a late
-    /// message of an activation that has already ended (the surface does not own the foreground).
+    /// message is kept from WPF: the first message of a violation, which has been reported, repaired and counted; the
+    /// later messages of the same activation, which do not count again; and a message for a surface that does not own
+    /// the foreground while the foreground is outside the process, whose judgment is deferred.
     /// </summary>
     /// <param name="surface">The surface that received the message.</param>
     /// <param name="message">Which activation message.</param>
@@ -113,9 +127,11 @@ public sealed class ActivationGuard
             // WM_ACTIVATEAPP(TRUE) reaches this thread only when the application was inactive, first of all the
             // messages of an activation. A violation still open here belongs to an earlier activation whose end never
             // arrived (a lost deactivation, a late message after the restore): it is over, and this activation must
-            // be judged on its own instead of being swallowed as part of it.
+            // be judged on its own instead of being swallowed as part of it. So is a deferred judgment: the messages
+            // of this activation decide.
             _applicationActive = true;
             _openViolation = null;
+            ClearPending();
         }
 
         if (Arbiter.IsActivationLeased(window))
@@ -123,7 +139,8 @@ public sealed class ActivationGuard
             return false;
         }
 
-        var ownsForeground = _foregroundWindow() == window;
+        var foreground = _foregroundWindow();
+        var ownsForeground = foreground == window;
         if (message == ActivationMessage.ActivateApp && !ownsForeground)
         {
             // Another window of this thread is being activated: its own messages decide.
@@ -135,38 +152,16 @@ public sealed class ActivationGuard
             return true;
         }
 
-        if (!ownsForeground)
+        if (!ownsForeground && !IsTakenByThisProcess(foreground))
         {
-            // A late message of an activation that has already ended: the foreground is already elsewhere, so nothing
-            // is being taken from the app in front. Keep it from WPF and repair, without a second violation.
+            // The foreground is outside the process: a late message, or an activation not confirmed yet. Keep it from
+            // WPF, repair, and judge it once the thread has caught up.
             surface.ReapplyNonActivation();
+            Defer(surface, message, probableCause);
             return true;
         }
 
-        _openViolation = surface;
-        var violation = new ActivationViolation(
-            surface.Id,
-            window,
-            message,
-            probableCause,
-            Clock.GetUtcNow()
-        );
-        try
-        {
-            Arbiter.ReportViolation(violation);
-        }
-        finally
-        {
-            surface.ReapplyNonActivation();
-            Record(violation);
-        }
-
-        Debug.Fail(
-            string.Create(
-                CultureInfo.InvariantCulture,
-                $"REG-01 violation: surface {violation.Surface} was activated without a lease ({violation.Message}, probable cause {violation.ProbableCause})."
-            )
-        );
+        Report(surface, message, probableCause);
         return true;
     }
 
@@ -204,6 +199,137 @@ public sealed class ActivationGuard
         {
             _openViolation = null;
         }
+
+        if (ReferenceEquals(_pendingSurface, surface))
+        {
+            ClearPending();
+        }
+    }
+
+    private static bool IsOfThisProcess(WindowToken window)
+    {
+        _ = PInvoke.GetWindowThreadProcessId((HWND)window.Handle, out var processId);
+        return processId != 0 && processId == (uint)Environment.ProcessId;
+    }
+
+    /// <summary>
+    /// True when <paramref name="foreground"/> is a window of this process that no lease lets activate: the
+    /// foreground was taken from the app in front.
+    /// </summary>
+    private bool IsTakenByThisProcess(WindowToken foreground) =>
+        !foreground.IsNone
+        && IsOfThisProcess(foreground)
+        && !Arbiter.IsActivationLeased(foreground);
+
+    /// <summary>Opens, reports, repairs and counts one violation of <paramref name="surface"/>.</summary>
+    private void Report(
+        NonActivatingWindow surface,
+        ActivationMessage message,
+        ActivationCause probableCause
+    )
+    {
+        ClearPending();
+        _openViolation = surface;
+        var violation = new ActivationViolation(
+            surface.Id,
+            surface.SurfaceWindow,
+            message,
+            probableCause,
+            Clock.GetUtcNow()
+        );
+        try
+        {
+            Arbiter.ReportViolation(violation);
+        }
+        finally
+        {
+            surface.ReapplyNonActivation();
+            Record(violation);
+        }
+
+        Debug.Fail(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"REG-01 violation: surface {violation.Surface} was activated without a lease ({violation.Message}, probable cause {violation.ProbableCause})."
+            )
+        );
+    }
+
+    /// <summary>
+    /// Keeps the first message of an unconfirmed activation and queues its judgment behind what the UI thread has
+    /// already queued. Later messages of the same activation join the pending one.
+    /// </summary>
+    private void Defer(
+        NonActivatingWindow surface,
+        ActivationMessage message,
+        ActivationCause probableCause
+    )
+    {
+        if (_pendingSurface is not null)
+        {
+            return;
+        }
+
+        _pendingSurface = surface;
+        _pendingMessage = message;
+        // The foreground was in another application when the message arrived: unless the surfaces were doing
+        // something that explains it, the activation came from outside.
+        _pendingCause =
+            probableCause == ActivationCause.Unknown ? ActivationCause.External : probableCause;
+        var generation = ++_pendingGeneration;
+        _ = surface.Dispatcher.InvokeAsync(
+            () => Judge(generation, final: false),
+            DispatcherPriority.Background
+        );
+    }
+
+    /// <summary>
+    /// The deferred judgment: a window of this process in front without a lease is one violation; otherwise, the first
+    /// time, one more look after <c>Timings.Windowing.ActivationRecheck</c>, and the second time it was a late message.
+    /// </summary>
+    private void Judge(int generation, bool final)
+    {
+        var surface = _pendingSurface;
+        if (surface is null || generation != _pendingGeneration)
+        {
+            return;
+        }
+
+        if (_openViolation is not null || surface.SurfaceWindow.IsNone)
+        {
+            // Counted meanwhile by the messages of the same activation, or the surface is gone.
+            ClearPending();
+            return;
+        }
+
+        if (IsTakenByThisProcess(_foregroundWindow()))
+        {
+            Report(surface, _pendingMessage, _pendingCause);
+            return;
+        }
+
+        if (final)
+        {
+            ClearPending();
+            return;
+        }
+
+        var dispatcher = surface.Dispatcher;
+        _recheck?.Dispose();
+        _recheck = Clock.CreateTimer(
+            _ => _ = dispatcher.InvokeAsync(() => Judge(generation, final: true)),
+            null,
+            Timings.Windowing.ActivationRecheck,
+            Timeout.InfiniteTimeSpan
+        );
+    }
+
+    private void ClearPending()
+    {
+        _pendingSurface = null;
+        _pendingGeneration++;
+        _recheck?.Dispose();
+        _recheck = null;
     }
 
     /// <summary>Counts <paramref name="violation"/> and raises <see cref="ViolationDetected"/>.</summary>

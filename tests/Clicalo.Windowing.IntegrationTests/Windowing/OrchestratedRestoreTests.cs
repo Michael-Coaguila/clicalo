@@ -87,6 +87,7 @@ public sealed class OrchestratedRestoreTests(OrchestratedSurfaceFixture desktop)
             NativeSurface
                 .HasExStyle(panel.Handle, NativeSurface.ExNoActivate)
                 .ShouldBeTrue(Say($"Cycle {cycle}: WS_EX_NOACTIVATE is gone."));
+            TestContext.Current.TestOutputHelper?.WriteLine(Say($"Cycle {cycle}:") + Sequence());
             var violation = desktop.Lab.Arbiter.Violations[^1];
             violation.Surface.ShouldBe(panel.Id);
             violation.ProbableCause.ShouldBe(ActivationCause.External);

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -131,10 +132,41 @@ public sealed class TestSurface : NonActivatingWindow
         }
 
         var active = msg == NativeSurface.WmActivate ? (wParam & 0xFFFF) != 0 : wParam != 0;
+        var foreground = ForegroundWindows.Current;
         _sequence.Enqueue(
             name
                 + (active ? "(TRUE)" : "(FALSE)")
-                + (ForegroundWindows.Current == hwnd ? " in front" : " not in front")
+                + (
+                    foreground == hwnd
+                        ? " in front"
+                        : " not in front (" + WhoIsInFront(foreground) + ")"
+                )
         );
+    }
+
+    /// <summary>Who owns the foreground when it is not this surface: the anchor, a surface, this process or another.</summary>
+    private string WhoIsInFront(nint foreground)
+    {
+        if (foreground == 0)
+        {
+            return "nobody";
+        }
+
+        if (foreground == Registry.Anchor.Window.Handle)
+        {
+            return "the owner anchor";
+        }
+
+        if (Registry.TryGetSurface(new WindowToken(foreground), out var surface))
+        {
+            return "surface " + surface;
+        }
+
+        return ForegroundWindows.IsOfThisProcess(foreground)
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"window 0x{foreground:X} of this process"
+            )
+            : "another process";
     }
 }

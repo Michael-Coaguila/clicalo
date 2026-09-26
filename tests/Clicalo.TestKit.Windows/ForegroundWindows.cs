@@ -21,6 +21,14 @@ public static class ForegroundWindows
     /// <summary>True when <paramref name="window"/> is an existing window handle.</summary>
     public static bool Exists(nint window) => window != 0 && PInvoke.IsWindow((HWND)window);
 
+    /// <summary>True when <paramref name="window"/> belongs to this process.</summary>
+    public static unsafe bool IsOfThisProcess(nint window)
+    {
+        uint processId = 0;
+        _ = PInvoke.GetWindowThreadProcessId((HWND)window, &processId);
+        return processId != 0 && processId == (uint)Environment.ProcessId;
+    }
+
     /// <summary>
     /// One line describing who owns the foreground (handle and process name, never the window title, which may
     /// contain user content), the foreground lock timeout and this process's session, for failure messages.

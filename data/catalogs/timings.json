@@ -370,6 +370,12 @@
           "description": "After an activation without a lease, the previous external foreground must be back within this time (ActivationGuardNegativeTests, spike S1).",
           "req": ["REG-01"],
           "source": "blueprint §3.5"
+        },
+        "ActivationRecheck": {
+          "duration": "50ms",
+          "description": "An activation message that reaches a surface while the foreground is outside the process is judged again once the UI thread has delivered what it had queued and, if the foreground is still outside, once more after this wait: a window of the process in front without a lease is one violation, anything else was a late message. It is spent inside ViolationRestoreBudget (spike S1: a real forced activation arrived as a WM_ACTIVATE that GetForegroundWindow did not confirm yet).",
+          "req": ["REG-01"],
+          "source": "blueprint §3.5"
         }
       }
     },

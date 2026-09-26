@@ -1,7 +1,9 @@
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Timing;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Windowing;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Clicalo.Windowing.IntegrationTests.Windowing;
 
@@ -179,7 +181,8 @@ public sealed class ActivationGuardTests
     public void A_late_activation_message_after_the_restore_is_kept_but_not_counted()
     {
         using var failures = DebugFailures.Capture();
-        using var lab = SurfaceLab.Create();
+        var clock = new FakeTimeProvider();
+        using var lab = SurfaceLab.Create(timeProvider: clock);
         var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
         var bubble = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Bubble, 0, 64, 64)).Handle;
 
@@ -192,7 +195,7 @@ public sealed class ActivationGuardTests
         lab.Guard.Violations.ShouldBe(1, "one activation is one violation");
 
         // The restore gives the foreground back from the thread pool and the application is deactivated; a message of
-        // the activation that is only delivered now finds the foreground elsewhere.
+        // the activation that is only delivered now finds the foreground in another application.
         lab.SimulatedForeground = AnotherApp;
         Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
         Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Inactive);
@@ -200,12 +203,15 @@ public sealed class ActivationGuardTests
         Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
         Send(panel, NativeSurface.WmActivate, NativeSurface.Active)
             .ShouldBe(0, "the late WM_ACTIVATE is still kept from WPF and DefWindowProc");
-
-        lab.Guard.Violations.ShouldBe(1, "a late message is not a second violation");
-        lab.Arbiter.Violations.Count.ShouldBe(1);
         NativeSurface
             .HasExStyle(panel, NativeSurface.ExNoActivate)
             .ShouldBeTrue("the guard applies WS_EX_NOACTIVATE again");
+
+        // Its deferred judgment still finds the foreground in the other application, then and after the recheck.
+        LetTheGuardJudge(clock);
+
+        lab.Guard.Violations.ShouldBe(1, "a late message is not a second violation");
+        lab.Arbiter.Violations.Count.ShouldBe(1);
 
         // The next forced activation is judged on its own, once.
         lab.SimulatedForeground = panel;
@@ -213,10 +219,88 @@ public sealed class ActivationGuardTests
         Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
         Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
         Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        LetTheGuardJudge(clock);
 
         lab.Guard.Violations.ShouldBe(2);
         lab.Arbiter.Violations.Count.ShouldBe(2);
         failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    public void An_activation_that_the_foreground_confirms_later_is_one_violation()
+    {
+        // Spike S1: a forced activation reached the panel as a lone WM_ACTIVATE while GetForegroundWindow still named
+        // another application, and the foreground then stayed in this process. It must be detected and reported.
+        using var failures = DebugFailures.Capture();
+        var clock = new FakeTimeProvider();
+        using var lab = SurfaceLab.Create(timeProvider: clock);
+        var surface = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100));
+        var panel = surface.Handle;
+
+        // Confirmed once the thread has delivered what it had queued.
+        lab.SimulatedForeground = AnotherApp;
+        WpfThread.Invoke(() =>
+        {
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active)
+                .ShouldBe(0, "the unconfirmed WM_ACTIVATE is kept from WPF");
+            lab.Guard.Violations.ShouldBe(0, "it is not judged inside the window procedure");
+            lab.SimulatedForeground = panel;
+        });
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+
+        lab.Guard.Violations.ShouldBe(1);
+        var first = lab.Arbiter.Violations.ShouldHaveSingleItem();
+        first.Surface.ShouldBe(surface.Id);
+        first.Message.ShouldBe(ActivationMessage.Activate);
+        first.ProbableCause.ShouldBe(
+            ActivationCause.External,
+            "the foreground was in another application when it arrived"
+        );
+
+        // The rest of that activation does not count again; the end of the application activation closes it.
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        lab.Guard.Violations.ShouldBe(1);
+        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+
+        // Confirmed only by the recheck: the foreground reaches the owner anchor of the surfaces, not the panel.
+        lab.SimulatedForeground = AnotherApp;
+        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+        lab.Guard.Violations.ShouldBe(1, "the foreground is still in the other application");
+        lab.SimulatedForeground = WpfThread.Invoke(() => lab.Anchor.EnsureCreated().Handle);
+        LetTheGuardJudge(clock);
+
+        lab.Guard.Violations.ShouldBe(2);
+        lab.Arbiter.Violations[^1].Message.ShouldBe(ActivationMessage.NcActivate);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    [Trait("Req", "CCM-004")]
+    public void An_activation_while_another_window_of_the_process_is_in_front_counts_at_once()
+    {
+        using var failures = DebugFailures.Capture();
+        var clock = new FakeTimeProvider();
+        using var lab = SurfaceLab.Create(timeProvider: clock);
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+        var bubble = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Bubble, 0, 64, 64));
+
+        lab.SimulatedForeground = bubble.Handle;
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+
+        lab.Guard.Violations.ShouldBe(1, "the foreground was taken from the app in front");
+
+        // Unless a lease lets that window activate (the Control Center under its lease): then it waits for the
+        // deferred judgment, which finds the leased window and counts nothing.
+        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+        lab.Arbiter.Lease(bubble.SurfaceWindow);
+        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        LetTheGuardJudge(clock);
+
+        lab.Guard.Violations.ShouldBe(1);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 1 : 0);
     }
 
     [Fact]
@@ -241,6 +325,17 @@ public sealed class ActivationGuardTests
         lab.Arbiter.Violations.Select(violation => violation.Message)
             .ShouldBe([ActivationMessage.NcActivate, ActivationMessage.ActivateApp]);
         failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    /// <summary>
+    /// Runs the deferred judgment of the guard to the end: the look queued behind the work of the WPF thread, then the
+    /// recheck after <c>Timings.Windowing.ActivationRecheck</c> on <paramref name="clock"/>.
+    /// </summary>
+    private static void LetTheGuardJudge(FakeTimeProvider clock)
+    {
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+        clock.Advance(Timings.Windowing.ActivationRecheck);
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
     }
 
     private static nint Send(nint window, uint message, nint wParam) =>
