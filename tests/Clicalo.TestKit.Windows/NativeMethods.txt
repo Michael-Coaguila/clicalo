@@ -18,3 +18,28 @@ SYSTEM_PARAMETERS_INFO_ACTION
 // Keyboard layout of the target window
 GetKeyboardLayout
 MapVirtualKeyEx
+
+// Synthetic pointer (Input/SyntheticPointer): finger and pen through a synthetic pointer device, mouse through
+// SendInput, each frame only after checking the window under the exact point
+CreateSyntheticPointerDevice
+InjectSyntheticPointerInput
+DestroySyntheticPointerDevice
+POINTER_TYPE_INFO
+POINTER_TOUCH_INFO
+POINTER_PEN_INFO
+POINTER_FEEDBACK_MODE
+TOUCH_MASK_CONTACTAREA
+TOUCH_MASK_ORIENTATION
+TOUCH_MASK_PRESSURE
+PEN_MASK_PRESSURE
+MOUSEINPUT
+MOUSE_EVENT_FLAGS
+WindowFromPoint
+GetAncestor
+GET_ANCESTOR_FLAGS
+GetCursorPos
+SetCursorPos
+GetSystemMetrics
+SYSTEM_METRICS_INDEX
+SetThreadDpiAwarenessContext
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
