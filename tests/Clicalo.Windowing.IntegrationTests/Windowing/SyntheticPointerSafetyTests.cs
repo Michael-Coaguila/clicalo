@@ -50,7 +50,9 @@ public sealed class SyntheticPointerSafetyTests
 
         pointer.IsAllowedTarget(work.CenterX, work.CenterY, out var description).ShouldBeFalse();
 
-        description.ShouldMatch("^(no window|window 0x[0-9A-F]+ of .+ \\(pid [0-9]+\\))$");
+        description.ShouldMatch(
+            "^(no window|(child )?window 0x[0-9A-F]+ of .+ \\(pid [0-9]+\\)( inside window 0x[0-9A-F]+)?)$"
+        );
     }
 
     [Fact]

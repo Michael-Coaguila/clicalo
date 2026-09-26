@@ -37,6 +37,9 @@ public sealed class SurfaceIntegrityTests(SurfaceDesktopFixture desktop)
 
         for (var cycle = 1; cycle <= Cycles; cycle++)
         {
+            // Counted from before the drift: a check queued by the fixture's running timer or by a system broadcast
+            // (WM_SETTINGCHANGE) may repair part of it before CheckNow, and every repair still counts once.
+            var repairs = desktop.Lab.Integrity.Repairs;
             if (cycle % 2 == 1)
             {
                 NativeSurface.SetExStyle(
@@ -71,9 +74,11 @@ public sealed class SurfaceIntegrityTests(SurfaceDesktopFixture desktop)
                 Say($"Cycle {cycle}: the drift did not happen.")
             );
 
-            WpfThread
-                .Invoke(desktop.Lab.Integrity.CheckNow)
-                .ShouldBe(drifted, Say($"Cycle {cycle}: every drifted property is repaired once."));
+            _ = WpfThread.Invoke(desktop.Lab.Integrity.CheckNow);
+            (desktop.Lab.Integrity.Repairs - repairs).ShouldBe(
+                drifted,
+                Say($"Cycle {cycle}: every drifted property is repaired once.")
+            );
 
             foreach (var surface in surfaces)
             {

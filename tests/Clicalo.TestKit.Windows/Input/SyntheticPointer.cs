@@ -19,8 +19,8 @@ namespace Clicalo.TestKit.Windows.Input;
 /// <remarks>
 /// Safety rules, checked immediately before EVERY injected frame, never only once per gesture:
 /// <list type="number">
-/// <item>desktop tests are enabled (<see cref="DesktopTestEnvironment.IsEnabled"/>) and the root window under the
-/// exact point (<c>WindowFromPoint</c> + <c>GetAncestor(GA_ROOT)</c>) belongs to one of
+/// <item>desktop tests are enabled (<see cref="DesktopTestEnvironment.IsEnabled"/>) and both the window under the
+/// exact point (<c>WindowFromPoint</c>) and its root (<c>GetAncestor(GA_ROOT)</c>) belong to one of
 /// <see cref="AllowedProcessIds"/>; otherwise <see cref="InjectionRefusedException"/> and nothing is injected;</item>
 /// <item>every gesture is one call that always ends its contact (up, or cancel from a <c>finally</c>) and releases
 /// the mouse buttons it pressed, so no contact or button can stay down; a pen also leaves the detection range. The
@@ -143,10 +143,17 @@ public sealed class SyntheticPointer : IDisposable
             root = hit;
         }
 
-        uint processId;
-        unsafe
+        // Both the window that receives the input and its root must be allowed: a child window of another process
+        // can live inside an allowed top-level window.
+        var processId = ProcessOf(root);
+        var hitProcessId = ProcessOf(hit);
+        if (hitProcessId != processId && !allowed.Contains((int)hitProcessId))
         {
-            _ = PInvoke.GetWindowThreadProcessId(root, &processId);
+            description = string.Create(
+                CultureInfo.InvariantCulture,
+                $"child window 0x{(nint)hit:X} of {ProcessName(hitProcessId)} (pid {hitProcessId}) inside window 0x{(nint)root:X}"
+            );
+            return false;
         }
 
         description = string.Create(
@@ -154,6 +161,13 @@ public sealed class SyntheticPointer : IDisposable
             $"window 0x{(nint)root:X} of {ProcessName(processId)} (pid {processId})"
         );
         return allowed.Contains((int)processId);
+    }
+
+    private static unsafe uint ProcessOf(HWND window)
+    {
+        uint processId;
+        _ = PInvoke.GetWindowThreadProcessId(window, &processId);
+        return processId;
     }
 
     private static string ProcessName(uint processId)
