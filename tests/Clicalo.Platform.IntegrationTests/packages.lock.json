@@ -210,6 +210,12 @@
           "Microsoft.Extensions.TimeProvider.Testing": "[10.10.0, )"
         }
       },
+      "clicalo.testkit.windows": {
+        "type": "Project",
+        "dependencies": {
+          "Clicalo.TestKit": "[2.0.0-dev, )"
+        }
+      },
       "Microsoft.Extensions.Logging.Abstractions": {
         "type": "CentralTransitive",
         "requested": "[10.0.12, )",

@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Real Win32 integration: input injected into tools/InputProbe (needs an interactive desktop). -->
+  <!--
+    Real Win32 integration: input injected into tools/InputProbe (needs an interactive desktop, see
+    DesktopTestEnvironment). Until a TestKit test project exists, the self-tests of Clicalo.TestKit and
+    Clicalo.TestKit.Windows live in TestKit/.
+  -->
   <PropertyGroup>
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
     <RootNamespace>Clicalo.Platform.IntegrationTests</RootNamespace>
@@ -8,6 +12,6 @@
     <ProjectReference Include="..\..\src\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
     <ProjectReference Include="..\..\src\Clicalo.Platform.Windows\Clicalo.Platform.Windows.csproj" />
     <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
-
+    <ProjectReference Include="..\Clicalo.TestKit.Windows\Clicalo.TestKit.Windows.csproj" />
   </ItemGroup>
 </Project>
