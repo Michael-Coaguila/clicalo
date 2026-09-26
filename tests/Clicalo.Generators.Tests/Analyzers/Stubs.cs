@@ -112,4 +112,17 @@ internal static class Stubs
             public sealed class CapturedKey : CapturedInput { }
         }
         """;
+
+    /// <summary><c>Clicalo.Domain.Timings</c>, as generated from data/catalogs/timings.json (CLC0004).</summary>
+    public const string Timings = """
+        namespace Clicalo.Domain
+        {
+            public static class Timings
+            {
+                public const int LongPressMs = 600;
+                public const int FlashMs = 240;
+                public const double DimDelaySeconds = 2.5;
+            }
+        }
+        """;
 }

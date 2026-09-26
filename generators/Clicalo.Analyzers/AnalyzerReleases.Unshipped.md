@@ -7,3 +7,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 CLC0001 | Clicalo.Windowing | Error | NonActivatingWindowAnalyzer, [Documentation](https://github.com/Michael-Coaguila/clicalo/blob/main/docs/guides/analyzers.md#clc0001)
 CLC0003 | Clicalo.Privacy | Error | SensitiveDataAnalyzer, [Documentation](https://github.com/Michael-Coaguila/clicalo/blob/main/docs/guides/analyzers.md#clc0003)
+CLC0004 | Clicalo.Timing | Error | DurationLiteralAnalyzer, [Documentation](https://github.com/Michael-Coaguila/clicalo/blob/main/docs/guides/analyzers.md#clc0004)
