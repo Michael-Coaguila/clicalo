@@ -36,7 +36,7 @@ public static unsafe class GuardianHandles
             )
         )
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         return (nint)duplicate.Value;
@@ -52,7 +52,7 @@ public static unsafe class GuardianHandles
         HANDLE write;
         if (!PInvoke.CreatePipe(&read, &write, null, 0))
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         if (
@@ -63,7 +63,7 @@ public static unsafe class GuardianHandles
             )
         )
         {
-            var error = Marshal.GetLastPInvokeError();
+            var error = Marshal.GetLastSystemError();
             PInvoke.CloseHandle(read);
             PInvoke.CloseHandle(write);
             throw new Win32Exception(error);
@@ -107,7 +107,7 @@ public static unsafe class GuardianHandles
         );
         if (broken.IsNull)
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         var reader = new Thread(() => DrainUntilBroken(heartbeatPipe, (nint)broken.Value))
@@ -160,7 +160,7 @@ public static unsafe class GuardianHandles
             )
         )
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         return (nint)duplicate.Value;

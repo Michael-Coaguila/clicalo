@@ -70,7 +70,7 @@ public sealed class LowLevelInjector : ILowLevelSender
             }
 
             var inserted = (int)PInvoke.SendInput(buffer, sizeof(INPUT));
-            var error = inserted < count ? Marshal.GetLastPInvokeError() : 0;
+            var error = inserted < count ? Marshal.GetLastSystemError() : 0;
             return new SendResult(WholeItems(inputs, inserted), error);
         }
         finally

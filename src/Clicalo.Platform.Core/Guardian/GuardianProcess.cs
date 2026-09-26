@@ -111,7 +111,7 @@ public sealed unsafe class GuardianProcess : IDisposable
                             )
                         )
                         {
-                            throw new Win32Exception(Marshal.GetLastPInvokeError());
+                            throw new Win32Exception(Marshal.GetLastSystemError());
                         }
 
                         if (
@@ -126,7 +126,7 @@ public sealed unsafe class GuardianProcess : IDisposable
                             )
                         )
                         {
-                            throw new Win32Exception(Marshal.GetLastPInvokeError());
+                            throw new Win32Exception(Marshal.GetLastSystemError());
                         }
 
                         flags = (PROCESS_CREATION_FLAGS)ExtendedStartupInfoPresent;
@@ -195,7 +195,7 @@ public sealed unsafe class GuardianProcess : IDisposable
             )
         )
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         PInvoke.CloseHandle(information.hThread);

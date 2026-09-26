@@ -108,7 +108,7 @@ public sealed unsafe class KeyLedgerSection : IDisposable
         );
         if (mapping.IsNull)
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         var view = PInvoke.MapViewOfFile(
@@ -120,7 +120,7 @@ public sealed unsafe class KeyLedgerSection : IDisposable
         );
         if (view.Value is null)
         {
-            var error = Marshal.GetLastPInvokeError();
+            var error = Marshal.GetLastSystemError();
             PInvoke.CloseHandle(mapping);
             throw new Win32Exception(error);
         }
@@ -240,7 +240,7 @@ public sealed unsafe class KeyLedgerSection : IDisposable
             )
         )
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError());
+            throw new Win32Exception(Marshal.GetLastSystemError());
         }
 
         return (nint)duplicate.Value;
