@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Clicalo.Analyzers.Common;
 using Microsoft.CodeAnalysis;
@@ -7,8 +8,9 @@ namespace Clicalo.Analyzers.Presentation;
 
 /// <summary>
 /// Finds the literal text that a value carries: string literals with letters, the literal parts of interpolated
-/// strings, both sides of a concatenation and every branch of <c>?:</c>, <c>??</c> and <c>switch</c>. Calls are not
-/// followed, so <c>localizer["key"]</c> is fine: the literal there is a key, not a visible text.
+/// strings, both sides of a concatenation, the format and arguments of <c>string.Format</c>/<c>Concat</c>/<c>Join</c>
+/// and every branch of <c>?:</c>, <c>??</c> and <c>switch</c>. Other calls are not followed, so <c>localizer["key"]</c> is
+/// fine: the literal there is a key, not a visible text.
 /// </summary>
 internal static class LiteralTextFlow
 {
@@ -93,6 +95,61 @@ internal static class LiteralTextFlow
                 }
 
                 break;
+            case IInvocationOperation invocation
+                when StringComposition.IsComposition(invocation.TargetMethod):
+                foreach (var argument in invocation.Arguments)
+                {
+                    if (
+                        string.Equals(
+                            argument.Parameter?.Name,
+                            StringComposition.FormatParameter,
+                            StringComparison.Ordinal
+                        )
+                    )
+                    {
+                        CollectFormat(argument.Value, found, depth + 1);
+                    }
+                    else
+                    {
+                        Collect(argument.Value, found, depth + 1);
+                    }
+                }
+
+                break;
+            case IArrayCreationOperation { Initializer: { } initializer }:
+                // The implicit `params object[]` of string.Format and string.Concat.
+                foreach (var element in initializer.ElementValues)
+                {
+                    Collect(element, found, depth + 1);
+                }
+
+                break;
         }
+    }
+
+    /// <summary>A composite format string is visible text when what remains around its format items has a letter.</summary>
+    private static void CollectFormat(
+        IOperation value,
+        List<(IOperation Operation, string Text)> found,
+        int depth
+    )
+    {
+        var operation = value.WithoutConversions();
+        if (
+            operation is ILiteralOperation
+            {
+                ConstantValue: { HasValue: true, Value: string format }
+            }
+        )
+        {
+            if (VisibleText.HasLetter(StringComposition.VisiblePartOfFormat(format)))
+            {
+                found.Add((operation, format));
+            }
+
+            return;
+        }
+
+        Collect(operation, found, depth);
     }
 }

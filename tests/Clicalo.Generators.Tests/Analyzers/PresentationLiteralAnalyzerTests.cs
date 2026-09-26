@@ -39,6 +39,35 @@ public sealed class PresentationLiteralAnalyzerTests
         );
 
     [Fact]
+    public Task Literal_text_composed_with_string_methods_is_an_error() =>
+        Verify.VerifyAsync(
+            """
+            using System.Globalization;
+
+            namespace Clicalo.Presentation.Library;
+
+            public sealed class LibraryViewModel
+            {
+                public string Subtitle { get; set; }
+
+                public string EditHint { get; set; }
+
+                public string SearchPlaceholder { get; set; } = {|CLC0006:"Buscar"|};
+
+                public void Update(int count, string[] names, string name)
+                {
+                    Subtitle = string.Format(CultureInfo.CurrentCulture, {|CLC0006:"Tienes {0} atajos"|}, count);
+                    Subtitle = string.Format(CultureInfo.CurrentCulture, "{0}", {|CLC0006:"Vacío"|});
+                    EditHint = string.Join({|CLC0006:" y "|}, names);
+                    EditHint = string.Concat(name, {|CLC0006:" (copia)"|});
+                    Subtitle = string.Format(CultureInfo.CurrentCulture, "{0:N0} · {{{1}}}", count, name);
+                    EditHint = string.Join(", ", names);
+                }
+            }
+            """
+        );
+
+    [Fact]
     public Task Literal_text_passed_to_visible_parameters_is_an_error() =>
         Verify.VerifyAsync(
             """

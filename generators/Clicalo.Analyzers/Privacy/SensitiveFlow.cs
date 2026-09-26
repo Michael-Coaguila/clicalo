@@ -83,7 +83,8 @@ internal static class SensitiveFlow
                 yield return concatenation.LeftOperand;
                 yield return concatenation.RightOperand;
                 break;
-            case IInvocationOperation invocation when IsStringComposition(invocation.TargetMethod):
+            case IInvocationOperation invocation
+                when StringComposition.IsComposition(invocation.TargetMethod):
                 foreach (var argument in invocation.Arguments)
                 {
                     yield return argument.Value;
@@ -140,11 +141,6 @@ internal static class SensitiveFlow
                 break;
         }
     }
-
-    private static bool IsStringComposition(IMethodSymbol method) =>
-        method.ContainingType?.SpecialType == SpecialType.System_String
-        && method.IsStatic
-        && method.Name is "Format" or "Concat" or "Join";
 
     /// <summary>
     /// <c>title.Value</c>, <c>title.Reveal()</c> and similar: a member declared by <c>Sensitive&lt;T&gt;</c> (other

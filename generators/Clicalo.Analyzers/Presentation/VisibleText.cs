@@ -12,7 +12,8 @@ internal static class VisibleText
     /// <summary>
     /// Names whose last word marks a visible text: <c>Label</c>, <c>Title</c>, <c>Message</c>, <c>Text</c>,
     /// <c>Tooltip</c>, <c>Description</c> (the rule's contract), plus <c>Caption</c>, <c>Header</c> and <c>Content</c>,
-    /// which WPF uses for the same purpose.
+    /// which WPF uses for the same purpose, and <c>Subtitle</c>, <c>Hint</c> and <c>Placeholder</c>, which the design
+    /// handoff uses for visible text (<c>editHint</c>, <c>voiceHint</c>, <c>placeholder</c>).
     /// </summary>
     public static readonly IReadOnlyList<string> TextWords =
     [
@@ -26,6 +27,9 @@ internal static class VisibleText
         "Caption",
         "Header",
         "Content",
+        "Subtitle",
+        "Hint",
+        "Placeholder",
     ];
 
     /// <summary>True when a member, parameter or attached property called <paramref name="name"/> shows text.</summary>
