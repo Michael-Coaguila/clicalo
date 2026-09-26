@@ -8,8 +8,13 @@ namespace Clicalo.Application.Tests.Localization;
 /// <summary>
 /// Binding condition of the i18n conversion (blueprint §1.3 and §8.5, ADR-0011): for every key of the design handoff
 /// and every language, formatting the converted text with sample arguments gives exactly the text of the handoff with
-/// its one-letter markers replaced by the same values. Samples are distinct, so a swapped mapping fails too.
+/// its one-letter markers replaced by the same values.
 /// </summary>
+/// <remarks>
+/// The letter → name mapping comes from the recipe itself, so this test only proves that data/i18n and the recipe
+/// agree: a recipe that maps a letter to the wrong name passes it. Whether each name is the right one is checked
+/// independently, against hand-written texts, by <see cref="HandoffTextGoldenTests"/>.
+/// </remarks>
 public sealed partial class VisibleTextSnapshotTests
 {
     private static readonly Dictionary<string, string> TextSamples = new(StringComparer.Ordinal)
