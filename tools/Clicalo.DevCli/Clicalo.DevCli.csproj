@@ -5,4 +5,10 @@
     <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
     <RootNamespace>Clicalo.DevCli</RootNamespace>
   </PropertyGroup>
+  <ItemGroup Label="i18n-check runs the generator's own Roslyn-free validation (blueprint §8.5)">
+    <ProjectReference Include="..\..\generators\Clicalo.Generators\Clicalo.Generators.csproj" />
+  </ItemGroup>
+  <ItemGroup Label="i18n-check also parses the CLDR plural rules with the runtime parser">
+    <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
+  </ItemGroup>
 </Project>
