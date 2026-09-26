@@ -1,0 +1,187 @@
+{
+  "$comment": "Pares de contraste (TEM-004, NFR-007). Se miden en cada tema sobre el fondo compuesto real, con los colores de 8 bits que se pintan: 'a over b' es la capa a pintada sobre b; una pila translúcida (el panel) se compone además sobre cada backdrop. categoryTint y categoryWash se comprueban para cada categoría. Un par por debajo del mínimo es un error de compilación (CLCT002).",
+  "minimums": {
+    "$comment": "WCAG 2.x AA: 1.4.3 (texto) y 1.4.11 (componentes y gráficos). No pueden bajar de estos valores.",
+    "text": 4.5,
+    "graphic": 3
+  },
+  "$backdrops": "Escritorios extremos que pueden verse a través del panel translúcido. La luminancia del compuesto crece con la del escritorio, así que el negro y el blanco acotan cualquier fondo real.",
+  "backdrops": ["#000000", "#ffffff"],
+  "decorative": {
+    "$comment": "Tokens sin mínimo de contraste, con el motivo.",
+    "desk": "Escritorio simulado del prototipo; el fondo real tras el panel se modela con backdrops.",
+    "border": "Filete decorativo de fichas y ventanas: las fichas se identifican por su relleno, icono y nombre. Los límites que identifican un componente (campos, huecos para añadir) usan line.",
+    "scrim": "Velo que apaga lo que queda detrás de un modal; el contenido del modal va sobre win.",
+    "shadow": "Sombra de elevación; no transmite información."
+  },
+  "pairs": [
+    {
+      "kind": "text",
+      "foreground": "text",
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "field",
+        "accentWash over panel",
+        "accentWash over win",
+        "accentWash over side",
+        "accentWash over card",
+        "warnWash over panel",
+        "warnWash over win",
+        "warnWash over card",
+        "dangerWash over win",
+        "dangerWash over card",
+        "categoryWash over panel",
+        "categoryWash over win",
+        "categoryWash over card"
+      ],
+      "use": "Texto principal en todas las superficies, en elementos seleccionados y en fichas activas."
+    },
+    {
+      "kind": "text",
+      "foreground": "muted",
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "field",
+        "accentWash over win",
+        "accentWash over card",
+        "warnWash over win",
+        "warnWash over card"
+      ],
+      "use": "Texto secundario: combinaciones bajo el nombre, descripciones, marcadores de campo."
+    },
+    {
+      "kind": "text",
+      "foreground": "accent",
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "accentWash over panel",
+        "accentWash over win",
+        "accentWash over side",
+        "accentWash over card"
+      ],
+      "use": "Texto e iconos de acento: Auto, enlaces, versión, opción seleccionada."
+    },
+    {
+      "kind": "text",
+      "foreground": "onAccent",
+      "backgrounds": ["accent"],
+      "use": "Texto sobre botones y chips rellenos de acento."
+    },
+    {
+      "kind": "text",
+      "foreground": "warnText",
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "warnWash over panel",
+        "warnWash over win",
+        "warnWash over side",
+        "warnWash over card"
+      ],
+      "use": "Texto e iconos de aviso: repetidos, incompleto, novedades, URL no válida."
+    },
+    {
+      "kind": "text",
+      "foreground": "onWarn",
+      "backgrounds": ["warn"],
+      "use": "Números de voz (ACC-009), contadores y botones armados rellenos de aviso."
+    },
+    {
+      "kind": "text",
+      "foreground": "dangerText",
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "dangerWash over panel",
+        "dangerWash over win",
+        "dangerWash over card"
+      ],
+      "use": "Texto e iconos de peligro: Eliminar en reposo, Fijo, combinación bloqueada."
+    },
+    {
+      "kind": "text",
+      "foreground": "onDanger",
+      "backgrounds": ["danger"],
+      "use": "Texto sobre peligro: Eliminar armado, franja de pánico, Soltar todo."
+    },
+    {
+      "kind": "text",
+      "foreground": "categoryTint",
+      "backgrounds": ["categoryWash over card", "categoryWash over categoryWash over panel"],
+      "use": "Insignia de tipo de la ficha (Mantener, Web, pasos de macro) en reposo y activa."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "line",
+      "backgrounds": ["panel", "win", "side", "card", "field"],
+      "use": "Límites que identifican un componente: contorno de campos, huecos para añadir, separadores con significado."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "accent",
+      "backgrounds": ["panel", "win", "side", "card", "cardHi", "field"],
+      "use": "Bordes de selección, interruptores y deslizadores activos, barras de progreso."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "focusRing",
+      "backgrounds": ["panel", "win", "side", "card", "cardHi", "field"],
+      "use": "Anillo de foco (TEM-009), dibujado fuera del control sobre la superficie que lo rodea."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "warn",
+      "backgrounds": ["panel", "win", "side", "card"],
+      "use": "Borde de ficha armada y de avisos, fondo de los números de voz."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "danger",
+      "backgrounds": ["panel", "win", "side", "card"],
+      "use": "Botones de peligro y borde de la burbuja en pánico."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "success",
+      "backgrounds": ["panel", "win", "card"],
+      "use": "Marca de acierto del Modo prueba e indicadores de estado correcto."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "onSuccess",
+      "backgrounds": ["success"],
+      "use": "Icono sobre la marca de acierto."
+    },
+    {
+      "kind": "graphic",
+      "foreground": "categoryTint",
+      "backgrounds": [
+        "panel",
+        "win",
+        "card",
+        "categoryWash over panel",
+        "categoryWash over win",
+        "categoryWash over card"
+      ],
+      "use": "Icono de categoría y borde de 2 px de la ficha activa."
+    }
+  ]
+}

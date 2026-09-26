@@ -1,0 +1,166 @@
+{
+  "$comment": "Tokens de diseño que completan theme-palettes.json (copia fiel del paquete de diseño, que no se edita). Guía: docs/guides/design-tokens.md.",
+  "themes": {
+    "$comment": "Nombre C# de cada tema de theme-palettes.json.",
+    "dark": "Dark",
+    "light": "Light",
+    "hc": "HighContrast"
+  },
+  "colors": {
+    "$comment": "Tokens que exige TEM-002 y que el paquete no tiene, con los valores del prototipo. Un valor que es el nombre de otro token del mismo tema es un alias.",
+    "dark": {
+      "danger": "oklch(0.62 0.18 25)",
+      "onDanger": "#ffffff",
+      "dangerWash": "oklch(0.62 0.18 25 / 0.14)",
+      "dangerText": "oklch(0.72 0.16 25)",
+      "warnText": "warn",
+      "onWarn": "oklch(0.2 0.02 80)",
+      "success": "oklch(0.6 0.13 150)",
+      "onSuccess": "#ffffff",
+      "focusRing": "accent",
+      "scrim": "oklch(0 0 0 / 0.35)",
+      "shadow": "#000000"
+    },
+    "light": {
+      "danger": "oklch(0.62 0.18 25)",
+      "onDanger": "#ffffff",
+      "dangerWash": "oklch(0.62 0.18 25 / 0.14)",
+      "dangerText": "oklch(0.72 0.16 25)",
+      "warnText": "oklch(0.58 0.13 70)",
+      "onWarn": "oklch(0.2 0.02 80)",
+      "success": "oklch(0.6 0.13 150)",
+      "onSuccess": "#ffffff",
+      "focusRing": "accent",
+      "scrim": "oklch(0 0 0 / 0.35)",
+      "shadow": "#000000"
+    },
+    "hc": {
+      "danger": "#FF6B6B",
+      "onDanger": "#000000",
+      "dangerWash": "#330000",
+      "dangerText": "#FF6B6B",
+      "warnText": "warn",
+      "onWarn": "#000000",
+      "success": "#ffffff",
+      "onSuccess": "#000000",
+      "focusRing": "accent",
+      "scrim": "#000000",
+      "shadow": "oklch(0 0 0 / 0)"
+    }
+  },
+  "categories": {
+    "$comment": "Colores por categoría (TEM-003): tinte oklch(tintL tintChroma tono) y fondo activo oklch(washLightness washChroma tono / washA), con tintL y washA de cada tema. Los temas de alto contraste usan highContrast.",
+    "hues": {
+      "edit": 230,
+      "hist": 60,
+      "file": 150,
+      "sel": 300,
+      "win": 25,
+      "voice": 190,
+      "nav": 270,
+      "fmt": 330,
+      "web": 200,
+      "text": 120
+    },
+    "tintChroma": 0.12,
+    "washLightness": 0.72,
+    "washChroma": 0.12,
+    "highContrast": {
+      "tint": "#FFE600",
+      "wash": "#333000"
+    }
+  },
+  "corrections": {
+    "$comment": "Correcciones de contraste (TEM-004): el mínimo cambio de luminosidad OKLCH que cumple todos los pares de contrast-pairs.json, conservando croma y tono (en las líneas neutras translúcidas, el mínimo cambio de alfa). 'from' debe coincidir con el valor original: si el original cambia, el generador lo señala (CLCT006).",
+    "dark": {
+      "danger": {
+        "from": "oklch(0.62 0.18 25)",
+        "to": "oklch(0.588 0.18 25)",
+        "requirement": "TEM-004",
+        "reason": "Texto onDanger (#ffffff) sobre danger (botón Eliminar armado, franja de pánico): 3,96:1 → 4,54:1."
+      },
+      "line": {
+        "from": "oklch(1 0 0 / 0.14)",
+        "to": "oklch(1 0 0 / 0.34)",
+        "requirement": "TEM-004",
+        "reason": "Borde gráfico line sobre panel, win, side, card y field: 1,44:1 (field) → 3,05:1. El blanco no admite más luminosidad: se sube el alfa."
+      },
+      "tintL": {
+        "from": 0.82,
+        "to": 0.84,
+        "requirement": "TEM-004",
+        "reason": "Insignia de texto categoryTint sobre el doble categoryWash de una ficha activa: 4,24:1 (win) → 4,53:1."
+      }
+    },
+    "light": {
+      "accent": {
+        "from": "oklch(0.50 0.11 220)",
+        "to": "oklch(0.474 0.11 220)",
+        "requirement": "TEM-004",
+        "reason": "Texto accent sobre accentWash sobre card: 4,03:1 → 4,50:1; sobre cardHi: 4,20:1 → ≥4,5:1. Arrastra al alias focusRing."
+      },
+      "warn": {
+        "from": "oklch(0.58 0.13 70)",
+        "to": "oklch(0.602 0.13 70)",
+        "requirement": "TEM-004",
+        "reason": "Texto onWarn sobre warn (números de voz, ACC-009: fondo warn con texto oscuro): 4,12:1 → 4,52:1. Como gráfico sigue ≥3:1."
+      },
+      "warnText": {
+        "from": "oklch(0.58 0.13 70)",
+        "to": "oklch(0.503 0.13 70)",
+        "requirement": "TEM-004",
+        "reason": "warn usado como texto e iconos sobre superficies claras: 3,26:1 (cardHi) → 4,52:1. El tema claro separa el relleno (warn) del texto (warnText)."
+      },
+      "danger": {
+        "from": "oklch(0.62 0.18 25)",
+        "to": "oklch(0.588 0.18 25)",
+        "requirement": "TEM-004",
+        "reason": "Texto onDanger (#ffffff) sobre danger: 3,96:1 → 4,54:1."
+      },
+      "dangerText": {
+        "from": "oklch(0.72 0.16 25)",
+        "to": "oklch(0.506 0.16 25)",
+        "requirement": "TEM-004",
+        "reason": "El rojo de texto del prototipo, pensado para fondos oscuros, sobre dangerWash sobre card: 1,89:1 → 4,51:1."
+      },
+      "line": {
+        "from": "oklch(0 0 0 / 0.16)",
+        "to": "oklch(0 0 0 / 0.43)",
+        "requirement": "TEM-004",
+        "reason": "Borde gráfico line sobre panel, win, side, card y field: 1,45:1 (card) → 3,07:1. El negro no admite menos luminosidad: se sube el alfa."
+      },
+      "tintL": {
+        "from": 0.5,
+        "to": 0.468,
+        "requirement": "TEM-004",
+        "reason": "Insignia de texto categoryTint sobre el doble categoryWash de una ficha activa: 3,89:1 (voice) → 4,50:1 (web)."
+      }
+    }
+  },
+  "radii": {
+    "$comment": "Radios de esquina en px lógicos (docs/07 «Formas»).",
+    "compact": 6,
+    "control": 8,
+    "button": 10,
+    "tile": 12,
+    "largeCard": 14,
+    "window": 16,
+    "panel": 18,
+    "modal": 20
+  },
+  "shadows": {
+    "$comment": "Sombras precalculadas (nunca DropShadowEffect, blueprint §8.1). Color: el token shadow del tema con esta opacidad.",
+    "panel": { "offsetX": 0, "offsetY": 18, "blur": 50, "opacity": 0.45 },
+    "modal": { "offsetX": 0, "offsetY": 30, "blur": 80, "opacity": 0.5 },
+    "menu": { "offsetX": 0, "offsetY": 14, "blur": 40, "opacity": 0.45 }
+  },
+  "focusRing": {
+    "$comment": "TEM-009: anillo de 3 px separado 2 px en el color focusRing (accent; amarillo en alto contraste).",
+    "thickness": 3,
+    "offset": 2
+  },
+  "gamutMapping": {
+    "$comment": "Mapeo de gama CSS Color 4 (JND 0,02). Un color fuera de sRGB que el mapeo mueve más de maxDeltaEOK es un error (CLCT003). 0,05 = 2,5 JND; los 13 colores fuera de gama de hoy llegan a 0,040.",
+    "maxDeltaEOK": 0.05
+  }
+}

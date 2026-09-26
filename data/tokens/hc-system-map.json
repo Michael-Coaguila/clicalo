@@ -1,0 +1,98 @@
+{
+  "$comment": "Con un tema de contraste de Windows activo, Clícalo usa siempre los colores del sistema (TEM-001, PQ-13). Cada token se sustituye por el color de sistema de su papel, de modo que cada par de contrast-pairs.json caiga en un par que el tema de Windows define para ser legible (guaranteedPairs). Los estados nunca dependen solo del color (ACC-003).",
+  "systemColors": {
+    "$comment": "Colores de los temas de contraste de Windows (GetSysColor) y su propiedad en System.Windows.SystemColors.",
+    "window": {
+      "win32": "COLOR_WINDOW",
+      "wpf": "WindowColor",
+      "role": "Fondo."
+    },
+    "windowText": {
+      "win32": "COLOR_WINDOWTEXT",
+      "wpf": "WindowTextColor",
+      "role": "Texto y bordes."
+    },
+    "hotTrack": {
+      "win32": "COLOR_HOTLIGHT",
+      "wpf": "HotTrackColor",
+      "role": "Hipervínculos."
+    },
+    "grayText": {
+      "win32": "COLOR_GRAYTEXT",
+      "wpf": "GrayTextColor",
+      "role": "Texto deshabilitado."
+    },
+    "highlight": {
+      "win32": "COLOR_HIGHLIGHT",
+      "wpf": "HighlightColor",
+      "role": "Fondo de lo seleccionado; color de selección y foco."
+    },
+    "highlightText": {
+      "win32": "COLOR_HIGHLIGHTTEXT",
+      "wpf": "HighlightTextColor",
+      "role": "Texto sobre lo seleccionado."
+    },
+    "buttonFace": {
+      "win32": "COLOR_BTNFACE",
+      "wpf": "ControlColor",
+      "role": "Fondo de botones."
+    },
+    "buttonText": {
+      "win32": "COLOR_BTNTEXT",
+      "wpf": "ControlTextColor",
+      "role": "Texto de botones."
+    }
+  },
+  "tokens": {
+    "$comment": "Superficies y velos → window; texto, bordes y texto semántico → windowText; rellenos de acento, aviso, peligro y éxito, y el anillo de foco → highlight; texto sobre esos rellenos → highlightText.",
+    "desk": "window",
+    "panel": "window",
+    "win": "window",
+    "side": "window",
+    "card": "window",
+    "cardHi": "window",
+    "text": "windowText",
+    "muted": "windowText",
+    "line": "windowText",
+    "accent": "highlight",
+    "accentWash": "window",
+    "onAccent": "highlightText",
+    "warn": "highlight",
+    "warnWash": "window",
+    "border": "windowText",
+    "field": "window",
+    "danger": "highlight",
+    "onDanger": "highlightText",
+    "dangerWash": "window",
+    "dangerText": "windowText",
+    "warnText": "windowText",
+    "onWarn": "highlightText",
+    "success": "highlight",
+    "onSuccess": "highlightText",
+    "focusRing": "highlight",
+    "scrim": "window",
+    "shadow": "window"
+  },
+  "categories": {
+    "$comment": "Con el alto contraste del sistema las categorías se distinguen por icono y nombre, no por color.",
+    "tint": "highlight",
+    "wash": "window"
+  },
+  "guaranteedPairs": [
+    {
+      "foreground": "windowText",
+      "background": "window",
+      "basis": "Par de texto principal de todo tema de contraste de Windows."
+    },
+    {
+      "foreground": "highlightText",
+      "background": "highlight",
+      "basis": "Par de texto seleccionado de todo tema de contraste de Windows."
+    },
+    {
+      "foreground": "highlight",
+      "background": "window",
+      "basis": "Windows dibuja selección y foco con highlight sobre window; los temas de contraste incluidos lo mantienen legible. Se verifica con los colores reales del sistema en M3 (ThemeService)."
+    }
+  ]
+}

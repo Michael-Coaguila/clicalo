@@ -1,0 +1,45 @@
+{
+  "$comment": "Duraciones de movimiento en ms y su valor con reducir movimiento (TEM-006: ajuste propio, o animaciones de Windows desactivadas según SPI_GETCLIENTAREAANIMATION y UISettings.AnimationsEnabled). Valores del prototipo v4.",
+  "durations": {
+    "panelOpacity": {
+      "ms": 350,
+      "reducedMs": 0,
+      "use": "Opacidad y atenuado del panel (§8.1)."
+    },
+    "pressScale": {
+      "ms": 80,
+      "reducedMs": 0,
+      "use": "Escala de la ficha mientras se pulsa."
+    },
+    "background": {
+      "ms": 150,
+      "reducedMs": 0,
+      "use": "Cambio de fondo de fichas y botones."
+    },
+    "pageDots": {
+      "ms": 200,
+      "reducedMs": 0,
+      "use": "Indicadores de página."
+    },
+    "progress": {
+      "ms": 200,
+      "reducedMs": 0,
+      "use": "Barras de progreso."
+    },
+    "switchKnob": {
+      "ms": 150,
+      "reducedMs": 0,
+      "use": "Desplazamiento del botón de los interruptores."
+    },
+    "keyChip": {
+      "ms": 120,
+      "reducedMs": 0,
+      "use": "Teclas de la combinación al grabar o probar."
+    },
+    "flash": {
+      "ms": 240,
+      "reducedMs": 240,
+      "use": "Destello tras ejecutar un atajo: con reducir movimiento se mantiene como cambio de color sin animación."
+    }
+  }
+}
