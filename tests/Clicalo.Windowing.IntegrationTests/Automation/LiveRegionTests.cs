@@ -32,13 +32,7 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
         WpfThread.Invoke(surface.Lab.Reset);
         var notice = surface.Element(TileLab.NoticeId);
         var liveChanges = new EventLog<int>();
-        var notifications =
-            new EventLog<(
-                NotificationKind Kind,
-                NotificationProcessing Processing,
-                string Text,
-                string ActivityId
-            )>();
+        var notifications = new EventLog<Received>();
         using var live = notice.RegisterAutomationEvent(
             surface.Automation.EventLibrary.Element.LiveRegionChangedEvent,
             TreeScope.Element,
@@ -48,7 +42,7 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
             TreeScope.Element,
             (_, kind, processing, text, activityId) =>
                 notifications.Record(
-                    (kind, processing, text ?? string.Empty, activityId ?? string.Empty)
+                    new Received(kind, processing, text ?? string.Empty, activityId ?? string.Empty)
                 )
         );
         await UiaTreeTests.WaitForListenerAsync(
@@ -57,6 +51,7 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
         );
 
         var violations = new List<UiaViolation>();
+        var expected = new List<Received>();
         for (var cycle = 1; cycle <= Cycles; cycle++)
         {
             var urgency =
@@ -74,12 +69,14 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
                 UiaSurfaceFixture.EventTimeout,
                 TestContext.Current.CancellationToken
             );
-            await notifications.WaitForAsync(
-                notificationStart,
-                1,
-                UiaSurfaceFixture.EventTimeout,
-                TestContext.Current.CancellationToken
+            var announced = new Received(
+                NotificationKind.Other,
+                Processing(urgency),
+                text,
+                LiveAnnouncer.ActivityId
             );
+            expected.Add(announced);
+            await WaitForAsync(notifications, notificationStart, announced);
             violations.AddRange(
                 await surface.ForegroundViolationsAsync(
                     cursor,
@@ -87,15 +84,6 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
                 )
             );
 
-            // A client in the same process may get each event twice; every copy must be right.
-            notifications
-                .Since(notificationStart)
-                .ShouldAllBe(received =>
-                    received.Kind == NotificationKind.Other
-                    && received.Processing == Processing(urgency)
-                    && received.Text == text
-                    && received.ActivityId == LiveAnnouncer.ActivityId
-                );
             notice.Name.ShouldBe(text);
             notice.Properties.LiveSetting.Value.ShouldBe(
                 urgency == AnnouncementUrgency.Assertive
@@ -105,6 +93,10 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
         }
 
         violations.ShouldBeEmpty();
+
+        // A client in the same process may get each notification twice, even after the next one; every copy must
+        // be exactly one of the notices announced (a cut text or a wrong urgency is not).
+        notifications.Since(0).ShouldAllBe(received => expected.Contains(received));
     }
 
     /// <summary>
@@ -152,8 +144,36 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
             .ShouldContain(text => string.Equals(text, "Soltad", StringComparison.Ordinal));
     }
 
+    /// <summary>Waits until <paramref name="notice"/> arrives after <paramref name="start"/>, whatever else arrives.</summary>
+    private static async Task WaitForAsync(EventLog<Received> log, int start, Received notice)
+    {
+        while (true)
+        {
+            var seen = log.Count;
+            if (log.Since(start).Contains(notice))
+            {
+                return;
+            }
+
+            await log.WaitForAsync(
+                seen,
+                1,
+                UiaSurfaceFixture.EventTimeout,
+                TestContext.Current.CancellationToken
+            );
+        }
+    }
+
     private static NotificationProcessing Processing(AnnouncementUrgency urgency) =>
         urgency == AnnouncementUrgency.Assertive
             ? NotificationProcessing.ImportantAll
             : NotificationProcessing.MostRecent;
+
+    /// <summary>A notification as a UI Automation client receives it.</summary>
+    private readonly record struct Received(
+        NotificationKind Kind,
+        NotificationProcessing Processing,
+        string Text,
+        string ActivityId
+    );
 }

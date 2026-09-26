@@ -73,18 +73,33 @@ public sealed class UiaTreeTests(UiaSurfaceFixture surface) : IClassFixture<UiaS
             await WaitForListenerAsync(AutomationEvents.PropertyChanged);
             var start = names.Count;
 
-            WpfThread.Invoke(() => surface.Lab.SetVoiceNumbers(true));
-            var numbered = await names.WaitForAsync(
-                start,
-                LabTiles.All.Count,
-                UiaSurfaceFixture.EventTimeout,
-                TestContext.Current.CancellationToken
-            );
+            var expected = LabTiles.All.Select((spec, index) => Numbered(index, spec)).ToList();
 
-            numbered.ShouldBe(
-                LabTiles.All.Select((spec, index) => Numbered(index, spec)),
-                ignoreOrder: true
-            );
+            WpfThread.Invoke(() => surface.Lab.SetVoiceNumbers(true));
+
+            // An in-process client may get a change twice: wait until every new name has arrived, then accept no
+            // other name.
+            while (true)
+            {
+                var seen = names.Count;
+                var received = names.Since(start).ToHashSet(StringComparer.Ordinal);
+                if (expected.All(received.Contains))
+                {
+                    break;
+                }
+
+                await names.WaitForAsync(
+                    seen,
+                    1,
+                    UiaSurfaceFixture.EventTimeout,
+                    TestContext.Current.CancellationToken
+                );
+            }
+
+            names
+                .Since(start)
+                .Distinct(StringComparer.Ordinal)
+                .ShouldBe(expected, ignoreOrder: true);
             tiles
                 .Select(tile => tile.Name)
                 .ShouldBe(LabTiles.All.Select((spec, index) => Numbered(index, spec)));

@@ -36,5 +36,6 @@ public sealed class Uia008GlyphNameRule : IUiaRule
         }
     }
 
-    private static bool IsPrivateUse(char character) => character is >= '' and <= '';
+    private static bool IsPrivateUse(char character) =>
+        character is >= (char)0xE000 and <= (char)0xF8FF;
 }
