@@ -9,7 +9,7 @@
   "properties": {
     "$schema": { "type": "string" },
     "description": { "type": "string", "minLength": 10 },
-    "requirement": { "type": "string", "pattern": "^[A-Z]{3}-[0-9]{3}$" },
+    "requirement": { "type": "string", "pattern": "^[A-Z]{3}-[0-9]{2,3}$" },
     "exemptions": {
       "type": "array",
       "items": {
