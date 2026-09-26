@@ -23,9 +23,15 @@ namespace Clicalo.UI.Wpf.Automation;
 /// Announcing an empty text clears the region without raising anything: silence is never announced. Nothing here
 /// moves the keyboard focus or the foreground (REG-01).
 /// </para>
+/// <para>
+/// The notification strings go through <see cref="ForUiaBstr"/>, the workaround of a WPF defect that otherwise
+/// delivers only half of each string to UI Automation clients (spike S3).
+/// </para>
 /// </remarks>
 public sealed class LiveAnnouncer
 {
+    private const char Nul = (char)0;
+
     /// <summary>Activity id of every notification, so readers can group or replace Clícalo's notices.</summary>
     public const string ActivityId = "Clicalo.Notice";
 
@@ -98,8 +104,24 @@ public sealed class LiveAnnouncer
         }
 
         peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
-        peer.RaiseNotificationEvent(AutomationNotificationKind.Other, processing, text, ActivityId);
+        peer.RaiseNotificationEvent(
+            AutomationNotificationKind.Other,
+            processing,
+            ForUiaBstr(text),
+            ForUiaBstr(ActivityId)
+        );
     }
+
+    /// <summary>
+    /// Works around a WPF defect found in spike S3: <c>AutomationPeer.RaiseNotificationEvent</c> hands its strings to
+    /// <c>UiaRaiseNotificationEvent</c> as plain wide strings, but UI Automation reads them as <c>BSTR</c>. The
+    /// length UI Automation reads is then the .NET length in characters taken as bytes, and readers receive only the
+    /// first half of the text («Aviso 1» arrives as «Avi»). Appending as many NUL characters as the string has makes
+    /// that length twice the number of characters, so exactly the original text arrives and the padding is never
+    /// read. <c>LiveRegionTests</c> fails as soon as WPF passes real <c>BSTR</c>s; then this goes away.
+    /// </summary>
+    internal static string ForUiaBstr(string value) =>
+        string.Concat(value, new string(Nul, value.Length));
 
     private void Show(string text)
     {
