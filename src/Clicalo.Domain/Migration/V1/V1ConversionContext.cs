@@ -1,4 +1,6 @@
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Document;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Primitives;
 
 namespace Clicalo.Domain.Migration.V1;
@@ -13,4 +15,13 @@ public sealed record V1ConversionContext(
     UserDocument Baseline,
     ValueList<V1Monitor> Monitors,
     DateTimeOffset Now
-);
+)
+{
+    /// <summary>
+    /// The first icon of <c>suggestIcons(name, keys)</c> (EDI-005) for an imported profile (keys <see langword="null"/>)
+    /// or shortcut, or <see langword="null"/> when there is none. Without it the imported items get the fallback
+    /// icons of EDI-005 (<c>apps</c> and <c>bolt</c>); either way <c>autoIcon</c> stays on, so the icon keeps
+    /// following the name (catalog §7.4).
+    /// </summary>
+    public Func<string, KeyChord?, IconRef?>? SuggestIcon { get; init; }
+}

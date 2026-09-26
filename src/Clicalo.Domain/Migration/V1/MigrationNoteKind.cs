@@ -65,4 +65,17 @@ public enum MigrationNoteKind
 
     /// <summary>A top-level key the schema does not know; it stays in the byte-for-byte copy.</summary>
     UnknownKey,
+
+    /// <summary>
+    /// <c>active_profile</c> named a profile that does not exist; General is shown instead (EC-MIG-03).
+    /// </summary>
+    ActiveProfileMissing,
+
+    /// <summary>
+    /// v1 kept the last profile for apps without one; Clícalo goes back to General in Auto (MIG-006).
+    /// </summary>
+    ReturnsToGeneral,
+
+    /// <summary>A button without keys, address or command: imported incomplete, marked «Revisar».</summary>
+    MissingAction,
 }

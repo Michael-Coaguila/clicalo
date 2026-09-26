@@ -6,7 +6,9 @@ namespace Clicalo.Domain.Migration.V1;
 /// <param name="Top">Top edge of its work area.</param>
 /// <param name="Width">Width of its work area.</param>
 /// <param name="Height">Height of its work area.</param>
-/// <param name="Scale">DPI scale (1.75 at 175 %), to convert Qt logical pixels.</param>
+/// <param name="Scale">
+/// The Windows DPI scale (1.75 at 175 %); the placement rounds it as Qt 5 did to convert Qt logical pixels.
+/// </param>
 /// <param name="IsPrimary">Whether it is the primary monitor.</param>
 public sealed record V1Monitor(
     string Id,
