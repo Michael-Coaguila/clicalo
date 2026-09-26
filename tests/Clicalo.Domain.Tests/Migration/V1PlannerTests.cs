@@ -47,7 +47,7 @@ public sealed class V1PlannerTests
 
         // window_opacity 0.92 → 0.90, button_size h 62 → S, window_pos [80, 80], active_profile «General».
         plan.Settings.ShouldBe(
-            new V1SettingsPlan(0.90, PanelSize.Small, 0, new MonitorPosition(Primary.Id, 140, 140))
+            new V1SettingsPlan(0.90, PanelSize.Small, 0, new MonitorPosition(Primary.Id, 160, 160))
         );
         plan.Notes.ShouldContain(static n =>
             n.Kind == MigrationNoteKind.OpacityRounded && n.Original == "0.92"
@@ -106,7 +106,7 @@ public sealed class V1PlannerTests
     {
         V1Planner
             .Plan(General() with { WindowPosition = new V1Pair(743, 46) }, [Primary])
-            .Settings.Position.ShouldBe(new MonitorPosition(Primary.Id, 1300, 81));
+            .Settings.Position.ShouldBe(new MonitorPosition(Primary.Id, 1486, 92));
 
         var moved = V1Planner.Plan(
             General() with

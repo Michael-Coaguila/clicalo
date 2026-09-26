@@ -129,7 +129,7 @@ public sealed class V1ConverterTests
             settings.Opacity.ShouldBe(0.70);
             settings.Size.ShouldBe(PanelSize.Small);
             settings.LastProfile.ShouldBe(new ProfileId("p1"));
-            settings.PanelPositions.ShouldBe([new MonitorPosition(Primary.Id, 1300, 81)]);
+            settings.PanelPositions.ShouldBe([new MonitorPosition(Primary.Id, 1486, 92)]);
             settings.Theme.ShouldBe(context.Baseline.Settings.Theme);
             settings.Language.ShouldBe(context.Baseline.Settings.Language);
         });

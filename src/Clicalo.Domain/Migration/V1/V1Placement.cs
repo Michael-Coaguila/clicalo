@@ -6,9 +6,15 @@ namespace Clicalo.Domain.Migration.V1;
 /// <summary>
 /// Places the v1 window on this machine (catalog §7.4): <c>window_pos</c> is in Qt logical pixels, where each screen
 /// keeps its physical top-left corner and its size is divided by its scale. The point goes to the monitor that
-/// contains it, converted to physical pixels; outside every monitor (x = 1963 with 1371 logical pixels) it moves to
+/// contains it, converted to physical pixels; outside every monitor (x = 1963 with 1200 logical pixels) it moves to
 /// the primary monitor at the v1 default offset.
 /// </summary>
+/// <remarks>
+/// v1 ran on PyQt5 with <c>AA_EnableHighDpiScaling</c> and the Qt 5 default rounding policy (<c>Round</c>), so the
+/// scale Qt used is the Windows scale rounded to a whole number, never below 1: 175 % and 150 % were 2, 125 % was 1.
+/// The real files agree: at 175 % on a 2400 × 1600 screen v1 saved an edit height of 742, which is Qt's 800 logical
+/// pixels minus the taskbar (42) and its 8-pixel margins, not the 914 of an unrounded 1.75.
+/// </remarks>
 internal static class V1Placement
 {
     /// <summary>The v1 default <c>window_pos</c> (catalog §7.2).</summary>
@@ -68,6 +74,9 @@ internal static class V1Placement
         return new MonitorPosition(monitor.Id, x, y);
     }
 
+    /// <summary>The scale Qt 5 used on <paramref name="monitor"/>: its Windows scale rounded (qRound), at least 1.</summary>
     private static double Scale(V1Monitor monitor) =>
-        double.IsFinite(monitor.Scale) && monitor.Scale > 0 ? monitor.Scale : 1;
+        double.IsFinite(monitor.Scale) && monitor.Scale > 0
+            ? Math.Max(1, Math.Round(monitor.Scale, MidpointRounding.AwayFromZero))
+            : 1;
 }
