@@ -174,8 +174,10 @@ Commits: `test(build)` para el laboratorio (no es producto) y `docs(build)` para
 
 - `tools/SpikeLab/**`: todo, incluidos `SpikeLab.csproj`, `packages.lock.json`, `NativeMethods.txt`, las superficies
   de laboratorio (derivan de `NonActivatingWindow`; CLC0001 aplica porque el proyecto activa
-  `ClicaloProductRules`), la ventana de control, el CC de laboratorio, la franja de estado, el registro en
-  `artifacts/spikes/` y su implementación protegida de `IInternalKeyEffects`.
+  `ClicaloProductRules`), la ventana de control, el CC de laboratorio, la franja de estado, los informes en
+  `%LOCALAPPDATA%\Clicalo.SpikeLab\reports` y su implementación protegida de `IInternalKeyEffects`; también sus
+  pruebas unitarias en `tools/SpikeLab/Tests/**` (`SpikeLab.Tests`).
+- `docs/testing/spikes/README.md`: cómo se abre SpikeLab, qué muestra y el formato de sus informes.
 - `.vscode/tasks.json`: **una** tarea nueva, «SpikeLab: abrir».
 - En `docs/testing/spikes/S1.md`, `S3.md` y `S4.md`: **solo** las líneas de «Preparación» que describen SpikeLab, si
   la interfaz final cambia algún nombre de botón.
