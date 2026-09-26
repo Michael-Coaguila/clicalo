@@ -11,4 +11,7 @@
   <ItemGroup Label="i18n-check also parses the CLDR plural rules with the runtime parser">
     <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.DevCli.Tests" />
+  </ItemGroup>
 </Project>

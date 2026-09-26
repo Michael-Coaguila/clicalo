@@ -25,29 +25,33 @@ Todo el trabajo diario cabe en pocas palabras: `cl fast` mientras iteras, `cl fi
 
 - **Termina siempre con `cl check`.** Hace exactamente lo mismo que la CI: si pasa en tu equipo, pasa en el
   PR.
-- **La salida termina en una línea resumen** legible por Narrador (por ejemplo, si todo está en verde o
-  cuántos errores hay). No hace falta recorrer cientos de líneas.
-- **Los errores largos se escriben en un archivo Markdown** que se abre en VS Code, donde se leen por
-  encabezados con Narrador en lugar de en la terminal.
-
-Mientras `cl` se construye en M0, los equivalentes son `dotnet build Clicalo.slnx -m:2 -nodeReuse:false` y
-`dotnet test --solution Clicalo.slnx`.
+- **La salida termina en una línea resumen** legible por Narrador: «cl check: correcto en 2 min 10 s;
+  1226 pruebas» o «cl check: falló en test; detalle en artifacts\cl\last-error.md». No hace falta recorrer
+  cientos de líneas. Si una orden tarda más de su objetivo (por ejemplo, `cl fast` más de 45 s), la misma
+  línea lo avisa.
+- **Los errores largos se escriben en `artifacts\cl\last-error.md`**, que VS Code abre solo al fallar como
+  vista previa: se lee por encabezados con Narrador, con el error exacto y un enlace a la línea. Si prefieres
+  que no se abra, define `CLICALO_OPEN_ERRORS=0`.
+- **En PowerShell se escribe `.\cl check`** (con punto y barra invertida delante); en `cmd` basta
+  `cl check`. Para dictarlo sin símbolos, usa `cmd` como terminal de VS Code o una tarea (abajo).
 
 ## Tres formas de lanzar `cl check`
 
-1. **Con una tarea de VS Code** (la más fiable por voz). Está previsto que `.vscode/tasks.json` tenga una
-   tarea por verbo. Abre la paleta de comandos, elige «Tasks: Run Task» y después la tarea; con Acceso por
-   voz: «mostrar números» y «clic» con el número de la tarea. Si asignas a la tarea un atajo de teclado en
-   VS Code, puedes lanzarla con un solo toque desde un botón de Clícalo.
-2. **Dictando en la terminal.** Pon el foco en la terminal integrada, pulsa Win+H y dicta la orden. Revisa lo
-   escrito antes de confirmar: el dictado puede poner mayúsculas o un punto final («Cl check.»). Si te pasa
+1. **Con una tarea de VS Code** (la más fiable por voz). `.vscode/tasks.json` tiene una tarea por verbo
+   («cl check», «cl fast»…). Abre la paleta de comandos, elige «Tasks: Run Task» y después la tarea; con
+   Acceso por voz: «mostrar números» y «clic» con el número de la tarea. Si asignas a la tarea un atajo de
+   teclado en VS Code, puedes lanzarla con un solo toque desde un botón de Clícalo.
+2. **Dictando en la terminal.** Pon el foco en la terminal integrada, pulsa Win+H y dicta la orden (en
+   PowerShell, `.\cl check`). Revisa lo escrito antes de confirmar: el dictado puede poner mayúsculas o un punto final («Cl check.»). Si te pasa
    a menudo, desactiva la puntuación automática en la configuración de la escritura por voz.
-3. **Con un botón de Clícalo** que escriba el texto `cl check` y pulse Intro: una macro de Texto más Pulsar
+3. **Con un botón de Clícalo** que escriba el texto `.\cl check` y pulse Intro: una macro de Texto más Pulsar
    Intro, sin dictado.
 
 ## Leer los errores con Narrador
 
-- **Resumen:** la última línea de `cl` dice si todo está en verde o cuántos errores hay.
+- **Resumen:** la última línea de `cl` dice si todo está en verde o en qué paso falló.
+- **Informe:** `artifacts\cl\last-error.md` se abre solo al fallar. Sus encabezados («Pruebas que
+  fallaron», «Archivos sin formato», «Qué hacer») se recorren con la tecla H de Narrador.
 - **Panel de problemas de VS Code:** «View: Toggle Problems» desde la paleta de comandos (o su atajo)
   muestra la lista de errores; «Go to Next Problem» salta al siguiente y Narrador lee el mensaje.
 - **Vista accesible de VS Code:** el comando «Open Accessible View» muestra el contenido del elemento
@@ -55,7 +59,7 @@ Mientras `cl` se construye en M0, los equivalentes son `dotnet build Clicalo.sln
 - **Señales de accesibilidad:** VS Code puede sonar cuando una tarea termina o falla y cuando la línea actual
   tiene un error (ajustes `accessibility.signals.*`). Así no hace falta mirar la terminal.
 - **Modo lector de pantalla:** activa `editor.accessibilitySupport` (ver
-  [preparar el entorno](dev-setup.md#ajustes-recomendados)).
+  [preparar el entorno](dev-setup.md#ajustes-del-repositorio)).
 - **Errores de datos:** los generadores dan la ruta, la línea y la columna exactas del JSON con el problema,
   así que «Go to Next Problem» te lleva directamente al sitio que hay que corregir.
 
@@ -79,8 +83,8 @@ fusionar.
 
 ## Commits y PR sin teclado
 
-- En la vista de control de código de VS Code, con `git.alwaysSignOff` activado, cada commit lleva el
-  `Signed-off-by` del DCO sin escribirlo.
+- Tras `cl setup`, el *hook* del repositorio añade el `Signed-off-by` del DCO a cada commit, también desde la
+  vista de control de código de VS Code, sin escribirlo.
 - Dicta el título del commit en inglés con el formato de Conventional Commits (`fix(touch): …`).
 - `cl note` crea la nota de novedades para usuarios y `cl pr` abre el PR.
 

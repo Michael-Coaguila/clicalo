@@ -5,6 +5,10 @@
     "csharpier.csharpier-vscode",
     "editorconfig.editorconfig",
     "github.vscode-github-actions",
-    "davidanson.vscode-markdownlint"
+    "davidanson.vscode-markdownlint",
+    "bierner.markdown-mermaid",
+    "redhat.vscode-yaml",
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-spanish"
   ]
 }

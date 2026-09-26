@@ -62,6 +62,7 @@ Hay dos listas globales:
 | `CLCA001` | Una referencia declarada no está permitida. El mensaje dice qué referencia, en qué proyecto, qué permite la lista y la regla del proyecto |
 | `CLCA002` | El proyecto no está declarado en la lista blanca: todo proyecto nuevo se declara |
 | `CLCA003` | El proyecto usa una plataforma que su capa no permite (por ejemplo, Presentation con un TFM de Windows) |
+| `CLCA010` | `adr-check`: un PR cambia una ruta de `sensitive-paths.json` sin un ADR nuevo o cambiado en `docs/adr/` |
 
 Ejemplo real:
 
@@ -182,7 +183,7 @@ La prueba de facetas (§4.4 punto 5) recorre los subtipos de `ShortcutAction` y 
 ## Registros de apoyo
 
 - **`domain-modules.json`.** Matriz de módulos de Domain. Un módulo es `Clicalo.Domain.<Módulo>` y todo lo que cuelga de él, y puede usar los módulos que alcanza por `dependsOn` (la relación es transitiva, como indica la tabla de §4.3). La matriz debe ser acíclica, y todo tipo de Domain debe estar en un módulo declarado. Las filas que difieren de la tabla de §4.3 llevan `deviation` con el motivo, y `ModuleMatrixTests` compara fila a fila con esa tabla: una diferencia sin `deviation`, o un `deviation` sin diferencia, hace fallar la prueba.
-- **`sensitive-paths.json`.** Globs de rutas cuyo cambio exige un ADR (§13): límites de confianza, formatos persistidos, contratos públicos, modelo de procesos, framework, licencia y firma. La comprobación de ADR de la CI de PR (`pr.yml`) lo leerá. La propia lista es sensible: quitar una ruta también exige un ADR.
+- **`sensitive-paths.json`.** Globs de rutas cuyo cambio exige un ADR (§13): límites de confianza, formatos persistidos, contratos públicos, modelo de procesos, framework, licencia y firma. El trabajo `adr` de `pr.yml` lo lee con `dotnet run --project tools/Clicalo.DevCli -- adr-check --base HEAD^1` (en local, `--base main`): si un PR toca una de esas rutas y no añade ni cambia un `docs/adr/NNNN-*.md` (la plantilla no cuenta), falla con `CLCA010` en cada archivo afectado. El emparejamiento de *globs* es el mismo que el de `Support/Glob.cs` (`*` dentro de un segmento, `**` a través de segmentos, sin distinguir mayúsculas). La propia lista es sensible: quitar una ruta también exige un ADR.
 
 ---
 

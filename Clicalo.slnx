@@ -20,6 +20,7 @@
     <Project Path="tests/Clicalo.Application.Tests/Clicalo.Application.Tests.csproj" />
     <Project Path="tests/Clicalo.Architecture.Tests/Clicalo.Architecture.Tests.csproj" />
     <Project Path="tests/Clicalo.Data.Tests/Clicalo.Data.Tests.csproj" />
+    <Project Path="tests/Clicalo.DevCli.Tests/Clicalo.DevCli.Tests.csproj" />
     <Project Path="tests/Clicalo.Domain.Tests/Clicalo.Domain.Tests.csproj" />
     <Project Path="tests/Clicalo.Generators.Tests/Clicalo.Generators.Tests.csproj" />
     <Project Path="tests/Clicalo.Platform.IntegrationTests/Clicalo.Platform.IntegrationTests.csproj" />

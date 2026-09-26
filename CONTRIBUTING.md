@@ -57,22 +57,25 @@ derecho a aportar ese código bajo la licencia MIT del proyecto. Se añade así:
 git commit -s -m "fix(touch): ignore palm contacts larger than the threshold"
 ```
 
-Además, los commits se firman con SSH. `cl setup` configura las dos cosas; la configuración manual está en
-[preparar el entorno](docs/guides/dev-setup.md#firma-de-commits-y-dco). El trabajo `dco` de la CI
-rechazará los commits sin `Signed-off-by` en cuanto `pr.yml` esté activo.
+Además, los commits se firman con SSH. `cl setup` instala un *hook* que añade `Signed-off-by` a cada commit
+y activa la firma si ya tienes una clave SSH de firma; los pasos están en
+[preparar el entorno](docs/guides/dev-setup.md#4-cl-setup). El trabajo `dco` de la CI, que rechazará los
+commits sin `Signed-off-by`, se activará cuando el historial de M0 quede cubierto (hoy esos commits no lo
+llevan).
 
 ### Antes de abrir el PR
 
-1. **`cl check` en verde.** Es exactamente lo mismo que valida la CI (restauración bloqueada, compilación sin
-   advertencias, pruebas, formato, i18n, catálogos y nota de usuario). Mientras `cl` se completa en M0:
-   `dotnet build Clicalo.slnx -m:2 -nodeReuse:false` y `dotnet test --solution Clicalo.slnx`.
+1. **`cl check` en verde** (`.\cl check` en PowerShell). Es exactamente lo mismo que valida el trabajo
+   `verify` de la CI: versiones fijadas, formato, restauración bloqueada, compilación Release sin
+   advertencias, pruebas e i18n. Si falla, el detalle está en `artifacts/cl/last-error.md`.
 2. **Formato con CSharpier** en los archivos que tocaste (`cl fix`).
 3. **Requisitos trazados.** Toda prueba que verifique un requisito del catálogo lleva
    `[Trait("Req", "<ID>")]`. Si tu cambio toca el comportamiento de un requisito, su prueba se actualiza o
    se crea en el mismo PR. Ver la [estrategia de pruebas](docs/architecture/testing-strategy.md).
 4. **Textos en los dos idiomas.** Ningún texto de producto se escribe en el código ni en el XAML (el
    analizador CLC0006 lo impide): va en `data/i18n/strings.es.json` **y** en `data/i18n/strings.en.json`,
-   con los mismos marcadores.
+   con los mismos marcadores, a través de la receta `data/i18n/handoff-import.json` (ver la
+   [guía de i18n](docs/guides/i18n.md)).
 5. **Nota para usuarios.** Los PR `feat`, `fix`, `a11y` y `perf` que tocan `src/` añaden un fragmento de
    novedades en español e inglés con `cl note` (en `changes/unreleased/`), salvo que lleven la etiqueta
    `no-user-note`.
@@ -149,18 +152,19 @@ Report accessibility barriers or bugs with the issue forms, write app shortcut t
 ### DCO and signed commits
 
 Every commit needs a [Developer Certificate of Origin](https://developercertificate.org/) sign-off, added
-with `git commit -s`. Commits are also signed with SSH. `cl setup` configures both; once `pr.yml` is
-active, its `dco` job rejects commits without `Signed-off-by`.
+with `git commit -s`. Commits are also signed with SSH. `cl setup` installs a hook that adds the sign-off
+and turns on signing when you already have an SSH signing key. The CI `dco` job, which will reject commits
+without `Signed-off-by`, is turned on once the M0 history is covered (those commits do not carry it).
 
 ### Before opening a PR
 
-1. Run **`cl check`**; it is exactly what CI validates. Until `cl` lands in M0, run
-   `dotnet build Clicalo.slnx -m:2 -nodeReuse:false` and `dotnet test --solution Clicalo.slnx`.
+1. Run **`cl check`** (`.\cl check` in PowerShell); it is exactly what the CI `verify` job runs. When it
+   fails, the details are in `artifacts/cl/last-error.md`.
 2. Format the files you touched with CSharpier (`cl fix`).
 3. Tag every test that verifies a catalog requirement with `[Trait("Req", "<ID>")]`, and update or add it
    in the same PR when you change that behavior.
-4. Put product text only in `data/i18n/strings.es.json` **and** `data/i18n/strings.en.json`, never in code
-   or XAML.
+4. Put product text only in `data/i18n/strings.es.json` **and** `data/i18n/strings.en.json` (through the
+   recipe `data/i18n/handoff-import.json`), never in code or XAML.
 5. `feat`, `fix`, `a11y` and `perf` PRs that touch `src/` add a user-facing note in Spanish and English with
    `cl note`, unless labeled `no-user-note`.
 6. Never edit generated code: change the data or the generator.

@@ -157,6 +157,13 @@
       "projectReferences": ["Clicalo.TestKit", "Clicalo.Design.Math"],
       "packageReferences": ["xunit.v3", "Shouldly", "JsonSchema.Net"]
     },
+    "Clicalo.DevCli.Tests": {
+      "area": "tests",
+      "rule": "Tests the developer CLI behind cl: verbs and exit codes, the i18n import and key scanner, adr-check.",
+      "platform": "portable",
+      "projectReferences": ["Clicalo.DevCli", "Clicalo.TestKit"],
+      "packageReferences": ["xunit.v3", "Shouldly"]
+    },
     "Clicalo.Generators.Tests": {
       "area": "tests",
       "rule": "Snapshot tests for source generators and analyzers.",

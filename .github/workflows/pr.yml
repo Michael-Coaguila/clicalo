@@ -60,6 +60,39 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  adr:
+    name: adr
+    # Blueprint §13: a pull request that touches a path of architecture/sensitive-paths.json needs an ADR.
+    if: github.event_name == 'pull_request'
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The test merge commit and its first parent (the base branch): HEAD^1...HEAD is the pull request.
+          fetch-depth: 2
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: adr-check
+        shell: pwsh
+        run: dotnet run --project tools/Clicalo.DevCli -- adr-check --base HEAD^1
+
   verify-arm64:
     name: verify (arm64)
     # Hosted ARM64 runners and the analyses below are free only for public repositories (today it is private).

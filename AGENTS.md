@@ -19,17 +19,21 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 
 ## Reglas para agentes
 
-1. **Termina siempre con `cl check`** y déjalo en verde. Mientras `cl` se construye (M0), el equivalente es
-   `dotnet build Clicalo.slnx -m:2 -nodeReuse:false` y `dotnet test --solution Clicalo.slnx`, sin
-   advertencias, más el formato de los archivos tocados con
-   `dotnet dnx csharpier@1.3.0 --yes -- format <rutas>`.
+1. **Termina siempre con `cl check`** y déjalo en verde (`.\cl check` en PowerShell). Es lo mismo que el
+   trabajo `verify` de la CI: versiones fijadas, formato CSharpier, restauración bloqueada, compilación
+   Release sin advertencias, pruebas e i18n. Si falla, el error exacto está en `artifacts/cl/last-error.md`;
+   `cl fix` resuelve el formato.
 2. **Nunca edites lo generado.** Cambia el dato (`data/`) o el generador (`generators/`).
 3. **`[Trait("Req", "<ID>")]` en todo requisito tocado.** Si cambias el comportamiento de un requisito del
    catálogo, su prueba se actualiza o se crea en el mismo cambio.
 4. **Textos en los dos JSON.** Ningún texto de producto en C# ni en XAML: va en
-   `data/i18n/strings.es.json` **y** `data/i18n/strings.en.json`, con los mismos marcadores.
+   `data/i18n/strings.es.json` **y** `data/i18n/strings.en.json`, con los mismos marcadores. Esos archivos
+   salen de la receta `data/i18n/handoff-import.json` (`i18n-import --check` está en `cl check`): una clave
+   nueva se declara en su sección `added` y se vuelve a importar ([guía de i18n](docs/guides/i18n.md)).
 5. **Un ADR si cambias un límite de confianza, un formato persistido o un contrato público** (o el
    framework, el modelo de procesos o de estado, la licencia o la firma). Ver [docs/adr](docs/adr/README.md).
+   Las rutas están en `architecture/sensitive-paths.json` y el trabajo `adr` de la CI lo comprueba
+   (`dotnet run --project tools/Clicalo.DevCli -- adr-check --base main` en local).
 6. **Nunca rebajes un requisito.** Si uno parece inviable, propón el cambio con evidencia en la sección de
    preguntas abiertas del catálogo (la que el plano llama «§7»); solo el usuario lo ratifica. Ver
    [cómo leer el catálogo](docs/requirements/README.md#cambiar-un-requisito).
@@ -66,6 +70,7 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 | `TrackPopupMenu`, `TrackPopupMenuEx` | `Platform.Windows/Tray/TrayMenuHost.cs` | Concesión `TrayMenu` |
 | `PInvoke.SendInput` | `Platform.Core/Injection`, detrás de `InjectionGate` | `IInputInjector` |
 | `Process.Start`, `ProcessStartInfo` | `Platform.Windows/Launch` | `ILauncher` (sin intérprete) |
+| `Assembly.Load*`, `AssemblyLoadContext.LoadFrom*` | En ningún sitio (ADR-0017) | Datos validados |
 | `ShellExecute*`, `IShellDispatch2`, WMI (`System.Management`) | `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` (hilo Shell) | `ILauncher`, `ISystemCommandRunner` |
 | Escritura de archivos | `Infrastructure/Persistence/AtomicFile.cs` y el *sink* de registros | `IAtomicFileWriter` |
 | `DateTime.Now/UtcNow`, `DateTimeOffset.Now/UtcNow`, `Stopwatch.StartNew`, `Task.Delay` sin `TimeProvider`, `Thread.Sleep`, `Guid.NewGuid`, `Random.Shared` | Solo adaptadores | `TimeProvider`, `IIdGenerator` |
@@ -121,9 +126,11 @@ Entre hilos solo cruzan objetos inmutables, y cada punto de mutación tiene un �
 
 ## Verbos de `cl`
 
-`setup`, `build`, `fast`, `test`, `desk`, `fix`, `check`, `run`, `states`, `accept`, `trace`, `note`, `pr`,
-`beta`, `perf` y `sign-manifest`, más `i18n-import`. Qué hace cada uno y su equivalente en M0:
-[tooling.md](docs/architecture/tooling.md#verbos-de-cl).
+Disponibles desde M0: `setup`, `build`, `fast`, `test`, `desk`, `fix`, `check` y `clean`. Llegan después:
+`pr` (M1); `run`, `note` y `perf` (M2); `states`, `accept` y `trace` (M3); `beta` y `sign-manifest` (M5).
+Cada orden termina en una línea legible por Narrador. Las órdenes que no son de compilación viven en
+`tools/Clicalo.DevCli` (`i18n-check`, `i18n-import`, `adr-check`). Detalle, pasos de `cl check` y
+variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 
 ## Dónde está cada cosa
 

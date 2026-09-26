@@ -1,0 +1,19 @@
+{
+  // markdownlint rules for the documentation (VS Code extension today, docs.yml later; blueprint §10.5).
+  "config": {
+    "default": true,
+    // Lines are wrapped for reading, not to a fixed width; tables and links would break otherwise.
+    "MD013": false,
+    // CHANGELOG (Keep a Changelog) repeats "### Added" under every release: only siblings must differ.
+    "MD024": { "siblings_only": true }
+  },
+  "ignores": [
+    // CLAUDE.md only contains "@AGENTS.md", which must stay the first line (MD041).
+    "CLAUDE.md",
+    // The original design handoff is read-only reference material; LEEME-VINCULANTE.md is ours.
+    "docs/design/handoff/**/!(LEEME-VINCULANTE).md",
+    "artifacts/**",
+    "**/bin/**",
+    "**/obj/**"
+  ]
+}

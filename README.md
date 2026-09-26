@@ -43,16 +43,13 @@ Clona **fuera de OneDrive** (por ejemplo en `C:\dev\clicalo`). Todo se hace con 
 `cl`:
 
 ```powershell
-cl setup   # prepara el equipo (herramientas, firma de commits y DCO)
-cl check   # lo mismo que valida la CI: compilación, pruebas, formato, i18n y catálogos
+.\cl setup   # prepara el equipo (herramientas, ajustes de git y DCO)
+.\cl check   # lo mismo que valida la CI: versiones, formato, compilación, pruebas e i18n
 ```
 
-`cl` se está construyendo en M0. Mientras tanto:
-
-```powershell
-dotnet build Clicalo.slnx -m:2 -nodeReuse:false
-dotnet test --solution Clicalo.slnx
-```
+En PowerShell se escribe `.\cl`; en `cmd`, `cl`. Cada orden termina en una línea que Narrador lee de una
+vez; si falla, el detalle está en `artifacts\cl\last-error.md`. Todos los verbos están en
+[herramientas](docs/architecture/tooling.md#verbos-de-cl).
 
 ### Estructura
 
@@ -124,16 +121,12 @@ You need Windows 10 22H2 or Windows 11, the .NET 10.0.401 SDK and Git. Clone **o
 example into `C:\dev\clicalo`). Everything runs through a single dictable command, `cl`:
 
 ```powershell
-cl setup   # prepares the machine (tools, commit signing and DCO)
-cl check   # the same checks CI runs: build, tests, formatting, i18n and catalogs
+.\cl setup   # prepares the machine (tools, git settings and DCO)
+.\cl check   # the same checks CI runs: pins, formatting, build, tests and i18n
 ```
 
-`cl` is being built during M0. Until then:
-
-```powershell
-dotnet build Clicalo.slnx -m:2 -nodeReuse:false
-dotnet test --solution Clicalo.slnx
-```
+Type `.\cl` in PowerShell and `cl` in `cmd`. Every command ends with one line that Narrator reads at once;
+when it fails, the details are in `artifacts\cl\last-error.md`.
 
 ### Documentation
 

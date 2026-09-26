@@ -4,9 +4,8 @@ Cómo se compila, se verifica y se publica Clícalo. Es una decisión reversible
 que actualiza esta página. El marco está en [§5](blueprint.md#5-estructura-del-repositorio-y-de-la-solución),
 [§10.5](blueprint.md#105-cicd) y [§13](blueprint.md#13-convenciones-de-ingeniería) del plano.
 
-> **Estado en M0.** El proyecto `build/` (Bullseye + SimpleExec) y `tools/Clicalo.DevCli` existen, pero
-> sus verbos se están implementando en este hito, y `cl.cmd`/`cl.ps1` todavía no están en la raíz. Cada
-> tabla indica el equivalente con `dotnet` mientras tanto.
+> **Estado tras M0.** `cl.cmd` y `cl.ps1` están en la raíz y lanzan el orquestador `build/` (Bullseye +
+> SimpleExec). Los verbos de M0 funcionan; los de hitos posteriores responden con el hito en el que llegan.
 
 ## Kit de desarrollo
 
@@ -18,32 +17,78 @@ que actualiza esta página. El marco está en [§5](blueprint.md#5-estructura-de
 
 ## Verbos de `cl`
 
-`cl` es el único punto de entrada: una palabra por tarea, dictable, idéntica en local y en la CI. Su salida
-termina en **una línea legible por Narrador**; los errores largos se escriben en un archivo Markdown que se
-abre en VS Code. VS Code tiene una tarea por verbo.
+`cl` es el único punto de entrada: una palabra por tarea, dictable, idéntica en local y en la CI. Desde la
+raíz del repositorio se escribe `cl check` en `cmd` y `.\cl check` en PowerShell (PowerShell no ejecuta
+programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva de ejecución sea
+`Restricted`). VS Code tiene una tarea por verbo (`.vscode/tasks.json`).
 
-| Verbo | Qué hace | Equivalente en M0 |
+| Verbo | Qué hace | Disponible |
 |---|---|---|
-| `cl setup` | Prepara el equipo: restaura las herramientas locales y configura la firma SSH de los commits y el DCO | Ver [preparar el entorno](../guides/dev-setup.md) |
-| `cl build` | Compila la solución completa | `dotnet build Clicalo.slnx -m:2 -nodeReuse:false` |
-| `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit), en menos de 45 s | `dotnet test --solution Core.slnf` |
-| `cl test` | Ejecuta las pruebas | `dotnet test --solution Clicalo.slnx` |
-| `cl desk` | Pruebas de integración de escritorio y E2E de humo (necesitan sesión interactiva) | — |
-| `cl fix` | Aplica el formato de CSharpier y las correcciones automáticas | `dotnet dnx csharpier@1.3.0 --yes -- format <rutas>` |
-| `cl check` | **Lo mismo que el trabajo `verify` de la CI:** *restore* bloqueado, compilación, formato, i18n, catálogos y nota de usuario. Todo PR termina con él | Compilación y pruebas completas, y formato de las rutas tocadas |
-| `cl run` | Arranca la app con datos aislados en `%TEMP%\clicalo-dev` | — |
-| `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | — |
-| `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | — |
-| `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | — |
-| `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | — |
-| `cl pr` | Abre el PR de la rama actual | — |
-| `cl beta` | Lanza la publicación beta (`beta.yml`) | — |
-| `cl perf` | Mide los presupuestos de rendimiento | — |
-| `cl sign-manifest` | Firma el manifiesto con la llave de hardware del mantenedor ([ADR-0013](../adr/0013-firma-de-codigo-y-manifiesto-firmado.md)) | — |
-| `cl i18n-import` | Conversión única, revisada a mano, de los textos del paquete ([ADR-0011](../adr/0011-formato-i18n.md)) | — |
+| `cl setup` | Restaura las herramientas locales y ajusta git (`core.autocrlf=false`, `core.longpaths`, `pull.rebase`, `fetch.prune`, `push.autoSetupRemote`); instala el *hook* versionado `build/githooks/prepare-commit-msg`, que añade `Signed-off-by` (DCO), y activa la firma de commits solo si ya hay una clave SSH configurada. Nunca crea ni lee claves: si falta, escribe los pasos en `artifacts/cl/setup.md` | M0 |
+| `cl build` | Compila la solución completa en Debug | M0 |
+| `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit). Objetivo: menos de 45 s; la línea final avisa si se supera | M0 |
+| `cl test` | Compila y ejecuta todas las pruebas salvo las de escritorio (`Requires=Desktop`) | M0 |
+| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva) | M0 |
+| `cl fix` | Da formato al C# con CSharpier | M0 |
+| `cl check` | **Lo mismo que el trabajo `verify` de la CI.** Todo PR termina con él (ver abajo) | M0 |
+| `cl clean` | Vacía `artifacts/`, salvo la salida del propio orquestador, y dice qué archivos siguen en uso | M0 |
+| `cl pr` | Abre el PR de la rama actual | M1 |
+| `cl run` | Arranca la app con datos aislados en `%TEMP%\clicalo-dev` | M2 |
+| `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
+| `cl perf` | Mide los presupuestos de rendimiento | M2 |
+| `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
+| `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
+| `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
+| `cl beta` | Lanza la publicación beta (`beta.yml`) | M5 |
+| `cl sign-manifest` | Firma el manifiesto con la llave de hardware del mantenedor ([ADR-0013](../adr/0013-firma-de-codigo-y-manifiesto-firmado.md)) | M5 |
 
-`tools/Clicalo.DevCli` aloja las órdenes que no son de compilación: `i18n-check`, `trace`, notas,
-`i18n-import`, `anonymize-v1`, `sign-manifest` y `states`.
+### Qué hace `cl check`
+
+Los mismos pasos, en este orden, en local y en la CI; el primero que falla detiene la orden:
+
+1. **pins**: versiones exactas en `Directory.Packages.props`, `global.json` y `.config/dotnet-tools.json`
+   (NFR-014) y acciones de GitHub fijadas por SHA con su versión en un comentario.
+2. **tools**: `dotnet tool restore`.
+3. **format**: `dotnet csharpier check .`
+4. **restore**: `dotnet restore --locked-mode` (los *lock files* deben coincidir).
+5. **build**: compilación Release con `-warnaserror`.
+6. **test**: todas las pruebas salvo `Requires=Desktop`, con resultados TRX.
+7. **i18n**: `Clicalo.DevCli i18n-check` y `Clicalo.DevCli i18n-import --check`.
+
+### Línea final e informe de errores
+
+Cada orden termina en **una sola línea para Narrador**, por ejemplo «cl check: correcto en 2 min 10 s;
+1226 pruebas» o «cl check: falló en format; detalle en artifacts\cl\last-error.md». El informe
+`artifacts/cl/last-error.md` es Markdown con encabezados y listas (sin tablas ni colores) y recoge el error
+exacto: errores de MSBuild con enlace a la línea, pruebas fallidas con mensaje y pila (leídas del TRX),
+archivos sin formato o firmas NuGet rechazadas (NU3034). Se borra al empezar cada orden, así que nunca queda
+un informe antiguo. En la terminal de VS Code se abre solo al fallar; en GitHub Actions el paso añade grupos,
+una anotación `::error` y el resumen del trabajo.
+
+Variables de entorno:
+
+| Variable | Efecto |
+|---|---|
+| `CLICALO_MAXCPU` | Limita los nodos de MSBuild en paralelo (`-m`) en un equipo compartido |
+| `CLICALO_OPEN_ERRORS=0` | No abre `last-error.md` al fallar |
+| `CLICALO_DESKTOP_TESTS=1` | Activa las pruebas `Requires=Desktop`; `cl desk` la pone sola |
+| `CLICALO_ACCEPT_SNAPSHOTS=1` | Acepta instantáneas nuevas de TestKit en local; en la CI se rechaza |
+
+Cada paso usa `-nodeReuse:false`: ningún nodo de MSBuild sobrevive a una orden, así que no quedan archivos
+bloqueados para `cl clean`.
+
+### `tools/Clicalo.DevCli`
+
+Aloja las órdenes que no son de compilación (`dotnet run --project tools/Clicalo.DevCli -- <verbo>`):
+
+| Verbo | Qué hace |
+|---|---|
+| `i18n-check` | Valida `data/i18n` igual que el generador (errores `CLCI`), las reglas CLDR y `allow-unused.txt` |
+| `i18n-import` | Reconstruye `data/i18n/strings.*.json` desde el paquete de diseño con la receta revisada ([ADR-0011](../adr/0011-formato-i18n.md)); con `--check` no escribe y falla si no coincide |
+| `adr-check --base <ref>` | Falla si los archivos cambiados desde la base de fusión con `<ref>` tocan una ruta de `architecture/sensitive-paths.json` sin un ADR nuevo o cambiado en `docs/adr/` (error `CLCA010`, [§13](blueprint.md#13-convenciones-de-ingeniería)) |
+
+Salida en formato MSBuild, última línea legible por Narrador y códigos de salida 0 (sin problemas), 1
+(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace`, `anonymize-v1` y `states`.
 
 ### Compilar mientras se itera
 
@@ -62,9 +107,17 @@ vivos que bloqueen archivos entre compilaciones.
 - Los analizadores comunes (Meziantou.Analyzer y Microsoft.CodeAnalysis.BannedApiAnalyzers) se declaran como
   `GlobalPackageReference`: llegan a todos los proyectos sin tocarlos.
 - `NuGetAudit` está activo en modo `all` (también transitivas) y nivel `low`.
-- `nuget.config` limpia las fuentes, usa solo nuget.org y declara `packageSourceMapping`. El plano prevé
-  además `signatureValidationMode=require` con una lista explícita de `trustedSigners`, de modo que cada
-  dependencia nueva añada su propietario.
+- `nuget.config` limpia las fuentes, usa solo nuget.org, sin carpetas de reserva, declara
+  `packageSourceMapping` y exige firma (`signatureValidationMode=require`) con una lista explícita de
+  `trustedSigners`: el repositorio nuget.org (sus certificados publicados) y, dentro, los propietarios
+  (`<owners>`) de cada paquete que usa el repositorio, sus transitivos, los *packs* del SDK y las
+  herramientas.
+- **Añadir un propietario** cuando una dependencia nueva falla con NU3034: restaura con cachés vacías
+  (`$env:NUGET_PACKAGES` y `$env:NUGET_HTTP_CACHE_PATH` a carpetas temporales; después
+  `dotnet restore Clicalo.slnx` y `dotnet tool restore`), mira el propietario con
+  `dotnet nuget verify --all <ruta del .nupkg> -v detailed` (línea «Owners») y añádelo en orden alfabético
+  a `<owners>`. La validación solo ocurre al extraer un paquete: la caché local puede ocultar un NU3034 que
+  la CI sí ve, por eso se prueba con cachés vacías.
 - **Añadir una dependencia:** comprobar la última versión estable en
   `https://api.nuget.org/v3-flatcontainer/<id-en-minúsculas>/index.json`, añadir una línea
   `PackageVersion` con la versión exacta, referenciarla sin versión y actualizar los *lock files*. Cambiar
@@ -121,19 +174,26 @@ pruebas) están acotadas a `tests/`.
 
 ## Formato
 
-- **CSharpier** da formato al código C#: determinista y sin opciones, así que se puede dictar sin cuidar la
-  sangría. Versión 1.3.0:
-  `dotnet dnx csharpier@1.3.0 --yes -- format <rutas>` y, para comprobar sin escribir,
-  `dotnet dnx csharpier@1.3.0 --yes -- check <rutas>`.
+- **CSharpier 1.3.0** (herramienta local en `.config/dotnet-tools.json`) da formato al código C#:
+  determinista, así que se puede dictar sin cuidar la sangría. `cl fix` da formato y `cl check` lo
+  comprueba (`dotnet csharpier format .` y `dotnet csharpier check .`).
+- `.csharpierrc.json` fija `printWidth` en **100**, el valor por defecto de CSharpier: el código formateado
+  sin configuración ya cumple, y 100 columnas obligan a desplazarse menos en horizontal con lupa o letra
+  grande.
+- **Solo se formatea C#.** `.csharpierignore` excluye `csproj`, `props`, `targets`, `slnx`, `config`, `xml`
+  y `xaml`: el formateador XML parte los elementos de una línea y se lee peor en voz alta. Qué hacer con el
+  XAML se decidirá con el primer XAML.
 - `.editorconfig` es dueño de los nombres y de las severidades; la regla de formato del IDE (IDE0055) está
   desactivada para no competir con CSharpier.
-- Está previsto fijar CSharpier, `dotnet-cyclonedx` y `vpk` en `.config/dotnet-tools.json` y aplicar
-  CSharpier al guardar en VS Code.
+- `.config/dotnet-tools.json` fija CSharpier, `dotnet-CycloneDX` y `vpk`. VS Code aplica CSharpier al
+  guardar solo en C# (`.vscode/settings.json`).
 - Finales de línea: LF en todo salvo `*.cmd`, `*.bat` y los *lock files* (`.gitattributes`).
 
 ## Integración continua
 
-Workflows previstos ([§10.5 del plano](blueprint.md#105-cicd)); `pr.yml` llega en M0:
+Workflows previstos ([§10.5 del plano](blueprint.md#105-cicd)). En M0 existen `pr.yml` (trabajos
+`verify (x64)` = `cl check` y `adr` = `adr-check` en cada PR; `verify (arm64)`, CodeQL y Scorecard solo
+con el repositorio público) y `pr-title.yml` (título en Conventional Commits):
 
 | Workflow | Cuándo | Qué hace |
 |---|---|---|

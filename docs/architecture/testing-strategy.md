@@ -33,8 +33,10 @@ De la base (más pruebas, más rápidas) a la cima (menos pruebas, en hardware r
 
 ## Proyectos de prueba
 
-Todo proyecto bajo `tests/` (salvo `Clicalo.TestKit`) es un ejecutable de xUnit v3 sobre Microsoft
-Testing Platform, con `Xunit` y `Shouldly` como *usings* globales (`tests/Directory.Build.props`).
+Todo proyecto bajo `tests/` (salvo las bibliotecas `Clicalo.TestKit` y `Clicalo.TestKit.Windows`) es un
+ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly` como *usings* globales
+(`tests/Directory.Build.props`). Las pruebas del orquestador `cl` viven junto a él, en
+`build/Build.Tests`, y también están en `Clicalo.slnx`.
 
 | Proyecto | Estado en M0 | Cubre |
 |---|---|---|
@@ -44,7 +46,10 @@ Testing Platform, con `Xunit` y `Shouldly` como *usings* globales (`tests/Direct
 | `Clicalo.Application.Tests` | Existe | `DocumentStore`, `EngineHost` con `PhysicalStateInjector`, `ForegroundOrchestrator`, `TryNowUseCase`, coordinadores, programador de guardado |
 | `Clicalo.Generators.Tests` | Existe | Generadores y analizadores de Roslyn: salida determinista y diagnósticos con ubicación exacta en el JSON |
 | `Clicalo.Platform.IntegrationTests` | Existe | Inyección en los dos modos con varias distribuciones, *hook* LL bajo GC, `PointerPositionTracker`, sesión, portapapeles, lanzador, ACL de la tarea elevada |
-| `Clicalo.TestKit` | Existe (biblioteca) | Utilidades compartidas; hoy `RepoPaths` (`Root`, `Data`, `Handoff`) |
+| `Clicalo.DevCli.Tests` | Existe | Órdenes de `tools/Clicalo.DevCli`: códigos de salida, receta e importación de i18n, detector de claves usadas, `allow-unused.txt` y `adr-check` |
+| `Build.Tests` (en `build/`) | Existe | Orquestador `cl`: línea final, informes, lectura del registro de MSBuild y del TRX, versiones fijadas (NFR-014) |
+| `Clicalo.TestKit` | Existe (biblioteca) | `RepoPaths`, instantáneas de texto (`TextSnapshot`), reloj simulado (`TestTime`) y comprobación de `[Trait("Req")]` contra el catálogo |
+| `Clicalo.TestKit.Windows` | Existe (biblioteca) | Instantáneas de renderizado WPF (`RenderSnapshot`), sesiones de `tools/InputProbe` y un inyector de pruebas con barrera de seguridad |
 | `Clicalo.Presentation.Tests` | Previsto | ViewModels contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente |
 | `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación v1, `SafeZipReader`, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
 | `Clicalo.UI.Wpf.Tests` | Previsto | *Peers*, 44 px, disposición, pseudolocalización, contraste resuelto, instantáneas de renderizado |
@@ -102,11 +107,14 @@ Las instantáneas comparan una salida con una referencia aprobada y versionada. 
 
 - **Texto:** UTF-8 con finales de línea LF y bytes estables. Las referencias se guardan como
   `*.verified.txt` (`.gitattributes` fija `eol=lf`).
-- **Imagen:** PNG con tolerancia, porque el renderizado puede variar en detalles invisibles: ΔE ≤ 2 por píxel
-  y como máximo un 0,5 % de píxeles distintos. Las referencias se guardan como `*.verified.png` (binarias).
+- **Imagen:** PNG con tolerancia, porque el renderizado puede variar en detalles invisibles. El objetivo es
+  ΔE ≤ 2 por píxel (OKLab) y como máximo un 0,5 % de píxeles distintos. `RenderSnapshot` compara hoy con
+  una tolerancia **por canal** (2 de 255 en BGRA sin premultiplicar) y el mismo 0,5 %; el modo ΔE queda
+  pendiente para M3, antes de las primeras referencias de la UI. Las referencias se guardan como
+  `*.verified.png` (binarias) y, si fallan, se escriben `*.received.png` y `*.received.diff.png`.
 - **Una diferencia nunca se acepta sola.** El comparador escribe la salida nueva como `*.received.*`
-  (ignorada por Git) y la prueba falla. Aprobar es sustituir la referencia de forma explícita, y el cambio
-  se revisa en el *diff* del PR.
+  (ignorada por Git) y la prueba falla. Aprobar es sustituir la referencia de forma explícita
+  (`CLICALO_ACCEPT_SNAPSHOTS=1` en local; en la CI se rechaza), y el cambio se revisa en el *diff* del PR.
 - **Fidelidad visual:** las referencias iniciales de renderizado se aprueban comparándolas lado a lado con
   el Prototipo v4.
 
@@ -160,12 +168,12 @@ Dónde se usan:
 
 ## Cómo ejecutarlas
 
-| Qué | Con `cl` | Equivalente mientras `cl` se construye (M0) |
+| Qué | Con `cl` | Con `dotnet` |
 |---|---|---|
 | Todas las pruebas | `cl test` | `dotnet test --solution Clicalo.slnx` |
 | Solo el núcleo (menos de 45 s) | `cl fast` | `dotnet test --solution Core.slnf` |
 | Un proyecto | — | `dotnet test --project tests/<Proyecto>/<Proyecto>.csproj` |
-| Integración de escritorio | `cl desk` | — |
+| Integración de escritorio | `cl desk` | `CLICALO_DESKTOP_TESTS=1` y `dotnet test --solution Clicalo.slnx --filter-trait Requires=Desktop` |
 | Instantáneas de todos los estados | `cl states` | — |
 | Rendimiento | `cl perf` | — |
 | Aceptación en hardware | `cl accept` | — |

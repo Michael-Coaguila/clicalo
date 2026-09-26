@@ -4,9 +4,6 @@ Pasos para compilar y probar Clícalo en un equipo con Windows. Todo se puede ha
 pantalla y el dictado; la guía [programar con pantalla táctil y voz](voice-and-touch-workflow.md) explica
 cómo.
 
-> **Estado en M0.** `cl setup` y el resto de verbos de `cl` se están construyendo en este hito. Cada paso
-> indica cómo hacerlo a mano mientras tanto.
-
 ## 1. Requisitos
 
 | Qué | Versión | Cómo instalarlo |
@@ -54,10 +51,27 @@ git worktree add C:\dev\clicalo-wt\mi-tarea -b feat/mi-tarea main
 
 ## 4. `cl setup`
 
-`cl setup` preparará el equipo en una sola orden: restaurará las herramientas locales y configurará la
-firma SSH de los commits y el DCO. Hasta que exista, hazlo a mano.
+Desde la raíz del repositorio (en PowerShell se escribe `.\cl setup`; en `cmd`, `cl setup`):
 
-### Firma de commits y DCO
+```powershell
+.\cl setup
+```
+
+Una sola orden que:
+
+- restaura las herramientas locales de `.config/dotnet-tools.json` (CSharpier, `dotnet-CycloneDX` y `vpk`);
+- ajusta git **solo en este repositorio**: `core.autocrlf=false`, `core.longpaths`, `pull.rebase`,
+  `fetch.prune`, `push.autoSetupRemote` y `format.signOff`;
+- instala el *hook* versionado `build/githooks/prepare-commit-msg` (con `core.hooksPath`), que añade la
+  línea `Signed-off-by` del **DCO** a cada commit sin duplicarla. Al usar `cl setup` certificas el DCO de
+  tus propios commits: lee antes [CONTRIBUTING.md](../../CONTRIBUTING.md#certificado-de-origen-dco-y-firma-de-commits);
+- activa la **firma SSH** de commits y etiquetas solo si ya tienes una clave de firma configurada
+  (`gpg.format=ssh` y `user.signingkey`). `cl setup` nunca crea ni lee claves: si falta, escribe los pasos
+  en `artifacts\cl\setup.md`.
+
+Se puede repetir cuando quieras; no cambia nada que ya esté bien.
+
+### Si aún no tienes clave de firma
 
 1. Tu identidad en Git:
 
@@ -66,86 +80,80 @@ firma SSH de los commits y el DCO. Hasta que exista, hazlo a mano.
    git config --global user.email "tu-correo@ejemplo.com"
    ```
 
-2. Una clave SSH para firmar (si no tienes una), que después añades en GitHub como **clave de firma**
-   (*Signing Key*) en la configuración de claves SSH de tu cuenta:
+2. Una clave SSH para firmar, que después añades en GitHub como **clave de firma** (*Signing Key*) en la
+   configuración de claves SSH de tu cuenta:
 
    ```powershell
    ssh-keygen -t ed25519 -C "tu-correo@ejemplo.com"
    ```
 
-3. Firma de commits con esa clave, solo en este repositorio:
-
-   ```powershell
-   git config gpg.format ssh
-   git config user.signingkey "$env:USERPROFILE\.ssh\id_ed25519.pub"
-   git config commit.gpgsign true
-   git config tag.gpgsign true
-   ```
-
-4. **DCO:** cada commit lleva `Signed-off-by`. Desde la terminal, `git commit -s`. Desde VS Code, activa el
-   ajuste `git.alwaysSignOff`. Ver [CONTRIBUTING.md](../../CONTRIBUTING.md#certificado-de-origen-dco-y-firma-de-commits).
-
-### Herramientas
-
-- El formato se aplica con CSharpier 1.3.0 sin instalar nada:
-  `dotnet dnx csharpier@1.3.0 --yes -- format <rutas>`. Está previsto fijarlo, junto con
-  `dotnet-cyclonedx` y `vpk`, en `.config/dotnet-tools.json`; a partir de entonces bastará
-  `dotnet tool restore`.
+3. Vuelve a ejecutar `.\cl setup`: detecta la clave y activa la firma. `artifacts\cl\setup.md` explica
+   además cómo usar el agente SSH de Windows para no teclear la frase de contraseña en cada commit.
 
 ## 5. Visual Studio Code
+
+Al abrir la carpeta, VS Code propone las extensiones de `.vscode/extensions.json` y aplica
+`.vscode/settings.json`. Hay una tarea por verbo de `cl` (**Terminal › Ejecutar tarea**, o
+`Ctrl+Mayús+P` y «Tasks: Run Task»).
 
 ### Extensiones recomendadas
 
 | Extensión | Identificador | Para qué |
 |---|---|---|
-| C# | `ms-dotnettools.csharp` | Lenguaje, depuración y navegación («Ir a definición») |
-| C# Dev Kit (opcional) | `ms-dotnettools.csdevkit` | Explorador de soluciones y de pruebas. Su licencia es la de Visual Studio Community |
+| C# Dev Kit | `ms-dotnettools.csdevkit` | Lenguaje (instala `ms-dotnettools.csharp`), explorador de soluciones y de pruebas. Su licencia es la de Visual Studio Community |
 | CSharpier | `csharpier.csharpier-vscode` | Formato al guardar |
 | EditorConfig | `editorconfig.editorconfig` | Aplica `.editorconfig` a los archivos que no son C# |
-| markdownlint | `davidanson.vscode-markdownlint` | Revisa la documentación como lo hará la CI |
+| markdownlint | `davidanson.vscode-markdownlint` | Revisa la documentación con `.markdownlint-cli2.jsonc` |
 | Markdown Preview Mermaid Support | `bierner.markdown-mermaid` | Muestra los diagramas de la documentación |
 | GitHub Actions | `github.vscode-github-actions` | Edita y sigue los *workflows* |
 | YAML | `redhat.vscode-yaml` | Validación de los *workflows* y formularios de *issue* |
-| Spanish - Code Spell Checker | `streetsidesoftware.code-spell-checker-spanish` | Ortografía de la documentación en español (requiere `streetsidesoftware.code-spell-checker`) |
+| Spanish - Code Spell Checker | `streetsidesoftware.code-spell-checker-spanish` | Ortografía de la documentación en español (con `streetsidesoftware.code-spell-checker`) |
 
-Para instalarlas desde la terminal: `code --install-extension <identificador>`. Está previsto versionarlas
-en `.vscode/extensions.json`, para que VS Code las proponga al abrir la carpeta.
+Para instalarlas desde la terminal: `code --install-extension <identificador>`.
 
-### Ajustes recomendados
+### Ajustes del repositorio
 
-```jsonc
-{
-  "files.autoSave": "afterDelay",
-  "editor.formatOnSave": true,
-  "[csharp]": { "editor.defaultFormatter": "csharpier.csharpier-vscode" },
-  "git.alwaysSignOff": true,
-  "editor.accessibilitySupport": "on"
-}
-```
+`.vscode/settings.json` guarda al cambiar el foco (`files.autoSave: onFocusChange`; con un retraso, VS Code
+no da formato al guardar), da formato con CSharpier **solo en C#** (los JSON de `data/`, los esquemas y los
+proyectos conservan su formato escrito a mano), usa LF y abre los informes de `artifacts/cl/` como vista
+previa, para recorrerlos por encabezados con Narrador.
 
-`editor.accessibilitySupport` optimiza el editor para lectores de pantalla; actívalo si usas Narrador. Está
-previsto versionar estos ajustes en `.vscode/settings.json` y una tarea de VS Code por cada verbo de `cl` en
-`.vscode/tasks.json`.
+Si usas Narrador, activa además como ajuste de usuario `"editor.accessibilitySupport": "on"`.
 
 ## 6. Compilar y probar
+
+```powershell
+.\cl fast    # núcleo portátil (Core.slnf), para iterar
+.\cl test    # todas las pruebas salvo las de escritorio
+.\cl fix     # formato C# con CSharpier
+.\cl check   # lo mismo que la CI; todo PR termina con él
+```
+
+Cada orden termina en una sola línea, pensada para Narrador («cl check: correcto en…» o «cl check: falló
+en build; detalle en artifacts\cl\last-error.md»). Si falla, `artifacts\cl\last-error.md` tiene el error
+exacto con enlaces a la línea y VS Code lo abre solo. Los verbos, los pasos de `cl check` y las variables
+de entorno están en [herramientas](../architecture/tooling.md#verbos-de-cl).
+
+`cl check` compila en Release **sin advertencias** (`TreatWarningsAsErrors` y `-warnaserror`) y restaura en
+modo bloqueado. La salida de la compilación va a `artifacts/`, nunca junto al código; `cl clean` la borra.
+
+Sin `cl`, lo mismo a mano:
 
 ```powershell
 dotnet build Clicalo.slnx -m:2 -nodeReuse:false
 dotnet test --solution Clicalo.slnx
 ```
 
-Ambas órdenes deben terminar sin errores **y sin advertencias** (`TreatWarningsAsErrors` está activo). Para
-iterar más rápido sobre el núcleo: `dotnet test --solution Core.slnf`. Cuando exista `cl`, todo esto es
-`cl check`.
-
-La salida de la compilación va a `artifacts/`, nunca junto al código.
-
 ## 7. Problemas frecuentes
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | «A compatible .NET SDK was not found» | Falta el SDK de la banda 10.0.4xx | Instala el SDK 10.0.401 o un parche posterior |
-| La restauración falla con `NU1004` en la CI | Un `packages.lock.json` no está al día | `dotnet restore Clicalo.slnx --force-evaluate` y versiona los *lock files* |
-| Archivos bloqueados entre compilaciones | Nodos de MSBuild que siguen vivos | Compila con `-nodeReuse:false` o ejecuta `dotnet build-server shutdown` |
+| PowerShell dice que `cl` no se reconoce | PowerShell no ejecuta programas de la carpeta actual | Escribe `.\cl check` (o usa `cmd`) |
+| PowerShell no deja ejecutar `cl.ps1` | Directiva de ejecución `Restricted` | Usa `.\cl.cmd check`, que funciona siempre |
+| `cl check` falla en `format` | Archivos C# sin el formato de CSharpier | `.\cl fix` y vuelve a ejecutar |
+| `cl check` falla en `restore` con `NU1004` | Un `packages.lock.json` no está al día | `dotnet restore Clicalo.slnx --force-evaluate` y versiona los *lock files* |
+| La restauración falla con `NU3034` | El propietario de un paquete nuevo no está en `nuget.config` | Añádelo como explica [herramientas](../architecture/tooling.md#paquetes-central-package-management) |
+| Archivos bloqueados entre compilaciones | Nodos de MSBuild que siguen vivos | `cl` ya usa `-nodeReuse:false`; a mano, `dotnet build-server shutdown` |
 | Errores intermitentes de acceso a archivos | El repositorio está dentro de OneDrive | Muévelo a `C:\dev\clicalo` |
 | Un analizador falla en un archivo que no tocaste | Otro cambio introdujo la advertencia | No lo suprimas en `.editorconfig`: corrige la causa o usa `[SuppressMessage]` con una justificación real |

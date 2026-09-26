@@ -1,3 +1,4 @@
+using Clicalo.DevCli.Adr;
 using Clicalo.DevCli.I18n;
 
 namespace Clicalo.DevCli;
@@ -7,6 +8,7 @@ internal static class Cli
 {
     private const string CheckVerb = "i18n-check";
     private const string ImportVerb = "i18n-import";
+    private const string AdrVerb = "adr-check";
 
     private const string Help = """
         Clicalo developer CLI (behind `cl`).
@@ -19,6 +21,9 @@ internal static class Cli
                         --strict-unused  also fail on keys that no code uses and allow-unused.txt does not list.
           i18n-import   Rebuild data/i18n/strings.*.json from the design handoff and data/i18n/handoff-import.json.
                         --check          do not write; fail when data/i18n differs from a fresh import.
+          adr-check     Fail when the files changed since the merge base with <ref> touch a path of
+                        architecture/sensitive-paths.json and no ADR (docs/adr/NNNN-*.md) changed with them.
+                        --base <ref>     required: the branch or commit the change is compared with.
           help          Show this help.
 
         Common options:
@@ -48,7 +53,7 @@ internal static class Cli
             return ExitCodes.Success;
         }
 
-        if (verb is not (CheckVerb or ImportVerb))
+        if (verb is not (CheckVerb or ImportVerb or AdrVerb))
         {
             error.WriteLine(Help);
             error.WriteLine("Unknown verb '" + verb + "'.");
@@ -73,9 +78,12 @@ internal static class Cli
             return ExitCodes.Usage;
         }
 
-        return string.Equals(verb, CheckVerb, StringComparison.Ordinal)
-            ? I18nCheckCommand.Run(root, options.StrictUnused, output)
-            : I18nImportCommand.Run(root, options.Check, output);
+        return verb switch
+        {
+            CheckVerb => I18nCheckCommand.Run(root, options.StrictUnused, output),
+            ImportVerb => I18nImportCommand.Run(root, options.Check, output),
+            _ => AdrCheckCommand.Run(root, options.Base!, output),
+        };
     }
 
     private static bool TryParseOptions(
@@ -85,7 +93,7 @@ internal static class Cli
         out string problem
     )
     {
-        options = new CliOptions(null, false, false);
+        options = new CliOptions(null, false, false, null);
         problem = string.Empty;
         for (var i = 0; i < args.Count; i++)
         {
@@ -101,10 +109,21 @@ internal static class Cli
                     when string.Equals(verb, CheckVerb, StringComparison.Ordinal):
                     options = options with { StrictUnused = true };
                     break;
+                case "--base"
+                    when string.Equals(verb, AdrVerb, StringComparison.Ordinal)
+                        && i + 1 < args.Count:
+                    options = options with { Base = args[++i] };
+                    break;
                 default:
                     problem = "Unknown or incomplete option '" + args[i] + "' for " + verb + ".";
                     return false;
             }
+        }
+
+        if (string.Equals(verb, AdrVerb, StringComparison.Ordinal) && options.Base is null)
+        {
+            problem = "adr-check needs --base <ref>.";
+            return false;
         }
 
         return true;
