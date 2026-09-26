@@ -141,9 +141,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
+            // By type only (LOG-001): the message of an I/O failure carries the data path, with the user name.
             var failure = ex.GetType().Name;
-            var reason = ex.Message;
-            LogStartupFailed(_logger, failure, reason);
+            LogStartupFailed(_logger, failure);
             _exit ??= ExitCoreAsync(AppExitCode.StartupFailed);
             await _exit;
         }
@@ -421,11 +421,17 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         var engine = _engine;
         var scheduler = _scheduler;
+        var relay = _services.GetRequiredService<EngineObserverRelay>();
+
+        // The engine loop ends only with Terminal(Exit); after Terminal(SessionEnd) it goes on (another app may cancel
+        // the end of the session), so the release is confirmed by its first snapshot with nothing held.
+        Func<CancellationToken, Task> released =
+            reason == TerminalReason.Exit ? _ => engine.Stopped : relay.WhenNothingHeldAsync;
         return _services
             .GetRequiredService<ExitSequence>()
             .RunAsync(
                 reason,
-                _ => engine.Stopped,
+                released,
                 token => scheduler?.FlushAsync(token) ?? Task.CompletedTask,
                 CancellationToken.None
             );
@@ -517,9 +523,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     [LoggerMessage(
         EventId = 6,
         Level = LogLevel.Critical,
-        Message = "startup.failed ({Exception}): {Reason}"
+        Message = "startup.failed ({Exception})"
     )]
-    private static partial void LogStartupFailed(ILogger logger, string exception, string reason);
+    private static partial void LogStartupFailed(ILogger logger, string exception);
 
     [LoggerMessage(
         EventId = 7,

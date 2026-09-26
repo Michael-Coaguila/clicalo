@@ -52,17 +52,21 @@ public sealed partial class ExitSequence
 
     /// <summary>Runs the sequence.</summary>
     /// <param name="reason"><see cref="TerminalReason.Exit"/> or <see cref="TerminalReason.SessionEnd"/>.</param>
-    /// <param name="engineStopped">Completes when the engine loop has ended (after the terminal event).</param>
+    /// <param name="engineReleased">
+    /// Completes when the engine has released everything after the terminal event: the end of its loop after
+    /// <see cref="TerminalReason.Exit"/>, or its first snapshot with nothing held after
+    /// <see cref="TerminalReason.SessionEnd"/>, whose loop goes on in case another app cancels the end of the session.
+    /// </param>
     /// <param name="flush">Writes everything pending (<c>PersistenceScheduler.FlushAsync</c>).</param>
     /// <param name="cancellationToken">Abandons the waits (the process is ending anyway).</param>
     public async Task<ExitReport> RunAsync(
         TerminalReason reason,
-        Func<CancellationToken, Task> engineStopped,
+        Func<CancellationToken, Task> engineReleased,
         Func<CancellationToken, Task> flush,
         CancellationToken cancellationToken
     )
     {
-        ArgumentNullException.ThrowIfNull(engineStopped);
+        ArgumentNullException.ThrowIfNull(engineReleased);
         ArgumentNullException.ThrowIfNull(flush);
         if (reason is not (TerminalReason.Exit or TerminalReason.SessionEnd))
         {
@@ -77,7 +81,7 @@ public sealed partial class ExitSequence
         _ledger.SetMarks(KeyLedgerMarks.CleanShutdown);
         var posted = _engine.Post(new EngineEvent.Terminal(reason));
         var released =
-            await WithinAsync(engineStopped, Timings.App.ExitReleaseWait, cancellationToken)
+            await WithinAsync(engineReleased, Timings.App.ExitReleaseWait, cancellationToken)
                 .ConfigureAwait(false) && posted;
         var flushed = await WithinAsync(flush, Timings.App.ExitFlushTimeout, cancellationToken)
             .ConfigureAwait(false);

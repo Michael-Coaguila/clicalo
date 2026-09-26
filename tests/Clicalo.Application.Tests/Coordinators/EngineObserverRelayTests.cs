@@ -1,6 +1,7 @@
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Domain.Execution;
+using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.TestKit.Time;
@@ -87,6 +88,43 @@ public sealed class EngineObserverRelayTests
         notices.ShouldBe([(L.ReleasedAll, NoticeUrgency.Polite)]);
         usage.ShouldBe([(new ShortcutId("copy"), TestTime.Epoch)]);
         _relay.LastAction.ShouldBe(new ShortcutId("copy"));
+    }
+
+    [Fact]
+    [Trait("Req", "SEG-006")]
+    [Trait("Req", "SEG-007")]
+    public async Task The_end_of_the_session_learns_that_the_engine_released_everything_without_the_ui_thread()
+    {
+        _relay.OnSnapshot(Snapshot(1) with { Held = Holding() });
+
+        var released = _relay.WhenNothingHeldAsync(TestContext.Current.CancellationToken);
+        released.IsCompleted.ShouldBeFalse("something is still held");
+        _relay.OnSnapshot(Snapshot(2) with { Held = Holding() });
+        released.IsCompleted.ShouldBeFalse("still held");
+        _relay.OnSnapshot(Snapshot(3));
+
+        await released.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        _painted.ShouldBeEmpty("no Surfaces turn was needed");
+        _relay
+            .WhenNothingHeldAsync(TestContext.Current.CancellationToken)
+            .IsCompleted.ShouldBeTrue("nothing held: at once");
+    }
+
+    private static ValueList<PressedItem> Holding()
+    {
+        var shortcut = new ShortcutId("shift");
+        return new ValueList<PressedItem>([
+            new PressedItem(
+                HolderId.ForToggle(shortcut),
+                HoldOrigin.Toggle,
+                shortcut,
+                null,
+                [],
+                MouseButtons.None,
+                0,
+                null
+            ),
+        ]);
     }
 
     private static EngineSnapshot Snapshot(long version) =>
