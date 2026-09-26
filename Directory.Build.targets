@@ -9,6 +9,13 @@
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <!-- Tests may use literals and long names freely; product rules still apply to src/. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!--
+      cl test, desk and check pass -p:ClicaloTrxReport=true: every test module writes its own <AssemblyName>.trx. xUnit's
+      default name is user_machine_timestamp.trx, taken when each module starts, and dotnet test starts the modules
+      within milliseconds of each other: a shared name overwrites a module's results, and cl would count fewer tests
+      than dotnet test (build/TestRunReport.cs).
+    -->
+    <RunArguments Condition="'$(ClicaloTrxReport)' == 'true'">--report-xunit-trx --report-xunit-trx-filename $(AssemblyName).trx</RunArguments>
   </PropertyGroup>
 
   <PropertyGroup Label="Architecture enforcement">

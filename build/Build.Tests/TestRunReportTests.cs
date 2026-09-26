@@ -24,6 +24,15 @@ public sealed class TestRunReportTests
         </TestRun>
         """;
 
+    private const string PassedOnly = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+          <Results>
+            <UnitTestResult testName="Clicalo.Domain.Tests.Library.Adds_a_shortcut" outcome="Passed" />
+          </Results>
+        </TestRun>
+        """;
+
     private static TestRunReport Parse(params string[] documents) =>
         TestRunReport.Parse(
             documents.Select((text, index) => (FileName(index), XDocument.Parse(text))),
@@ -34,7 +43,17 @@ public sealed class TestRunReportTests
         index.ToString(CultureInfo.InvariantCulture) + ".trx";
 
     [Fact]
-    public void Counts_tests_that_ran_and_ignores_skipped_ones() => Parse(Trx).Executed.ShouldBe(3);
+    public void Counts_what_dotnet_test_counts()
+    {
+        var report = Parse(Trx);
+
+        report.Total.ShouldBe(
+            4,
+            "the total of dotnet test has every result, skipped ones included"
+        );
+        report.Skipped.ShouldBe(1);
+        report.Executed.ShouldBe(3);
+    }
 
     [Fact]
     public void Lists_failed_and_timed_out_tests_with_message_and_stack()
@@ -52,7 +71,43 @@ public sealed class TestRunReportTests
     }
 
     [Fact]
-    public void Adds_up_several_test_modules() => Parse(Trx, Trx).Executed.ShouldBe(6);
+    public void Adds_up_several_test_modules() => Parse(Trx, Trx).Total.ShouldBe(8);
+
+    [Fact]
+    public void Reads_the_results_file_of_every_module()
+    {
+        var folder = Directory.CreateTempSubdirectory("clicalo-trx-");
+        try
+        {
+            File.WriteAllText(Path.Combine(folder.FullName, "Clicalo.Domain.Tests.trx"), Trx);
+            File.WriteAllText(Path.Combine(folder.FullName, "Clicalo.Build.Tests.trx"), Trx);
+
+            var report = TestRunReport.Load(folder.FullName);
+
+            report.Files.Count.ShouldBe(2);
+            report.Total.ShouldBe(8);
+            report.Failures.Count.ShouldBe(4);
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Every_test_module_names_its_results_file_after_itself()
+    {
+        // xUnit's default name (user_machine_timestamp.trx) is taken when each module starts, and dotnet test starts
+        // them within milliseconds of each other: two modules with one name keep only one module's results, which is
+        // how cl can count fewer tests than dotnet test (1658 against 1772 in the M1 integration).
+        var root = RepoLayout.Locate(AppContext.BaseDirectory).Root;
+        var targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
+
+        BuildSteps.TrxReportProperty.ShouldBe("-p:ClicaloTrxReport=true");
+        targets.ShouldContain(
+            "<RunArguments Condition=\"'$(ClicaloTrxReport)' == 'true'\">--report-xunit-trx --report-xunit-trx-filename $(AssemblyName).trx</RunArguments>"
+        );
+    }
 
     [Fact]
     public void Renders_one_heading_per_failed_test_with_code_blocks()
@@ -73,6 +128,10 @@ public sealed class TestRunReportTests
             .Executed.ShouldBe(0);
 
     [Fact]
-    public void Describes_the_count_for_the_final_line() =>
-        Parse(Trx).DescribeCount().ShouldBe("3 pruebas");
+    public void Describes_the_count_for_the_final_line()
+    {
+        Parse(Trx).DescribeCount().ShouldBe("4 pruebas, 1 omitida");
+        Parse(Trx, Trx).DescribeCount().ShouldBe("8 pruebas, 2 omitidas");
+        Parse(PassedOnly).DescribeCount().ShouldBe("1 prueba");
+    }
 }

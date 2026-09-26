@@ -4,7 +4,9 @@ using System.Xml.Linq;
 namespace Clicalo.Build;
 
 /// <summary>
-/// The outcome of a test run, read from the TRX files that xUnit writes with <c>--report-xunit-trx</c>.
+/// The outcome of a test run, read from the TRX files that xUnit writes (one per test module,
+/// <see cref="BuildSteps.TrxReportProperty"/>). It counts what <c>dotnet test</c> counts in its summary: every test
+/// result is in the total, and the skipped ones are also counted apart.
 /// </summary>
 internal sealed class TestRunReport
 {
@@ -23,18 +25,26 @@ internal sealed class TestRunReport
     };
 
     private TestRunReport(
-        int executed,
+        int total,
+        int skipped,
         IReadOnlyList<FailedTest> failures,
         IReadOnlyList<string> files
     )
     {
-        Executed = executed;
+        Total = total;
+        Skipped = skipped;
         Failures = failures;
         Files = files;
     }
 
-    /// <summary>Tests that ran (passed or failed); skipped tests are not counted.</summary>
-    public int Executed { get; }
+    /// <summary>Every test result, as the <c>total</c> of <c>dotnet test</c>: passed, failed and skipped.</summary>
+    public int Total { get; }
+
+    /// <summary>Tests that did not run (<c>NotExecuted</c>), the <c>skipped</c> of <c>dotnet test</c>.</summary>
+    public int Skipped { get; }
+
+    /// <summary>Tests that ran (passed or failed).</summary>
+    public int Executed => Total - Skipped;
 
     /// <summary>Tests that did not pass.</summary>
     public IReadOnlyList<FailedTest> Failures { get; }
@@ -47,7 +57,7 @@ internal sealed class TestRunReport
     {
         if (!Directory.Exists(directory))
         {
-            return new TestRunReport(0, [], []);
+            return new TestRunReport(0, 0, [], []);
         }
 
         var files = Directory
@@ -63,19 +73,21 @@ internal sealed class TestRunReport
         IReadOnlyList<string> files
     )
     {
-        var executed = 0;
+        var total = 0;
+        var skipped = 0;
         var failures = new List<FailedTest>();
         foreach (var (_, document) in documents)
         {
             foreach (var result in document.Descendants(Trx + "UnitTestResult"))
             {
+                total++;
                 var outcome = (string?)result.Attribute("outcome") ?? string.Empty;
                 if (string.Equals(outcome, "NotExecuted", StringComparison.OrdinalIgnoreCase))
                 {
+                    skipped++;
                     continue;
                 }
 
-                executed++;
                 if (!FailedOutcomes.Contains(outcome))
                 {
                     continue;
@@ -93,7 +105,7 @@ internal sealed class TestRunReport
             }
         }
 
-        return new TestRunReport(executed, failures, files);
+        return new TestRunReport(total, skipped, failures, files);
     }
 
     /// <summary>Renders the failed tests: one third-level heading per test, message and stack.</summary>
@@ -136,8 +148,8 @@ internal sealed class TestRunReport
         return text.ToString();
     }
 
-    /// <summary>The total as a sentence fragment, for the final line.</summary>
-    public string DescribeCount() => Messages.TestCount(Executed);
+    /// <summary>The total as a sentence fragment, for the final line, with the skipped tests when there are any.</summary>
+    public string DescribeCount() => Messages.TestCount(Total, Skipped);
 
     private static string? NullIfBlank(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
