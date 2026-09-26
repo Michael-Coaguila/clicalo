@@ -136,6 +136,21 @@ public sealed class GestureHostTests
     }
 
     [Fact]
+    [Trait("Req", "REG-03")]
+    public void Disposing_the_host_on_the_ui_thread_releases_an_active_hold()
+    {
+        var run = new HostRun(Standard);
+        run.Feed(1, PointerPhase.Down, 240, 140);
+
+        run.Dispose();
+        run.Feed(1, PointerPhase.Up, 240, 140);
+
+        run.Gestures.Select(g => g.Gesture.Kind)
+            .ShouldBe([GestureKind.HoldStart, GestureKind.HoldEnd]);
+        run.Gestures[1].Gesture.HoldEnd.ShouldBe(HoldEndReason.Reset);
+    }
+
+    [Fact]
     public void The_host_needs_all_its_parts()
     {
         var recognizer = new GestureRecognizer(Standard, 1.0);

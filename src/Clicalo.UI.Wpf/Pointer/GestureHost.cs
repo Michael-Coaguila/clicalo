@@ -95,9 +95,23 @@ public sealed class GestureHost : IPointerFrameSink, IDisposable
         Schedule();
     }
 
-    /// <summary>Stops the deadline timer; later frames and ticks are ignored.</summary>
+    /// <summary>
+    /// Stops the deadline timer; later frames and ticks are ignored. On the UI thread it first forgets every contact
+    /// like <see cref="Reset"/>, so a hold that is still active ends with <see cref="HoldEndReason.Reset"/> and no key
+    /// stays down (REG-03); from another thread nothing is delivered, so the surface must reset first.
+    /// </summary>
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (Dispatcher.CheckAccess())
+        {
+            Reset();
+        }
+
         _disposed = true;
         _timer.Dispose();
     }

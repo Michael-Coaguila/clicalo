@@ -179,12 +179,21 @@ public sealed class PointerInputSource : IDisposable
 
                 break;
             case PInvoke.WM_POINTERCAPTURECHANGED:
-                OnCaptureLost(PointerIdOf(wParam));
+                // A contact whose messages were consumed stays consumed: DefWindowProc would turn the lost capture into
+                // gestures or promoted mouse input on the surface.
+                if (EndLostContact(PointerIdOf(wParam)))
+                {
+                    handled = true;
+                }
+
                 break;
             case PInvoke.WM_POINTERENTER:
                 OnEnter(PointerIdOf(wParam));
                 break;
             case PInvoke.WM_POINTERLEAVE:
+                // Windows sends the leave of a contact only once the contact is over: if it is still tracked, its up
+                // was lost (no hold may stay down, REG-03).
+                _ = EndLostContact(PointerIdOf(wParam));
                 OnLeave(PointerIdOf(wParam));
                 break;
             case PInvoke.WM_NCDESTROY:
@@ -480,12 +489,16 @@ public sealed class PointerInputSource : IDisposable
         }
     }
 
-    private void OnCaptureLost(uint pointerId)
+    /// <summary>
+    /// Delivers a <see cref="PointerPhase.Cancel"/> for a contact that is still tracked but will send no more messages
+    /// (capture lost, or a leave without its up); true when the contact was tracked.
+    /// </summary>
+    private bool EndLostContact(uint pointerId)
     {
         var index = IndexOfTracked(pointerId);
         if (index < 0)
         {
-            return;
+            return false;
         }
 
         var tracked = _tracked[index];
@@ -503,6 +516,7 @@ public sealed class PointerInputSource : IDisposable
             tracked.Origin
         );
         Deliver(0, stamp, samples);
+        return true;
     }
 
     /// <summary>Ends every contact with a cancel and the hover, and forgets the window.</summary>
