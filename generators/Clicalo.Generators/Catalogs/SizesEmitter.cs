@@ -87,7 +87,16 @@ internal static class SizesEmitter
                 continue;
             }
 
-            var problem = Identifiers.MemberNameProblem(id, "Layout", "All", "Get");
+            var problem = Identifiers.MemberNameProblem(
+                id,
+                "PanelSizes",
+                "PanelSize",
+                "SizeMetrics",
+                "LayoutMetrics",
+                "Layout",
+                "All",
+                "Get"
+            );
             if (problem is not null)
             {
                 reader.Report(CatalogDiagnostics.InvalidCodeName, node["id"]!, id, problem);

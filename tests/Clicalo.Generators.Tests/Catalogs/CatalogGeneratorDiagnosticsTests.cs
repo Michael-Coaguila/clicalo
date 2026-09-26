@@ -208,6 +208,22 @@ public sealed class CatalogGeneratorDiagnosticsTests
             "\"All\"",
             0
         ),
+        ["code-name-of-the-enclosing-class"] = new(
+            "keys.json",
+            "\"codeName\": \"A\"",
+            "\"codeName\": \"KeyIds\"",
+            "CLCC008",
+            "\"KeyIds\"",
+            0
+        ),
+        ["preset-named-like-its-class"] = new(
+            "touch-presets.json",
+            "\"id\": \"mild-tremor\"",
+            "\"id\": \"touch-presets\"",
+            "CLCC008",
+            "\"touch-presets\", \"labelKey\"",
+            0
+        ),
         ["timing-group-named-like-its-class"] = new(
             "timings.json",
             "\"App\": {",

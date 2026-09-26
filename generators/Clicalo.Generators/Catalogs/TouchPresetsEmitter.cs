@@ -126,7 +126,14 @@ internal static class TouchPresetsEmitter
         }
 
         var member = Identifiers.ToPascalCase(id);
-        var problem = Identifiers.MemberNameProblem(member, "Default", "All", "Find");
+        var problem = Identifiers.MemberNameProblem(
+            member,
+            "TouchPresets",
+            "TouchPreset",
+            "Default",
+            "All",
+            "Find"
+        );
         if (problem is not null)
         {
             reader.Report(CatalogDiagnostics.InvalidCodeName, node["id"]!, member, problem);

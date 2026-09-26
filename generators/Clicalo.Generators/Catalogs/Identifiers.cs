@@ -22,7 +22,8 @@ internal static class Identifiers
 
     /// <summary>
     /// Checks a name that becomes a member of a generated type: a valid PascalCase name that neither hides a
-    /// member of <see cref="object"/> nor collides with the members the generator adds (<paramref name="reserved"/>).
+    /// member of <see cref="object"/> nor collides with the enclosing type, the types it references or the members the
+    /// generator adds (<paramref name="reserved"/>).
     /// </summary>
     public static string? MemberNameProblem(string name, params string[] reserved)
     {
@@ -41,7 +42,7 @@ internal static class Identifiers
         {
             if (string.Equals(member, name, StringComparison.Ordinal))
             {
-                return "the generated type already declares a member with that name";
+                return "the generated code already uses that name for its type or one of its members";
             }
         }
 

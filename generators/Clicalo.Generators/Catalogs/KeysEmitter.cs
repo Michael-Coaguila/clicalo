@@ -184,7 +184,7 @@ internal static class KeysEmitter
             valid = false;
         }
 
-        var nameProblem = Identifiers.MemberNameProblem(codeName, "All");
+        var nameProblem = Identifiers.MemberNameProblem(codeName, "KeyIds", "KeyId", "All");
         if (nameProblem is not null)
         {
             reader.Report(
