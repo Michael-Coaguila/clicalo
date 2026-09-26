@@ -98,8 +98,8 @@ whitelist with a justification (docs/architecture/enforcement.md).
 | Solo Execution y el editor del CC llaman a `SecretText.WithRevealed` (más el motor y los mappers de persistencia) | `ConfinementRulesTests` |
 | Solo el rol Surfaces escribe en `SessionStore` e `InteractionStore` | `ConfinementRulesTests` |
 | `Application.Ipc` no depende de Engine ni de Foreground, y de Application solo usa `IShellNavigator` | `ConfinementRulesTests` |
-| Ningún módulo usa el `.Internal` de otro | `ModuleRulesTests` |
-| Matriz de módulos de §4.3 (`domain-modules.json`) | `ModuleRulesTests` |
+| Ningún módulo usa el `.Internal` de otro | `InternalNamespaceTests` |
+| Matriz de módulos de §4.3 (`domain-modules.json`) | `ModuleMatrixTests` |
 | Tabla de APIs prohibidas, comprobada en el IL | `ConfinedApiTests` |
 | R4 y R7: registros cerrados | `ProductRuleTests` |
 

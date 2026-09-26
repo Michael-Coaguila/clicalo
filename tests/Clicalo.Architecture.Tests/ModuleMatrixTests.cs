@@ -3,8 +3,8 @@ using Clicalo.Architecture.Tests.Support;
 
 namespace Clicalo.Architecture.Tests;
 
-/// <summary>Capability modules (blueprint §4.3): the Domain module matrix and private <c>.Internal</c> namespaces.</summary>
-public sealed class ModuleRulesTests
+/// <summary>The Domain module matrix of blueprint §4.3 (architecture/domain-modules.json).</summary>
+public sealed class ModuleMatrixTests
 {
     private static readonly ModuleMatrix FixtureMatrix = new(
         FixtureArchitecture.Name("Modules.Domain"),
@@ -81,29 +81,5 @@ public sealed class ModuleRulesTests
         matrix.Errors.ShouldContain(error =>
             string.Equals(error, "Module A is declared twice.", StringComparison.Ordinal)
         );
-    }
-
-    [Fact]
-    [Trait("Req", "NFR-012")]
-    public void No_module_uses_the_Internal_namespace_of_another_module() =>
-        ProductRules.ModulesKeepTheirInternalsPrivate.Check(Product.Architecture);
-
-    [Fact]
-    [Trait("Req", "NFR-012")]
-    public void Using_the_internals_of_another_module_fails_the_rule()
-    {
-        var rule = DependencyRules.NotUseOtherModulesInternals(
-            FixtureArchitecture.Namespace("Internals"),
-            "negative test"
-        );
-
-        rule.HasNoViolations(FixtureArchitecture.Architecture).ShouldBeFalse();
-        var violations = Rule.Violations(rule, FixtureArchitecture.Architecture);
-        violations.ShouldContain("Finder", Case.Sensitive);
-        violations.ShouldContain(
-            "internal to " + FixtureArchitecture.Name("Internals.Domain.Library"),
-            Case.Sensitive
-        );
-        violations.ShouldNotContain("LibraryAggregate", Case.Sensitive);
     }
 }
