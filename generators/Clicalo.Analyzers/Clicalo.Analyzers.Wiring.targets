@@ -1,0 +1,43 @@
+<Project>
+  <!--
+    Wires the Clícalo product rules (CLC*) into every product project, that is, every project under src/.
+    Imported from Directory.Build.targets; see docs/guides/analyzers.md («Cableado»).
+
+    For each product project it:
+      - references generators/Clicalo.Analyzers as a Roslyn analyzer (never as a runtime assembly);
+      - passes the project's own *.xaml files as AdditionalFiles, so CLC0006 checks XAML as well as C#.
+
+    There is no opt-out for src/: a rule that does not apply is suppressed where it does not apply, with a
+    justification. Projects outside src/ may opt in with <ClicaloProductRules>true</ClicaloProductRules>.
+    Requires $(RepoRoot) (Directory.Build.props), with a trailing separator.
+  -->
+  <PropertyGroup>
+    <_ClicaloProjectPath>$([MSBuild]::MakeRelative('$(RepoRoot)', '$(MSBuildProjectDirectory)'))</_ClicaloProjectPath>
+    <_ClicaloProjectPath>$(_ClicaloProjectPath.Replace('\', '/').ToLowerInvariant())</_ClicaloProjectPath>
+    <_ClicaloIsProductProject>false</_ClicaloIsProductProject>
+    <_ClicaloIsProductProject
+      Condition="'$(RepoRoot)' != '' and $(_ClicaloProjectPath.StartsWith('src/'))"
+      >true</_ClicaloIsProductProject>
+    <!-- WPF markup compilation builds a temporary <Project>_<random>_wpftmp project; the real compile runs the rules. -->
+    <_ClicaloIsWpfTemporaryProject>$(MSBuildProjectName.EndsWith('_wpftmp'))</_ClicaloIsWpfTemporaryProject>
+    <_ClicaloWireProductRules>false</_ClicaloWireProductRules>
+    <_ClicaloWireProductRules
+      Condition="('$(_ClicaloIsProductProject)' == 'true' or '$(ClicaloProductRules)' == 'true') and '$(_ClicaloIsWpfTemporaryProject)' != 'true'"
+      >true</_ClicaloWireProductRules>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(_ClicaloWireProductRules)' == 'true'">
+    <ProjectReference
+      Include="$(MSBuildThisFileDirectory)Clicalo.Analyzers.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"
+      PrivateAssets="all"
+    />
+    <!-- Relative to the project that imports this file; files already passed by the project are not added twice. -->
+    <AdditionalFiles
+      Include="**\*.xaml"
+      Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);@(AdditionalFiles)"
+      Visible="false"
+    />
+  </ItemGroup>
+</Project>
