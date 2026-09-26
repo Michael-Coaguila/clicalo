@@ -61,6 +61,10 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         SetResourceReference(BackgroundProperty, SystemColors.WindowBrushKey);
         SetResourceReference(BorderBrushProperty, SystemColors.ActiveBorderBrushKey);
         LayoutUpdated += (_, _) => RefreshTargets();
+
+        // Moving a window runs no layout pass: without this, the touch targets keep their old screen position after a
+        // drag of the handle (S1 row 30) or after the panel moves above the touch keyboard (EC-BUS-01).
+        LocationChanged += (_, _) => RefreshTargets();
     }
 
     /// <summary>«Panel#0», «Dock#0»…</summary>
@@ -135,6 +139,8 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         {
             Context.Board.Fail(WindowingComponent, ex);
         }
+
+        ForgetContacts();
     }
 
     /// <summary>Moves the surface to <paramref name="bounds"/> (physical pixels) without activating it.</summary>
@@ -143,6 +149,7 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
         try
         {
             MovePassive(bounds);
+            RefreshTargets();
             return true;
         }
         catch (Exception ex) when (ComponentBoard.IsContained(ex))
@@ -469,6 +476,34 @@ internal abstract class LabSurface : NonActivatingWindow, IPointerFrameSink
             due < TimeSpan.Zero ? TimeSpan.Zero : due,
             Timeout.InfiniteTimeSpan
         );
+    }
+
+    /// <summary>
+    /// A hidden surface receives no pointer-up: forget its contacts and any drag, so a finger that was down when it
+    /// hid can neither finish a tap nor keep dragging it later (GestureRecognizer.Reset, REG-03).
+    /// </summary>
+    private void ForgetContacts()
+    {
+        _drag = null;
+        _contacts.Clear();
+        _deadline?.Dispose();
+        _deadline = null;
+        if (_recognizer is not { } recognizer)
+        {
+            return;
+        }
+
+        _gestures.Clear();
+        try
+        {
+            recognizer.Reset(Context.Time.GetUtcNow(), _gestures);
+        }
+        catch (Exception ex) when (ComponentBoard.IsContained(ex))
+        {
+            Context.Board.Fail(GestureComponent, ex);
+        }
+
+        _gestures.Clear();
     }
 
     private void Tick()

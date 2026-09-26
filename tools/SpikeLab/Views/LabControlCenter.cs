@@ -79,6 +79,9 @@ internal sealed class LabControlCenter : Window
     /// <summary>The number of fields.</summary>
     public int FieldCount => _fields.Length;
 
+    /// <summary>True once the window closed (it may close while its lease is still being requested).</summary>
+    public bool IsClosed { get; private set; }
+
     /// <summary>Gives the first field the keyboard focus (after the lease brought the window to the front).</summary>
     public void FocusFirstField() => Keyboard.Focus(_fields[0]);
 
@@ -101,6 +104,13 @@ internal sealed class LabControlCenter : Window
         }
 
         base.OnClosing(e);
+    }
+
+    /// <inheritdoc />
+    protected override void OnClosed(EventArgs e)
+    {
+        IsClosed = true;
+        base.OnClosed(e);
     }
 
     private TextBox AddField(StackPanel layout, string name, bool multiline)

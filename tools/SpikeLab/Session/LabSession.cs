@@ -45,6 +45,7 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
     private ForegroundChange? _target;
     private ForegroundChange? _lastExternal;
     private bool _targetFrozen;
+    private bool _forcing;
     private int _notices;
     private bool _voiceNumbers;
 
@@ -270,54 +271,25 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
             return;
         }
 
-        var expected = _lastExternal;
-        var started = _host.Time.GetTimestamp();
-        var back = new TaskCompletionSource<TimeSpan>(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
-        var previous = _host.ForegroundChanged;
-        _host.ForegroundChanged = change =>
+        // One forced activation at a time: a second tap while the first is measured would chain the foreground
+        // handlers below and count two violations inside one repetition.
+        if (_forcing)
         {
-            previous?.Invoke(change);
-            if (expected is not null && change.Window == expected.Window)
-            {
-                back.TrySetResult(_host.Time.GetElapsedTime(started));
-            }
-        };
+            _host.Measurements.Notice(
+                "Espera: la activación forzada anterior aún se está midiendo."
+            );
+            return;
+        }
 
-        _host.Log.Add(
-            "forced",
-            "SpikeLab llama a SetForegroundWindow sobre el panel, sin concesión."
-        );
-        _ = PInvoke.SetForegroundWindow((HWND)panel.Handle);
-        double? restoredWithin = null;
+        _forcing = true;
         try
         {
-            var limit = Task.Delay(RestoreBudget * 3, _host.Time);
-            if (await Task.WhenAny(back.Task, limit) == back.Task)
-            {
-                restoredWithin = (await back.Task).TotalMilliseconds;
-            }
+            await ForceActivationCoreAsync(panel);
         }
         finally
         {
-            _host.ForegroundChanged = previous;
+            _forcing = false;
         }
-
-        var style = (WINDOW_EX_STYLE)
-            PInvoke.GetWindowLong((HWND)panel.Handle, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
-        Trigger(
-            new RepetitionEvidence
-            {
-                Trigger = new TriggerInfo(StepTrigger.ForcedActivation)
-                {
-                    Surface = panel.SurfaceName,
-                    Group = SurfaceGroup.Panel,
-                },
-                RestoredWithinMs = restoredWithin,
-                NoActivateStyleKept = style.HasFlag(WINDOW_EX_STYLE.WS_EX_NOACTIVATE),
-            }
-        );
     }
 
     /// <summary>«Abrir sonda».</summary>
@@ -433,6 +405,58 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
         _recorder.Dispose();
         _writer.Dispose();
         Surfaces.Dispose();
+    }
+
+    private async Task ForceActivationCoreAsync(PanelSurface panel)
+    {
+        var expected = _lastExternal;
+        var started = _host.Time.GetTimestamp();
+        var back = new TaskCompletionSource<TimeSpan>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var previous = _host.ForegroundChanged;
+        _host.ForegroundChanged = change =>
+        {
+            previous?.Invoke(change);
+            if (expected is not null && change.Window == expected.Window)
+            {
+                back.TrySetResult(_host.Time.GetElapsedTime(started));
+            }
+        };
+
+        _host.Log.Add(
+            "forced",
+            "SpikeLab llama a SetForegroundWindow sobre el panel, sin concesión."
+        );
+        _ = PInvoke.SetForegroundWindow((HWND)panel.Handle);
+        double? restoredWithin = null;
+        try
+        {
+            var limit = Task.Delay(RestoreBudget * 3, _host.Time);
+            if (await Task.WhenAny(back.Task, limit) == back.Task)
+            {
+                restoredWithin = (await back.Task).TotalMilliseconds;
+            }
+        }
+        finally
+        {
+            _host.ForegroundChanged = previous;
+        }
+
+        var style = (WINDOW_EX_STYLE)
+            PInvoke.GetWindowLong((HWND)panel.Handle, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
+        Trigger(
+            new RepetitionEvidence
+            {
+                Trigger = new TriggerInfo(StepTrigger.ForcedActivation)
+                {
+                    Surface = panel.SurfaceName,
+                    Group = SurfaceGroup.Panel,
+                },
+                RestoredWithinMs = restoredWithin,
+                NoActivateStyleKept = style.HasFlag(WINDOW_EX_STYLE.WS_EX_NOACTIVATE),
+            }
+        );
     }
 
     private string? Execute(TileInput input)

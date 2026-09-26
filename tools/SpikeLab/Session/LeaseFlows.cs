@@ -134,6 +134,13 @@ internal sealed class LeaseFlows
                 return;
             }
 
+            if (!search.IsShown)
+            {
+                // «Cerrar búsqueda» arrived while the lease was being requested: give the foreground back at once.
+                Done(await RestoreAsync(lease, evidence), 1, 0, origin);
+                return;
+            }
+
             _searchLease = lease;
             _searchEvidence = evidence;
             _searchOrigin = origin;
@@ -246,6 +253,14 @@ internal sealed class LeaseFlows
                 window.CloseNow();
                 Denied(evidence, "No pude abrir el Centro de control");
                 Done(evidence, window.FieldCount, 0);
+                return;
+            }
+
+            if (window.IsClosed)
+            {
+                // Closed (for example with Alt+F4 or by voice) while the lease was being requested: give the
+                // foreground back at once instead of keeping a lease on a window that no longer exists.
+                Done(await RestoreAsync(lease, evidence), window.FieldCount, 0);
                 return;
             }
 
