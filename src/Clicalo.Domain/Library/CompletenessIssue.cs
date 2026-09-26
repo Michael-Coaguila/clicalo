@@ -26,4 +26,7 @@ public enum CompletenessIssue
 
     /// <summary>An app action that cannot be started safely as written.</summary>
     InvalidApp,
+
+    /// <summary>A shortcut without a name in any language (ATJ-009).</summary>
+    MissingName,
 }
