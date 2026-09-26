@@ -14,8 +14,9 @@ public interface IActivationArbiter
     bool IsActivationLeased(WindowToken window);
 
     /// <summary>
-    /// Reports a violation. Returns at once; the orchestrator then restores the last verified external foreground
-    /// (<c>RestoreAfterViolationAsync</c>) within <c>Timings.Windowing.ViolationRestoreBudget</c>.
+    /// Reports a violation. Returns at once; the orchestrator then restores, verified, the last verified external
+    /// foreground (or, while a lease is active, that lease's target, so the lease survives) within
+    /// <c>Timings.Windowing.ViolationRestoreBudget</c>.
     /// </summary>
     void ReportViolation(ActivationViolation violation);
 }
