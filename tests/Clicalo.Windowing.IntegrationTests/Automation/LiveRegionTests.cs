@@ -22,6 +22,8 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
 {
     private const int Cycles = 20;
 
+    private static readonly TimeSpan UpstreamSettle = TimeSpan.FromMilliseconds(300);
+
     [DesktopFact]
     [Trait("Req", "REG-01")]
     [Trait("Req", "AVI-001")]
@@ -72,27 +74,11 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
                 UiaSurfaceFixture.EventTimeout,
                 TestContext.Current.CancellationToken
             );
-            var received = (
-                await notifications.WaitForAsync(
-                    notificationStart,
-                    1,
-                    UiaSurfaceFixture.EventTimeout,
-                    TestContext.Current.CancellationToken
-                )
-            ).ShouldHaveSingleItem();
-            received.Text.ShouldBe(text);
-            received.ActivityId.ShouldBe(LiveAnnouncer.ActivityId);
-            received.Kind.ShouldBe(NotificationKind.Other);
-            received.Processing.ShouldBe(
-                urgency == AnnouncementUrgency.Assertive
-                    ? NotificationProcessing.ImportantAll
-                    : NotificationProcessing.MostRecent
-            );
-            notice.Name.ShouldBe(text);
-            notice.Properties.LiveSetting.Value.ShouldBe(
-                urgency == AnnouncementUrgency.Assertive
-                    ? LiveSetting.Assertive
-                    : LiveSetting.Polite
+            await notifications.WaitForAsync(
+                notificationStart,
+                1,
+                UiaSurfaceFixture.EventTimeout,
+                TestContext.Current.CancellationToken
             );
             violations.AddRange(
                 await surface.ForegroundViolationsAsync(
@@ -100,8 +86,74 @@ public sealed class LiveRegionTests(UiaSurfaceFixture surface) : IClassFixture<U
                     string.Create(CultureInfo.InvariantCulture, $"{urgency} notice #{cycle}")
                 )
             );
+
+            // A client in the same process may get each event twice; every copy must be right.
+            notifications
+                .Since(notificationStart)
+                .ShouldAllBe(received =>
+                    received.Kind == NotificationKind.Other
+                    && received.Processing == Processing(urgency)
+                    && received.Text == text
+                    && received.ActivityId == LiveAnnouncer.ActivityId
+                );
+            notice.Name.ShouldBe(text);
+            notice.Properties.LiveSetting.Value.ShouldBe(
+                urgency == AnnouncementUrgency.Assertive
+                    ? LiveSetting.Assertive
+                    : LiveSetting.Polite
+            );
         }
 
         violations.ShouldBeEmpty();
     }
+
+    /// <summary>
+    /// The WPF defect behind <c>LiveAnnouncer.ForUiaBstr</c>: a plain string given to
+    /// <c>AutomationPeer.RaiseNotificationEvent</c> reaches UI Automation clients cut in half, because WPF passes a
+    /// wide string where UI Automation reads a <c>BSTR</c> (found in spike S3). When this fails, WPF has been fixed:
+    /// remove the padding.
+    /// </summary>
+    [DesktopFact]
+    [Trait("Upstream", "wpf-notification-bstr")]
+    public async Task WPF_delivers_half_of_a_plain_notification_string()
+    {
+        WpfThread.Invoke(surface.Lab.Reset);
+        await surface.PrepareAsync();
+        var notice = surface.Element(TileLab.NoticeId);
+        var texts = new EventLog<string>();
+        using var notification = notice.RegisterNotificationEvent(
+            TreeScope.Element,
+            (_, _, _, text, _) => texts.Record(text ?? string.Empty)
+        );
+        await UiaTreeTests.WaitForListenerAsync(AutomationEvents.Notification);
+
+        WpfThread.Invoke(() =>
+            UIElementAutomationPeer
+                .CreatePeerForElement(surface.Lab.Notice)
+                .RaiseNotificationEvent(
+                    System.Windows.Automation.AutomationNotificationKind.Other,
+                    System.Windows.Automation.AutomationNotificationProcessing.All,
+                    "Soltado todo",
+                    "Clicalo.Upstream"
+                )
+        );
+
+        await texts.WaitForAsync(
+            0,
+            1,
+            UiaSurfaceFixture.EventTimeout,
+            TestContext.Current.CancellationToken
+        );
+        await Task.Delay(UpstreamSettle, TestContext.Current.CancellationToken);
+
+        // 12 characters read as a BSTR of 12 bytes: 6 characters. (An in-process client may also get an intact copy.)
+        texts
+            .Since(0)
+            .ShouldContain(text => string.Equals(text, "Soltad", StringComparison.Ordinal));
+    }
+
+    private static NotificationProcessing Processing(AnnouncementUrgency urgency) =>
+        urgency == AnnouncementUrgency.Assertive
+            ? NotificationProcessing.ImportantAll
+            : NotificationProcessing.MostRecent;
 }
