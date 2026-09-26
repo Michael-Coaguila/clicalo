@@ -127,7 +127,10 @@ internal sealed class LabHost : IAsyncDisposable
     /// <summary>The real <see cref="IForegroundMonitor"/>, when integrated.</summary>
     public ForegroundMonitor? Monitor { get; private set; }
 
-    /// <summary>The real <see cref="IInternalRightsHotkey"/>, when integrated and registered.</summary>
+    /// <summary>
+    /// The real <see cref="IInternalRightsHotkey"/>, when integrated; check <c>IsRegistered</c> (another program may
+    /// own the chord, and then step 2 of the ladder is skipped).
+    /// </summary>
     public InternalRightsHotkey? RightsHotkey { get; private set; }
 
     /// <summary>The real <see cref="IForegroundControl"/>, when integrated.</summary>
@@ -193,11 +196,25 @@ internal sealed class LabHost : IAsyncDisposable
                     dpiScale: 1
                 ).SetTargets([])
         );
-        Board.Try(
-            "PointerInputSource",
-            "WM_POINTER propio en cada superficie (ADR-0006).",
-            () => _ = new PointerInputSource(new Window(), new NoFrames(), Time).IsAttached
-        );
+        var pointerProbe = new Window();
+        try
+        {
+            Board.Try(
+                "PointerInputSource",
+                "WM_POINTER propio en cada superficie (ADR-0006).",
+                () =>
+                {
+                    using var source = new PointerInputSource(pointerProbe, new NoFrames(), Time);
+                    _ = source.IsAttached;
+                }
+            );
+        }
+        finally
+        {
+            // Never shown, but a Window stays in Application.Windows until it is closed.
+            pointerProbe.Close();
+        }
+
         Board.Try(
             "LiveAnnouncer",
             "Región live y RaiseNotificationEvent (ACC-001).",
@@ -267,7 +284,27 @@ internal sealed class LabHost : IAsyncDisposable
 
         _disposed = true;
         _hotkey?.Dispose();
-        Integrity?.Dispose();
+
+        // The orchestrator first: it may still hold a lease or a restore on the pieces disposed below.
+        switch (Orchestrator)
+        {
+            case IAsyncDisposable asyncDisposable:
+                try
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                catch (Exception ex) when (ComponentBoard.IsContained(ex))
+                {
+                    // Shutting down: see DisposeQuietly.
+                }
+
+                break;
+            case IDisposable disposable:
+                DisposeQuietly(disposable.Dispose);
+                break;
+        }
+
+        DisposeQuietly(() => Integrity?.Dispose());
         DisposeQuietly(() => Tray?.Dispose());
         DisposeQuietly(() => TrayMenu?.Dispose());
         DisposeQuietly(() => RightsHotkey?.Dispose());
@@ -325,25 +362,37 @@ internal sealed class LabHost : IAsyncDisposable
         {
             Monitor = monitor;
         }
+        else
+        {
+            DisposeQuietly(monitor.Dispose);
+        }
 
         var rights = new InternalRightsHotkey(SysEvents, Time);
-        if (
-            await Board.TryAsync(
-                "InternalRightsHotkey",
-                "Ctrl+Alt+Mayús+F24 registrado (paso 2 de la escalera).",
-                async () =>
+        var answered = false;
+        await Board.TryAsync(
+            "InternalRightsHotkey",
+            "Ctrl+Alt+Mayús+F24 registrado (paso 2 de la escalera).",
+            async () =>
+            {
+                var registered = await rights.RegisterAsync();
+                answered = true;
+                if (!registered)
                 {
-                    if (!await rights.RegisterAsync())
-                    {
-                        throw new InvalidOperationException(
-                            "Otro programa ya registró Ctrl+Alt+Mayús+F24: el paso 2 de la escalera no se usará."
-                        );
-                    }
+                    throw new InvalidOperationException(
+                        "Otro programa ya registró Ctrl+Alt+Mayús+F24: el paso 2 de la escalera no se usará."
+                    );
                 }
-            )
-        )
+            }
+        );
+        if (answered)
         {
+            // Registered or not, it is the real piece: the orchestrator reads IsRegistered and skips step 2 without
+            // it, and LabInternalKeyEffects never injects an unregistered chord.
             RightsHotkey = rights;
+        }
+        else
+        {
+            DisposeQuietly(rights.Dispose);
         }
 
         var menu = new TrayMenuHost(SysEvents);
@@ -356,6 +405,10 @@ internal sealed class LabHost : IAsyncDisposable
         )
         {
             TrayMenu = menu;
+        }
+        else
+        {
+            DisposeQuietly(menu.Dispose);
         }
 
         if (quiet)
@@ -375,6 +428,10 @@ internal sealed class LabHost : IAsyncDisposable
         )
         {
             Tray = tray;
+        }
+        else
+        {
+            DisposeQuietly(tray.Dispose);
         }
     }
 
