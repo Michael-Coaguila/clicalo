@@ -264,6 +264,7 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
    - `InteractionStore`: solo el rol Surfaces, que publica `InteractionSnapshot` inmutable hacia Workspace.
    - `EngineHost`: solo el hilo Engine.
    - En Debug, `ThreadGuard.AssertSurfaces()`, `AssertEngine()`, etc. comprueban la afinidad. Los *roles* se comprueban aunque compartan dispatcher.
+   - Las superficies, su `OwnerAnchor` y `SurfaceRegistry` viven en **un único** hilo de UI (lo comprueban sus constructores): un propietario en otro hilo une las colas de entrada, un `AttachThreadInput` implícito que §3.6 prohíbe. El único *hook* de ventanas de ese hilo es `ActivationVeto`, un `WH_CBT` del propio hilo y de ámbito mínimo (§3.5, [D-14](deviations.md#d-14--no-activación-medida-en-s1)).
 
 3. **El buzón del motor tiene dos carriles.** `Priority` (ReleaseAll, eventos terminales, fin de contacto) se vacía siempre antes que `Normal`. Soltar nunca espera detrás de una macro.
 
@@ -403,9 +404,9 @@ public abstract class NonActivatingWindow : Window
 |---|---|
 | `WM_MOUSEACTIVATE` | `MA_NOACTIVATE` |
 | `WM_POINTERACTIVATE` | `PA_NOACTIVATE` |
-| `WM_WINDOWPOSCHANGING` | Añade `SWP_NOACTIVATE`, salvo durante una concesión `TextInput` o `KeyboardNavigation` sobre esa superficie |
+| `WM_WINDOWPOSCHANGING` | Añade `SWP_NOACTIVATE`, salvo durante una concesión `TextInput` o `KeyboardNavigation` sobre esa superficie. **No basta por sí solo** (medido en S1): el `Show` de WPF de `ShowPassive` y el `WM_DPICHANGED` reenviado van dentro de `ActivationVeto`, que rechaza `HCBT_ACTIVATE` de esa superficie solo mientras dura la llamada ([D-14](deviations.md#d-14--no-activación-medida-en-s1)) |
 | `WM_ACTIVATE` (≠ `WA_INACTIVE`), `WM_NCACTIVATE(TRUE)`, `WM_ACTIVATEAPP(TRUE)` | `ActivationGuard.OnActivated(surface, msg)` |
-| `WM_DPICHANGED` | Aplica el rectángulo con `SWP_NOZORDER \| SWP_NOACTIVATE` y lo marca como manejado (#7561) |
+| `WM_DPICHANGED` | Aplica el rectángulo con `SWP_NOZORDER | SWP_NOACTIVATE` y lo marca como manejado (#7561). Antes lo reenvía a `HwndTarget` dentro de `ActivationVeto` para que WPF reescale (ACC-008), porque su `SetWindowPos` no lleva `SWP_NOACTIVATE` || SWP_NOACTIVATE` y lo marca como manejado (#7561) |
 | `WM_GETDPISCALEDSIZE` | Tamaño propio |
 | `WM_NCHITTEST` | Margen de sombra no clicable; el mecanismo se decide en S6 (`SetWindowRgn` ajustado al contorno o alfa 0 en ventana *layered*). `HTTRANSPARENT` no sirve: solo pasa el clic a ventanas del mismo hilo |
 
@@ -423,7 +424,9 @@ WM_ACTIVATE / WM_NCACTIVATE / WM_ACTIVATEAPP sobre hwnd ∈ SurfaceRegistry
         4 Debug y CI: Debug.Fail
 ```
 
-`SurfaceIntegrityCheck` se ejecuta cada 30 s y después de cada `WM_DPICHANGED`, `WM_DISPLAYCHANGE` o cambio de tema. Comprueba `GWL_EXSTYLE` y `HWND_TOPMOST` en cada superficie y los repara con `SWP_NOACTIVATE`.
+Una activación son varios mensajes (`WM_ACTIVATEAPP` a todas las ventanas del hilo, luego `WM_NCACTIVATE` y `WM_ACTIVATE`): `ActivationGuard` cuenta **una** violación por activación y la cierra con el `WA_INACTIVE` de esa superficie, con `WM_ACTIVATEAPP(FALSE)` o al destruirla. `WM_ACTIVATEAPP(TRUE)` solo cuenta en la superficie que está en primer plano, para que activar el Centro de control (otra ventana del hilo) no parezca una violación. `ReportViolation` vuelve enseguida, porque se llama dentro del procedimiento de ventana; el orquestador restaura desde el grupo de hilos, y con una concesión activa devuelve el primer plano a su destino en lugar de a `lastExternalForeground` ([D-16](deviations.md#d-16--primer-plano-implementado-en-m1)).
+
+`SurfaceIntegrityCheck` se ejecuta cada 30 s y después de cada `WM_DPICHANGED`, `WM_DISPLAYCHANGE` o cambio de tema. Comprueba `GWL_EXSTYLE` y `HWND_TOPMOST` en cada superficie y los repara con `SWP_NOACTIVATE`. Todas las superficies comparten `OwnerAnchor`, así que sacar una de la banda *topmost* saca a toda la familia (S1): ninguna superficie pone `Topmost = false`.
 
 **Prueba negativa obligatoria.** `ActivationGuardNegativeTests` (Windowing) hace que InputProbe, estando en primer plano, llame a `SetForegroundWindow` sobre el panel. La prueba exige tres cosas: que `reg01.violations` suba en 1, que el primer plano vuelva a InputProbe en ≤200 ms y que `WS_EX_NOACTIVATE` esté presente.
 
@@ -526,6 +529,7 @@ Todo esto se valida en S2 y S4.
 
 - `WindowPlacementService` trabaja en **píxeles físicos** con `MonitorFromPoint`, `GetMonitorInfo` (`rcWork`) y `GetDpiForMonitor`.
 - Recoloca las superficies con `SWP_NOACTIVATE` ante `WM_DISPLAYCHANGE`, `WM_DPICHANGED`, `WM_SETTINGCHANGE(SPI_SETWORKAREA)`, `ABN_POSCHANGED` y `WTS_SESSION_UNLOCK`.
+- Nunca quita la banda *topmost* a una superficie: comparten `OwnerAnchor` y saldrían todas juntas (§3.5).
 - El identificador persistente de monitor es `DISPLAYCONFIG_TARGET_DEVICE_NAME.monitorDevicePath`. Si no está disponible, se usa el hash de EDID con el nombre del dispositivo.
 - La regla de colocación (`PanelGeometry.Place`: margen de 8, dentro de `rcWork`, posición guardada por monitor y paso al principal si el monitor ya no existe) es pura y está en Domain.
 
@@ -1365,7 +1369,11 @@ public sealed class GestureRecognizer  // una instancia por superficie; sin asig
 
 - `Timings.Touch.*` se genera desde `timings.json` (NFR-020): `LongPress = 600 ms`, `SwipeMinDistancePx = 60`, `SwipeMaxSlope = 0.6`, `PostSwipeLock = 300 ms`, `DragMinDistancePx` (el arrastre empieza en `max(DragMinDistancePx, cancelMovePx)`).
 - La zona de prueba (TAC-006) y el Modo prueba (TAC-008) llaman a `TouchFilter.Evaluate` directamente. No hay una segunda implementación.
-- `PalmLike` se calcula a partir de `rcContact`.
+- `PalmLike` se calcula a partir del lado mayor de `rcContact` frente a `Timings.Touch.PalmContactMinPx` (120 px lógicos, provisional hasta S2).
+- Un 0 desactiva cada comprobación del filtro, también `cancelMovePx` (TAC-005 lo muestra como «Desactivado»).
+- El deslizamiento se decide al levantar el dedo, con `dx > 60 px` estricto y `|dy| < 0,6·|dx|`.
+- Resolución del objetivo: gana el objetivo tocado; si los límites de varios se solapan, el de centro más cercano (REG-02); en un hueco del área extra, el más cercano por distancia al borde y, si empatan, el de centro más cercano (TAC-002).
+- Detalle de lo implementado en M1: [D-15](deviations.md#d-15--capa-de-punteros-implementada-en-m1).
 - **Fixtures:** trazas de puntero reales grabadas en el hardware del mantenedor (`tests/fixtures/pointer/*.json`), con temblor, palma, dos dedos y un deslizamiento que empieza sobre un Mantener. Se vuelven a grabar en cada pasada de aceptación con hardware (§10.2).
 
 ### 7.9 Cambio de app de extremo a extremo (PER-003)
@@ -1482,7 +1490,10 @@ DocumentStore + SessionStore + InteractionSnapshot + EngineSnapshot
 ### 8.3 Entrada táctil
 
 - Se activa `AppContext` `Switch.System.Windows.Input.Stylus.DisableStylusAndTouchSupport=true`. Así se evitan WISP, #3147, #2054 y #9752.
+- `PointerSetup.EnableMouseInPointer` al arrancar, antes de la primera ventana: el mouse llega a las superficies como `WM_POINTER`, igual que el dedo y el lápiz.
 - `PointerInputSource` procesa `WM_POINTER*` en cada superficie, registra `source` (`GetCurrentInputMessageSource`) y publica la entrada y salida del puntero (para el atenuado y el paso del cursor).
+- `PointerInputSource` marca como manejados solo los mensajes de contacto (`DOWN`, `UPDATE` en contacto, `UP`, `CANCELED`) y el cambio de captura de sus contactos; el *hover* y el botón derecho siguen a `DefWindowProc`. La hora de cada fotograma sale de `POINTER_INFO.PerformanceCount`, con el tope `Timings.Touch.PointerStampMaxAge`, y sus muestras solo son válidas durante `IPointerFrameSink.OnFrame` (búferes reutilizados, sin asignar memoria).
+- `GestureHost` es la tubería de gestos de cada superficie: alimenta su `GestureRecognizer`, ejecuta sus plazos con un único temporizador de `TimeProvider` en el dispatcher y entrega los gestos en orden.
 - Objetivos táctiles de ≥44 px lógicos, más el área extra resuelta por `HitResolver`.
 
 ### 8.4 Temas y tokens
@@ -1541,7 +1552,7 @@ data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion
   - `VoiceNumbering.Assign(listCount, perPage, stripCount)` numera de forma continua entre páginas; la fila fija y Fijos siguen tras N.
   - Con la opción activada, `AutomationProperties.Name` empieza por `"{n} "`.
   - Se relocaliza al cambiar de idioma.
-- **Invocar por UIA no activa la ventana.** Lo comprueban S3 y la regla UIA009. Cuando una invocación por UIA necesita primer plano (búsqueda), la gestiona la escalera de §3.6.
+- **Invocar por UIA no activa la ventana.** Lo comprueban S3 y la regla UIA009. Cuando una invocación por UIA necesita primer plano (búsqueda), la gestiona la escalera de §3.6. `Invoke` vuelve enseguida y la ficha lanza su acción en el siguiente turno del dispatcher, para no bloquear a Acceso por voz mientras una concesión espera; `Toggle` y `ExpandCollapse` son síncronos. Un aviso cortés usa `AutomationNotificationProcessing.MostRecent` (las variantes `Important*` interrumpen al lector) y uno urgente `ImportantAll` ([D-17](deviations.md#d-17--ui-automation-implementada-en-m1)).
 - **Además:** alto contraste del sistema, escala de texto del 100 al 150 %, `FocusVisual` en el modo teclado y ningún glifo usado como nombre (UIA008).
 
 ---
@@ -1699,7 +1710,7 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 | Infrastructure.Tests | DTO ↔ dominio, migraciones con fixtures, importación v1 (instantáneas de TestKit), `SafeZipReader` con zips hostiles (CsCheck), `usage.json` y `usageEpoch`, `CrashingFileSystem`, cuarentena, DPAPI, cliente de IA con servidor falso y los 4 campos exactos, `SignedManifestSource` (firma incorrecta, `seq` menor, bajada legítima o atacante, revocada, `minSafeVersion`), `FixedNameRollingFileSink` | Cada PR |
 | UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con `RenderSnapshot` de TestKit y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos; hoy la tolerancia es por canal y el modo ΔE llega antes de las primeras referencias de la UI) | Cada PR (x64 y ARM64) |
 | Platform.IntegrationTests | Inyección en los dos modos con varias distribuciones, *hook* LL bajo presión de GC, `PointerPositionTracker` con toque sintético, sesión y suspensión, portapapeles, lanzador sin intérprete en el hilo Shell, ACL de la tarea elevada, escritura elevada y luego media | Alojado interactivo o equipo táctil |
-| Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
+| Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847 y la de S3: `RaiseNotificationEvent` pasa una cadena ancha donde UI Automation lee un `BSTR`, que `LiveAnnouncer.ForUiaBstr` compensa, `wpf-notification-bstr`), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
 | Sentinel.Tests | Lectura del *ledger* v2 (modos y generación), liberación con máscara, relanzamiento según las marcas, bucle de fallos (`timings.json`) | Equipo táctil |
 | Launcher.Tests | Verificación tras la copia, rechazo de un archivo alterado, `minSafeVersion` monótono, camino rápido, sin argumentos | Alojado (con elevación de runner) y equipo táctil |
 | E2E | Reglas UIA, instantánea del árbol, Axe.Windows, recorridos (bienvenida sin teclado, crear cada tipo, vincular y Probar ahora, cerrar el CC devuelve el foco) | Alojado (humo) y equipo táctil (completo) |

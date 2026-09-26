@@ -9,7 +9,7 @@ Spanish and English are published with each release.
 
 ## [Unreleased]
 
-Milestone M0 · Foundations and harness (in progress).
+Milestone M0 · Foundations and harness, and milestone M1 · blocking spikes S1, S3 and S4 (in progress).
 
 ### Added
 
@@ -64,3 +64,28 @@ Milestone M0 · Foundations and harness (in progress).
   and `LiveAnnouncer` in `Clicalo.UI.Wpf.Automation`, and the SysEvents, foreground and tray adapters of
   `Clicalo.Platform.Windows`; the `Clicalo.Windowing.IntegrationTests` project and the `tools/SpikeLab`
   laboratory; the spike scripts and the package ownership map in `docs/testing/spikes/`.
+- Milestone M1 windowing (spike S1): non-activatable surfaces (`NonActivatingWindow` with `ShowPassive`,
+  `HidePassive` and `MovePassive`, the common surface hook, a thread-scoped `ActivationVeto` around the WPF show and
+  the forwarded `WM_DPICHANGED`, and the hidden `OwnerAnchor`), `ActivationGuard` (one REG-01 violation per
+  activation, `reg01.violations`, probable cause), the thread-safe `SurfaceRegistry` and `SurfaceIntegrityCheck`;
+  the guarded `SyntheticPointer` (finger, pen and mouse only into the test process's own windows) and the S1
+  headless and desktop tests.
+- Milestone M1 touch: the TAC-002 `TouchFilter` and an allocation-free `GestureRecognizer` (tap, long press, hold,
+  swipe, palm, per-target debounce; REG-02, EJE-004, EJE-006, CUA-005, CUA-014), `PointerInputSource` (touch, pen
+  and mouse frames in physical pixels, timestamped from `PerformanceCount`), `GestureHost`,
+  `PointerSetup.EnableMouseInPointer` and `IsTouchFeedbackDisabled`, and the `Touch.PalmContactMinPx` and
+  `Touch.PointerStampMaxAge` timings; preset tables, CsCheck properties and desktop tests with a tap-to-gesture
+  latency budget.
+- Milestone M1 UI Automation (spike S3): the accessible `ShortcutTile` and its peer (one pattern, help text, item
+  status, asynchronous Invoke), `LiveAnnouncer` with the workaround for the WPF notification string defect,
+  `ThemeScope` for system high contrast, the focus ring and the 44 × 44 touch target; a UIA rule verifier, the S3
+  desktop tests, an out-of-process Axe scan and the `Upstream/WpfNotificationBstrTests` watch test.
+- Milestone M1 foreground (spike S4): `ForegroundOrchestrator` (typed leases, the rights ladder per origin, verified
+  restoration, and the arbiter that `ActivationGuard` reports to) and the Platform.Windows adapters
+  `SysEventsThread`, `ForegroundControl`, `ForegroundMonitor`, `InternalRightsHotkey`, `TouchKeyboard`, `TrayIcon`
+  and `TrayMenuHost`; application tests with fake ports and desktop tests against InputProbe.
+- `tools/SpikeLab`: the laboratory that composes the real M1 pieces for the maintainer's touch-and-voice runs of
+  S1, S3 and S4, with a guided script engine, automatic checks and JSON and Markdown reports, and its unit tests.
+- `InputProbeSession.RequestForegroundAsync`, and the `Injects=ReservedKeys` trait: `cl desk` runs the desktop tests
+  that inject right Ctrl or AltGr only in continuous integration, and the test keyboard injector refuses those keys
+  anywhere else.
