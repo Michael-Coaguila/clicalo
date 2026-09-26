@@ -35,10 +35,7 @@ internal static class I18nCheckCommand
                     CultureInfo.InvariantCulture,
                     $"i18n-check: no problems. {model.Messages.Length} keys in {model.Locales.Length} languages; {allowed} allowed unused; {unused} unused and not allowed."
                 )
-                : string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"i18n-check: {report.Errors} problems found. See the list above."
-                );
+                : "i18n-check: " + report.ErrorSummary;
         output.WriteLine(summary);
         return report.Errors == 0 ? ExitCodes.Success : ExitCodes.Failure;
     }

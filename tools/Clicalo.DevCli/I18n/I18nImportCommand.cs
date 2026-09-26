@@ -92,11 +92,7 @@ internal static class I18nImportCommand
 
         var entryCount = import.Entries[recipe.Languages[0]].Count;
         output.WriteLine(
-            report.Errors > 0
-                ? string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"i18n-import: {report.Errors} problems found. See the list above."
-                )
+            report.Errors > 0 ? "i18n-import: " + report.ErrorSummary
             : check
                 ? string.Create(
                     CultureInfo.InvariantCulture,

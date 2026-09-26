@@ -8,6 +8,15 @@ internal sealed class I18nReport(string root, TextWriter output)
 {
     public int Errors { get; private set; }
 
+    /// <summary>Last line for a failed run, readable aloud: «1 problem found…» or «3 problems found…».</summary>
+    public string ErrorSummary =>
+        Errors == 1
+            ? "1 problem found. See the list above."
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Errors} problems found. See the list above."
+            );
+
     public void Add(LocalizationIssue issue) =>
         Add(issue.Id, issue.Message, issue.Path, issue.Line, issue.Column);
 
