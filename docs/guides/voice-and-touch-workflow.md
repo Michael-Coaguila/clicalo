@@ -26,7 +26,7 @@ Todo el trabajo diario cabe en pocas palabras: `cl fast` mientras iteras, `cl fi
 - **Termina siempre con `cl check`.** Hace exactamente lo mismo que la CI: si pasa en tu equipo, pasa en el
   PR.
 - **La salida termina en una línea resumen** legible por Narrador: «cl check: correcto en 1 min 22 s;
-  1219 pruebas» o «cl check: falló en test; detalle en artifacts\cl\last-error.md». No hace falta recorrer
+  1233 pruebas» o «cl check: falló en test; detalle en artifacts\cl\last-error.md». No hace falta recorrer
   cientos de líneas. Si una orden tarda más de su objetivo (por ejemplo, `cl fast` más de 45 s), la misma
   línea lo avisa.
 - **Los errores largos se escriben en `artifacts\cl\last-error.md`**, que VS Code abre solo al fallar como
