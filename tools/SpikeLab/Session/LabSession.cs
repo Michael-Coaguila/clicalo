@@ -92,6 +92,9 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
             WriteReport();
         };
 
+        // The strip is placed from its size with the first step in it, so it appears where it stays.
+        RefreshGuides();
+        Surfaces.Place();
         if (!Surfaces.Guide.TryShow())
         {
             host.Measurements.Notice(
@@ -124,12 +127,16 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
     /// <summary>«Enviar teclas»: the chord tiles send real keys to the app in front (off by default: S1.md).</summary>
     public bool SendsKeys { get; set; }
 
-    /// <summary>«Números de voz» on the panel tiles (ACC-009): the accessible names start with «{n} ».</summary>
+    /// <summary>
+    /// «Números de voz» on the panel tiles (ACC-009): the accessible names start with «{n} ». Set from the control
+    /// window or from the step action of S3 row 6.
+    /// </summary>
     public bool VoiceNumbers
     {
         get => _voiceNumbers;
         set
         {
+            var changed = _voiceNumbers != value;
             _voiceNumbers = value;
             var number = 1;
             foreach (var tile in LabTiles.Panel)
@@ -142,9 +149,18 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
                 number++;
             }
 
+            if (changed)
+            {
+                VoiceNumbersChanged?.Invoke(value);
+                RefreshGuides();
+            }
+
             WriteReport();
         }
     }
+
+    /// <summary>Raised on the UI thread when «Números de voz» changes, so the control window shows it too.</summary>
+    public Action<bool>? VoiceNumbersChanged { get; set; }
 
     /// <summary>«Mostrar superficies».</summary>
     public void ShowSurfaces()
@@ -322,6 +338,12 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(input);
         var tile = input.Tile;
+        if (ArrangeGuide(tile.Action))
+        {
+            // Folding or moving the strip is not an order under test: «Última orden» keeps the last real one.
+            return;
+        }
+
         var outcome = Execute(input);
         var latency = _host.Time.GetUtcNow() - input.StartedAt;
         _host.Measurements.OnCommand(
@@ -523,6 +545,24 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
         }
     }
 
+    private bool ArrangeGuide(LabAction action)
+    {
+        switch (action)
+        {
+            case LabAction.GuideFold:
+                Surfaces.Guide.ToggleFolded();
+                return true;
+            case LabAction.GuideInstruction:
+                Surfaces.Guide.ToggleFullInstruction();
+                return true;
+            case LabAction.GuideMove:
+                Surfaces.Guide.MoveToOtherHalf();
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private string SendChord(LabChord chord)
     {
         var full = chord.With(_host.Latch.Consume());
@@ -553,6 +593,9 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
                 break;
             case StepAction.AssertiveNotice:
                 AnnounceTest(AnnouncementUrgency.Assertive);
+                break;
+            case StepAction.ToggleVoiceNumbers:
+                VoiceNumbers = !VoiceNumbers;
                 break;
         }
     }
@@ -745,10 +788,20 @@ internal sealed class LabSession : ILabInputSink, IAsyncDisposable
                 component.State != LabComponentState.Ready
             ),
             SendsKeys = SendsKeys,
+            VoiceNumbers = VoiceNumbers,
         };
 
     private ReportContext Context() =>
-        new(_machine, _host.Time.GetUtcNow(), _host.Board.Components, _host.Log.Snapshot())
+        new(
+            // Monitors come and go (a second one for S1 row 30): the report shows the ones there now.
+            _machine with
+            {
+                Monitors = HardwareProbe.Monitors(),
+            },
+            _host.Time.GetUtcNow(),
+            _host.Board.Components,
+            _host.Log.Snapshot()
+        )
         {
             DroppedEvents = _host.Log.Dropped,
             SendsKeys = SendsKeys,

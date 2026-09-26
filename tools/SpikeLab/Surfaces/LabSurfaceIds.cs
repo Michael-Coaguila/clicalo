@@ -20,7 +20,7 @@ internal static class LabSurfaceIds
     /// <summary>The profile side window opened by «Perfil».</summary>
     public static SurfaceId Profiles { get; } = new(SurfaceKind.SideWindow, 3);
 
-    /// <summary>The 64 px bubble.</summary>
+    /// <summary>The bubble (one tile of 56 logical pixels).</summary>
     public static SurfaceId Bubble { get; } = new(SurfaceKind.Bubble, 0);
 
     /// <summary>The guide strip: a floating notice of the laboratory.</summary>

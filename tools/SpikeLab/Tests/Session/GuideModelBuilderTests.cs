@@ -51,12 +51,11 @@ public sealed class GuideModelBuilderTests
             .Measurements;
 
         lines.ShouldBe([
-            "Primer plano: notepad",
+            "Primer plano: notepad · Enviar teclas: no · piezas que no arrancaron: 3 (ver la ventana de control)",
             "Cambios de primer plano: 2 · activaciones de superficies (WM_ACTIVATE): 0 · reg01.violations: 4",
             "Última orden: Negrita por Invoke · latencia: 12,3 ms",
             "Concesión: TextInput concedida (paso 2) · devolución: Restored",
             "La sonda recibió: F24 = 1, caracteres = 3, menú = 0",
-            "Enviar teclas: no · piezas que no arrancaron: 3 (ver la ventana de control)",
         ]);
     }
 
@@ -105,6 +104,29 @@ public sealed class GuideModelBuilderTests
 
         model.IsGreen.ShouldBeTrue();
         model.StepActionName.ShouldBe("Forzar activación del panel");
+    }
+
+    [Fact]
+    public void The_voice_numbers_button_of_S3_row_6_says_what_it_will_do()
+    {
+        var row = SpikeScripts.S3.Steps.Single(step =>
+            string.Equals(step.Id, "6", StringComparison.Ordinal)
+        );
+        var engine = Engine(row);
+
+        GuideModelBuilder
+            .Build(engine.Snapshot(), Status(), TestScripts.RestoreBudget)
+            .StepActionName.ShouldBe("Activar números de Clícalo");
+        GuideModelBuilder
+            .Build(
+                engine.Snapshot(),
+                Status() with
+                {
+                    VoiceNumbers = true,
+                },
+                TestScripts.RestoreBudget
+            )
+            .StepActionName.ShouldBe("Quitar números de Clícalo");
     }
 
     [Fact]

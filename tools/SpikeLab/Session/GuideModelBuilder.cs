@@ -79,17 +79,23 @@ internal static class GuideModelBuilder
             StatusWord(current, isGreen, liveProblems),
             measurements,
             status.Notice,
-            ActionName(step.Action)
+            ActionName(step.Action, status.VoiceNumbers)
         );
     }
 
-    /// <summary>The name of the step action button.</summary>
-    public static string? ActionName(StepAction action) =>
+    /// <summary>
+    /// The name of the step action button; the one of S3 row 6 says what it will do with the voice numbers, which
+    /// are on while <paramref name="voiceNumbers"/>.
+    /// </summary>
+    public static string? ActionName(StepAction action, bool voiceNumbers) =>
         action switch
         {
             StepAction.ForceActivation => "Forzar activación del panel",
             StepAction.PoliteNotice => "Aviso cortés",
             StepAction.AssertiveNotice => "Aviso urgente",
+            StepAction.ToggleVoiceNumbers => voiceNumbers
+                ? "Quitar números de Clícalo"
+                : "Activar números de Clícalo",
             _ => null,
         };
 
@@ -120,7 +126,21 @@ internal static class GuideModelBuilder
     {
         var since = status.SinceStep;
         var lines = ImmutableArray.CreateBuilder<string>();
-        lines.Add("Primer plano: " + status.Foreground);
+
+        // One line fewer in the compact strip: the settings go with the foreground.
+        lines.Add(
+            "Primer plano: "
+                + status.Foreground
+                + " · Enviar teclas: "
+                + (status.SendsKeys ? "sí" : "no")
+                + (
+                    status.PiecesNotReady > 0
+                        ? Format(
+                            $" · piezas que no arrancaron: {status.PiecesNotReady} (ver la ventana de control)"
+                        )
+                        : string.Empty
+                )
+        );
         lines.Add(
             Format(
                 $"Cambios de primer plano: {since.ForegroundChanges} · activaciones de superficies (WM_ACTIVATE): {since.SurfaceActivations} · reg01.violations: {status.TotalViolations}"
@@ -161,17 +181,6 @@ internal static class GuideModelBuilder
             );
         }
 
-        lines.Add(
-            "Enviar teclas: "
-                + (status.SendsKeys ? "sí" : "no")
-                + (
-                    status.PiecesNotReady > 0
-                        ? Format(
-                            $" · piezas que no arrancaron: {status.PiecesNotReady} (ver la ventana de control)"
-                        )
-                        : string.Empty
-                )
-        );
         return lines.ToImmutable();
     }
 

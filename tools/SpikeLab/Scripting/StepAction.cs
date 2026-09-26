@@ -17,4 +17,10 @@ internal enum StepAction
 
     /// <summary>«Aviso urgente»: an assertive live announcement (S3 row 9b).</summary>
     AssertiveNotice,
+
+    /// <summary>
+    /// «Activar números de Clícalo» or «Quitar números de Clícalo»: the voice numbers of the panel (S3 row 6), from the
+    /// strip, so the maintainer never touches the activatable control window in the middle of the row.
+    /// </summary>
+    ToggleVoiceNumbers,
 }

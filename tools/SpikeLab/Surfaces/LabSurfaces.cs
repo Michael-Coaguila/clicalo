@@ -7,14 +7,14 @@ using Clicalo.UI.Wpf.Windowing;
 namespace Clicalo.Tools.SpikeLab.Surfaces;
 
 /// <summary>
-/// Every surface of the laboratory and where it starts on the primary monitor: the guide strip at the top, the panel
-/// bottom right, the edge bar on the right edge with its side window, the bubble bottom left, and the search and
-/// profile windows next to the panel. The maintainer can move the panel by its handle.
+/// Every surface of the laboratory and where it starts on the primary monitor (<see cref="LabLayout"/>, from the size
+/// each one measures): the guide strip bottom left, the panel bottom right with the bubble and the profile side window
+/// above it, and the edge bar on the right edge at the top with its side window and the search to its left. The
+/// top-left quarter stays free for the app under test. Every surface is kept inside the work area when it appears; the
+/// maintainer can drag the panel and the guide strip by their handles.
 /// </summary>
 internal sealed class LabSurfaces : IDisposable
 {
-    private const double EdgeMargin = 16;
-
     /// <summary>Creates the surfaces (no window is shown yet).</summary>
     public LabSurfaces(SurfaceRegistry registry, LabSurfaceContext context)
     {
@@ -92,8 +92,11 @@ internal sealed class LabSurfaces : IDisposable
     public IEnumerable<LabSurface> All => [Panel, Dock, DockSide, Profiles, Bubble, Search, Guide];
 
     /// <summary>Shows the panel, the edge bar and the bubble; false if the windowing is not integrated yet.</summary>
-    public bool ShowUnderTest() =>
-        UnderTest.Select(surface => surface.TryShow()).ToArray().All(shown => shown);
+    public bool ShowUnderTest()
+    {
+        Place();
+        return UnderTest.Select(surface => surface.TryShow()).ToArray().All(shown => shown);
+    }
 
     /// <summary>Hides every surface except the guide strip.</summary>
     public void HideUnderTest()
@@ -120,27 +123,23 @@ internal sealed class LabSurfaces : IDisposable
         }
     }
 
-    private void Place()
+    /// <summary>
+    /// Places every surface that has not appeared yet from its measured size (logical pixels of the primary monitor);
+    /// the ones already shown keep where the maintainer left them.
+    /// </summary>
+    public void Place()
     {
         var area = SystemParameters.WorkArea;
-        Guide.Left = area.Left + Math.Max(0, (area.Width - 1000) / 2);
-        Guide.Top = area.Top + 8;
-
-        const double PanelWidth = 4 * 112 + 44;
-        const double PanelHeight = 4 * 80 + 12;
-        Panel.Left = area.Right - PanelWidth - EdgeMargin;
-        Panel.Top = area.Bottom - PanelHeight - EdgeMargin;
-        Profiles.Left = Panel.Left;
-        Profiles.Top = Panel.Top - 72;
-        Search.Left = Panel.Left - 380;
-        Search.Top = Panel.Top;
-
-        Dock.Left = area.Right - 96;
-        Dock.Top = area.Top + Math.Max(0, (area.Height / 2) - 300);
-        DockSide.Left = Dock.Left - 136;
-        DockSide.Top = Dock.Top;
-
-        Bubble.Left = area.Left + 24;
-        Bubble.Top = area.Bottom - 64 - 24;
+        Guide.View.Width = LabLayout.StripWidth(area, Panel.MeasureSize());
+        var arrangement = LabLayout.Arrange(
+            area,
+            All.ToDictionary(surface => surface.Id, surface => surface.MeasureSize())
+        );
+        foreach (var surface in All.Where(surface => !surface.IsVisible))
+        {
+            var rect = arrangement[surface.Id];
+            surface.Left = rect.Left;
+            surface.Top = rect.Top;
+        }
     }
 }

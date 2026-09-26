@@ -34,7 +34,7 @@ internal sealed class SearchSurface : LabSurface
     {
         var label = new TextBlock
         {
-            Text = "Buscar un atajo",
+            Text = FieldTarget.Name,
             FontSize = 16,
             Margin = new Thickness(6, 6, 6, 2),
         };
@@ -46,7 +46,8 @@ internal sealed class SearchSurface : LabSurface
             Margin = new Thickness(6),
             VerticalContentAlignment = VerticalAlignment.Center,
         };
-        AutomationProperties.SetName(_field, "Buscar un atajo");
+        // Its own name, which does not contain «Buscar»: «clic Buscar» (S4) always means the tile of the panel.
+        AutomationProperties.SetName(_field, FieldTarget.Name);
         AutomationProperties.SetLabeledBy(_field, label);
         AddTarget(_field, FieldTarget);
 

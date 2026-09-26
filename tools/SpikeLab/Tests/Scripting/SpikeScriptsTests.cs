@@ -142,6 +142,64 @@ public sealed class SpikeScriptsTests
 
         row.Checks.HasFlag(EvidenceCheck.VoiceNumberInName).ShouldBeTrue();
         LabTiles.VoiceNumberOf(row.Tile!).ShouldBe(7);
+        row.Action.ShouldBe(
+            StepAction.ToggleVoiceNumbers,
+            "the numbers are switched from the strip"
+        );
+        row.Instruction.ShouldContain("di «ocultar números»");
+    }
+
+    [Fact]
+    public void The_voice_row_of_S1_counts_the_order_on_the_tile_it_names()
+    {
+        var row = SpikeScripts.S1.Steps[^1];
+
+        row.Id.ShouldBe("32");
+        row.Tile.ShouldBe(LabTiles.Underline);
+        row.Instruction.ShouldContain("«clic Subrayado»");
+    }
+
+    [Fact]
+    public void The_rows_with_numbers_say_how_to_show_and_hide_them()
+    {
+        foreach (var id in (string[])["1", "3", "13"])
+        {
+            var row = SpikeScripts.S3.Steps.Single(step =>
+                string.Equals(step.Id, id, StringComparison.Ordinal)
+            );
+            row.Instruction.ShouldContain("«ocultar números»", customMessage: "S3 row " + id);
+        }
+    }
+
+    [Fact]
+    public void The_rows_with_Wispr_Flow_or_Typeless_wait_for_the_text()
+    {
+        foreach (var step in SpikeScripts.All.SelectMany(script => script.Steps))
+        {
+            if (
+                System.Text.RegularExpressions.Regex.IsMatch(
+                    step.Instruction,
+                    "\\b[Dd]icta\\b",
+                    System.Text.RegularExpressions.RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                )
+                && (
+                    step.Instruction.Contains("Wispr Flow", StringComparison.Ordinal)
+                    || step.Instruction.Contains("Typeless", StringComparison.Ordinal)
+                )
+            )
+            {
+                step.Instruction.ShouldContain("espera", Case.Insensitive, "row " + step.Id);
+            }
+        }
+
+        foreach (var step in SpikeScripts.S4.Steps.Take(4))
+        {
+            step.Instruction.ShouldContain("documento en blanco");
+            step.Instruction.ShouldContain(
+                "Espera a ver «negr» o «negrita» en el campo de búsqueda"
+            );
+        }
     }
 
     [Fact]

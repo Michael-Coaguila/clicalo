@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -28,6 +29,17 @@ internal sealed class LeaseFlows
     private const int TrayReleaseAll = 2;
     private const int TrayExit = 3;
     private static readonly CultureInfo Spanish = CultureInfo.GetCultureInfo("es-ES");
+
+    /// <summary>
+    /// The items of the tray menu (S4 rows 10 and 11). Their names differ from every other name of SpikeLab, so a voice
+    /// command never has to choose between the menu and a tile.
+    /// </summary>
+    public static ImmutableArray<TrayMenuItem> TrayMenuItems { get; } =
+    [
+        new TrayMenuItem(TrayControlCenter, "Abrir el Centro de control"),
+        new TrayMenuItem(TrayReleaseAll, "Soltar todas las teclas"),
+        new TrayMenuItem(TrayExit, "Salir de SpikeLab"),
+    ];
 
     private readonly LabHost _host;
     private readonly LabSurfaces _surfaces;
@@ -154,13 +166,25 @@ internal sealed class LeaseFlows
 
     /// <summary>
     /// Ends the search: gives the foreground back (verified), hides the search and records the cycle. With
-    /// <paramref name="result"/> the maintainer chose «Resultado Negrita»; M1 sends no action either way.
+    /// <paramref name="result"/> the maintainer chose «Resultado Negrita»; M1 sends no action either way. While the
+    /// field is still empty, «Resultado Negrita» keeps the search open and says why: Wispr Flow and Typeless paste a
+    /// moment after the dictation ends, and a paste that arrives after the foreground went back would land in the app
+    /// under test. «Cerrar búsqueda» always closes.
     /// </summary>
     public async Task CloseSearchAsync(bool result)
     {
         if (_searchLease is not { } lease || _searchEvidence is not { } evidence)
         {
             _surfaces.Search.TryHide();
+            return;
+        }
+
+        if (result && _surfaces.Search.FieldLength == 0)
+        {
+            _host.Measurements.Notice(
+                "El campo de búsqueda sigue vacío: espera a que aparezca el texto y vuelve a tocar «Resultado "
+                    + "Negrita». Si no llega, toca «Cerrar búsqueda»: el ciclo cuenta como fallido."
+            );
             return;
         }
 
@@ -302,14 +326,7 @@ internal sealed class LeaseFlows
 
             try
             {
-                choice = await menu.ShowMenuAsync(
-                    [
-                        new TrayMenuItem(TrayControlCenter, "Centro de control"),
-                        new TrayMenuItem(TrayReleaseAll, "Soltar todo"),
-                        new TrayMenuItem(TrayExit, "Salir de SpikeLab"),
-                    ],
-                    anchor
-                );
+                choice = await menu.ShowMenuAsync(TrayMenuItems, anchor);
             }
             catch (Exception ex) when (ComponentBoard.IsContained(ex))
             {
