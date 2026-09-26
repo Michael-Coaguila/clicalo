@@ -57,6 +57,28 @@ public sealed class GamutMappingTests
         result.Color.ShouldBe(new Srgb(r, g, b, 0.4));
     }
 
+    [Theory]
+    [InlineData(1d)]
+    [InlineData(0d)]
+    public void Pure_white_and_black_are_in_gamut(double l)
+    {
+        var result = GamutMapping.ToSrgb(new Oklch(l, 0d, 0d, 0.14));
+
+        result.WasInGamut.ShouldBeTrue();
+        result.DeltaEok.ShouldBe(0d);
+    }
+
+    [Theory]
+    [InlineData(1d)]
+    [InlineData(0d)]
+    public void A_chromatic_color_at_the_ends_of_lightness_reports_its_loss(double l)
+    {
+        var result = GamutMapping.ToSrgb(new Oklch(l, 0.3, 200d));
+
+        result.WasInGamut.ShouldBeFalse();
+        result.DeltaEok.ShouldBe(0.3, 1e-6);
+    }
+
     [Fact]
     public void Every_mapped_color_is_in_gamut_and_keeps_lightness_within_one_jnd()
     {

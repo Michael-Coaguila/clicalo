@@ -17,14 +17,16 @@ public static class GamutMapping
     /// <summary>Maps an OKLCH color into the sRGB gamut. Colors already in gamut are returned unchanged.</summary>
     public static GamutMappingResult ToSrgb(Oklch origin)
     {
+        // White and black are the only in-gamut colors at the ends of the lightness axis: a chromatic color there
+        // is out of gamut and is reported as such, so a data typo such as oklch(1 0.3 200) cannot pass silently.
         if (origin.L >= 1d)
         {
-            return Result(origin, new Srgb(1d, 1d, 1d, origin.Alpha), wasInGamut: true);
+            return Result(origin, new Srgb(1d, 1d, 1d, origin.Alpha), wasInGamut: origin.C <= 0d);
         }
 
         if (origin.L <= 0d)
         {
-            return Result(origin, new Srgb(0d, 0d, 0d, origin.Alpha), wasInGamut: true);
+            return Result(origin, new Srgb(0d, 0d, 0d, origin.Alpha), wasInGamut: origin.C <= 0d);
         }
 
         var direct = origin.ToOklab().ToSrgb();
