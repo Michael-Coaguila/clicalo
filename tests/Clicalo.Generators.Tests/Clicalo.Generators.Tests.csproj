@@ -5,6 +5,7 @@
     <RootNamespace>Clicalo.Generators.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
     <ProjectReference Include="..\..\generators\Clicalo.Generators\Clicalo.Generators.csproj" />
     <ProjectReference Include="..\..\generators\Clicalo.Analyzers\Clicalo.Analyzers.csproj" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />

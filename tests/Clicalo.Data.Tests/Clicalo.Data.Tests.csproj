@@ -5,6 +5,7 @@
     <RootNamespace>Clicalo.Data.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
     <ProjectReference Include="..\..\generators\Clicalo.Design.Math\Clicalo.Design.Math.csproj" />
     <PackageReference Include="JsonSchema.Net" />
   </ItemGroup>
