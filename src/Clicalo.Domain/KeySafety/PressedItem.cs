@@ -21,4 +21,11 @@ public sealed record PressedItem(
     MouseButtons Buttons,
     long SinceTicks,
     long? DeadlineTicks
-);
+)
+{
+    /// <summary>
+    /// Whether the deadline follows the global automatic release limit, so changing that limit recomputes it
+    /// (SEG-004); <see langword="false"/> for an item with its own limit or with «Never».
+    /// </summary>
+    public bool InheritsGlobalLimit { get; init; }
+}

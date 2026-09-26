@@ -34,6 +34,11 @@ public readonly record struct HolderId(string Value)
     /// <param name="button">The bar button.</param>
     public static HolderId ForDock(string button) => new("dock:" + button);
 
+    /// <summary>The holder of a Tap in progress (<see cref="HoldOrigin.Tap"/>).</summary>
+    /// <param name="transaction">The transaction number, unique per engine.</param>
+    public static HolderId ForTap(long transaction) =>
+        new("tap:" + transaction.ToString(CultureInfo.InvariantCulture));
+
     /// <inheritdoc />
     public override string ToString() => Value ?? string.Empty;
 }
