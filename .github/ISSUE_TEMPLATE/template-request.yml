@@ -24,9 +24,8 @@ body:
     attributes:
       label: "Qué atajos necesitas · Which shortcuts you need"
       description: "Uno por línea, con lo que hace y, si la sabes, la combinación de teclas. · One per line, with what it does and, if you know it, the key combination."
-      value: |
-        - Negrita · Bold: Ctrl+N / Ctrl+B
-        -
+      # A placeholder, not a prefilled value: nobody has to find and delete the example before sending.
+      placeholder: "Negrita · Bold: Ctrl+N / Ctrl+B"
     validations:
       required: true
 
