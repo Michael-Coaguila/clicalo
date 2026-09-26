@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Michael-Coaguila/clicalo/architecture/schemas/allowed-dependencies.schema.json",
+  "title": "Clícalo reference whitelist",
+  "description": "Allowed references per project, checked by the ClicaloVerifyReferences target (CLCA001).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "analyzerProjects", "globalPackages", "projects"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "$ref": "#/$defs/text" },
+    "analyzerProjects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "projects"],
+      "properties": {
+        "description": { "$ref": "#/$defs/text" },
+        "projects": { "$ref": "#/$defs/names" }
+      }
+    },
+    "globalPackages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "packages"],
+      "properties": {
+        "description": { "$ref": "#/$defs/text" },
+        "packages": { "$ref": "#/$defs/names" }
+      }
+    },
+    "projects": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": { "$ref": "#/$defs/project" }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 10 },
+    "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._-]*$" },
+    "names": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["area", "rule", "platform", "projectReferences", "packageReferences"],
+      "properties": {
+        "area": {
+          "description": "Top-level folder of the project.",
+          "enum": ["src", "generators", "tests", "tools", "build"]
+        },
+        "rule": {
+          "description": "Why the project may depend on exactly these references; shown in CLCA001.",
+          "$ref": "#/$defs/text"
+        },
+        "platform": {
+          "description": "portable: TFM without OS platform (net10.0, netstandard2.0). windows: a Windows TFM.",
+          "enum": ["portable", "windows"]
+        },
+        "projectReferences": { "$ref": "#/$defs/names" },
+        "packageReferences": { "$ref": "#/$defs/names" },
+        "frameworkReferences": {
+          "description": "FrameworkReference items, or UseWPF (Microsoft.WindowsDesktop.App.WPF) and UseWindowsForms (Microsoft.WindowsDesktop.App.WindowsForms).",
+          "$ref": "#/$defs/names"
+        },
+        "assemblyReferences": {
+          "description": "Raw assembly Reference items (discouraged: prefer packages or projects).",
+          "$ref": "#/$defs/names"
+        }
+      }
+    }
+  }
+}
