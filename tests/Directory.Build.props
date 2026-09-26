@@ -3,12 +3,12 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-  <!-- Every project under tests/ is an xUnit v3 test executable, except the shared TestKit library. -->
-  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Clicalo.TestKit'">
+  <!-- Every project under tests/ is an xUnit v3 test executable, except the shared TestKit libraries. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Clicalo.TestKit' and '$(MSBuildProjectName)' != 'Clicalo.TestKit.Windows'">
     <IsTestProject>true</IsTestProject>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
-  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Clicalo.TestKit'">
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Clicalo.TestKit' and '$(MSBuildProjectName)' != 'Clicalo.TestKit.Windows'">
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Shouldly" />
     <Using Include="Xunit" />

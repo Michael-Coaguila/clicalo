@@ -1,0 +1,199 @@
+using System.Globalization;
+using System.Runtime.InteropServices;
+using Clicalo.TestKit.Windows.Probe;
+using Windows.Win32;
+using Windows.Win32.UI.Input.KeyboardAndMouse;
+
+namespace Clicalo.TestKit.Windows.Input;
+
+/// <summary>
+/// A minimal <c>SendInput</c> injector for tests, and only for tests: it sends keyboard batches to one target
+/// window (an InputProbe) and refuses to send anything anywhere else. The product injector is
+/// <c>SendInputInjector</c> in Platform.Core (milestone M2).
+/// </summary>
+/// <remarks>
+/// Safety rules, all checked before a single event is sent:
+/// <list type="number">
+/// <item>the batch is balanced and small (<see cref="KeyStrokeBatch.Validate"/>), so it cannot leave a key down;</item>
+/// <item>the target window exists and owns the foreground (<c>GetForegroundWindow() == target</c>);</item>
+/// <item>no modifier is held (physically or by another program), so the batch cannot combine with it.</item>
+/// </list>
+/// The batch is then sent with one atomic <c>SendInput</c> call, and the foreground is checked again afterwards.
+/// Every event carries <see cref="ExtraInfoMarker"/> in <c>dwExtraInfo</c>, so the probe's records can be filtered
+/// to the input this injector produced.
+/// </remarks>
+public sealed class TestKeyboardInjector
+{
+    /// <summary><c>dwExtraInfo</c> of every injected event ("CLK1"); 32 bits, as Raw Input keeps only 32.</summary>
+    public const long ExtraInfoMarker = 0x434C_4B31;
+
+    private static readonly (VIRTUAL_KEY Key, string Name)[] Modifiers =
+    [
+        (VIRTUAL_KEY.VK_LSHIFT, "left Shift"),
+        (VIRTUAL_KEY.VK_RSHIFT, "right Shift"),
+        (VIRTUAL_KEY.VK_LCONTROL, "left Ctrl"),
+        (VIRTUAL_KEY.VK_RCONTROL, "right Ctrl"),
+        (VIRTUAL_KEY.VK_LMENU, "left Alt"),
+        (VIRTUAL_KEY.VK_RMENU, "right Alt"),
+        (VIRTUAL_KEY.VK_LWIN, "left Windows"),
+        (VIRTUAL_KEY.VK_RWIN, "right Windows"),
+    ];
+
+    private int _sentBatches;
+
+    /// <summary>Creates an injector bound to <paramref name="targetWindow"/>.</summary>
+    public TestKeyboardInjector(nint targetWindow)
+    {
+        if (targetWindow == 0)
+        {
+            throw new ArgumentException("The target window cannot be null.", nameof(targetWindow));
+        }
+
+        TargetWindow = targetWindow;
+    }
+
+    /// <summary>Creates an injector bound to the window of <paramref name="probe"/>.</summary>
+    public TestKeyboardInjector(InputProbeSession probe)
+        : this((probe ?? throw new ArgumentNullException(nameof(probe))).Window) { }
+
+    /// <summary>The only window this injector sends input to.</summary>
+    public nint TargetWindow { get; }
+
+    /// <summary>Number of batches handed to <c>SendInput</c> so far.</summary>
+    public int SentBatches => Volatile.Read(ref _sentBatches);
+
+    /// <summary>
+    /// The batch exactly as it would be sent now: virtual-key strokes without a scan code get the informative
+    /// scan code and extended flag of the target's keyboard layout (<c>MapVirtualKeyEx</c>, <c>MAPVK_VK_TO_VSC_EX</c>),
+    /// as the product does in normal mode (blueprint §7.7).
+    /// </summary>
+    public IReadOnlyList<KeyStroke> Resolve(IReadOnlyList<KeyStroke> batch)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+        var layout = KeyboardLayouts.OfWindow(TargetWindow);
+        var resolved = new KeyStroke[batch.Count];
+        for (var i = 0; i < batch.Count; i++)
+        {
+            var stroke = batch[i];
+            if (stroke.IsUnicode || stroke.IsScanCodeMode || stroke.ScanCode != 0)
+            {
+                resolved[i] = stroke;
+                continue;
+            }
+
+            var (scanCode, extended) = KeyboardLayouts.ToScanCode(stroke.VirtualKey, layout);
+            resolved[i] = stroke with
+            {
+                ScanCode = scanCode,
+                Flags =
+                    stroke.Flags
+                    | (extended ? KeyStrokeOptions.ExtendedKey : KeyStrokeOptions.None),
+            };
+        }
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// Validates <paramref name="batch"/>, checks the safety preconditions and sends it with one <c>SendInput</c>.
+    /// Throws <see cref="ArgumentException"/> or <see cref="InjectionRefusedException"/> without injecting
+    /// anything when a rule does not hold.
+    /// </summary>
+    public void Send(IReadOnlyList<KeyStroke> batch)
+    {
+        KeyStrokeBatch.Validate(batch);
+        EnsureTargetOwnsForeground();
+        EnsureNoModifierHeld();
+
+        var resolved = Resolve(batch);
+        var inputs = new INPUT[resolved.Count];
+        for (var i = 0; i < resolved.Count; i++)
+        {
+            inputs[i] = ToInput(resolved[i]);
+        }
+
+        // Last check immediately before the call keeps the window for a foreground change as small as possible.
+        EnsureTargetOwnsForeground();
+        uint inserted;
+        unsafe
+        {
+            inserted = PInvoke.SendInput(inputs, sizeof(INPUT));
+        }
+
+        var error = Marshal.GetLastPInvokeError();
+        Interlocked.Increment(ref _sentBatches);
+        if (inserted != inputs.Length)
+        {
+            throw new InjectionRefusedException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"SendInput inserted {inserted} of {inputs.Length} events (Win32 error {error}). Input is blocked when the target runs at a higher integrity level (UIPI) or the desktop is locked."
+                )
+            );
+        }
+
+        if (!ForegroundWindows.IsForeground(TargetWindow))
+        {
+            throw new InjectionRefusedException(
+                "The foreground changed while the batch was being sent, so part of it may have reached another window: "
+                    + ForegroundWindows.Describe()
+                    + ". The batch was balanced, so no key was left down."
+            );
+        }
+    }
+
+    private static INPUT ToInput(KeyStroke stroke)
+    {
+        var input = new INPUT { type = INPUT_TYPE.INPUT_KEYBOARD };
+        input.Anonymous.ki = new KEYBDINPUT
+        {
+            wVk =
+                stroke.IsUnicode || stroke.IsScanCodeMode
+                    ? default
+                    : (VIRTUAL_KEY)stroke.VirtualKey,
+            wScan = stroke.ScanCode,
+            dwFlags = (KEYBD_EVENT_FLAGS)(uint)stroke.Flags,
+            time = 0,
+            dwExtraInfo = (nuint)ExtraInfoMarker,
+        };
+        return input;
+    }
+
+    private static void EnsureNoModifierHeld()
+    {
+        foreach (var (key, name) in Modifiers)
+        {
+            if ((PInvoke.GetAsyncKeyState((int)key) & 0x8000) != 0)
+            {
+                throw new InjectionRefusedException(
+                    "The "
+                        + name
+                        + " key is held down (physically or by another program). Nothing was injected, so the batch cannot combine with it; release it and run the test again."
+                );
+            }
+        }
+    }
+
+    private void EnsureTargetOwnsForeground()
+    {
+        if (!ForegroundWindows.Exists(TargetWindow))
+        {
+            throw new InjectionRefusedException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"The target window 0x{TargetWindow:X} does not exist. Nothing was injected."
+                )
+            );
+        }
+
+        if (!ForegroundWindows.IsForeground(TargetWindow))
+        {
+            throw new InjectionRefusedException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"The target window 0x{TargetWindow:X} is not in the foreground ({ForegroundWindows.Describe()}). Nothing was injected: test input is only ever sent to the probe."
+                )
+            );
+        }
+    }
+}

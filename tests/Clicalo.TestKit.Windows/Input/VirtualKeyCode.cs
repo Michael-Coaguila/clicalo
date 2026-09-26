@@ -1,0 +1,60 @@
+namespace Clicalo.TestKit.Windows.Input;
+
+/// <summary>
+/// Win32 virtual-key codes used by the tests, so assertions print names instead of numbers. Any other code can be
+/// cast from its numeric value. The product's key model (<c>KeyId</c>, Domain) is unrelated to this test vocabulary.
+/// </summary>
+public enum VirtualKeyCode : ushort
+{
+    None = 0x00,
+    Back = 0x08,
+    Tab = 0x09,
+    Return = 0x0D,
+    Shift = 0x10,
+    Control = 0x11,
+    Menu = 0x12,
+    Escape = 0x1B,
+    Space = 0x20,
+    Left = 0x25,
+    Up = 0x26,
+    Right = 0x27,
+    Down = 0x28,
+    A = 0x41,
+    B = 0x42,
+    C = 0x43,
+    D = 0x44,
+    E = 0x45,
+    F = 0x46,
+    G = 0x47,
+    H = 0x48,
+    I = 0x49,
+    J = 0x4A,
+    K = 0x4B,
+    L = 0x4C,
+    M = 0x4D,
+    N = 0x4E,
+    O = 0x4F,
+    P = 0x50,
+    Q = 0x51,
+    R = 0x52,
+    S = 0x53,
+    T = 0x54,
+    U = 0x55,
+    V = 0x56,
+    W = 0x57,
+    X = 0x58,
+    Y = 0x59,
+    Z = 0x5A,
+    LeftWindows = 0x5B,
+    RightWindows = 0x5C,
+    NumPad4 = 0x64,
+    LeftShift = 0xA0,
+    RightShift = 0xA1,
+    LeftControl = 0xA2,
+    RightControl = 0xA3,
+    LeftMenu = 0xA4,
+    RightMenu = 0xA5,
+
+    /// <summary><c>VK_PACKET</c>: what an application receives for input sent with <c>KEYEVENTF_UNICODE</c>.</summary>
+    Packet = 0xE7,
+}
