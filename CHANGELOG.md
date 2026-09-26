@@ -35,3 +35,24 @@ Milestone M0 · Foundations and harness (in progress).
 - Project governance files: bilingual README, CONTRIBUTING, SECURITY, SUPPORT, PRIVACY and
   CODE_SIGNING_POLICY, a code of conduct adopting the Contributor Covenant 2.1, and AGENTS.md for coding
   agents.
+- Data catalogs with JSON schemas (`data/catalogs`: keys and their Win32 mapping, timings, sizes and touch
+  presets) and `CatalogGenerator`, which turns them into typed constants of `Clicalo.Domain` (`KeyIds`,
+  `Timings`) and reports data errors as `CLCC` compiler errors.
+- The i18n pipeline: `data/i18n` imported from the design handoff with a hand-reviewed recipe (669 handoff
+  keys, CLDR plurals, named placeholders), `LocalizationGenerator` (`MessageKey`, `L`, `MessageCatalog`,
+  `CLCI` errors), the localizer with CLDR plural rules, the `i18n-check` and `i18n-import` developer commands
+  and a hand-reviewed golden of every handoff text with placeholders.
+- Design tokens (`data/tokens`) and `TokenGenerator`: OKLCH to sRGB with CSS Color 4 gamut mapping, the
+  generated theme palettes, and every contrast pair measured against WCAG as `CLCT` compiler errors.
+- Product-rule analyzers `CLC0001`, `CLC0003`, `CLC0004`, `CLC0006` and `CLC0010`.
+- Automated architecture enforcement: layer rules with ArchUnitNET, allowed project dependencies as data,
+  banned API lists per layer with per-file exceptions, and `sensitive-paths.json` with the `adr-check`
+  command (`CLCA010`).
+- `tools/InputProbe` and `Clicalo.TestKit.Windows`: the probe session, a guarded test keyboard injector,
+  render snapshots, and desktop tests (`Requires=Desktop`) for virtual-key, scan-code and Unicode injection.
+- `cl` (`cl.cmd`, `cl.ps1`), the build orchestrator with the verbs `setup`, `build`, `fast`, `test`, `desk`,
+  `fix`, `check` and `clean`, plus `i18n-check`, `i18n-import` and `adr-check`; one final line for Narrator
+  and a Markdown failure report.
+- GitHub workflows: `pr.yml` (`verify` = `cl check`, `adr`, `dco`, and ARM64, CodeQL and Scorecard for the
+  public repository), `pr-title.yml` (Conventional Commits titles) and `s0.yml` (spike S0, desktop tests on
+  hosted runners); Renovate, CODEOWNERS, issue forms, a pull request template and VS Code tasks.

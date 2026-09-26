@@ -16,7 +16,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-04 | Visibilidad del repositorio | Público (ARM64, CodeQL y Scorecard en cada PR) | Privado al inicio; esos trabajos, condicionados a que sea público | M0 |
 | D-05 | Ubicación del repositorio | Sin especificar | `C:\dev\clicalo`, fuera de OneDrive | M0 |
 | D-06 | Notación de trazabilidad | `[Req("ID")]` | `[Trait("Req", "ID")]` | M0 |
-| D-07 | Formato de `CHANGELOG.md` | El que genere release-please | Keep a Changelog, con release-please configurado para respetarlo | M0 |
+| D-07 | Formato de `CHANGELOG.md` | El que genere release-please | Keep a Changelog; release-please se configurará en M5 para respetarlo | M0 |
 | D-08 | Nota de qué es vinculante del paquete | «Un README» en `docs/design/handoff/` | `LEEME-VINCULANTE.md`, sin tocar el `README.md` original | M0 |
 | D-09 | Matriz de módulos de Domain | Tabla de §4.3 | Módulos `Document` y `Timing`, cuatro aristas nuevas y matriz transitiva | M0 |
 | D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |

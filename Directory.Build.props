@@ -48,7 +48,7 @@
     <Copyright>© 2026 Michael Coaguila and Clícalo contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Michael-Coaguila/clicalo</RepositoryUrl>
-    <!-- Managed by release-please; do not edit by hand. -->
+    <!-- Will be managed by release-please from M5 (deviation D-07); until then change it only in a release PR. -->
     <VersionPrefix>2.0.0</VersionPrefix>
     <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
   </PropertyGroup>
