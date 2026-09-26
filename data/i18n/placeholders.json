@@ -1,0 +1,42 @@
+{
+  "app": {
+    "type": "text",
+    "description": "Nombre visible de una aplicación, por ejemplo «Word»."
+  },
+  "profile": {
+    "type": "text",
+    "description": "Nombre de un perfil tal como se muestra; puede ser un mensaje traducido, como «General»."
+  },
+  "profiles": {
+    "type": "text",
+    "description": "Frase ya traducida con el número de perfiles: el mensaje migTProfiles."
+  },
+  "shortcuts": {
+    "type": "text",
+    "description": "Frase ya traducida con el número de atajos: el mensaje migTShortcuts."
+  },
+  "name": {
+    "type": "text",
+    "description": "Nombre de un atajo o de un elemento, por ejemplo «Negrita»."
+  },
+  "keys": {
+    "type": "text",
+    "description": "Combinación de teclas con los nombres ya traducidos, por ejemplo «Ctrl + B»."
+  },
+  "version": {
+    "type": "text",
+    "description": "Número de versión, por ejemplo «2.0.1»."
+  },
+  "count": {
+    "type": "integer",
+    "description": "Cantidad. En una familia de plurales elige la forma (_one, _other)."
+  },
+  "index": {
+    "type": "integer",
+    "description": "Posición, empezando en 1."
+  },
+  "total": {
+    "type": "integer",
+    "description": "Número total de elementos; acompaña a {index}."
+  }
+}

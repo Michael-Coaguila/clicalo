@@ -1,0 +1,106 @@
+{
+  "notes": "Conversión revisada a mano del paquete de diseño a data/i18n (blueprint §8.5, ADR-0011). La aplica «cl i18n-import»; «cl i18n-import --check» comprueba que data/i18n es reproducible. Condición vinculante: con los argumentos de muestra, el texto visible es idéntico al del paquete (prueba VisibleTextSnapshotTests).",
+  "source": "docs/design/handoff/data",
+  "languages": ["es", "en"],
+  "placeholders": {
+    "a": "app",
+    "i": "index",
+    "k": "keys",
+    "n": "count",
+    "p": "profile",
+    "t": "total",
+    "v": "version",
+    "x": "name"
+  },
+  "keys": {
+    "notes": "Excepciones por clave. «placeholders» cambia el nombre de una letra solo en esa clave; «plural» añade las formas que faltan (la forma _other es siempre el texto original convertido); «text» y «arguments» sustituyen el texto por uno revisado con mensajes anidados.",
+    "phStep": {
+      "notes": "{n} es el total de pasos, no una cantidad que elija plural.",
+      "placeholders": { "n": "total" }
+    },
+    "dupStep": {
+      "notes": "{n} es el total de apariciones.",
+      "placeholders": { "n": "total" }
+    },
+    "stepEditMsg": {
+      "notes": "{n} es el número del paso que se edita.",
+      "placeholders": { "n": "index" }
+    },
+    "vh2": {
+      "notes": "{n} es el número de voz de un botón.",
+      "placeholders": { "n": "index" }
+    },
+    "comboN": {
+      "notes": "Catálogo §9: plural. «Sin teclas» (0) ya es la clave comboNone.",
+      "plural": {
+        "es": { "one": "{count} tecla · se guarda solo" },
+        "en": { "one": "{count} key · auto-saved" }
+      }
+    },
+    "instNoteSome": {
+      "notes": "Catálogo §9: plural.",
+      "plural": {
+        "es": { "one": "Ya instalado. Falta {count} atajo de esta plantilla." },
+        "en": { "one": "Installed. {count} shortcut from this template is missing." }
+      }
+    },
+    "sugLine": {
+      "notes": "Catálogo §9: plural.",
+      "plural": {
+        "es": { "one": "Tienes {app} abierto · {count} atajo listo" },
+        "en": { "one": "{app} is open · {count} shortcut ready" }
+      }
+    },
+    "dupHead": {
+      "notes": "Catálogo §9: plural. En la práctica una combinación repetida aparece en 2 sitios o más, pero la forma singular queda correcta.",
+      "plural": {
+        "es": { "one": "Combinación repetida en {count} sitio · {index} de {total}" },
+        "en": { "one": "Combo repeated in {count} place · {index} of {total}" }
+      }
+    },
+    "twMacro": {
+      "notes": "Catálogo §9: plural. Con un solo paso, «uno tras otro» no tiene sentido y se omite.",
+      "plural": {
+        "es": { "one": "Ejecuta {count} paso." },
+        "en": { "one": "Runs {count} step." }
+      }
+    },
+    "addMissing": {
+      "notes": "Catálogo §9: plural. En inglés las dos formas coinciden.",
+      "plural": {
+        "es": { "one": "Añadir {count} que falta" },
+        "en": { "one": "Add {count} missing" }
+      }
+    },
+    "migT": {
+      "notes": "Catálogo §9: variables {profiles} y {shortcuts}, y plural en las dos cantidades. Una familia de plurales solo elige por {count}, así que cada cantidad es un mensaje anidado con su propio plural (migTProfiles, migTShortcuts): el orden de la frase sigue en manos de quien traduce y no se concatenan fragmentos (IDI-004).",
+      "text": {
+        "es": "Importado desde tu versión anterior: {profiles} y {shortcuts}",
+        "en": "Imported from your previous version: {profiles} and {shortcuts}"
+      },
+      "arguments": {
+        "profiles": { "message": "migTProfiles", "count": "p" },
+        "shortcuts": { "message": "migTShortcuts", "count": "n" }
+      }
+    }
+  },
+  "added": {
+    "notes": "Claves que no están en el paquete y que la conversión necesita.",
+    "migTProfiles": {
+      "notes": "Cantidad de perfiles de migT.",
+      "after": "migT",
+      "plural": {
+        "es": { "one": "{count} perfil", "other": "{count} perfiles" },
+        "en": { "one": "{count} profile", "other": "{count} profiles" }
+      }
+    },
+    "migTShortcuts": {
+      "notes": "Cantidad de atajos de migT.",
+      "after": "migTProfiles",
+      "plural": {
+        "es": { "one": "{count} atajo", "other": "{count} atajos" },
+        "en": { "one": "{count} shortcut", "other": "{count} shortcuts" }
+      }
+    }
+  }
+}

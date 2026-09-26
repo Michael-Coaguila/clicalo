@@ -1,0 +1,69 @@
+# Claves de data/i18n que pueden no usarse en el código sin que `cl i18n-check` las marque.
+# Una clave base por línea (sin sufijo de plural); `#` inicia un comentario.
+# `cl i18n-check` falla si una clave de esta lista no existe, está repetida o ya se usa: entonces se quita de aquí.
+# Ver docs/guides/i18n.md.
+
+# Catálogo §10 e IDI-005: claves del código muerto del prototipo. Se conservan (paridad con el paquete, hito M0)
+# hasta que el usuario decida si se eliminan o se implementan.
+dStrip
+dStripD
+mFollow
+mFreq
+mFixed
+modeFollowT
+modeFreqT
+modeFixedT
+fAll
+fInst
+fAvail
+tplAll
+asTitle
+asDesc
+aiTitle
+aiSub
+aiShort
+aiPh2
+dupTitle
+dupBody
+dupHint
+dupIn
+dupKeep
+dupChangeT
+itsFine
+changeCombo
+pinAll
+pinAllOn
+pinAllOff
+pinBar
+navRel
+navUpd
+navFb
+navAbout
+relTitle
+relSub
+updSub
+fbSub
+writeMe
+shareD
+testSafe
+voiceHint
+whatShows
+fixWhich
+protectT
+secLook
+libTitle
+fromScratch
+repeated
+lockOn
+activeShort
+install
+bSteps
+tplSub
+where
+onlyHere
+addStep
+sidesA
+
+# Blueprint §1.4, propuesta P2: la fila «Una sola ventana» de Sistema no se construye mientras el usuario no
+# ratifique la propuesta; la instancia única es obligatoria por seguridad.
+rSingle
