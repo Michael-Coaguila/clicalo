@@ -14,7 +14,6 @@ internal static class Quantity
 
     private static readonly (string Unit, decimal Ticks)[] DurationScale =
     [
-        // Longest suffix first so "min" is not read as "m" + "in", and "ms" not as "s".
         ("min", 600_000_000m),
         ("ms", 10_000m),
         ("s", 10_000_000m),
@@ -75,51 +74,84 @@ internal static class Quantity
             return null;
         }
 
-        foreach (var (unit, factor) in scale)
+        // A value is a number immediately followed by its unit: split at the first character that is neither a
+        // digit nor a dot, so "600", "5m" or "3 s" are told apart from well-formed values.
+        var split = 0;
+        while (
+            split < text.Length
+            && ((text[split] >= '0' && text[split] <= '9') || text[split] == '.')
+        )
         {
-            if (!text.EndsWith(unit, System.StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var number = text.Substring(0, text.Length - unit.Length);
-            if (!IsPlainNumber(number))
-            {
-                reader.Structure(
-                    node,
-                    $"{reader.FileName}: '{what}' must be a number followed by a unit ({units})."
-                );
-                return null;
-            }
-
-            var value =
-                decimal.Parse(number, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture)
-                * factor;
-            if (value != decimal.Truncate(value) || value > long.MaxValue)
-            {
-                reader.Structure(
-                    node,
-                    $"{reader.FileName}: '{what}' is not representable exactly."
-                );
-                return null;
-            }
-
-            return (long)value;
+            split++;
         }
 
-        if (IsPlainNumber(text))
-        {
-            reader.Report(CatalogDiagnostics.MissingUnit, node, what, units);
-        }
-        else
+        var number = text.Substring(0, split);
+        var unit = text.Substring(split);
+        if (!IsPlainNumber(number) || (unit.Length > 0 && !IsAsciiLetters(unit)))
         {
             reader.Structure(
                 node,
                 $"{reader.FileName}: '{what}' must be a number followed by a unit ({units})."
             );
+            return null;
+        }
+
+        var factor = Factor(scale, unit);
+        if (factor is null)
+        {
+            // No unit, or one that is not in the list (5m, 16KB): never guessed.
+            reader.Report(CatalogDiagnostics.MissingUnit, node, what, units);
+            return null;
+        }
+
+        if (
+            !decimal.TryParse(
+                number,
+                NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture,
+                out var parsed
+            )
+            || parsed > long.MaxValue / factor.Value
+        )
+        {
+            reader.Structure(node, $"{reader.FileName}: '{what}' is too large.");
+            return null;
+        }
+
+        var value = parsed * factor.Value;
+        if (value != decimal.Truncate(value))
+        {
+            reader.Structure(node, $"{reader.FileName}: '{what}' is not representable exactly.");
+            return null;
+        }
+
+        return (long)value;
+    }
+
+    private static decimal? Factor((string Unit, decimal Factor)[] scale, string unit)
+    {
+        foreach (var (name, factor) in scale)
+        {
+            if (string.Equals(name, unit, System.StringComparison.Ordinal))
+            {
+                return factor;
+            }
         }
 
         return null;
+    }
+
+    private static bool IsAsciiLetters(string text)
+    {
+        foreach (var c in text)
+        {
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>Digits with an optional fractional part: no sign, exponent or spaces.</summary>

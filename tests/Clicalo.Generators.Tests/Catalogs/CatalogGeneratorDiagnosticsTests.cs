@@ -135,6 +135,38 @@ public sealed class CatalogGeneratorDiagnosticsTests
             "\"16384\"",
             0
         ),
+        ["duration-with-unknown-unit"] = new(
+            "timings.json",
+            "\"duration\": \"600ms\"",
+            "\"duration\": \"600sec\"",
+            "CLCC005",
+            "\"600sec\"",
+            0
+        ),
+        ["bytes-with-unknown-unit"] = new(
+            "timings.json",
+            "\"16KiB\"",
+            "\"16KB\"",
+            "CLCC005",
+            "\"16KB\"",
+            0
+        ),
+        ["duration-with-space-before-unit"] = new(
+            "timings.json",
+            "\"duration\": \"600ms\"",
+            "\"duration\": \"600 ms\"",
+            "CLCC009",
+            "\"600 ms\"",
+            0
+        ),
+        ["duration-too-large"] = new(
+            "timings.json",
+            "\"duration\": \"600ms\"",
+            "\"duration\": \"99999999999999999999999999999d\"",
+            "CLCC009",
+            "\"99999999999999999999999999999d\"",
+            0
+        ),
         ["key-without-mapping"] = new(
             "keys.win32.json",
             "\"a\": { \"vk\": \"0x41\", \"vkName\": \"A\", \"scan\": \"0x1E\", \"extended\": false },",
@@ -258,6 +290,10 @@ public sealed class CatalogGeneratorDiagnosticsTests
             )
         );
 
+        run.Result.Results.ShouldAllBe(
+            r => r.Exception == null,
+            caseName + ": a data error must be a diagnostic, never a generator crash"
+        );
         var reportedIn = @case.ReportedIn ?? @case.File;
         var (line, column) = Position(sources[reportedIn], @case.At, @case.Offset);
         var matching = run
