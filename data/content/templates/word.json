@@ -1,0 +1,84 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "word",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Word", "en": "Word" },
+  "icon": "description",
+  "processes": ["winword.exe"],
+  "shortcuts": [
+    {
+      "id": "bold",
+      "name": { "es": "Negrita", "en": "Bold" },
+      "icon": "format_bold",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "n"], "variants": { "en": ["ctrl", "b"] } }
+    },
+    {
+      "id": "italic",
+      "name": { "es": "Cursiva", "en": "Italic" },
+      "icon": "format_italic",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "k"], "variants": { "en": ["ctrl", "i"] } }
+    },
+    {
+      "id": "under",
+      "name": { "es": "Subrayar", "en": "Underline" },
+      "icon": "format_underlined",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "s"], "variants": { "en": ["ctrl", "u"] } }
+    },
+    {
+      "id": "h1",
+      "name": { "es": "Título 1", "en": "Heading 1" },
+      "icon": "title",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "alt", "1"] }
+    },
+    {
+      "id": "list",
+      "name": { "es": "Viñetas", "en": "Bullets" },
+      "icon": "format_list_bulleted",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "l"] }
+    },
+    {
+      "id": "replace",
+      "name": { "es": "Reemplazar", "en": "Replace" },
+      "icon": "find_replace",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["ctrl", "l"], "variants": { "en": ["ctrl", "h"] } }
+    },
+    {
+      "id": "pdf",
+      "name": { "es": "Guardar PDF", "en": "Save PDF" },
+      "icon": "picture_as_pdf",
+      "category": "file",
+      "action": {
+        "type": "macro",
+        "steps": [
+          { "kind": "keys", "keys": ["f12"] },
+          { "kind": "wait", "ms": 500 },
+          { "kind": "keys", "keys": ["alt", "t"] },
+          { "kind": "text", "text": "PDF" },
+          { "kind": "keys", "keys": ["enter"] }
+        ]
+      }
+    },
+    {
+      "id": "spell",
+      "name": { "es": "Ortografía", "en": "Spelling" },
+      "icon": "spellcheck",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["f7"] }
+    },
+    {
+      "id": "dictw",
+      "name": { "es": "Dictado", "en": "Dictation" },
+      "icon": "mic",
+      "category": "voice",
+      "action": { "type": "tap", "keys": ["win", "h"] }
+    }
+  ]
+}

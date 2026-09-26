@@ -1,0 +1,267 @@
+{
+  "$schema": "../schemas/library.schema.json",
+  "catalogVersion": 1,
+  "sections": [
+    {
+      "id": "edit",
+      "labelKey": "lcEdit",
+      "shortcuts": [
+        {
+          "id": "copy",
+          "name": { "es": "Copiar", "en": "Copy" },
+          "icon": "content_copy",
+          "category": "edit",
+          "action": { "type": "tap", "keys": ["ctrl", "c"] }
+        },
+        {
+          "id": "paste",
+          "name": { "es": "Pegar", "en": "Paste" },
+          "icon": "content_paste",
+          "category": "edit",
+          "action": { "type": "tap", "keys": ["ctrl", "v"] }
+        },
+        {
+          "id": "cut",
+          "name": { "es": "Cortar", "en": "Cut" },
+          "icon": "content_cut",
+          "category": "edit",
+          "action": { "type": "tap", "keys": ["ctrl", "x"] }
+        },
+        {
+          "id": "undo",
+          "name": { "es": "Deshacer", "en": "Undo" },
+          "icon": "undo",
+          "category": "hist",
+          "action": { "type": "tap", "keys": ["ctrl", "z"] }
+        },
+        {
+          "id": "redo",
+          "name": { "es": "Rehacer", "en": "Redo" },
+          "icon": "redo",
+          "category": "hist",
+          "action": { "type": "tap", "keys": ["ctrl", "y"] }
+        },
+        {
+          "id": "selall",
+          "name": { "es": "Seleccionar todo", "en": "Select all" },
+          "icon": "select_all",
+          "category": "sel",
+          "action": { "type": "tap", "keys": ["ctrl", "a"] }
+        },
+        {
+          "id": "clip",
+          "name": { "es": "Portapapeles", "en": "Clipboard" },
+          "icon": "content_paste_search",
+          "category": "edit",
+          "action": { "type": "tap", "keys": ["win", "v"] }
+        }
+      ]
+    },
+    {
+      "id": "win",
+      "labelKey": "lcWin",
+      "shortcuts": [
+        {
+          "id": "alttab",
+          "name": { "es": "Cambiar app", "en": "Switch app" },
+          "icon": "swap_horiz",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["alt", "tab"] }
+        },
+        {
+          "id": "task",
+          "name": { "es": "Vista de tareas", "en": "Task view" },
+          "icon": "view_carousel",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["win", "tab"] }
+        },
+        {
+          "id": "desk",
+          "name": { "es": "Escritorio", "en": "Desktop" },
+          "icon": "desktop_windows",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["win", "d"] }
+        },
+        {
+          "id": "max",
+          "name": { "es": "Maximizar", "en": "Maximize" },
+          "icon": "fullscreen",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["win", "up"] }
+        },
+        {
+          "id": "left",
+          "name": { "es": "Ajustar izq.", "en": "Snap left" },
+          "icon": "align_horizontal_left",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["win", "left"] }
+        },
+        {
+          "id": "right",
+          "name": { "es": "Ajustar der.", "en": "Snap right" },
+          "icon": "align_horizontal_right",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["win", "right"] }
+        },
+        {
+          "id": "close",
+          "name": { "es": "Cerrar ventana", "en": "Close window" },
+          "icon": "close",
+          "category": "win",
+          "action": { "type": "tap", "keys": ["alt", "f4"] },
+          "confirm": true
+        }
+      ]
+    },
+    {
+      "id": "mouse",
+      "labelKey": "lcMouse",
+      "shortcuts": [
+        {
+          "id": "rc",
+          "name": { "es": "Clic derecho", "en": "Right click" },
+          "icon": "right_click",
+          "category": "nav",
+          "action": { "type": "mouse", "mouse": "rclick" }
+        },
+        {
+          "id": "dbl",
+          "name": { "es": "Doble clic", "en": "Double click" },
+          "icon": "ads_click",
+          "category": "nav",
+          "action": { "type": "mouse", "mouse": "dbl" }
+        },
+        {
+          "id": "drag",
+          "name": { "es": "Arrastrar", "en": "Drag" },
+          "icon": "drag_pan",
+          "category": "nav",
+          "action": { "type": "mouse", "mouse": "drag" }
+        },
+        {
+          "id": "su",
+          "name": { "es": "Desplazar ↑", "en": "Scroll up" },
+          "icon": "keyboard_double_arrow_up",
+          "category": "nav",
+          "action": { "type": "mouse", "mouse": "sup" }
+        },
+        {
+          "id": "sd",
+          "name": { "es": "Desplazar ↓", "en": "Scroll down" },
+          "icon": "keyboard_double_arrow_down",
+          "category": "nav",
+          "action": { "type": "mouse", "mouse": "sdn" }
+        }
+      ]
+    },
+    {
+      "id": "voice",
+      "labelKey": "lcVoice",
+      "shortcuts": [
+        {
+          "id": "dict",
+          "name": { "es": "Dictar", "en": "Dictate" },
+          "icon": "mic",
+          "category": "voice",
+          "action": { "type": "tap", "keys": ["win", "h"] }
+        },
+        {
+          "id": "va",
+          "name": { "es": "Acceso por voz", "en": "Voice access" },
+          "icon": "settings_voice",
+          "category": "voice",
+          "action": { "type": "tap", "keys": ["win", "ctrl", "s"] }
+        },
+        {
+          "id": "ptt",
+          "name": { "es": "Hablar", "en": "Talk" },
+          "icon": "record_voice_over",
+          "category": "voice",
+          "action": { "type": "hold", "keys": ["ctrl", "space"] }
+        },
+        {
+          "id": "narr",
+          "name": { "es": "Narrador", "en": "Narrator" },
+          "icon": "hearing",
+          "category": "voice",
+          "action": { "type": "tap", "keys": ["win", "ctrl", "enter"] }
+        }
+      ]
+    },
+    {
+      "id": "text",
+      "labelKey": "lcText",
+      "shortcuts": [
+        {
+          "id": "mail",
+          "name": { "es": "Mi correo", "en": "My email" },
+          "icon": "alternate_email",
+          "category": "text",
+          "action": { "type": "text", "text": "", "hint": { "es": "nombre@correo.com", "en": "name@email.com" } }
+        },
+        {
+          "id": "sign",
+          "name": { "es": "Mi firma", "en": "My signature" },
+          "icon": "signature",
+          "category": "text",
+          "action": { "type": "text", "text": "", "hint": { "es": "Saludos cordiales,\nTu nombre", "en": "Best regards,\nYour name" } }
+        },
+        {
+          "id": "addr",
+          "name": { "es": "Mi dirección", "en": "My address" },
+          "icon": "home",
+          "category": "text",
+          "action": { "type": "text", "text": "", "hint": { "es": "Calle, número y ciudad", "en": "Street, number and city" } }
+        }
+      ]
+    },
+    {
+      "id": "sys",
+      "labelKey": "lcSys",
+      "shortcuts": [
+        {
+          "id": "shot",
+          "name": { "es": "Captura", "en": "Screenshot" },
+          "icon": "screenshot_region",
+          "category": "sel",
+          "action": { "type": "tap", "keys": ["win", "shift", "s"] }
+        },
+        {
+          "id": "osk",
+          "name": { "es": "Teclado en pantalla", "en": "On-screen keyboard" },
+          "icon": "keyboard",
+          "category": "sel",
+          "action": { "type": "tap", "keys": ["win", "ctrl", "o"] }
+        },
+        {
+          "id": "mag",
+          "name": { "es": "Lupa", "en": "Magnifier" },
+          "icon": "zoom_in",
+          "category": "sel",
+          "action": { "type": "tap", "keys": ["win", "char:+"] }
+        },
+        {
+          "id": "files",
+          "name": { "es": "Explorador", "en": "Explorer" },
+          "icon": "folder",
+          "category": "file",
+          "action": { "type": "tap", "keys": ["win", "e"] }
+        },
+        {
+          "id": "set",
+          "name": { "es": "Configuración", "en": "Settings" },
+          "icon": "settings",
+          "category": "file",
+          "action": { "type": "tap", "keys": ["win", "i"] }
+        },
+        {
+          "id": "lock",
+          "name": { "es": "Bloquear", "en": "Lock" },
+          "icon": "lock",
+          "category": "win",
+          "action": { "type": "system", "command": "lock" }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "explorer",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Explorador", "en": "Explorer" },
+  "icon": "folder",
+  "category": "file",
+  "processes": ["explorer.exe"],
+  "shortcuts": [
+    {
+      "id": "e1",
+      "name": { "es": "Nueva carpeta", "en": "New folder" },
+      "icon": "create_new_folder",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "n"] }
+    },
+    {
+      "id": "e2",
+      "name": { "es": "Renombrar", "en": "Rename" },
+      "icon": "edit",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["f2"] }
+    },
+    {
+      "id": "e3",
+      "name": { "es": "Subir nivel", "en": "Up" },
+      "icon": "arrow_upward",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["alt", "up"] }
+    },
+    {
+      "id": "e4",
+      "name": { "es": "Propiedades", "en": "Properties" },
+      "icon": "info",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["alt", "enter"] }
+    },
+    {
+      "id": "e5",
+      "name": { "es": "Papelera", "en": "Delete" },
+      "icon": "delete",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["delete"] }
+    }
+  ]
+}

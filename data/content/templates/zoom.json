@@ -1,0 +1,56 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "zoom",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Videollamada", "en": "Video call" },
+  "icon": "videocam",
+  "category": "voice",
+  "processes": ["zoom.exe"],
+  "shortcuts": [
+    {
+      "id": "z1",
+      "name": { "es": "Micrófono", "en": "Mic" },
+      "icon": "mic_off",
+      "category": "voice",
+      "action": { "type": "tap", "keys": ["alt", "a"] }
+    },
+    {
+      "id": "z2",
+      "name": { "es": "Cámara", "en": "Camera" },
+      "icon": "videocam_off",
+      "category": "voice",
+      "action": { "type": "tap", "keys": ["alt", "v"] }
+    },
+    {
+      "id": "z3",
+      "name": { "es": "Compartir", "en": "Share" },
+      "icon": "screen_share",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["alt", "s"] }
+    },
+    {
+      "id": "z4",
+      "name": { "es": "Levantar mano", "en": "Raise hand" },
+      "icon": "back_hand",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["alt", "y"] }
+    },
+    {
+      "id": "z5",
+      "name": { "es": "Chat", "en": "Chat" },
+      "icon": "chat",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["alt", "h"] }
+    },
+    {
+      "id": "z6",
+      "name": { "es": "Salir", "en": "Leave" },
+      "icon": "call_end",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["alt", "q"] },
+      "confirm": true
+    }
+  ]
+}

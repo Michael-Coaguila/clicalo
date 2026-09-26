@@ -1,0 +1,76 @@
+{
+  "$schema": "../../schemas/template.schema.json",
+  "id": "excel",
+  "version": 1,
+  "authors": ["Michael Coaguila"],
+  "appsLanguages": ["es", "en"],
+  "name": { "es": "Excel", "en": "Excel" },
+  "icon": "table_chart",
+  "category": "file",
+  "processes": ["excel.exe"],
+  "shortcuts": [
+    {
+      "id": "x1",
+      "name": { "es": "Autosuma", "en": "AutoSum" },
+      "icon": "functions",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["alt", "char:="] }
+    },
+    {
+      "id": "x2",
+      "name": { "es": "Fecha hoy", "en": "Today" },
+      "icon": "calendar_today",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["ctrl", "char:;"] }
+    },
+    {
+      "id": "x3",
+      "name": { "es": "Filtro", "en": "Filter" },
+      "icon": "filter_alt",
+      "category": "sel",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "l"] }
+    },
+    {
+      "id": "x4",
+      "name": { "es": "Insertar fila", "en": "Insert row" },
+      "icon": "add_row_below",
+      "category": "nav",
+      "action": { "type": "tap", "keys": ["ctrl", "char:+"] }
+    },
+    {
+      "id": "x5",
+      "name": { "es": "Porcentaje", "en": "Percent" },
+      "icon": "percent",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "shift", "char:%"] }
+    },
+    {
+      "id": "x6",
+      "name": { "es": "Editar celda", "en": "Edit cell" },
+      "icon": "edit",
+      "category": "edit",
+      "action": { "type": "tap", "keys": ["f2"] }
+    },
+    {
+      "id": "x7",
+      "name": { "es": "Crear tabla", "en": "Make table" },
+      "icon": "table",
+      "category": "fmt",
+      "action": { "type": "tap", "keys": ["ctrl", "t"] }
+    },
+    {
+      "id": "x8",
+      "name": { "es": "Guardar", "en": "Save" },
+      "icon": "save",
+      "category": "file",
+      "action": { "type": "tap", "keys": ["ctrl", "g"], "variants": { "en": ["ctrl", "s"] } }
+    },
+    {
+      "id": "x9",
+      "name": { "es": "Hoja sig.", "en": "Next sheet" },
+      "icon": "tab",
+      "category": "win",
+      "action": { "type": "tap", "keys": ["ctrl", "pagedown"] }
+    }
+  ]
+}
