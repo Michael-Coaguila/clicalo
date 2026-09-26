@@ -35,4 +35,18 @@ internal static class Descriptors
             + "shows the window through the activating path of WPF.",
         helpLinkUri: HelpBase + "clc0001"
     );
+
+    // ---- CLC0003 · Privacy (LOG-001) -------------------------------------------------------------------------
+
+    public static readonly DiagnosticDescriptor SensitiveData = new(
+        DiagnosticIds.SensitiveData,
+        "Sensitive values never reach logs or exceptions",
+        "'{0}' has the sensitive type '{1}' and must not reach '{2}'; log an identifier or a length instead (LOG-001)",
+        DiagnosticCategories.Privacy,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Values whose type carries [Sensitive] (SecretText, Sensitive<T>, window titles, searches, keys) must not be passed, "
+            + "interpolated or concatenated into logging APIs, trace and ETW sinks, or exception constructors.",
+        helpLinkUri: HelpBase + "clc0003"
+    );
 }
