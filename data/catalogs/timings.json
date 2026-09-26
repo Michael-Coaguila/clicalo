@@ -323,6 +323,29 @@
           "description": "Period of the check that re-applies WS_EX_NOACTIVATE and topmost to every surface.",
           "req": ["REG-01"],
           "source": "blueprint §3.5"
+        },
+        "RestoreRetryDelay": {
+          "duration": "50ms",
+          "description": "Wait before the single retry when giving the foreground back is not verified by GetForegroundWindow. Provisional until spike S4 measures it.",
+          "req": ["BUS-002", "CCM-004"],
+          "source": "blueprint §3.6"
+        },
+        "RightsHotkeyTimeout": {
+          "duration": "500ms",
+          "description": "Longest wait for WM_HOTKEY after injecting the internal rights chord (step 2 of the ladder for UI Automation origins). Provisional until spike S4 measures it.",
+          "req": ["BUS-002"],
+          "source": "blueprint §3.6"
+        }
+      }
+    },
+    "Windowing": {
+      "description": "Non-activatable surfaces and ActivationGuard.",
+      "entries": {
+        "ViolationRestoreBudget": {
+          "duration": "200ms",
+          "description": "After an activation without a lease, the previous external foreground must be back within this time (ActivationGuardNegativeTests, spike S1).",
+          "req": ["REG-01"],
+          "source": "blueprint §3.5"
         }
       }
     },
