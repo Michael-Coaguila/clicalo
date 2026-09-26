@@ -4,16 +4,18 @@ using Clicalo.TestKit.Windows.Input;
 namespace Clicalo.Platform.IntegrationTests.Injection;
 
 /// <summary>
-/// The test injector's safety rules, checked without a desktop and without sending anything: every case below is
-/// refused before <c>SendInput</c> is called.
+/// The test injector's safety rules, checked without a desktop. <c>SendInput</c> is replaced by a recorder, so even
+/// a broken guard could never type into the foreground window of the machine running the tests.
 /// </summary>
 public sealed class InjectorSafetyTests
 {
+    private readonly List<IReadOnlyList<KeyStroke>> _handedToSendInput = [];
+
     [Fact]
     public void A_window_that_is_not_in_the_foreground_is_refused_without_injecting()
     {
         // The desktop root window exists in every session and is never the foreground window.
-        var injector = new TestKeyboardInjector(ForegroundWindows.DesktopWindow);
+        var injector = CreateInjector(ForegroundWindows.DesktopWindow);
 
         var refusal = Should.Throw<InjectionRefusedException>(() =>
             injector.Send(KeyStrokes.Chord(VirtualKeyCode.A))
@@ -22,12 +24,13 @@ public sealed class InjectorSafetyTests
         refusal.Message.ShouldContain("not in the foreground");
         refusal.Message.ShouldContain("Nothing was injected");
         injector.SentBatches.ShouldBe(0);
+        _handedToSendInput.ShouldBeEmpty();
     }
 
     [Fact]
     public void A_window_that_does_not_exist_is_refused_without_injecting()
     {
-        var injector = new TestKeyboardInjector(0x7FFF_FFF0);
+        var injector = CreateInjector(0x7FFF_FFF0);
 
         var refusal = Should.Throw<InjectionRefusedException>(() =>
             injector.Send(KeyStrokes.Chord(VirtualKeyCode.A))
@@ -35,6 +38,7 @@ public sealed class InjectorSafetyTests
 
         refusal.Message.ShouldContain("does not exist");
         injector.SentBatches.ShouldBe(0);
+        _handedToSendInput.ShouldBeEmpty();
     }
 
     [Fact]
@@ -44,12 +48,57 @@ public sealed class InjectorSafetyTests
     [Fact]
     public void An_unbalanced_batch_is_refused_before_the_foreground_is_even_checked()
     {
-        var injector = new TestKeyboardInjector(ForegroundWindows.DesktopWindow);
+        var injector = CreateInjector(ForegroundWindows.DesktopWindow);
 
-        Should.Throw<ArgumentException>(() =>
-            injector.Send([KeyStroke.Press(VirtualKeyCode.LeftControl)])
-        );
+        Should
+            .Throw<ArgumentException>(() =>
+                injector.Send([KeyStroke.Press(VirtualKeyCode.LeftControl)])
+            )
+            .Message.ShouldContain("leaves 1 key(s) down");
         injector.SentBatches.ShouldBe(0);
+        _handedToSendInput.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Virtual_key_strokes_get_the_informative_scan_code_and_extended_flag_of_the_target_layout()
+    {
+        var injector = CreateInjector(ForegroundWindows.DesktopWindow);
+
+        var resolved = injector.Resolve(
+            KeyStrokes.Chord(
+                VirtualKeyCode.LeftControl,
+                VirtualKeyCode.RightControl,
+                VirtualKeyCode.Left
+            )
+        );
+
+        // Ctrl and the arrow keys have the same scan codes in every layout.
+        resolved
+            .Select(stroke =>
+                (stroke.VirtualKey, stroke.ScanCode, stroke.IsExtended, stroke.IsKeyUp)
+            )
+            .ShouldBe([
+                (VirtualKeyCode.LeftControl, (ushort)0x1D, false, false),
+                (VirtualKeyCode.RightControl, (ushort)0x1D, true, false),
+                (VirtualKeyCode.Left, (ushort)0x4B, true, false),
+                (VirtualKeyCode.Left, (ushort)0x4B, true, true),
+                (VirtualKeyCode.RightControl, (ushort)0x1D, true, true),
+                (VirtualKeyCode.LeftControl, (ushort)0x1D, false, true),
+            ]);
+        resolved.ShouldAllBe(stroke => !stroke.IsScanCodeMode && !stroke.IsUnicode);
+    }
+
+    [Fact]
+    public void Scan_code_and_Unicode_strokes_are_sent_as_given()
+    {
+        var injector = CreateInjector(ForegroundWindows.DesktopWindow);
+        KeyStroke[] batch =
+        [
+            .. KeyStrokes.ScanCodeTap(0x4B, extended: true),
+            .. KeyStrokes.UnicodeText("ñ"),
+        ];
+
+        injector.Resolve(batch).ShouldBe(batch);
     }
 
     [Fact]
@@ -160,4 +209,7 @@ public sealed class InjectorSafetyTests
             KeyStroke.PressScanCode(0xE04B, extended: true)
         );
     }
+
+    private TestKeyboardInjector CreateInjector(nint targetWindow) =>
+        new(targetWindow, _handedToSendInput.Add);
 }

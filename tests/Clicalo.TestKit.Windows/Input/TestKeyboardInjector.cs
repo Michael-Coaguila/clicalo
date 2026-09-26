@@ -39,10 +39,18 @@ public sealed class TestKeyboardInjector
         (VIRTUAL_KEY.VK_RWIN, "right Windows"),
     ];
 
+    private readonly Action<IReadOnlyList<KeyStroke>> _sendInput;
     private int _sentBatches;
 
     /// <summary>Creates an injector bound to <paramref name="targetWindow"/>.</summary>
     public TestKeyboardInjector(nint targetWindow)
+        : this(targetWindow, SendInputBatch) { }
+
+    /// <summary>
+    /// Creates an injector whose final step is <paramref name="sendInput"/> instead of <c>SendInput</c>. Used by the
+    /// injector's own tests, so that a broken guard can never type into the developer's foreground window.
+    /// </summary>
+    internal TestKeyboardInjector(nint targetWindow, Action<IReadOnlyList<KeyStroke>> sendInput)
     {
         if (targetWindow == 0)
         {
@@ -50,6 +58,7 @@ public sealed class TestKeyboardInjector
         }
 
         TargetWindow = targetWindow;
+        _sendInput = sendInput;
     }
 
     /// <summary>Creates an injector bound to the window of <paramref name="probe"/>.</summary>
@@ -59,7 +68,7 @@ public sealed class TestKeyboardInjector
     /// <summary>The only window this injector sends input to.</summary>
     public nint TargetWindow { get; }
 
-    /// <summary>Number of batches handed to <c>SendInput</c> so far.</summary>
+    /// <summary>Number of batches that passed every check and were handed to <c>SendInput</c> so far.</summary>
     public int SentBatches => Volatile.Read(ref _sentBatches);
 
     /// <summary>
@@ -106,31 +115,11 @@ public sealed class TestKeyboardInjector
         EnsureNoModifierHeld();
 
         var resolved = Resolve(batch);
-        var inputs = new INPUT[resolved.Count];
-        for (var i = 0; i < resolved.Count; i++)
-        {
-            inputs[i] = ToInput(resolved[i]);
-        }
 
         // Last check immediately before the call keeps the window for a foreground change as small as possible.
         EnsureTargetOwnsForeground();
-        uint inserted;
-        unsafe
-        {
-            inserted = PInvoke.SendInput(inputs, sizeof(INPUT));
-        }
-
-        var error = Marshal.GetLastPInvokeError();
         Interlocked.Increment(ref _sentBatches);
-        if (inserted != inputs.Length)
-        {
-            throw new InjectionRefusedException(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"SendInput inserted {inserted} of {inputs.Length} events (Win32 error {error}). Input is blocked when the target runs at a higher integrity level (UIPI) or the desktop is locked."
-                )
-            );
-        }
+        _sendInput(resolved);
 
         if (!ForegroundWindows.IsForeground(TargetWindow))
         {
@@ -138,6 +127,33 @@ public sealed class TestKeyboardInjector
                 "The foreground changed while the batch was being sent, so part of it may have reached another window: "
                     + ForegroundWindows.Describe()
                     + ". The batch was balanced, so no key was left down."
+            );
+        }
+    }
+
+    /// <summary>Sends <paramref name="strokes"/> with one atomic <c>SendInput</c> call.</summary>
+    private static void SendInputBatch(IReadOnlyList<KeyStroke> strokes)
+    {
+        var inputs = new INPUT[strokes.Count];
+        for (var i = 0; i < strokes.Count; i++)
+        {
+            inputs[i] = ToInput(strokes[i]);
+        }
+
+        uint inserted;
+        unsafe
+        {
+            inserted = PInvoke.SendInput(inputs, sizeof(INPUT));
+        }
+
+        if (inserted != inputs.Length)
+        {
+            var error = Marshal.GetLastPInvokeError();
+            throw new InjectionRefusedException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"SendInput inserted {inserted} of {inputs.Length} events (Win32 error {error}). Input is blocked when the target runs at a higher integrity level (UIPI) or the desktop is locked."
+                )
             );
         }
     }
