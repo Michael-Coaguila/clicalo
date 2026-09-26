@@ -43,7 +43,7 @@ internal static class Messages
     public const string BuildReleasePurpose = "compilación Release sin advertencias";
     public const string TestPurpose = "pruebas sin las de escritorio";
     public const string DeskPurpose = "pruebas de escritorio";
-    public const string I18nPurpose = "comprobación de textos (i18n-check)";
+    public const string I18nPurpose = "comprobación de textos (i18n-check e i18n-import --check)";
     public const string CleanPurpose = "borrado de artifacts";
     public const string GitPurpose = "configuración de git, DCO y firma";
 
@@ -163,6 +163,12 @@ internal static class Messages
     public const string I18nSection = "Salida de i18n-check";
     public const string I18nHint =
         "Todo texto de producto vive en data/i18n/strings.es.json y strings.en.json con las mismas claves.";
+    public const string I18nImportFailed =
+        "data/i18n no coincide con una importación limpia (i18n-import --check).";
+    public const string I18nImportSection = "Salida de i18n-import --check";
+    public const string I18nImportHint =
+        "Declara los textos nuevos en data/i18n/handoff-import.json y vuelve a importar con "
+        + "dotnet run --project tools/Clicalo.DevCli -- i18n-import. Ver docs/guides/i18n.md.";
 
     public const string CleanFailed = "No se pudieron borrar algunos archivos de artifacts.";
     public const string CleanSection = "Rutas que siguen en uso";

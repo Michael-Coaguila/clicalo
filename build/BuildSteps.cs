@@ -288,43 +288,56 @@ internal sealed class BuildSteps(RepoLayout layout, RunContext context)
             }
         );
 
-    /// <summary>Runs the i18n verb of the developer CLI (implemented by the localization work package).</summary>
+    /// <summary>
+    /// Runs the i18n verbs of the developer CLI: <c>i18n-check</c> (the generator's validation, CLDR rules and unused
+    /// keys) and <c>i18n-import --check</c> (data/i18n is exactly what the reviewed recipe produces).
+    /// </summary>
     public Task I18nCheckAsync() =>
         context.Steps.RunAsync(
             "i18n",
             Messages.I18nPurpose,
             async () =>
             {
-                string[] args =
-                [
-                    "run",
-                    "--project",
-                    Path.Combine("tools", "Clicalo.DevCli"),
-                    "--",
-                    "i18n-check",
-                ];
-                var result = await ReadAsync(args);
-                if (result.ExitCode != 0)
-                {
-                    throw new StepFailedException(
-                        new FailureDetails
-                        {
-                            Summary = Messages.I18nFailed,
-                            Command = CommandRunner.Display(Dotnet, args),
-                            ExitCode = result.ExitCode,
-                            Sections =
-                            [
-                                new ReportSection(
-                                    Messages.I18nSection,
-                                    Markdown.CodeBlock(result.Combined)
-                                ),
-                            ],
-                            Hint = Messages.I18nHint,
-                        }
-                    );
-                }
+                await RunDevCliAsync(
+                    ["i18n-check"],
+                    Messages.I18nFailed,
+                    Messages.I18nSection,
+                    Messages.I18nHint
+                );
+                await RunDevCliAsync(
+                    ["i18n-import", "--check"],
+                    Messages.I18nImportFailed,
+                    Messages.I18nImportSection,
+                    Messages.I18nImportHint
+                );
             }
         );
+
+    private async Task RunDevCliAsync(string[] verb, string summary, string section, string hint)
+    {
+        string[] args =
+        [
+            "run",
+            "--project",
+            Path.Combine("tools", "Clicalo.DevCli"),
+            "--",
+            .. verb,
+        ];
+        var result = await ReadAsync(args);
+        if (result.ExitCode != 0)
+        {
+            throw new StepFailedException(
+                new FailureDetails
+                {
+                    Summary = summary,
+                    Command = CommandRunner.Display(Dotnet, args),
+                    ExitCode = result.ExitCode,
+                    Sections = [new ReportSection(section, Markdown.CodeBlock(result.Combined))],
+                    Hint = hint,
+                }
+            );
+        }
+    }
 
     /// <summary>Empties <c>artifacts/</c>, keeping the running orchestrator's own folders.</summary>
     public Task CleanAsync(IReadOnlyCollection<string> keep) =>
