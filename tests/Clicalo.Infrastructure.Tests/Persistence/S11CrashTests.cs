@@ -12,8 +12,8 @@ using Microsoft.Extensions.Time.Testing;
 namespace Clicalo.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// S11 Â· hostile persistence, crash half: the process dies at every point of the write protocol (the
-/// <see cref="CrashingFileSystem"/> enumerates them) during a sequence of saves; after the Â«restartÂ» the document is the
+/// S11 · hostile persistence, crash half: the process dies at every point of the write protocol (the
+/// <see cref="CrashingFileSystem"/> enumerates them) during a sequence of saves; after the «restart» the document is the
 /// last saved version or the one being saved, never lost, never reset to factory data and never quarantined, and saving
 /// goes on normally (docs/testing/spikes/S11.md).
 /// </summary>
