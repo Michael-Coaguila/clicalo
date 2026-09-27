@@ -258,11 +258,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Track(rights.Dispose);
         var registered = rights.RegisterAsync();
         var relay = services.GetRequiredService<EngineObserverRelay>();
+        var backups = services.GetRequiredService<BackupService>();
         var session = await SessionKeyRelease
             .StartAsync(
                 sysEvents,
                 services.GetRequiredService<IEngineInbox>(),
-                () => Shutdown.SuspendRelease.Wait(relay),
+                () => BeforeSuspend(relay, scheduler, backups),
                 _time
             )
             .ConfigureAwait(true);
@@ -296,6 +297,30 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         integrity.Start();
         await StartTrayAsync(services).ConfigureAwait(true);
         StartPipe(services, ui);
+    }
+
+    /// <summary>
+    /// <c>PBT_APMSUSPEND</c>, answered synchronously on the SysEvents thread (blueprint §6.4, §7.6): first the release
+    /// the engine confirms (<c>Timings.KeySafety.SuspendReleaseWait</c>), then the flush of the document, the usage and
+    /// the queued backups (<c>Timings.App.SuspendFlushTimeout</c>), since the machine may sleep as soon as the message
+    /// returns and the battery may run out while it sleeps.
+    /// </summary>
+    private void BeforeSuspend(
+        EngineObserverRelay relay,
+        PersistenceScheduler scheduler,
+        BackupService backups
+    )
+    {
+        if (
+            !Shutdown.SuspendFlush.Run(
+                () => Shutdown.SuspendRelease.Wait(relay),
+                token => FlushAsync(scheduler, backups, token),
+                _time
+            )
+        )
+        {
+            LogSuspendFlushLate(_logger);
+        }
     }
 
     private PanelWindow BuildPanel(
@@ -758,6 +783,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "session.end_cancelled")]
     private static partial void LogSessionEndCancelled(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 15,
+        Level = LogLevel.Warning,
+        Message = "suspend.flush_late: the flush did not finish before the computer suspended"
+    )]
+    private static partial void LogSuspendFlushLate(ILogger logger);
 
     [LoggerMessage(
         EventId = 14,

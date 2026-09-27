@@ -361,6 +361,12 @@
           "req": ["DAT-002", "REG-08"],
           "source": "blueprint §6.4"
         },
+        "SuspendFlushTimeout": {
+          "duration": "1500ms",
+          "description": "Longest flush of the document, the usage and the queued backups when the computer suspends, after the release (Timings.KeySafety.SuspendReleaseWait): Windows allows about two seconds for PBT_APMSUSPEND, and the battery may run out while it sleeps.",
+          "req": ["DAT-002", "REG-08", "SEG-006"],
+          "source": "blueprint §6.4, §7.6"
+        },
         "SentinelLateThreshold": {
           "duration": "200ms",
           "description": "A guardian that is not running this long after the first frame is logged as startup.sentinel_late (the accepted gap of blueprint §3.1 and §15.2).",
