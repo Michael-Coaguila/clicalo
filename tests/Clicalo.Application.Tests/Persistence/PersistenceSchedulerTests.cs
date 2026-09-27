@@ -295,6 +295,80 @@ public sealed class PersistenceSchedulerTests
     }
 
     [Fact]
+    [Trait("Req", "REG-08")]
+    public async Task A_flush_its_limit_cuts_leaves_the_document_to_the_autosave()
+    {
+        await using var rig = new SchedulerRig();
+        rig.Documents.LockedUntil = DateTimeOffset.MaxValue;
+        await rig.ChangeAsync(DocumentSlices.Library);
+        using var limit = new CancellationTokenSource();
+
+        // The suspend's flush: the writer is still retrying a lock (OneDrive, an antivirus) when the limit comes.
+        var flush = rig.Scheduler.FlushAsync(limit.Token);
+        rig.Documents.IsWaitingOnClock.ShouldBeTrue();
+        await limit.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(flush);
+
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Pending);
+        rig.Documents.LockedUntil = DateTimeOffset.MinValue;
+        await rig.AdvanceAsync(TimeSpan.FromSeconds(10));
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Saved);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-08")]
+    public async Task A_flush_its_limit_cuts_leaves_the_document_and_the_usage_to_the_exit_flush()
+    {
+        var rig = new SchedulerRig();
+        rig.Documents.LockedUntil = DateTimeOffset.MaxValue;
+        await rig.ChangeAsync(DocumentSlices.Library);
+        await rig.ChangeAsync(DocumentSlices.FrequentsUsage, UsageVersion(rig, marks: 2));
+        using var limit = new CancellationTokenSource();
+        var flush = rig.Scheduler.FlushAsync(limit.Token);
+        await limit.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(flush);
+
+        await rig.DisposeAsync();
+
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+        rig.Usage.Saves.Single().Usage.Entries.Values.Single().Count.ShouldBe(2);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-08")]
+    [Trait("Req", "FRE-002")]
+    public async Task A_flush_its_limit_cuts_while_writing_the_usage_leaves_it_to_the_autosave_and_the_exit_flush()
+    {
+        var rig = new SchedulerRig();
+        await rig.ChangeAsync(DocumentSlices.FrequentsUsage, UsageVersion(rig, marks: 2));
+        rig.Usage.Stall = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using var limit = new CancellationTokenSource();
+        var flush = rig.Scheduler.FlushAsync(limit.Token);
+        await limit.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(flush);
+        rig.Usage.Stall = null;
+
+        await rig.AdvanceAsync(TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(1));
+        rig.Usage.Saves.Single().Usage.Entries.Values.Single().Count.ShouldBe(2);
+        await rig.ChangeAsync(DocumentSlices.FrequentsUsage, UsageVersion(rig, marks: 3));
+        rig.Usage.Stall = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using var again = new CancellationTokenSource();
+        var cut = rig.Scheduler.FlushAsync(again.Token);
+        await again.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(cut);
+        rig.Usage.Stall = null;
+        await rig.DisposeAsync();
+
+        rig.Usage.Saves.Count.ShouldBe(2);
+        rig.Usage.Saves[^1].Usage.Entries.Values.Single().Count.ShouldBe(3);
+    }
+
+    [Fact]
     [Trait("Req", "DAT-006")]
     public async Task The_copy_before_a_destructive_change_is_written_at_once_and_before_the_document()
     {

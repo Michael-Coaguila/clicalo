@@ -252,6 +252,10 @@ public sealed partial class PersistenceScheduler : IDisposable
     /// sign-out, exit, elevated relaunch and before installing an update (§6.4).
     /// </summary>
     /// <param name="cancellationToken">Bounded by the caller (for example <c>Timings.App.HandoverFlushTimeout</c>).</param>
+    /// <remarks>
+    /// A flush its token cuts (the limit of the suspend, REG-08) leaves what it did not write pending, with its timers
+    /// armed again: the autosave writes it after the resume, and the exit flush if the user leaves first.
+    /// </remarks>
     public async Task FlushAsync(CancellationToken cancellationToken)
     {
         lock (_gate)
@@ -260,17 +264,26 @@ public sealed partial class PersistenceScheduler : IDisposable
             Disarm(_usageTimer);
         }
 
-        await _io.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            _ = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
-            await SaveDocumentAsync(retryAtOnce: false, cancellationToken).ConfigureAwait(false);
-            await SaveUsageAsync(cancellationToken).ConfigureAwait(false);
-            PublishStatus();
+            await _io.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _ = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
+                await SaveDocumentAsync(retryAtOnce: false, cancellationToken)
+                    .ConfigureAwait(false);
+                await SaveUsageAsync(cancellationToken).ConfigureAwait(false);
+                PublishStatus();
+            }
+            finally
+            {
+                _io.Release();
+            }
         }
-        finally
+        catch (OperationCanceledException)
         {
-            _io.Release();
+            RearmPending();
+            throw;
         }
     }
 
@@ -289,6 +302,45 @@ public sealed partial class PersistenceScheduler : IDisposable
     {
         var left = maxLatency - _time.GetElapsedTime(since, now);
         return left < debounce ? (left < TimeSpan.Zero ? TimeSpan.Zero : left) : debounce;
+    }
+
+    /// <summary>
+    /// After a flush was cut: the timers <see cref="FlushAsync"/> disarmed are armed again for what is still pending
+    /// (a save the loop is running re-arms its own when it ends).
+    /// </summary>
+    private void RearmPending()
+    {
+        lock (_gate)
+        {
+            var now = _time.GetTimestamp();
+            if (_documentDirty)
+            {
+                Arm(
+                    _documentTimer,
+                    _retryCadence
+                        ? Timings.Persistence.WriteRetryInterval
+                        : DueIn(
+                            now,
+                            _documentDirtySince,
+                            Timings.Persistence.DocumentSaveDebounce,
+                            Timings.Persistence.DocumentSaveMaxLatency
+                        )
+                );
+            }
+
+            if (_usageDirty)
+            {
+                Arm(
+                    _usageTimer,
+                    DueIn(
+                        now,
+                        _usageDirtySince,
+                        Timings.Persistence.UsageSaveDebounce,
+                        Timings.Persistence.UsageSaveMaxLatency
+                    )
+                );
+            }
+        }
     }
 
     private static void Arm(ITimer timer, TimeSpan due) =>
@@ -348,6 +400,7 @@ public sealed partial class PersistenceScheduler : IDisposable
     private async Task SaveDocumentAsync(bool retryAtOnce, CancellationToken cancellationToken)
     {
         UserDocument document;
+        long dirtySince;
         var started = _time.GetTimestamp();
         lock (_gate)
         {
@@ -357,30 +410,46 @@ public sealed partial class PersistenceScheduler : IDisposable
             }
 
             document = _latest;
+            dirtySince = _documentDirtySince;
             _documentDirty = false;
             Disarm(_documentTimer);
         }
 
         Result<SaveReceipt> result;
-        var snapshots = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
-        if (snapshots.IsFailure)
+        try
         {
-            // DAT-006: the document that follows a destructive change waits for the copy of the state before it.
-            result = Results.Fail<SaveReceipt>(snapshots.Failure);
+            var snapshots = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
+            if (snapshots.IsFailure)
+            {
+                // DAT-006: the document that follows a destructive change waits for the copy of the state before it.
+                result = Results.Fail<SaveReceipt>(snapshots.Failure);
+            }
+            else
+            {
+                try
+                {
+                    result = await _documents
+                        .SaveAsync(document, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    LogSaveFault(_logger, ex);
+                    result = Results.Fail<SaveReceipt>(Unexpected());
+                }
+            }
         }
-        else
+        catch (OperationCanceledException)
         {
-            try
+            // Cut before it was written (the limit of a flush, the stop of the loop): still pending, and pending since
+            // before any change that arrived meanwhile (REG-08).
+            lock (_gate)
             {
-                result = await _documents
-                    .SaveAsync(document, cancellationToken)
-                    .ConfigureAwait(false);
+                _documentDirty = true;
+                _documentDirtySince = dirtySince;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                LogSaveFault(_logger, ex);
-                result = Results.Fail<SaveReceipt>(Unexpected());
-            }
+
+            throw;
         }
 
         lock (_gate)
@@ -450,6 +519,7 @@ public sealed partial class PersistenceScheduler : IDisposable
     private async Task SaveUsageAsync(CancellationToken cancellationToken)
     {
         UserDocument document;
+        long dirtySince;
         lock (_gate)
         {
             if (!_usageDirty || _latest is null)
@@ -458,6 +528,7 @@ public sealed partial class PersistenceScheduler : IDisposable
             }
 
             document = _latest;
+            dirtySince = _usageDirtySince;
             _usageDirty = false;
             Disarm(_usageTimer);
         }
@@ -472,6 +543,17 @@ public sealed partial class PersistenceScheduler : IDisposable
                     cancellationToken
                 )
                 .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cut before it was written: still pending (REG-08).
+            lock (_gate)
+            {
+                _usageDirty = true;
+                _usageDirtySince = dirtySince;
+            }
+
+            throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
