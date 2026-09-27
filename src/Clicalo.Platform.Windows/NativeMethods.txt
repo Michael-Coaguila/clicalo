@@ -99,3 +99,9 @@ GetCurrentProcess
 WTSRegisterSessionNotification
 WTSUnRegisterSessionNotification
 NOTIFY_FOR_THIS_SESSION
+
+// ---- SingleInstance: who is at the other end of the single-instance pipe (blueprint §3.4, ADR-0010) ----
+GetNamedPipeServerProcessId
+GetNamedPipeClientProcessId
+GetNamedPipeClientSessionId
+TOKEN_USER

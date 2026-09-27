@@ -1,8 +1,8 @@
-using Clicalo.App.Interop;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Primitives;
+using Clicalo.Platform.Windows.SingleInstance;
 
 namespace Clicalo.App.Composition;
 
@@ -22,7 +22,7 @@ internal sealed class ForegroundDescriber(Func<uint, KeyboardLayoutSnapshot> lay
     {
         ArgumentNullException.ThrowIfNull(foreground);
         return new ForegroundDetails(
-            new ProcessName(ProcessImages.FileNameOf(foreground.AppProcessId) ?? string.Empty),
+            new ProcessName(ProcessIdentity.ImageFileName(foreground.AppProcessId) ?? string.Empty),
             layouts(foreground.ThreadId)
         );
     }

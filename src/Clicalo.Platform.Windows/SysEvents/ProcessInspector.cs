@@ -1,50 +1,24 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Clicalo.Application.Ports;
+using Clicalo.Platform.Windows.SingleInstance;
 using Windows.Win32;
 using Windows.Win32.Foundation;
-using Windows.Win32.Security;
-using Windows.Win32.System.Threading;
 
 namespace Clicalo.Platform.Windows.SysEvents;
 
 /// <summary>
 /// What <see cref="ForegroundMonitor"/> needs to know about the process behind a window (blueprint §7.9): its image
-/// name, the real app behind <c>ApplicationFrameHost.exe</c>, and whether it runs elevated. Every query uses
-/// <c>PROCESS_QUERY_LIMITED_INFORMATION</c> and answers "unknown" instead of failing (EC-PER-03).
+/// name, the real app behind <c>ApplicationFrameHost.exe</c>, and whether it runs elevated. The image and the token are
+/// read by <see cref="ProcessIdentity"/> with <c>PROCESS_QUERY_LIMITED_INFORMATION</c>; every query answers "unknown"
+/// instead of failing (EC-PER-03).
 /// </summary>
 internal static unsafe class ProcessInspector
 {
     private const string FrameHostImage = "ApplicationFrameHost.exe";
-    private const int MaxPath = 1024;
 
     /// <summary>The file name of the process image (<c>notepad.exe</c>), or null when it cannot be read.</summary>
-    public static string? ImageFileName(uint processId)
-    {
-        var process = Open(processId);
-        if (process.IsNull)
-        {
-            return null;
-        }
-
-        try
-        {
-            var buffer = stackalloc char[MaxPath];
-            var length = (uint)MaxPath;
-            return PInvoke.QueryFullProcessImageName(
-                process,
-                PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32,
-                new PWSTR(buffer),
-                &length
-            )
-                ? Path.GetFileName(new string(buffer, 0, (int)length))
-                : null;
-        }
-        finally
-        {
-            _ = PInvoke.CloseHandle(process);
-        }
-    }
+    public static string? ImageFileName(uint processId) => ProcessIdentity.ImageFileName(processId);
 
     /// <summary>True when <paramref name="imageFileName"/> is the host of Store app frames.</summary>
     public static bool IsFrameHost(string? imageFileName) =>
@@ -62,80 +36,13 @@ internal static unsafe class ProcessInspector
     }
 
     /// <summary>Whether the process runs at High integrity or above; unknown when its token cannot be read.</summary>
-    public static ProcessElevation Elevation(uint processId)
-    {
-        var process = Open(processId);
-        if (process.IsNull)
+    public static ProcessElevation Elevation(uint processId) =>
+        ProcessIdentity.IntegrityLevel(processId) switch
         {
-            return ProcessElevation.Unknown;
-        }
-
-        HANDLE token = default;
-        try
-        {
-            if (!PInvoke.OpenProcessToken(process, TOKEN_ACCESS_MASK.TOKEN_QUERY, &token))
-            {
-                return ProcessElevation.Unknown;
-            }
-
-            uint needed = 0;
-            _ = PInvoke.GetTokenInformation(
-                token,
-                TOKEN_INFORMATION_CLASS.TokenIntegrityLevel,
-                null,
-                0,
-                &needed
-            );
-            if (needed == 0)
-            {
-                return ProcessElevation.Unknown;
-            }
-
-            var buffer = stackalloc byte[(int)needed];
-            if (
-                !PInvoke.GetTokenInformation(
-                    token,
-                    TOKEN_INFORMATION_CLASS.TokenIntegrityLevel,
-                    buffer,
-                    needed,
-                    &needed
-                )
-            )
-            {
-                return ProcessElevation.Unknown;
-            }
-
-            var sid = ((TOKEN_MANDATORY_LABEL*)buffer)->Label.Sid;
-            var count = *PInvoke.GetSidSubAuthorityCount(sid);
-            if (count == 0)
-            {
-                return ProcessElevation.Unknown;
-            }
-
-            var level = *PInvoke.GetSidSubAuthority(sid, (uint)(count - 1));
-            return level >= PInvoke.SECURITY_MANDATORY_HIGH_RID
-                ? ProcessElevation.Elevated
-                : ProcessElevation.NotElevated;
-        }
-        finally
-        {
-            if (!token.IsNull)
-            {
-                _ = PInvoke.CloseHandle(token);
-            }
-
-            _ = PInvoke.CloseHandle(process);
-        }
-    }
-
-    private static HANDLE Open(uint processId) =>
-        processId == 0
-            ? default
-            : PInvoke.OpenProcess(
-                PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION,
-                false,
-                processId
-            );
+            null => ProcessElevation.Unknown,
+            { } level when ProcessIdentity.IsElevated(level) => ProcessElevation.Elevated,
+            _ => ProcessElevation.NotElevated,
+        };
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
     private static BOOL FindHostedApp(HWND child, LPARAM state)

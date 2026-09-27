@@ -24,12 +24,12 @@ public static unsafe class KeyboardLayoutCapture
     /// <summary>The layout of the thread that owns <paramref name="window"/>.</summary>
     /// <param name="window">A window handle.</param>
     public static KeyboardLayoutSnapshot ForWindow(nint window) =>
-        Capture(
-            (nint)
-                PInvoke
-                    .GetKeyboardLayout(PInvoke.GetWindowThreadProcessId(new HWND(window), null))
-                    .Value
-        );
+        ForThread(PInvoke.GetWindowThreadProcessId(new HWND(window), null));
+
+    /// <summary>The layout of the thread <paramref name="threadId"/> (the foreground describer, §7.9).</summary>
+    /// <param name="threadId">A thread of the foreground window.</param>
+    public static KeyboardLayoutSnapshot ForThread(uint threadId) =>
+        Capture((nint)PInvoke.GetKeyboardLayout(threadId).Value);
 
     /// <summary>The layout of the foreground window's thread.</summary>
     public static KeyboardLayoutSnapshot ForForeground() =>
