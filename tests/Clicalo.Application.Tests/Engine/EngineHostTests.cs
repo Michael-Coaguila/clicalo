@@ -12,7 +12,7 @@ using Clicalo.Domain.Timing;
 namespace Clicalo.Application.Tests.Engine;
 
 /// <summary>
-/// The engine actor (blueprint Â§7.3, ADR-0004): two lanes, timers on the time provider, the heartbeat, coalesced
+/// The engine actor (blueprint §7.3, ADR-0004): two lanes, timers on the time provider, the heartbeat, coalesced
 /// snapshots, the host's own checks before a press, failures back to the reducer, the fence and the emergency path
 /// of an exception (NFR-005).
 /// </summary>
@@ -195,16 +195,11 @@ public sealed class EngineHostTests
 
         world.Handle(
             new EngineEvent.SessionResumed(),
-            new EngineEffect.TypeText(
-                new EffectId(1),
-                SecretText.From("Â¡Hola, Ã±andÃº!"),
-                3,
-                null
-            ),
+            new EngineEffect.TypeText(new EffectId(1), SecretText.From("¡Hola, ñandú!"), 3, null),
             new EngineEffect.ClipboardPaste(new EffectId(2), SecretText.From("pegar"), 3)
         );
 
-        world.Injector.Texts.ShouldBe(["Â¡Hola, Ã±andÃº!"]);
+        world.Injector.Texts.ShouldBe(["¡Hola, ñandú!"]);
         var paste = world.Shell.Pastes.ShouldHaveSingleItem();
         paste.Text.ShouldBe("pegar");
         paste.ReplyTo.ShouldBeSameAs(world.Host);

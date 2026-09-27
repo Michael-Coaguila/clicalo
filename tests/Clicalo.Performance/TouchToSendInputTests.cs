@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using Clicalo.TestKit.Windows.Input;
 using Clicalo.TestKit.Windows.Probe;
 
@@ -10,8 +9,10 @@ namespace Clicalo.Performance;
 /// to end on the published app: InputProbe in front, a synthetic finger taps the first tile of the running
 /// <c>Clicalo.exe</c> (the seed's «Copiar», Ctrl+C: harmless in the probe) and the probe records when the first key
 /// arrives. The tap and the probe use the same performance counter. It sends real keys, so it runs only in continuous
-/// integration; the finger may only touch Clicalo.exe's windows. On a hosted runner the p95 is a trend; with
-/// <c>CLICALO_PERF_GATE=1</c> (the touch laboratory) it gates.
+/// integration; the finger may only touch Clicalo.exe's windows. The p95 is judged against <c>TouchToSendInput</c> of
+/// <c>data/catalogs/budgets.json</c>, whose gate is <c>everyRun</c>: over 50 ms, every run fails (the <c>perf</c> job
+/// of <c>pr.yml</c> and <c>lab.yml</c> on the touch laboratory), and the numbers go to <c>touch-to-sendinput.json</c>
+/// and <c>touch-to-sendinput.md</c> in the artifacts.
 /// </summary>
 [Trait("Requires", "Desktop")]
 [Trait("Category", "Perf")]
@@ -19,7 +20,6 @@ namespace Clicalo.Performance;
 [Trait("Req", "EJE-003")]
 public sealed class TouchToSendInputTests
 {
-    private const int Taps = 20;
     private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>Longer than the debounce of every touch preset, so no tap of the series is ignored as a double.</summary>
@@ -33,6 +33,7 @@ public sealed class TouchToSendInputTests
             "It sends real keys (Ctrl+C) to InputProbe: only in continuous integration, never on a developer's machine."
         );
         var cancellationToken = TestContext.Current.CancellationToken;
+        var budget = PerformanceBudgets.Shared.TouchToSendInput;
         var variant =
             PerfEnvironment.Variants.FirstOrDefault(static v =>
                 string.Equals(v.Name, "sc-r2r", StringComparison.Ordinal)
@@ -47,7 +48,7 @@ public sealed class TouchToSendInputTests
         var latencies = new List<TimeSpan>();
         using (var finger = new SyntheticPointer(SyntheticPointerKind.Finger, [app.Process.Id]))
         {
-            for (var tap = 0; tap < Taps; tap++)
+            for (var tap = 0; tap < budget.MinSamples; tap++)
             {
                 await probe.EnsureForegroundAsync(EventTimeout, cancellationToken);
                 var cursor = probe.Cursor;
@@ -84,20 +85,27 @@ public sealed class TouchToSendInputTests
             }
         }
 
-        var p95 = Percentiles.Of(latencies, 0.95);
-        var summary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Touch → SendInput over {latencies.Count} taps ({variant.Name}): p50 {Percentiles.Of(latencies, 0.5).TotalMilliseconds:0.0} ms, p95 {p95.TotalMilliseconds:0.0} ms, max {latencies.Max().TotalMilliseconds:0.0} ms."
+        var report = TouchLatencyReport.Of(
+            MeasurementContext.Current(sendInput: true),
+            variant.Name,
+            latencies,
+            budget,
+            PerfEnvironment.Gate
         );
+        var folder = PerfEnvironment.ResultsDirectory;
         await File.WriteAllTextAsync(
-            Path.Combine(PerfEnvironment.ResultsDirectory, "touch-to-sendinput.txt"),
-            summary + "\n",
+            Path.Combine(folder, "touch-to-sendinput.json"),
+            report.Json(),
             cancellationToken
         );
-        TestContext.Current.TestOutputHelper?.WriteLine(summary);
-        if (PerfEnvironment.Gate)
-        {
-            p95.ShouldBeLessThanOrEqualTo(StartupBudgets.TouchToSendInputP95, summary);
-        }
+        await File.WriteAllTextAsync(
+            Path.Combine(folder, "touch-to-sendinput.md"),
+            report.Markdown(),
+            cancellationToken
+        );
+        TestContext.Current.TestOutputHelper?.WriteLine(report.Summary);
+
+        // The M2 exit criterion: over the budget, this run fails (the gate of the budget is «everyRun»).
+        report.Enforce();
     }
 }

@@ -103,11 +103,13 @@ jobs:
 
   perf:
     name: perf (x64)
-    # Spike S5 and the touch -> SendInput budget (blueprint §10.3, docs/testing/spikes/S5.md): a trend on hosted
-    # runners, never a required check; the touch lab repeats it with CLICALO_PERF_GATE=1.
+    # Spike S5 and the touch -> SendInput budget (blueprint §10.3, docs/testing/spikes/S5.md). It gates: each budget of
+    # data/catalogs/budgets.json says where it fails the run. The M2 exit criterion (touch -> SendInput p95 <= 50 ms)
+    # has the gate everyRun, so a slower run fails here; the S5 start-up budgets have the gate touchLab and are a trend
+    # here, until lab.yml repeats them on the touch lab with CLICALO_PERF_GATE=1. It never continues on error: the build
+    # tests (WorkflowGateTests) reject that.
     runs-on: windows-2025
     timeout-minutes: 45
-    continue-on-error: true
     env:
       CI: true
     steps:
@@ -132,6 +134,18 @@ jobs:
       - name: cl perf
         shell: pwsh
         run: .\cl.cmd perf
+
+      - name: Publish the numbers
+        if: always()
+        shell: pwsh
+        run: |
+          $reports = @(Get-ChildItem artifacts/perf -Filter *.md -File -ErrorAction SilentlyContinue | Sort-Object Name)
+          if ($reports.Count -eq 0) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Value "perf: no hay números (la medición no llegó a escribirlos)."
+          }
+          foreach ($report in $reports) {
+            Get-Content -Path $report.FullName -Raw -Encoding utf8 | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          }
 
       - name: Upload the numbers
         if: always()

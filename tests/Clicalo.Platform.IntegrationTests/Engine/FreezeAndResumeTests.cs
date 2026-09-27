@@ -5,8 +5,8 @@ using Clicalo.Platform.Core.Injection;
 namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
-/// «Congelar y reanudar» (blueprint §7.10, item 3; INV-11): 10 000 seeded scenarios freeze the engine thread at a
-/// random step, outside the gate or inside <c>SendInput</c> before or after it acts. The emergency then either takes
+/// «Congelar y reanudar» (blueprint §7.10, item 3; INV-11): a property over 10 000 seeded scenarios, reduced and kept as
+/// regressions when it fails (<see cref="Counterexamples"/>), freezes the engine thread at a random step, outside the gate or inside <c>SendInput</c> before or after it acts. The emergency then either takes
 /// the gate (outside): the generation goes up, nothing is left down, and when the old thread resumes with its pending
 /// effects every one of them is fenced; or it cannot (inside): it escalates to a restart, and the guardian's release
 /// of the ledger leaves nothing down. Real threads, the real gate, a model of the system.
@@ -18,40 +18,98 @@ public sealed class FreezeAndResumeTests
     /// <summary>The M2 criterion: 10 000 cases (blueprint §14, ADR-0004).</summary>
     public const int Cases = 10_000;
 
+    /// <summary>
+    /// A scenario: the seed of its operations, how many steps run before the freeze, where the engine freezes (0 outside
+    /// the gate, 1 inside SendInput before it acts, 2 after) and, outside, how many effects it had planned. A failure is
+    /// reduced to a shorter prefix and fewer effects.
+    /// </summary>
     [Fact]
     public void A_frozen_engine_never_presses_anything_after_the_emergency() =>
-        Parallel.For(
-            0,
+        Counterexamples.ForAll(
             Cases,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-            seed =>
+            static seed =>
             {
-                using var scenario = new LedgerScenario(seed);
                 var random = new Random(seed + 1_000_000);
-                var prefix = random.Next(60);
-                for (var step = 0; step < prefix; step++)
-                {
-                    scenario.Send(scenario.NextTransition(step), scenario.Generation);
-                }
-
-                switch (seed % 3)
-                {
-                    case 0:
-                        FrozenOutsideTheGate(scenario, random);
-                        break;
-                    default:
-                        FrozenInsideSendInput(scenario, afterApply: seed % 3 == 2);
-                        break;
-                }
-            }
+                return (
+                    Seed: seed,
+                    Prefix: random.Next(60),
+                    Where: seed % 3,
+                    Pending: 1 + random.Next(4)
+                );
+            },
+            static c => FrozenEngineIsFenced(c.Seed, c.Prefix, c.Where, c.Pending),
+            static c =>
+                Enumerable
+                    .Range(0, c.Prefix)
+                    .Select(prefix => c with { Prefix = prefix })
+                    .Concat(
+                        Enumerable
+                            .Range(1, c.Pending - 1)
+                            .Select(pending => c with { Pending = pending })
+                    ),
+            static c =>
+                string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"(seed {c.Seed}, prefix {c.Prefix}, {Place(c.Where)}, {c.Pending} pending)"
+                )
         );
 
-    private static void FrozenOutsideTheGate(LedgerScenario scenario, Random random)
+    /// <summary>
+    /// The reduced counterexamples of <see cref="A_frozen_engine_never_presses_anything_after_the_emergency"/>, kept as
+    /// regressions (blueprint §7.10, item 1): the values the failure printed, and what each one caught.
+    /// </summary>
+    [Theory]
+    [InlineData(
+        0,
+        2,
+        0,
+        2,
+        "InjectionGate.TryInject let an old generation through: the resumed zombie pressed after the emergency (INV-11)"
+    )]
+    public void A_reduced_counterexample_is_fenced(
+        int seed,
+        int prefix,
+        int where,
+        int pending,
+        string caught
+    )
+    {
+        _ = caught;
+        FrozenEngineIsFenced(seed, prefix, where, pending);
+    }
+
+    private static void FrozenEngineIsFenced(int seed, int prefix, int where, int pending)
+    {
+        using var scenario = new LedgerScenario(seed);
+        for (var step = 0; step < prefix; step++)
+        {
+            scenario.Send(scenario.NextTransition(step), scenario.Generation);
+        }
+
+        if (where == 0)
+        {
+            FrozenOutsideTheGate(scenario, pending);
+        }
+        else
+        {
+            FrozenInsideSendInput(scenario, afterApply: where == 2);
+        }
+    }
+
+    private static string Place(int where) =>
+        where switch
+        {
+            0 => "outside the gate",
+            1 => "inside SendInput, before it acts",
+            _ => "inside SendInput, after it acts",
+        };
+
+    private static void FrozenOutsideTheGate(LedgerScenario scenario, int planned)
     {
         // The old engine planned some effects and stopped before the gate.
         var old = scenario.Generation;
         var pending = new List<LedgerTransition>();
-        for (var i = 0; i < 1 + random.Next(4); i++)
+        for (var i = 0; i < planned; i++)
         {
             var transition = scenario.NextTransition(1_000 + i);
             scenario.Logical = transition.Ledger;

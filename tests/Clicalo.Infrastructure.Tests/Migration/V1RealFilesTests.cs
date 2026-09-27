@@ -8,7 +8,8 @@ namespace Clicalo.Infrastructure.Tests.Migration;
 /// <summary>
 /// Fidelity on the user's real files (catalog §7.1 and §7.5): every file is read with its real counts, every
 /// combination tokenizes without an empty or unresolved token, and the 8 + 2 special shortcuts get the meaning of
-/// their name. The full conversion (210 → 210) needs the domain package and runs once it is merged.
+/// their name. Every file also converts without losses (<see cref="Every_real_file_converts_without_losses"/>: the file in
+/// use, 14 profiles, 210 → 210 buttons; the other files and the two backups with their own counts).
 /// </summary>
 public sealed class V1RealFilesTests
 {

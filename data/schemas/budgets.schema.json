@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/budgets.schema.json",
+  "title": "Clícalo performance budgets",
+  "description": "The performance budgets of blueprint §10.3 that a measurement of tests/Clicalo.Performance enforces (NFR-001). Each budget names its statistic, its limit (exactly one value kind), where it fails the run and its requirement or source.",
+  "type": "object",
+  "required": ["catalogVersion", "budgets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "budgets": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+      "additionalProperties": { "$ref": "#/$defs/budget" }
+    }
+  },
+  "$defs": {
+    "budget": {
+      "type": "object",
+      "required": ["description", "statistic", "gate"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "description": "English sentence: what is measured, from which event to which event.",
+          "type": "string",
+          "minLength": 1
+        },
+        "statistic": {
+          "description": "How the sample is reduced before it is compared with the limit (nearest-rank percentiles).",
+          "enum": ["p50", "p95", "max"]
+        },
+        "duration": { "$ref": "common.schema.json#/$defs/duration" },
+        "bytes": { "type": "string", "pattern": "^[1-9][0-9]*(?:B|KiB|MiB|GiB)$" },
+        "minSamples": {
+          "description": "The fewest values the statistic may be computed from; a smaller sample fails the measurement.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "gate": {
+          "description": "everyRun: the budget fails every continuous-integration run that measures it (hosted runners and the touch laboratory). touchLab: it fails only on the touch laboratory (CLICALO_PERF_GATE=1) and is a trend elsewhere.",
+          "enum": ["everyRun", "touchLab"]
+        },
+        "req": {
+          "description": "Requirement identifiers of docs/requirements/catalog.md.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z]{3}-[0-9]{2,3}$" }
+        },
+        "source": { "description": "Blueprint section that sets the number.", "type": "string", "minLength": 1 }
+      },
+      "oneOf": [{ "required": ["duration"] }, { "required": ["bytes"] }],
+      "anyOf": [{ "required": ["req"] }, { "required": ["source"] }]
+    }
+  }
+}

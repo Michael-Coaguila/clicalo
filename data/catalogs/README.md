@@ -15,6 +15,7 @@ Datos versionados que describen teclas, acciones, iconos, tiempos y medidas de C
 | `touch-presets.json` | Presets del filtro táctil | Código generado: `TouchPresets` (`Clicalo.Domain.Catalog`) |
 | `sizes.json` | Medidas de los tamaños S, M y L y del resto del panel (docs/04) | Código generado: `PanelSizes`, `PanelSize` (`Clicalo.Domain.Catalog`) |
 | `timings.json` | Todos los tiempos y umbrales con nombre (NFR-020) | Código generado: `Timings.<Grupo>.<Entrada>` (`Clicalo.Domain.Timing`) |
+| `budgets.json` | Presupuestos de rendimiento del plano §10.3 que hace cumplir una medición: estadístico, límite y dónde hacen fallar la ejecución (`everyRun` en toda ejecución de la CI, `touchLab` solo en el equipo táctil) | Datos de las pruebas: `PerformanceBudgets` (`tests/Clicalo.Performance`) |
 
 ## Reglas
 

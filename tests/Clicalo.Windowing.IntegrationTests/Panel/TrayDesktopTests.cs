@@ -11,12 +11,16 @@ using FlaUI.UIA3;
 namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 
 /// <summary>
-/// The tray of M2 with InputProbe standing in for Notepad (blueprint §14, M2 exit criterion «prueba de bandeja»): with
-/// the app in front, the menu opens under a <c>TrayMenu</c> lease, an entry is chosen the way Voice access or Narrator
-/// choose it (UI Automation, no key injected), and the foreground goes back to the app before the command runs:
-/// «Soltar todo» reaches the engine as <see cref="EngineEvent.ReleaseAll"/>, «Ocultar panel» hides the panel and
-/// releases everything. The click on the notification area icon is replaced by a synthetic touch on the panel, which
-/// gives the process the same foreground right (blueprint §3.6, ladder step 1).
+/// The tray of M2 (blueprint §10.1 and §14, M2 exit criterion «prueba de bandeja con el Bloc de notas»): with an app in
+/// front, the menu opens under a <c>TrayMenu</c> lease, an entry is chosen the way Voice access or Narrator choose it
+/// (UI Automation, no key injected), and the foreground goes back to the app before the command runs: «Soltar todo»
+/// reaches the engine as <see cref="EngineEvent.ReleaseAll"/>, «Ocultar panel» hides the panel and releases everything.
+/// The app in front is the real Notepad in continuous integration
+/// (<see cref="Release_all_from_the_tray_menu_gives_the_foreground_back_to_notepad"/>) and InputProbe everywhere else.
+/// The click on the notification area icon is replaced by a synthetic touch on the panel, which gives the process the
+/// same foreground right (blueprint §3.6, ladder step 1), and the menu opens at that point: a hosted runner hides new
+/// icons in the overflow of the notification area, and clicking the taskbar would inject into Explorer
+/// (docs/testing/spikes/M2-ownership.md, «Criterios de salida»).
 /// </summary>
 [Trait("Requires", "Desktop")]
 [Collection(DesktopCollectionDefinition.Name)]
@@ -42,6 +46,48 @@ public sealed class TrayDesktopTests(PanelDesktopFixture fixture)
             .ShouldBe(new EngineEvent.ReleaseAll(ReleaseReason.User));
         fixture.Probe.IsForeground.ShouldBeTrue(
             "the lease gives the foreground back before the command runs"
+        );
+        fixture.Lab.Arbiter.Violations.ShouldBeEmpty();
+    }
+
+    [DesktopFact]
+    [Trait("Req", "SEG-003")]
+    public async Task Release_all_from_the_tray_menu_gives_the_foreground_back_to_notepad()
+    {
+        Assert.SkipUnless(
+            DesktopTestEnvironment.IsContinuousIntegration,
+            "It opens Notepad: only in continuous integration, never on a developer's machine."
+        );
+        _ = await fixture.PrepareAsync();
+        using var notepad = await NotepadSession.StartAsync(TestContext.Current.CancellationToken);
+        var notepadWindow = new Clicalo.Application.Ports.WindowToken(notepad.Window);
+
+        // Notepad in front, as the person left it: a tap on the panel gives this process the right to put it there.
+        await TapThePanelAsync();
+        await PanelDesktopFixture.WaitUntilAsync(
+            () => ForegroundWindows.TryBringToFront(notepad.Window),
+            "Notepad never reached the foreground; " + ForegroundWindows.Describe()
+        );
+        await PanelDesktopFixture.WaitUntilAsync(
+            () => fixture.Orchestrator.Current.Window == notepadWindow,
+            "The foreground monitor never verified Notepad as the external foreground."
+        );
+
+        // The tray right, then the menu: the lease must give the foreground back to Notepad before «Soltar todo» runs.
+        await TapThePanelAsync();
+        ForegroundWindows.Current.ShouldBe(notepad.Window, "a tap on the panel never activates it");
+        await fixture.Tray.UpdateStateAsync(panelVisible: true, anythingHeld: true);
+
+        var command = await ChooseAsync("Soltar todo");
+
+        command.ShouldBe(TrayCommand.ReleaseAll);
+        fixture
+            .Engine.Events.ShouldHaveSingleItem()
+            .ShouldBe(new EngineEvent.ReleaseAll(ReleaseReason.User));
+        ForegroundWindows.Current.ShouldBe(
+            notepad.Window,
+            "the lease gives the foreground back to Notepad before the command runs; "
+                + ForegroundWindows.Describe()
         );
         fixture.Lab.Arbiter.Violations.ShouldBeEmpty();
     }
@@ -80,6 +126,16 @@ public sealed class TrayDesktopTests(PanelDesktopFixture fixture)
     private async Task PrepareWithRightsAsync()
     {
         _ = await fixture.PrepareAsync();
+        await TapThePanelAsync();
+        fixture.Probe.IsForeground.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// A synthetic finger taps «Copiar» on the panel (this process's own window): the process gets the foreground right
+    /// a tray click would give it. The engine only records the tap, which is then forgotten; nothing is sent anywhere.
+    /// </summary>
+    private async Task TapThePanelAsync()
+    {
         var at = fixture.TileCenter(PanelTestData.Copy);
         using (var finger = PanelDesktopFixture.CreatePointer(SyntheticPointerKind.Finger))
         {
@@ -91,7 +147,12 @@ public sealed class TrayDesktopTests(PanelDesktopFixture fixture)
             "the tap never reached the engine"
         );
         fixture.Engine.Clear();
-        fixture.Probe.IsForeground.ShouldBeTrue();
+
+        // The next tap on the same tile must not fall inside the touch filter's memory of this one.
+        await Task.Delay(
+            PanelDesktopFixture.Touch.Debounce + Clicalo.Domain.Timing.Timings.Touch.PostSwipeLock,
+            TestContext.Current.CancellationToken
+        );
     }
 
     /// <summary>

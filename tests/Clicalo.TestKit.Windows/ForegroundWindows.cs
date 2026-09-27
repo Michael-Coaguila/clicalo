@@ -18,6 +18,22 @@ public static class ForegroundWindows
     /// <summary>True when <paramref name="window"/> is a live window that owns the foreground right now.</summary>
     public static bool IsForeground(nint window) => window != 0 && Current == window;
 
+    /// <summary>
+    /// Asks Windows to put another app's <paramref name="window"/> in front and says whether it is. Only the legitimate
+    /// means (<c>SetForegroundWindow</c>): it works when this process may set the foreground, for example right after
+    /// a synthetic tap on one of its own windows. Nothing is injected.
+    /// </summary>
+    public static bool TryBringToFront(nint window)
+    {
+        if (!Exists(window))
+        {
+            return false;
+        }
+
+        _ = PInvoke.SetForegroundWindow((HWND)window);
+        return IsForeground(window);
+    }
+
     /// <summary>True when <paramref name="window"/> is an existing window handle.</summary>
     public static bool Exists(nint window) => window != 0 && PInvoke.IsWindow((HWND)window);
 
