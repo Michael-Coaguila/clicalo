@@ -20,6 +20,10 @@ public sealed class EngineModelTests
     /// <summary>The M2 criterion: properties green with 10 000 cases (blueprint §14, ADR-0004).</summary>
     public const int Cases = 10_000;
 
+    /// <summary>How CsCheck prints a reduced counterexample: its operations, in order.</summary>
+    internal static string Print(EngineOp[] scenario) =>
+        string.Join(' ', scenario.Select(static o => o.ToString()));
+
     private static EngineHarness Play(EngineOp[] scenario, bool check, bool failures = true)
     {
         var engine = new EngineHarness { SimulateFailures = failures };
@@ -47,50 +51,53 @@ public sealed class EngineModelTests
 
     [Fact]
     public void Every_invariant_holds_after_every_step_and_the_exit_leaves_nothing_down() =>
-        EngineScenarios.Scenario.Sample(
-            scenario =>
-            {
-                var engine = Play(scenario, check: true);
+        EngineScenarios.Scenario.Sample(EveryInvariantHolds, iter: Cases, print: Print);
 
-                engine.Apply(new EngineEvent.Terminal(TerminalReason.Exit));
+    /// <summary>
+    /// The property of <see cref="Every_invariant_holds_after_every_step_and_the_exit_leaves_nothing_down"/> for one
+    /// scenario; <see cref="EngineModelRegressionTests"/> replays the reduced counterexamples through it.
+    /// </summary>
+    internal static void EveryInvariantHolds(EngineOp[] scenario)
+    {
+        var engine = Play(scenario, check: true);
 
-                engine.Receiver.IsEmpty.ShouldBeTrue();
-                engine.Receiver.Anomalies.ShouldBeEmpty();
-                engine.State.IsQuiet.ShouldBeTrue();
-            },
-            iter: Cases,
-            print: static s => string.Join(' ', s.Select(static o => o.ToString()))
-        );
+        engine.Apply(new EngineEvent.Terminal(TerminalReason.Exit));
+
+        engine.Receiver.IsEmpty.ShouldBeTrue();
+        engine.Receiver.Anomalies.ShouldBeEmpty();
+        engine.State.IsQuiet.ShouldBeTrue();
+    }
 
     [Fact]
     [Trait("Req", "ATJ-004")]
     public void Every_release_uses_the_mode_vk_and_scan_of_its_press() =>
-        EngineScenarios.Scenario.Sample(
-            scenario =>
+        EngineScenarios.Scenario.Sample(EveryReleaseMatchesItsPress, iter: 2_000, print: Print);
+
+    /// <summary>
+    /// The property of <see cref="Every_release_uses_the_mode_vk_and_scan_of_its_press"/> for one scenario (INV-12):
+    /// replaying what was sent, every key up names a key that is down with the same identity.
+    /// </summary>
+    internal static void EveryReleaseMatchesItsPress(EngineOp[] scenario)
+    {
+        var engine = Play(scenario, check: false, failures: false);
+        engine.Apply(new EngineEvent.Terminal(TerminalReason.Exit));
+
+        var down = new HashSet<InjectedKey>();
+        foreach (var e in engine.Receiver.Log)
+        {
+            if (e.Kind == InjectedEventKind.KeyDown)
             {
-                var engine = Play(scenario, check: false, failures: false);
-                engine.Apply(new EngineEvent.Terminal(TerminalReason.Exit));
+                down.Add(e.Key);
+            }
+            else if (e.Kind == InjectedEventKind.KeyUp)
+            {
+                down.Remove(e.Key)
+                    .ShouldBeTrue("released a key that was not pressed that way: " + e.Key);
+            }
+        }
 
-                // INV-12: replaying what was sent, every key up names a key that is down with the same identity.
-                var down = new HashSet<InjectedKey>();
-                foreach (var e in engine.Receiver.Log)
-                {
-                    if (e.Kind == InjectedEventKind.KeyDown)
-                    {
-                        down.Add(e.Key);
-                    }
-                    else if (e.Kind == InjectedEventKind.KeyUp)
-                    {
-                        down.Remove(e.Key)
-                            .ShouldBeTrue("released a key that was not pressed that way: " + e.Key);
-                    }
-                }
-
-                down.ShouldBeEmpty();
-            },
-            iter: 2_000,
-            print: static s => string.Join(' ', s.Select(static o => o.ToString()))
-        );
+        down.ShouldBeEmpty();
+    }
 
     [Fact]
     public void The_scenarios_reach_the_interesting_states()
