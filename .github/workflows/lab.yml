@@ -1,0 +1,105 @@
+# Touch lab (blueprint §10.5): the dedicated physical touch machine repeats the desktop suites and the performance
+# gate. Every budget of data/catalogs/budgets.json fails the run here (CLICALO_PERF_GATE=1), the S5 start-up budgets
+# included; on the hosted runners of pr.yml only the budgets with the gate everyRun do (touch -> SendInput p95).
+#
+# The runner is registered with the labels self-hosted, Windows and lab, as an interactive process with automatic
+# sign-in, and only on the dedicated lab machine: never on the maintainer's work computer (cl desk injects real keys
+# and runs the Sentinel chaos there). It only runs by hand from the Actions tab (maintainers), never on pull requests,
+# so code from forks never reaches it. The weekly schedule and the run before each beta or release of §10.5 are added
+# when the machine is registered; until then nothing waits for a runner that does not exist.
+#
+# Same rules as pr.yml: actions pinned by full SHA with their version, read-only permissions, no secrets, no top-level
+# env or defaults.
+name: lab
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One lab run at a time: the machine has one desktop.
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  desk:
+    name: desk (lab)
+    runs-on: [self-hosted, Windows, lab]
+    timeout-minutes: 60
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: cl desk
+        shell: pwsh
+        run: .\cl.cmd desk
+
+      - name: Upload cl report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cl-report-desk-lab
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  perf:
+    name: perf (lab)
+    # After desk, even when it failed: both need the only desktop of the machine, and the numbers are always wanted.
+    needs: desk
+    if: ${{ !cancelled() }}
+    runs-on: [self-hosted, Windows, lab]
+    timeout-minutes: 60
+    env:
+      CI: true
+      CLICALO_PERF_GATE: 1
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: cl perf
+        shell: pwsh
+        run: .\cl.cmd perf
+
+      - name: Publish the numbers
+        if: always()
+        shell: pwsh
+        run: |
+          $reports = @(Get-ChildItem artifacts/perf -Filter *.md -File -ErrorAction SilentlyContinue | Sort-Object Name)
+          if ($reports.Count -eq 0) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Value "perf: no hay números (la medición no llegó a escribirlos)."
+          }
+          foreach ($report in $reports) {
+            Get-Content -Path $report.FullName -Raw -Encoding utf8 | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          }
+
+      - name: Upload the numbers
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: perf-lab
+          path: |
+            artifacts/perf/*.json
+            artifacts/perf/*.md
+            artifacts/perf/*.txt
+            artifacts/cl/
+          if-no-files-found: warn
+          retention-days: 90

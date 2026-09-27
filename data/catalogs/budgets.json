@@ -1,0 +1,47 @@
+{
+  "$schema": "../schemas/budgets.schema.json",
+  "catalogVersion": 1,
+  "budgets": {
+    "TouchToSendInput": {
+      "description": "From the lift of a synthetic finger on a Tap tile of the published Clicalo.exe to the first key message in InputProbe, over 20 taps.",
+      "statistic": "p95",
+      "duration": "50ms",
+      "minSamples": 20,
+      "gate": "everyRun",
+      "req": ["NFR-001"],
+      "source": "blueprint §10.3 and §14 (M2 exit criterion)"
+    },
+    "ColdFirstFrameMax": {
+      "description": "First frame of the first start after publishing, from the creation of the process to the first frame of the panel.",
+      "statistic": "max",
+      "duration": "1000ms",
+      "gate": "touchLab",
+      "req": ["NFR-001"],
+      "source": "blueprint §10.3"
+    },
+    "WarmFirstFrame": {
+      "description": "First frame of the other starts (warm), from the creation of the process to the first frame of the panel.",
+      "statistic": "p50",
+      "duration": "300ms",
+      "gate": "touchLab",
+      "req": ["NFR-001"],
+      "source": "blueprint §10.3"
+    },
+    "WarmFirstFrameMax": {
+      "description": "First frame of the other starts (warm), from the creation of the process to the first frame of the panel.",
+      "statistic": "max",
+      "duration": "450ms",
+      "gate": "touchLab",
+      "req": ["NFR-001"],
+      "source": "blueprint §10.3"
+    },
+    "WorkingSet": {
+      "description": "Working set of Clicalo.exe two seconds after the first frame (M2 has one surface of the four: the number is a floor).",
+      "statistic": "max",
+      "bytes": "120MiB",
+      "gate": "touchLab",
+      "req": ["NFR-001"],
+      "source": "blueprint §10.3"
+    }
+  }
+}

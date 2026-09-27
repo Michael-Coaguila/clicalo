@@ -8,7 +8,8 @@ namespace Clicalo.Performance;
 /// (self-contained ReadyToRun, self-contained composite ReadyToRun, framework-dependent). In continuous integration
 /// the self-contained ReadyToRun variant is also measured with Sentinel launched after the first frame instead of in
 /// parallel (§3.1). The numbers go to <c>s5.json</c> and <c>s5.md</c> in the artifacts. On a hosted runner they are a
-/// trend; with <c>CLICALO_PERF_GATE=1</c> (the touch laboratory) the budgets of §10.3 fail the run.
+/// trend; with <c>CLICALO_PERF_GATE=1</c> (the touch laboratory) the budgets of §10.3 fail the run (every S5 budget
+/// of <c>data/catalogs/budgets.json</c> has the gate <c>touchLab</c>).
 /// </summary>
 [Trait("Requires", "Desktop")]
 [Trait("Category", "Perf")]
@@ -79,17 +80,17 @@ public sealed class S5StartupTests
             runs.Count * PerfEnvironment.Starts,
             "every start reached its first frame"
         );
-        if (PerfEnvironment.Gate)
-        {
-            summaries
-                .Where(static summary => !summary.WithinBudgets)
-                .Select(static summary => summary.Variant)
-                .ShouldBeEmpty(
-                    string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"S5 budgets (blueprint §10.3); detail in {folder}"
-                    )
-                );
-        }
+        summaries
+            .SelectMany(static summary =>
+                summary
+                    .Failures(PerfEnvironment.Gate)
+                    .Select(budget => summary.Variant + ": " + budget)
+            )
+            .ShouldBeEmpty(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"S5 budgets of data/catalogs/budgets.json (blueprint §10.3); detail in {folder}"
+                )
+            );
     }
 }

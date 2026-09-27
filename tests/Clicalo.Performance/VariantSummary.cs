@@ -46,10 +46,38 @@ internal sealed record VariantSummary(
         );
     }
 
-    /// <summary>Whether the numbers are within the budgets of blueprint §10.3 (the gate of the touch laboratory).</summary>
+    /// <summary>Whether every number is within its budget of <c>data/catalogs/budgets.json</c> (blueprint §10.3).</summary>
     public bool WithinBudgets =>
-        FirstStart <= StartupBudgets.ColdFirstFrameMax
-        && WarmP50 <= StartupBudgets.WarmFirstFrameP50
-        && WarmMax <= StartupBudgets.WarmFirstFrameMax
-        && WorkingSetMaxBytes <= StartupBudgets.WorkingSetBytes;
+        Verdicts(touchLab: true).All(static v => v.Verdict == BudgetVerdict.Within);
+
+    /// <summary>The budgets this variant broke where they gate (<see cref="BudgetVerdict.Failed"/>).</summary>
+    /// <param name="touchLab">Whether this is the touch laboratory (<c>CLICALO_PERF_GATE=1</c>).</param>
+    public IReadOnlyList<string> Failures(bool touchLab) =>
+        [
+            .. Verdicts(touchLab)
+                .Where(static v => v.Verdict == BudgetVerdict.Failed)
+                .Select(static v => v.Budget),
+        ];
+
+    private IEnumerable<(string Budget, BudgetVerdict Verdict)> Verdicts(bool touchLab)
+    {
+        var budgets = PerformanceBudgets.Shared;
+        var warmStarts = Math.Max(1, Starts - 1);
+        yield return (
+            budgets.ColdFirstFrameMax.Name,
+            budgets.ColdFirstFrameMax.Judge(FirstStart, 1, touchLab)
+        );
+        yield return (
+            budgets.WarmFirstFrame.Name,
+            budgets.WarmFirstFrame.Judge(WarmP50, warmStarts, touchLab)
+        );
+        yield return (
+            budgets.WarmFirstFrameMax.Name,
+            budgets.WarmFirstFrameMax.Judge(WarmMax, warmStarts, touchLab)
+        );
+        yield return (
+            budgets.WorkingSet.Name,
+            budgets.WorkingSet.Judge(WorkingSetMaxBytes, Starts, touchLab)
+        );
+    }
 }
