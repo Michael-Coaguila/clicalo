@@ -23,7 +23,7 @@ internal static class SuspendFlush
     [SuppressMessage(
         "ApiDesign",
         "RS0030:Do not use banned APIs",
-        Justification = "PBT_APMSUSPEND must be answered after the flush; the wait is bounded (app-shutdown)."
+        Justification = "PBT_APMSUSPEND must be answered after the flush; the wait is bounded (app-suspend)."
     )]
     [SuppressMessage(
         "Design",

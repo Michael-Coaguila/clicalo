@@ -17,7 +17,7 @@ internal static class SuspendRelease
     [SuppressMessage(
         "ApiDesign",
         "RS0030:Do not use banned APIs",
-        Justification = "WM_POWERBROADCAST must be answered after the release; the wait is bounded (app-shutdown)."
+        Justification = "WM_POWERBROADCAST must be answered after the release; the wait is bounded (app-suspend)."
     )]
     public static void Wait(EngineObserverRelay relay)
     {

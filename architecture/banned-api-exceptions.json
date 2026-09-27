@@ -74,9 +74,9 @@
     },
     {
       "id": "app-suspend",
-      "paths": ["src/Clicalo.App/Shutdown/SuspendRelease.cs"],
+      "paths": ["src/Clicalo.App/Shutdown/SuspendRelease.cs", "src/Clicalo.App/Shutdown/SuspendFlush.cs"],
       "apis": ["GetAwaiter().GetResult()"],
-      "justification": "PBT_APMSUSPEND: the machine may sleep as soon as WM_POWERBROADCAST is answered, so the SysEvents thread waits for the engine's release, bounded by Timings.KeySafety.SuspendReleaseWait (500 ms). A bounded wait on SysEvents that §3.2 does not foresee: recorded in D-21.",
+      "justification": "PBT_APMSUSPEND: the machine may sleep as soon as WM_POWERBROADCAST is answered, so the SysEvents thread waits for the engine's release, bounded by Timings.KeySafety.SuspendReleaseWait (500 ms), then for the flush of the document, the usage and the queued copies, bounded by Timings.App.SuspendFlushTimeout. Bounded waits on SysEvents that §3.2 does not foresee: recorded in D-21 and D-22.",
       "blueprint": "§3.2, §7.6"
     },
     {

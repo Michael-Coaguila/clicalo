@@ -247,12 +247,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Track(rights.Dispose);
         var registered = rights.RegisterAsync();
         var relay = services.GetRequiredService<EngineObserverRelay>();
-        var backups = services.GetRequiredService<BackupService>();
         var session = await SessionKeyRelease
             .StartAsync(
                 sysEvents,
                 services.GetRequiredService<IEngineInbox>(),
-                () => BeforeSuspend(relay, scheduler, backups),
+                () => BeforeSuspend(relay, scheduler),
                 _time
             )
             .ConfigureAwait(true);
@@ -294,16 +293,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     /// the queued backups (<c>Timings.App.SuspendFlushTimeout</c>), since the machine may sleep as soon as the message
     /// returns and the battery may run out while it sleeps.
     /// </summary>
-    private void BeforeSuspend(
-        EngineObserverRelay relay,
-        PersistenceScheduler scheduler,
-        BackupService backups
-    )
+    private void BeforeSuspend(EngineObserverRelay relay, PersistenceScheduler scheduler)
     {
         if (
             !Shutdown.SuspendFlush.Run(
                 () => Shutdown.SuspendRelease.Wait(relay),
-                token => FlushAsync(scheduler, backups, token),
+                token => FlushAsync(scheduler, token),
                 _time
             )
         )
