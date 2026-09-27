@@ -415,14 +415,22 @@ public sealed class InjectionGate
         }
 
         int[]? rented = null;
+        bool[]? rentedReopened = null;
         var slots =
             batch.Length <= StackSlots
                 ? stackalloc int[batch.Length]
                 : (rented = ArrayPool<int>.Shared.Rent(batch.Length)).AsSpan(0, batch.Length);
+        var reopened =
+            batch.Length <= StackSlots
+                ? stackalloc bool[batch.Length]
+                : (rentedReopened = ArrayPool<bool>.Shared.Rent(batch.Length)).AsSpan(
+                    0,
+                    batch.Length
+                );
         try
         {
             // 1. Write-ahead: record every down (and find every up) before anything is sent.
-            if (!Record(batch, slots))
+            if (!Record(batch, slots, reopened))
             {
                 return new SendResult(0, LedgerFull);
             }
@@ -447,7 +455,7 @@ public sealed class InjectionGate
             var sent = Math.Clamp(result.Sent, 0, batch.Length);
             var blocked = sent == 0 && result.LastError == AccessDenied;
 
-            // 3. Commit what went, roll back the downs that did not.
+            // 3. Commit what went, then roll back the downs that did not, last first.
             var buttons = before;
             for (var i = 0; i < batch.Length; i++)
             {
@@ -456,9 +464,6 @@ public sealed class InjectionGate
                 {
                     case LowLevelInputKind.KeyDown when i < sent:
                         _ledger.CommitDown(slots[i]);
-                        break;
-                    case LowLevelInputKind.KeyDown:
-                        _ledger.RollbackDown(slots[i]);
                         break;
                     case LowLevelInputKind.KeyUp when slots[i] >= 0 && i < sent:
                         _ledger.CommitUp(slots[i]);
@@ -475,6 +480,7 @@ public sealed class InjectionGate
                 }
             }
 
+            RollbackDowns(batch, slots, reopened, sent, batch.Length);
             if (buttons != _ledger.MouseButtons)
             {
                 _ledger.SetMouseButtons(buttons);
@@ -488,32 +494,54 @@ public sealed class InjectionGate
             {
                 ArrayPool<int>.Shared.Return(rented);
             }
+
+            if (rentedReopened is not null)
+            {
+                ArrayPool<bool>.Shared.Return(rentedReopened);
+            }
         }
     }
 
-    private bool Record(ReadOnlySpan<LowLevelInput> batch, Span<int> slots)
+    /// <summary>
+    /// Undoes the downs of <paramref name="batch"/> in <c>[from, to)</c> that never reached <c>SendInput</c>, last first:
+    /// a press that reopened a pending release is undone after the presses of the same key that followed it, so the
+    /// slot ends <see cref="LedgerSlotState.ReleasePending"/> again.
+    /// </summary>
+    private void RollbackDowns(
+        ReadOnlySpan<LowLevelInput> batch,
+        ReadOnlySpan<int> slots,
+        ReadOnlySpan<bool> reopened,
+        int from,
+        int to
+    )
+    {
+        for (var i = to - 1; i >= from; i--)
+        {
+            if (batch[i].Kind == LowLevelInputKind.KeyDown)
+            {
+                _ledger.RollbackDown(slots[i], reopened[i]);
+            }
+        }
+    }
+
+    private bool Record(ReadOnlySpan<LowLevelInput> batch, Span<int> slots, Span<bool> reopened)
     {
         for (var i = 0; i < batch.Length; i++)
         {
             var input = batch[i];
             slots[i] = -1;
+            reopened[i] = false;
             if (input.Kind == LowLevelInputKind.KeyDown)
             {
-                if (!_ledger.TryBeginDown(input.Key, out var slot))
+                if (!_ledger.TryBeginDown(input.Key, out var slot, out var wasPending))
                 {
                     // No room: undo this batch's records and send nothing.
-                    for (var j = 0; j < i; j++)
-                    {
-                        if (batch[j].Kind == LowLevelInputKind.KeyDown)
-                        {
-                            _ledger.RollbackDown(slots[j]);
-                        }
-                    }
-
+                    RollbackDowns(batch, slots, reopened, 0, i);
                     return false;
                 }
 
                 slots[i] = slot;
+                reopened[i] = wasPending;
             }
             else if (
                 input.Kind == LowLevelInputKind.KeyUp

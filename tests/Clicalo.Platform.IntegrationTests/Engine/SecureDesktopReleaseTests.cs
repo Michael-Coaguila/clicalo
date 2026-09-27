@@ -92,6 +92,57 @@ public sealed class SecureDesktopReleaseTests
     }
 
     [Fact]
+    public void A_key_pressed_again_while_its_release_is_pending_is_freed_by_its_holder_release()
+    {
+        using var ledger = KeyLedgerSection.CreateInMemory();
+        var system = new PhysicalStateInjector();
+        var gate = new InjectionGate(ledger, system);
+        gate.TryInject(1, [LowLevelInput.KeyDown(Ctrl)]);
+        system.TakeNext = 0;
+        system.NextError = InjectionGate.AccessDenied;
+        gate.TryInject(1, [LowLevelInput.KeyUp(Ctrl)]);
+
+        // The desktop is back before SessionResumed: a holder presses Ctrl again, then the pending releases go.
+        gate.TryInject(1, [LowLevelInput.KeyDown(Ctrl)]);
+        gate.TryReleasePending(1, out _).Result.ShouldBe(GateResult.Ran);
+        gate.TryInject(1, [LowLevelInput.KeyUp(Ctrl)]);
+
+        system.IsEmpty.ShouldBeTrue();
+        ledger.Snapshot().Slots.ShouldBeEmpty();
+        gate.TryInjectChord(1, [Ctrl, Alt]).Result.ShouldBe(GateResult.Ran);
+        system
+            .Batches[^1]
+            .ShouldBe([
+                LowLevelInput.KeyDown(Ctrl),
+                LowLevelInput.KeyDown(Alt),
+                LowLevelInput.KeyUp(Alt),
+                LowLevelInput.KeyUp(Ctrl),
+            ]);
+    }
+
+    [Fact]
+    public void A_press_the_secure_desktop_refuses_keeps_the_release_of_that_key_pending()
+    {
+        using var ledger = KeyLedgerSection.CreateInMemory();
+        var system = new PhysicalStateInjector();
+        var gate = new InjectionGate(ledger, system);
+        gate.TryInject(1, [LowLevelInput.KeyDown(Ctrl)]);
+        system.TakeNext = 0;
+        system.NextError = InjectionGate.AccessDenied;
+        gate.TryInject(1, [LowLevelInput.KeyUp(Ctrl)]);
+        system.TakeNext = 0;
+        system.NextError = InjectionGate.AccessDenied;
+
+        gate.TryInject(1, [LowLevelInput.KeyDown(Ctrl), LowLevelInput.KeyDown(Ctrl)]);
+
+        ledger.Snapshot().Slots.ShouldBe([new LedgerSlot(Ctrl, LedgerSlotState.ReleasePending, 1)]);
+        gate.TryReleasePending(1, out var count).Result.ShouldBe(GateResult.Ran);
+        count.ShouldBe(1);
+        system.IsEmpty.ShouldBeTrue();
+        ledger.Snapshot().Slots.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Leaving_the_secure_desktop_tells_the_engine_at_once()
     {
         var world = new DesktopWorld { Reachable = true };

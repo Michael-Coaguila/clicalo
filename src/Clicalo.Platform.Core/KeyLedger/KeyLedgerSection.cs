@@ -273,7 +273,26 @@ public sealed unsafe class KeyLedgerSection : IDisposable
     /// <param name="key">The key.</param>
     /// <param name="slot">The slot.</param>
     /// <returns><see langword="false"/> when the 128 slots are full: the press is refused.</returns>
-    public bool TryBeginDown(PhysicalKey key, out int slot)
+    public bool TryBeginDown(PhysicalKey key, out int slot) => TryBeginDown(key, out slot, out _);
+
+    /// <summary>
+    /// Records a key as <see cref="LedgerSlotState.DownPending"/> (or adds a reference) before sending it, and says
+    /// whether the press reopened a slot whose release was pending.
+    /// </summary>
+    /// <remarks>
+    /// A pending release already ended every earlier reference to the key (its holders released it; only the secure
+    /// desktop refused the key up), so the new press is its only holder: the count starts again at one and that
+    /// holder's release frees the slot. Adding to the old count would leave a phantom <see cref="LedgerSlotState.Down"/>
+    /// slot after the key went up, and the internal chords would skip that key.
+    /// </remarks>
+    /// <param name="key">The key.</param>
+    /// <param name="slot">The slot.</param>
+    /// <param name="reopened">
+    /// Whether the slot was <see cref="LedgerSlotState.ReleasePending"/>; passed to <see cref="RollbackDown"/> when the
+    /// press does not reach <c>SendInput</c>.
+    /// </param>
+    /// <returns><see langword="false"/> when the 128 slots are full: the press is refused.</returns>
+    internal bool TryBeginDown(PhysicalKey key, out int slot, out bool reopened)
     {
         ThrowIfReadOnly();
         BeginWrite();
@@ -281,14 +300,21 @@ public sealed unsafe class KeyLedgerSection : IDisposable
         {
             if (Find(key, out slot))
             {
-                SetRefCount(slot, (ushort)(RefCount(slot) + 1));
-                if (State(slot) == LedgerSlotState.ReleasePending)
+                reopened = State(slot) == LedgerSlotState.ReleasePending;
+                if (reopened)
                 {
+                    SetRefCount(slot, 1);
                     SetState(slot, LedgerSlotState.DownPending);
+                }
+                else
+                {
+                    SetRefCount(slot, (ushort)(RefCount(slot) + 1));
                 }
 
                 return true;
             }
+
+            reopened = false;
 
             for (var i = 0; i < KeyLedgerLayout.SlotCount; i++)
             {
@@ -460,11 +486,15 @@ public sealed unsafe class KeyLedgerSection : IDisposable
     }
 
     /// <summary>
-    /// Undoes a <see cref="TryBeginDown"/> whose key never reached <c>SendInput</c>: drops that reference only, so a key
-    /// that was already down (another press, or a release still pending) stays recorded; a slot the undone press
-    /// created goes back to free.
+    /// Undoes a <see cref="TryBeginDown(PhysicalKey, out int, out bool)"/> whose key never reached <c>SendInput</c>:
+    /// drops that reference only, so a key that was already down (another press) stays recorded; a press that reopened
+    /// a pending release puts the slot back to <see cref="LedgerSlotState.ReleasePending"/> (its key up still has to
+    /// go), and a slot the undone press created goes back to free. The presses of one batch are undone in reverse
+    /// order.
     /// </summary>
-    internal void RollbackDown(int slot)
+    /// <param name="slot">The slot.</param>
+    /// <param name="reopened">What <see cref="TryBeginDown(PhysicalKey, out int, out bool)"/> said.</param>
+    internal void RollbackDown(int slot, bool reopened)
     {
         ThrowIfReadOnly();
         CheckSlot(slot);
@@ -473,6 +503,13 @@ public sealed unsafe class KeyLedgerSection : IDisposable
         {
             if (State(slot) == LedgerSlotState.Free)
             {
+                return;
+            }
+
+            if (reopened)
+            {
+                SetRefCount(slot, 1);
+                SetState(slot, LedgerSlotState.ReleasePending);
                 return;
             }
 
