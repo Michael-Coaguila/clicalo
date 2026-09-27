@@ -63,9 +63,10 @@ jobs:
   desk:
     name: desk (x64)
     # Desktop tests (SendInput into InputProbe, foreground): S0 proved hosted windows-2025 runners support them
-    # (docs/testing/spikes/S0.md), so they gate every pull request instead of waiting for the touch lab.
+    # (docs/testing/spikes/S0.md), so they gate every pull request instead of waiting for the touch lab. Since M2 they
+    # include S7, the panel and the tray, and the Sentinel chaos of S9 (Category=Chaos, only here).
     runs-on: windows-2025
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       CI: true
     steps:
@@ -99,6 +100,51 @@ jobs:
           path: artifacts/cl/
           if-no-files-found: ignore
           retention-days: 14
+
+  perf:
+    name: perf (x64)
+    # Spike S5 and the touch -> SendInput budget (blueprint §10.3, docs/testing/spikes/S5.md): a trend on hosted
+    # runners, never a required check; the touch lab repeats it with CLICALO_PERF_GATE=1.
+    runs-on: windows-2025
+    timeout-minutes: 45
+    continue-on-error: true
+    env:
+      CI: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: cl perf
+        shell: pwsh
+        run: .\cl.cmd perf
+
+      - name: Upload the numbers
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: perf-x64
+          path: |
+            artifacts/perf/*.json
+            artifacts/perf/*.md
+            artifacts/perf/*.txt
+            artifacts/cl/
+          if-no-files-found: warn
+          retention-days: 30
 
   adr:
     name: adr
