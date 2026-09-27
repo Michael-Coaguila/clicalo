@@ -48,7 +48,9 @@ public sealed class EngineKeyEffectsTests
             TimeProvider.System
         );
 
-        (await effects.SendRightsHotkeyAsync(TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (
+            await effects.SendRightsHotkeyAsync(TestContext.Current.CancellationToken)
+        ).ShouldBeFalse();
 
         inbox.Posted.ShouldBeEmpty();
     }
@@ -150,9 +152,7 @@ public sealed class EngineKeyEffectsTests
             time
         );
 
-        var sent = effects
-            .SendRightsHotkeyAsync(TestContext.Current.CancellationToken)
-            .AsTask();
+        var sent = effects.SendRightsHotkeyAsync(TestContext.Current.CancellationToken).AsTask();
         time.Advance(Timings.Engine.InternalChordWait - TimeSpan.FromTicks(1));
         sent.IsCompleted.ShouldBeFalse();
         time.Advance(TimeSpan.FromTicks(1));
@@ -172,7 +172,9 @@ public sealed class EngineKeyEffectsTests
             TimeProvider.System
         );
 
-        (await effects.SendDictationChordAsync(TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (
+            await effects.SendDictationChordAsync(TestContext.Current.CancellationToken)
+        ).ShouldBeFalse();
         replies.Pending.ShouldBe(0);
     }
 }
