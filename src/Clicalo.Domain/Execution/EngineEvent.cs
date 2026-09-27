@@ -155,8 +155,9 @@ public abstract record EngineEvent
     }
 
     /// <summary>
-    /// The secure desktop refused a release (locked session, <c>InjectionStatus.Blocked</c>): the engine keeps it and
-    /// sends it again on <see cref="SessionResumed"/> (INV-3). The physical ledger marks it pending meanwhile.
+    /// The secure desktop refused a release (locked session, UAC, Ctrl+Alt+Del: <c>InjectionStatus.Blocked</c>), or
+    /// <c>SendInput</c> took it only in part: the engine keeps it and sends it again on <see cref="SessionResumed"/> and
+    /// with the next «release everything» (INV-3). The physical ledger marks it pending meanwhile.
     /// </summary>
     /// <param name="Events">The release events that did not go.</param>
     public sealed record ReleasesBlocked(ImmutableArray<InjectedEvent> Events) : EngineEvent
@@ -165,7 +166,11 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
-    /// <summary>The session was unlocked or the computer resumed: blocked releases go again (§7.6).</summary>
+    /// <summary>
+    /// The input desktop is Clícalo's again: the session was unlocked, the computer resumed, or the secure desktop of
+    /// UAC or Ctrl+Alt+Del closed. Blocked releases go again, the logical ones and the ones the physical ledger keeps
+    /// pending (§7.6, INV-3).
+    /// </summary>
     public sealed record SessionResumed : EngineEvent
     {
         /// <inheritdoc />

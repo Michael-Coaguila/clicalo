@@ -160,7 +160,50 @@ internal sealed class EngineStep
         }
 
         Release(State.Keys.ReleaseAll(), holder: null);
+
+        // The releases the secure desktop refused go again too: «Release all» and the terminal events must let go of
+        // everything Clícalo left down, not only of what its holders still hold (INV-3). An extra release is harmless.
+        ResendBlockedReleases();
         return wasBusy;
+    }
+
+    /// <summary>
+    /// Sends again the releases the secure desktop refused (INV-3), except those of a key or button a holder has
+    /// pressed again since: that holder's own release lets go of it, and releasing it now would leave the ledger
+    /// claiming a key that is up (INV-1).
+    /// </summary>
+    public void ResendBlockedReleases()
+    {
+        var blocked = State.BlockedReleases;
+        if (blocked.IsEmpty)
+        {
+            return;
+        }
+
+        State = State with { BlockedReleases = [] };
+        var held = State.Keys;
+        var events = blocked
+            .Items.Where(e =>
+                e.Kind switch
+                {
+                    InjectedEventKind.KeyUp => !held.IsDown(e.Key),
+                    InjectedEventKind.MouseUp => (held.HeldButtons & e.Button) == MouseButtons.None,
+                    _ => e.IsRelease,
+                }
+            )
+            .ToImmutableArray();
+        if (events.Any(static e => e.Kind != InjectedEventKind.MenuMask))
+        {
+            Emit(
+                new EngineEffect.Inject(
+                    events,
+                    Epoch: null,
+                    RequiredForeground: null,
+                    IsRelease: true,
+                    IsInternal: false
+                )
+            );
+        }
     }
 
     /// <summary>Appends steps to the outbox and runs it.</summary>

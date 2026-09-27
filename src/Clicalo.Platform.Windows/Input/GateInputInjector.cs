@@ -131,6 +131,13 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
         return SendBalanced(generation, inputs[..count]);
     }
 
+    /// <inheritdoc />
+    public InjectionResult ReleasePending(EngineGeneration generation)
+    {
+        var outcome = gate.TryReleasePending(generation.Value, out var count);
+        return Result(outcome, count);
+    }
+
     /// <summary>The injection result of a gate outcome for a batch of <paramref name="count"/> inputs.</summary>
     /// <param name="outcome">The gate's outcome.</param>
     /// <param name="count">How many inputs the batch had.</param>

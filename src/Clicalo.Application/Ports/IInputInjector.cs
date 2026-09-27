@@ -31,4 +31,11 @@ public interface IInputInjector
     /// <param name="operation">The mouse action.</param>
     /// <param name="target">Where, in physical pixels; <see langword="null"/> for the centre of the foreground client area.</param>
     InjectionResult Mouse(EngineGeneration generation, MouseOp operation, PhysicalPoint? target);
+
+    /// <summary>
+    /// Sends again the key ups the physical ledger keeps pending because the secure desktop refused them (blueprint
+    /// §7.6, INV-3), whoever sent them; the engine calls it when the input desktop is back.
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    InjectionResult ReleasePending(EngineGeneration generation);
 }

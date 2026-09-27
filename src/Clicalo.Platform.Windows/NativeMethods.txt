@@ -99,3 +99,8 @@ GetCurrentProcess
 WTSRegisterSessionNotification
 WTSUnRegisterSessionNotification
 NOTIFY_FOR_THIS_SESSION
+
+// ---- Input: resends when the secure desktop (UAC, Ctrl+Alt+Del) gives the input back (D-22) ----
+EVENT_SYSTEM_DESKTOPSWITCH
+OpenInputDesktop
+CloseDesktop

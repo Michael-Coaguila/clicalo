@@ -236,6 +236,49 @@ public sealed class InjectionGate
         }
     }
 
+    /// <summary>
+    /// Sends again, under the fence, the key ups the ledger keeps <see cref="LedgerSlotState.ReleasePending"/> (the
+    /// secure desktop refused them): when the input desktop is back (unlock, resume, the end of UAC or Ctrl+Alt+Del),
+    /// whoever refused them — an engine's batch, the release of an engine that caught an exception, an emergency —
+    /// they go again, even if no engine state remembers them (INV-3). The ones that go free their slots.
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    /// <param name="count">How many events the batch had (zero when nothing was pending).</param>
+    public GateOutcome TryReleasePending(ulong generation, out int count)
+    {
+        lock (_gate)
+        {
+            count = 0;
+            if (_ledger.Generation != generation)
+            {
+                return new GateOutcome(GateResult.Fenced, default);
+            }
+
+            var batch = LedgerRelease.BuildPendingReleaseBatch(_ledger.Snapshot());
+            count = batch.Length;
+            if (batch.IsEmpty)
+            {
+                return new GateOutcome(GateResult.Ran, new SendResult(0, 0));
+            }
+
+            var result = _sender.Send(batch.AsSpan());
+            var sent = Math.Clamp(result.Sent, 0, batch.Length);
+            for (var i = 0; i < sent; i++)
+            {
+                // Only the gate writes slots and it is held: the slots found are still the pending ones.
+                if (
+                    batch[i].Kind == LowLevelInputKind.KeyUp
+                    && _ledger.TryFindDown(batch[i].Key, out var slot)
+                )
+                {
+                    _ledger.ForceFree(slot);
+                }
+            }
+
+            return new GateOutcome(GateResult.Ran, result);
+        }
+    }
+
     private void ReleaseEverythingRecorded()
     {
         var snapshot = _ledger.Snapshot();

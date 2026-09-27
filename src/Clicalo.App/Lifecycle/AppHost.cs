@@ -257,7 +257,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             .StartAsync(
                 sysEvents,
                 services.GetRequiredService<IEngineInbox>(),
-                () => Shutdown.SuspendRelease.Wait(relay)
+                () => Shutdown.SuspendRelease.Wait(relay),
+                _time
             )
             .ConfigureAwait(true);
         Track(session.Dispose);

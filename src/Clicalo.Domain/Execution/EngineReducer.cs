@@ -549,21 +549,7 @@ public static class EngineReducer
 
     private static void SessionResumed(EngineStep step)
     {
-        var blocked = step.State.BlockedReleases;
-        if (blocked.IsEmpty)
-        {
-            return;
-        }
-
-        step.State = step.State with { BlockedReleases = [] };
-        step.Emit(
-            new EngineEffect.Inject(
-                blocked.Items,
-                Epoch: null,
-                RequiredForeground: null,
-                IsRelease: true,
-                IsInternal: false
-            )
-        );
+        step.ResendBlockedReleases();
+        step.Emit(new EngineEffect.ReleasePendingRecorded());
     }
 }

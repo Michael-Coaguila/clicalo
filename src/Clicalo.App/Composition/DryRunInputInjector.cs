@@ -32,6 +32,9 @@ internal sealed class DryRunInputInjector : IInputInjector
         PhysicalPoint? target
     ) => Accept(1);
 
+    /// <inheritdoc />
+    public InjectionResult ReleasePending(EngineGeneration generation) => Accept(0);
+
     private InjectionResult Accept(int count)
     {
         _ = Interlocked.Add(ref _events, count);

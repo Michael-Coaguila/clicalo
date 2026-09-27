@@ -387,6 +387,9 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             case EngineEffect.SetLastAction last:
                 _ports.Observer.OnLastAction(last.Shortcut);
                 break;
+            case EngineEffect.ReleasePendingRecorded:
+                Settle(_ports.Injector.ReleasePending(Generation));
+                break;
         }
     }
 

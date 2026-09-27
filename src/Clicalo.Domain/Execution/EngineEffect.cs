@@ -105,6 +105,13 @@ public abstract record EngineEffect
     /// <param name="At">When.</param>
     public sealed record CountUsage(ShortcutId Shortcut, DateTimeOffset At) : EngineEffect;
 
+    /// <summary>
+    /// Send again, under the fence, every release the <b>physical</b> ledger keeps pending: the ones the secure desktop
+    /// refused before this state knew them (an emergency release, the release of an engine that caught an exception,
+    /// a batch of an engine that was replaced). Emitted when the input desktop is back (INV-3, blueprint §7.6).
+    /// </summary>
+    public sealed record ReleasePendingRecorded : EngineEffect;
+
     /// <summary>Remember the last action for Repeat (AVI-004).</summary>
     /// <param name="Shortcut">The shortcut.</param>
     public sealed record SetLastAction(ShortcutId Shortcut) : EngineEffect;

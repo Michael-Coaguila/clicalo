@@ -155,6 +155,12 @@
           "description": "The synchronous suspend handler waits up to this long for the engine to confirm the release.",
           "req": ["SEG-006"],
           "source": "blueprint §7.6"
+        },
+        "InputDesktopRecheck": {
+          "durations": ["250ms", "500ms", "1s", "2s", "4s"],
+          "description": "After a desktop switch, while the input desktop is still the secure one (UAC, Ctrl+Alt+Del, lock screen), it is checked again after each of these waits; once it is Clícalo's again the releases it refused are sent again. The next switch starts over.",
+          "req": ["SEG-006", "REG-03"],
+          "source": "blueprint §7.6; deviations.md D-22"
         }
       }
     },
