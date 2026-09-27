@@ -563,11 +563,20 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - **Emergencia sin guardián.** Sin Sentinel en marcha (antes de lanzarlo, entre dos lanzamientos o tras
     `GuardianUnstable`) la emergencia nunca termina el proceso: en el segundo cuelgue suelta y reinicia el motor, y si
     no puede tomar la valla lo reintenta en cada comprobación con esperas crecientes
-    (`Timings.Engine.EmergencyGateRetryWaits`). `IGuardian.Unstable` se registra.
+    (`Timings.Engine.EmergencyGateRetryWaits`). `IGuardian.Unstable` se registra y se avisa en el panel, de forma
+    asertiva, de que la protección de teclas está desactivada hasta reiniciar Clícalo (`GuardianUnstableNotice`, clave
+    `guardianUnstable`).
+  - **Liberación pendiente y tecla pulsada otra vez.** Si un titular vuelve a pulsar una tecla cuya liberación rechazó
+    el escritorio seguro, la ranura del *ledger* vuelve a contar una sola referencia (la subida pendiente ya anuló las
+    anteriores), así que la liberación de ese titular la deja libre y los acordes internos no la saltan; si esa pulsación
+    no llega a `SendInput`, la ranura vuelve a `ReleasePending` (las pulsaciones de un lote se deshacen de la última a la
+    primera).
   - **Suspender vacía la persistencia.** Tras el soltado, el manejador de `PBT_APMSUSPEND` ejecuta el vaciado de la salida
     (documento, uso y copias en cola, todo por el consumidor de persistencia) con límite
     `Timings.App.SuspendFlushTimeout` (`App/Shutdown/SuspendFlush`). Es otra espera acotada en SysEvents: comparte con
-    `SuspendRelease` la excepción `app-suspend` de `banned-api-exceptions.json`.
+    `SuspendRelease` la excepción `app-suspend` de `banned-api-exceptions.json`. Un vaciado que corta su límite (un
+    bloqueo de OneDrive o del antivirus) deja pendiente lo que no escribió y vuelve a armar sus temporizadores: el
+    autoguardado lo escribe al reanudar y el vaciado de la salida si se sale antes (REG-08).
   - **INV-10.** No existe `LayoutPlanner` en M2: la propiedad llega con él en M3. Mientras tanto, un contacto conserva el
     objetivo sobre el que bajó (`GestureRecognizer`, PAN-009) y la franja de «Soltar todo» va debajo de las fichas
     ([D-21](#d-21--integración-de-m2)). Las pruebas del modelo del motor enumeran lo que comprueban de verdad.
