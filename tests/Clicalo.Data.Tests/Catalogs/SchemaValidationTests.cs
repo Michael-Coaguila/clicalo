@@ -12,6 +12,17 @@ public sealed class SchemaValidationTests
 
     public static TheoryData<string> SchemaFiles() => [.. CatalogSchemas.SchemaFileNames()];
 
+    /// <summary>
+    /// The persisted formats (ADR-0007, ADR-0018): no catalog or content file uses them; the immutable 1.0 fixtures of
+    /// the Infrastructure tests (blueprint §6.6) do.
+    /// </summary>
+    public static TheoryData<string, string> PersistedFixtures() =>
+        new()
+        {
+            { "document.json", "document.schema.json" },
+            { "usage.json", "usage.schema.json" },
+        };
+
     [Theory]
     [MemberData(nameof(DataFiles))]
     [Trait("Req", "CAT-001")]
@@ -79,9 +90,32 @@ public sealed class SchemaValidationTests
             .DataFiles()
             .Select(DeclaredSchema)
             .Concat(["common.schema.json", "shortcut.schema.json"])
+            .Concat(PersistedFixtures().Select(row => row.Data.Item2))
             .ToHashSet(StringComparer.Ordinal);
 
         CatalogSchemas.SchemaFileNames().Where(name => !used.Contains(name)).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(PersistedFixtures))]
+    [Trait("Req", "DAT-001")]
+    public void The_persisted_1_0_fixtures_are_valid_against_their_format(
+        string fixture,
+        string schemaFile
+    )
+    {
+        var path = Clicalo.TestKit.RepoPaths.Combine(
+            "tests",
+            "Clicalo.Infrastructure.Tests",
+            "Fixtures",
+            "schema",
+            "1.0",
+            fixture
+        );
+
+        CatalogSchemas
+            .Validate(CatalogSchemas.Shared.Get(schemaFile), File.ReadAllText(path))
+            .ShouldBeEmpty(fixture + " must match " + schemaFile);
     }
 
     [Theory]
