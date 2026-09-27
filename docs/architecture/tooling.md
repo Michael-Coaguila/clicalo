@@ -28,7 +28,7 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl build` | Compila la solución completa en Debug | M0 |
 | `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit). Objetivo: menos de 45 s; la línea final avisa si se supera | M0 |
 | `cl test` | Compila y ejecuta todas las pruebas salvo las de escritorio (`Requires=Desktop`) | M0 |
-| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva), un módulo de pruebas cada vez porque cada uno toma el primer plano con su InputProbe. Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr: las capturan las herramientas de dictado y voz del mantenedor | M0 |
+| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva), un módulo de pruebas cada vez porque cada uno toma el primer plano con su InputProbe. Nunca ejecuta las mediciones (`Category=Perf`, son de `cl perf`). Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr (las capturan las herramientas de dictado y voz del mantenedor), y las de caos (`Category=Chaos`), que matan procesos con teclas pulsadas o congelan hilos | M0 |
 | `cl fix` | Da formato al C# con CSharpier | M0 |
 | `cl check` | **Lo mismo que el trabajo `verify` de la CI.** Todo PR termina con él (ver abajo) | M0 |
 | `cl clean` | Vacía `artifacts/`, salvo la salida del propio orquestador, y dice qué archivos siguen en uso | M0 |
@@ -36,9 +36,9 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl i18n-import [--check]` | Ejecuta `i18n-import` de `tools/Clicalo.DevCli`: reconstruye `data/i18n` o, con `--check`, solo compara | M0 |
 | `cl adr-check --base <ref>` | Ejecuta `adr-check` de `tools/Clicalo.DevCli`, lo mismo que el trabajo `adr` de la CI (`cl adr-check --base main` en local) | M0 |
 | `cl pr` | Abre el PR de la rama actual | M1 |
-| `cl run` | Arranca la app con datos aislados en `%TEMP%\clicalo-dev` | M2 |
+| `cl run` | Arranca la compilación Debug de `Clicalo.exe` con datos aislados en `%TEMP%\clicalo-dev` y **sin envío de teclas** (`--no-input`) | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
-| `cl perf` | Mide los presupuestos de rendimiento | M2 |
+| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`, cada una con Sentinel) y ejecuta las mediciones `Category=Perf`; fuera de la CI, sin envío de teclas | M2 |
 | `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
 | `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
 | `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
@@ -98,6 +98,23 @@ y el informe de errores de `cl`:
 
 Salida en formato MSBuild, última línea legible por Narrador y códigos de salida 0 (sin problemas), 1
 (problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace`, `anonymize-v1` y `states`.
+
+### Opciones de `Clicalo.exe` para desarrollo
+
+`Clicalo.exe` no tiene opciones en un arranque normal. Para desarrollar y medir:
+
+- `--no-input`: ningún envío (inyector en seco, *ledger* desconectado, sin Sentinel ni soltado preventivo). Es lo que
+  usan `cl run` y, fuera de la CI, `cl perf`.
+- `--data <carpeta>`: todos los datos, el diario de fallos incluido, dentro de esa carpeta.
+- `--migrate-v1 <archivo>`: en un primer arranque (sin `clicalo.json`), convierte ese `profiles.json` o zip de Macro
+  Quick Access; el original se guarda antes en `backups\`.
+- `--exit-after <segundos>`: tras el primer frame, recorre la salida completa sin intervención (diagnóstico).
+- `--guardian after-first-frame`: la variante de S5 que lanza Sentinel después del primer frame.
+- `--after-crash=<ms Unix>` y `--safe-mode` los pone Sentinel al relanzar ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
+
+La orden `anonymize-v1 --in <archivo> --out <archivo>` de `tools/Clicalo.DevCli` anonimiza un `profiles.json` real para
+versionarlo como *fixture*: conserva combinaciones, colores, recuentos y estructura, y sustituye todo nombre que no esté
+en la lista revisada de `tools/Clicalo.DevCli/AnonymizeV1/v1-public-names.json`.
 
 ### Compilar mientras se itera
 

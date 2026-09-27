@@ -30,6 +30,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 | D-19 | Secuencia de los spikes | M1 cierra con todos los criterios de §15 superados; S5, S7, S9, S11, S6, S14, S8, S10, S12 y S15 dentro de M1 | M1 cerrado por decisión del usuario con la evidencia real; filas manuales de S1, S3 y S4 en la aceptación en hardware de M3; S5, S7, S9 y S11 en M2; S2 residual, S6 y S15 antes de M3; S12 en M3; S8, S10 y S14 antes de M5. Ningún criterio cambia | M1 |
 | D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
+| D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, semilla y migración del primer arranque, `Clicalo.App.Tests` | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -450,6 +451,57 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Motivo.** Que los contratos compilen con las reglas de §4 (capas, módulos, analizadores) sin ambigüedades.
 - **Coste.** Nombres distintos de los del plano en seis tipos; la tabla de arriba es la traducción.
 - **Revisión.** Al cerrar M2; si el plano pasa a 1.2, se adoptan los nombres del repositorio.
+
+## D-21 · Integración de M2
+
+- **Plano.** [§3.1](blueprint.md#31-vista-de-procesos), [§3.2](blueprint.md#32-modelo-de-hilos),
+  [§6](blueprint.md#6-modelo-de-dominio-y-persistencia) y [§7](blueprint.md#7-motor-de-ejecución) describen el dominio,
+  el motor, la persistencia, la migración y el arranque; [D-20](#d-20--contratos-de-m2) fijó sus contratos.
+- **Repositorio.** Lo que los cinco paquetes y la integración añadieron o hicieron de otra forma:
+  - **Dominio.** Módulo `ProfileResolution` (tabla PER-001 a PER-008) con sus rutas en el paquete `domain`. Comando
+    nuevo `DiscardDraft` (ATJ-011, EC-EDI-04). `SetSetting` no es genérico: recibe `(Path, Value)`, para que su nombre
+    coincida con `undo-exemptions.json`. `CanonicalChord.TryFrom` y `TryParse` en lugar de `From(KeyChord, KeyCatalog)`;
+    `ForBlockedComparison` compara sin el lado del modificador (R-08). La porción `Settings` del deshacer solo restaura
+    los ajustes deshacibles; `lockProfile` y `lastProfile` son de colocación y no se deshacen (propuesta R-13);
+    `RestoreSlices` corrige un `lastProfile` que apunta a un perfil que ya no existe. `Settings` depende ahora de `Timing`
+    y `Catalog` (`domain-modules.json`), y sus valores por defecto salen de `Timings` y `TouchPresets`.
+  - **Almacén.** `DocumentStore` descarta una entrada agrupada cuyo deshacer no cambiaría nada, entrega `Changed` en
+    orden de revisión por una cola (posiblemente en otro hilo que también despacha) y gasta el `ConfirmationToken` al
+    aplicarlo (`store.confirmation.spent`): dos toques ejecutan un solo borrado (REG-04).
+  - **Motor.** Miembros y tipos públicos nuevos (`EngineState.Outbox`, `QueuedStep`, `PressedBatch`, `StickyState`,
+    `HoldOrigin.Tap`, `KeyLedgerSection.ReadOnlyView`, `InjectionGate.TryReleaseEverything`, `GuardianProcess`,
+    `CrashJournal`…) y los eventos `ReleasesBlocked`, `SessionResumed`, `StickyTapped` y `ClearSticky`. La tabla fija de
+    `keys.win32.json` es una copia a mano en `Domain.Execution.Internal.Win32FixedKeys`, comparada con el JSON por una
+    prueba, hasta que el generador la emita. Una liberación que `SendInput` envía solo en parte vuelve como
+    `ReleasesBlocked`, y `GateInputInjector` suelta lo que un lote equilibrado (clic o texto) dejó pulsado. Sentinel no
+    escribe el diario de fallos: lo añade el principal relanzado con `--after-crash` ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md),
+    punto 5). `EmergencyReleaser` corre en su propio temporizador de `TimeProvider`, no en el hilo SysEvents, para que
+    ni la UI ni SysEvents colgados lo bloqueen. S9 congela el motor en la CI con el modelo, no con una compilación Chaos
+    con punto de ruptura.
+  - **Persistencia.** `DocumentLoadOutcome.RecoveredFromPending` (la copia de emergencia de `pending\`). Los esquemas
+    persistidos viven en `data/schemas` y los valida `Clicalo.Data.Tests`. El registro está en
+    `Infrastructure/Logging`, fuera del reparto de M2, porque `banned-api-exceptions.json` espera ahí su *sink*.
+  - **Migración.** `V1Importer.MigrateAsync` (guarda el original byte a byte antes de convertir), `V1ComboScan`,
+    `V1Counts.Of` y tres valores de `MigrationNoteKind`; los repetidos de una importación salen de `DuplicateIndex`.
+  - **App.** La instancia única (mutex, *pipe* con DACL y comprobación de la imagen en los dos sentidos) vive en
+    `Clicalo.App/SingleInstance`, con su propia interoperabilidad, hasta que la IPC de `ImportFile` y `OpenUri` la lleve
+    a `Platform.Windows/SingleInstance` y `Platform.Core/Ipc`; es ruta sensible. `sidHash` se calcula sobre el SID
+    binario, y la DACL da también `CreateNewInstance` al usuario, que el SDDL de §3.4 omite. `PanelProjector` está en
+    `Presentation/Panel`, no en `Application.Projections`, y sus pruebas sin ventana en el proyecto de Windowing. La
+    franja de «Soltar todo» va debajo de las fichas, para no mover ninguna bajo el dedo.
+  - **Arranque.** Un primer arranque sin documento carga la semilla de `content\seed.json` en el idioma de Windows, o
+    convierte el archivo v1 de `--migrate-v1` sobre ella, y la escribe al momento; hasta que exista el localizador de
+    MIG-001, el archivo v1 se nombra en la línea de órdenes. `--exit-after` recorre la salida completa sin intervención
+    (diagnóstico). Bloquear y suspender sueltan por `SessionKeyRelease` (SEG-006). El proyecto copia `i18n`, la semilla
+    y `Clicalo.Sentinel.exe` junto a `Clicalo.exe`, y los textos ya no se buscan en carpetas superiores.
+  - **Pruebas.** Proyecto nuevo `Clicalo.App.Tests` (opciones, protocolo del *pipe*, adaptadores sin envío, documento
+    del primer arranque) con `InternalsVisibleTo` en `Clicalo.App`.
+- **Motivo.** Que los cinco paquetes compongan un `Clicalo.exe` que arranca, envía por la valla y se cierra limpio sin
+  cambiar ningún contrato de D-20 ni rebajar ningún requisito.
+- **Coste.** Una copia a mano de la tabla Win32 hasta cambiar el generador; la instancia única y su interoperabilidad
+  en la raíz de composición durante M2.
+- **Revisión.** Al cerrar M2, con la primera ejecución de `desk (x64)` y `perf (x64)` en la CI; la tabla Win32, al
+  cambiar `KeysEmitter`; la instancia única, con la IPC de M4.
 
 ## Puntos del plano pendientes de resolver
 

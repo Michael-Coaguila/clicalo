@@ -112,3 +112,14 @@ progress).
   importer and `SafeZipReader`); and Sentinel's guardian loop. ADR-0018 (proposed) fixes the Sentinel start contract,
   the ledger v2 layout and the document envelope 1.0.
 - Test projects `Clicalo.Infrastructure.Tests`, `Clicalo.Sentinel.Tests` and `Clicalo.Performance`.
+- Milestone M2 implementation, integrated from the domain, engine, persistence, migration and app packages: the
+  library invariants, settings schema, frequents, duplicates, profile resolution, the 27 document commands and
+  `DocumentStore` with undo by slices and single-use confirmation tokens; the pure engine reducer and planners,
+  `EngineHost`, the ledger section, `InjectionGate` with the only `SendInput`, Sentinel and its supervisor, the
+  emergency release and the release on lock and suspend; atomic writes, the load and recovery chain, DPAPI texts,
+  backups, autosave and the redacting log; the v1 tokenizer, converter, reader and `SafeZipReader` with anonymized
+  real fixtures and the `anonymize-v1` DevCli verb; and `Clicalo.exe` with single instance, the minimal panel with its
+  panic strip, the tray, the seed or v1 migration on a first run, and the `cl run`, `cl note` and `cl perf` verbs.
+  Spikes S5, S7, S9 and S11 are tests; the chaos and performance runs are CI-only.
+- `Clicalo.App.Tests`, headless tests of the composition root, and 34 new texts in Spanish and English pending
+  ratification (catalog §6.1, R-11).

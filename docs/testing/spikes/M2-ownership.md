@@ -68,7 +68,8 @@ Commits: `feat(data)`, `test(data)`, `feat(editor)` para la confirmación, `docs
 - `src/Clicalo.Domain/Keys/**` y `src/Clicalo.Domain/Catalog/**` salvo lo generado (nunca se edita lo generado; los
   generadores están congelados).
 - `src/Clicalo.Application/Store/**` y `src/Clicalo.Application/Confirmation/**`.
-- `tests/Clicalo.Domain.Tests/{Primitives,Errors,Privacy,Keys,Library,Settings,Frequents,Duplicates,Document,Commands,Generators}/**`
+- `src/Clicalo.Domain/ProfileResolution/**` (la tabla PER-001 a PER-008; módulo declarado en `domain-modules.json`).
+- `tests/Clicalo.Domain.Tests/{Primitives,Errors,Privacy,Keys,Library,Settings,Frequents,Duplicates,Document,Commands,Generators,ProfileResolution}/**`
   (los generadores CsCheck de `KeyChord` y `UserDocument` van en `Generators/`).
 - `tests/Clicalo.Application.Tests/{Store,Confirmation}/**` y, en
   `tests/Clicalo.Application.Tests/Clicalo.Application.Tests.csproj`, **solo** un `<Compile Include>` enlazado a
@@ -134,6 +135,8 @@ Commits: `feat(data)`, `test(data)`, `docs(data)`…
   está en `architecture/banned-api-exceptions.json`); `File.Replace` es `ReplaceFileW`, y la escritura directa usa
   `FileOptions.WriteThrough` y `Flush(flushToDisk: true)`.
 - `src/Clicalo.Application/Persistence/**` (`PersistenceScheduler`).
+- `src/Clicalo.Infrastructure/Logging/**` y `tests/Clicalo.Infrastructure.Tests/Logging/**` (el registro de producto;
+  `banned-api-exceptions.json` espera ahí su *sink*).
 - `data/schemas/document.schema.json` y `data/schemas/usage.schema.json` (nuevos; formato persistido de ADR-0007).
 - `tests/Clicalo.Infrastructure.Tests/{Persistence,Backup,Fixtures/schema}/**` y
   `tests/Clicalo.Application.Tests/Persistence/**`.
@@ -161,7 +164,8 @@ Commits: `feat(migration)`, `test(migration)`, `docs(migration)`…
 - `src/Clicalo.Platform.Windows/Legacy/**` (nuevo, opcional en M2: `ILegacyInstallLocator` de MIG-001; su puerto se pide
   en `sharedChangesNeeded`).
 - `tests/Clicalo.Domain.Tests/Migration/**` y `tests/Clicalo.Infrastructure.Tests/{Migration,Fixtures/v1}/**`.
-- `tools/Clicalo.DevCli/**` (la orden `anonymize-v1`; nadie más toca DevCli en M2).
+- `tools/Clicalo.DevCli/**` (la orden `anonymize-v1`; nadie más toca DevCli en M2) y
+  `tests/Clicalo.DevCli.Tests/AnonymizeV1/**`.
 
 **Privacidad de los *fixtures*:** los tres `profiles.json` reales del usuario (`Documentos\Macro Quick Access\`) se leen
 en local, **solo lectura**, y se versionan únicamente **anonimizados** con `anonymize-v1` (conserva combinaciones,
@@ -229,3 +233,13 @@ Commits: `feat(panel)`, `feat(platform)` para la bandeja, `feat(build)` para los
 | `Clicalo.Sentinel` (`GuardianLoop`, `SentinelEntryPoint`) | Firmas; `Program.Main` aún devuelve 0 |
 | `Infrastructure.Persistence`, `Infrastructure.Backup`, `Infrastructure.Migration` | `SchemaVersion`, `DocumentFormats`, `DataLocations` y `SafeZipLimits` implementados; el resto, firmas |
 | `tests/Clicalo.Infrastructure.Tests`, `tests/Clicalo.Sentinel.Tests`, `tests/Clicalo.Performance` | Proyectos nuevos registrados en `Clicalo.slnx` y `allowed-dependencies.json`, con sus primeras pruebas |
+
+## Integración
+
+Los cinco paquetes se fusionaron en `m2/skeleton` en el orden recomendado (domain → engine → persistence → migration →
+app). La integración aplicó los cambios compartidos que pidieron, quitó los dobles y las omisiones que esperaban a
+`domain` (`TestRules`, `Chords`, `EngineRules`, `DomainPending` y `SkipExceptions`), compuso `Clicalo.exe` de punta a
+punta (motor real tras la valla, persistencia real, semilla o migración v1 en el primer arranque, panel y bandeja) y
+añadió `Clicalo.App.Tests`. Lo que cambia respecto al plano está en
+[D-21](../../architecture/deviations.md#d-21--integración-de-m2); las propuestas para el usuario, en R-11 a R-14 de
+[§6.1 del catálogo](../../requirements/catalog.md#61-propuestas-pendientes-de-ratificar).

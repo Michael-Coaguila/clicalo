@@ -56,10 +56,37 @@ Opción elegida: **«Contratos explícitos en código compartido»**, porque amb
    `"format"` (`clicalo.document` o `clicalo.usage`) y `"schema": { "major": 1, "minor": 0 }`, con `writtenBy`, `seq`,
    `writtenAtUtc`, `payloadSha256` (SHA-256 hexadecimal en minúsculas de la serialización compacta y determinista del
    `payload`) y `payload`. Un *minor* mayor se lee conservando los campos desconocidos; un *major* mayor entra en solo
-   lectura.
-4. **Clave canónica persistida** (`CanonicalChord.ToStableString`, en `dupIgnored`): texto estable e independiente de la
-   cultura que hace ida y vuelta con `TryParse`; su gramática exacta la fija el paquete `domain` con una prueba de ida y
-   vuelta antes de la primera beta.
+   lectura. El `payload` 1.0 lo describen `data/schemas/document.schema.json` y `data/schemas/usage.schema.json`, y los
+   *fixtures* inmutables de `tests/Clicalo.Infrastructure.Tests/Fixtures/schema/1.0/` lo validan:
+   - `settings`, `always`, `profiles`, `frequents`, `dupIgnored` y `onboarding`; los ajustes con los nombres de docs/02.
+   - Una tecla es su id de `keys.json`, con `@left` o `@right` cuando nombra un lado; `keySafety.maxHoldMs` 0 es
+     «Nunca» y el límite de un atajo es `inherit`, `never` o `after` con `maxHoldMs`.
+   - El destino de una app es `{kind: exe | store | document | raw}`; una web con `raw: true` es una dirección que no
+     es http ni https.
+   - Un texto en reposo es `{enc: "dpapi.v1", blob, len, private}` (DPAPI del usuario con la entropía fija
+     `Clicalo.Text.v1`, ADR-0008), o las marcas `{enc: "unavailable"}` y `{enc: "excluded"}` (COP-005). No se usa el
+     prefijo `dpapi:` del paquete de diseño.
+   - El uso (`usage.json`) guarda instantes en milisegundos Unix por atajo, con las claves en orden ordinal y el
+     `usageEpoch` del documento; una copia de seguridad lleva además el uso de su momento.
+   - Un perfil compartido (`clicalo-perfil-<id>.json`, DAT-007) es `{type: "profile-share", schema, writtenBy,
+     writtenAtUtc, profile}` con el mismo `profile` del documento, sin envoltorio con *hash*; es contenido no confiable
+     y al importarlo se sustituyen todos sus ids.
+4. **Clave canónica persistida** (`CanonicalChord.ToStableString`, en `dupIgnored`). Gramática fija, independiente de la
+   cultura:
+   - Los *tokens* van unidos por `+`. Primero los modificadores, cada uno como mucho una vez y en este orden: `ctrl`,
+     `lctrl`, `rctrl`, `alt`, `lalt`, `altgr`, `shift`, `lshift`, `rshift`, `win`, `lwin`, `rwin`.
+   - Después las teclas principales, en orden, como su `KeyId` en minúsculas, con `%` escrito `%25` y `+` escrito `%2B`.
+     Una tecla principal cuyo texto coincide con un modificador lleva escapado su primer carácter (por ejemplo
+     `%6Cwin`).
+   - `TryParse` solo acepta exactamente el texto que escribe `ToStableString` (ni mayúsculas ni escapes innecesarios),
+     de modo que una clave persistida tiene un único texto. Lo cubre una propiedad de ida y vuelta de 10 000 casos.
+5. **Relanzamiento tras un fallo.** Sentinel no escribe archivos (`banned-api-exceptions.json`). Cuando el principal
+   muere sin `CleanShutdown` ni `NoRelaunch`, suelta primero y después lanza el `Clicalo.exe` de su carpeta, sin
+   *handles* heredados, con `--after-crash=<ms Unix>` y, si se alcanzó `Timings.App.CrashLoop`, `--safe-mode`
+   (`CrashJournal.RelaunchArguments`). Lee `%LocalAppData%\Clicalo\crash-journal.json` solo para decidir el bucle de
+   fallos, en el formato de `Platform.Core/Guardian/CrashJournal` (`format: clicalo.crash-journal`, `version: 1`, hasta
+   32 instantes ISO 8601); el principal relanzado añade el fallo con `CrashJournal.Append` a través de la escritura
+   atómica.
 
 ### Consecuencias
 
@@ -68,14 +95,21 @@ Opción elegida: **«Contratos explícitos en código compartido»**, porque amb
 - Buena, porque el documento admite cambios aditivos sin romper la vuelta a N−1 (ADR-0007).
 - Mala, porque los umbrales de Sentinel viajan por la línea de órdenes: si `timings.json` cambia, Sentinel recibe el
   valor nuevo en el siguiente arranque, no antes.
-- Mala, porque la gramática de la clave canónica queda abierta hasta la primera beta.
+- Mala, porque el diario de fallos lo escribe el principal relanzado: si Sentinel no consigue relanzarlo, ese fallo no
+  cuenta para el bucle.
+- Pendiente de decidir: si Sentinel reintenta las liberaciones que rechaza el escritorio seguro. Hoy, si el principal
+  muere con la sesión bloqueada, Sentinel suelta una vez y sale, y el soltado preventivo del relanzamiento también
+  corre bloqueado; alguna tecla podría seguir pulsada al desbloquear (docs/testing/spikes/S9.md, «Qué queda abierto»).
 
 ### Confirmación
 
 - `tests/Clicalo.Sentinel.Tests/KeyLedgerLayoutTests` fija el diseño de §7.4 y los tres *handles*.
 - Ida y vuelta de `SentinelStartInfo` y rechazo de otra versión (paquete `engine`); S9 en la CI.
 - `tests/Clicalo.Infrastructure.Tests/Persistence` fija el esquema 1.0 y, con el paquete `persistence`, la lectura de un
-  *minor* posterior y el rechazo de un *major* futuro.
+  *minor* posterior y el rechazo de un *major* futuro; `tests/Clicalo.Data.Tests` valida los *fixtures* 1.0 con
+  `document.schema.json` y `usage.schema.json`.
+- `tests/Clicalo.Domain.Tests/Keys/CanonicalChordTests` fija la gramática de la clave canónica y su ida y vuelta.
+- `tests/Clicalo.Sentinel.Tests` y `tests/Clicalo.App.Tests/AppOptionsTests` fijan los argumentos del relanzamiento.
 
 ## Pros y contras de las opciones
 
