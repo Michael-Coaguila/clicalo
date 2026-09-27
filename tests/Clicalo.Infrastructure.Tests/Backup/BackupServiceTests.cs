@@ -36,6 +36,17 @@ public sealed class BackupServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Disposing_twice_is_harmless_and_a_later_snapshot_is_ignored()
+    {
+        _service.Dispose();
+
+        Should.NotThrow(_service.Dispose);
+        _service.SnapshotNow(TestDocuments.Document(), BackupKind.PreRestore);
+        await _service.FlushSnapshotsAsync(Token);
+        Directory.Exists(_folder.Locations.Backups).ShouldBeFalse();
+    }
+
+    [Fact]
     [Trait("Req", "COP-004")]
     public async Task A_backup_is_a_complete_document_with_its_own_counts()
     {

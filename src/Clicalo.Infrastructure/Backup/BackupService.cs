@@ -37,6 +37,7 @@ public sealed partial class BackupService : IBackupService, IDisposable
     private long _seq = -1;
     private TaskCompletionSource _drained = CompletedSource();
     private int _queued;
+    private bool _disposed;
 
     /// <summary>Creates the service.</summary>
     /// <param name="locations">Where the data lives.</param>
@@ -111,6 +112,12 @@ public sealed partial class BackupService : IBackupService, IDisposable
 
         lock (_gate)
         {
+            if (_disposed)
+            {
+                // Ending: a snapshot after Dispose would start a consumer over a stopped service.
+                return;
+            }
+
             if (_queued++ == 0)
             {
                 _drained = new TaskCompletionSource(
@@ -283,12 +290,28 @@ public sealed partial class BackupService : IBackupService, IDisposable
         return Task.FromResult(Decode(bytes));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Stops the snapshot consumer; the snapshots still queued are abandoned with the process. Idempotent: the
+    /// container disposes a service once per registration that returns it.
+    /// </summary>
+    /// <remarks>
+    /// The token source is cancelled, not disposed: the consumer may still be starting on the thread pool and reading
+    /// its token, and a source without a timer holds nothing to release.
+    /// </remarks>
     public void Dispose()
     {
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+        }
+
         _snapshots.Writer.TryComplete();
         _stopping.Cancel();
-        _stopping.Dispose();
     }
 
     /// <summary>A document backup read from bytes (restore, and the recovery chain).</summary>
