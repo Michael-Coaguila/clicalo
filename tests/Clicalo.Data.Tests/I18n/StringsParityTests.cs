@@ -41,6 +41,9 @@ public sealed class StringsParityTests
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+                // Texts of the M2 walking skeleton: the tray, the app name and the actions of M3 (catalog §6.1).
+                "actionUnavailable",
+                "appName",
                 // Key-group and category labels of data/catalogs (keys.json, categories.json).
                 "catEdit",
                 "catFile",
@@ -52,11 +55,14 @@ public sealed class StringsParityTests
                 "catVoice",
                 "catWeb",
                 "catWin",
+                "exitApp",
+                "hidePanel",
                 "kgFn",
                 "kgMods",
                 // Nested plural quantities of migT.
                 "migTProfiles",
                 "migTShortcuts",
+                "trayHidden",
             ]);
         entries
             .Where(static e => I18nData.Category(e.Key) is not null)

@@ -17,6 +17,9 @@ internal static class VerbCatalog
     public const string I18nCheck = "i18n-check";
     public const string I18nImport = "i18n-import";
     public const string AdrCheck = "adr-check";
+    public const string Run = "run";
+    public const string Note = "note";
+    public const string Perf = "perf";
 
     /// <summary>
     /// Verbs that run a verb of <c>tools/Clicalo.DevCli</c> with the same name. Everything written after one of
@@ -24,29 +27,23 @@ internal static class VerbCatalog
     /// </summary>
     public static IReadOnlyList<string> DevCli { get; } = [I18nCheck, I18nImport, AdrCheck];
 
-    /// <summary>Verbs implemented in M0, in the order they are listed to people.</summary>
+    /// <summary>Verbs implemented so far (M0 and the M2 walking skeleton), in the order they are listed to people.</summary>
     public static IReadOnlyList<string> Available { get; } =
-    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli];
+    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli, Run, Note, Perf];
 
     /// <summary>Verbs of later milestones (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =
     [
-        // The first runnable panel is the M2 walking skeleton.
-        new("run", "M2"),
         // The state matrix with approved render snapshots is an M3 exit criterion.
         new("states", "M3"),
         // Hardware acceptance and the manual script first gate a milestone in M3.
         new("accept", "M3"),
         // M3 requires every MUST of the panel, engine, touch and safety modules to carry [Req].
         new("trace", "M3"),
-        // User-facing notes become mandatory with the first feature pull requests (M2).
-        new("note", "M2"),
         // Spike pull requests start in M1.
         new("pr", "M1"),
         // The first signed beta is the M5 exit criterion.
         new("beta", "M5"),
-        // The touch-to-SendInput p95 budget is an M2 exit criterion.
-        new("perf", "M2"),
         // Manifest signing with the hardware key ships with the update channel (M5).
         new("sign-manifest", "M5"),
     ];

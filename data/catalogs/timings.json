@@ -330,6 +330,24 @@
           "description": "The elevated instance waits this long for the previous instance to release the single-instance mutex.",
           "req": ["EJE-013", "SIS-003"],
           "source": "blueprint §3.3"
+        },
+        "ExitReleaseWait": {
+          "duration": "500ms",
+          "description": "On exit the engine has this long to release everything and stop; the process ends anyway afterwards and Sentinel releases whatever the ledger still records.",
+          "req": ["SEG-006", "SEG-007"],
+          "source": "blueprint §7.6"
+        },
+        "ExitFlushTimeout": {
+          "duration": "2s",
+          "description": "Longest flush of the document and usage when Clícalo exits.",
+          "req": ["DAT-002", "REG-08"],
+          "source": "blueprint §6.4"
+        },
+        "SentinelLateThreshold": {
+          "duration": "200ms",
+          "description": "A guardian that is not running this long after the first frame is logged as startup.sentinel_late (the accepted gap of blueprint §3.1 and §15.2).",
+          "req": ["SEG-006"],
+          "source": "blueprint §3.1, §15.2"
         }
       }
     },

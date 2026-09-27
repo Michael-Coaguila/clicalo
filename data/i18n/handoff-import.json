@@ -161,6 +161,31 @@
       "notes": "Categoría de atajo (data/catalogs/categories.json).",
       "after": "catWeb",
       "text": { "es": "Texto", "en": "Text" }
+    },
+    "hidePanel": {
+      "notes": "Menú de la bandeja con el panel visible: la otra mitad de «Mostrar/Ocultar» (BUR-003; la mitad «Mostrar» es restore). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "restore",
+      "text": { "es": "Ocultar panel", "en": "Hide panel" }
+    },
+    "exitApp": {
+      "notes": "Menú de la bandeja: «Salir» (BUR-003). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "hidePanel",
+      "text": { "es": "Salir", "en": "Exit" }
+    },
+    "appName": {
+      "notes": "Nombre de la app: texto del icono de la bandeja y nombre accesible del panel (BUR-003, REG-06). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "tagline",
+      "text": { "es": "Clícalo", "en": "Clícalo" }
+    },
+    "trayHidden": {
+      "notes": "Texto accesible del icono de la bandeja con el panel oculto (BUR-003: el estado oculto se indica también en su texto accesible). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "appName",
+      "text": { "es": "Clícalo · panel oculto", "en": "Clícalo · panel hidden" }
+    },
+    "actionUnavailable": {
+      "notes": "Aviso del esqueleto andante (M2) cuando un atajo pide abrir una web o una app, pegar texto o un comando de sistema, cuyos adaptadores llegan en M3. Texto nuevo, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "trayHidden",
+      "text": { "es": "Esta acción aún no está disponible", "en": "This action is not available yet" }
     }
   }
 }

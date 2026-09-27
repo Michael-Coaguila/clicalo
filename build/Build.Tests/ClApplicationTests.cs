@@ -4,7 +4,7 @@ namespace Clicalo.Build.Tests;
 public sealed class ClApplicationTests
 {
     private const string Verbs =
-        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import y adr-check";
+        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import, adr-check, run, note y perf";
 
     private const string VerbList = "cl: las órdenes son " + Verbs;
 
@@ -40,7 +40,7 @@ public sealed class ClApplicationTests
     }
 
     [Theory]
-    [InlineData("run", "M2")]
+    [InlineData("trace", "M3")]
     [InlineData("states", "M3")]
     [InlineData("sign-manifest", "M5")]
     public async Task A_planned_verb_answers_its_milestone_and_fails(string verb, string milestone)
