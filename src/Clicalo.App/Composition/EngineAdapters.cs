@@ -61,7 +61,7 @@ internal static class EngineAdapters
             );
             return new EngineAdapterSet(
                 new GateInputInjector(gate),
-                new KeyLedgerPort(section),
+                new KeyLedgerPort(gate),
                 new InternalKeyEffects(gate, services.GetRequiredService<InternalRightsHotkey>()),
                 new SupervisedGuardian(supervisor),
                 new GateStartupRelease(gate),

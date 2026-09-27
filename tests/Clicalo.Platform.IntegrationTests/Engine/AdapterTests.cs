@@ -220,11 +220,11 @@ public sealed class AdapterTests
     public void The_ledger_port_exposes_generation_marks_and_pending_releases()
     {
         using var ledger = KeyLedgerSection.CreateInMemory();
-        var port = new KeyLedgerPort(ledger);
+        var port = new KeyLedgerPort(new InjectionGate(ledger, new PhysicalStateInjector()));
 
         port.SetMarks(KeyLedgerMarks.EngineAlive | KeyLedgerMarks.CleanShutdown);
         port.ClearMarks(KeyLedgerMarks.CleanShutdown);
-        port.WriteHeartbeat(99);
+        port.TryWriteHeartbeat(new EngineGeneration(1), 99).ShouldBeTrue();
         ledger.TryBeginDown(new PhysicalKey(0x41, 0x1E, LedgerKeyAttributes.None), out var slot);
         ledger.MarkReleasePending(slot);
 

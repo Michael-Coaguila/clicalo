@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -130,7 +131,18 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     /// <param name="cancellationToken">Stops the loop after releasing everything.</param>
     public void Run(CancellationToken cancellationToken)
     {
-        _ports.Ledger.SetMarks(KeyLedgerMarks.EngineAlive);
+        if (
+            !_ports.Ledger.TryUpdateMarks(
+                Generation,
+                KeyLedgerMarks.EngineAlive,
+                KeyLedgerMarks.None
+            )
+        )
+        {
+            // An emergency raised the generation before this host even ran: it is a zombie from the start (INV-11).
+            Fence();
+        }
+
         try
         {
             while (!IsStopped && !cancellationToken.IsCancellationRequested)
@@ -156,10 +168,15 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             }
 
             // A fenced host is a zombie: the ledger's EngineAlive mark belongs to the engine that replaced it, and
-            // clearing it would switch off the emergency releaser's watch over that engine (§3.2, rule 6).
+            // clearing it would switch off the emergency releaser's watch over that engine (§3.2, rule 6). The gate
+            // checks the generation again, so a host fenced in the meantime clears nothing either.
             if (!_fenced)
             {
-                _ports.Ledger.ClearMarks(KeyLedgerMarks.EngineAlive);
+                _ = _ports.Ledger.TryUpdateMarks(
+                    Generation,
+                    KeyLedgerMarks.None,
+                    KeyLedgerMarks.EngineAlive
+                );
             }
 
             _mailbox.Complete();
@@ -187,10 +204,20 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     /// One turn of the loop: the heartbeat, the timers that fell due, every queued event (priority lane first) and a
     /// coalesced snapshot; then arms the wake-up timer. The tests call it directly on their thread.
     /// </summary>
+    /// <remarks>
+    /// The heartbeat goes through the generation fence: a host an emergency replaced (a zombie that resumed) learns it
+    /// here, on its first turn, even when it has nothing to send, and stops without writing the heartbeat, running a
+    /// timer or publishing a snapshot to the observer it shares with the engine that replaced it (INV-11).
+    /// </remarks>
     internal void Pump()
     {
         var now = _time.GetTimestamp();
         Heartbeat(now);
+        if (IsStopped)
+        {
+            return;
+        }
+
         foreach (
             var (key, _) in _timers.Where(t => t.Value <= now).OrderBy(static t => t.Value).ToList()
         )
@@ -208,6 +235,11 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         {
             Handle(engineEvent);
             Heartbeat(_time.GetTimestamp());
+        }
+
+        if (_fenced)
+        {
+            return;
         }
 
         now = _time.GetTimestamp();
@@ -265,16 +297,21 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
     private void AfterTerminal(TerminalReason reason)
     {
-        switch (reason)
+        var marks = reason switch
         {
-            case TerminalReason.Exit:
-            case TerminalReason.SessionEnd:
-                _ports.Ledger.SetMarks(KeyLedgerMarks.CleanShutdown);
-                break;
-            case TerminalReason.Relaunch:
-            case TerminalReason.Update:
-                _ports.Ledger.SetMarks(KeyLedgerMarks.CleanShutdown | KeyLedgerMarks.NoRelaunch);
-                break;
+            TerminalReason.Exit or TerminalReason.SessionEnd => KeyLedgerMarks.CleanShutdown,
+            TerminalReason.Relaunch or TerminalReason.Update => KeyLedgerMarks.CleanShutdown
+                | KeyLedgerMarks.NoRelaunch,
+            _ => KeyLedgerMarks.None,
+        };
+        if (
+            marks != KeyLedgerMarks.None
+            && !_ports.Ledger.TryUpdateMarks(Generation, marks, KeyLedgerMarks.None)
+        )
+        {
+            // A zombie never marks a clean shutdown: the engine that replaced it may still hold keys.
+            Fence();
+            return;
         }
 
         if (reason == TerminalReason.Exit)
@@ -414,6 +451,11 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
     private void Fence()
     {
+        if (_fenced)
+        {
+            return;
+        }
+
         // INV-11: an emergency raised the generation and a new engine owns the keyboard; this one is a zombie.
         _fenced = true;
         LogFenced(_logger, Generation.Value);
@@ -450,18 +492,29 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     private void Fault(EngineState before, Exception exception)
     {
         LogFault(_logger, exception.GetType().Name);
+        var refused = ImmutableArray<InjectedEvent>.Empty;
         try
         {
             if (_ports.ReleaseRecorded is { } releaseRecorded)
             {
+                // A release the secure desktop refuses stays ReleasePending in the physical ledger, which
+                // SessionResumed sends again (Injector.ReleasePending).
                 releaseRecorded(Generation);
             }
             else
             {
-                var release = before.Keys.ReleaseAll().Events.AddRange(before.BlockedReleases);
+                var release = before.Keys.ReleaseAll().Events;
                 if (!release.IsEmpty)
                 {
-                    _ports.Injector.Send(Generation, release.AsSpan());
+                    var result = _ports.Injector.Send(Generation, release.AsSpan());
+                    if (result.Status == InjectionStatus.Fenced)
+                    {
+                        Fence();
+                    }
+                    else if (result.Status is InjectionStatus.Blocked or InjectionStatus.Failed)
+                    {
+                        refused = release;
+                    }
                 }
             }
         }
@@ -470,10 +523,13 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             LogFault(_logger, ex.GetType().Name);
         }
 
+        // The releases the secure desktop refused stay to be sent again (INV-3): the reset forgets what was held, not
+        // what is still down.
         _state = EngineState.Empty with
         {
             Foreground = before.Foreground,
             Sequence = before.Sequence,
+            BlockedReleases = [.. before.BlockedReleases, .. refused],
             Version = before.Version + 1,
         };
         _timers.Clear();
@@ -482,11 +538,20 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
     private void Heartbeat(long now)
     {
-        if (_lastHeartbeatTicks is null || now != _lastHeartbeatTicks)
+        if (_fenced || (_lastHeartbeatTicks is { } last && now == last))
         {
-            _ports.Ledger.WriteHeartbeat(now);
-            _lastHeartbeatTicks = now;
+            return;
         }
+
+        if (!_ports.Ledger.TryWriteHeartbeat(Generation, now))
+        {
+            // §3.2, rule 6: an emergency replaced this host while it was hung outside the gate. Renewing the heartbeat
+            // now would hide a hang of the engine that replaced it from the emergency releaser.
+            Fence();
+            return;
+        }
+
+        _lastHeartbeatTicks = now;
     }
 
     private void Publish(long now)

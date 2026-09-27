@@ -11,7 +11,24 @@ internal sealed class RecordingKeyLedger(List<string> log) : IKeyLedger
 
     public int PendingReleases => 0;
 
-    public void WriteHeartbeat(long ticks) { }
+    public bool TryWriteHeartbeat(EngineGeneration generation, long ticks) =>
+        generation == CurrentGeneration;
+
+    public bool TryUpdateMarks(
+        EngineGeneration generation,
+        KeyLedgerMarks toSet,
+        KeyLedgerMarks toClear
+    )
+    {
+        if (generation != CurrentGeneration)
+        {
+            return false;
+        }
+
+        SetMarks(toSet);
+        ClearMarks(toClear);
+        return true;
+    }
 
     public void SetMarks(KeyLedgerMarks marks)
     {

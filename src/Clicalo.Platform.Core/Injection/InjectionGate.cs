@@ -139,6 +139,57 @@ public sealed class InjectionGate
     }
 
     /// <summary>
+    /// Writes the engine heartbeat under the fence (blueprint §3.2, rule 6: writes to the ledger go through the gate):
+    /// a zombie host, whose generation an emergency already raised, never renews the heartbeat of the engine that
+    /// replaced it, so a later hang of that engine is still seen.
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    /// <param name="ticks">Now, in the engine clock's ticks.</param>
+    public GateResult TryWriteHeartbeat(ulong generation, long ticks)
+    {
+        lock (_gate)
+        {
+            if (_ledger.Generation != generation)
+            {
+                return GateResult.Fenced;
+            }
+
+            _ledger.WriteHeartbeat(ticks);
+            return GateResult.Ran;
+        }
+    }
+
+    /// <summary>
+    /// Sets and clears header marks under the fence (the engine's <c>EngineAlive</c> and the marks of its terminal
+    /// events): a zombie host never clears the mark of the engine that replaced it, nor marks a clean shutdown.
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    /// <param name="toSet">Marks to set.</param>
+    /// <param name="toClear">Marks to clear.</param>
+    public GateResult TryUpdateMarks(ulong generation, LedgerMarks toSet, LedgerMarks toClear)
+    {
+        lock (_gate)
+        {
+            if (_ledger.Generation != generation)
+            {
+                return GateResult.Fenced;
+            }
+
+            if (toSet != LedgerMarks.None)
+            {
+                _ledger.SetMarks(toSet);
+            }
+
+            if (toClear != LedgerMarks.None)
+            {
+                _ledger.ClearMarks(toClear);
+            }
+
+            return GateResult.Ran;
+        }
+    }
+
+    /// <summary>
     /// The emergency of a hung engine (SysEvents, after <c>Timings.Engine.EngineStallThreshold</c> without heartbeat):
     /// tries to take the gate for <paramref name="wait"/> (<c>Timings.Engine.EmergencyGateWait</c>); if it can, raises
     /// the generation and releases everything recorded inside the lock.
