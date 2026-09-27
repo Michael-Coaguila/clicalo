@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using Clicalo.Application.Coordinators;
+using Clicalo.Application.Persistence;
 using Clicalo.Domain.Timing;
 
 namespace Clicalo.App.Shutdown;
@@ -12,6 +14,25 @@ namespace Clicalo.App.Shutdown;
 /// </summary>
 internal static class SuspendFlush
 {
+    /// <summary>
+    /// The suspend of the running instance: the release the engine confirms through <paramref name="relay"/>, then the
+    /// flush of <paramref name="scheduler"/>, the single Persistence consumer (the same flush as the exit sequence's).
+    /// </summary>
+    /// <param name="relay">The engine's observer.</param>
+    /// <param name="scheduler">The autosave.</param>
+    /// <param name="time">The clock of the limit.</param>
+    /// <returns>Whether the flush finished within the limit.</returns>
+    public static bool Run(
+        EngineObserverRelay relay,
+        PersistenceScheduler scheduler,
+        TimeProvider time
+    )
+    {
+        ArgumentNullException.ThrowIfNull(relay);
+        ArgumentNullException.ThrowIfNull(scheduler);
+        return Run(() => SuspendRelease.Wait(relay), scheduler.FlushAsync, time);
+    }
+
     /// <summary>
     /// Runs <paramref name="release"/> (itself bounded), then <paramref name="flush"/>, and waits for the flush or for
     /// the limit, whichever comes first.
