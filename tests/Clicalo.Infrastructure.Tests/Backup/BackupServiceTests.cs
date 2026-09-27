@@ -172,6 +172,23 @@ public sealed class BackupServiceTests : IDisposable
         (await _service.ListAsync(Token)).ShouldBeEmpty();
     }
 
+    [Fact]
+    [Trait("Req", "MIG-004")]
+    public async Task The_same_v1_original_is_kept_once_and_a_zip_keeps_its_extension()
+    {
+        byte[] original = [(byte)'{', (byte)'}'];
+        byte[] zip = [(byte)'P', (byte)'K', 3, 4, 0, 0];
+
+        var first = (await _service.KeepV1OriginalAsync(original, Token)).Value;
+        var again = (await _service.KeepV1OriginalAsync(original, Token)).Value;
+        var archive = (await _service.KeepV1OriginalAsync(zip, Token)).Value;
+
+        again.Id.ShouldBe(first.Id);
+        archive.Id.Value.ShouldBe("v1-original-20260105T090000Z.zip");
+        Directory.GetFiles(_folder.Locations.Backups, "v1-original-*").Length.ShouldBe(2);
+        File.ReadAllBytes(Path.Combine(_folder.Locations.Backups, archive.Id.Value)).ShouldBe(zip);
+    }
+
     [Theory]
     [Trait("Req", "LOG-006")]
     [InlineData("../clicalo.json")]

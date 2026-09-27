@@ -66,14 +66,18 @@ internal static partial class BackupLayout
         + seq.ToString("D6", CultureInfo.InvariantCulture)
         + ".json";
 
+    /// <summary>The pattern of every kept v1 original.</summary>
+    public const string V1FilePattern = "v1-original-*";
+
     /// <summary>The file name of the v1 original kept at <paramref name="at"/> (MIG-004).</summary>
     /// <param name="at">When.</param>
     /// <param name="copy">0, or a counter when two are kept in the same second.</param>
-    public static string V1FileName(DateTimeOffset at, int copy) =>
+    /// <param name="zip">Whether the original is a zip (a v1 backup archive) rather than a <c>profiles.json</c>.</param>
+    public static string V1FileName(DateTimeOffset at, int copy, bool zip = false) =>
         "v1-original-"
         + at.UtcDateTime.ToString(StampFormat, CultureInfo.InvariantCulture)
         + (copy == 0 ? string.Empty : "-" + copy.ToString(CultureInfo.InvariantCulture))
-        + ".json";
+        + (zip ? ".zip" : ".json");
 
     /// <summary>The id of a backup file.</summary>
     /// <param name="kind">Its kind.</param>

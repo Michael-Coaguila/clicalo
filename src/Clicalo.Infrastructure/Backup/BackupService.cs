@@ -207,11 +207,36 @@ public sealed partial class BackupService : IBackupService, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         var now = _time.GetUtcNow();
+
+        // «Retry migration» and a second first run keep the same bytes again: one copy of them is enough, and a kept
+        // copy is never deleted or overwritten.
+        foreach (var existing in _files.Files(_locations.Backups, BackupLayout.V1FilePattern))
+        {
+            if (
+                _files.ReadAllBytesOrNull(existing) is { } kept
+                && kept.AsSpan().SequenceEqual(original.Span)
+            )
+            {
+                return Results.Ok(
+                    new BackupInfo(
+                        new BackupId(Path.GetFileName(existing)),
+                        BackupKind.V1Original,
+                        now,
+                        0,
+                        0
+                    )
+                );
+            }
+        }
+
+        var zip =
+            original.Span.StartsWith("PK\u0003\u0004"u8)
+            || original.Span.StartsWith("PK\u0005\u0006"u8);
         string fileName;
         var copy = 0;
         do
         {
-            fileName = BackupLayout.V1FileName(now, copy++);
+            fileName = BackupLayout.V1FileName(now, copy++, zip);
         } while (_files.Exists(Path.Combine(_locations.Backups, fileName)));
 
         var written = await _writer

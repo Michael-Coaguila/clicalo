@@ -26,4 +26,10 @@ public enum DocumentLoadOutcome
 
     /// <summary>Nothing usable: a default document in memory, not written until the user accepts.</summary>
     DefaultInMemory,
+
+    /// <summary>
+    /// The emergency copy of <c>pending\</c> was newer than <c>clicalo.json</c>: a save that kept failing before the
+    /// process ended (DAT-002); it is written in its place with the next save.
+    /// </summary>
+    RecoveredFromPending,
 }

@@ -278,8 +278,8 @@ public sealed partial class DocumentRepository : IDocumentRepository
         {
             _ when !decoded.Repairs.IsDefaultOrEmpty => DocumentLoadOutcome.Repaired,
             LoadSource.Main when !chain.HashMatches => DocumentLoadOutcome.EditedExternally,
+            LoadSource.Pending => DocumentLoadOutcome.RecoveredFromPending,
             _ when chain.MainUsable => DocumentLoadOutcome.Loaded,
-            LoadSource.Pending => DocumentLoadOutcome.RecoveredFromBackup,
             _ => DocumentLoadOutcome.RecoveredFromPrevious,
         };
 
@@ -373,8 +373,25 @@ public sealed partial class DocumentRepository : IDocumentRepository
 
     private async Task KeepPreRepairAsync(byte[] original, CancellationToken cancellationToken)
     {
-        var seq =
-            BackupLayout.Scan(_locations, _files).Select(e => e.Seq).DefaultIfEmpty(0).Max() + 1;
+        var entries = BackupLayout.Scan(_locations, _files);
+
+        // The repair is only written with the next change, so every start before it repairs the same bytes again: one
+        // copy of them is enough (otherwise pre-repair\ would grow by one file per start).
+        var newest = entries
+            .Where(e => e.Kind == BackupKind.PreRepair)
+            .OrderByDescending(e => e.Seq)
+            .Select(e => (BackupLayout.Entry?)e)
+            .FirstOrDefault();
+        if (
+            newest is { } last
+            && _files.ReadAllBytesOrNull(BackupLayout.PathOf(_locations, last)) is { } kept
+            && kept.AsSpan().SequenceEqual(original)
+        )
+        {
+            return;
+        }
+
+        var seq = entries.Select(e => e.Seq).DefaultIfEmpty(0).Max() + 1;
         var path = Path.Combine(
             BackupLayout.FolderPath(_locations, BackupKind.PreRepair),
             BackupLayout.FileName(_time.GetUtcNow(), seq)

@@ -228,6 +228,21 @@ public sealed class DocumentRepositoryTests : IDisposable
     }
 
     [Fact]
+    [Trait("Req", "DAT-004")]
+    public async Task Starting_again_before_the_repair_is_saved_keeps_a_single_pre_repair_copy()
+    {
+        await SaveAsync(TestDocuments.Document());
+        Edit(payload => payload["profiles"]![1]!["shortcuts"]![0]!["id"] = "copy");
+
+        for (var start = 0; start < 3; start++)
+        {
+            (await Repository().LoadAsync(Token)).Outcome.ShouldBe(DocumentLoadOutcome.Repaired);
+        }
+
+        Directory.GetFiles(Path.Combine(Data.Backups, "pre-repair")).Length.ShouldBe(1);
+    }
+
+    [Fact]
     [Trait("Req", "DAT-002")]
     public async Task A_persistent_lock_keeps_an_emergency_copy_that_the_next_save_removes()
     {
@@ -290,6 +305,7 @@ public sealed class DocumentRepositoryTests : IDisposable
         var load = await Repository().LoadAsync(Token);
 
         load.Document.ShouldBe(TestDocuments.Document(3));
+        load.Outcome.ShouldBe(DocumentLoadOutcome.RecoveredFromPending);
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
