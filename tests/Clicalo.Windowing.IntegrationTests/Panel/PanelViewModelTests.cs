@@ -212,6 +212,29 @@ public sealed class PanelViewModelTests
     }
 
     [Fact]
+    [Trait("Req", "SEG-002")]
+    public void What_is_held_without_a_shortcut_is_still_said()
+    {
+        _panel.ApplyEngine(
+            Snapshot(
+                new PressedItem(
+                    HolderId.ForSticky(ModifierKind.Shift),
+                    HoldOrigin.Sticky,
+                    null,
+                    null,
+                    [],
+                    MouseButtons.None,
+                    0,
+                    null
+                )
+            )
+        );
+
+        _panel.Panic.IsVisible.ShouldBeTrue();
+        _panel.Panic.HeldMessage.ShouldBe("Manteniendo");
+    }
+
+    [Fact]
     [Trait("Req", "SEG-003")]
     public void Release_all_on_the_strip_asks_the_engine_to_release_everything()
     {

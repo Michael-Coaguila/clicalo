@@ -179,10 +179,19 @@ public sealed class PanelViewModel : ObservableObject
             );
         }
 
-        var names = held.Keys.Select(NameOf).OfType<string>().Where(static name => name.Length > 0);
+        var names = held
+            .Keys.Select(NameOf)
+            .OfType<string>()
+            .Where(static name => name.Length > 0)
+            .ToList();
+
+        // SEG-002: what is held without a shortcut of this panel (a sticky modifier, a macro's keys) is still said,
+        // never as an empty «Held: ».
         Panic.Apply(
             visible: !snapshot.Held.IsEmpty,
-            localizer.Format(L.PanicMsg(keys: string.Join(", ", names))),
+            localizer.Format(
+                names.Count > 0 ? L.PanicMsg(keys: string.Join(", ", names)) : L.Holding
+            ),
             localizer.Format(L.ReleaseAll)
         );
     }

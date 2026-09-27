@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Clicalo.App.Composition;
 using Clicalo.App.Localization;
@@ -276,6 +277,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         window.ContentRendered += (_, _) => OnFirstFrame(adapters.Guardian);
         window.Present();
+        if (PresentationSource.FromVisual(window) is HwndSource source)
+        {
+            source.AddHook(OnPanelMessage);
+            Track(() => source.RemoveHook(OnPanelMessage));
+        }
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);
@@ -403,6 +409,23 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         {
             _ = ExitAfterAsync(delay);
         }
+    }
+
+    /// <summary>
+    /// <c>WM_ENDSESSION</c> with <c>wParam</c> false: another app cancelled the end of the session after the exit sequence
+    /// marked the ledger «clean shutdown». The mark goes away again, so Sentinel still relaunches Clícalo after a later
+    /// crash (§3.1).
+    /// </summary>
+    private nint OnPanelMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    {
+        const int EndSession = 0x0016;
+        if (message == EndSession && wParam == 0 && _exit is null && _services is { } services)
+        {
+            services.GetRequiredService<IKeyLedger>().ClearMarks(KeyLedgerMarks.CleanShutdown);
+            LogSessionEndCancelled(_logger);
+        }
+
+        return 0;
     }
 
     /// <summary><c>--exit-after</c>: the whole exit sequence, unattended, once the start is complete.</summary>
@@ -719,6 +742,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Message = "startup.crash_journal_failed ({Code})"
     )]
     private static partial void LogCrashJournalFailed(ILogger logger, string code);
+
+    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "session.end_cancelled")]
+    private static partial void LogSessionEndCancelled(ILogger logger);
 
     [LoggerMessage(
         EventId = 12,
