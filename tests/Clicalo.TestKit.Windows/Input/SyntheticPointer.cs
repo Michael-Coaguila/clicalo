@@ -28,6 +28,8 @@ namespace Clicalo.TestKit.Windows.Input;
 /// on until it goes up;</item>
 /// <item>no keyboard input is ever injected by this class.</item>
 /// </list>
+/// A finger waits <see cref="PenTouchSettle.Window"/> after a pen left the detection range, since Windows drops a touch
+/// that comes sooner (pen and touch arbitration).
 /// Coordinates are physical screen pixels: every gesture runs its thread per-monitor DPI aware. The mouse gestures put
 /// the cursor back where it was, and mouse events carry <see cref="ExtraInfoMarker"/> in <c>dwExtraInfo</c>. Desktop
 /// tests run it only with <c>CLICALO_DESKTOP_TESTS=1</c>; the hosted CI runners run them systematically.
@@ -239,9 +241,20 @@ public sealed class SyntheticPointer : IDisposable
 
     private void ContactGesture(Point from, Point to, TimeSpan duration)
     {
+        var pen = Kind == SyntheticPointerKind.Pen;
+        if (!pen)
+        {
+            // Windows drops a touch that comes right after a pen left (PenTouchSettle); waited before the check, so
+            // the check stays immediately before the frame.
+            var settle = PenTouchSettle.Shared.RemainingBeforeTouch(Stopwatch.GetTimestamp());
+            if (settle > TimeSpan.Zero)
+            {
+                Thread.Sleep(settle);
+            }
+        }
+
         EnsureAllowed(from, contactDown: false);
         var last = from;
-        var pen = Kind == SyntheticPointerKind.Pen;
         if (pen)
         {
             // A pen comes into range, hovering, before it touches.
@@ -264,7 +277,14 @@ public sealed class SyntheticPointer : IDisposable
             if (pen)
             {
                 // A lifted pen hovers; this frame takes it out of range, so it cannot stay near a window.
-                InjectContact(last, ContactFrame.Leave);
+                try
+                {
+                    InjectContact(last, ContactFrame.Leave);
+                }
+                finally
+                {
+                    PenTouchSettle.Shared.PenLeft(Stopwatch.GetTimestamp());
+                }
             }
         }
     }
