@@ -1,4 +1,6 @@
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Settings;
 
@@ -44,14 +46,14 @@ internal static class SettingsDefaults
             },
             PanelPositions = [],
             Touch = new TouchFilterSettings(
-                CatalogMirror.DefaultTouchPreset,
-                CatalogMirror.DefaultTouchDebounce,
-                CatalogMirror.DefaultTouchHitSlopPx,
-                CatalogMirror.DefaultTouchCancelMovePx,
-                CatalogMirror.DefaultTouchMinContact
+                TouchPresets.Default.Id,
+                TouchPresets.Default.Debounce,
+                TouchPresets.Default.HitSlopPx,
+                TouchPresets.Default.CancelMovePx,
+                TouchPresets.Default.MinContact
             ),
             KeySafety = new KeySafetySettings(
-                CatalogMirror.AutoReleaseDefault,
+                Timings.KeySafety.AutoReleaseDefault,
                 ReleaseOnAppSwitch: true
             ),
             AutoSuggestProfiles = true,
@@ -61,7 +63,7 @@ internal static class SettingsDefaults
             {
                 Consent = false,
                 Disabled = false,
-                FreeLeftToday = CatalogMirror.AiFreeDailyQuota,
+                FreeLeftToday = Timings.Ai.AiFreeDailyQuota,
                 FreeResetAt = null,
                 ApiKeyRef = null,
             },

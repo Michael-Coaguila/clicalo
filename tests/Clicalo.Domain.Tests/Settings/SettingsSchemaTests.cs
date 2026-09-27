@@ -149,7 +149,7 @@ public sealed class SettingsSchemaTests
     [Trait("Req", "TAC-001")]
     [Trait("Req", "SEG-004")]
     [Trait("Req", "PLA-003")]
-    public void The_values_mirrored_from_the_catalogs_are_the_generated_ones()
+    public void The_values_taken_from_the_catalogs_are_the_generated_ones()
     {
         var touch = SettingsSchema.Defaults.Touch;
         var preset = TouchPresets.Default;

@@ -64,8 +64,8 @@
       "name": "Settings",
       "group": "core",
       "description": "Settings, SettingDescriptor and SettingsSchema.",
-      "dependsOn": ["Primitives", "Messages"],
-      "deviation": "Messages added: SettingDescriptor carries its Label and Description keys (§6.3)."
+      "dependsOn": ["Primitives", "Messages", "Timing", "Catalog"],
+      "deviation": "Messages added: SettingDescriptor carries its Label and Description keys (§6.3). Timing and Catalog added in the M2 integration: the defaults and ranges come from Timings.KeySafety, Timings.Ai and TouchPresets (D-21)."
     },
     {
       "name": "ProfileResolution",

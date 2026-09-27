@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Settings;
 
@@ -44,12 +45,13 @@ public static class SettingsSchema
     public static SettingRange TouchMinContactMs { get; } = new(0, 300, 10);
 
     /// <summary>Free AI requests left today: 0 to the daily quota (PLA-003).</summary>
-    public static SettingRange AiFreeLeftToday { get; } = new(0, CatalogMirror.AiFreeDailyQuota, 1);
+    public static SettingRange AiFreeLeftToday { get; } = new(0, Timings.Ai.AiFreeDailyQuota, 1);
 
     /// <summary>
     /// The automatic release limits offered (GEN-012, SEG-004: 30 s, 1 min, 2 min); «Never» is <see langword="null"/>.
     /// </summary>
-    public static ValueList<TimeSpan> MaxHoldChoices => CatalogMirror.AutoReleaseChoices;
+    public static ValueList<TimeSpan> MaxHoldChoices { get; } =
+    [.. Timings.KeySafety.AutoReleaseChoices];
 
     /// <summary>The touch preset id of the user's own values (TAC-001, «Personal»).</summary>
     public static string PersonalTouchPreset => "personal";
