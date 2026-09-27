@@ -1,10 +1,14 @@
+using System.Globalization;
 using System.IO;
+using Clicalo.Platform.Core.Guardian;
 
 namespace Clicalo.App;
 
 /// <summary>
-/// The command line of <c>Clicalo.exe</c> in M2. Every option is for development and measurement: a normal start has
-/// none, and a second start passes its arguments to the running instance only as «show» (SIS-003).
+/// The command line of <c>Clicalo.exe</c> in M2. A normal start has no option; Sentinel adds
+/// <c>--after-crash=&lt;Unix ms&gt;</c> (and <c>--safe-mode</c> after a crash loop) when it relaunches a process that
+/// died (ADR-0018). The other options are for development and measurement, and a second start passes its arguments to
+/// the running instance only as «show» (SIS-003).
 /// </summary>
 /// <param name="DataDirectory">
 /// Where the document, the usage and the backups live: <c>%AppData%\Clicalo</c>, or the folder of
@@ -36,6 +40,34 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
     /// <summary>The value of <see cref="GuardianOption"/> that launches Sentinel in parallel (the default).</summary>
     public const string Parallel = "parallel";
 
+    /// <summary>
+    /// The option that migrates a Macro Quick Access v1 file (<c>profiles.json</c> or its zip) on a first run, when no
+    /// Clícalo document exists yet (EC-MIG-01). Until the finder of v1 installations exists (MIG-001), the file is
+    /// named on the command line.
+    /// </summary>
+    public const string MigrateV1Option = "--migrate-v1";
+
+    /// <summary>The diagnostic option that exits normally a number of seconds after the first frame.</summary>
+    public const string ExitAfterOption = "--exit-after";
+
+    /// <summary>
+    /// Whether the data folder came from <see cref="DataOption"/>: an isolated folder keeps everything, the emergency
+    /// copy of <c>pending\</c> and the crash journal included, inside it.
+    /// </summary>
+    public bool IsolatedData { get; init; }
+
+    /// <summary>When the previous process died, from Sentinel's <c>--after-crash=&lt;Unix ms&gt;</c>.</summary>
+    public DateTimeOffset? AfterCrash { get; init; }
+
+    /// <summary>Sentinel's <c>--safe-mode</c>: the previous processes crashed in a loop (<c>Timings.App.CrashLoop</c>).</summary>
+    public bool SafeMode { get; init; }
+
+    /// <summary>The v1 file of <see cref="MigrateV1Option"/>, as a full path.</summary>
+    public string? MigrateV1 { get; init; }
+
+    /// <summary>The delay of <see cref="ExitAfterOption"/>: the start and the whole exit sequence, unattended.</summary>
+    public TimeSpan? ExitAfter { get; init; }
+
     /// <summary>Parses <paramref name="arguments"/>; unknown words are ignored (a newer shortcut or link may pass more).</summary>
     /// <param name="arguments">The command line.</param>
     /// <param name="defaultDataDirectory">The data folder of a normal start.</param>
@@ -43,8 +75,13 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
     {
         ArgumentNullException.ThrowIfNull(arguments);
         var data = defaultDataDirectory;
+        var isolated = false;
         var send = true;
         var afterFirstFrame = false;
+        var safeMode = false;
+        DateTimeOffset? afterCrash = null;
+        string? migrate = null;
+        TimeSpan? exitAfter = null;
         for (var i = 0; i < arguments.Count; i++)
         {
             var argument = arguments[i];
@@ -55,14 +92,59 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
             else if (Is(argument, DataOption) && i + 1 < arguments.Count)
             {
                 data = Path.GetFullPath(arguments[++i]);
+                isolated = true;
             }
             else if (Is(argument, GuardianOption) && i + 1 < arguments.Count)
             {
                 afterFirstFrame = Is(arguments[++i], AfterFirstFrame);
             }
+            else if (Is(argument, CrashJournal.SafeModeArgument))
+            {
+                safeMode = true;
+            }
+            else if (
+                argument.StartsWith(
+                    CrashJournal.AfterCrashArgument,
+                    StringComparison.OrdinalIgnoreCase
+                )
+                && long.TryParse(
+                    argument.AsSpan(CrashJournal.AfterCrashArgument.Length),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var diedAt
+                )
+                && diedAt <= DateTimeOffset.MaxValue.ToUnixTimeMilliseconds()
+            )
+            {
+                afterCrash = DateTimeOffset.FromUnixTimeMilliseconds(diedAt);
+            }
+            else if (Is(argument, MigrateV1Option) && i + 1 < arguments.Count)
+            {
+                migrate = Path.GetFullPath(arguments[++i]);
+            }
+            else if (
+                Is(argument, ExitAfterOption)
+                && i + 1 < arguments.Count
+                && int.TryParse(
+                    arguments[++i],
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var seconds
+                )
+            )
+            {
+                exitAfter = TimeSpan.FromSeconds(seconds);
+            }
         }
 
-        return new AppOptions(data, send, afterFirstFrame);
+        return new AppOptions(data, send, afterFirstFrame)
+        {
+            IsolatedData = isolated,
+            AfterCrash = afterCrash,
+            SafeMode = safeMode,
+            MigrateV1 = migrate,
+            ExitAfter = exitAfter,
+        };
     }
 
     private static bool Is(string argument, string option) =>

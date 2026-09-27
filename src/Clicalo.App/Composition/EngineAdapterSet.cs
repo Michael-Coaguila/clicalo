@@ -1,5 +1,6 @@
 using Clicalo.App.Lifecycle;
 using Clicalo.Application.Ports;
+using Clicalo.Platform.Core.Injection;
 
 namespace Clicalo.App.Composition;
 
@@ -21,4 +22,11 @@ internal sealed record EngineAdapterSet(
     IGuardian Guardian,
     IStartupRelease StartupRelease,
     IDisposable Resources
-);
+)
+{
+    /// <summary>
+    /// The injection gate of a sending start, for the engine's release of the physical ledger after an exception
+    /// (NFR-005) and the emergency of a hung engine (§3.2 rule 6); <see langword="null"/> with <c>--no-input</c>.
+    /// </summary>
+    public InjectionGate? Gate { get; init; }
+}

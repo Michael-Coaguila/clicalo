@@ -61,6 +61,25 @@ public sealed class ForegroundChangeCoordinatorTests : IDisposable
     }
 
     [Fact]
+    [Trait("Req", "NFR-005")]
+    public void Republishing_posts_the_last_foreground_again_with_a_new_epoch_and_no_switch()
+    {
+        _coordinator.Republish();
+        Changes().ShouldBeEmpty("nothing to repeat before the first foreground");
+        _coordinator.Start();
+        _monitor.SwitchTo(Window(0x10, process: 100));
+
+        _coordinator.Republish();
+
+        var changes = Changes();
+        changes
+            .Select(change => (change.Info.Epoch, change.IsUserSwitch))
+            .ShouldBe([(1L, false), (2L, false)]);
+        changes[1].Info.Window.ShouldBe(changes[0].Info.Window);
+        _coordinator.CurrentEpoch.ShouldBe(2);
+    }
+
+    [Fact]
     [Trait("Req", "SEG-005")]
     public void A_change_of_app_is_a_user_switch_with_a_new_epoch()
     {

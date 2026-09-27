@@ -13,7 +13,9 @@ using Clicalo.Domain.Document;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
+using Clicalo.Infrastructure.Migration;
 using Clicalo.Infrastructure.Persistence;
+using Clicalo.Platform.Core.Injection;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
@@ -80,26 +82,32 @@ internal static class AppServices
 
     private static void AddPersistence(ServiceCollection services)
     {
-        services.AddSingleton(sp => new DataLocations(sp.Get<AppOptions>().DataDirectory));
+        services.AddSingleton(sp => AppDataLocations.For(sp.Get<AppOptions>()));
+        // One codec for the live document and its backups, so both keep unknown fields and texts of another machine.
+        services.AddSingleton<DocumentCodec>();
         services.AddSingleton<IAtomicFileWriter>(sp => new AtomicFile(
             sp.Time(),
             sp.Log<AtomicFile>()
         ));
         services.AddSingleton(sp => new QuarantineStore(sp.Get<DataLocations>(), sp.Time()));
-        services.AddSingleton<IBackupService>(sp => new BackupService(
+        services.AddSingleton(sp => new BackupService(
             sp.Get<DataLocations>(),
             sp.Get<IAtomicFileWriter>(),
             sp.Time(),
-            sp.Log<BackupService>()
+            sp.Log<BackupService>(),
+            sp.Get<DocumentCodec>()
         ));
-        services.AddSingleton<IDocumentRepository>(sp => new DocumentRepository(
+        services.AddSingleton<IBackupService>(sp => sp.Get<BackupService>());
+        services.AddSingleton(sp => new DocumentRepository(
             sp.Get<DataLocations>(),
             sp.Get<IAtomicFileWriter>(),
             sp.Get<QuarantineStore>(),
             sp.Get<IBackupService>(),
             sp.Time(),
-            sp.Log<DocumentRepository>()
+            sp.Log<DocumentRepository>(),
+            sp.Get<DocumentCodec>()
         ));
+        services.AddSingleton<IDocumentRepository>(sp => sp.Get<DocumentRepository>());
         services.AddSingleton<IUsageRepository>(sp => new UsageRepository(
             sp.Get<DataLocations>(),
             sp.Get<IAtomicFileWriter>(),
@@ -114,6 +122,17 @@ internal static class AppServices
             sp.Log<PersistenceScheduler>()
         ));
         services.AddSingleton<IIdGenerator, RandomIdGenerator>();
+        services.AddSingleton(_ => new SafeZipReader(SafeZipLimits.Default));
+        services.AddSingleton(sp => new V1Importer(sp.Get<SafeZipReader>(), sp.Log<V1Importer>()));
+        services.AddSingleton(sp => new StartupDocuments(
+            sp.Get<IDocumentRepository>(),
+            sp.Get<IUsageRepository>(),
+            sp.Get<IBackupService>(),
+            sp.Get<V1Importer>(),
+            sp.Get<IIdGenerator>(),
+            sp.Time(),
+            sp.Log<StartupDocuments>()
+        ));
         services.AddSingleton(sp => new DocumentStore(
             sp.Slot().Load.Document,
             sp.Get<IIdGenerator>(),
@@ -135,15 +154,25 @@ internal static class AppServices
         services.AddSingleton(sp =>
         {
             var adapters = sp.Get<EngineAdapterSet>();
+            return new EngineHostPorts(
+                adapters.Injector,
+                adapters.Ledger,
+                new DeferredShellExecutor(),
+                new DeferredClipboardPaster(),
+                sp.Get<EngineObserverRelay>()
+            )
+            {
+                // NFR-005: an engine that throws releases what the physical ledger records, not its own state.
+                ReleaseRecorded = adapters.Gate is { } gate
+                    ? generation => gate.TryReleaseEverything(generation.Value) == GateResult.Ran
+                    : null,
+            };
+        });
+        services.AddSingleton(sp =>
+        {
             var host = new EngineHost(
-                new EngineHostPorts(
-                    adapters.Injector,
-                    adapters.Ledger,
-                    new DeferredShellExecutor(),
-                    new DeferredClipboardPaster(),
-                    sp.Get<EngineObserverRelay>()
-                ),
-                adapters.Ledger.CurrentGeneration,
+                sp.Get<EngineHostPorts>(),
+                sp.Get<EngineAdapterSet>().Ledger.CurrentGeneration,
                 SettingsProjection.Engine(sp.Slot().Load.Document.Settings),
                 sp.Time(),
                 sp.Log<EngineHost>()

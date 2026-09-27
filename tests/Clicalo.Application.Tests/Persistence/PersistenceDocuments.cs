@@ -11,9 +11,7 @@ using Clicalo.Domain.Settings;
 namespace Clicalo.Application.Tests.Persistence;
 
 /// <summary>
-/// Documents for the save scheduler and the import planner. The library is built with
-/// <c>ShortcutLibrary.CreateValidated</c> when the domain package has implemented it, and through its private
-/// constructor until then, so the scheduler tests (which never look inside the library) already run.
+/// Documents for the save scheduler and the import planner, built with <c>ShortcutLibrary.CreateValidated</c>.
 /// </summary>
 internal static class PersistenceDocuments
 {

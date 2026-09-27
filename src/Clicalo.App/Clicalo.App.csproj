@@ -17,8 +17,50 @@
     <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
     <ProjectReference Include="..\Clicalo.Platform.Windows\Clicalo.Platform.Windows.csproj" />
     <ProjectReference Include="..\Clicalo.Infrastructure\Clicalo.Infrastructure.csproj" />
+    <!-- Built first and copied next to Clicalo.exe (CopySentinelNextToClicalo); never a compile reference. -->
+    <ProjectReference
+      Include="..\Clicalo.Sentinel\Clicalo.Sentinel.csproj"
+      ReferenceOutputAssembly="false"
+      Private="false"
+    />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Serilog.Extensions.Logging" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Headless tests of the composition: options, the pipe protocol, the no-input adapters and the start document. -->
+    <InternalsVisibleTo Include="Clicalo.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Data loaded at run time (blueprint §8.5, D17): the texts and the seed of a new installation. -->
+    <Content
+      Include="..\..\data\i18n\locales.json;..\..\data\i18n\strings.*.json"
+      LinkBase="i18n"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+    <Content
+      Include="..\..\data\content\seed.json"
+      LinkBase="content"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+  </ItemGroup>
+  <!--
+    SentinelSupervisor starts Clicalo.Sentinel.exe from the folder of Clicalo.exe (ADR-0004). A build copies Sentinel's
+    framework-dependent build output there; cl perf and the release publish Sentinel with Native AOT into the same folder.
+  -->
+  <Target Name="CopySentinelNextToClicalo" AfterTargets="Build">
+    <MSBuild
+      Projects="..\Clicalo.Sentinel\Clicalo.Sentinel.csproj"
+      Targets="GetTargetPath"
+      Properties="Configuration=$(Configuration)"
+    >
+      <Output TaskParameter="TargetOutputs" ItemName="_SentinelTargetPath" />
+    </MSBuild>
+    <ItemGroup>
+      <_SentinelFiles Include="%(_SentinelTargetPath.RootDir)%(_SentinelTargetPath.Directory)Clicalo.Sentinel.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SentinelFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

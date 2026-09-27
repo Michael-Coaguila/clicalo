@@ -1,8 +1,11 @@
 using System.IO;
+using Clicalo.App.Composition;
 using Clicalo.App.Lifecycle;
 using Clicalo.App.SingleInstance;
+using Clicalo.Infrastructure.Logging;
 using Clicalo.UI.Wpf.Pointer;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Clicalo.App;
 
@@ -10,7 +13,7 @@ namespace Clicalo.App;
 /// The entry point of <c>Clicalo.exe</c> (blueprint §3.1, §3.4). Before anything else the pointer configuration of the
 /// product (§8.3): WPF's stylus and touch stacks off and the mouse routed through <c>WM_POINTER</c>, so a click is a
 /// pointer frame like a finger. Then the single instance (SIS-003, NFR-018): the first process of the session runs;
-/// a second start asks it to show the panel through the pipe and ends.
+/// a second start asks it to show the panel through the pipe and ends, without opening the log.
 /// </summary>
 internal static class Program
 {
@@ -22,9 +25,6 @@ internal static class Program
 
         var options = AppOptions.Parse(args, DefaultDataDirectory());
         var identity = InstanceIdentity.Current();
-        using var logs = LoggerFactory.Create(builder =>
-            builder.SetMinimumLevel(LogLevel.Information)
-        );
         var mutex = InstanceMutex.Open(identity);
         if (!mutex.IsFirst)
         {
@@ -32,6 +32,13 @@ internal static class Program
             return (int)Shutdown.SecondStart.ShowRunningInstance(identity);
         }
 
+        // The product log (LOG-001..LOG-006): codes and counts only, the Windows user removed, a fixed-name rolling
+        // file under logs\ of the data folder.
+        var locations = AppDataLocations.For(options);
+        var product = ClicaloLog.Create(locations, ClicaloLog.DefaultLevel());
+        using var logs = LoggerFactory.Create(builder =>
+            builder.SetMinimumLevel(LogLevel.Information).AddSerilog(product, dispose: true)
+        );
         using var host = new AppHost(options, identity, mutex, logs);
         return host.Run();
     }

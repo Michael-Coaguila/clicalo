@@ -12,46 +12,30 @@ namespace Clicalo.App.Localization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Search order: an <c>i18n</c> folder next to the executable (the shipped layout), then the <c>data/i18n</c> folder of
-/// the repository checkout the executable was built in (<c>cl run</c>, the tests, the S5 measurements), recognized by
-/// its <c>Clicalo.slnx</c>. The shipped copy needs the project file to copy the files, which the integration step adds
-/// (the project files are frozen in M2); the loader lives in Infrastructure/Localization once that module exists.
+/// Only the <c>i18n</c> folder next to the executable is read: the project copies <c>data/i18n</c> there on build and
+/// on publish, so no build ever reads language files from a folder above it that the user could write (an elevated
+/// instance included). The loader moves to Infrastructure/Localization once that module exists.
 /// </para>
 /// </remarks>
 internal static class LanguageFiles
 {
     private const string FolderName = "i18n";
     private const string LocalesFile = "locales.json";
-    private const string SolutionMarker = "Clicalo.slnx";
 
     /// <summary>The folder with the language files, or <see langword="null"/> when there is none.</summary>
     /// <param name="baseDirectory">The folder of the executable.</param>
     public static string? Find(string baseDirectory)
     {
         var shipped = Path.Combine(baseDirectory, FolderName);
-        if (File.Exists(Path.Combine(shipped, LocalesFile)))
-        {
-            return shipped;
-        }
-
-        for (
-            var folder = new DirectoryInfo(baseDirectory);
-            folder is not null;
-            folder = folder.Parent
-        )
-        {
-            var data = Path.Combine(folder.FullName, "data", FolderName);
-            if (
-                File.Exists(Path.Combine(folder.FullName, SolutionMarker))
-                && File.Exists(Path.Combine(data, LocalesFile))
-            )
-            {
-                return data;
-            }
-        }
-
-        return null;
+        return File.Exists(Path.Combine(shipped, LocalesFile)) ? shipped : null;
     }
+
+    /// <summary>Whether <paramref name="folder"/> has the texts of <paramref name="language"/>.</summary>
+    /// <param name="folder">A folder found by <see cref="Find"/>.</param>
+    /// <param name="language">A two-letter language code.</param>
+    public static bool Has(string folder, string language) =>
+        language.All(char.IsAsciiLetterLower)
+        && File.Exists(Path.Combine(folder, "strings." + language + ".json"));
 
     /// <summary>Loads every language of <paramref name="folder"/>.</summary>
     /// <param name="folder">A folder found by <see cref="Find"/>.</param>

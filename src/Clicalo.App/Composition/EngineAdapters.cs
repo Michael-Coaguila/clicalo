@@ -1,4 +1,11 @@
+using System.IO;
+using Clicalo.Platform.Core.Injection;
+using Clicalo.Platform.Core.KeyLedger;
+using Clicalo.Platform.Windows.Foreground;
+using Clicalo.Platform.Windows.Input;
+using Clicalo.Platform.Windows.SentinelHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Clicalo.App.Composition;
 
@@ -8,18 +15,18 @@ namespace Clicalo.App.Composition;
 /// preventive release. Otherwise the engine package's adapters are used.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The sending set is composed from the engine package's pieces, which merge into <c>m2/skeleton</c> before this
-/// package (docs/testing/spikes/M2-ownership.md): the ledger section (<c>KeyLedgerSection.CreateForEngine</c>), the
-/// fence (<c>new InjectionGate(section, new LowLevelInjector())</c>), and from <c>Platform.Windows/Input</c> and
-/// <c>Platform.Windows/SentinelHost</c> the <c>IInputInjector</c> and <c>IKeyLedger</c> adapters over them, the
-/// <c>IInternalKeyEffects</c> behind the fence, the preventive release with the menu mask, Sentinel's launcher over
-/// <c>section.DuplicateForGuardian()</c> and the layout builder. Until that merge, <see cref="Create"/> refuses to
-/// start a sending instance: Clícalo never presses a key without the ledger and the guardian behind it (ADR-0004).
-/// </para>
+/// The sending set is the engine package's pieces: the ledger section (<see cref="KeyLedgerSection.CreateForEngine"/>),
+/// the fence (<see cref="InjectionGate"/> over the only <c>SendInput</c>, <see cref="LowLevelInjector"/>), and from
+/// <c>Platform.Windows/Input</c> and <c>Platform.Windows/SentinelHost</c> the <c>IInputInjector</c> and
+/// <c>IKeyLedger</c> adapters over them, the <c>IInternalKeyEffects</c> behind the fence, the preventive release with
+/// the menu mask and Sentinel's supervisor, which starts <c>Clicalo.Sentinel.exe</c> from the folder of
+/// <c>Clicalo.exe</c> with the section duplicated read-only (ADR-0004, ADR-0018).
 /// </remarks>
 internal static class EngineAdapters
 {
+    /// <summary>The guardian's executable, next to <c>Clicalo.exe</c>.</summary>
+    public const string SentinelFileName = "Clicalo.Sentinel.exe";
+
     /// <summary>The set for the command line of <paramref name="services"/>.</summary>
     /// <param name="services">
     /// The container: the command line, and the pieces the sending set is built over (the SysEvents thread and the
@@ -42,17 +49,43 @@ internal static class EngineAdapters
             );
         }
 
-        throw new InvalidOperationException(
-            "The engine's Win32 adapters (Platform.Windows/Input and SentinelHost) are not part of this build yet: "
-                + "start with "
-                + AppOptions.NoInputOption
-                + ", or build after the engine package is integrated (docs/testing/spikes/M2-ownership.md)."
-        );
+        var section = KeyLedgerSection.CreateForEngine();
+        try
+        {
+            var gate = new InjectionGate(section, new LowLevelInjector());
+            var supervisor = new SentinelSupervisor(
+                section,
+                Path.Combine(AppContext.BaseDirectory, SentinelFileName),
+                services.GetRequiredService<TimeProvider>(),
+                services.GetRequiredService<ILogger<SentinelSupervisor>>()
+            );
+            return new EngineAdapterSet(
+                new GateInputInjector(gate),
+                new KeyLedgerPort(section),
+                new InternalKeyEffects(gate, services.GetRequiredService<InternalRightsHotkey>()),
+                new SupervisedGuardian(supervisor),
+                new GateStartupRelease(gate),
+                new SendingResources(supervisor, section)
+            )
+            {
+                Gate = gate,
+            };
+        }
+        catch
+        {
+            section.Dispose();
+            throw;
+        }
     }
 
-    /// <summary>The layout builder of the foreground describer.</summary>
+    /// <summary>
+    /// The layout builder of the foreground describer: the layout of the thread with its character table
+    /// (<c>VkKeyScanEx</c>, <c>MapVirtualKeyEx</c>; §7.7). It only queries Windows, so a start without key sending
+    /// uses it too.
+    /// </summary>
     public static Func<uint, Clicalo.Domain.Execution.KeyboardLayoutSnapshot> Layouts() =>
-        ForegroundDescriber.LayoutOnly;
+        static thread =>
+            KeyboardLayoutCapture.Capture(Interop.NativeMethods.GetKeyboardLayout(thread));
 
     private sealed class NoResources : IDisposable
     {

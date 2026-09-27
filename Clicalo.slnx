@@ -17,6 +17,7 @@
     <Project Path="generators/Clicalo.Generators/Clicalo.Generators.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Clicalo.App.Tests/Clicalo.App.Tests.csproj" />
     <Project Path="tests/Clicalo.Application.Tests/Clicalo.Application.Tests.csproj" />
     <Project Path="tests/Clicalo.Architecture.Tests/Clicalo.Architecture.Tests.csproj" />
     <Project Path="tests/Clicalo.Data.Tests/Clicalo.Data.Tests.csproj" />

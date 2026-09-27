@@ -70,6 +70,22 @@ public sealed class ForegroundChangeCoordinator : IDisposable
         }
     }
 
+    /// <summary>
+    /// Posts the foreground posted last again, with a new epoch and as no switch of app: an engine that replaced a hung
+    /// one after an emergency (blueprint §3.2 rule 6) starts empty and would refuse every activation until the next
+    /// change of foreground (INV-6).
+    /// </summary>
+    public void Republish()
+    {
+        lock (_gate)
+        {
+            if (_last is { } last)
+            {
+                Post(last, isUserSwitch: false);
+            }
+        }
+    }
+
     /// <summary>Stops following the monitor.</summary>
     public void Dispose() => _monitor.ExternalForegroundChanged -= OnExternalForegroundChanged;
 
@@ -113,6 +129,11 @@ public sealed class ForegroundChangeCoordinator : IDisposable
 
         var isUserSwitch = _last is not null && _last.AppProcessId != foreground.AppProcessId;
         _last = foreground;
+        Post(foreground, isUserSwitch);
+    }
+
+    private void Post(ExternalForeground foreground, bool isUserSwitch)
+    {
         var details = _describe(foreground);
         var epoch = Interlocked.Increment(ref _epoch);
         _ = _engine.Post(

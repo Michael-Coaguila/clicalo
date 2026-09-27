@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -14,10 +15,16 @@ using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
+using Clicalo.Domain.Commands;
 using Clicalo.Domain.Execution;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
+using Clicalo.Infrastructure.Backup;
+using Clicalo.Infrastructure.Persistence;
+using Clicalo.Platform.Core.Guardian;
 using Clicalo.Platform.Windows.Foreground;
+using Clicalo.Platform.Windows.Input;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
@@ -32,9 +39,11 @@ namespace Clicalo.App.Lifecycle;
 /// <summary>
 /// The life of the running instance (blueprint §3.1, §3.2, §7.6), on the UI thread of the Surfaces role:
 /// <list type="number">
-/// <item>the document is read (persistence) and the language files loaded;</item>
+/// <item>a crash Sentinel reported goes to its journal; the document is read (persistence; on a new installation the
+/// seed, or the v1 file of <c>--migrate-v1</c>) and the language files loaded;</item>
 /// <item>the preventive release of the start (SEG-006), before the engine accepts anything;</item>
-/// <item>autosave, and the engine thread: it accepts touches from the first frame, it does not wait for the guardian;</item>
+/// <item>autosave, and the engine thread: it accepts touches from the first frame, it does not wait for the guardian;
+/// with key sending, the emergency release watches its heartbeat (§3.2 rule 6);</item>
 /// <item>SysEvents follows the external foreground and the engine hears it (§7.9);</item>
 /// <item>the panel is built and shown passively; Sentinel is launched from a background thread in parallel to the
 /// first frame (or right after it with <c>--guardian after-first-frame</c>, spike S5);</item>
@@ -60,6 +69,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private System.Windows.Application? _application;
     private ServiceProvider? _services;
     private EngineThread? _engine;
+    private PanelWindow? _window;
     private PersistenceScheduler? _scheduler;
     private TrayController? _tray;
     private ShowPipeServer? _pipe;
@@ -157,14 +167,31 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var slot = services.GetRequiredService<StartupSlot>();
         var started = _time.GetTimestamp();
 
+        // 0. A crash Sentinel reported goes to the journal it reads for the crash loop (ADR-0018).
+        if (_options.AfterCrash is { } crash)
+        {
+            await RecordCrashAsync(services, crash).ConfigureAwait(true);
+        }
+
+        if (_options.SafeMode)
+        {
+            LogSafeMode(_logger);
+        }
+
         // 1. The document and the language it asks for.
-        slot.Load = await services
-            .GetRequiredService<IDocumentRepository>()
-            .LoadAsync(_stop.Token)
-            .ConfigureAwait(true);
         var i18n =
             LanguageFiles.Find(AppContext.BaseDirectory)
-            ?? throw new FileNotFoundException("data/i18n was not found next to Clicalo.exe.");
+            ?? throw new FileNotFoundException("i18n was not found next to Clicalo.exe.");
+        var windowsLanguage = LanguageFiles.WindowsLanguage();
+        slot.Load = await services
+            .GetRequiredService<StartupDocuments>()
+            .LoadAsync(
+                ContentFiles.Find(AppContext.BaseDirectory),
+                LanguageFiles.Has(i18n, windowsLanguage) ? new LangCode(windowsLanguage) : null,
+                _options.MigrateV1,
+                _stop.Token
+            )
+            .ConfigureAwait(true);
         slot.Localization = LanguageFiles.Load(i18n, slot.Load.Document.Settings.Language.Value);
         var loadTime = _time.GetElapsedTime(started);
         LogDocumentLoaded(_logger, slot.Load.Outcome, loadTime);
@@ -186,6 +213,18 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _persistence = Task.Run(() => scheduler.RunAsync(_stop.Token));
         _engine = services.GetRequiredService<EngineThread>();
         _engine.Start(services.GetRequiredService<EngineHost>(), _stop.Token);
+        if (adapters.Gate is { } gate)
+        {
+            // A hung engine is fenced and replaced, or the process ends so Sentinel releases (REG-03).
+            var emergency = new EmergencyReleaser(
+                gate,
+                _time,
+                RestartEngine,
+                EmergencyReleaser.TerminateSelf
+            );
+            Track(emergency.Dispose);
+            emergency.Start();
+        }
 
         // 4. SysEvents: the external foreground reaches the engine before the first touch can.
         var sysEvents = services.GetRequiredService<SysEventsThread>();
@@ -199,11 +238,21 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var rights = services.GetRequiredService<InternalRightsHotkey>();
         Track(rights.Dispose);
         var registered = rights.RegisterAsync();
+        var relay = services.GetRequiredService<EngineObserverRelay>();
+        var session = await SessionKeyRelease
+            .StartAsync(
+                sysEvents,
+                services.GetRequiredService<IEngineInbox>(),
+                () => Shutdown.SuspendRelease.Wait(relay)
+            )
+            .ConfigureAwait(true);
+        Track(session.Dispose);
 
         // 5. The panel, the orchestrator that answers its ActivationGuard (REG-01), and Sentinel in parallel.
         // The owner goes last: destroying it first would destroy its surfaces behind their backs.
         Track(services.GetRequiredService<OwnerAnchor>().Dispose);
         var window = BuildPanel(services, store, slot.Localization);
+        _window = window;
         Track(window.Close);
         var orchestrator = services.GetRequiredService<ForegroundOrchestrator>();
         Track(orchestrator.Dispose);
@@ -275,6 +324,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             viewModel.ApplyEngine(change.Snapshot);
             UpdateTray(viewModel);
         };
+        // Frequents count what ran (FRE-002); the store publishes usage changes without an undo step.
+        relay.UsageCounted += (_, counted) => _ = store.Dispatch(new RecordUsage(counted.Shortcut));
         var window = services.GetRequiredService<PanelWindow>();
         relay.NoticeRaised += (_, notice) =>
             window.Announce(
@@ -334,6 +385,92 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             // The accepted gap without a guardian (§3.1, §15.2): logged when it lasts longer than planned.
             _ = CheckGuardianLateAsync(guardian);
         }
+
+        if (_options.ExitAfter is { } delay)
+        {
+            _ = ExitAfterAsync(delay);
+        }
+    }
+
+    /// <summary><c>--exit-after</c>: the whole exit sequence, unattended, once the start is complete.</summary>
+    private async Task ExitAfterAsync(TimeSpan delay)
+    {
+        try
+        {
+            await Task.Delay(delay, _time, _stop.Token).ConfigureAwait(true);
+            await ExitAsync().ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // Already exiting.
+        }
+    }
+
+    /// <summary>
+    /// The emergency's new engine (blueprint §3.2 rule 6), on the releaser's timer thread: everything recorded was
+    /// released under the gate and the generation went up, so the hung host is fenced (INV-11). The new host gets the
+    /// mailbox every piece holds and the current foreground, and the user hears that the keys were released.
+    /// </summary>
+    private void RestartEngine(EngineGeneration generation)
+    {
+        var services = _services;
+        if (services is null || _exit is not null)
+        {
+            return;
+        }
+
+        var store = services.GetRequiredService<DocumentStore>();
+        var host = new EngineHost(
+            services.GetRequiredService<EngineHostPorts>(),
+            generation,
+            SettingsProjection.Engine(store.Current.Settings),
+            _time,
+            services.GetRequiredService<ILogger<EngineHost>>()
+        );
+        var thread = new EngineThread(services.GetRequiredService<ILogger<EngineThread>>());
+        thread.Start(host, _stop.Token);
+        services.GetRequiredService<EngineInboxRelay>().Target = host;
+        Volatile.Write(ref _engine, thread);
+        services.GetRequiredService<ForegroundChangeCoordinator>().Republish();
+        LogEngineRestarted(_logger, generation.Value);
+        var localization = services.GetRequiredService<ILocalizationContext>();
+        _ = _application?.Dispatcher.BeginInvoke(() =>
+            _window?.Announce(
+                localization.Current.Format(L.ReleasedAll),
+                AnnouncementUrgency.Assertive
+            )
+        );
+    }
+
+    /// <summary>Appends the crash of <c>--after-crash</c> to the journal Sentinel reads (ADR-0018).</summary>
+    private async Task RecordCrashAsync(IServiceProvider services, DateTimeOffset crash)
+    {
+        var path = AppDataLocations.CrashJournal(services.GetRequiredService<DataLocations>());
+        ImmutableArray<DateTimeOffset> previous = [];
+        try
+        {
+            if (File.Exists(path))
+            {
+                previous = CrashJournal.Parse(
+                    await File.ReadAllBytesAsync(path, _stop.Token).ConfigureAwait(true)
+                );
+            }
+        }
+        catch (IOException)
+        {
+            // An unreadable journal starts again: at worst one crash loop is detected later.
+        }
+
+        var written = await services
+            .GetRequiredService<IAtomicFileWriter>()
+            .WriteAsync(path, CrashJournal.Append(previous, crash), _stop.Token)
+            .ConfigureAwait(true);
+        if (written.IsFailure)
+        {
+            LogCrashJournalFailed(_logger, written.Failure.Code);
+        }
+
+        LogAfterCrash(_logger, previous.Length + 1);
     }
 
     private Task StartGuardian(IGuardian guardian) =>
@@ -419,8 +556,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             return Task.FromResult(new ExitReport(false, false, TimeSpan.Zero));
         }
 
-        var engine = _engine;
+        var engine = Volatile.Read(ref _engine)!;
         var scheduler = _scheduler;
+        var backups = _services.GetRequiredService<BackupService>();
         var relay = _services.GetRequiredService<EngineObserverRelay>();
 
         // The engine loop ends only with Terminal(Exit); after Terminal(SessionEnd) it goes on (another app may cancel
@@ -432,9 +570,24 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             .RunAsync(
                 reason,
                 released,
-                token => scheduler?.FlushAsync(token) ?? Task.CompletedTask,
+                token => FlushAsync(scheduler, backups, token),
                 CancellationToken.None
             );
+    }
+
+    /// <summary>The document and the usage, then the snapshots queued for the backups (§6.5, DAT-002).</summary>
+    private static async Task FlushAsync(
+        PersistenceScheduler? scheduler,
+        BackupService backups,
+        CancellationToken cancellationToken
+    )
+    {
+        if (scheduler is not null)
+        {
+            await scheduler.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await backups.FlushSnapshotsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task WaitQuietlyAsync(Task pending)
@@ -536,4 +689,28 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     [LoggerMessage(EventId = 8, Level = LogLevel.Error, Message = "ui.unhandled ({Exception})")]
     private static partial void LogUiException(ILogger logger, string exception);
+
+    [LoggerMessage(EventId = 9, Level = LogLevel.Warning, Message = "startup.safe_mode")]
+    private static partial void LogSafeMode(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 10,
+        Level = LogLevel.Warning,
+        Message = "startup.after_crash {Count} crashes in the journal"
+    )]
+    private static partial void LogAfterCrash(ILogger logger, int count);
+
+    [LoggerMessage(
+        EventId = 11,
+        Level = LogLevel.Error,
+        Message = "startup.crash_journal_failed ({Code})"
+    )]
+    private static partial void LogCrashJournalFailed(ILogger logger, string code);
+
+    [LoggerMessage(
+        EventId = 12,
+        Level = LogLevel.Critical,
+        Message = "engine.restarted generation {Generation}"
+    )]
+    private static partial void LogEngineRestarted(ILogger logger, ulong generation);
 }

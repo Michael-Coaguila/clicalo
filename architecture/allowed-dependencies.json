@@ -68,7 +68,7 @@
     },
     "Clicalo.App": {
       "area": "src",
-      "rule": "Composition root: Program, DI and lifecycle. May depend on every product project; nothing references it (blueprint §4.2).",
+      "rule": "Composition root: Program, DI and lifecycle. May depend on every product project; nothing references it (blueprint §4.2). Clicalo.Sentinel is referenced without its assembly (ReferenceOutputAssembly=false), only to build it and copy it next to Clicalo.exe (ADR-0004).",
       "platform": "windows",
       "projectReferences": [
         "Clicalo.UI.Wpf",
@@ -77,7 +77,8 @@
         "Clicalo.Domain",
         "Clicalo.Platform.Core",
         "Clicalo.Platform.Windows",
-        "Clicalo.Infrastructure"
+        "Clicalo.Infrastructure",
+        "Clicalo.Sentinel"
       ],
       "packageReferences": [
         "Microsoft.Extensions.DependencyInjection",
@@ -184,6 +185,20 @@
       "platform": "windows",
       "projectReferences": ["Clicalo.Infrastructure", "Clicalo.Application", "Clicalo.Domain", "Clicalo.TestKit"],
       "packageReferences": ["xunit.v3", "Shouldly", "CsCheck", "Microsoft.Extensions.TimeProvider.Testing"]
+    },
+    "Clicalo.App.Tests": {
+      "area": "tests",
+      "rule": "Headless tests of the composition root (blueprint §10.1): the command line, the single-instance pipe protocol, the adapters of a start without key sending (ADR-0004) and the document of a new installation or a v1 migration against a real temporary folder.",
+      "platform": "windows",
+      "projectReferences": [
+        "Clicalo.App",
+        "Clicalo.Infrastructure",
+        "Clicalo.Application",
+        "Clicalo.Domain",
+        "Clicalo.TestKit"
+      ],
+      "packageReferences": ["xunit.v3", "Shouldly"],
+      "frameworkReferences": ["Microsoft.WindowsDesktop.App.WPF"]
     },
     "Clicalo.Sentinel.Tests": {
       "area": "tests",

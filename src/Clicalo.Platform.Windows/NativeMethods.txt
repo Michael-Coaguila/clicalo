@@ -93,3 +93,9 @@ MapVirtualKeyEx
 GetKeyboardLayout
 TerminateProcess
 GetCurrentProcess
+
+// integration
+// ---- Input: releases on lock and suspend, resends on unlock and resume (SEG-006) ----
+WTSRegisterSessionNotification
+WTSUnRegisterSessionNotification
+NOTIFY_FOR_THIS_SESSION
