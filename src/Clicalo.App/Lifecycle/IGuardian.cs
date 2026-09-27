@@ -11,6 +11,12 @@ internal interface IGuardian
     /// <summary>Whether Sentinel is running and holds the ledger.</summary>
     bool IsRunning { get; }
 
+    /// <summary>
+    /// Raised when Sentinel died <c>Timings.Guardian.RestartLoop</c> times and is no longer restarted: from then on
+    /// nothing releases the keys if the process dies, so the emergency never ends the process (D-22).
+    /// </summary>
+    event EventHandler? Unstable;
+
     /// <summary>Launches Sentinel; completes once it runs (or failed to start, which is logged and retried).</summary>
     /// <param name="cancellationToken">Stops the launch and the watching.</param>
     Task StartAsync(CancellationToken cancellationToken);

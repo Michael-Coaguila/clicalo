@@ -1,4 +1,5 @@
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
@@ -31,6 +32,12 @@ internal sealed class DryRunInputInjector : IInputInjector
         MouseOp operation,
         PhysicalPoint? target
     ) => Accept(1);
+
+    /// <inheritdoc />
+    public InjectionResult SendChord(EngineGeneration generation, InternalChord chord) => Accept(0);
+
+    /// <inheritdoc />
+    public InjectionResult ReleasePending(EngineGeneration generation) => Accept(0);
 
     private InjectionResult Accept(int count)
     {

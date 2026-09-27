@@ -1,4 +1,5 @@
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
@@ -37,6 +38,23 @@ internal sealed class FakeInjector : IInputInjector
     {
         MouseActions.Add((operation, target));
         return Result(1);
+    }
+
+    public List<(EngineGeneration Generation, InternalChord Chord)> Chords { get; } = [];
+
+    public InjectionResult SendChord(EngineGeneration generation, InternalChord chord)
+    {
+        Chords.Add((generation, chord));
+        return Result(4);
+    }
+
+    /// <summary>How many times the engine asked to send the physical ledger's pending releases again.</summary>
+    public int PendingReleaseRequests { get; private set; }
+
+    public InjectionResult ReleasePending(EngineGeneration generation)
+    {
+        PendingReleaseRequests++;
+        return Result(0);
     }
 
     private InjectionResult Result(int count) =>

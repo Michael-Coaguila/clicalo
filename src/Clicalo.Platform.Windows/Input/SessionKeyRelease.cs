@@ -1,7 +1,12 @@
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 using Clicalo.Platform.Windows.SysEvents;
 using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.UI.Accessibility;
 
 namespace Clicalo.Platform.Windows.Input;
 
@@ -12,8 +17,15 @@ namespace Clicalo.Platform.Windows.Input;
 /// <c>beforeSuspendReturns</c>, which waits a bounded time for the engine to confirm the release, since the machine may
 /// sleep as soon as the message returns.
 /// </summary>
+/// <remarks>
+/// The secure desktop of UAC and Ctrl+Alt+Del refuses releases without locking the session: an out-of-context
+/// <c>EVENT_SYSTEM_DESKTOPSWITCH</c> hook hands every desktop switch to <see cref="InputDesktopWatch"/>, which tells
+/// the engine as soon as the input desktop is Clícalo's again (D-22).
+/// </remarks>
 public sealed class SessionKeyRelease : IDisposable
 {
+    private static readonly ConcurrentDictionary<nint, SessionKeyRelease> DesktopHooks = new();
+
     /// <summary><c>WM_WTSSESSION_CHANGE</c>.</summary>
     public const uint SessionChangeMessage = 0x02B1;
 
@@ -28,32 +40,46 @@ public sealed class SessionKeyRelease : IDisposable
 
     private readonly SysEventsThread _thread;
     private readonly SysEventsWindow _window;
+    private readonly InputDesktopWatch _desktop;
     private readonly List<IDisposable> _handlers = [];
+    private HWINEVENTHOOK _desktopHook;
     private int _disposed;
 
-    private SessionKeyRelease(SysEventsThread thread, SysEventsWindow window)
+    private SessionKeyRelease(
+        SysEventsThread thread,
+        SysEventsWindow window,
+        InputDesktopWatch desktop
+    )
     {
         _thread = thread;
         _window = window;
+        _desktop = desktop;
     }
 
     /// <summary>Starts listening on <paramref name="thread"/>.</summary>
     /// <param name="thread">The SysEvents thread.</param>
     /// <param name="engine">The engine mailbox.</param>
     /// <param name="beforeSuspendReturns">Runs after a suspend was posted, before the message is answered.</param>
+    /// <param name="time">The timers of the input desktop's checks.</param>
     public static Task<SessionKeyRelease> StartAsync(
         SysEventsThread thread,
         IEngineInbox engine,
-        Action beforeSuspendReturns
+        Action beforeSuspendReturns,
+        TimeProvider time
     )
     {
         ArgumentNullException.ThrowIfNull(thread);
         ArgumentNullException.ThrowIfNull(engine);
         ArgumentNullException.ThrowIfNull(beforeSuspendReturns);
+        ArgumentNullException.ThrowIfNull(time);
         return thread.InvokeAsync(() =>
         {
             var window = SysEventsWindow.CreateHiddenTopLevel(thread);
-            var release = new SessionKeyRelease(thread, window);
+            var release = new SessionKeyRelease(
+                thread,
+                window,
+                new InputDesktopWatch(engine, InputDesktopWatch.InputDesktopIsReachable, time)
+            );
             foreach (
                 var message in (ReadOnlySpan<uint>)[SessionChangeMessage, PowerBroadcastMessage]
             )
@@ -90,6 +116,7 @@ public sealed class SessionKeyRelease : IDisposable
                 window.Handle,
                 PInvoke.NOTIFY_FOR_THIS_SESSION
             );
+            release.InstallDesktopHook();
             return release;
         });
     }
@@ -131,12 +158,75 @@ public sealed class SessionKeyRelease : IDisposable
                 }
 
                 _ = PInvoke.WTSUnRegisterSessionNotification(_window.Handle);
+                UninstallDesktopHook();
                 _window.Dispose();
             });
         }
         catch (ObjectDisposedException)
         {
-            // The SysEvents loop ended first and destroyed its windows (SysEventsWindow.DestroyAllOfThread).
+            // The SysEvents loop ended first and destroyed its windows (SysEventsWindow.DestroyAllOfThread) and hooks.
+            _ = DesktopHooks.TryRemove(_desktopHook, out _);
         }
+
+        _desktop.Dispose();
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void OnDesktopSwitch(
+        HWINEVENTHOOK hook,
+        uint eventType,
+        HWND window,
+        int objectId,
+        int childId,
+        uint eventThread,
+        uint eventTime
+    )
+    {
+        if (!DesktopHooks.TryGetValue(hook, out var release))
+        {
+            return;
+        }
+
+        try
+        {
+            release._desktop.OnDesktopSwitched();
+        }
+        catch (Exception ex)
+        {
+            // Never across the unmanaged boundary.
+            release._thread.ReportUnhandled(ex);
+        }
+    }
+
+    private unsafe void InstallDesktopHook()
+    {
+        _desktopHook = PInvoke.SetWinEventHook(
+            PInvoke.EVENT_SYSTEM_DESKTOPSWITCH,
+            PInvoke.EVENT_SYSTEM_DESKTOPSWITCH,
+            default(HMODULE),
+            &OnDesktopSwitch,
+            0,
+            0,
+            PInvoke.WINEVENT_OUTOFCONTEXT
+        );
+
+        // Without the hook, unlock and resume still send the refused releases again, as do «Release all» and the
+        // terminal events.
+        if (!_desktopHook.IsNull)
+        {
+            DesktopHooks[_desktopHook] = this;
+        }
+    }
+
+    private void UninstallDesktopHook()
+    {
+        if (_desktopHook.IsNull)
+        {
+            return;
+        }
+
+        _ = DesktopHooks.TryRemove(_desktopHook, out _);
+        _ = PInvoke.UnhookWinEvent(_desktopHook);
+        _desktopHook = default;
     }
 }

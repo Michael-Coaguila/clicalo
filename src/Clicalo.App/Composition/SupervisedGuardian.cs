@@ -11,6 +11,13 @@ internal sealed class SupervisedGuardian(SentinelSupervisor supervisor) : IGuard
     public bool IsRunning => supervisor.ProcessId is not null;
 
     /// <inheritdoc />
+    public event EventHandler? Unstable
+    {
+        add => supervisor.GuardianUnstable += value;
+        remove => supervisor.GuardianUnstable -= value;
+    }
+
+    /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken) =>
         Task.Run(supervisor.Start, cancellationToken);
 }

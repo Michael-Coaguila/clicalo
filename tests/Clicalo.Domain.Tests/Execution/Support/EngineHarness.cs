@@ -75,10 +75,15 @@ internal sealed class EngineHarness
         LastEffects = transition.Effects;
         Effects.AddRange(transition.Effects);
         var failures = new List<EffectId>();
+        var refused = new List<InjectedEvent>();
         foreach (var effect in transition.Effects)
         {
             switch (effect)
             {
+                case EngineEffect.Inject { IsRelease: true } release when RefuseReleases:
+                    // The secure desktop is in front: SendInput refuses the batch whole (ERROR_ACCESS_DENIED).
+                    refused.AddRange(release.Events);
+                    break;
                 case EngineEffect.Inject { IsRelease: false } press when FailNextPress is { } taken:
                     // SendInput took only the first events of the batch; the host reports it (INV-5).
                     FailNextPress = null;
@@ -101,7 +106,15 @@ internal sealed class EngineHarness
 
         foreach (var failure in failures)
         {
+            // The host reports the failure right after the batch; the reducer's compensation goes with it, and from
+            // then on the batch's keys are watched again (a later double press or spurious release is an anomaly).
             Apply(new EngineEvent.InjectFailed(failure, Win32Error: 5));
+            Receiver.EndTolerance();
+        }
+
+        if (refused.Count > 0)
+        {
+            Apply(new EngineEvent.ReleasesBlocked([.. refused]));
         }
 
         return transition.Effects;
@@ -112,6 +125,12 @@ internal sealed class EngineHarness
     /// host reports <see cref="EngineEvent.InjectFailed"/>.
     /// </summary>
     public int? FailNextPress { get; set; }
+
+    /// <summary>
+    /// While set, the secure desktop (UAC, Ctrl+Alt+Del, the lock screen) is in front: every release batch is refused
+    /// whole and comes back as <see cref="EngineEvent.ReleasesBlocked"/>, as the host reports it.
+    /// </summary>
+    public bool RefuseReleases { get; set; }
 
     /// <summary>How many press batches were taken only in part so far.</summary>
     public int FailedPresses { get; private set; }

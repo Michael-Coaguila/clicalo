@@ -26,7 +26,13 @@ public sealed class EmergencyReleaserTests
             Ledger.SetMarks(LedgerMarks.EngineAlive);
             Gate = new InjectionGate(Ledger, System);
             Gate.TryInject(1, [LowLevelInput.KeyDown(Shift)]);
-            Releaser = new EmergencyReleaser(Gate, Time, Restarted.Add, () => Escalations++);
+            Releaser = new EmergencyReleaser(
+                Gate,
+                Time,
+                Restarted.Add,
+                () => Escalations++,
+                () => GuardianRunning
+            );
         }
 
         public FakeTimeProvider Time { get; } =
@@ -41,6 +47,9 @@ public sealed class EmergencyReleaserTests
         public EmergencyReleaser Releaser { get; }
 
         public List<EngineGeneration> Restarted { get; } = [];
+
+        /// <summary>Whether Sentinel runs (the process may end only then).</summary>
+        public bool GuardianRunning { get; set; } = true;
 
         public int Escalations { get; private set; }
 
@@ -134,5 +143,84 @@ public sealed class EmergencyReleaserTests
 
         world.Releaser.Check().ShouldBeNull();
         world.System.Keys.ShouldBe([Shift]);
+    }
+
+    [Fact]
+    public void Without_a_guardian_a_gate_held_by_a_hung_send_never_ends_the_process_and_is_tried_again()
+    {
+        using var world = new World { GuardianRunning = false };
+        world.System.FreezeOnCall = 2;
+        var engine = new Thread(() => world.Gate.TryInject(1, [LowLevelInput.KeyUp(Shift)]))
+        {
+            IsBackground = true,
+        };
+        engine.Start();
+        world
+            .System.Frozen.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)
+            .ShouldBeTrue();
+        world.Releaser.Check();
+
+        world.Time.Advance(Timings.Engine.EngineStallThreshold);
+        world.Releaser.Check().ShouldBe(EmergencyOutcome.GateBusy);
+
+        world.Escalations.ShouldBe(0);
+        world.Releaser.UnguardedAttempts.ShouldBe(1);
+        world.Ledger.Marks.HasFlag(LedgerMarks.EmergencyRestart).ShouldBeFalse();
+
+        // The hung SendInput returns: the next try takes the gate, releases and restarts the engine.
+        world.System.Resume.Set();
+        engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        world.Time.Advance(Timings.Engine.EngineStallThreshold);
+        world.Releaser.Check().ShouldBe(EmergencyOutcome.Released);
+
+        world.Restarted.ShouldBe([new EngineGeneration(2)]);
+        world.Escalations.ShouldBe(0);
+        world.System.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Without_a_guardian_a_second_hang_restarts_the_engine_instead_of_the_process()
+    {
+        using var world = new World { GuardianRunning = false };
+        world.Releaser.Check();
+        world.Time.Advance(Timings.Engine.EngineStallThreshold);
+        world.Releaser.Check().ShouldBe(EmergencyOutcome.Released);
+        world.Gate.TryInject(2, [LowLevelInput.KeyDown(Shift)]);
+
+        world.Time.Advance(Timings.Engine.EngineStallThreshold);
+        world.Releaser.Check().ShouldBe(EmergencyOutcome.Released);
+
+        world.Escalations.ShouldBe(0);
+        world.Restarted.ShouldBe([new EngineGeneration(2), new EngineGeneration(3)]);
+        world.System.IsEmpty.ShouldBeTrue();
+        world.Ledger.Marks.HasFlag(LedgerMarks.EmergencyRestart).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void A_guardian_that_comes_back_lets_the_emergency_restart_the_process_again()
+    {
+        using var world = new World { GuardianRunning = false };
+        world.System.FreezeOnCall = 2;
+        var engine = new Thread(() => world.Gate.TryInject(1, [LowLevelInput.KeyUp(Shift)]))
+        {
+            IsBackground = true,
+        };
+        engine.Start();
+        world
+            .System.Frozen.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)
+            .ShouldBeTrue();
+        world.Releaser.Check();
+        world.Time.Advance(Timings.Engine.EngineStallThreshold);
+        world.Releaser.Check().ShouldBe(EmergencyOutcome.GateBusy);
+        world.Escalations.ShouldBe(0);
+
+        world.GuardianRunning = true;
+        world.Time.Advance(Timings.Engine.EngineStallThreshold);
+        world.Releaser.Check().ShouldBe(EmergencyOutcome.GateBusy);
+
+        world.Escalations.ShouldBe(1);
+        world.Ledger.Marks.HasFlag(LedgerMarks.EmergencyRestart).ShouldBeTrue();
+        world.System.Resume.Set();
+        engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
     }
 }

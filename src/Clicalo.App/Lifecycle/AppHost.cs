@@ -229,15 +229,20 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _engine.Start(services.GetRequiredService<EngineHost>(), _stop.Token);
         if (adapters.Gate is { } gate)
         {
-            // A hung engine is fenced and replaced, or the process ends so Sentinel releases (REG-03).
+            // A hung engine is fenced and replaced, or the process ends so Sentinel releases (REG-03); without a
+            // running Sentinel the process is never ended: nobody would release nor relaunch (D-22).
+            var guardian = adapters.Guardian;
             var emergency = new EmergencyReleaser(
                 gate,
                 _time,
                 RestartEngine,
-                EmergencyReleaser.TerminateSelf
+                EmergencyReleaser.TerminateSelf,
+                () => guardian.IsRunning
             );
             Track(emergency.Dispose);
             emergency.Start();
+            guardian.Unstable += OnGuardianUnstable;
+            Track(() => guardian.Unstable -= OnGuardianUnstable);
         }
 
         // 4. SysEvents: the external foreground reaches the engine before the first touch can.
@@ -253,11 +258,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Track(rights.Dispose);
         var registered = rights.RegisterAsync();
         var relay = services.GetRequiredService<EngineObserverRelay>();
+        var backups = services.GetRequiredService<BackupService>();
         var session = await SessionKeyRelease
             .StartAsync(
                 sysEvents,
                 services.GetRequiredService<IEngineInbox>(),
-                () => Shutdown.SuspendRelease.Wait(relay)
+                () => BeforeSuspend(relay, scheduler, backups),
+                _time
             )
             .ConfigureAwait(true);
         Track(session.Dispose);
@@ -290,6 +297,30 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         integrity.Start();
         await StartTrayAsync(services).ConfigureAwait(true);
         StartPipe(services, ui);
+    }
+
+    /// <summary>
+    /// <c>PBT_APMSUSPEND</c>, answered synchronously on the SysEvents thread (blueprint §6.4, §7.6): first the release
+    /// the engine confirms (<c>Timings.KeySafety.SuspendReleaseWait</c>), then the flush of the document, the usage and
+    /// the queued backups (<c>Timings.App.SuspendFlushTimeout</c>), since the machine may sleep as soon as the message
+    /// returns and the battery may run out while it sleeps.
+    /// </summary>
+    private void BeforeSuspend(
+        EngineObserverRelay relay,
+        PersistenceScheduler scheduler,
+        BackupService backups
+    )
+    {
+        if (
+            !Shutdown.SuspendFlush.Run(
+                () => Shutdown.SuspendRelease.Wait(relay),
+                token => FlushAsync(scheduler, backups, token),
+                _time
+            )
+        )
+        {
+            LogSuspendFlushLate(_logger);
+        }
     }
 
     private PanelWindow BuildPanel(
@@ -477,6 +508,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             )
         );
     }
+
+    /// <summary>
+    /// Sentinel died too often and is no longer restarted (<c>Timings.Guardian.RestartLoop</c>): from now on a death of
+    /// the process leaves keys down with nobody to release them, so the emergency keeps the process (it asks
+    /// <see cref="IGuardian.IsRunning"/>) and the state is logged for the diagnostics.
+    /// </summary>
+    private void OnGuardianUnstable(object? sender, EventArgs e) => LogGuardianUnstable(_logger);
 
     /// <summary>Appends the crash of <c>--after-crash</c> to the journal Sentinel reads (ADR-0018).</summary>
     private async Task RecordCrashAsync(IServiceProvider services, DateTimeOffset crash)
@@ -745,6 +783,20 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "session.end_cancelled")]
     private static partial void LogSessionEndCancelled(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 15,
+        Level = LogLevel.Warning,
+        Message = "suspend.flush_late: the flush did not finish before the computer suspended"
+    )]
+    private static partial void LogSuspendFlushLate(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 14,
+        Level = LogLevel.Critical,
+        Message = "guardian.unstable: Sentinel is no longer restarted; the emergency keeps the process"
+    )]
+    private static partial void LogGuardianUnstable(ILogger logger);
 
     [LoggerMessage(
         EventId = 12,

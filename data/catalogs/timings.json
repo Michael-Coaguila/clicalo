@@ -155,6 +155,12 @@
           "description": "The synchronous suspend handler waits up to this long for the engine to confirm the release.",
           "req": ["SEG-006"],
           "source": "blueprint §7.6"
+        },
+        "InputDesktopRecheck": {
+          "durations": ["250ms", "500ms", "1s", "2s", "4s"],
+          "description": "After a desktop switch, while the input desktop is still the secure one (UAC, Ctrl+Alt+Del, lock screen), it is checked again after each of these waits; once it is Clícalo's again the releases it refused are sent again. The next switch starts over.",
+          "req": ["SEG-006", "REG-03"],
+          "source": "blueprint §7.6; deviations.md D-22"
         }
       }
     },
@@ -231,6 +237,18 @@
           "description": "Longest wait of the emergency releaser for the injection gate before escalating to a process restart.",
           "req": ["REG-03"],
           "source": "blueprint §3.2 rule 6"
+        },
+        "InternalChordWait": {
+          "duration": "1s",
+          "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H) under the fence; a hung or replaced engine answers «not sent».",
+          "req": ["REG-03"],
+          "source": "blueprint §3.6; deviations.md D-22"
+        },
+        "EmergencyGateRetryWaits": {
+          "durations": ["250ms", "500ms", "1s", "2s"],
+          "description": "Without a running guardian the emergency never ends the process (nobody would release what is down nor relaunch Clícalo): it tries to take the injection gate again on each stall check, waiting this long on each attempt (the last one repeats).",
+          "req": ["REG-03"],
+          "source": "blueprint §3.2 rule 6; deviations.md D-22"
         },
         "EngineHangLoop": {
           "countWindow": { "count": 2, "window": "10min" },
@@ -342,6 +360,12 @@
           "description": "Longest flush of the document and usage when Clícalo exits.",
           "req": ["DAT-002", "REG-08"],
           "source": "blueprint §6.4"
+        },
+        "SuspendFlushTimeout": {
+          "duration": "1500ms",
+          "description": "Longest flush of the document, the usage and the queued backups when the computer suspends, after the release (Timings.KeySafety.SuspendReleaseWait): Windows allows about two seconds for PBT_APMSUSPEND, and the battery may run out while it sleeps.",
+          "req": ["DAT-002", "REG-08", "SEG-006"],
+          "source": "blueprint §6.4, §7.6"
         },
         "SentinelLateThreshold": {
           "duration": "200ms",

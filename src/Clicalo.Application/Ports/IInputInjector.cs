@@ -1,3 +1,4 @@
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
@@ -31,4 +32,20 @@ public interface IInputInjector
     /// <param name="operation">The mouse action.</param>
     /// <param name="target">Where, in physical pixels; <see langword="null"/> for the centre of the foreground client area.</param>
     InjectionResult Mouse(EngineGeneration generation, MouseOp operation, PhysicalPoint? target);
+
+    /// <summary>
+    /// Sends one of Clícalo's own chords (blueprint §3.6) as one balanced batch: presses in order the keys that are not
+    /// already down and releases them in reverse order, so a key an engine holder keeps is neither pressed again nor
+    /// released under it; a batch <c>SendInput</c> takes only in part is balanced at once.
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    /// <param name="chord">Which chord.</param>
+    InjectionResult SendChord(EngineGeneration generation, InternalChord chord);
+
+    /// <summary>
+    /// Sends again the key ups the physical ledger keeps pending because the secure desktop refused them (blueprint
+    /// §7.6, INV-3), whoever sent them; the engine calls it when the input desktop is back.
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    InjectionResult ReleasePending(EngineGeneration generation);
 }

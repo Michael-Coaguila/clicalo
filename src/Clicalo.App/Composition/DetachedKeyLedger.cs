@@ -20,7 +20,25 @@ internal sealed class DetachedKeyLedger : IKeyLedger
     public int PendingReleases => 0;
 
     /// <inheritdoc />
-    public void WriteHeartbeat(long ticks) { }
+    public bool TryWriteHeartbeat(EngineGeneration generation, long ticks) =>
+        generation == CurrentGeneration;
+
+    /// <inheritdoc />
+    public bool TryUpdateMarks(
+        EngineGeneration generation,
+        KeyLedgerMarks toSet,
+        KeyLedgerMarks toClear
+    )
+    {
+        if (generation != CurrentGeneration)
+        {
+            return false;
+        }
+
+        SetMarks(toSet);
+        ClearMarks(toClear);
+        return true;
+    }
 
     /// <inheritdoc />
     public void SetMarks(KeyLedgerMarks marks) => _ = Interlocked.Or(ref _marks, (int)marks);

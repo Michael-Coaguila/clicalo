@@ -155,8 +155,9 @@ public abstract record EngineEvent
     }
 
     /// <summary>
-    /// The secure desktop refused a release (locked session, <c>InjectionStatus.Blocked</c>): the engine keeps it and
-    /// sends it again on <see cref="SessionResumed"/> (INV-3). The physical ledger marks it pending meanwhile.
+    /// The secure desktop refused a release (locked session, UAC, Ctrl+Alt+Del: <c>InjectionStatus.Blocked</c>), or
+    /// <c>SendInput</c> took it only in part: the engine keeps it and sends it again on <see cref="SessionResumed"/> and
+    /// with the next «release everything» (INV-3). The physical ledger marks it pending meanwhile.
     /// </summary>
     /// <param name="Events">The release events that did not go.</param>
     public sealed record ReleasesBlocked(ImmutableArray<InjectedEvent> Events) : EngineEvent
@@ -165,11 +166,28 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
-    /// <summary>The session was unlocked or the computer resumed: blocked releases go again (§7.6).</summary>
+    /// <summary>
+    /// The input desktop is Clícalo's again: the session was unlocked, the computer resumed, or the secure desktop of
+    /// UAC or Ctrl+Alt+Del closed. Blocked releases go again, the logical ones and the ones the physical ledger keeps
+    /// pending (§7.6, INV-3).
+    /// </summary>
     public sealed record SessionResumed : EngineEvent
     {
         /// <inheritdoc />
         public override EngineLane Lane => EngineLane.Priority;
+    }
+
+    /// <summary>
+    /// Clícalo needs one of its own chords (the rights chord of the foreground ladder, Win+H for dictation; blueprint
+    /// §3.6): the engine sends it under the fence with its generation, even in test mode or pause (INV-7), and the
+    /// result goes back to the requester by <paramref name="Request"/>.
+    /// </summary>
+    /// <param name="Chord">Which chord.</param>
+    /// <param name="Request">The requester's number for the result.</param>
+    public sealed record InternalChordRequested(InternalChord Chord, long Request) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Normal;
     }
 
     /// <summary>A tap on a key of the sticky modifiers row: 0 → 1 → 2 → 0 (FIJ-005).</summary>

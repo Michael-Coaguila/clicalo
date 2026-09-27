@@ -1,5 +1,6 @@
 using System.Buffers;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
@@ -131,6 +132,20 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
         return SendBalanced(generation, inputs[..count]);
     }
 
+    /// <inheritdoc />
+    public InjectionResult SendChord(EngineGeneration generation, InternalChord chord)
+    {
+        var keys = InternalChords.KeysOf(chord);
+        return Result(gate.TryInjectChord(generation.Value, [.. keys]), keys.Count * 2);
+    }
+
+    /// <inheritdoc />
+    public InjectionResult ReleasePending(EngineGeneration generation)
+    {
+        var outcome = gate.TryReleasePending(generation.Value, out var count);
+        return Result(outcome, count);
+    }
+
     /// <summary>The injection result of a gate outcome for a batch of <paramref name="count"/> inputs.</summary>
     /// <param name="outcome">The gate's outcome.</param>
     /// <param name="count">How many inputs the batch had.</param>
@@ -153,66 +168,13 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
     }
 
     /// <summary>
-    /// Sends a batch that releases everything it presses (a text's Enter, a click). When <c>SendInput</c> takes only
-    /// part of it, a key or button whose press went but whose release did not would stay down with no holder in the
-    /// engine to release it, so its release goes at once in a second batch (an extra release is harmless).
+    /// Sends a batch that releases everything it presses (a text's Enter, a click): when <c>SendInput</c> takes only
+    /// part of it, the gate releases at once what went down and did not go up (<see cref="InjectionGate.TryInjectBalanced"/>).
     /// </summary>
     private InjectionResult SendBalanced(
         EngineGeneration generation,
         ReadOnlySpan<LowLevelInput> inputs
-    )
-    {
-        var outcome = gate.TryInject(generation.Value, inputs);
-        var sent = Math.Clamp(outcome.Send.Sent, 0, inputs.Length);
-        if (outcome.Result == GateResult.Ran && sent > 0 && sent < inputs.Length)
-        {
-            ReleaseLeftovers(generation, inputs[..sent]);
-        }
-
-        return Result(outcome, inputs.Length);
-    }
-
-    private void ReleaseLeftovers(EngineGeneration generation, ReadOnlySpan<LowLevelInput> sent)
-    {
-        var keys = new List<PhysicalKey>();
-        var buttons = new List<LedgerMouseButtons>();
-        foreach (var input in sent)
-        {
-            switch (input.Kind)
-            {
-                case LowLevelInputKind.KeyDown:
-                    keys.Add(input.Key);
-                    break;
-                case LowLevelInputKind.KeyUp:
-                    keys.Remove(input.Key);
-                    break;
-                case LowLevelInputKind.MouseButtonDown:
-                    buttons.Add(input.Button);
-                    break;
-                case LowLevelInputKind.MouseButtonUp:
-                    buttons.Remove(input.Button);
-                    break;
-            }
-        }
-
-        if (keys.Count == 0 && buttons.Count == 0)
-        {
-            return;
-        }
-
-        var releases = new List<LowLevelInput>(keys.Count + buttons.Count);
-        for (var i = buttons.Count - 1; i >= 0; i--)
-        {
-            releases.Add(LowLevelInput.ButtonUp(buttons[i]));
-        }
-
-        for (var i = keys.Count - 1; i >= 0; i--)
-        {
-            releases.Add(LowLevelInput.KeyUp(keys[i]));
-        }
-
-        gate.TryInject(generation.Value, [.. releases]);
-    }
+    ) => Result(gate.TryInjectBalanced(generation.Value, inputs), inputs.Length);
 
     private static unsafe PhysicalPoint? ForegroundClientCentre()
     {

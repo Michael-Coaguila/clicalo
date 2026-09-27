@@ -271,4 +271,59 @@ public sealed class InjectionGateTests
             gate.TryReleaseEverything(9).ShouldBe(GateResult.Fenced);
         }
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void A_chord_send_input_takes_only_in_part_leaves_nothing_down(int taken)
+    {
+        var (ledger, sender, gate) = Create();
+        using (ledger)
+        {
+            var f24 = new PhysicalKey(0x87, 0x76, LedgerKeyAttributes.None);
+            sender.TakeNext = taken;
+
+            gate.TryInjectChord(1, [Ctrl, Alt, Shift, f24]).Send.Sent.ShouldBe(taken);
+
+            sender.IsEmpty.ShouldBeTrue();
+            ledger.Snapshot().Slots.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
+    public void The_release_of_a_lone_alt_a_partial_batch_left_down_goes_with_the_menu_mask()
+    {
+        var (ledger, sender, gate) = Create();
+        using (ledger)
+        {
+            sender.TakeNext = 1;
+
+            gate.TryInjectBalanced(1, Tap(Alt, C));
+
+            sender
+                .Batches[^1]
+                .ShouldBe([
+                    LowLevelInput.KeyDown(LedgerRelease.MenuMask),
+                    LowLevelInput.KeyUp(LedgerRelease.MenuMask),
+                    LowLevelInput.KeyUp(Alt),
+                ]);
+            sender.IsEmpty.ShouldBeTrue();
+            ledger.Snapshot().Slots.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
+    public void A_balanced_batch_is_fenced_like_any_other()
+    {
+        var (ledger, sender, gate) = Create();
+        using (ledger)
+        {
+            gate.TryInjectBalanced(2, Tap(C)).Result.ShouldBe(GateResult.Fenced);
+            gate.TryInjectChord(2, [Ctrl, C]).Result.ShouldBe(GateResult.Fenced);
+
+            sender.Batches.ShouldBeEmpty();
+        }
+    }
 }

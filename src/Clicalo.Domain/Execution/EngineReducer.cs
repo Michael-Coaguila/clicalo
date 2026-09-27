@@ -10,7 +10,8 @@ namespace Clicalo.Domain.Execution;
 /// <summary>
 /// The functional core of the engine (blueprint §7.3, ADR-0004): a pure function from state and event to a new state
 /// and effects, with <see cref="ActivationPolicy"/> and one planner per <see cref="Library.ActionKind"/> inside.
-/// INV-1 to INV-12 (§7.5) are properties of this function, checked on every step with CsCheck.
+/// INV-1, INV-3, INV-4, INV-6 to INV-9 and INV-12 (§7.5) are properties of this function, checked on every step
+/// with CsCheck; INV-2, INV-5 and INV-11 are checked with the real gate, and INV-10 belongs to the layout (D-22).
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
@@ -79,6 +80,11 @@ public static class EngineReducer
                 break;
             case EngineEvent.SessionResumed:
                 SessionResumed(step);
+                break;
+            case EngineEvent.InternalChordRequested chord:
+                // Internal and balanced: it goes in test mode and pause too (INV-7), and a key a holder keeps is
+                // neither pressed again nor released under it (the gate checks the physical ledger).
+                step.Emit(new EngineEffect.SendInternalChord(chord.Chord, chord.Request));
                 break;
             case EngineEvent.StickyTapped tapped when !step.State.Paused && !step.State.TestMode:
                 StickyPlanner.Tap(step, tapped.Modifier);
@@ -549,21 +555,7 @@ public static class EngineReducer
 
     private static void SessionResumed(EngineStep step)
     {
-        var blocked = step.State.BlockedReleases;
-        if (blocked.IsEmpty)
-        {
-            return;
-        }
-
-        step.State = step.State with { BlockedReleases = [] };
-        step.Emit(
-            new EngineEffect.Inject(
-                blocked.Items,
-                Epoch: null,
-                RequiredForeground: null,
-                IsRelease: true,
-                IsInternal: false
-            )
-        );
+        step.ResendBlockedReleases();
+        step.Emit(new EngineEffect.ReleasePendingRecorded());
     }
 }

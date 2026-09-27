@@ -41,18 +41,45 @@ public static class LedgerRelease
             }
         }
 
+        AppendKeyUps(batch, snapshot, onlyPending: false);
+        return batch.ToImmutable();
+    }
+
+    /// <summary>
+    /// The key ups of the slots in <see cref="LedgerSlotState.ReleasePending"/>: the releases the secure desktop refused,
+    /// sent again when the input desktop is back (blueprint §7.6, INV-3). Buttons are not included: the ledger keeps no
+    /// pending state for them, and the engine keeps their refused releases itself.
+    /// </summary>
+    /// <param name="snapshot">The ledger.</param>
+    public static ImmutableArray<LowLevelInput> BuildPendingReleaseBatch(LedgerSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        var batch = ImmutableArray.CreateBuilder<LowLevelInput>();
+        AppendKeyUps(batch, snapshot, onlyPending: true);
+        return batch.ToImmutable();
+    }
+
+    private static void AppendKeyUps(
+        ImmutableArray<LowLevelInput>.Builder batch,
+        LedgerSnapshot snapshot,
+        bool onlyPending
+    )
+    {
         for (var i = snapshot.Slots.Length - 1; i >= 0; i--)
         {
-            var key = snapshot.Slots[i].Key;
-            if (PhysicalKeyKinds.IsAltOrWin(key))
+            var slot = snapshot.Slots[i];
+            if (onlyPending && slot.State != LedgerSlotState.ReleasePending)
+            {
+                continue;
+            }
+
+            if (PhysicalKeyKinds.IsAltOrWin(slot.Key))
             {
                 batch.Add(LowLevelInput.KeyDown(MenuMask));
                 batch.Add(LowLevelInput.KeyUp(MenuMask));
             }
 
-            batch.Add(LowLevelInput.KeyUp(key));
+            batch.Add(LowLevelInput.KeyUp(slot.Key));
         }
-
-        return batch.ToImmutable();
     }
 }

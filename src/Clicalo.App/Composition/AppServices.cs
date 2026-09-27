@@ -151,6 +151,7 @@ internal static class AppServices
             return new EngineObserverRelay(work => _ = ui.BeginInvoke(work));
         });
         services.AddSingleton<EngineInboxRelay>();
+        services.AddSingleton<InternalChordReplies>();
         services.AddSingleton(sp =>
         {
             var adapters = sp.Get<EngineAdapterSet>();
@@ -166,6 +167,9 @@ internal static class AppServices
                 ReleaseRecorded = adapters.Gate is { } gate
                     ? generation => gate.TryReleaseEverything(generation.Value) == GateResult.Ran
                     : null,
+
+                // The internal chords go through the engine, under the fence (§3.6, D-22).
+                ChordReplies = sp.Get<InternalChordReplies>(),
             };
         });
         services.AddSingleton(sp =>
