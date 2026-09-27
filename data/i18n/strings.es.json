@@ -279,6 +279,7 @@
   "macroRunning": "Ejecutando {name} · paso {index} de {total}",
   "macroCancelled": "Macro cancelada: {name}",
   "tapSent": "{keys} enviado a {app}",
+  "guardianUnstable": "La protección de teclas está desactivada · Reinicia Clícalo para recuperarla",
   "saveFailT": "No se guardaron los cambios",
   "saveFailD": "Se reintentará cada 30 s. Tus cambios siguen aquí.",
   "saveReadOnly": "Solo lectura: tus datos son de una versión más nueva de Clícalo",

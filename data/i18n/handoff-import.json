@@ -267,9 +267,14 @@
       "after": "macroCancelled",
       "text": { "es": "{keys} enviado a {app}", "en": "{keys} sent to {app}" }
     },
+    "guardianUnstable": {
+      "notes": "Sentinel murió demasiadas veces y ya no se relanza: si Clícalo se cierra de golpe, nadie suelta las teclas (REG-03, D-22). Texto nuevo de la verificación de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "tapSent",
+      "text": { "es": "La protección de teclas está desactivada · Reinicia Clícalo para recuperarla", "en": "Key protection is off · Restart Clícalo to bring it back" }
+    },
     "saveFailT": {
       "notes": "Título del aviso visible cuando guardar sigue fallando (DAT-002). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
-      "after": "tapSent",
+      "after": "guardianUnstable",
       "text": { "es": "No se guardaron los cambios", "en": "Changes not saved" }
     },
     "saveFailD": {

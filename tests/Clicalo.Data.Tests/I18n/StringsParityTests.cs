@@ -62,6 +62,7 @@ public sealed class StringsParityTests
                 "engineFault",
                 "exitApp",
                 "generalFixed",
+                "guardianUnstable",
                 "handleLock",
                 "hidePanel",
                 "importInvalid",

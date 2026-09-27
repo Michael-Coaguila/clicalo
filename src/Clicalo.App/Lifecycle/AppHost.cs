@@ -230,8 +230,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             );
             Track(emergency.Dispose);
             emergency.Start();
-            guardian.Unstable += OnGuardianUnstable;
-            Track(() => guardian.Unstable -= OnGuardianUnstable);
+            var unstable = new GuardianUnstableNotice(
+                guardian,
+                services.GetRequiredService<EngineObserverRelay>(),
+                _logger
+            );
+            Track(unstable.Dispose);
         }
 
         // 4. SysEvents: the external foreground reaches the engine before the first touch can.
@@ -295,13 +299,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     /// </summary>
     private void BeforeSuspend(EngineObserverRelay relay, PersistenceScheduler scheduler)
     {
-        if (
-            !Shutdown.SuspendFlush.Run(
-                () => Shutdown.SuspendRelease.Wait(relay),
-                token => FlushAsync(scheduler, token),
-                _time
-            )
-        )
+        if (!Shutdown.SuspendFlush.Run(relay, scheduler, _time))
         {
             LogSuspendFlushLate(_logger);
         }
@@ -492,13 +490,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             )
         );
     }
-
-    /// <summary>
-    /// Sentinel died too often and is no longer restarted (<c>Timings.Guardian.RestartLoop</c>): from now on a death of
-    /// the process leaves keys down with nobody to release them, so the emergency keeps the process (it asks
-    /// <see cref="IGuardian.IsRunning"/>) and the state is logged for the diagnostics.
-    /// </summary>
-    private void OnGuardianUnstable(object? sender, EventArgs e) => LogGuardianUnstable(_logger);
 
     private Task StartGuardian(IGuardian guardian) =>
         Task.Run(async () =>
@@ -721,13 +712,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Message = "suspend.flush_late: the flush did not finish before the computer suspended"
     )]
     private static partial void LogSuspendFlushLate(ILogger logger);
-
-    [LoggerMessage(
-        EventId = 14,
-        Level = LogLevel.Critical,
-        Message = "guardian.unstable: Sentinel is no longer restarted; the emergency keeps the process"
-    )]
-    private static partial void LogGuardianUnstable(ILogger logger);
 
     [LoggerMessage(
         EventId = 12,
