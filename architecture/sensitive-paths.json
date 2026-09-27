@@ -28,6 +28,11 @@
       "reason": "Named pipe with DACL, integrity label and two-way verification (ADR-0010)."
     },
     {
+      "pattern": "src/Clicalo.App/SingleInstance/**",
+      "category": "trust-boundary",
+      "reason": "M2 single instance in the composition root: the show-only pipe with its DACL, FirstPipeInstance and two-way image check, and the session mutex (ADR-0010). Moves to Platform.Windows/SingleInstance with the IPC of ImportFile and OpenUri."
+    },
+    {
       "pattern": "src/Clicalo.Application/Ipc/**",
       "category": "trust-boundary",
       "reason": "D13: the IPC server only depends on IShellNavigator (ADR-0010)."
