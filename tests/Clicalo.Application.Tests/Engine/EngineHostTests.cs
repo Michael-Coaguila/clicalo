@@ -195,12 +195,7 @@ public sealed class EngineHostTests
 
         world.Handle(
             new EngineEvent.SessionResumed(),
-            new EngineEffect.TypeText(
-                new EffectId(1),
-                SecretText.From("¡Hola, ñandú!"),
-                3,
-                null
-            ),
+            new EngineEffect.TypeText(new EffectId(1), SecretText.From("¡Hola, ñandú!"), 3, null),
             new EngineEffect.ClipboardPaste(new EffectId(2), SecretText.From("pegar"), 3)
         );
 
