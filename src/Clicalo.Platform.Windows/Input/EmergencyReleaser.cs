@@ -18,6 +18,11 @@ namespace Clicalo.Platform.Windows.Input;
 /// relaunches;</item>
 /// <item>a second hang inside <c>Timings.Engine.EngineHangLoop</c> goes straight to the restart.</item>
 /// </list>
+/// Steps 2 and 3 need a guardian: without one running (not launched yet, between two launches, or given up after
+/// <c>Timings.Guardian.RestartLoop</c>), ending the process would leave whatever is down with nobody to release it and
+/// nobody to relaunch Clícalo. Then the releaser never ends the process: it keeps trying to take the gate on each
+/// stall check, waiting longer each time (<c>Timings.Engine.EmergencyGateRetryWaits</c>), and releases and restarts the
+/// engine as soon as it can (D-22).
 /// </summary>
 /// <remarks>
 /// Its checks run on the <see cref="TimeProvider"/>'s timer thread, not on the engine's nor the UI's, so neither can
@@ -32,11 +37,14 @@ public sealed class EmergencyReleaser : IDisposable
     private readonly TimeProvider _time;
     private readonly Action<EngineGeneration> _restartEngine;
     private readonly Action _escalate;
+    private readonly Func<bool> _guardianRunning;
     private readonly List<long> _hangs = [];
     private readonly Lock _sync = new();
     private ITimer? _timer;
     private long _lastHeartbeat;
     private long _lastProgress;
+    private long? _stalledHeartbeat;
+    private int _unguardedAttempts;
 
     /// <summary>Creates the releaser.</summary>
     /// <param name="gate">The gate of the engine's ledger.</param>
@@ -46,21 +54,28 @@ public sealed class EmergencyReleaser : IDisposable
     /// Ends the process after the ledger got <c>EmergencyRestart</c> (the app writes the crash journal, then
     /// <see cref="TerminateSelf"/>).
     /// </param>
+    /// <param name="guardianRunning">
+    /// Whether Sentinel runs now and holds the ledger: only then may the process end, since Sentinel releases and
+    /// relaunches.
+    /// </param>
     public EmergencyReleaser(
         InjectionGate gate,
         TimeProvider time,
         Action<EngineGeneration> restartEngine,
-        Action escalate
+        Action escalate,
+        Func<bool> guardianRunning
     )
     {
         ArgumentNullException.ThrowIfNull(gate);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(restartEngine);
         ArgumentNullException.ThrowIfNull(escalate);
+        ArgumentNullException.ThrowIfNull(guardianRunning);
         _gate = gate;
         _time = time;
         _restartEngine = restartEngine;
         _escalate = escalate;
+        _guardianRunning = guardianRunning;
         _lastHeartbeat = gate.Ledger.LastHeartbeatTicks;
         _lastProgress = time.GetTimestamp();
     }
@@ -70,6 +85,9 @@ public sealed class EmergencyReleaser : IDisposable
 
     /// <summary>How many emergencies escalated to a process restart.</summary>
     public int Escalations { get; private set; }
+
+    /// <summary>How many times the gate could not be taken while no guardian ran, so the process was kept.</summary>
+    public int UnguardedAttempts { get; private set; }
 
     /// <summary>Starts watching: a check every quarter of the stall threshold.</summary>
     public void Start()
@@ -109,7 +127,7 @@ public sealed class EmergencyReleaser : IDisposable
             }
 
             _lastProgress = now;
-            return Trigger(now);
+            return Trigger(heartbeat, now);
         }
     }
 
@@ -120,26 +138,46 @@ public sealed class EmergencyReleaser : IDisposable
     /// <inheritdoc />
     public void Dispose() => _timer?.Dispose();
 
-    private EmergencyOutcome Trigger(long now)
+    private EmergencyOutcome Trigger(long heartbeat, long now)
     {
         var loop = Timings.Engine.EngineHangLoop;
         _hangs.RemoveAll(hang => _time.GetElapsedTime(hang, now) > loop.Window);
-        _hangs.Add(now);
-        if (_hangs.Count < loop.Count)
+        if (_stalledHeartbeat != heartbeat)
         {
-            var outcome = _gate.TryEmergencyRelease(
-                Timings.Engine.EmergencyGateWait,
-                out var generation
-            );
+            // A new hang; another try at the same one (no guardian, gate busy) is not a second hang.
+            _hangs.Add(now);
+            _stalledHeartbeat = heartbeat;
+        }
+
+        var guarded = _guardianRunning();
+        if (_hangs.Count < loop.Count || !guarded)
+        {
+            var retries = Timings.Engine.EmergencyGateRetryWaits;
+            var wait = guarded
+                ? Timings.Engine.EmergencyGateWait
+                : retries[Math.Min(_unguardedAttempts, retries.Length - 1)];
+            var outcome = _gate.TryEmergencyRelease(wait, out var generation);
             if (outcome == EmergencyOutcome.Released)
             {
                 Releases++;
+                _unguardedAttempts = 0;
+                _stalledHeartbeat = null;
                 _restartEngine(new EngineGeneration(generation));
+                return outcome;
+            }
+
+            if (!guarded)
+            {
+                // Nobody would release nor relaunch after a process restart: keep the process and try again on the
+                // next check, with a longer wait.
+                _unguardedAttempts++;
+                UnguardedAttempts++;
                 return outcome;
             }
         }
 
-        // The gate is held by the hung thread, or it is the second hang in the window: restart the process.
+        // The gate is held by the hung thread, or it is the second hang in the window, and Sentinel runs: restart the
+        // process so Sentinel releases from the ledger and relaunches.
         Escalations++;
         _gate.Ledger.SetMarks(LedgerMarks.EmergencyRestart);
         _escalate();

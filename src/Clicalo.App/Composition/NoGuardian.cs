@@ -9,6 +9,14 @@ internal sealed class NoGuardian : IGuardian, IStartupRelease
     public bool IsRunning => false;
 
     /// <inheritdoc />
+    /// <remarks>Never raised: nothing is pressed, so there is nothing to guard.</remarks>
+    public event EventHandler? Unstable
+    {
+        add { }
+        remove { }
+    }
+
+    /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <inheritdoc />

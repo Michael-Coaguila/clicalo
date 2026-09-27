@@ -244,6 +244,12 @@
           "req": ["REG-03"],
           "source": "blueprint §3.6; deviations.md D-22"
         },
+        "EmergencyGateRetryWaits": {
+          "durations": ["250ms", "500ms", "1s", "2s"],
+          "description": "Without a running guardian the emergency never ends the process (nobody would release what is down nor relaunch Clícalo): it tries to take the injection gate again on each stall check, waiting this long on each attempt (the last one repeats).",
+          "req": ["REG-03"],
+          "source": "blueprint §3.2 rule 6; deviations.md D-22"
+        },
         "EngineHangLoop": {
           "countWindow": { "count": 2, "window": "10min" },
           "description": "This many engine hangs within the window escalate directly to a process restart.",

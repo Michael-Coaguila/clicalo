@@ -229,15 +229,20 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _engine.Start(services.GetRequiredService<EngineHost>(), _stop.Token);
         if (adapters.Gate is { } gate)
         {
-            // A hung engine is fenced and replaced, or the process ends so Sentinel releases (REG-03).
+            // A hung engine is fenced and replaced, or the process ends so Sentinel releases (REG-03); without a
+            // running Sentinel the process is never ended: nobody would release nor relaunch (D-22).
+            var guardian = adapters.Guardian;
             var emergency = new EmergencyReleaser(
                 gate,
                 _time,
                 RestartEngine,
-                EmergencyReleaser.TerminateSelf
+                EmergencyReleaser.TerminateSelf,
+                () => guardian.IsRunning
             );
             Track(emergency.Dispose);
             emergency.Start();
+            guardian.Unstable += OnGuardianUnstable;
+            Track(() => guardian.Unstable -= OnGuardianUnstable);
         }
 
         // 4. SysEvents: the external foreground reaches the engine before the first touch can.
@@ -478,6 +483,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             )
         );
     }
+
+    /// <summary>
+    /// Sentinel died too often and is no longer restarted (<c>Timings.Guardian.RestartLoop</c>): from now on a death of
+    /// the process leaves keys down with nobody to release them, so the emergency keeps the process (it asks
+    /// <see cref="IGuardian.IsRunning"/>) and the state is logged for the diagnostics.
+    /// </summary>
+    private void OnGuardianUnstable(object? sender, EventArgs e) => LogGuardianUnstable(_logger);
 
     /// <summary>Appends the crash of <c>--after-crash</c> to the journal Sentinel reads (ADR-0018).</summary>
     private async Task RecordCrashAsync(IServiceProvider services, DateTimeOffset crash)
@@ -746,6 +758,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "session.end_cancelled")]
     private static partial void LogSessionEndCancelled(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 14,
+        Level = LogLevel.Critical,
+        Message = "guardian.unstable: Sentinel is no longer restarted; the emergency keeps the process"
+    )]
+    private static partial void LogGuardianUnstable(ILogger logger);
 
     [LoggerMessage(
         EventId = 12,

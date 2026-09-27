@@ -66,7 +66,8 @@ public sealed class ZombieEngineTests
                 );
                 secondThread = second.StartOnDedicatedThread(stop.Token);
             },
-            () => escalations++
+            () => escalations++,
+            static () => true
         );
         using var first = new EngineHost(
             ports,
