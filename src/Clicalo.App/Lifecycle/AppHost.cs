@@ -1,7 +1,5 @@
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -21,9 +19,6 @@ using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
-using Clicalo.Infrastructure.Backup;
-using Clicalo.Infrastructure.Persistence;
-using Clicalo.Platform.Core.Guardian;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.Input;
 using Clicalo.Platform.Windows.SysEvents;
@@ -40,15 +35,17 @@ namespace Clicalo.App.Lifecycle;
 /// <summary>
 /// The life of the running instance (blueprint §3.1, §3.2, §7.6), on the UI thread of the Surfaces role:
 /// <list type="number">
-/// <item>a crash Sentinel reported goes to its journal; the document is read (persistence; on a new installation the
-/// seed, or the v1 file of <c>--migrate-v1</c>) and the language files loaded;</item>
+/// <item>off the UI thread (<see cref="StartupReader"/>): a crash Sentinel reported goes to its journal; the document
+/// is read (persistence; on a new installation the seed, or the v1 file of <c>--migrate-v1</c>) and the language files
+/// loaded;</item>
 /// <item>the preventive release of the start (SEG-006), before the engine accepts anything;</item>
 /// <item>autosave, and the engine thread: it accepts touches from the first frame, it does not wait for the guardian;
 /// with key sending, the emergency release watches its heartbeat (§3.2 rule 6);</item>
 /// <item>SysEvents follows the external foreground and the engine hears it (§7.9);</item>
 /// <item>the panel is built and shown passively; Sentinel is launched from a background thread in parallel to the
 /// first frame (or right after it with <c>--guardian after-first-frame</c>, spike S5);</item>
-/// <item>then the surface checks, the tray and the single-instance pipe.</item>
+/// <item>then, once the panel is presented and the rights hotkey registered (without waiting for the first frame), the
+/// surface checks, the tray and the single-instance pipe.</item>
 /// </list>
 /// <see cref="ExitAsync"/> is the only way out (<see cref="IAppLifetime"/>): the <see cref="ExitSequence"/> releases
 /// everything and flushes, then what was started is disposed in reverse order and the WPF application ends. The end of
@@ -62,9 +59,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private readonly ILoggerFactory _logs;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _stop = new();
-    private readonly TaskCompletionSource _exiting = new(
-        TaskCreationOptions.RunContinuationsAsynchronously
-    );
     private readonly TimeProvider _time = TimeProvider.System;
     private readonly List<Action> _teardown = [];
     private System.Windows.Application? _application;
@@ -93,9 +87,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _logs = logs;
         _logger = logs.CreateLogger<AppHost>();
     }
-
-    /// <inheritdoc />
-    public Task Exiting => _exiting.Task;
 
     /// <summary>Whether the first frame of the panel is on screen.</summary>
     public bool HasFirstFrame => _firstFrame;
@@ -134,13 +125,10 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     /// </summary>
     internal Task EndSessionAsync()
     {
-        if (_exit is not null)
-        {
-            return Task.CompletedTask;
-        }
-
-        _exiting.TrySetResult();
-        return RunExitSequenceAsync(TerminalReason.SessionEnd);
+        // Not the start of the exit: another app may still cancel the end of the session (OnPanelMessage).
+        return _exit is not null
+            ? Task.CompletedTask
+            : RunExitSequenceAsync(TerminalReason.SessionEnd);
     }
 
     // A WPF event handler (the only kind of async void CLC0009 accepts): every exception is caught and ends the start.
@@ -168,32 +156,27 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var slot = services.GetRequiredService<StartupSlot>();
         var started = _time.GetTimestamp();
 
-        // 0. A crash Sentinel reported goes to the journal it reads for the crash loop (ADR-0018).
-        if (_options.AfterCrash is { } crash)
-        {
-            await RecordCrashAsync(services, crash).ConfigureAwait(true);
-        }
-
         if (_options.SafeMode)
         {
             LogSafeMode(_logger);
         }
 
-        // 1. The document and the language it asks for.
-        var i18n =
-            LanguageFiles.Find(AppContext.BaseDirectory)
-            ?? throw new FileNotFoundException("i18n was not found next to Clicalo.exe.");
-        var windowsLanguage = LanguageFiles.WindowsLanguage();
-        slot.Load = await services
-            .GetRequiredService<StartupDocuments>()
-            .LoadAsync(
-                ContentFiles.Find(AppContext.BaseDirectory),
-                LanguageFiles.Has(i18n, windowsLanguage) ? new LangCode(windowsLanguage) : null,
-                _options.MigrateV1,
+        // 0 and 1. Off the UI thread (§3.2): a crash Sentinel reported goes to its journal (ADR-0018), then the document
+        // and the language it asks for.
+        var read = await services
+            .GetRequiredService<StartupReader>()
+            .ReadAsync(
+                new StartupRequest(
+                    AppContext.BaseDirectory,
+                    LanguageFiles.WindowsLanguage(),
+                    _options.MigrateV1,
+                    _options.AfterCrash
+                ),
                 _stop.Token
             )
             .ConfigureAwait(true);
-        slot.Localization = LanguageFiles.Load(i18n, slot.Load.Document.Settings.Language.Value);
+        slot.Load = read.Documents.Load;
+        slot.Localization = read.Localization;
         var loadTime = _time.GetElapsedTime(started);
         LogDocumentLoaded(_logger, slot.Load.Outcome, loadTime);
 
@@ -211,6 +194,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _scheduler = services.GetRequiredService<PersistenceScheduler>();
         store.Changed += _scheduler.OnDocumentChanged;
         var scheduler = _scheduler;
+        if (read.Documents.SavePending)
+        {
+            // The seed or the migration of this start could not be written: saved at once and retried (DAT-002).
+            scheduler.MarkUnsaved(store.Current);
+        }
+
         scheduler.StatusChanged += (_, _) =>
         {
             // DAT-002: a save that keeps failing is said once, when it becomes visible; the retries stay silent.
@@ -516,37 +505,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     /// </summary>
     private void OnGuardianUnstable(object? sender, EventArgs e) => LogGuardianUnstable(_logger);
 
-    /// <summary>Appends the crash of <c>--after-crash</c> to the journal Sentinel reads (ADR-0018).</summary>
-    private async Task RecordCrashAsync(IServiceProvider services, DateTimeOffset crash)
-    {
-        var path = AppDataLocations.CrashJournal(services.GetRequiredService<DataLocations>());
-        ImmutableArray<DateTimeOffset> previous = [];
-        try
-        {
-            if (File.Exists(path))
-            {
-                previous = CrashJournal.Parse(
-                    await File.ReadAllBytesAsync(path, _stop.Token).ConfigureAwait(true)
-                );
-            }
-        }
-        catch (IOException)
-        {
-            // An unreadable journal starts again: at worst one crash loop is detected later.
-        }
-
-        var written = await services
-            .GetRequiredService<IAtomicFileWriter>()
-            .WriteAsync(path, CrashJournal.Append(previous, crash), _stop.Token)
-            .ConfigureAwait(true);
-        if (written.IsFailure)
-        {
-            LogCrashJournalFailed(_logger, written.Failure.Code);
-        }
-
-        LogAfterCrash(_logger, previous.Length + 1);
-    }
-
     private Task StartGuardian(IGuardian guardian) =>
         Task.Run(async () =>
         {
@@ -604,7 +562,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     private async Task ExitCoreAsync(AppExitCode code)
     {
-        _exiting.TrySetResult();
         _ = await RunExitSequenceAsync(TerminalReason.Exit).ConfigureAwait(true);
         await _stop.CancelAsync().ConfigureAwait(true);
         if (_pipe is not null)
@@ -632,7 +589,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         var engine = Volatile.Read(ref _engine)!;
         var scheduler = _scheduler;
-        var backups = _services.GetRequiredService<BackupService>();
         var relay = _services.GetRequiredService<EngineObserverRelay>();
 
         // The engine loop ends only with Terminal(Exit); after Terminal(SessionEnd) it goes on (another app may cancel
@@ -644,25 +600,19 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             .RunAsync(
                 reason,
                 released,
-                token => FlushAsync(scheduler, backups, token),
+                token => FlushAsync(scheduler, token),
                 CancellationToken.None
             );
     }
 
-    /// <summary>The document and the usage, then the snapshots queued for the backups (§6.5, DAT-002).</summary>
-    private static async Task FlushAsync(
+    /// <summary>
+    /// The copies queued before a destructive change, then the document and the usage, all by the Persistence consumer
+    /// (§6.4, §6.5, DAT-002, DAT-006).
+    /// </summary>
+    private static Task FlushAsync(
         PersistenceScheduler? scheduler,
-        BackupService backups,
         CancellationToken cancellationToken
-    )
-    {
-        if (scheduler is not null)
-        {
-            await scheduler.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        await backups.FlushSnapshotsAsync(cancellationToken).ConfigureAwait(false);
-    }
+    ) => scheduler?.FlushAsync(cancellationToken) ?? Task.CompletedTask;
 
     private async Task WaitQuietlyAsync(Task pending)
     {
@@ -766,20 +716,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     [LoggerMessage(EventId = 9, Level = LogLevel.Warning, Message = "startup.safe_mode")]
     private static partial void LogSafeMode(ILogger logger);
-
-    [LoggerMessage(
-        EventId = 10,
-        Level = LogLevel.Warning,
-        Message = "startup.after_crash {Count} crashes in the journal"
-    )]
-    private static partial void LogAfterCrash(ILogger logger, int count);
-
-    [LoggerMessage(
-        EventId = 11,
-        Level = LogLevel.Error,
-        Message = "startup.crash_journal_failed ({Code})"
-    )]
-    private static partial void LogCrashJournalFailed(ILogger logger, string code);
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "session.end_cancelled")]
     private static partial void LogSessionEndCancelled(ILogger logger);

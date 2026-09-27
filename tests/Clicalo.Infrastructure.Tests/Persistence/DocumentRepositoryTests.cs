@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Privacy;
+using Clicalo.Domain.Settings;
 using Clicalo.Infrastructure.Backup;
 using Clicalo.Infrastructure.Persistence;
 using Clicalo.TestKit.Time;
@@ -20,10 +21,15 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 [Trait("Req", "REG-08")]
 public sealed class DocumentRepositoryTests : IDisposable
 {
+    private readonly BoundedTestToken _bounded = new();
     private readonly TempFolder _folder = new();
     private readonly FakeTimeProvider _time = TestTime.CreateProvider();
 
-    public void Dispose() => _folder.Dispose();
+    public void Dispose()
+    {
+        _bounded.Dispose();
+        _folder.Dispose();
+    }
 
     private DataLocations Data => _folder.Locations;
 
@@ -308,7 +314,35 @@ public sealed class DocumentRepositoryTests : IDisposable
         load.Outcome.ShouldBe(DocumentLoadOutcome.RecoveredFromPending);
     }
 
-    private static CancellationToken Token => TestContext.Current.CancellationToken;
+    [Fact]
+    [Trait("Req", "DAT-002")]
+    public async Task A_document_that_does_not_read_back_identical_is_refused_and_nothing_is_written()
+    {
+        var writes = new RecordingWriter(new AtomicFile(_time, NullLogger<AtomicFile>.Instance));
+        var repository = Repository(documentWriter: writes);
+        _ = await repository.LoadAsync(Token);
+
+        // JSON has no lone surrogates: the name would come back as U+FFFD, a different document (§6.5, step 2).
+        var lossy = TestDocuments.Document() with
+        {
+            Settings = TestDocuments.Settings with
+            {
+                PanelPositions = [new MonitorPosition("DISPLAY1\uD800", 10, 20)],
+            },
+        };
+        var result = await repository.SaveAsync(lossy, Token);
+
+        result.Failure.Code.ShouldBe("persist.invalid");
+        writes.Paths.ShouldBeEmpty("an invalid or lossy document never reaches the writer");
+        File.Exists(Data.Document).ShouldBeFalse();
+        File.Exists(Data.PendingDocument).ShouldBeFalse();
+        (await repository.SaveAsync(TestDocuments.Document(), Token)).IsSuccess.ShouldBeTrue(
+            "the same repository still saves a valid document"
+        );
+        writes.Paths.ShouldBe([Data.Document]);
+    }
+
+    private CancellationToken Token => _bounded.Token;
 
     private static byte[] FutureMajor() =>
         Encoding.UTF8.GetBytes(
@@ -378,6 +412,24 @@ public sealed class DocumentRepositoryTests : IDisposable
             files ?? AtomicFile.Disk,
             () => TestDocuments.Document(0)
         );
+    }
+
+    /// <summary>An atomic writer that records every path it is asked to write.</summary>
+    private sealed class RecordingWriter(IAtomicFileWriter inner) : IAtomicFileWriter
+    {
+        private readonly List<string> _paths = [];
+
+        public IReadOnlyList<string> Paths => _paths;
+
+        public Task<Domain.Errors.Result<AtomicWriteReceipt>> WriteAsync(
+            string path,
+            ReadOnlyMemory<byte> content,
+            CancellationToken cancellationToken
+        )
+        {
+            _paths.Add(path);
+            return inner.WriteAsync(path, content, cancellationToken);
+        }
     }
 
     /// <summary>The disk, with the replace of one file or the write of another failing as a lock that never ends.</summary>

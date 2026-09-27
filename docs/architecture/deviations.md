@@ -484,10 +484,19 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     `Infrastructure/Logging`, fuera del reparto de M2, porque `banned-api-exceptions.json` espera ahí su *sink*.
   - **Migración.** `V1Importer.MigrateAsync` (guarda el original byte a byte antes de convertir), `V1ComboScan`,
     `V1Counts.Of` y tres valores de `MigrationNoteKind`; los repetidos de una importación salen de `DuplicateIndex`.
-  - **App.** La instancia única (mutex, *pipe* con DACL y comprobación de la imagen en los dos sentidos) vive en
-    `Clicalo.App/SingleInstance`, con su propia interoperabilidad, hasta que la IPC de `ImportFile` y `OpenUri` la lleve
-    a `Platform.Windows/SingleInstance` y `Platform.Core/Ipc`; es ruta sensible. `sidHash` se calcula sobre el SID
-    binario, y la DACL da también `CreateNewInstance` al usuario, que el SDDL de §3.4 omite. `PanelProjector` está en
+  - **App.** La instancia única (mutex y *pipe* con DACL) vive en `Clicalo.App/SingleInstance` hasta que la IPC de
+    `ImportFile` y `OpenUri` la lleve a `Platform.Windows/SingleInstance` y `Platform.Core/Ipc`; es ruta sensible. La
+    comprobación va en los dos sentidos, con lo que M2 tiene: el cliente compara la imagen del servidor con su propia
+    ruta (el editor fijado y la copia protegida del componente llegan con `Platform.Core/Trust` en M5), y el servidor
+    exige la misma sesión y el SID del usuario en el *token* del cliente y lee su integridad (`PipeAdmission`; con
+    `show` como único verbo, un cliente de menor integridad no obtiene más). Su interoperabilidad (`PipePeer`,
+    `ProcessIdentity`) ya está en `Platform.Windows/SingleInstance`, y D13 se vigila en `App.SingleInstance` y
+    `Platform.Windows.SingleInstance` hasta que exista `Application.Ipc`. Un segundo arranque que encuentra el nombre
+    ocupado solo lo dice con su código de salida (`InstanceSquatted`): el registro `ipc.squat_detected` y el aviso de
+    §3.4 llegan con la IPC de M4, porque ese proceso no abre el registro (lo tiene el primero) ni tiene ventana.
+    `App/Interop` conserva solo `MonitorLayout` (los monitores de la migración v1), que pasa a `Platform.Windows` con
+    el localizador de MIG-001. `sidHash` se calcula sobre el SID binario, y la DACL da también `CreateNewInstance` al
+    usuario, que el SDDL de §3.4 omite. `PanelProjector` está en
     `Presentation/Panel`, no en `Application.Projections`, y sus pruebas sin ventana en el proyecto de Windowing. La
     franja de «Soltar todo» va debajo de las fichas, para no mover ninguna bajo el dedo.
   - **Arranque.** Un primer arranque sin documento carga la semilla de `content\seed.json` en el idioma de Windows, o
@@ -497,12 +506,33 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     y `Clicalo.Sentinel.exe` junto a `Clicalo.exe`, y los textos ya no se buscan en carpetas superiores.
   - **Pruebas.** Proyecto nuevo `Clicalo.App.Tests` (opciones, protocolo del *pipe*, adaptadores sin envío, documento
     del primer arranque) con `InternalsVisibleTo` en `Clicalo.App`.
+  - **Tras la verificación de M2 (persistencia e IPC).**
+    - Un único consumidor de persistencia (§3.1, §6.4): `BackupService` ya no tiene hilo propio. `SnapshotNow` solo
+      encola dentro del *lock* del almacén, y `PersistenceScheduler` escribe esas copias en cuanto llega el cambio y
+      siempre antes del documento. Si una no se puede escribir, el documento cambiado espera y el fallo sigue las
+      reglas de un guardado fallido, hasta hacerse visible (DAT-006, §6.8: «crea antes una copia»).
+    - La E/S del arranque (diario de fallos, documento e idiomas) corre en el grupo de hilos (`StartupReader`), nunca en
+      el hilo de UI (§3.2).
+    - Un documento del arranque que no se pudo escribir (semilla o migración) pasa al autoguardado
+      (`PersistenceScheduler.MarkUnsaved`). Una migración v1 fallida deja la marca `migration-v1.pending` en
+      `%LocalAppData%\Clicalo`, un archivo que §6.5 no lista: mientras exista, un arranque con `--migrate-v1` vuelve a
+      migrar sobre la semilla tras una copia `pre-migrate` del documento que reemplaza. La bienvenida de M3 la usará
+      para «Reintentar migración».
+    - Un idioma con la entrada o los textos rotos se omite y se registra (`startup.language_skipped`); solo
+      `locales.json` ilegible o sin textos del idioma por defecto detienen el arranque.
+    - **Hilo SysEvents.** Al suspender, `SuspendRelease` espera en SysEvents, como mucho
+      `Timings.KeySafety.SuspendReleaseWait` (500 ms), a que el motor confirme que no retiene nada, porque el equipo
+      puede dormirse en cuanto se responde `WM_POWERBROADCAST`. §3.2 dice que SysEvents nunca hace llamadas que puedan
+      bloquear: esta espera acotada es la excepción `app-suspend` de `banned-api-exceptions.json`, separada de
+      `app-shutdown` (solo el vaciado de fin de sesión) y de `app-second-start` (la espera del segundo proceso).
 - **Motivo.** Que los cinco paquetes compongan un `Clicalo.exe` que arranca, envía por la valla y se cierra limpio sin
   cambiar ningún contrato de D-20 ni rebajar ningún requisito.
 - **Coste.** Una copia a mano de la tabla Win32 hasta cambiar el generador; la instancia única y su interoperabilidad
   en la raíz de composición durante M2.
 - **Revisión.** Al cerrar M2, con la primera ejecución de `desk (x64)` y `perf (x64)` en la CI; la tabla Win32, al
-  cambiar `KeysEmitter`; la instancia única, con la IPC de M4.
+  cambiar `KeysEmitter`; la instancia única, su aviso de nombre ocupado y `MonitorLayout`, con la IPC de M4 y MIG-001;
+  la marca `migration-v1.pending`, con la bienvenida de M3; la espera de SysEvents al suspender, si la CI mide que
+  retrasa la bandeja o el primer plano.
 
 ## D-22 · Correcciones del motor tras verificar M2
 

@@ -1,7 +1,7 @@
 using System.IO;
 using System.IO.Pipes;
-using Clicalo.App.Interop;
 using Clicalo.Domain.Timing;
+using Clicalo.Platform.Windows.SingleInstance;
 
 namespace Clicalo.App.SingleInstance;
 
@@ -14,7 +14,8 @@ namespace Clicalo.App.SingleInstance;
 /// <remarks>
 /// M2 checks the path of the server's image against this executable (the per-user installation or a build). The
 /// pinned publisher check of ADR-0010 and the protected copy of the system component join with
-/// <c>Platform.Core/Trust</c> in M5 (ADR-0013).
+/// <c>Platform.Core/Trust</c> in M5 (ADR-0013). A squatted name is reported to the second start by its exit code only:
+/// the log line and the notice of §3.4 come with the IPC of M4 (D-21).
 /// </remarks>
 internal static class ShowPipeClient
 {
@@ -77,8 +78,8 @@ internal static class ShowPipeClient
 
     /// <summary>Whether the server of <paramref name="pipe"/> runs <paramref name="ownImage"/>.</summary>
     private static bool IsOwnExecutable(NamedPipeClientStream pipe, string ownImage) =>
-        NativeMethods.GetNamedPipeServerProcessId(pipe.SafePipeHandle, out var serverProcess)
-        && ProcessImages.PathOf(serverProcess) is { } serverImage
+        PipePeer.TryGetServerProcessId(pipe.SafePipeHandle, out var serverProcess)
+        && ProcessIdentity.ImagePath(serverProcess) is { } serverImage
         && string.Equals(
             Path.GetFullPath(serverImage),
             Path.GetFullPath(ownImage),

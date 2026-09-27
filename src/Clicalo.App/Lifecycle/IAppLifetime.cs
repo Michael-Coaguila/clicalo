@@ -8,9 +8,6 @@ namespace Clicalo.App.Lifecycle;
 /// </summary>
 internal interface IAppLifetime
 {
-    /// <summary>Completes when the app has started ending (the same task for every caller).</summary>
-    Task Exiting { get; }
-
     /// <summary>Releases everything, flushes the document, closes every window and ends the process.</summary>
     Task ExitAsync();
 }

@@ -92,8 +92,7 @@ internal static class EngineAdapters
     /// uses it too.
     /// </summary>
     public static Func<uint, Clicalo.Domain.Execution.KeyboardLayoutSnapshot> Layouts() =>
-        static thread =>
-            KeyboardLayoutCapture.Capture(Interop.NativeMethods.GetKeyboardLayout(thread));
+        KeyboardLayoutCapture.ForThread;
 
     private sealed class NoResources : IDisposable
     {

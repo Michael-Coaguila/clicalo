@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Threading.Channels;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Errors;
@@ -16,11 +15,13 @@ namespace Clicalo.Infrastructure.Backup;
 /// <c>pre-*</c> kind and the v1 original forever. Listing reads each backup's own counts (COP-004).
 /// </para>
 /// <para>
-/// <see cref="SnapshotNow"/> only queues (the document store calls it inside its lock); a single background writer
-/// writes the queue in order. <see cref="FlushSnapshotsAsync"/> waits for it (exit, tests).
+/// It has no thread of its own (blueprint §3.1, §6.4: the Persistence thread is the single consumer of the document,
+/// the usage and the backups). <see cref="SnapshotNow"/> only queues (the document store calls it inside its lock);
+/// the save scheduler writes the queue with <see cref="WriteSnapshotsAsync"/> before the document, and is the only
+/// caller of <see cref="CreateAsync"/> once the start is over, so two writes never rotate <c>backups\</c> at once.
 /// </para>
 /// </remarks>
-public sealed partial class BackupService : IBackupService, IDisposable
+public sealed partial class BackupService : IBackupService
 {
     private readonly DataLocations _locations;
     private readonly IAtomicFileWriter _writer;
@@ -28,16 +29,9 @@ public sealed partial class BackupService : IBackupService, IDisposable
     private readonly ILogger<BackupService> _logger;
     private readonly DocumentCodec _codec;
     private readonly IAtomicFileSystem _files;
-    private readonly Channel<Snapshot> _snapshots = Channel.CreateUnbounded<Snapshot>(
-        new UnboundedChannelOptions { SingleReader = true }
-    );
-    private readonly CancellationTokenSource _stopping = new();
+    private readonly Queue<Snapshot> _snapshots = new();
     private readonly Lock _gate = new();
-    private Task? _consumer;
     private long _seq = -1;
-    private TaskCompletionSource _drained = CompletedSource();
-    private int _queued;
-    private bool _disposed;
 
     /// <summary>Creates the service.</summary>
     /// <param name="locations">Where the data lives.</param>
@@ -112,39 +106,40 @@ public sealed partial class BackupService : IBackupService, IDisposable
 
         lock (_gate)
         {
-            if (_disposed)
-            {
-                // Ending: a snapshot after Dispose would start a consumer over a stopped service.
-                return;
-            }
-
-            if (_queued++ == 0)
-            {
-                _drained = new TaskCompletionSource(
-                    TaskCreationOptions.RunContinuationsAsynchronously
-                );
-            }
-
-            _consumer ??= Task.Run(ConsumeAsync);
-        }
-
-        if (!_snapshots.Writer.TryWrite(new Snapshot(document, kind)))
-        {
-            Settle();
+            _snapshots.Enqueue(new Snapshot(document, kind));
         }
     }
 
-    /// <summary>Waits until every queued snapshot has been written (or has failed and been logged).</summary>
-    /// <param name="cancellationToken">Stops waiting, not the writes.</param>
-    public Task FlushSnapshotsAsync(CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<Result<int>> WriteSnapshotsAsync(CancellationToken cancellationToken)
     {
-        Task drained;
-        lock (_gate)
+        var written = 0;
+        while (true)
         {
-            drained = _drained.Task;
-        }
+            Snapshot? next;
+            lock (_gate)
+            {
+                if (!_snapshots.TryPeek(out next))
+                {
+                    return Results.Ok(written);
+                }
+            }
 
-        return drained.WaitAsync(cancellationToken);
+            var created = await CreateAsync(next.Document, next.Kind, cancellationToken)
+                .ConfigureAwait(false);
+            if (created.IsFailure)
+            {
+                // Kept at the head of the queue: the next save of the document tries it again first.
+                return Results.Fail<int>(created.Failure);
+            }
+
+            lock (_gate)
+            {
+                _ = _snapshots.Dequeue();
+            }
+
+            written++;
+        }
     }
 
     /// <inheritdoc />
@@ -315,30 +310,6 @@ public sealed partial class BackupService : IBackupService, IDisposable
         return Task.FromResult(Decode(bytes));
     }
 
-    /// <summary>
-    /// Stops the snapshot consumer; the snapshots still queued are abandoned with the process. Idempotent: the
-    /// container disposes a service once per registration that returns it.
-    /// </summary>
-    /// <remarks>
-    /// The token source is cancelled, not disposed: the consumer may still be starting on the thread pool and reading
-    /// its token, and a source without a timer holds nothing to release.
-    /// </remarks>
-    public void Dispose()
-    {
-        lock (_gate)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-        }
-
-        _snapshots.Writer.TryComplete();
-        _stopping.Cancel();
-    }
-
     /// <summary>A document backup read from bytes (restore, and the recovery chain).</summary>
     /// <param name="bytes">The file.</param>
     internal Result<UserDocument> Decode(ReadOnlySpan<byte> bytes) =>
@@ -355,58 +326,9 @@ public sealed partial class BackupService : IBackupService, IDisposable
             ),
         };
 
-    private static TaskCompletionSource CompletedSource()
-    {
-        var source = new TaskCompletionSource();
-        source.SetResult();
-        return source;
-    }
-
     private static int ShortcutCount(UserDocument document) =>
         document.Library.AlwaysVisible.Count
         + document.Library.Profiles.Sum(p => p.Shortcuts.Count);
-
-    private async Task ConsumeAsync()
-    {
-        try
-        {
-            await foreach (
-                var snapshot in _snapshots
-                    .Reader.ReadAllAsync(_stopping.Token)
-                    .ConfigureAwait(false)
-            )
-            {
-                try
-                {
-                    _ = await CreateAsync(snapshot.Document, snapshot.Kind, _stopping.Token)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    LogSnapshotFault(_logger, snapshot.Kind, ex);
-                }
-                finally
-                {
-                    Settle();
-                }
-            }
-        }
-        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
-        {
-            // Disposed: the remaining snapshots are abandoned with the process.
-        }
-    }
-
-    private void Settle()
-    {
-        lock (_gate)
-        {
-            if (--_queued == 0)
-            {
-                _drained.TrySetResult();
-            }
-        }
-    }
 
     private long NextSeq()
     {
@@ -502,17 +424,6 @@ public sealed partial class BackupService : IBackupService, IDisposable
         ILogger logger,
         BackupKind kind,
         IoFailureKind failure
-    );
-
-    [LoggerMessage(
-        EventId = 5144,
-        Level = LogLevel.Error,
-        Message = "backup.snapshot_fault: {Kind}"
-    )]
-    private static partial void LogSnapshotFault(
-        ILogger logger,
-        BackupKind kind,
-        Exception exception
     );
 
     /// <summary>A queued snapshot.</summary>

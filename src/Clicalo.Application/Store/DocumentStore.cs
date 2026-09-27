@@ -10,11 +10,11 @@ using Clicalo.Domain.Primitives;
 namespace Clicalo.Application.Store;
 
 /// <summary>
-/// The single writer of the user document (blueprint Â§6.4, ADR-0003): a short lock wraps only <c>Apply</c> and the
+/// The single writer of the user document (blueprint §6.4, ADR-0003): a short lock wraps only <c>Apply</c> and the
 /// history, with no I/O inside; <see cref="Current"/> is published with <c>Volatile.Write</c> and read without the lock
 /// from any thread. <see cref="Changed"/> is raised outside the lock and always in revision order, even when several
-/// threads dispatch at once, so the save scheduler never takes an older document for the newest one. Undo restores only the slices the undone step touched, so undoing Â«delete shortcutÂ» keeps the
-/// usage recorded afterwards; Â«Reset FrequentsÂ» touches usage too, so its undo restores usage, pins and hidden
+/// threads dispatch at once, so the save scheduler never takes an older document for the newest one. Undo restores only the slices the undone step touched, so undoing «delete shortcut» keeps the
+/// usage recorded afterwards; «Reset Frequents» touches usage too, so its undo restores usage, pins and hidden
 /// (FRE-004). Destructive commands need a <see cref="ConfirmationToken"/> (REG-04, CLC0010).
 /// </summary>
 /// <remarks>
@@ -25,7 +25,7 @@ namespace Clicalo.Application.Store;
 /// longer change anything is dropped, so a draft discarded after being created leaves no trace (ATJ-011).</item>
 /// <item><c>Transparent</c> leaves the history alone (usage, presentation, positions); <c>Barrier</c> empties it.</item>
 /// <item><c>BeforeApply(kind)</c> takes an in-memory snapshot through <see cref="IBackupService.SnapshotNow"/> inside
-/// the lock, before publishing.</item>
+/// the lock, before publishing; the Persistence consumer writes it before the changed document (DAT-006).</item>
 /// </list>
 /// Failures: the command's own, <c>store.destructive.unconfirmed</c>, <c>store.confirmation.mismatch</c> and
 /// <c>store.confirmation.spent</c> and <c>store.undo.empty</c>. Exceptions thrown by a command are defects and propagate
@@ -87,7 +87,7 @@ public sealed class DocumentStore
         }
     }
 
-    /// <summary>What Â«UndoÂ» names, or <see langword="null"/> when there is nothing to undo.</summary>
+    /// <summary>What «Undo» names, or <see langword="null"/> when there is nothing to undo.</summary>
     public MessageKey? UndoLabel
     {
         get

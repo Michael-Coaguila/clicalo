@@ -2,8 +2,8 @@ using System.IO;
 using System.IO.Pipes;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using Clicalo.App.Interop;
 using Clicalo.Domain.Timing;
+using Clicalo.Platform.Windows.SingleInstance;
 using Microsoft.Extensions.Logging;
 
 namespace Clicalo.App.SingleInstance;
@@ -16,9 +16,10 @@ namespace Clicalo.App.SingleInstance;
 /// first is detected (<c>ipc.squat_detected</c>) instead of served;</item>
 /// <item><c>Timings.Ipc.IpcMaxInstances</c> instances, messages of at most <c>IpcMaxMessageBytes</c>, each request
 /// within <c>IpcRequestTimeout</c> and at most <c>IpcRateLimit</c> per window;</item>
-/// <item>the client must be in this session (same user through the DACL);</item>
-/// <item>the only verb is <c>show</c> (D13: nothing that injects, edits or takes the foreground). In M2 every client
-/// may only show, so a client of lower integrity gets no more than the ADR allows it.</item>
+/// <item>the client must be in this session and run as this user, and its integrity is read
+/// (<see cref="PipeAdmission"/>: the server's half of the two-way check);</item>
+/// <item>the only verb is <c>show</c> (D13: nothing that injects, edits or takes the foreground). In M2 every admitted
+/// client may only show, so a client of lower integrity gets no more than the ADR allows it.</item>
 /// </list>
 /// <see cref="ShowRequested"/> is raised on a thread-pool thread; the composition marshals it to the Surfaces role.
 /// </summary>
@@ -31,6 +32,7 @@ internal sealed partial class ShowPipeServer : IAsyncDisposable, IDisposable
     private readonly Queue<long> _recent = new();
     private readonly Lock _rateGate = new();
     private readonly List<Task> _listeners = [];
+    private readonly uint? _integrity = ProcessIdentity.IntegrityLevel((uint)Environment.ProcessId);
     private int _answered;
     private int _disposed;
 
@@ -230,13 +232,13 @@ internal sealed partial class ShowPipeServer : IAsyncDisposable, IDisposable
         }
     }
 
-    /// <summary>The client must be in this session, and within the rate limit.</summary>
+    /// <summary>The client must be in this session and run as this user, and within the rate limit.</summary>
     private PipeStatus Admit(NamedPipeServerStream pipe)
     {
-        if (
-            !NativeMethods.GetNamedPipeClientSessionId(pipe.SafePipeHandle, out var session)
-            || session != (uint)_identity.SessionId
-        )
+        var client = PipeClient.Of(pipe.SafePipeHandle);
+        var trust = PipeAdmission.Of(client, _identity, _integrity);
+        LogClient(_logger, trust, client.IntegrityLevel ?? 0);
+        if (trust == ClientTrust.Rejected)
         {
             return PipeStatus.Rejected;
         }
@@ -310,4 +312,11 @@ internal sealed partial class ShowPipeServer : IAsyncDisposable, IDisposable
         Message = "ipc.request failed ({Exception})"
     )]
     private static partial void LogRequestFailed(ILogger logger, string exception);
+
+    [LoggerMessage(
+        EventId = 4,
+        Level = LogLevel.Debug,
+        Message = "ipc.client {Trust}, integrity 0x{Integrity:X}"
+    )]
+    private static partial void LogClient(ILogger logger, ClientTrust trust, uint integrity);
 }

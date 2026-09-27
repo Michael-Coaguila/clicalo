@@ -22,6 +22,13 @@ namespace Clicalo.Application.Persistence;
 /// one per delay), and only while the «automatic backup» setting is on (COP-003, §6.8).
 /// </para>
 /// <para>
+/// The copies of the state before a destructive change (<c>BackupRequirement.BeforeApply</c>, queued in memory by
+/// <see cref="IBackupService.SnapshotNow"/>) are written by this same consumer as soon as the change arrives, and always
+/// before the document: while one of them cannot be written, the changed document is not written either, and the
+/// failure follows the rules below like a failed save (DAT-006, §6.8). This loop is the only writer of <c>backups\</c>
+/// once the start is over (§3.1: a single Persistence consumer).
+/// </para>
+/// <para>
 /// A failed save keeps the newest document pending. An I/O failure (the writer already retried its backoff) is retried
 /// at once, unless it came back at once (a full disk: then it waits for <c>WriteRetryInterval</c> and never spins), and
 /// stays <see cref="SaveStatus.Retrying"/>, silent, until <c>Timings.Persistence.UnsavedNoticeAfter</c>
@@ -173,6 +180,29 @@ public sealed partial class PersistenceScheduler : IDisposable
         Raise(Signal.Evaluate);
     }
 
+    /// <summary>
+    /// A document the start could not write (the seed or a v1 migration, blueprint §6.6) is pending like any change and
+    /// is saved at once, with the retries and the notice of any failed save; so leaving without a change still writes
+    /// it (the exit flush).
+    /// </summary>
+    /// <param name="document">The document of the start, as the store holds it.</param>
+    public void MarkUnsaved(UserDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        lock (_gate)
+        {
+            // A change that already arrived is newer than the document of the start.
+            _latest ??= document;
+            if (!_documentDirty)
+            {
+                _documentDirty = true;
+                _documentDirtySince = _time.GetTimestamp();
+            }
+        }
+
+        Raise(Signal.Document);
+    }
+
     /// <summary>The single consumer loop of the Persistence thread.</summary>
     /// <param name="cancellationToken">Stops the loop after a final flush.</param>
     public async Task RunAsync(CancellationToken cancellationToken)
@@ -218,8 +248,8 @@ public sealed partial class PersistenceScheduler : IDisposable
     }
 
     /// <summary>
-    /// Writes everything pending now, both files: on suspend, sign-out, exit, elevated relaunch and before installing
-    /// an update (§6.4).
+    /// Writes everything pending now: the queued copies before a destructive change, then both files: on suspend,
+    /// sign-out, exit, elevated relaunch and before installing an update (§6.4).
     /// </summary>
     /// <param name="cancellationToken">Bounded by the caller (for example <c>Timings.App.HandoverFlushTimeout</c>).</param>
     public async Task FlushAsync(CancellationToken cancellationToken)
@@ -233,6 +263,7 @@ public sealed partial class PersistenceScheduler : IDisposable
         await _io.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            _ = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
             await SaveDocumentAsync(retryAtOnce: false, cancellationToken).ConfigureAwait(false);
             await SaveUsageAsync(cancellationToken).ConfigureAwait(false);
             PublishStatus();
@@ -296,6 +327,10 @@ public sealed partial class PersistenceScheduler : IDisposable
     {
         switch (signal)
         {
+            case Signal.Evaluate when !IsFailing():
+                // A destructive change queued the copy of the state before it: written now, not with the debounce.
+                _ = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
+                break;
             case Signal.Document:
                 await SaveDocumentAsync(retryAtOnce: true, cancellationToken).ConfigureAwait(false);
                 break;
@@ -327,14 +362,25 @@ public sealed partial class PersistenceScheduler : IDisposable
         }
 
         Result<SaveReceipt> result;
-        try
+        var snapshots = await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
+        if (snapshots.IsFailure)
         {
-            result = await _documents.SaveAsync(document, cancellationToken).ConfigureAwait(false);
+            // DAT-006: the document that follows a destructive change waits for the copy of the state before it.
+            result = Results.Fail<SaveReceipt>(snapshots.Failure);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        else
         {
-            LogSaveFault(_logger, ex);
-            result = Results.Fail<SaveReceipt>(Unexpected());
+            try
+            {
+                result = await _documents
+                    .SaveAsync(document, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                LogSaveFault(_logger, ex);
+                result = Results.Fail<SaveReceipt>(Unexpected());
+            }
         }
 
         lock (_gate)
@@ -449,6 +495,36 @@ public sealed partial class PersistenceScheduler : IDisposable
         }
     }
 
+    /// <summary>The queued copies of the state before a destructive change, oldest first; a failure is logged.</summary>
+    private async Task<Result<int>> WriteSnapshotsAsync(CancellationToken cancellationToken)
+    {
+        Result<int> written;
+        try
+        {
+            written = await _backups.WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogSaveFault(_logger, ex);
+            written = Results.Fail<int>(Unexpected());
+        }
+
+        if (written.IsFailure)
+        {
+            LogSnapshotFailed(_logger, written.Failure.Code);
+        }
+
+        return written;
+    }
+
+    private bool IsFailing()
+    {
+        lock (_gate)
+        {
+            return _failingSince is not null;
+        }
+    }
+
     private async Task BackupAsync(CancellationToken cancellationToken)
     {
         UserDocument? document;
@@ -460,6 +536,18 @@ public sealed partial class PersistenceScheduler : IDisposable
 
         if (document is null || !document.Settings.Reliability.AutoBackup)
         {
+            return;
+        }
+
+        if ((await WriteSnapshotsAsync(cancellationToken).ConfigureAwait(false)).IsFailure)
+        {
+            // The copies before a destructive change keep their place first in backups\ (and in the recovery chain).
+            lock (_gate)
+            {
+                _backupCandidate ??= document;
+                Arm(_backupTimer, Timings.Persistence.WriteRetryInterval);
+            }
+
             return;
         }
 
@@ -550,6 +638,13 @@ public sealed partial class PersistenceScheduler : IDisposable
         Message = "persist.flush_timeout: the final flush did not finish in time"
     )]
     private static partial void LogFlushTimedOut(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 5157,
+        Level = LogLevel.Warning,
+        Message = "backup.snapshot_failed: {Code}; the document waits for it"
+    )]
+    private static partial void LogSnapshotFailed(ILogger logger, string code);
 
     /// <summary>What the single consumer does next.</summary>
     private enum Signal

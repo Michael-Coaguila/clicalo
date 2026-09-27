@@ -30,7 +30,7 @@
     {
       "pattern": "src/Clicalo.App/SingleInstance/**",
       "category": "trust-boundary",
-      "reason": "M2 single instance in the composition root: the show-only pipe with its DACL, FirstPipeInstance and two-way image check, and the session mutex (ADR-0010). Moves to Platform.Windows/SingleInstance with the IPC of ImportFile and OpenUri."
+      "reason": "M2 single instance in the composition root: the show-only pipe with its DACL and FirstPipeInstance, the client's check of the server's image, the server's check of the client's session, user and integrity, and the session mutex (ADR-0010). Moves to Platform.Windows/SingleInstance with the IPC of ImportFile and OpenUri."
     },
     {
       "pattern": "src/Clicalo.Application/Ipc/**",

@@ -20,8 +20,12 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 [Trait("Req", "DAT-002")]
 [Trait("Req", "REG-08")]
 [Trait("Req", "NFR-006")]
-public sealed class S11CrashTests
+public sealed class S11CrashTests : IDisposable
 {
+    private readonly BoundedTestToken _bounded = new();
+
+    public void Dispose() => _bounded.Dispose();
+
     private const int Saves = 4;
 
     private static readonly FakeTimeProvider Time = TestTime.CreateProvider();
@@ -152,7 +156,7 @@ public sealed class S11CrashTests
         restart.Quarantined.ShouldBeEmpty();
     }
 
-    private static CancellationToken Token => TestContext.Current.CancellationToken;
+    private CancellationToken Token => _bounded.Token;
 
     private static int CountPoints()
     {
@@ -173,7 +177,7 @@ public sealed class S11CrashTests
         return counting.Points;
     }
 
-    private static async Task<int> SaveUntilCrashAsync(
+    private async Task<int> SaveUntilCrashAsync(
         AtomicFile writer,
         string path,
         Func<int, byte[]> bytes
