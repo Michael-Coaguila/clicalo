@@ -212,9 +212,10 @@ public sealed class InjectionGate
     }
 
     /// <summary>
-    /// The emergency of a hung engine (SysEvents, after <c>Timings.Engine.EngineStallThreshold</c> without heartbeat):
-    /// tries to take the gate for <paramref name="wait"/> (<c>Timings.Engine.EmergencyGateWait</c>); if it can, raises
-    /// the generation and releases everything recorded inside the lock.
+    /// The emergency of a hung engine (the timer of <c>EmergencyReleaser</c>, a thread-pool timer and not SysEvents,
+    /// after <c>Timings.Engine.EngineStallThreshold</c> without heartbeat): tries to take the gate for
+    /// <paramref name="wait"/> (<c>Timings.Engine.EmergencyGateWait</c>); if it can, raises the generation and releases
+    /// everything recorded inside the lock.
     /// </summary>
     /// <param name="wait">How long to try to take the gate.</param>
     /// <param name="newGeneration">The generation of the new engine when released.</param>

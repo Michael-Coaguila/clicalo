@@ -10,5 +10,6 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Clicalo.Application.Tests" />
+    <InternalsVisibleTo Include="Clicalo.Platform.IntegrationTests" />
   </ItemGroup>
 </Project>

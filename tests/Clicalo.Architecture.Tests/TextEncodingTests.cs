@@ -47,15 +47,6 @@ public sealed class TextEncodingTests
         "TestResults",
     };
 
-    /// <summary>
-    /// Files outside this front's scope that still carry mojibake and are repaired by their owner. The test below fails
-    /// as soon as one is repaired, so the entry is removed in the same change; nothing may be added here.
-    /// </summary>
-    private static readonly string[] PendingRepair =
-    [
-        "src/Clicalo.Application/Store/DocumentStore.cs",
-    ];
-
     [Fact]
     [Trait("Req", "IDI-001")]
     public void Every_text_file_is_UTF_8_without_double_encoded_text()
@@ -64,27 +55,12 @@ public sealed class TextEncodingTests
         foreach (var path in TextFiles())
         {
             var relative = Path.GetRelativePath(RepoPaths.Root, path).Replace('\\', '/');
-            if (PendingRepair.Contains(relative, StringComparer.Ordinal))
-            {
-                continue;
-            }
-
             problems.AddRange(Problems(path, relative));
         }
 
         problems.ShouldBeEmpty(
             "Save these files as UTF-8 with the characters they meant (the fix is shown after the arrow)"
         );
-    }
-
-    [Fact]
-    public void The_files_pending_repair_still_need_it()
-    {
-        foreach (var relative in PendingRepair)
-        {
-            Problems(RepoPaths.Combine(relative.Split('/')), relative)
-                .ShouldNotBeEmpty(relative + " is repaired: remove it from PendingRepair");
-        }
     }
 
     [Theory]

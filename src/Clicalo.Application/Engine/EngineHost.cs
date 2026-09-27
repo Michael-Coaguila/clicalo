@@ -185,10 +185,11 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
     /// <summary>
     /// Starts <see cref="Run"/> on its own background thread, «Clicalo.Engine», with
-    /// <see cref="ThreadPriority.AboveNormal"/> (blueprint §3.2). The thread ends when the loop ends.
+    /// <see cref="ThreadPriority.AboveNormal"/> (blueprint §3.2). The thread ends when the loop ends. For the tests:
+    /// the application starts the loop through its own <c>EngineThread</c>, which also logs a failure of the loop.
     /// </summary>
     /// <param name="cancellationToken">Stops the loop after releasing everything.</param>
-    public Thread StartOnDedicatedThread(CancellationToken cancellationToken)
+    internal Thread StartOnDedicatedThread(CancellationToken cancellationToken)
     {
         var thread = new Thread(() => Run(cancellationToken))
         {
