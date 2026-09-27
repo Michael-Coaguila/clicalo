@@ -32,6 +32,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
 | D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, semilla y migración del primer arranque, `Clicalo.App.Tests` | M2 |
 | D-22 | Correcciones del motor tras verificar M2 | Reintento de lo que rechaza el escritorio seguro solo al desbloquear o reanudar; escalada de la emergencia a `TerminateProcess` sin condiciones; INV-10 como propiedad de `LayoutPlanner` | Reenvío también con «Soltar todo», los eventos terminales y el regreso del escritorio de entrada (UAC, Ctrl+Alt+Supr); latido y marcas del motor bajo la valla; acordes internos desde el motor; sin guardián la emergencia nunca termina el proceso; INV-10 aplazada a M3 | M2 |
+| D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados y `perf (x64)` obligatorio; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -564,7 +565,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     no puede tomar la valla lo reintenta en cada comprobación con esperas crecientes
     (`Timings.Engine.EmergencyGateRetryWaits`). `IGuardian.Unstable` se registra.
   - **Suspender vacía la persistencia.** Tras el soltado, el manejador de `PBT_APMSUSPEND` ejecuta el vaciado de la salida
-    (documento, uso y copias en cola) con límite `Timings.App.SuspendFlushTimeout` (`App/Shutdown/SuspendFlush`).
+    (documento, uso y copias en cola, todo por el consumidor de persistencia) con límite
+    `Timings.App.SuspendFlushTimeout` (`App/Shutdown/SuspendFlush`). Es otra espera acotada en SysEvents: comparte con
+    `SuspendRelease` la excepción `app-suspend` de `banned-api-exceptions.json`.
   - **INV-10.** No existe `LayoutPlanner` en M2: la propiedad llega con él en M3. Mientras tanto, un contacto conserva el
     objetivo sobre el que bajó (`GestureRecognizer`, PAN-009) y la franja de «Soltar todo» va debajo de las fichas
     ([D-21](#d-21--integración-de-m2)). Las pruebas del modelo del motor enumeran lo que comprueban de verdad.
@@ -575,6 +578,39 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   salvo durante un `SendInput`); una vuelta del buzón del motor en cada acorde interno.
 - **Revisión.** INV-10, con `LayoutPlanner` en M3. La espera de Sentinel con la sesión bloqueada sigue pendiente de la
   decisión de [ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md).
+
+## D-23 · Criterios de salida de M2 tras la verificación
+
+- **Plano.** [§10.3](blueprint.md#103-presupuestos-de-rendimiento) guarda los presupuestos en
+  `tests/Clicalo.Performance/budgets.json` y los mide en el equipo táctil; [§10.5](blueprint.md#105-cicd) dice que el
+  rendimiento no es obligatorio en el PR y ejecuta `lab.yml` cada semana y antes de cada beta; la fila M2 de §14 pide la
+  prueba de bandeja con el Bloc de notas y las propiedades de 10 000 casos con contraejemplos reducidos (CsCheck).
+- **Repositorio.** Lo que corrigió la verificación de M2 en los criterios de salida
+  ([M2-ownership.md](../testing/spikes/M2-ownership.md#criterios-de-salida)):
+  - **Presupuestos en `data/catalogs/budgets.json`**, con su esquema en `data/schemas/budgets.schema.json` validado por
+    `Clicalo.Data.Tests`: son datos versionados como el resto de catálogos. Solo están los que hace cumplir una medición.
+  - **La puerta de toque → `SendInput` (p95 ≤ 50 ms) también en los *runners* alojados** (`gate: everyRun`), y el
+    trabajo `perf (x64)` de `pr.yml` es obligatorio. Es más estricto que el plano: mientras no exista el equipo táctil,
+    es la única forma de que una ejecución haga cumplir el criterio de M2. Los presupuestos de S5 siguen siendo
+    tendencia en los alojados. Si un alojado supera 50 ms, el criterio no se rebaja: se mide en el equipo táctil o se
+    abre una propuesta en §6.1 del catálogo.
+  - **`lab.yml` solo a mano** (`workflow_dispatch`) hasta que el equipo táctil esté registrado como *runner*
+    (`self-hosted`, `Windows`, `lab`); entonces gana la programación semanal y la ejecución antes de cada beta.
+  - **Prueba de bandeja**: el clic en el icono se sustituye por un toque sintético en el panel del propio proceso (el
+    mismo derecho de primer plano, paso 1 de la escalera de §3.6) y el menú se abre con `TrayController.OpenMenuAsync`;
+    el Bloc de notas real solo se usa en la CI, e InputProbe sigue siendo la app delante en local.
+  - **Muerte en cada paso y congelar y reanudar** reducen sus contraejemplos con un reductor propio (`Counterexamples`)
+    sobre las mismas 10 000 semillas deterministas, no con CsCheck: `architecture/allowed-dependencies.json` no permite
+    CsCheck en `Clicalo.Platform.IntegrationTests`. Las regresiones guardan valores, no semillas
+    ([property-regressions.md](../testing/property-regressions.md)).
+- **Motivo.** La verificación encontró que ninguna ejecución hacía cumplir el p95 de 50 ms, que la prueba de bandeja no
+  usaba el Bloc de notas y que los contraejemplos no se guardaban. En un *runner* alojado el icono nuevo queda en el
+  desbordamiento del área de notificación y hacer clic ahí inyectaría en el Explorador.
+- **Coste.** Un PR puede fallar por el rendimiento de un alojado ruidoso; el camino real del icono (`TrayIcon`,
+  `NIN_SELECT`, `WM_CONTEXTMENU`) queda para la aceptación en hardware de §10.2.
+- **Revisión.** Cuando el equipo táctil sea *runner*: volver a la puerta en `lab.yml` según §10.5 y decidir si
+  `perf (x64)` sigue siendo obligatorio. Si se permite CsCheck en `Clicalo.Platform.IntegrationTests`, pasar las dos
+  pruebas a `Gen.Sample` sin cambiar sus regresiones.
 
 ## Puntos del plano pendientes de resolver
 

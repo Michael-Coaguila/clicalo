@@ -268,7 +268,7 @@ Dos sustituciones de la prueba de bandeja quedan como están, porque no son viab
 
 ### Desviaciones que registra la integración
 
-`docs/architecture/deviations.md` está fuera del ámbito de este frente; la integración las añade a D-21 o en una D-22:
+La integración las registró en [D-23](../../architecture/deviations.md#d-23--criterios-de-salida-de-m2-tras-la-verificación):
 
 - **Presupuestos en `data/catalogs/budgets.json`**, no en `tests/Clicalo.Performance/budgets.json` (§10.3): son datos
   versionados como el resto de catálogos, con su esquema en `data/schemas` validado por `Clicalo.Data.Tests`. Solo

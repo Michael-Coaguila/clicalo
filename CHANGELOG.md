@@ -123,3 +123,15 @@ progress).
   Spikes S5, S7, S9 and S11 are tests; the chaos and performance runs are CI-only.
 - `Clicalo.App.Tests`, headless tests of the composition root, and 34 new texts in Spanish and English pending
   ratification (catalog §6.1, R-11).
+- Corrections from the M2 verification. Engine (D-22, ADR-0019 proposed): the heartbeat and the engine's marks go
+  through the generation fence, so a zombie engine stops on its first turn; releases refused by the secure desktop are
+  sent again by «Release all», every terminal event and the return of the input desktop (UAC, Ctrl+Alt+Del); chords,
+  texts and clicks that `SendInput` takes only in part are balanced under the fence; the internal chords are sent by the
+  engine with its generation; without a running guardian the emergency never ends the process; suspending flushes the
+  document, the usage and the queued copies. Persistence and IPC (D-21): one persistence consumer that writes the copy
+  before a destructive change ahead of the document, the startup reads off the UI thread, retried seed and migration
+  saves, verified single-instance clients (session, user SID and integrity) and invariant D13 watched. Exit criteria
+  (D-23): `data/catalogs/budgets.json` with its schema and a required `perf (x64)` job that enforces the touch to
+  `SendInput` p95 of 50 ms, the manual `lab.yml` workflow, the tray test with the real Notepad in CI, a test that
+  rejects double-encoded text in every text file, and reduced counterexamples of the engine properties kept as
+  regressions.
