@@ -81,7 +81,12 @@ internal static class PipeProtocol
                 }
                 else if (reader.ValueTextEquals(VersionProperty) && version is null)
                 {
-                    if (!reader.Read() || !reader.TryGetInt32(out var number))
+                    // TryGetInt32 throws on anything but a number, so the type is checked first.
+                    if (
+                        !reader.Read()
+                        || reader.TokenType != JsonTokenType.Number
+                        || !reader.TryGetInt32(out var number)
+                    )
                     {
                         return PipeStatus.Rejected;
                     }
