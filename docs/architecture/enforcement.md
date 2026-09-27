@@ -100,6 +100,7 @@ whitelist with a justification (docs/architecture/enforcement.md).
 | Solo Execution y el editor del CC llaman a `SecretText.WithRevealed` (más el motor y los mappers de persistencia) | `ConfinementRulesTests` |
 | Solo el rol Surfaces escribe en `SessionStore` e `InteractionStore` | `ConfinementRulesTests` |
 | `Application.Ipc` no depende de Engine ni de Foreground, y de Application solo usa `IShellNavigator` | `ConfinementRulesTests` |
+| D13 donde vive hoy el *pipe* de instancia única (`App.SingleInstance` y `Platform.Windows.SingleInstance`): ni motor, ni primer plano, ni almacén del documento, ni entrada; una prueba exige que la regla vea `ShowPipeServer` ([D-21](deviations.md#d-21--integración-de-m2)) | `ConfinementRulesTests` |
 | Ningún módulo usa el `.Internal` de otro | `InternalNamespaceTests` |
 | Matriz de módulos de §4.3 (`domain-modules.json`) | `ModuleMatrixTests` |
 | Tabla de APIs prohibidas, comprobada en el IL | `ConfinedApiTests` |
