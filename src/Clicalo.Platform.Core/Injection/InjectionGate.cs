@@ -80,9 +80,31 @@ public sealed class InjectionGate
     }
 
     /// <summary>
+    /// Sends, under the fence, a batch that releases everything it presses (a text's Enter, a click). When
+    /// <c>SendInput</c> takes only part of it (the desktop switched in the middle), a key or button whose press went but
+    /// whose release did not would stay down with no holder to release it, so its release goes at once, inside the
+    /// same lock, in a second batch (an extra release is harmless; Alt and Win go with the menu mask).
+    /// </summary>
+    /// <param name="generation">The caller's generation.</param>
+    /// <param name="batch">The balanced events.</param>
+    public GateOutcome TryInjectBalanced(ulong generation, ReadOnlySpan<LowLevelInput> batch)
+    {
+        lock (_gate)
+        {
+            if (_ledger.Generation != generation)
+            {
+                return new GateOutcome(GateResult.Fenced, default);
+            }
+
+            return new GateOutcome(GateResult.Ran, SendBalanced(batch));
+        }
+    }
+
+    /// <summary>
     /// Sends a balanced chord under the fence (Clícalo's own internal keys, blueprint §3.6): presses in order the keys
     /// that are not already down and releases them in reverse order in the same batch, so a key an engine holder keeps
-    /// is neither pressed again nor released under it.
+    /// is neither pressed again nor released under it. A batch <c>SendInput</c> takes only in part is balanced at
+    /// once, like <see cref="TryInjectBalanced"/>: no internal key ever has a holder that could release it later.
     /// </summary>
     /// <param name="generation">The caller's generation.</param>
     /// <param name="chord">The keys, in press order.</param>
@@ -111,7 +133,7 @@ public sealed class InjectionGate
                 batch.Add(LowLevelInput.KeyUp(pressed[i]));
             }
 
-            return new GateOutcome(GateResult.Ran, SendRecorded([.. batch]));
+            return new GateOutcome(GateResult.Ran, SendBalanced([.. batch]));
         }
     }
 
@@ -319,6 +341,69 @@ public sealed class InjectionGate
         {
             _ledger.SetMouseButtons(buttons);
         }
+    }
+
+    private SendResult SendBalanced(ReadOnlySpan<LowLevelInput> batch)
+    {
+        var result = SendRecorded(batch);
+        var sent = Math.Clamp(result.Sent, 0, batch.Length);
+        if (sent > 0 && sent < batch.Length)
+        {
+            var leftovers = Leftovers(batch[..sent]);
+            if (leftovers.Length > 0)
+            {
+                _ = SendRecorded(leftovers);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// The releases of what <paramref name="sent"/> pressed and did not release: buttons first, then keys in reverse
+    /// order, with the menu mask before Alt or Win (a lone Alt or Win release would open a menu).
+    /// </summary>
+    private static LowLevelInput[] Leftovers(ReadOnlySpan<LowLevelInput> sent)
+    {
+        var keys = new List<PhysicalKey>();
+        var buttons = new List<LedgerMouseButtons>();
+        foreach (var input in sent)
+        {
+            switch (input.Kind)
+            {
+                case LowLevelInputKind.KeyDown:
+                    keys.Add(input.Key);
+                    break;
+                case LowLevelInputKind.KeyUp:
+                    _ = keys.Remove(input.Key);
+                    break;
+                case LowLevelInputKind.MouseButtonDown:
+                    buttons.Add(input.Button);
+                    break;
+                case LowLevelInputKind.MouseButtonUp:
+                    _ = buttons.Remove(input.Button);
+                    break;
+            }
+        }
+
+        var releases = new List<LowLevelInput>(keys.Count * 3 + buttons.Count);
+        for (var i = buttons.Count - 1; i >= 0; i--)
+        {
+            releases.Add(LowLevelInput.ButtonUp(buttons[i]));
+        }
+
+        for (var i = keys.Count - 1; i >= 0; i--)
+        {
+            if (PhysicalKeyKinds.IsAltOrWin(keys[i]))
+            {
+                releases.Add(LowLevelInput.KeyDown(LedgerRelease.MenuMask));
+                releases.Add(LowLevelInput.KeyUp(LedgerRelease.MenuMask));
+            }
+
+            releases.Add(LowLevelInput.KeyUp(keys[i]));
+        }
+
+        return [.. releases];
     }
 
     private SendResult SendRecorded(ReadOnlySpan<LowLevelInput> batch)
