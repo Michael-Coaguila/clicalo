@@ -95,7 +95,7 @@ public sealed class AllowedDependenciesTests
                 pair.Value.ProjectReferences.Contains("Clicalo.App", StringComparer.Ordinal)
             )
             .Select(pair => pair.Key)
-            .ShouldBe(["Clicalo.Architecture.Tests"]);
+            .ShouldBe(["Clicalo.App.Tests", "Clicalo.Architecture.Tests"], ignoreOrder: true);
     }
 
     [Fact]
@@ -120,13 +120,15 @@ public sealed class AllowedDependenciesTests
     public void Only_the_WPF_projects_may_use_WPF()
     {
         // The product's WPF layers, the Windows test helpers that render WPF visuals for snapshot tests, the tests
-        // that show real surfaces (Windowing.IntegrationTests) and the spike laboratory that composes them.
+        // that show real surfaces (Windowing.IntegrationTests), the headless tests of the composition root, which
+        // load its WPF assembly (App.Tests), and the spike laboratory that composes them.
         Policy
             .Projects.Where(pair => pair.Value.FrameworkReferences?.Length > 0)
             .Select(pair => pair.Key)
             .ShouldBe(
                 [
                     "Clicalo.App",
+                    "Clicalo.App.Tests",
                     "Clicalo.UI.Wpf",
                     "Clicalo.TestKit.Windows",
                     "Clicalo.Windowing.IntegrationTests",
