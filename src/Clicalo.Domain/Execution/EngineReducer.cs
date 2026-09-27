@@ -10,7 +10,8 @@ namespace Clicalo.Domain.Execution;
 /// <summary>
 /// The functional core of the engine (blueprint §7.3, ADR-0004): a pure function from state and event to a new state
 /// and effects, with <see cref="ActivationPolicy"/> and one planner per <see cref="Library.ActionKind"/> inside.
-/// INV-1 to INV-12 (§7.5) are properties of this function, checked on every step with CsCheck.
+/// INV-1, INV-3, INV-4, INV-6 to INV-9 and INV-12 (§7.5) are properties of this function, checked on every step
+/// with CsCheck; INV-2, INV-5 and INV-11 are checked with the real gate, and INV-10 belongs to the layout (D-22).
 /// </summary>
 /// <remarks>
 /// <list type="bullet">

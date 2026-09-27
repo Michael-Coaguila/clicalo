@@ -27,7 +27,8 @@ internal sealed class Receiver
 
     /// <summary>
     /// Keys of a batch that <c>SendInput</c> took only in part: the engine releases them blindly, and a release of a key
-    /// that is up is harmless, so it is no anomaly.
+    /// that is up is harmless, so it is no anomaly — until <see cref="EndTolerance"/>, once the engine has recovered
+    /// from that failure. After it, a double press or a spurious release of those keys is an anomaly again.
     /// </summary>
     public void Tolerate(IEnumerable<InjectedEvent> presses)
     {
@@ -42,6 +43,13 @@ internal sealed class Receiver
                 _toleratedButtons |= press.Button;
             }
         }
+    }
+
+    /// <summary>The recovery of a failed batch is over: its keys and buttons are watched again.</summary>
+    public void EndTolerance()
+    {
+        _tolerated.Clear();
+        _toleratedButtons = MouseButtons.None;
     }
 
     public void Apply(IEnumerable<InjectedEvent> events)

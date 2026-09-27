@@ -106,7 +106,10 @@ internal sealed class EngineHarness
 
         foreach (var failure in failures)
         {
+            // The host reports the failure right after the batch; the reducer's compensation goes with it, and from
+            // then on the batch's keys are watched again (a later double press or spurious release is an anomaly).
             Apply(new EngineEvent.InjectFailed(failure, Win32Error: 5));
+            Receiver.EndTolerance();
         }
 
         if (refused.Count > 0)

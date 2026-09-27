@@ -9,8 +9,10 @@ namespace Clicalo.Domain.Tests.Execution;
 /// <summary>
 /// Model-based tests of the engine (blueprint §7.10, item 1; ADR-0004): 10 000 generated scenarios of up to 200 steps
 /// with several contacts, timers, app switches, locks, «Release all», failed batches, test mode, pause, settings and
-/// both injection modes. INV-1, INV-3, INV-4 and INV-6 to INV-12 hold after every step, and a final
-/// <c>Terminal(Exit)</c> leaves nothing down (SEG-007: «estado físico final vacío en todos los casos»).
+/// both injection modes. INV-1, INV-3, INV-4, INV-6 to INV-9 and INV-12 hold after every step, and a final
+/// <c>Terminal(Exit)</c> leaves nothing down (SEG-007: «estado físico final vacío en todos los casos»). INV-2, INV-5
+/// and INV-11 are checked with the real gate in Platform.IntegrationTests (death at every step, freeze and resume,
+/// the zombie engine); INV-10 is a property of the layout, not of the engine (deviations.md, D-22).
 /// </summary>
 [Trait("Req", "SEG-007")]
 [Trait("Req", "SEG-001")]
@@ -88,7 +90,7 @@ public sealed class EngineModelTests
 
                 down.ShouldBeEmpty();
             },
-            iter: 2_000,
+            iter: Cases,
             print: static s => string.Join(' ', s.Select(static o => o.ToString()))
         );
 
