@@ -31,8 +31,9 @@ namespace Clicalo.App.Composition;
 /// The composition root of M2 (blueprint §4.1, §5): one <see cref="ServiceProvider"/> of
 /// Microsoft.Extensions.DependencyInjection, without the Generic Host, where every registration is a lazy singleton
 /// factory. Nothing is built until the lifecycle asks for it, in the order of the start (§3.1): persistence reads the
-/// document, then the engine, SysEvents, the surfaces on the UI thread, and the tray and the pipe after the first
-/// frame. Pieces that depend on the document read it from <see cref="StartupSlot"/>.
+/// document off the UI thread, then the engine, SysEvents, the surfaces on the UI thread, and the tray and the pipe
+/// once the panel has been presented (without waiting for its first frame). Pieces that depend on the document read it
+/// from <see cref="StartupSlot"/>.
 /// </summary>
 internal static class AppServices
 {
@@ -129,9 +130,17 @@ internal static class AppServices
             sp.Get<IUsageRepository>(),
             sp.Get<IBackupService>(),
             sp.Get<V1Importer>(),
+            sp.Get<IAtomicFileWriter>(),
+            AppDataLocations.PendingMigration(sp.Get<DataLocations>()),
             sp.Get<IIdGenerator>(),
             sp.Time(),
             sp.Log<StartupDocuments>()
+        ));
+        services.AddSingleton(sp => new StartupReader(
+            sp.Get<StartupDocuments>(),
+            sp.Get<IAtomicFileWriter>(),
+            sp.Get<DataLocations>(),
+            sp.Log<StartupReader>()
         ));
         services.AddSingleton(sp => new DocumentStore(
             sp.Slot().Load.Document,

@@ -10,12 +10,23 @@ namespace Clicalo.Application.Ports;
 public interface IBackupService
 {
     /// <summary>
-    /// Takes a snapshot in memory now and queues its write (the document store calls it inside its lock before a
-    /// change with <c>BackupRequirement.BeforeApply</c>). Never blocks and never does I/O on the caller's thread.
+    /// Takes a snapshot in memory now and queues it (the document store calls it inside its lock before a change with
+    /// <c>BackupRequirement.BeforeApply</c>). Never blocks and never does I/O: the snapshot is written by
+    /// <see cref="WriteSnapshotsAsync"/> on the Persistence thread, before the changed document (DAT-006).
     /// </summary>
     /// <param name="document">The document before the change.</param>
     /// <param name="kind">The kind of backup.</param>
     void SnapshotNow(UserDocument document, BackupKind kind);
+
+    /// <summary>
+    /// Writes the queued snapshots, oldest first. Only the single consumer of the Persistence thread calls it, and it
+    /// does before every save of the document: a destructive change is never written while the copy of the state before
+    /// it is not on disk (DAT-006, blueprint §6.8). The first write that fails stops the call; that snapshot and the
+    /// later ones stay queued for the next call.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels before the next write starts.</param>
+    /// <returns>How many snapshots were written, or the failure of the first one that could not be.</returns>
+    Task<Result<int>> WriteSnapshotsAsync(CancellationToken cancellationToken);
 
     /// <summary>Writes a backup now (the manual button, the automatic one 30 s after a significant change).</summary>
     /// <param name="document">The document.</param>

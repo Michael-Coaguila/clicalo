@@ -14,6 +14,9 @@ internal sealed class FakeBackupService : IBackupService
     public void SnapshotNow(UserDocument document, BackupKind kind) =>
         Snapshots.Enqueue((document, kind));
 
+    public Task<Result<int>> WriteSnapshotsAsync(CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+
     public Task<Result<BackupInfo>> CreateAsync(
         UserDocument document,
         BackupKind kind,

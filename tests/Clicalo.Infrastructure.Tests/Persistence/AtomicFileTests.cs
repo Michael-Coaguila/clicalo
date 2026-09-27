@@ -9,11 +9,16 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 [Trait("Req", "DAT-002")]
 public sealed class AtomicFileTests : IDisposable
 {
+    private readonly BoundedTestToken _bounded = new();
     private readonly TempFolder _folder = new();
     private readonly Microsoft.Extensions.Time.Testing.FakeTimeProvider _time =
         TestTime.CreateProvider();
 
-    public void Dispose() => _folder.Dispose();
+    public void Dispose()
+    {
+        _bounded.Dispose();
+        _folder.Dispose();
+    }
 
     [Fact]
     public async Task The_first_write_creates_the_file_and_leaves_nothing_else()
@@ -124,13 +129,77 @@ public sealed class AtomicFileTests : IDisposable
         File.ReadAllText(path).ShouldBe("old");
     }
 
-    private static CancellationToken Token => TestContext.Current.CancellationToken;
+    [Fact]
+    [Trait("Req", "REG-08")]
+    public async Task The_target_is_never_opened_for_writing_only_its_tmp_which_then_takes_its_place()
+    {
+        var disk = new RecordingFileSystem();
+        var writer = new AtomicFile(_time, NullLogger<AtomicFile>.Instance, disk);
+        var path = _folder.PathOf("clicalo.json");
+
+        (await writer.WriteAsync(path, "one"u8.ToArray(), Token)).IsSuccess.ShouldBeTrue();
+        (await writer.WriteAsync(path, "two"u8.ToArray(), Token)).IsSuccess.ShouldBeTrue();
+
+        // A crash while writing must leave the old version whole: only the temporary file is ever opened (§6.5).
+        disk.Steps.ShouldBe([
+            "write " + path + ".tmp",
+            "move " + path + ".tmp -> " + path,
+            "write " + path + ".tmp",
+            "replace " + path + " with " + path + ".tmp keeping " + path + ".prev",
+        ]);
+        File.ReadAllText(path).ShouldBe("two");
+    }
+
+    private CancellationToken Token => _bounded.Token;
 
     private AtomicFile Writer() => new(_time, NullLogger<AtomicFile>.Instance);
 
     /// <summary>What an indexer or a monitor does: a handle that shares nothing.</summary>
     private static FileStream Lock(string path) =>
         new(path, FileMode.Open, FileAccess.Read, FileShare.None);
+
+    /// <summary>The disk, recording every step that writes or renames.</summary>
+    private sealed class RecordingFileSystem : IAtomicFileSystem
+    {
+        private readonly IAtomicFileSystem _disk = AtomicFile.Disk;
+
+        public List<string> Steps { get; } = [];
+
+        public bool Exists(string path) => _disk.Exists(path);
+
+        public byte[]? ReadAllBytesOrNull(string path) => _disk.ReadAllBytesOrNull(path);
+
+        public void CreateDirectory(string path) => _disk.CreateDirectory(path);
+
+        public void WriteThrough(string path, ReadOnlySpan<byte> content)
+        {
+            Steps.Add("write " + path);
+
+            // Fails at once, not after the retries: opening the target itself is never a transient error.
+            path.ShouldEndWith(
+                ".tmp",
+                customMessage: "only the temporary file is opened for writing"
+            );
+            _disk.WriteThrough(path, content);
+        }
+
+        public void Replace(string target, string replacement, string backup)
+        {
+            Steps.Add("replace " + target + " with " + replacement + " keeping " + backup);
+            _disk.Replace(target, replacement, backup);
+        }
+
+        public void Move(string source, string target)
+        {
+            Steps.Add("move " + source + " -> " + target);
+            _disk.Move(source, target);
+        }
+
+        public void Delete(string path) => _disk.Delete(path);
+
+        public IReadOnlyList<string> Files(string directory, string pattern) =>
+            _disk.Files(directory, pattern);
+    }
 
     /// <summary>File operations whose write always fails with one error.</summary>
     private sealed class ThrowingFileSystem(Exception error) : IAtomicFileSystem

@@ -14,9 +14,14 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 [Trait("Req", "DAT-002")]
 public sealed class UsageRepositoryTests : IDisposable
 {
+    private readonly BoundedTestToken _bounded = new();
     private readonly TempFolder _folder = new();
 
-    public void Dispose() => _folder.Dispose();
+    public void Dispose()
+    {
+        _bounded.Dispose();
+        _folder.Dispose();
+    }
 
     [Fact]
     public async Task Saves_and_loads_the_usage_of_its_epoch()
@@ -153,7 +158,7 @@ public sealed class UsageRepositoryTests : IDisposable
         return Convert.ToHexStringLower(hash);
     }
 
-    private static CancellationToken Token => TestContext.Current.CancellationToken;
+    private CancellationToken Token => _bounded.Token;
 
     private UsageRepository Repository()
     {

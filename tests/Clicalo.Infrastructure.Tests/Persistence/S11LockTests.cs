@@ -26,8 +26,13 @@ public sealed class S11LockTests : IDisposable
 
     private readonly TempFolder _folder = new();
     private readonly FakeTimeProvider _time = TestTime.CreateProvider();
+    private readonly BoundedTestToken _bounded = new();
 
-    public void Dispose() => _folder.Dispose();
+    public void Dispose()
+    {
+        _bounded.Dispose();
+        _folder.Dispose();
+    }
 
     [Fact]
     public async Task A_one_second_lock_is_absorbed_without_an_error()
@@ -105,11 +110,7 @@ public sealed class S11LockTests : IDisposable
     {
         var writer = new AtomicFile(_time, NullLogger<AtomicFile>.Instance);
         (
-            await writer.WriteAsync(
-                _folder.Locations.Document,
-                "0"u8.ToArray(),
-                TestContext.Current.CancellationToken
-            )
+            await writer.WriteAsync(_folder.Locations.Document, "0"u8.ToArray(), _bounded.Token)
         ).IsSuccess.ShouldBeTrue();
         return new Run(_time, _folder.Locations.Document, writer);
     }
@@ -255,6 +256,9 @@ public sealed class S11LockTests : IDisposable
     private sealed class NoBackups : IBackupService
     {
         public void SnapshotNow(UserDocument document, BackupKind kind) { }
+
+        public Task<Result<int>> WriteSnapshotsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(Results.Ok(0));
 
         public Task<Result<BackupInfo>> CreateAsync(
             UserDocument document,

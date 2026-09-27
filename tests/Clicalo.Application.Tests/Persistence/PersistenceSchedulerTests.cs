@@ -294,6 +294,98 @@ public sealed class PersistenceSchedulerTests
         rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
     }
 
+    [Fact]
+    [Trait("Req", "DAT-006")]
+    public async Task The_copy_before_a_destructive_change_is_written_at_once_and_before_the_document()
+    {
+        await using var rig = new SchedulerRig();
+        var before = rig.Current;
+
+        // What DocumentStore does for BackupRequirement.BeforeApply: the snapshot is queued before the change is published.
+        rig.Backups.SnapshotNow(before, BackupKind.PreRestore);
+        await rig.ChangeAsync(DocumentSlices.Library);
+
+        var copy = rig.Backups.Created.ShouldHaveSingleItem();
+        copy.Kind.ShouldBe(BackupKind.PreRestore);
+        copy.Document.ShouldBe(before);
+        copy.At.ShouldBe(rig.Start);
+        rig.Documents.Attempts.ShouldBe(0);
+        await rig.AdvanceAsync(600 * Ms);
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+    }
+
+    [Fact]
+    [Trait("Req", "DAT-006")]
+    [Trait("Req", "REG-08")]
+    public async Task A_copy_that_cannot_be_written_holds_the_document_back_visibly_until_it_is_written()
+    {
+        await using var rig = new SchedulerRig();
+        rig.Backups.RefuseSnapshots = FakeDocumentRepository.DiskFull;
+        rig.Backups.SnapshotNow(rig.Current, BackupKind.PreImportReplace);
+
+        await rig.ChangeAsync(DocumentSlices.Library);
+        await rig.AdvanceToAsync(TimeSpan.FromSeconds(4));
+
+        rig.Documents.Attempts.ShouldBe(
+            0,
+            "the replaced document is never written before its copy"
+        );
+        rig.Backups.Queued.ShouldBe(1);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Failing);
+        rig.Backups.RefuseSnapshots = null;
+        await rig.AdvanceToAsync(TimeSpan.FromSeconds(40), TimeSpan.FromSeconds(1));
+
+        rig.Backups.Created.Select(c => c.Kind)
+            .ShouldBe([BackupKind.PreImportReplace, BackupKind.Auto], "the copy before goes first");
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Saved);
+    }
+
+    [Fact]
+    [Trait("Req", "DAT-006")]
+    public async Task Flushing_writes_a_queued_copy_even_without_a_document_to_save()
+    {
+        await using var rig = new SchedulerRig();
+        rig.Backups.SnapshotNow(rig.Current, BackupKind.PreResetFrequents);
+
+        await rig.Scheduler.FlushAsync(TestContext.Current.CancellationToken);
+
+        rig.Backups.Created.ShouldHaveSingleItem().Kind.ShouldBe(BackupKind.PreResetFrequents);
+        rig.Documents.Attempts.ShouldBe(0);
+    }
+
+    [Fact]
+    [Trait("Req", "MIG-004")]
+    public async Task A_document_the_start_could_not_write_is_saved_at_once_and_retried_until_it_is()
+    {
+        await using var rig = new SchedulerRig();
+        rig.Documents.Refuse = FakeDocumentRepository.DiskFull;
+
+        rig.Scheduler.MarkUnsaved(rig.Current);
+        await rig.SettleAsync();
+
+        rig.Documents.Attempts.ShouldBe(1);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Retrying);
+        rig.Documents.Refuse = null;
+        await rig.AdvanceToAsync(TimeSpan.FromSeconds(31), TimeSpan.FromSeconds(1));
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+        rig.Scheduler.Status.ShouldBe(SaveStatus.Saved);
+    }
+
+    [Fact]
+    [Trait("Req", "MIG-004")]
+    public async Task A_document_the_start_could_not_write_is_written_by_the_exit_flush()
+    {
+        var rig = new SchedulerRig();
+        rig.Documents.Refuse = FakeDocumentRepository.DiskFull;
+        rig.Scheduler.MarkUnsaved(rig.Current);
+        await rig.SettleAsync();
+
+        await rig.DisposeAsync();
+
+        rig.Documents.Saves.Single().Document.ShouldBe(rig.Current);
+    }
+
     private static Domain.Document.UserDocument UsageVersion(SchedulerRig rig, int marks) =>
         rig.Current with
         {

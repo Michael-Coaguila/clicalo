@@ -17,6 +17,7 @@ namespace Clicalo.Infrastructure.Tests.Backup;
 [Trait("Req", "REG-08")]
 public sealed class BackupServiceTests : IDisposable
 {
+    private readonly BoundedTestToken _bounded = new();
     private readonly TempFolder _folder = new();
     private readonly FakeTimeProvider _time = TestTime.CreateProvider();
     private readonly BackupService _service;
@@ -31,19 +32,8 @@ public sealed class BackupServiceTests : IDisposable
 
     public void Dispose()
     {
-        _service.Dispose();
+        _bounded.Dispose();
         _folder.Dispose();
-    }
-
-    [Fact]
-    public async Task Disposing_twice_is_harmless_and_a_later_snapshot_is_ignored()
-    {
-        _service.Dispose();
-
-        Should.NotThrow(_service.Dispose);
-        _service.SnapshotNow(TestDocuments.Document(), BackupKind.PreRestore);
-        await _service.FlushSnapshotsAsync(Token);
-        Directory.Exists(_folder.Locations.Backups).ShouldBeFalse();
     }
 
     [Fact]
@@ -145,13 +135,44 @@ public sealed class BackupServiceTests : IDisposable
 
     [Fact]
     [Trait("Req", "DAT-006")]
-    public async Task A_snapshot_is_only_queued_and_written_in_the_background()
+    public async Task A_snapshot_is_only_queued_until_the_persistence_consumer_writes_it_in_order()
     {
         _service.SnapshotNow(TestDocuments.Document(), BackupKind.PreRestore);
         _service.SnapshotNow(TestDocuments.Document(2), BackupKind.PreImportReplace);
-        await _service.FlushSnapshotsAsync(Token);
+
+        Directory.Exists(_folder.Locations.Backups).ShouldBeFalse("SnapshotNow never does I/O");
+        (await _service.WriteSnapshotsAsync(Token)).Value.ShouldBe(2);
+        (await _service.WriteSnapshotsAsync(Token)).Value.ShouldBe(0);
 
         (await _service.ListAsync(Token))
+            .Select(b => b.Kind)
+            .ShouldBe([BackupKind.PreImportReplace, BackupKind.PreRestore]);
+    }
+
+    [Fact]
+    [Trait("Req", "DAT-006")]
+    public async Task A_snapshot_that_cannot_be_written_stays_queued_and_is_written_by_the_next_call()
+    {
+        var files = new FailingWrites();
+        var service = new BackupService(
+            _folder.Locations,
+            new AtomicFile(_time, NullLogger<AtomicFile>.Instance, files),
+            _time,
+            NullLogger<BackupService>.Instance,
+            new DocumentCodec(),
+            files
+        );
+        service.SnapshotNow(TestDocuments.Document(), BackupKind.PreRestore);
+        service.SnapshotNow(TestDocuments.Document(2), BackupKind.PreImportReplace);
+        files.Full = true;
+
+        var failed = await service.WriteSnapshotsAsync(Token);
+
+        failed.Failure.Code.ShouldBe("persist.io.full");
+        Directory.Exists(_folder.Locations.Backups).ShouldBeFalse();
+        files.Full = false;
+        (await service.WriteSnapshotsAsync(Token)).Value.ShouldBe(2);
+        (await service.ListAsync(Token))
             .Select(b => b.Kind)
             .ShouldBe([BackupKind.PreImportReplace, BackupKind.PreRestore]);
     }
@@ -244,11 +265,51 @@ public sealed class BackupServiceTests : IDisposable
         read.Frequents.Usage.Entries.Count.ShouldBe(1);
     }
 
-    private static CancellationToken Token => TestContext.Current.CancellationToken;
+    private CancellationToken Token => _bounded.Token;
 
     private string PathOf(BackupInfo info) =>
         Path.Combine(
             _folder.Locations.Backups,
             info.Id.Value.Replace('/', Path.DirectorySeparatorChar)
         );
+
+    /// <summary>The disk, with every write failing like a full disk while <see cref="Full"/> is set.</summary>
+    private sealed class FailingWrites : IAtomicFileSystem
+    {
+        private readonly IAtomicFileSystem _disk = AtomicFile.Disk;
+
+        public bool Full { get; set; }
+
+        public bool Exists(string path) => _disk.Exists(path);
+
+        public byte[]? ReadAllBytesOrNull(string path) => _disk.ReadAllBytesOrNull(path);
+
+        public void CreateDirectory(string path)
+        {
+            if (!Full)
+            {
+                _disk.CreateDirectory(path);
+            }
+        }
+
+        public void WriteThrough(string path, ReadOnlySpan<byte> content)
+        {
+            if (Full)
+            {
+                throw new IOException("full", unchecked((int)0x80070070));
+            }
+
+            _disk.WriteThrough(path, content);
+        }
+
+        public void Replace(string target, string replacement, string backup) =>
+            _disk.Replace(target, replacement, backup);
+
+        public void Move(string source, string target) => _disk.Move(source, target);
+
+        public void Delete(string path) => _disk.Delete(path);
+
+        public IReadOnlyList<string> Files(string directory, string pattern) =>
+            _disk.Files(directory, pattern);
+    }
 }

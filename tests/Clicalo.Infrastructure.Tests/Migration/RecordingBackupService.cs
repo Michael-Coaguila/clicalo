@@ -23,6 +23,9 @@ internal sealed class RecordingBackupService(bool fail = false) : IBackupService
     public void SnapshotNow(UserDocument document, BackupKind kind) =>
         throw new InvalidOperationException("The v1 import never snapshots the document.");
 
+    public Task<Result<int>> WriteSnapshotsAsync(CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("The v1 import never writes snapshots.");
+
     public Task<Result<BackupInfo>> CreateAsync(
         UserDocument document,
         BackupKind kind,

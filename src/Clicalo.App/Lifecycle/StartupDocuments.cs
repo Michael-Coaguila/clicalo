@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using Clicalo.App.Interop;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
@@ -17,17 +18,24 @@ namespace Clicalo.App.Lifecycle;
 /// <item>the document read by the recovery chain;</item>
 /// <item>on a new installation (no <c>clicalo.json</c> and nothing to recover), the seed of <c>content\seed.json</c>
 /// in the language of Windows, or the v1 file of <c>--migrate-v1</c> converted over it (EC-MIG-01: the original is
-/// kept byte for byte first, MIG-004), written at once so the migration never repeats; a migration that fails writes
-/// nothing, so it can be tried again;</item>
+/// kept byte for byte first, MIG-004), written at once so the migration never repeats;</item>
+/// <item>a migration that fails writes nothing and leaves the mark <c>migration-v1.pending</c> in the local data
+/// folder, because the first change will write the seed: while the mark exists, a start with <c>--migrate-v1</c> tries
+/// the migration again over the seed, after a <c>pre-migrate</c> copy of the document it replaces (until the welcome
+/// of M3 offers «Retry migration»);</item>
 /// <item>the usage of <c>usage.json</c>, merged and purged (FRE-002).</item>
 /// </list>
-/// Logs codes and counts only, never names, keys or paths (LOG-001).
+/// A document of the start that could not be written is reported with <see cref="StartupLoad.SavePending"/>, so the
+/// autosave writes it at once and retries (DAT-002). It runs before the Persistence consumer starts, so its writes
+/// never meet the autosave's. Logs codes and counts only, never names, keys or paths (LOG-001).
 /// </summary>
 internal sealed partial class StartupDocuments(
     IDocumentRepository documents,
     IUsageRepository usage,
     IBackupService backups,
     V1Importer importer,
+    IAtomicFileWriter writer,
+    string pendingMigration,
     IIdGenerator ids,
     TimeProvider time,
     ILogger<StartupDocuments> logger
@@ -41,7 +49,7 @@ internal sealed partial class StartupDocuments(
     /// </param>
     /// <param name="migrateV1">The v1 file to migrate on a new installation, or <see langword="null"/>.</param>
     /// <param name="cancellationToken">Cancels the start.</param>
-    public async Task<DocumentLoad> LoadAsync(
+    public async Task<StartupLoad> LoadAsync(
         string? contentFolder,
         LangCode? language,
         string? migrateV1,
@@ -49,6 +57,7 @@ internal sealed partial class StartupDocuments(
     )
     {
         var load = await documents.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var savePending = false;
         if (load.Outcome == DocumentLoadOutcome.FirstRun)
         {
             var (document, save) = await NewInstallationAsync(
@@ -61,14 +70,7 @@ internal sealed partial class StartupDocuments(
                 .ConfigureAwait(false);
             if (save)
             {
-                var saved = await documents
-                    .SaveAsync(document, cancellationToken)
-                    .ConfigureAwait(false);
-                if (saved.IsFailure)
-                {
-                    // Still usable: the autosave writes it with the first change and keeps retrying (DAT-002).
-                    LogFirstSaveFailed(logger, saved.Failure.Code);
-                }
+                savePending = !await SaveAsync(document, cancellationToken).ConfigureAwait(false);
             }
 
             load = load with { Document = document };
@@ -77,10 +79,32 @@ internal sealed partial class StartupDocuments(
         var history = await usage
             .LoadAsync(load.Document.Frequents.UsageEpoch, cancellationToken)
             .ConfigureAwait(false);
-        return load with
+        load = load with
         {
             Document = StartupDocument.WithUsage(load.Document, history, time.GetUtcNow()),
         };
+        if (
+            load.Outcome != DocumentLoadOutcome.FirstRun
+            && migrateV1 is not null
+            && !load.IsReadOnly
+            && File.Exists(pendingMigration)
+        )
+        {
+            var retried = await RetryMigrationAsync(
+                    load.Document,
+                    contentFolder,
+                    migrateV1,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            if (retried is not null)
+            {
+                savePending = !await SaveAsync(retried, cancellationToken).ConfigureAwait(false);
+                load = load with { Document = retried };
+            }
+        }
+
+        return new StartupLoad(load, savePending);
     }
 
     private async Task<(UserDocument Document, bool Save)> NewInstallationAsync(
@@ -109,9 +133,50 @@ internal sealed partial class StartupDocuments(
             return (seed, true);
         }
 
+        var migrated = await MigrateAsync(seed, migrateV1, cancellationToken).ConfigureAwait(false);
+
+        // MIG-004: on failure the example data, and the original untouched; the report and «Retry» come with the welcome.
+        return migrated is null ? (seed, false) : (migrated, true);
+    }
+
+    /// <summary>
+    /// A start with <c>--migrate-v1</c> after a failed migration: the document of today (the seed, and whatever was
+    /// changed since) is kept as <c>pre-migrate</c> first, and is only replaced when that copy exists (REG-08).
+    /// </summary>
+    private async Task<UserDocument?> RetryMigrationAsync(
+        UserDocument current,
+        string? contentFolder,
+        string migrateV1,
+        CancellationToken cancellationToken
+    )
+    {
+        var kept = await backups
+            .CreateAsync(current, BackupKind.PreMigrate, cancellationToken)
+            .ConfigureAwait(false);
+        if (kept.IsFailure)
+        {
+            LogRetryNotCopied(logger, kept.Failure.Code);
+            return null;
+        }
+
+        LogRetryingMigration(logger);
+        var baseline = ReadSeed(contentFolder, current.Settings) ?? current;
+        return await MigrateAsync(baseline, migrateV1, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Converts the v1 file over <paramref name="baseline"/>; a failure leaves the mark that allows a retry, a success
+    /// removes it.
+    /// </summary>
+    private async Task<UserDocument?> MigrateAsync(
+        UserDocument baseline,
+        string migrateV1,
+        CancellationToken cancellationToken
+    )
+    {
         var context = new V1ConversionContext(
             ids,
-            seed,
+            baseline,
             [.. MonitorLayout.Current()],
             time.GetUtcNow()
         );
@@ -120,11 +185,12 @@ internal sealed partial class StartupDocuments(
             .ConfigureAwait(false);
         if (!migrated.TryGetValue(out var preview))
         {
-            // MIG-004: the example data, and the original untouched; the report and «Retry» come with the welcome.
             LogMigrationFailed(logger, migrated.Failure.Code);
-            return (seed, false);
+            await MarkPendingAsync(migrated.Failure.Code, cancellationToken).ConfigureAwait(false);
+            return null;
         }
 
+        ClearPending();
         var report = preview.Conversion.Report;
         LogMigrated(
             logger,
@@ -134,7 +200,46 @@ internal sealed partial class StartupDocuments(
             report.Output.Buttons,
             report.Notes.Count
         );
-        return (preview.Conversion.Document, true);
+        return preview.Conversion.Document;
+    }
+
+    /// <summary>Writes the document of the start now; <see langword="false"/> when it could not be written.</summary>
+    private async Task<bool> SaveAsync(UserDocument document, CancellationToken cancellationToken)
+    {
+        var saved = await documents.SaveAsync(document, cancellationToken).ConfigureAwait(false);
+        if (saved.IsSuccess)
+        {
+            return true;
+        }
+
+        // Still usable: the autosave writes it at once and keeps retrying (DAT-002, StartupLoad.SavePending).
+        LogFirstSaveFailed(logger, saved.Failure.Code);
+        return false;
+    }
+
+    private async Task MarkPendingAsync(string code, CancellationToken cancellationToken)
+    {
+        var marked = await writer
+            .WriteAsync(pendingMigration, Encoding.UTF8.GetBytes(code), cancellationToken)
+            .ConfigureAwait(false);
+        if (marked.IsFailure)
+        {
+            LogPendingMarkFailed(logger, marked.Failure.Code);
+        }
+    }
+
+    private void ClearPending()
+    {
+        try
+        {
+            File.Delete(pendingMigration);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // At worst the next start with --migrate-v1 migrates again, after its own pre-migrate copy.
+            var failure = ex.GetType().Name;
+            LogPendingMarkFailed(logger, failure);
+        }
     }
 
     private static UserDocument? ReadSeed(
@@ -188,4 +293,25 @@ internal sealed partial class StartupDocuments(
         int outputButtons,
         int notes
     );
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Information,
+        Message = "migration.v1.retry: a previous migration failed; the current document was kept as pre-migrate"
+    )]
+    private static partial void LogRetryingMigration(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Warning,
+        Message = "migration.v1.retry_skipped: the pre-migrate copy could not be written ({Code})"
+    )]
+    private static partial void LogRetryNotCopied(ILogger logger, string code);
+
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Warning,
+        Message = "migration.v1.pending_mark_failed ({Code})"
+    )]
+    private static partial void LogPendingMarkFailed(ILogger logger, string code);
 }
