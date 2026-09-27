@@ -243,3 +243,40 @@ punta (motor real tras la valla, persistencia real, semilla o migración v1 en e
 añadió `Clicalo.App.Tests`. Lo que cambia respecto al plano está en
 [D-21](../../architecture/deviations.md#d-21--integración-de-m2); las propuestas para el usuario, en R-11 a R-14 de
 [§6.1 del catálogo](../../requirements/catalog.md#61-propuestas-pendientes-de-ratificar).
+
+## Criterios de salida
+
+La verificación de M2 encontró que tres criterios no tenían una ejecución que los hiciera cumplir. Esto es lo que los
+hace cumplir desde `m2/fix-criteria`:
+
+| Criterio (§14, fila M2) | Qué lo hace cumplir | Estado |
+|---|---|---|
+| Tocar → `SendInput` en InputProbe con p95 ≤ 50 ms | `TouchToSendInputTests` compara el p95 de 20 toques con `TouchToSendInput` de [`data/catalogs/budgets.json`](../../../data/catalogs/budgets.json) (`gate: everyRun`) y falla por encima. Lo ejecuta el trabajo `perf (x64)` de `pr.yml`, que ya no continúa con error, y `lab.yml` en el equipo táctil; los dos publican los números ([S5](S5.md#trabajo-de-ci)) | Pendiente de la primera ejecución de la CI: envía teclas reales y no se ejecuta en el equipo del mantenedor |
+| Propiedades, «muerte en cada paso» y «congelar y reanudar» con 10 000 casos | Los contraejemplos se reducen y se guardan como regresiones ([property-regressions.md](../property-regressions.md)) | En verde en `cl check` |
+| Prueba de bandeja con el Bloc de notas | `TrayDesktopTests.Release_all_from_the_tray_menu_gives_the_foreground_back_to_notepad`: el Bloc de notas real delante, menú, «Soltar todo» por UI Automation y el primer plano vuelve a la ventana del Bloc de notas (`GetForegroundWindow`). Sin ninguna tecla en el Bloc de notas | Solo en la CI (`desk (x64)` y `lab.yml`); pendiente de su primera ejecución |
+
+Dos sustituciones de la prueba de bandeja quedan como están, porque no son viables en un *runner* alojado:
+
+- **El clic en el icono** se sustituye por un toque sintético en el panel del propio proceso, que da el mismo derecho
+  de primer plano (escalera de §3.6, paso 1), y el menú se abre con `TrayController.OpenMenuAsync` en ese punto. En
+  Windows 11 y Windows Server 2025 un icono nuevo queda en el desbordamiento del área de notificación, y hacer clic ahí
+  sería inyectar en el Explorador, fuera de las ventanas de la prueba. El camino real del icono (`TrayIcon`,
+  `NIN_SELECT` y `WM_CONTEXTMENU`) se comprueba en la aceptación en hardware real de
+  [§10.2](../../architecture/blueprint.md) (`touch-acceptance.md`, todavía por escribir), que incluye la bandeja.
+- **InputProbe** sigue siendo la app delante en los demás casos y en el equipo del mantenedor, donde abrir el Bloc de
+  notas podría usar una ventana que la persona tiene abierta.
+
+### Desviaciones que registra la integración
+
+`docs/architecture/deviations.md` está fuera del ámbito de este frente; la integración las añade a D-21 o en una D-22:
+
+- **Presupuestos en `data/catalogs/budgets.json`**, no en `tests/Clicalo.Performance/budgets.json` (§10.3): son datos
+  versionados como el resto de catálogos, con su esquema en `data/schemas` validado por `Clicalo.Data.Tests`. Solo
+  están los que hace cumplir una medición.
+- **La puerta de toque → `SendInput` también en los *runners* alojados** (`gate: everyRun`) y el trabajo `perf (x64)`
+  de `pr.yml` obligatorio, cuando §10.3 la pone en el equipo táctil y §10.5 dice que el rendimiento no es obligatorio en
+  el PR. Es más estricto que el plano: mientras no exista el equipo táctil, era la única forma de que una ejecución
+  hiciera cumplir el criterio de M2. Los presupuestos de S5 siguen siendo tendencia en los alojados.
+- **`lab.yml` solo a mano** (`workflow_dispatch`), sin la programación semanal ni la ejecución antes de cada beta de
+  §10.5, hasta que el equipo táctil esté registrado como *runner*.
+- **Prueba de bandeja**: las dos sustituciones de arriba.
