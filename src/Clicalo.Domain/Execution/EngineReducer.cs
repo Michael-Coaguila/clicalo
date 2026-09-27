@@ -80,6 +80,11 @@ public static class EngineReducer
             case EngineEvent.SessionResumed:
                 SessionResumed(step);
                 break;
+            case EngineEvent.InternalChordRequested chord:
+                // Internal and balanced: it goes in test mode and pause too (INV-7), and a key a holder keeps is
+                // neither pressed again nor released under it (the gate checks the physical ledger).
+                step.Emit(new EngineEffect.SendInternalChord(chord.Chord, chord.Request));
+                break;
             case EngineEvent.StickyTapped tapped when !step.State.Paused && !step.State.TestMode:
                 StickyPlanner.Tap(step, tapped.Modifier);
                 break;

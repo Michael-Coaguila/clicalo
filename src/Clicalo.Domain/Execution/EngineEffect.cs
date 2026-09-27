@@ -112,6 +112,14 @@ public abstract record EngineEffect
     /// </summary>
     public sealed record ReleasePendingRecorded : EngineEffect;
 
+    /// <summary>
+    /// Send one of Clícalo's own balanced chords under the fence (blueprint §3.6, INV-11) and answer
+    /// <paramref name="Request"/> with whether it went.
+    /// </summary>
+    /// <param name="Chord">Which chord.</param>
+    /// <param name="Request">The requester's number for the result.</param>
+    public sealed record SendInternalChord(InternalChord Chord, long Request) : EngineEffect;
+
     /// <summary>Remember the last action for Repeat (AVI-004).</summary>
     /// <param name="Shortcut">The shortcut.</param>
     public sealed record SetLastAction(ShortcutId Shortcut) : EngineEffect;

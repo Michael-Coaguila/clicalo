@@ -22,4 +22,10 @@ public sealed record EngineHostPorts(
     /// its logical state may be the broken part. When absent, the host releases what its last good state held.
     /// </summary>
     public Func<EngineGeneration, bool>? ReleaseRecorded { get; init; }
+
+    /// <summary>
+    /// Where the host answers the internal chords it sent (<see cref="EngineKeyEffects"/>, blueprint §3.6); when
+    /// absent, nobody waits for them.
+    /// </summary>
+    public InternalChordReplies? ChordReplies { get; init; }
 }

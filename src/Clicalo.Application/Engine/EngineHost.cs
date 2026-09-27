@@ -390,6 +390,9 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             case EngineEffect.ReleasePendingRecorded:
                 Settle(_ports.Injector.ReleasePending(Generation));
                 break;
+            case EngineEffect.SendInternalChord chord:
+                SendChord(chord);
+                break;
         }
     }
 
@@ -430,6 +433,16 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                 _mailbox.Post(new EngineEvent.ReleasesBlocked(inject.Events));
                 break;
         }
+    }
+
+    private void SendChord(EngineEffect.SendInternalChord chord)
+    {
+        var result = _ports.Injector.SendChord(Generation, chord.Chord);
+        Settle(result);
+        _ports.ChordReplies?.Complete(
+            chord.Request,
+            result.Status == InjectionStatus.Sent && result.EventsSent > 0
+        );
     }
 
     private bool PressAllowed(long? epoch, ForegroundWindowId? requiredForeground) =>

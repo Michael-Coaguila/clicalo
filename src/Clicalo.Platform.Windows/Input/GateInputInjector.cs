@@ -1,5 +1,6 @@
 using System.Buffers;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
@@ -129,6 +130,13 @@ public sealed class GateInputInjector(InjectionGate gate) : IInputInjector
         }
 
         return SendBalanced(generation, inputs[..count]);
+    }
+
+    /// <inheritdoc />
+    public InjectionResult SendChord(EngineGeneration generation, InternalChord chord)
+    {
+        var keys = InternalChords.KeysOf(chord);
+        return Result(gate.TryInjectChord(generation.Value, [.. keys]), keys.Count * 2);
     }
 
     /// <inheritdoc />

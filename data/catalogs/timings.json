@@ -238,6 +238,12 @@
           "req": ["REG-03"],
           "source": "blueprint §3.2 rule 6"
         },
+        "InternalChordWait": {
+          "duration": "1s",
+          "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H) under the fence; a hung or replaced engine answers «not sent».",
+          "req": ["REG-03"],
+          "source": "blueprint §3.6; deviations.md D-22"
+        },
         "EngineHangLoop": {
           "countWindow": { "count": 2, "window": "10min" },
           "description": "This many engine hangs within the window escalate directly to a process restart.",

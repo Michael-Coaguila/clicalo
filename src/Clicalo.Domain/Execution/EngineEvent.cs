@@ -177,6 +177,19 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
+    /// <summary>
+    /// Clícalo needs one of its own chords (the rights chord of the foreground ladder, Win+H for dictation; blueprint
+    /// §3.6): the engine sends it under the fence with its generation, even in test mode or pause (INV-7), and the
+    /// result goes back to the requester by <paramref name="Request"/>.
+    /// </summary>
+    /// <param name="Chord">Which chord.</param>
+    /// <param name="Request">The requester's number for the result.</param>
+    public sealed record InternalChordRequested(InternalChord Chord, long Request) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Normal;
+    }
+
     /// <summary>A tap on a key of the sticky modifiers row: 0 → 1 → 2 → 0 (FIJ-005).</summary>
     /// <param name="Modifier">The modifier.</param>
     public sealed record StickyTapped(ModifierKind Modifier) : EngineEvent

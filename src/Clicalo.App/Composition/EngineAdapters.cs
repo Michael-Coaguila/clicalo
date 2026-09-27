@@ -1,4 +1,6 @@
 using System.IO;
+using Clicalo.Application.Engine;
+using Clicalo.Application.Ports;
 using Clicalo.Platform.Core.Injection;
 using Clicalo.Platform.Core.KeyLedger;
 using Clicalo.Platform.Windows.Foreground;
@@ -18,7 +20,8 @@ namespace Clicalo.App.Composition;
 /// The sending set is the engine package's pieces: the ledger section (<see cref="KeyLedgerSection.CreateForEngine"/>),
 /// the fence (<see cref="InjectionGate"/> over the only <c>SendInput</c>, <see cref="LowLevelInjector"/>), and from
 /// <c>Platform.Windows/Input</c> and <c>Platform.Windows/SentinelHost</c> the <c>IInputInjector</c> and
-/// <c>IKeyLedger</c> adapters over them, the <c>IInternalKeyEffects</c> behind the fence, the preventive release with
+/// <c>IKeyLedger</c> adapters over them, the <c>IInternalKeyEffects</c> the engine sends behind the fence
+/// (<see cref="EngineKeyEffects"/>), the preventive release with
 /// the menu mask and Sentinel's supervisor, which starts <c>Clicalo.Sentinel.exe</c> from the folder of
 /// <c>Clicalo.exe</c> with the section duplicated read-only (ADR-0004, ADR-0018).
 /// </remarks>
@@ -62,7 +65,12 @@ internal static class EngineAdapters
             return new EngineAdapterSet(
                 new GateInputInjector(gate),
                 new KeyLedgerPort(gate),
-                new InternalKeyEffects(gate, services.GetRequiredService<InternalRightsHotkey>()),
+                new EngineKeyEffects(
+                    services.GetRequiredService<IEngineInbox>(),
+                    services.GetRequiredService<InternalChordReplies>(),
+                    services.GetRequiredService<InternalRightsHotkey>(),
+                    services.GetRequiredService<TimeProvider>()
+                ),
                 new SupervisedGuardian(supervisor),
                 new GateStartupRelease(gate),
                 new SendingResources(supervisor, section)

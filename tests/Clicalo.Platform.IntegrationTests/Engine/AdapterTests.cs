@@ -1,4 +1,5 @@
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
@@ -259,23 +260,39 @@ public sealed class AdapterTests
     }
 
     [Fact]
-    public async Task The_rights_chord_goes_only_when_it_is_registered_and_is_balanced()
+    public void The_internal_chords_go_balanced_through_the_gate_with_the_engine_generation()
     {
         using var ledger = KeyLedgerSection.CreateInMemory();
         var sender = new PhysicalStateInjector();
-        var hotkey = new FakeRightsHotkey();
-        var effects = new InternalKeyEffects(new InjectionGate(ledger, sender), hotkey);
+        var gate = new InjectionGate(ledger, sender);
+        var injector = new GateInputInjector(gate);
 
-        (await effects.SendRightsHotkeyAsync(CancellationToken.None)).ShouldBeFalse();
-        sender.Batches.ShouldBeEmpty();
-
-        hotkey.IsRegistered = true;
-        (await effects.SendRightsHotkeyAsync(CancellationToken.None)).ShouldBeTrue();
-        (await effects.SendDictationChordAsync(CancellationToken.None)).ShouldBeTrue();
+        injector
+            .SendChord(new EngineGeneration(1), InternalChord.Rights)
+            .ShouldBe(new InjectionResult(InjectionStatus.Sent, 8, 0));
+        injector
+            .SendChord(new EngineGeneration(1), InternalChord.Dictation)
+            .Status.ShouldBe(InjectionStatus.Sent);
 
         sender.Batches.Count.ShouldBe(2);
-        sender.Batches[0].Length.ShouldBe(8);
         sender.IsEmpty.ShouldBeTrue();
         ledger.Snapshot().Slots.ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "REG-03")]
+    public void An_internal_chord_of_a_replaced_engine_is_fenced()
+    {
+        using var ledger = KeyLedgerSection.CreateInMemory();
+        var sender = new PhysicalStateInjector();
+        var gate = new InjectionGate(ledger, sender);
+        gate.TryEmergencyRelease(TimeSpan.FromMilliseconds(250), out _)
+            .ShouldBe(EmergencyOutcome.Released);
+
+        new GateInputInjector(gate)
+            .SendChord(new EngineGeneration(1), InternalChord.Rights)
+            .Status.ShouldBe(InjectionStatus.Fenced);
+
+        sender.Batches.ShouldBeEmpty();
     }
 }
