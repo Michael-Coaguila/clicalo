@@ -281,17 +281,11 @@ public sealed class DocumentRepositoryTests : IDisposable
 
         // Save 2 writes a complete .tmp, then ReplaceFileW keeps failing: .tmp holds version 2.
         files.FailReplaceOf = Data.Document;
-        _ = await FakeClock.RunAsync(
-            _time,
-            repository.SaveAsync(TestDocuments.Document(2), Token)
-        );
+        _ = await FakeClock.RunAsync(_time, repository.SaveAsync(TestDocuments.Document(2), Token));
 
         // Save 3 cannot even write its .tmp: only its emergency copy holds version 3. Then the process dies.
         files.FailWriteOf = AtomicFile.TemporaryOf(Data.Document);
-        _ = await FakeClock.RunAsync(
-            _time,
-            repository.SaveAsync(TestDocuments.Document(3), Token)
-        );
+        _ = await FakeClock.RunAsync(_time, repository.SaveAsync(TestDocuments.Document(3), Token));
 
         var load = await Repository().LoadAsync(Token);
 

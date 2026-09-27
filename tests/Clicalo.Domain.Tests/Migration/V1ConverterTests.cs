@@ -65,9 +65,7 @@ public sealed class V1ConverterTests
 
         general
             .Shortcuts[0]
-            .Action.ShouldBe(
-                new TapAction(KeyChord.Create([Key(KeyIds.Ctrl), Key(KeyIds.C)]), [])
-            );
+            .Action.ShouldBe(new TapAction(KeyChord.Create([Key(KeyIds.Ctrl), Key(KeyIds.C)]), []));
         general.Shortcuts[1].Action.ShouldBe(new SystemAction(new SystemCommandId("lock")));
         general
             .Shortcuts[2]
@@ -82,9 +80,7 @@ public sealed class V1ConverterTests
                 ])
             );
         code.Shortcuts[2]
-            .Action.ShouldBe(
-                new AppAction(new AppTarget.Executable("notepad.exe", string.Empty))
-            );
+            .Action.ShouldBe(new AppAction(new AppTarget.Executable("notepad.exe", string.Empty)));
     }
 
     [Fact]

@@ -96,7 +96,8 @@ public sealed class ActivationPolicyTests
     {
         var swipe = new ContactSummary(TimeSpan.FromMilliseconds(100), 200, false);
         var outcome = ActivationPolicy.Decide(
-            Context(contact: swipe, editMode: true, elevation: ElevationState.TargetElevated));
+            Context(contact: swipe, editMode: true, elevation: ElevationState.TargetElevated)
+        );
 
         outcome.Decision.ShouldBe(new ActivationDecision.Ignored(TouchVerdict.IgnoredSwipe));
         outcome.NextFilter.LastAccepted.ShouldBeNull();
@@ -144,8 +145,7 @@ public sealed class ActivationPolicyTests
     public void A_hold_starts_only_outside_the_debounce_of_its_tile()
     {
         var hold = Shortcuts.Hold("shift", "shift");
-        var started = ActivationPolicy.Decide(
-            Context(hold, ActivationPhase.ContactStarted));
+        var started = ActivationPolicy.Decide(Context(hold, ActivationPhase.ContactStarted));
 
         started.Decision.ShouldBeOfType<ActivationDecision.Execute>();
         Decide(Context(hold, ActivationPhase.ContactStarted, filter: started.NextFilter))

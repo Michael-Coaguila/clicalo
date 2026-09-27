@@ -37,11 +37,7 @@ public static class EnvelopeCodec
         JsonNode? root;
         try
         {
-            root = JsonNode.Parse(
-                text,
-                nodeOptions: null,
-                documentOptions: JsonText.Strict()
-            );
+            root = JsonNode.Parse(text, nodeOptions: null, documentOptions: JsonText.Strict());
         }
         catch (JsonException)
         {

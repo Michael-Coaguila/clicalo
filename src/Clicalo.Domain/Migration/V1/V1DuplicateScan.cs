@@ -36,9 +36,7 @@ internal static class V1DuplicateScan
             }
         }
 
-        var notes = ImmutableArray.CreateBuilder<MigrationNote>(
-            index.RepeatedCombinations.Length
-        );
+        var notes = ImmutableArray.CreateBuilder<MigrationNote>(index.RepeatedCombinations.Length);
         foreach (var key in index.RepeatedCombinations)
         {
             var located = first[key];
@@ -52,10 +50,7 @@ internal static class V1DuplicateScan
             );
         }
 
-        return (
-            new ValueList<CanonicalChord>(index.RepeatedCombinations),
-            notes.MoveToImmutable()
-        );
+        return (new ValueList<CanonicalChord>(index.RepeatedCombinations), notes.MoveToImmutable());
     }
 
     private static string? ProfileName(ShortcutLibrary library, ListRef list) =>

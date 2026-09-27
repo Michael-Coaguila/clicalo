@@ -236,21 +236,13 @@ public sealed class V1RealFilesTests
     [Trait("Req", "MIG-004")]
     [Trait("Req", "MIG-003")]
     [MemberData(nameof(V1Fixtures.Counts), MemberType = typeof(V1Fixtures))]
-    public void Every_real_file_converts_without_losses(
-        string fixture,
-        int profiles,
-        int buttons
-    )
+    public void Every_real_file_converts_without_losses(string fixture, int profiles, int buttons)
     {
-        var conversion = V1Converter
-            .Convert(V1Fixtures.Read(fixture), V1Context.Create())
-            .Value;
+        var conversion = V1Converter.Convert(V1Fixtures.Read(fixture), V1Context.Create()).Value;
 
         conversion.Report.Input.ShouldBe(new V1Counts(profiles, buttons, 0, 0, 0));
         conversion.Report.Output.ShouldBe(conversion.Report.Input);
-        conversion
-            .Document.Library.Profiles.Sum(static p => p.Shortcuts.Count)
-            .ShouldBe(buttons);
+        conversion.Document.Library.Profiles.Sum(static p => p.Shortcuts.Count).ShouldBe(buttons);
         conversion.Report.Notes.ShouldNotContain(static n =>
             n.Kind == MigrationNoteKind.UnresolvedToken
         );
