@@ -269,7 +269,7 @@ public sealed partial class PersistenceScheduler : IDisposable
     private static Failure Unexpected() =>
         new(
             "persist.fault",
-            L.TBug,
+            L.SaveFailT,
             FailureSeverity.Critical,
             FailureRecovery.Retry,
             FailureAnnouncement.Assertive

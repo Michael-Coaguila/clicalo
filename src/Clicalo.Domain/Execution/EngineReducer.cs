@@ -215,7 +215,9 @@ public static class EngineReducer
         {
             case ActivationDecision.BlockedElevated:
                 step.Notice(
-                    EngineNotices.Elevated(step.State.Foreground?.Process.Value ?? string.Empty),
+                    EngineNotices.ElevatedRefused(
+                        step.State.Foreground?.Process.Value ?? string.Empty
+                    ),
                     NoticeUrgency.Assertive
                 );
                 break;
@@ -439,7 +441,15 @@ public static class EngineReducer
                     or TerminalReason.EngineFault
         )
         {
-            step.Notice(EngineNotices.ReleasedAll, NoticeUrgency.Assertive);
+            step.Notice(
+                reason switch
+                {
+                    TerminalReason.Lock or TerminalReason.Suspend => EngineNotices.ReleasedOnLock,
+                    TerminalReason.EngineFault => EngineNotices.Fault,
+                    _ => EngineNotices.ReleasedAll,
+                },
+                NoticeUrgency.Assertive
+            );
         }
     }
 

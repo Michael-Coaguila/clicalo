@@ -347,7 +347,9 @@ public sealed class EngineHostTests
             .Events.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
         world.Host.State.IsQuiet.ShouldBeTrue();
         world.Host.State.Foreground.ShouldBe(HostWorld.Notepad);
-        world.Observer.Notices.ShouldHaveSingleItem().Urgency.ShouldBe(NoticeUrgency.Assertive);
+        world
+            .Observer.Notices.ShouldHaveSingleItem()
+            .ShouldBe((L.EngineFault, NoticeUrgency.Assertive));
         world.Host.IsStopped.ShouldBeFalse();
     }
 

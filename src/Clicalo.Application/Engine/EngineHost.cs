@@ -477,7 +477,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             Version = before.Version + 1,
         };
         _timers.Clear();
-        _ports.Observer.OnNotice(L.ReleasedAll, NoticeUrgency.Assertive);
+        _ports.Observer.OnNotice(L.EngineFault, NoticeUrgency.Assertive);
     }
 
     private void Heartbeat(long now)

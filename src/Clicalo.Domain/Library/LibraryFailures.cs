@@ -5,9 +5,8 @@ using Clicalo.Domain.Primitives;
 namespace Clicalo.Domain.Library;
 
 /// <summary>
-/// The expected failures of <see cref="ShortcutLibrary"/> operations. Codes are stable (logs and tests); the messages
-/// reuse existing keys of <c>data/i18n</c> until the dedicated texts requested for M2 land (the domain package cannot
-/// add keys, docs/testing/spikes/M2-ownership.md rule 5).
+/// The expected failures of <see cref="ShortcutLibrary"/> operations. Codes are stable (logs and tests); the user sees
+/// the message.
 /// </summary>
 internal static class LibraryFailures
 {
@@ -22,17 +21,17 @@ internal static class LibraryFailures
     public const string ProfileNameEmptyCode = "library.profile.name_empty";
     public const string InvalidCode = "library.invalid";
 
-    public static Failure ShortcutNotFound() => Warning(ShortcutNotFoundCode, L.PickOne);
+    public static Failure ShortcutNotFound() => Warning(ShortcutNotFoundCode, L.ItemGone);
 
-    public static Failure ProfileNotFound() => Warning(ProfileNotFoundCode, L.PickProfile);
+    public static Failure ProfileNotFound() => Warning(ProfileNotFoundCode, L.ItemGone);
 
     public static Failure DuplicateId() => Warning(DuplicateIdCode, L.Retry);
 
     public static Failure EmptyId() => Warning(EmptyIdCode, L.Retry);
 
-    public static Failure GeneralProtected() => Warning(GeneralProtectedCode, L.GenLinkS);
+    public static Failure GeneralProtected() => Warning(GeneralProtectedCode, L.GeneralFixed);
 
-    public static Failure GeneralUnbound() => Warning(GeneralUnboundCode, L.GenLinkS);
+    public static Failure GeneralUnbound() => Warning(GeneralUnboundCode, L.GeneralFixed);
 
     public static Failure ProcessBound(ProcessName process) =>
         Warning(ProcessBoundCode, L.LinkedT(process.Value));

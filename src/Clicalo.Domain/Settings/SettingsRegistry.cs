@@ -259,7 +259,7 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.DockHandleLocked,
                 Placement,
-                L.HandlePos,
+                L.HandleLock,
                 L.HandlePosD,
                 s => s.Dock.HandleLocked,
                 (s, v) => s with { Dock = s.Dock with { HandleLocked = v } }

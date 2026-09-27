@@ -36,6 +36,8 @@ public sealed record DeleteMacroStep(ShortcutId Id, int Index) : IDestructiveCom
         };
         return document
             .Library.ReplaceShortcut(edited)
-            .Bind(library => Changes.Recorded(document with { Library = library }, L.Saved, null));
+            .Bind(library =>
+                Changes.Recorded(document with { Library = library }, L.StepDeleted, null)
+            );
     }
 }

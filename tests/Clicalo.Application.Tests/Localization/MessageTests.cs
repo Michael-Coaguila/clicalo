@@ -63,11 +63,16 @@ public sealed class MessageTests
     [Trait("Req", "IDI-001")]
     public void The_catalog_lists_every_key_with_its_expected_arguments()
     {
-        MessageCatalog.All.Length.ShouldBe(688);
+        MessageCatalog.All.Length.ShouldBe(717);
         MessageCatalog.TryGet("migT", out var migT).ShouldBeTrue();
         migT.Parameters.ShouldBe([
             new MessageParameter("profiles", MessageArgumentType.Text),
             new MessageParameter("shortcuts", MessageArgumentType.Text),
+        ]);
+        MessageCatalog.TryGet("processTaken", out var processTaken).ShouldBeTrue();
+        processTaken.Parameters.ShouldBe([
+            new MessageParameter("profile", MessageArgumentType.Text),
+            new MessageParameter("process", MessageArgumentType.Text),
         ]);
         MessageCatalog.TryGet("comboN", out var comboN).ShouldBeTrue();
         comboN.IsPlural.ShouldBeTrue();

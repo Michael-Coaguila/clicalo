@@ -38,5 +38,17 @@
   "total": {
     "type": "integer",
     "description": "Número total de elementos; acompaña a {index}."
+  },
+  "process": {
+    "type": "text",
+    "description": "Nombre del ejecutable de una aplicación, por ejemplo «winword.exe»."
+  },
+  "setting": {
+    "type": "text",
+    "description": "Nombre de un ajuste tal como se muestra; suele ser un mensaje traducido, por ejemplo «Tamaño»."
+  },
+  "key": {
+    "type": "text",
+    "description": "Nombre de una tecla ya traducido, por ejemplo «Ñ»."
   }
 }

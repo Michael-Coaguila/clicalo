@@ -122,7 +122,7 @@ internal static class MacroPlanner
         )
         {
             Cancel(step, run);
-            step.Notice(EngineNotices.Incomplete, NoticeUrgency.Assertive);
+            step.Notice(EngineNotices.NotInLayout, NoticeUrgency.Assertive);
             return;
         }
 

@@ -5,8 +5,8 @@ namespace Clicalo.Infrastructure.Migration;
 
 /// <summary>
 /// The expected failures of reading a v1 file or an untrusted zip (EC-MIG-02, MIG-009, LOG-006). Nothing is written
-/// and the welcome offers «Retry migration». The codes are stable and are all the log ever says; the text is a
-/// placeholder until the migration keys of catalog §9 exist in <c>data/i18n</c> (the app package adds them).
+/// and the welcome offers «Retry migration». The codes are stable and are all the log ever says; the user sees «Your
+/// previous settings could not be imported» (<c>migFailT</c>).
 /// </summary>
 internal static class V1ImportFailures
 {
@@ -66,7 +66,7 @@ internal static class V1ImportFailures
     private static Failure Create(string code) =>
         new(
             code,
-            L.Retry,
+            L.MigFailT,
             FailureSeverity.Warning,
             FailureRecovery.Retry,
             FailureAnnouncement.Polite

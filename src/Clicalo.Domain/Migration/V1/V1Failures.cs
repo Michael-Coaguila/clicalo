@@ -5,8 +5,7 @@ namespace Clicalo.Domain.Migration.V1;
 
 /// <summary>
 /// The expected failures of the v1 conversion. Every one writes nothing and offers «Retry migration» (MIG-004,
-/// BIE-002). The codes are stable; the text is a placeholder until the migration keys of catalog §9 exist in
-/// <c>data/i18n</c> (the app package adds them).
+/// BIE-002). The codes are stable; the user sees «Your previous settings could not be imported» (<c>migFailT</c>).
 /// </summary>
 internal static class V1Failures
 {
@@ -25,7 +24,7 @@ internal static class V1Failures
     private static Failure Create(string code) =>
         new(
             code,
-            L.Retry,
+            L.MigFailT,
             FailureSeverity.Warning,
             FailureRecovery.Retry,
             FailureAnnouncement.Polite

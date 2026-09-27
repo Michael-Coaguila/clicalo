@@ -210,6 +210,19 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _scheduler = services.GetRequiredService<PersistenceScheduler>();
         store.Changed += _scheduler.OnDocumentChanged;
         var scheduler = _scheduler;
+        scheduler.StatusChanged += (_, _) =>
+        {
+            // DAT-002: a save that keeps failing is said once, when it becomes visible; the retries stay silent.
+            if (scheduler.Status == SaveStatus.Failing)
+            {
+                _ = ui.BeginInvoke(() =>
+                    _window?.Announce(
+                        slot.Localization.Current.Format(L.SaveFailT),
+                        AnnouncementUrgency.Assertive
+                    )
+                );
+            }
+        };
         _persistence = Task.Run(() => scheduler.RunAsync(_stop.Token));
         _engine = services.GetRequiredService<EngineThread>();
         _engine.Start(services.GetRequiredService<EngineHost>(), _stop.Token);

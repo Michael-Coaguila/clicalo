@@ -186,6 +186,154 @@
       "notes": "Aviso del esqueleto andante (M2) cuando un atajo pide abrir una web o una app, pegar texto o un comando de sistema, cuyos adaptadores llegan en M3. Texto nuevo, pendiente de ratificar en §6.1 del catálogo.",
       "after": "trayHidden",
       "text": { "es": "Esta acción aún no está disponible", "en": "This action is not available yet" }
+    },
+    "processTaken": {
+      "notes": "Un proceso ya abre otro perfil al vincularlo (ATJ-007). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "actionUnavailable",
+      "text": { "es": "{process} ya abre «{profile}». ¿Pasarlo a este perfil?", "en": "{process} already opens “{profile}”. Move it to this profile?" }
+    },
+    "undoEditsIn": {
+      "notes": "Etiqueta de deshacer de los cambios agrupados de un atajo (EDI-021). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "processTaken",
+      "text": { "es": "Deshacer cambios en {name}", "en": "Undo changes to {name}" }
+    },
+    "stepDeleted": {
+      "notes": "Etiqueta de deshacer al eliminar un paso de una macro (DeleteMacroStep). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "undoEditsIn",
+      "text": { "es": "Paso eliminado", "en": "Step deleted" }
+    },
+    "itemGone": {
+      "notes": "Un atajo o perfil que ya no existe (library y command not_found). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "stepDeleted",
+      "text": { "es": "Ya no existe: puede que se haya eliminado.", "en": "It no longer exists: it may have been deleted." }
+    },
+    "generalFixed": {
+      "notes": "General no se puede eliminar ni vincular a una app (library.general.*). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "itemGone",
+      "text": { "es": "General no se puede eliminar ni vincular a una app.", "en": "General can’t be deleted or linked to an app." }
+    },
+    "settingInvalid": {
+      "notes": "Un valor fuera de rango o de las opciones de un ajuste (SetSetting). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "generalFixed",
+      "text": { "es": "Valor no válido para «{setting}»", "en": "Invalid value for “{setting}”" }
+    },
+    "backupDamaged": {
+      "notes": "Una copia dañada que no se restauró (RestoreBackup). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "settingInvalid",
+      "text": { "es": "Esta copia está dañada y no se restauró.", "en": "This backup is damaged and wasn’t restored." }
+    },
+    "handleLock": {
+      "notes": "Etiqueta del ajuste dock.handleLocked (PES-003). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "backupDamaged",
+      "text": { "es": "Bloquear posición", "en": "Lock position" }
+    },
+    "engineFault": {
+      "notes": "El motor falló y soltó todo (NFR-005). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "handleLock",
+      "text": { "es": "Algo falló; se soltaron las teclas", "en": "Something failed; the keys were released" }
+    },
+    "incompleteTap": {
+      "notes": "Toque en un atajo incompleto en el panel (EJE-015). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "engineFault",
+      "text": { "es": "Este atajo está incompleto · Toca ✏ para completarlo", "en": "This shortcut is incomplete · Tap ✏ to complete it" }
+    },
+    "elevatedRefused": {
+      "notes": "Un toque no enviado porque la app de delante es de administrador (EJE-013). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "incompleteTap",
+      "text": { "es": "No se envió: {app} es de administrador", "en": "Not sent: {app} runs as administrator" }
+    },
+    "keyMissing": {
+      "notes": "Una tecla que no existe en la distribución de teclado de la app (EC-EJE-10). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "elevatedRefused",
+      "text": { "es": "{key} no está en la distribución de teclado de {app}", "en": "{key} is not on the keyboard layout of {app}" }
+    },
+    "releasedOnLock": {
+      "notes": "Se soltó todo al bloquear o suspender el equipo (SEG-006). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "keyMissing",
+      "text": { "es": "Se soltaron las teclas al bloquear o suspender el equipo", "en": "Keys were released when the computer was locked or suspended" }
+    },
+    "macroRunning": {
+      "notes": "Una macro en curso (EJE-010). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "releasedOnLock",
+      "text": { "es": "Ejecutando {name} · paso {index} de {total}", "en": "Running {name} · step {index} of {total}" }
+    },
+    "macroCancelled": {
+      "notes": "Una macro cancelada con un segundo toque (EJE-010). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "macroRunning",
+      "text": { "es": "Macro cancelada: {name}", "en": "Macro cancelled: {name}" }
+    },
+    "tapSent": {
+      "notes": "Un Pulsar enviado a la app de delante (EJE-003). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "macroCancelled",
+      "text": { "es": "{keys} enviado a {app}", "en": "{keys} sent to {app}" }
+    },
+    "saveFailT": {
+      "notes": "Título del aviso visible cuando guardar sigue fallando (DAT-002). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "tapSent",
+      "text": { "es": "No se guardaron los cambios", "en": "Changes not saved" }
+    },
+    "saveFailD": {
+      "notes": "Detalle del aviso de guardado fallido (DAT-002, Timings.Persistence.WriteRetryInterval). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "saveFailT",
+      "text": { "es": "Se reintentará cada 30 s. Tus cambios siguen aquí.", "en": "Retrying every 30 s. Your changes are still here." }
+    },
+    "saveReadOnly": {
+      "notes": "Datos de una versión más nueva: solo lectura (blueprint §6.5). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "saveFailD",
+      "text": { "es": "Solo lectura: tus datos son de una versión más nueva de Clícalo", "en": "Read-only: your data comes from a newer version of Clícalo" }
+    },
+    "dataUnreadable": {
+      "notes": "Datos ilegibles apartados en cuarentena (DAT-003). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "saveReadOnly",
+      "text": { "es": "No se pudieron leer tus datos. Se apartaron sin borrarlos; acepta el panel nuevo para guardarlo.", "en": "Your data could not be read. It was set aside, not deleted; accept the new panel to save it." }
+    },
+    "textUnavailable": {
+      "notes": "Un texto cifrado que este equipo no puede leer (COP-005). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "dataUnreadable",
+      "text": { "es": "Texto no disponible · vuelve a escribirlo", "en": "Text not available · type it again" }
+    },
+    "schemaNewer": {
+      "notes": "Una copia o importación de una versión mayor más nueva (COP-005). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "textUnavailable",
+      "text": { "es": "Esta copia es de una versión más nueva y no se aplica", "en": "This copy is from a newer version and is not applied" }
+    },
+    "importInvalid": {
+      "notes": "Un archivo que no es una copia válida (LOG-006). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "schemaNewer",
+      "text": { "es": "El archivo no es una copia válida de Clícalo", "en": "The file is not a valid Clícalo copy" }
+    },
+    "importTooLarge": {
+      "notes": "Un archivo por encima de Timings.Import.ShareMaxBytes (LOG-006). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "importInvalid",
+      "text": { "es": "El archivo es demasiado grande para importarlo", "en": "The file is too large to import" }
+    },
+    "sharedTextsExcluded": {
+      "notes": "Textos excluidos al compartir un perfil (DAT-007). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "importTooLarge",
+      "plural": {
+        "es": { "one": "Se excluyó {count} texto", "other": "Se excluyeron {count} textos" },
+        "en": { "one": "{count} text was left out", "other": "{count} texts were left out" }
+      }
+    },
+    "migFailT": {
+      "notes": "Título del aviso de migración fallida (MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "sharedTextsExcluded",
+      "text": { "es": "No se pudo importar tu configuración anterior", "en": "Your previous settings could not be imported" }
+    },
+    "migFailD": {
+      "notes": "Detalle del aviso de migración fallida (MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "migFailT",
+      "text": { "es": "Empezamos con los datos de ejemplo. Tu archivo original está a salvo.", "en": "We started with the example data. Your original file is safe." }
+    },
+    "migRetry": {
+      "notes": "Botón del aviso de migración fallida (MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "migFailD",
+      "text": { "es": "Reintentar migración", "en": "Retry migration" }
+    },
+    "migReportT": {
+      "notes": "Título del informe de la importación v1 (BIE-002, MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "migRetry",
+      "text": { "es": "Informe de la importación", "en": "Import report" }
     }
   }
 }

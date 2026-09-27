@@ -28,7 +28,7 @@ internal static class CommandFailures
 
     public static Failure NotBlankDraft() => Warning(NotBlankDraftCode, L.Incomplete);
 
-    public static Failure ShortcutNotFound() => Warning(ShortcutNotFoundCode, L.PickOne);
+    public static Failure ShortcutNotFound() => Warning(ShortcutNotFoundCode, L.ItemGone);
 
     public static Failure NotInAlwaysVisible() => Warning(NotInAlwaysVisibleCode, L.PinAll2);
 
@@ -41,17 +41,17 @@ internal static class CommandFailures
     public static Failure UnknownSetting() => Warning(UnknownSettingCode, L.Saved);
 
     public static Failure SettingType(MessageKey label) =>
-        Warning(SettingTypeCode, new Message(label));
+        Warning(SettingTypeCode, L.SettingInvalid(new Message(label)));
 
     public static Failure SettingRange(MessageKey label) =>
-        Warning(SettingRangeCode, new Message(label));
+        Warning(SettingRangeCode, L.SettingInvalid(new Message(label)));
 
     public static Failure MonitorEmpty() => Warning(MonitorEmptyCode, L.Move);
 
     public static Failure InvalidBackup() =>
         new(
             InvalidBackupCode,
-            L.Retry,
+            L.BackupDamaged,
             FailureSeverity.Warning,
             FailureRecovery.RestoreBackup,
             FailureAnnouncement.Polite

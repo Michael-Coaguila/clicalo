@@ -3,6 +3,7 @@ using Clicalo.Domain.Execution;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.Tests.Execution.Support;
 
 namespace Clicalo.Domain.Tests.Execution;
@@ -108,6 +109,17 @@ public sealed class TerminalEventsTests
         engine.Effects.OfType<EngineEffect.TypeText>().ShouldBeEmpty();
         engine.Receiver.IsEmpty.ShouldBeTrue();
     }
+
+    [Theory]
+    [Trait("Req", "SEG-006")]
+    [InlineData(TerminalReason.Lock)]
+    [InlineData(TerminalReason.Suspend)]
+    public void Locking_or_suspending_says_why_the_keys_were_released(TerminalReason reason) =>
+        Busy()
+            .Apply(new EngineEvent.Terminal(reason))
+            .OfType<EngineEffect.Notice>()
+            .ShouldHaveSingleItem()
+            .Text.ShouldBe(L.ReleasedOnLock);
 
     [Fact]
     [Trait("Req", "SEG-006")]

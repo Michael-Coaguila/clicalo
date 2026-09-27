@@ -37,7 +37,7 @@ internal static class KeyPlanner
     {
         if (!KeyResolver.TryResolve(strokes, origin.Injection, step.Layout, out var keys))
         {
-            step.Notice(EngineNotices.Incomplete, NoticeUrgency.Assertive);
+            step.Notice(EngineNotices.NotInLayout, NoticeUrgency.Assertive);
             return false;
         }
 
@@ -180,7 +180,7 @@ internal static class KeyPlanner
         var strokes = StickyPlanner.Compose(step, chord.Strokes);
         if (!KeyResolver.TryResolve(strokes, origin.Injection, step.Layout, out var keys))
         {
-            step.Notice(EngineNotices.Incomplete, NoticeUrgency.Assertive);
+            step.Notice(EngineNotices.NotInLayout, NoticeUrgency.Assertive);
             return;
         }
 

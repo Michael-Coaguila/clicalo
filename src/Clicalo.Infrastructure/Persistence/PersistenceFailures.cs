@@ -7,10 +7,6 @@ namespace Clicalo.Infrastructure.Persistence;
 /// The expected failures of persistence, backups and imports (blueprint §6.5, §6.8, DAT-002, COP-005, LOG-006). The
 /// code is stable and is what the log and the tests see; the user sees the message.
 /// </summary>
-/// <remarks>
-/// The specific texts («Changes not saved · retrying», «This copy is from a newer version»…) are requested from the
-/// app package (M2-ownership.md, rule 5); until they exist every failure shows the generic <c>tBug</c> text.
-/// </remarks>
 internal static class PersistenceFailures
 {
     /// <summary>Another process kept the file locked through every retry (S11).</summary>
@@ -57,41 +53,50 @@ internal static class PersistenceFailures
     public static Failure Io(IoFailureKind kind) =>
         kind switch
         {
-            IoFailureKind.Locked => Critical(LockedCode, FailureRecovery.Retry),
-            IoFailureKind.Denied => Critical(DeniedCode, FailureRecovery.Retry),
-            IoFailureKind.DiskFull => Critical(DiskFullCode, FailureRecovery.Retry),
-            _ => Critical(IoCode, FailureRecovery.Retry),
+            IoFailureKind.Locked => Critical(LockedCode, L.SaveFailT, FailureRecovery.Retry),
+            IoFailureKind.Denied => Critical(DeniedCode, L.SaveFailT, FailureRecovery.Retry),
+            IoFailureKind.DiskFull => Critical(DiskFullCode, L.SaveFailT, FailureRecovery.Retry),
+            _ => Critical(IoCode, L.SaveFailT, FailureRecovery.Retry),
         };
 
     /// <summary>Saving is disabled.</summary>
     public static Failure ReadOnly() =>
         new(
             ReadOnlyCode,
-            Generic,
+            L.SaveReadOnly,
             FailureSeverity.Warning,
             FailureRecovery.RestoreBackup,
             FailureAnnouncement.Polite
         );
 
     /// <summary>The document failed its read-back validation and was not written.</summary>
-    public static Failure Invalid() => Critical(InvalidCode, FailureRecovery.None);
+    public static Failure Invalid() => Critical(InvalidCode, L.SaveFailT, FailureRecovery.None);
 
     /// <summary>A file could not be quarantined.</summary>
-    public static Failure Quarantine() => Critical(QuarantineCode, FailureRecovery.Retry);
+    public static Failure Quarantine() =>
+        Critical(QuarantineCode, L.DataUnreadable, FailureRecovery.Retry);
 
     /// <summary>A warning with <paramref name="code"/> and no automatic recovery.</summary>
     /// <param name="code">One of the codes of this class.</param>
     public static Failure Warning(string code) =>
         new(
             code,
-            Generic,
+            MessageOf(code),
             FailureSeverity.Warning,
             FailureRecovery.None,
             FailureAnnouncement.Polite
         );
 
-    private static Message Generic => L.TBug;
+    private static Message MessageOf(string code) =>
+        code switch
+        {
+            SchemaNewerCode => L.SchemaNewer,
+            ImportTooLargeCode => L.ImportTooLarge,
+            ImportUnreadableCode or ImportInvalidCode => L.ImportInvalid,
+            BackupUnreadableCode or BackupNotFoundCode => L.BackupDamaged,
+            _ => L.SaveFailT,
+        };
 
-    private static Failure Critical(string code, FailureRecovery recovery) =>
-        new(code, Generic, FailureSeverity.Critical, recovery, FailureAnnouncement.Assertive);
+    private static Failure Critical(string code, Message message, FailureRecovery recovery) =>
+        new(code, message, FailureSeverity.Critical, recovery, FailureAnnouncement.Assertive);
 }
