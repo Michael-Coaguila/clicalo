@@ -31,7 +31,7 @@ Qué es vinculante del paquete está resumido en
 | [3](catalog.md#3-requisitos-no-funcionales) | Requisitos no funcionales (NFR-001 a NFR-020), con la tabla de tiempos y umbrales |
 | [4](catalog.md#4-casos-límite-y-comportamiento-esperado) | Casos límite (EC-…) |
 | [5](catalog.md#5-discrepancias-resueltas) | Discrepancias entre fuentes y cómo se resolvieron (DIS-…) |
-| [6](catalog.md#6-preguntas-abiertas) | Preguntas abiertas con su propuesta por defecto (PQ-01 a PQ-51) |
+| [6](catalog.md#6-preguntas-abiertas) | Preguntas abiertas con su propuesta por defecto (PQ-01 a PQ-51), propuestas pendientes de ratificar (6.1) y decisiones del usuario (6.2) |
 | [7](catalog.md#7-esquema-v1-exacto-macro-quick-access-y-conversión) | Esquema exacto de Macro Quick Access (v1) y su conversión |
 | [8](catalog.md#8-lecciones-de-la-app-antigua-y-del-prototipo) | Lecciones de la app antigua y del prototipo (L-…) |
 | [9](catalog.md#9-textos-correcciones-y-claves-nuevas-necesarias) | Correcciones de textos y claves nuevas necesarias |
@@ -81,6 +81,12 @@ agente.** Si un requisito parece inviable o inseguro:
 3. La propuesta se registra en la sección de preguntas abiertas del catálogo y en
    [§1.4 del plano](../architecture/blueprint.md#14-propuestas-de-producto-pendientes-de-ratificar-por-el-usuario).
 4. **Solo el usuario la ratifica.** Mientras no lo haga, el requisito sigue vigente tal cual.
+
+Cuando el usuario toma o ratifica una decisión de producto, se registra en la tabla de
+[§6.2 del catálogo](catalog.md#62-decisiones-del-usuario) (identificador, fecha, decisión, motivo, requisitos y
+registro), y cada requisito afectado se reescribe y termina con «**Modificado por la decisión Dn del usuario del
+AAAA-MM-DD:**» y el motivo, o «Retirado por la decisión…». Si la decisión cambia un formato persistido, un contrato o
+un límite de confianza, lleva además su ADR (AGENTS.md, regla 5) y una línea en el `CHANGELOG.md`.
 
 Los textos de producto nuevos o corregidos entran por un PR de i18n con las dos lenguas
 (`strings.es.json` y `strings.en.json`).

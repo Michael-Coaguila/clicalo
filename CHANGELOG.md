@@ -137,3 +137,18 @@ progress).
   `SendInput` p95 of 50 ms, the manual `lab.yml` workflow, the tray test with the real Notepad in CI, a test that
   rejects double-encoded text in every text file, and reduced counterexamples of the engine properties kept as
   regressions.
+- Starter kit (user decision D2, ADR-0021): `data/content/starter.json` with its schema offers «Basics» (the
+  universal shortcuts of General and Always visible) marked by default and the nine templates unmarked;
+  `StarterLibrary` and the `FirstDocument` use case build the first document from a selection (nothing marked starts
+  empty, «Skip» applies the default), and `StarterContentFiles` loads and validates the kit, the seed and the
+  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD`.
+
+### Changed
+
+- A first start installs the default starter kit («Basics» only) with new ids for every shortcut, instead of the raw
+  seed with its catalog ids; the `content` folder next to `Clicalo.exe` now also holds `starter.json` and the
+  templates. `Infrastructure.Content.SeedDocument` is replaced by `Infrastructure.Catalogs`.
+- Templates bind several processes (PQ-45 decided): Browser binds Chrome, Edge, Firefox, Brave and Opera and Mail
+  binds classic Outlook and the new Outlook (`olk.exe`); templates install the variant of the programs language. After
+  checking each program's official documentation, Browser reloads with Ctrl+R, Mail creates with Ctrl+N and sends with
+  Ctrl+Enter, and «Video call» is renamed «Zoom», since its shortcuts are Zoom's.
