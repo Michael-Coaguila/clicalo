@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Session;
@@ -35,6 +36,9 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
     /// </summary>
     private static readonly TimeSpan PanelLatencyBudget = TimeSpan.FromMilliseconds(50);
 
+    /// <summary>Taps slower than this carry the UI thread's timeline in the measurement report.</summary>
+    private static readonly TimeSpan TimelineThreshold = TimeSpan.FromMilliseconds(5);
+
     [DesktopFact]
     [Trait("Req", "TAC-002")]
     [Trait("Req", "EJE-003")]
@@ -48,21 +52,27 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
             SyntheticPointerKind.Mouse,
         };
         var latencies = new List<(SyntheticPointerKind Kind, TimeSpan Latency)>();
+        var segments = new List<TapSegments>();
         var violationsBefore = fixture.Lab.Guard.Violations;
         for (var tap = 0; tap < Taps; tap++)
         {
             var cursor = await fixture.PrepareAsync();
             var at = fixture.TileCenter(PanelTestData.Copy);
+            fixture.Timeline.Clear();
+            var before = RuntimeCounters.Read();
+            var tapStarted = Stopwatch.GetTimestamp();
             using (var pointer = PanelDesktopFixture.CreatePointer(kinds[tap % kinds.Length]))
             {
                 pointer.Tap(at.X, at.Y);
             }
 
+            var tapReturned = Stopwatch.GetTimestamp();
             await PanelDesktopFixture.WaitUntilAsync(
                 () => fixture.Engine.Count > 0,
                 Describe(tap, "the tap never reached the engine")
             );
-            var (posted, postedAt) = fixture.Engine.Posted[0];
+            var after = RuntimeCounters.Read();
+            var (posted, postedAt, postedTimestamp) = fixture.Engine.Posted[0];
             var activation = posted.ShouldBeOfType<EngineEvent.Activation>(
                 Describe(tap, "an activation")
             );
@@ -71,7 +81,31 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
 
             // From Windows recording the lift (the frame's performance counter is the tap's timestamp) to the mailbox,
             // as the gesture tests of M1 measure it: the synthetic gesture's own frames are not the panel's time.
-            latencies.Add((kinds[tap % kinds.Length], postedAt - activation.Request.At));
+            var latency = postedAt - activation.Request.At;
+            latencies.Add((kinds[tap % kinds.Length], latency));
+            var (upTimestamp, upClock) = fixture.Timeline.LastUp;
+            var recordedTimestamp =
+                upTimestamp
+                - (long)((upClock - activation.Request.At).TotalSeconds * Stopwatch.Frequency);
+            segments.Add(
+                new TapSegments(
+                    tap + 1,
+                    kinds[tap % kinds.Length].ToString(),
+                    latency.TotalMilliseconds,
+                    (upClock - activation.Request.At).TotalMilliseconds,
+                    Stopwatch.GetElapsedTime(upTimestamp, postedTimestamp).TotalMilliseconds,
+                    Stopwatch.GetElapsedTime(tapStarted, tapReturned).TotalMilliseconds,
+                    Stopwatch.GetElapsedTime(recordedTimestamp, tapReturned).TotalMilliseconds,
+                    after.Minus(before),
+                    fixture.Timeline.Busy(recordedTimestamp, upTimestamp),
+                    latency > TimelineThreshold
+                        ? fixture.Timeline.Describe(
+                            recordedTimestamp - Stopwatch.Frequency / 20,
+                            postedTimestamp
+                        )
+                        : []
+                )
+            );
             fixture.Probe.IsForeground.ShouldBeTrue(
                 Describe(tap, "the probe keeps the foreground")
             );
@@ -86,6 +120,7 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
                 .ShouldBeEmpty(Describe(tap, "the probe never loses the keyboard focus"));
         }
 
+        TapSegments.Record(segments);
         (fixture.Lab.Guard.Violations - violationsBefore).ShouldBe(0, "reg01.violations");
         fixture.Lab.Arbiter.Violations.ShouldBeEmpty();
         var all = latencies.Select(static sample => sample.Latency).ToList();

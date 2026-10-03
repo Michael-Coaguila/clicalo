@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   # One measurement at a time; a second request waits instead of cancelling the first.
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -53,9 +53,33 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: cl desk
+      - name: cl build
         shell: pwsh
-        run: .\cl.cmd desk
+        run: .\cl.cmd build
+
+      - name: Panel latency (EXPERIMENT m2/stab-latency, not for main)
+        shell: pwsh
+        env:
+          CLICALO_DESKTOP_TESTS: "1"
+        run: |
+          $exe = "artifacts/bin/Clicalo.Windowing.IntegrationTests/debug/Clicalo.Windowing.IntegrationTests.exe"
+          $method = "Clicalo.Windowing.IntegrationTests.MinimalPanel.PanelDesktopTests.Taps_of_finger_pen_and_mouse_reach_the_engine_and_never_take_the_foreground"
+          $failed = 0
+          for ($i = 1; $i -le 6; $i++) {
+            & $exe -method $method -trx "artifacts/cl/test-results/run-$i.trx" -noColor
+            if ($LASTEXITCODE -ne 0) { $failed++ }
+          }
+          Get-ChildItem artifacts/cl/test-results -Filter "panel-tap-latency-*.json" | ForEach-Object {
+            $taps = Get-Content $_.FullName -Raw | ConvertFrom-Json
+            $sorted = @($taps | ForEach-Object { $_.TotalMs } | Sort-Object)
+            $p95 = $sorted[[math]::Ceiling(0.95 * $sorted.Count) - 1]
+            "== $($_.Name): p95 $([math]::Round($p95, 2)) ms, max $([math]::Round($sorted[-1], 2)) ms"
+            $taps | ForEach-Object {
+              "tap $($_.Tap) $($_.Device): total $([math]::Round($_.TotalMs,2)) queue $([math]::Round($_.QueueMs,2)) handling $([math]::Round($_.HandlingMs,2)) gesture $([math]::Round($_.GestureMs,1)) rec->ret $([math]::Round($_.RecordedToReturnMs,2)); $($_.Runtime); busy: $($_.UiBusy)"
+              $_.Timeline | ForEach-Object { "    $_" }
+            }
+          }
+          "failed runs: $failed of 6"
 
       - name: Upload cl report and test results
         # Always: a passing run is evidence too (the TRX shows that no desktop test was skipped).

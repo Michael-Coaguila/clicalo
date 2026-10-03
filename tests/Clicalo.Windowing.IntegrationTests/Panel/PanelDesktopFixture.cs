@@ -57,6 +57,7 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
     private PanelViewModel? _viewModel;
     private PanelWindow? _window;
     private PanelVisibilityCoordinator? _visibility;
+    private PanelTapTimeline? _timeline;
 
     /// <summary>The engine: every event the panel and the tray post.</summary>
     internal PanelEngineInbox Engine { get; } = new();
@@ -87,6 +88,9 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
 
     /// <summary>Shows and hides the panel as the tray does (WPF thread).</summary>
     public PanelVisibilityCoordinator Visibility => Require(_visibility);
+
+    /// <summary>What the panel's UI thread did around each tap (measurement only).</summary>
+    internal PanelTapTimeline Timeline => Require(_timeline);
 
     /// <summary>The probe as a window token.</summary>
     public WindowToken ProbeWindow => new(Probe.Window);
@@ -157,6 +161,7 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
 
         // A gesture sent before the panel is composed falls through to the window below (FirstFrame).
         await firstFrame.WaitAsync(EventTimeout, TestContext.Current.CancellationToken);
+        _timeline = WpfThread.Invoke(() => PanelTapTimeline.Attach(_window!));
     }
 
     /// <summary>
@@ -222,6 +227,11 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
     public async ValueTask DisposeAsync()
     {
         _tray?.Dispose();
+        if (_timeline is not null)
+        {
+            WpfThread.Invoke(_timeline.Dispose);
+        }
+
         if (_window is not null)
         {
             WpfThread.Invoke(_window.Close);
