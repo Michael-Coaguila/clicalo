@@ -1,20 +1,20 @@
 {
   "$schema": "../../schemas/template.schema.json",
   "id": "outlook",
-  "version": 1,
+  "version": 2,
   "authors": ["Michael Coaguila"],
   "appsLanguages": ["es", "en"],
   "name": { "es": "Correo", "en": "Mail" },
   "icon": "mail",
   "category": "web",
-  "processes": ["outlook.exe"],
+  "processes": ["outlook.exe", "olk.exe"],
   "shortcuts": [
     {
       "id": "o1",
       "name": { "es": "Nuevo correo", "en": "New mail" },
       "icon": "edit_square",
       "category": "file",
-      "action": { "type": "tap", "keys": ["ctrl", "u"], "variants": { "en": ["ctrl", "shift", "m"] } }
+      "action": { "type": "tap", "keys": ["ctrl", "n"] }
     },
     {
       "id": "o2",
@@ -42,7 +42,7 @@
       "name": { "es": "Enviar", "en": "Send" },
       "icon": "send",
       "category": "file",
-      "action": { "type": "tap", "keys": ["alt", "s"] }
+      "action": { "type": "tap", "keys": ["ctrl", "enter"] }
     }
   ]
 }

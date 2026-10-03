@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/starter.schema.json",
+  "title": "Clícalo starter kit",
+  "description": "The choices of the welcome step «Which apps do you use most?» and of a first start without the welcome (BIE-006, CAT-003; user decision D2 of 2026-10-03). The options are shown in this order. «basics» fills the Always visible row and General with the content of seed.json; each template option installs templates/<id>.json as a profile bound to its processes. General and Always visible always exist, so an empty selection starts empty, and skipping the welcome applies the options marked «selected».",
+  "type": "object",
+  "required": ["version", "options"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "version": { "description": "Increases with every change of the kit.", "type": "integer", "minimum": 1 },
+    "options": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/option" }
+    }
+  },
+  "$defs": {
+    "option": {
+      "type": "object",
+      "required": ["id", "kind", "selected"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/itemId" },
+        "kind": { "enum": ["basics", "template"] },
+        "selected": { "description": "Whether the option is marked by default (and applied when the welcome is skipped).", "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "basics" } } },
+          "then": {
+            "required": ["icon", "labelKey", "descriptionKey"],
+            "additionalProperties": false,
+            "properties": {
+              "id": true,
+              "kind": true,
+              "selected": true,
+              "icon": { "$ref": "common.schema.json#/$defs/iconId" },
+              "labelKey": { "$ref": "common.schema.json#/$defs/messageKey" },
+              "descriptionKey": { "$ref": "common.schema.json#/$defs/messageKey" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "template" } } },
+          "then": {
+            "description": "The id is the template file name; its name, icon and processes come from the template.",
+            "additionalProperties": false,
+            "properties": { "id": true, "kind": true, "selected": true }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -10,8 +10,8 @@ public sealed class I18nReferenceTests
 {
     /// <summary>
     /// Keys the catalogs need that the handoff string files do not have yet; the i18n package adds them
-    /// (Spanish / English): key groups «Modificadores / Modifiers» and «F1–F12», and the ten colour categories
-    /// (PQ-50).
+    /// (Spanish / English): key groups «Modificadores / Modifiers» and «F1–F12», the ten colour categories
+    /// (PQ-50), and the «Básicos / Basics» option of the starter kit with its description (user decision D2).
     /// </summary>
     private static readonly string[] NewKeys =
     [
@@ -27,6 +27,8 @@ public sealed class I18nReferenceTests
         "catFmt",
         "catWeb",
         "catText",
+        "kitBasics",
+        "kitBasicsD",
     ];
 
     [Fact]
@@ -88,6 +90,14 @@ public sealed class I18nReferenceTests
             ),
             .. From(CatalogFiles.Catalog("sizes.json"), "sizes", "labelKey"),
             .. From(CatalogFiles.ContentFile("library.json"), "sections", "labelKey"),
+            .. CatalogFiles.LoadObject(CatalogFiles.ContentFile("starter.json"))["options"]!
+                .AsArray()
+                .Where(option => option!["labelKey"] is not null)
+                .SelectMany(option =>
+                    new[] { "labelKey", "descriptionKey" }.Select(p =>
+                        option![p]!.GetValue<string>()
+                    )
+                ),
         ];
     }
 }
