@@ -30,6 +30,10 @@ namespace Clicalo.TestKit.Windows.Input;
 /// </list>
 /// A finger waits <see cref="PenTouchSettle.Window"/> after a pen left the detection range, since Windows drops a touch
 /// that comes sooner (pen and touch arbitration).
+/// The check cannot see whether the window under the point is on screen yet: Windows routes a contact to what the
+/// desktop window manager composed, so a contact sent right after a window was shown passes the check and falls through
+/// to the window below, whatever its process. Fixtures wait for <see cref="Rendering.FirstFrame"/> before the first
+/// gesture on a window they show. Every frame is traced for failure messages (<see cref="PointerFrameTrace"/>).
 /// Coordinates are physical screen pixels: every gesture runs its thread per-monitor DPI aware. The mouse gestures put
 /// the cursor back where it was, and mouse events carry <see cref="ExtraInfoMarker"/> in <c>dwExtraInfo</c>. Desktop
 /// tests run it only with <c>CLICALO_DESKTOP_TESTS=1</c>; the hosted CI runners run them systematically.

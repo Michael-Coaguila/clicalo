@@ -83,6 +83,7 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
         var (work, dpi) = NativeSurface.PrimaryWorkArea();
         var scale = dpi / 96.0;
         TestSurface[] surfaces = [_panel, _dock, _side, _bubble];
+        var frames = new List<Task>();
         WpfThread.Invoke(() =>
         {
             var totalWidth = surfaces.Sum(surface => surface.Width) + (Gap * (surfaces.Length - 1));
@@ -98,6 +99,7 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
                         (int)Math.Round(surface.Height * scale)
                     )
                 );
+                frames.Add(FirstFrame.Watch(surface));
                 surface.ShowPassive();
                 Note(
                     string.Create(
@@ -110,7 +112,10 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
 
             lab.Integrity.Start();
         });
-        Note("fixture ready");
+
+        // A gesture sent before the surfaces are composed falls through to the window below (FirstFrame).
+        await Task.WhenAll(frames).WaitAsync(EventTimeout, TestContext.Current.CancellationToken);
+        Note("first frames composed; fixture ready");
     }
 
     /// <summary>
