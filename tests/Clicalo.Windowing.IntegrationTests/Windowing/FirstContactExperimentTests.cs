@@ -7,6 +7,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.TestKit;
 using Clicalo.TestKit.Windows.Input;
+using Clicalo.TestKit.Windows.Probe;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.Windowing.IntegrationTests.Automation;
 using Clicalo.Windowing.IntegrationTests.Desktop;
@@ -15,110 +16,107 @@ using Clicalo.Windowing.IntegrationTests.Windowing.Support;
 namespace Clicalo.Windowing.IntegrationTests.Windowing;
 
 /// <summary>
-/// TEMPORARY diagnostic (m2/fix-desk): where does the first contact of a synthetic finger land? A catcher surface of this
-/// process covers the primary monitor, so a contact that misses its target lands on it and nowhere else. Only on the CI
-/// runner. Records outcomes; asserts nothing.
+/// TEMPORARY diagnostic (m2/fix-desk): how long after a surface is shown does Windows route a touch to it instead of
+/// the window below? The window below is InputProbe (in front, allowed), so a touch that falls through lands on it and
+/// nowhere else; every trial checks that first. Only on the CI runner. Records outcomes; asserts nothing.
 /// </summary>
 [Collection(DesktopCollectionDefinition.Name)]
 [Trait("Requires", "Desktop")]
 public sealed class FirstContactExperimentTests
 {
+    private const uint DwmCloaked = 14;
+
     private static readonly TimeSpan Wait = TimeSpan.FromMilliseconds(1500);
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly int[] Delays = [0, 15, 30, 45, 60, 90, 120, 200];
 
     [DesktopFact]
-    public async Task Where_first_contacts_land()
+    public async Task How_soon_a_shown_surface_receives_touch()
     {
         Assert.SkipUnless(SystemContrastSwitch.IsAllowed, "Diagnostic: CI runner only.");
-        var origin = Stopwatch.GetTimestamp();
+        var cancellationToken = TestContext.Current.CancellationToken;
         var results = new List<Dictionary<string, string>>();
-        using var foreground = ForegroundLog.Start();
+        await using var probe = await InputProbeSession.StartAsync(cancellationToken);
+        await probe.EnsureForegroundAsync(TimeSpan.FromSeconds(5), cancellationToken);
         using var lab = SurfaceLab.Create();
-        var (monitor, center) = PrimaryMonitor();
-        var catcher = lab.CreateSurface(SurfaceKind.Panel, 90, 100, 100);
-        var target = lab.CreateSurface(SurfaceKind.Bubble, 90, 64, 64);
-        WpfThread.Invoke(() =>
-        {
-            catcher.MovePassive(monitor);
-            catcher.ShowPassive();
-            target.MovePassive(new PhysicalRect(center.X - 40, center.Y - 40, 80, 80));
-            target.ShowPassive();
-        });
-        await Task.Delay(1000, TestContext.Current.CancellationToken);
+        var bounds = NativeSurface.Bounds(probe.Window);
+        var spot = new PhysicalRect(bounds.CenterX - 32, bounds.CenterY - 32, 64, 64);
+        using var finger = new SyntheticPointer(
+            SyntheticPointerKind.Finger,
+            [Environment.ProcessId, probe.ProcessId]
+        );
 
-        // E: when does a created device appear in GetPointerDevices (no injection)?
-        for (var i = 0; i < 5; i++)
-        {
-            results.Add(DeviceArrival(i));
-            await Task.Delay(200, TestContext.Current.CancellationToken);
-        }
+        // Warm the device on the probe itself (in front, allowed).
+        finger.Tap(bounds.CenterX, bounds.Top + 60);
+        await Task.Delay(500, cancellationToken);
 
-        // A: a fresh device for every tap on a long-lived window.
-        for (var i = 0; i < 25; i++)
+        var instance = 300;
+        for (var repeat = 0; repeat < 5; repeat++)
         {
-            using var finger = new SyntheticPointer(
-                SyntheticPointerKind.Finger,
-                [Environment.ProcessId]
-            );
-            results.Add(await TapAsync("A-fresh-device", i, finger, target, catcher, center));
-            await Task.Delay(250, TestContext.Current.CancellationToken);
-        }
-
-        // B: one device, warmed up, on the same long-lived window.
-        using (
-            var warmed = new SyntheticPointer(SyntheticPointerKind.Finger, [Environment.ProcessId])
-        )
-        {
-            for (var i = 0; i < 25; i++)
+            foreach (var delay in Delays)
             {
-                results.Add(await TapAsync("B-same-device", i, warmed, target, catcher, center));
-                await Task.Delay(250, TestContext.Current.CancellationToken);
-            }
-
-            // C: a window shown right before the tap, with the warmed device.
-            for (var i = 0; i < 15; i++)
-            {
-                var fresh = ShowFresh(lab, 100 + i, center, i);
                 results.Add(
-                    await TapAsync("C-fresh-window", i, warmed, fresh, catcher, CenterOf(fresh))
+                    await TrialAsync(
+                        "F-delay-" + delay.ToString("000", CultureInfo.InvariantCulture),
+                        lab,
+                        probe,
+                        finger,
+                        spot,
+                        instance++,
+                        async (_, shownAt) =>
+                        {
+                            var remaining =
+                                TimeSpan.FromMilliseconds(delay)
+                                - Stopwatch.GetElapsedTime(shownAt);
+                            if (remaining > TimeSpan.Zero)
+                            {
+                                await Task.Delay(remaining, cancellationToken);
+                            }
+                        }
+                    )
                 );
-                lab.Close(fresh);
-                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
         }
 
-        // D: a window shown right before the tap and a fresh device.
-        for (var i = 0; i < 15; i++)
+        for (var repeat = 0; repeat < 20; repeat++)
         {
-            var fresh = ShowFresh(lab, 200 + i, center, i);
-            using var finger = new SyntheticPointer(
-                SyntheticPointerKind.Finger,
-                [Environment.ProcessId]
-            );
             results.Add(
-                await TapAsync(
-                    "D-fresh-window-fresh-device",
-                    i,
+                await TrialAsync(
+                    "G-rendered-then-dwmflush",
+                    lab,
+                    probe,
                     finger,
-                    fresh,
-                    catcher,
-                    CenterOf(fresh)
+                    spot,
+                    instance++,
+                    async (rendered, _) =>
+                    {
+                        await rendered.WaitAsync(Wait, cancellationToken);
+                        _ = DwmFlush();
+                    }
                 )
             );
-            lab.Close(fresh);
-            await Task.Delay(250, TestContext.Current.CancellationToken);
         }
 
-        var trace = new List<string>();
-        trace.AddRange(PointerFrameTrace.Since(origin));
-        trace.AddRange(foreground.Relative(origin));
-        trace.AddRange(catcher.PointerLogSince(origin));
-        trace.AddRange(target.PointerLogSince(origin));
+        for (var repeat = 0; repeat < 20; repeat++)
+        {
+            results.Add(
+                await TrialAsync(
+                    "H-rendered-only",
+                    lab,
+                    probe,
+                    finger,
+                    spot,
+                    instance++,
+                    async (rendered, _) => await rendered.WaitAsync(Wait, cancellationToken)
+                )
+            );
+        }
+
         var folder = RepoPaths.Combine("artifacts", "cl", "test-results");
         Directory.CreateDirectory(folder);
         File.WriteAllText(
             Path.Combine(folder, "first-contact-experiment.json"),
-            JsonSerializer.Serialize(new { results, trace }, Indented)
+            JsonSerializer.Serialize(new { results }, Indented)
         );
         foreach (var group in results.GroupBy(r => r["phase"], StringComparer.Ordinal))
         {
@@ -128,212 +126,117 @@ public sealed class FirstContactExperimentTests
                     + string.Join(
                         ", ",
                         group
-                            .GroupBy(
-                                r => r.GetValueOrDefault("outcome", "-"),
-                                StringComparer.Ordinal
-                            )
+                            .GroupBy(r => r["outcome"], StringComparer.Ordinal)
                             .Select(o => o.Key + "=" + o.Count())
                     )
             );
         }
     }
 
-    private static TestSurface ShowFresh(SurfaceLab lab, int instance, NativePoint center, int i)
-    {
-        var fresh = lab.CreateSurface(SurfaceKind.Bubble, instance, 64, 64);
-        WpfThread.Invoke(() =>
-        {
-            fresh.MovePassive(
-                new PhysicalRect(center.X - 300 + ((i % 5) * 120), center.Y + 150, 80, 80)
-            );
-            fresh.ShowPassive();
-        });
-        return fresh;
-    }
-
-    private static NativePoint CenterOf(TestSurface surface)
-    {
-        var bounds = NativeSurface.Bounds(surface.Handle);
-        return new NativePoint(bounds.CenterX, bounds.CenterY);
-    }
-
-    private static async Task<Dictionary<string, string>> TapAsync(
+    private static async Task<Dictionary<string, string>> TrialAsync(
         string phase,
-        int index,
+        SurfaceLab lab,
+        InputProbeSession probe,
         SyntheticPointer finger,
-        TestSurface target,
-        TestSurface catcher,
-        NativePoint point
+        PhysicalRect spot,
+        int instance,
+        Func<Task<long>, long, Task> beforeTap
     )
     {
-        var targetDowns = target.PointerDowns;
-        var targetUps = target.PointerUps;
-        var catcherDowns = catcher.PointerDowns;
-        var catcherUps = catcher.PointerUps;
-        var before = Stopwatch.GetTimestamp();
-        string outcome;
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var fresh = lab.CreateSurface(SurfaceKind.Bubble, instance, 64, 64);
+        var rendered = new TaskCompletionSource<long>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var shownAt = WpfThread.Invoke(() =>
+        {
+            fresh.ContentRendered += (_, _) => rendered.TrySetResult(Stopwatch.GetTimestamp());
+            fresh.MovePassive(spot);
+            fresh.ShowPassive();
+            return Stopwatch.GetTimestamp();
+        });
+        var x = spot.Left + 32;
+        var y = spot.Top + 32;
+        var result = new Dictionary<string, string>(StringComparer.Ordinal) { ["phase"] = phase };
         try
         {
-            finger.Tap(point.X, point.Y);
-            var deadline = Stopwatch.GetTimestamp();
-            while (
-                target.PointerUps == targetUps
-                && catcher.PointerUps == catcherUps
-                && Stopwatch.GetElapsedTime(deadline) < Wait
-            )
+            await beforeTap(rendered.Task, shownAt);
+            var below = WindowsAt.Describe(x, y);
+            result["below"] = string.Join(" > ", below.Take(2));
+            if (below.Count < 2 || !below[1].Contains("InputProbe", StringComparison.Ordinal))
             {
-                await Task.Delay(5, TestContext.Current.CancellationToken);
+                result["outcome"] = "skipped: the probe is not right below";
+                return result;
             }
 
-            outcome =
-                target.PointerUps > targetUps ? "target"
-                : catcher.PointerUps > catcherUps ? "catcher"
-                : "none";
+            var cursor = probe.Cursor;
+            var ups = fresh.PointerUps;
+            result["cloakedAtTap"] = IsCloaked(fresh.Handle).ToString(CultureInfo.InvariantCulture);
+            result["renderedAtTap"] = rendered.Task.IsCompleted.ToString(
+                CultureInfo.InvariantCulture
+            );
+            result["tapAfterShowMs"] = Ms(Stopwatch.GetElapsedTime(shownAt));
+            finger.Tap(x, y);
+            var started = Stopwatch.GetTimestamp();
+            string outcome;
+            while (true)
+            {
+                if (fresh.PointerUps > ups)
+                {
+                    outcome = "surface";
+                    break;
+                }
+
+                if (probe.EventsSince(cursor).OfType<MouseButtonEvent>().Any())
+                {
+                    outcome = "probe (fell through)";
+                    break;
+                }
+
+                if (Stopwatch.GetElapsedTime(started) > Wait)
+                {
+                    outcome = "none";
+                    break;
+                }
+
+                await Task.Delay(5, cancellationToken);
+            }
+
+            result["outcome"] = outcome;
+            result["renderedAfterShowMs"] = rendered.Task.IsCompleted
+                ? Ms(Stopwatch.GetElapsedTime(shownAt, await rendered.Task))
+                : "not yet";
         }
         catch (InjectionRefusedException ex)
         {
-            outcome = "refused: " + ex.Message;
+            result["outcome"] = "refused: " + ex.Message;
+        }
+        finally
+        {
+            lab.Close(fresh);
+            await Task.Delay(150, cancellationToken);
         }
 
-        return new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["phase"] = phase,
-            ["index"] = index.ToString(CultureInfo.InvariantCulture),
-            ["outcome"] = outcome,
-            ["ms"] = Stopwatch
-                .GetElapsedTime(before)
-                .TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture),
-            ["targetDowns"] = (target.PointerDowns - targetDowns).ToString(
-                CultureInfo.InvariantCulture
-            ),
-            ["catcherDowns"] = (catcher.PointerDowns - catcherDowns).ToString(
-                CultureInfo.InvariantCulture
-            ),
-            ["point"] = string.Create(CultureInfo.InvariantCulture, $"{point.X},{point.Y}"),
-            ["devices"] = DeviceSummary(),
-        };
+        return result;
     }
 
-    private static Dictionary<string, string> DeviceArrival(int index)
-    {
-        var before = DeviceSummary();
-        var created = Stopwatch.GetTimestamp();
-        var device = CreateSyntheticPointerDevice(2, 1, 3);
-        var seen = before;
-        double? changedAt = null;
-        while (Stopwatch.GetElapsedTime(created) < TimeSpan.FromMilliseconds(500))
-        {
-            var now = DeviceSummary();
-            if (!string.Equals(now, before, StringComparison.Ordinal))
-            {
-                seen = now;
-                changedAt = Stopwatch.GetElapsedTime(created).TotalMilliseconds;
-                break;
-            }
+    private static string Ms(TimeSpan elapsed) =>
+        elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture);
 
-            Thread.Sleep(1);
-        }
+    private static bool IsCloaked(nint window) =>
+        DwmGetWindowAttribute(window, DwmCloaked, out var cloaked, sizeof(int)) == 0
+        && cloaked != 0;
 
-        DestroySyntheticPointerDevice(device);
-        Thread.Sleep(50);
-        return new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["phase"] = "E-device-arrival",
-            ["index"] = index.ToString(CultureInfo.InvariantCulture),
-            ["device"] = string.Create(CultureInfo.InvariantCulture, $"0x{device:X}"),
-            ["before"] = before,
-            ["after"] = seen,
-            ["changedAfterMs"] =
-                changedAt?.ToString("0.0", CultureInfo.InvariantCulture) ?? "never (500 ms)",
-            ["afterDestroy"] = DeviceSummary(),
-        };
-    }
-
-    private static string DeviceSummary()
-    {
-        uint count = 0;
-        if (!GetPointerDevices(ref count, null))
-        {
-            return "GetPointerDevices failed " + Marshal.GetLastPInvokeError();
-        }
-
-        var devices = new PointerDeviceInfo[count];
-        if (count > 0 && !GetPointerDevices(ref count, devices))
-        {
-            return "GetPointerDevices failed " + Marshal.GetLastPInvokeError();
-        }
-
-        return string.Join(
-            "; ",
-            devices
-                .Take((int)count)
-                .Select(d =>
-                {
-                    var rects = GetPointerDeviceRects(d.Device, out var deviceRect, out var display)
-                        ? string.Create(
-                            CultureInfo.InvariantCulture,
-                            $"display ({display.Left},{display.Top},{display.Right},{display.Bottom}) device ({deviceRect.Left},{deviceRect.Top},{deviceRect.Right},{deviceRect.Bottom})"
-                        )
-                        : "no rects";
-                    return string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"type {d.Type} handle 0x{d.Device:X} monitor 0x{d.Monitor:X} cursor {d.StartingCursorId} max {d.MaxActiveContacts} '{d.ProductString}' {rects}"
-                    );
-                })
-        );
-    }
-
-    private static (PhysicalRect Monitor, NativePoint Center) PrimaryMonitor()
-    {
-        var (work, _) = NativeSurface.PrimaryWorkArea();
-        var width = GetSystemMetrics(0);
-        var height = GetSystemMetrics(1);
-        return (new PhysicalRect(0, 0, width, height), new NativePoint(work.CenterX, work.CenterY));
-    }
-
-    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    private static extern nint CreateSyntheticPointerDevice(int type, uint maxCount, int mode);
+    private static extern int DwmFlush();
 
-    [DllImport("user32.dll", ExactSpelling = true)]
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    private static extern void DestroySyntheticPointerDevice(nint device);
-
-    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetPointerDevices(
-        ref uint count,
-        [In, Out] PointerDeviceInfo[]? devices
+    private static extern int DwmGetWindowAttribute(
+        nint window,
+        uint attribute,
+        out int value,
+        int size
     );
-
-    [DllImport("user32.dll", ExactSpelling = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetPointerDeviceRects(
-        nint device,
-        out NativeSurface.Rect deviceRect,
-        out NativeSurface.Rect displayRect
-    );
-
-    [DllImport("user32.dll", ExactSpelling = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    private static extern int GetSystemMetrics(int index);
-
-    [StructLayout(LayoutKind.Auto)]
-    private readonly record struct NativePoint(int X, int Y);
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct PointerDeviceInfo
-    {
-        public uint DisplayOrientation;
-        public nint Device;
-        public int Type;
-        public nint Monitor;
-        public uint StartingCursorId;
-        public ushort MaxActiveContacts;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 520)]
-        public string ProductString;
-    }
 }
