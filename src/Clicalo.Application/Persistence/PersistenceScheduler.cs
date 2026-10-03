@@ -181,7 +181,7 @@ public sealed partial class PersistenceScheduler : IDisposable
     }
 
     /// <summary>
-    /// A document the start could not write (the seed or a v1 migration, blueprint §6.6) is pending like any change and
+    /// A document the start could not write (the seed of a new installation, blueprint §6.5) is pending like any change and
     /// is saved at once, with the retries and the notice of any failed save; so leaving without a change still writes
     /// it (the exit flush).
     /// </summary>

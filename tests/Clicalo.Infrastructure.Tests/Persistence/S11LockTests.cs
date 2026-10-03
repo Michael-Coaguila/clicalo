@@ -269,11 +269,6 @@ public sealed class S11LockTests : IDisposable
                 Results.Ok(new BackupInfo(new BackupId("x"), kind, DateTimeOffset.UnixEpoch, 0, 0))
             );
 
-        public Task<Result<BackupInfo>> KeepV1OriginalAsync(
-            ReadOnlyMemory<byte> original,
-            CancellationToken cancellationToken
-        ) => throw new NotSupportedException();
-
         public Task<System.Collections.Immutable.ImmutableArray<BackupInfo>> ListAsync(
             CancellationToken cancellationToken
         ) => throw new NotSupportedException();

@@ -55,7 +55,7 @@ public sealed record KeyChord
     /// </summary>
     /// <remarks>
     /// Strokes without a key (empty or default <see cref="KeyId"/>) are dropped, so no chord ever holds an empty token
-    /// (MIG-004). A catalog key that is not a modifier always has <see cref="KeySide.Any"/>, and an undefined side
+    /// (EJE-015). A catalog key that is not a modifier always has <see cref="KeySide.Any"/>, and an undefined side
     /// becomes <see cref="KeySide.Any"/>.
     /// </remarks>
     /// <param name="strokes">Strokes in press order; keys outside the catalog are kept as given.</param>

@@ -19,7 +19,6 @@ public sealed class AppOptionsTests
         options.IsolatedData.ShouldBeFalse();
         options.AfterCrash.ShouldBeNull();
         options.SafeMode.ShouldBeFalse();
-        options.MigrateV1.ShouldBeNull();
         options.ExitAfter.ShouldBeNull();
     }
 
@@ -60,22 +59,13 @@ public sealed class AppOptionsTests
         AppOptions.Parse([argument], Default).AfterCrash.ShouldBeNull();
 
     [Fact]
-    [Trait("Req", "MIG-004")]
-    public void The_v1_file_and_the_diagnostic_exit_are_read_with_their_values()
+    public void The_diagnostic_exit_and_the_guardian_moment_are_read_with_their_values()
     {
         var options = AppOptions.Parse(
-            [
-                "--migrate-v1",
-                "profiles.json",
-                "--exit-after",
-                "3",
-                "--guardian",
-                "after-first-frame",
-            ],
+            ["--exit-after", "3", "--guardian", "after-first-frame"],
             Default
         );
 
-        options.MigrateV1.ShouldBe(Path.GetFullPath("profiles.json"));
         options.ExitAfter.ShouldBe(TimeSpan.FromSeconds(3));
         options.GuardianAfterFirstFrame.ShouldBeTrue();
     }

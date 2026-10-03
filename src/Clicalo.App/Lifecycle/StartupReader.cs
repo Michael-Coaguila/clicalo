@@ -12,7 +12,7 @@ namespace Clicalo.App.Lifecycle;
 
 /// <summary>
 /// Everything the start reads from disk before the panel exists (blueprint §3.1 steps 0 and 1): the crash Sentinel
-/// reported goes to its journal (ADR-0018), the document is read, created or migrated (<see cref="StartupDocuments"/>)
+/// reported goes to its journal (ADR-0018), the document is read or created (<see cref="StartupDocuments"/>)
 /// and the language files are loaded. All of it runs on the thread pool, never on the thread that asks: that is the UI
 /// thread, which never does I/O (§3.2), and a slow disk, OneDrive or an antivirus scan must not hold the first frame
 /// back (NFR-001).
@@ -51,7 +51,6 @@ internal sealed partial class StartupReader(
             .LoadAsync(
                 ContentFiles.Find(request.BaseDirectory),
                 LanguageFiles.Has(i18n, windows) ? new LangCode(windows) : null,
-                request.MigrateV1,
                 cancellationToken
             )
             .ConfigureAwait(false);

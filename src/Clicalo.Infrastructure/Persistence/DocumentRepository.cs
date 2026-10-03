@@ -355,11 +355,6 @@ public sealed partial class DocumentRepository : IDocumentRepository
             : backups;
         foreach (var info in ordered)
         {
-            if (info.Kind == BackupKind.V1Original)
-            {
-                continue;
-            }
-
             var read = await _backups.ReadAsync(info.Id, cancellationToken).ConfigureAwait(false);
             if (read.TryGetValue(out var document))
             {

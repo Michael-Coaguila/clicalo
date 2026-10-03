@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Headless tests of the composition root (blueprint §10.1): the command line, the single-instance pipe protocol, the
-    adapters of a start without key sending (ADR-0004) and the document of a new installation or a v1 migration against
+    adapters of a start without key sending (ADR-0004) and the document of a new installation against
     a real temporary folder. Nothing here opens a window or sends input.
   -->
   <PropertyGroup>

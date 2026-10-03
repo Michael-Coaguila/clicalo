@@ -12,7 +12,7 @@ namespace Clicalo.Infrastructure.Backup;
 /// <para>
 /// Each backup is a complete document with its envelope and the usage of that moment, in
 /// <c>backups\&lt;kind&gt;\</c> (see <c>BackupLayout</c>): the last 12 automatic ones, every manual one, 10 of each
-/// <c>pre-*</c> kind and the v1 original forever. Listing reads each backup's own counts (COP-004).
+/// <c>pre-*</c> kind. Listing reads each backup's own counts (COP-004).
 /// </para>
 /// <para>
 /// It has no thread of its own (blueprint §3.1, §6.4: the Persistence thread is the single consumer of the document,
@@ -95,15 +95,6 @@ public sealed partial class BackupService : IBackupService
     public void SnapshotNow(UserDocument document, BackupKind kind)
     {
         ArgumentNullException.ThrowIfNull(document);
-        if (kind == BackupKind.V1Original)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(kind),
-                kind,
-                "The v1 original is kept byte for byte."
-            );
-        }
-
         lock (_gate)
         {
             _snapshots.Enqueue(new Snapshot(document, kind));
@@ -150,11 +141,6 @@ public sealed partial class BackupService : IBackupService
     )
     {
         ArgumentNullException.ThrowIfNull(document);
-        if (kind == BackupKind.V1Original)
-        {
-            throw new ArgumentOutOfRangeException(nameof(kind), kind, "Use KeepV1OriginalAsync.");
-        }
-
         cancellationToken.ThrowIfCancellationRequested();
         var now = _time.GetUtcNow();
         var seq = NextSeq();
@@ -195,60 +181,6 @@ public sealed partial class BackupService : IBackupService
     }
 
     /// <inheritdoc />
-    public async Task<Result<BackupInfo>> KeepV1OriginalAsync(
-        ReadOnlyMemory<byte> original,
-        CancellationToken cancellationToken
-    )
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var now = _time.GetUtcNow();
-
-        // «Retry migration» and a second first run keep the same bytes again: one copy of them is enough, and a kept
-        // copy is never deleted or overwritten.
-        foreach (var existing in _files.Files(_locations.Backups, BackupLayout.V1FilePattern))
-        {
-            if (
-                _files.ReadAllBytesOrNull(existing) is { } kept
-                && kept.AsSpan().SequenceEqual(original.Span)
-            )
-            {
-                return Results.Ok(
-                    new BackupInfo(
-                        new BackupId(Path.GetFileName(existing)),
-                        BackupKind.V1Original,
-                        now,
-                        0,
-                        0
-                    )
-                );
-            }
-        }
-
-        var zip =
-            original.Span.StartsWith("PK\u0003\u0004"u8)
-            || original.Span.StartsWith("PK\u0005\u0006"u8);
-        string fileName;
-        var copy = 0;
-        do
-        {
-            fileName = BackupLayout.V1FileName(now, copy++, zip);
-        } while (_files.Exists(Path.Combine(_locations.Backups, fileName)));
-
-        var written = await _writer
-            .WriteAsync(Path.Combine(_locations.Backups, fileName), original, cancellationToken)
-            .ConfigureAwait(false);
-        if (written.IsFailure)
-        {
-            LogBackupFailed(_logger, BackupKind.V1Original, written.Failure.Code);
-            return Results.Fail<BackupInfo>(written.Failure);
-        }
-
-        LogBackupWritten(_logger, BackupKind.V1Original, 0);
-        return Results.Ok(new BackupInfo(new BackupId(fileName), BackupKind.V1Original, now, 0, 0));
-    }
-
-    /// <inheritdoc />
-    /// <remarks>The v1 original is not listed: it is not a Clícalo document and is never restored from here.</remarks>
     public Task<ImmutableArray<BackupInfo>> ListAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

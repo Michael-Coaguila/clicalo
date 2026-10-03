@@ -7,9 +7,8 @@ namespace Clicalo.Infrastructure.Persistence;
 
 /// <summary>
 /// Where backups live and how they are named (blueprint §6.5, §6.8): <c>backups\&lt;kind&gt;\clicalo.&lt;UTC&gt;.&lt;seq&gt;.json</c>
-/// with one folder per kind (<c>auto</c> keeps 12, <c>manual</c> all, each <c>pre-*</c> 10) and
-/// <c>backups\v1-original-&lt;UTC&gt;.json</c>, never deleted. The id of a backup is <c>&lt;kind&gt;/&lt;file&gt;</c>;
-/// <c>seq</c> is shared by every kind and orders them newest first.
+/// with one folder per kind (<c>auto</c> keeps 12, <c>manual</c> all, each <c>pre-*</c> 10). The id of a backup is
+/// <c>&lt;kind&gt;/&lt;file&gt;</c>; <c>seq</c> is shared by every kind and orders them newest first.
 /// </summary>
 internal static partial class BackupLayout
 {
@@ -27,22 +26,18 @@ internal static partial class BackupLayout
         (BackupKind.PreRepair, "pre-repair"),
     ];
 
-    /// <summary>Every kind that has its own folder (all but <see cref="BackupKind.V1Original"/>).</summary>
+    /// <summary>Every kind, each with its own folder.</summary>
     public static IEnumerable<BackupKind> FolderKinds => Folders.Select(f => f.Kind);
 
     /// <summary>The folder name of <paramref name="kind"/>.</summary>
-    /// <param name="kind">Any kind but <see cref="BackupKind.V1Original"/>.</param>
+    /// <param name="kind">A kind.</param>
     public static string Folder(BackupKind kind) =>
         Folders.FirstOrDefault(f => f.Kind == kind).Folder
-        ?? throw new ArgumentOutOfRangeException(
-            nameof(kind),
-            kind,
-            "The v1 original has no folder."
-        );
+        ?? throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown backup kind.");
 
     /// <summary>The full path of the folder of <paramref name="kind"/>.</summary>
     /// <param name="locations">Where the data lives.</param>
-    /// <param name="kind">Any kind but <see cref="BackupKind.V1Original"/>.</param>
+    /// <param name="kind">A kind.</param>
     public static string FolderPath(DataLocations locations, BackupKind kind) =>
         Path.Combine(locations.Backups, Folder(kind));
 
@@ -52,7 +47,7 @@ internal static partial class BackupLayout
         kind switch
         {
             BackupKind.Auto => Timings.Backups.AutoBackupRetention,
-            BackupKind.Manual or BackupKind.V1Original => null,
+            BackupKind.Manual => null,
             _ => Timings.Backups.OperationBackupRetention,
         };
 
@@ -66,24 +61,10 @@ internal static partial class BackupLayout
         + seq.ToString("D6", CultureInfo.InvariantCulture)
         + ".json";
 
-    /// <summary>The pattern of every kept v1 original.</summary>
-    public const string V1FilePattern = "v1-original-*";
-
-    /// <summary>The file name of the v1 original kept at <paramref name="at"/> (MIG-004).</summary>
-    /// <param name="at">When.</param>
-    /// <param name="copy">0, or a counter when two are kept in the same second.</param>
-    /// <param name="zip">Whether the original is a zip (a v1 backup archive) rather than a <c>profiles.json</c>.</param>
-    public static string V1FileName(DateTimeOffset at, int copy, bool zip = false) =>
-        "v1-original-"
-        + at.UtcDateTime.ToString(StampFormat, CultureInfo.InvariantCulture)
-        + (copy == 0 ? string.Empty : "-" + copy.ToString(CultureInfo.InvariantCulture))
-        + (zip ? ".zip" : ".json");
-
     /// <summary>The id of a backup file.</summary>
     /// <param name="kind">Its kind.</param>
     /// <param name="fileName">Its file name.</param>
-    public static string Id(BackupKind kind, string fileName) =>
-        kind == BackupKind.V1Original ? fileName : Folder(kind) + "/" + fileName;
+    public static string Id(BackupKind kind, string fileName) => Folder(kind) + "/" + fileName;
 
     /// <summary>Reads an id; only the names this layout produces are accepted (no other path can be named).</summary>
     /// <param name="id">A backup id.</param>

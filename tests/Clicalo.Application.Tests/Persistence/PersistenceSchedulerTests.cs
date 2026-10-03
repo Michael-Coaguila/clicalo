@@ -429,7 +429,7 @@ public sealed class PersistenceSchedulerTests
     }
 
     [Fact]
-    [Trait("Req", "MIG-004")]
+    [Trait("Req", "DAT-002")]
     public async Task A_document_the_start_could_not_write_is_saved_at_once_and_retried_until_it_is()
     {
         await using var rig = new SchedulerRig();
@@ -447,7 +447,7 @@ public sealed class PersistenceSchedulerTests
     }
 
     [Fact]
-    [Trait("Req", "MIG-004")]
+    [Trait("Req", "DAT-002")]
     public async Task A_document_the_start_could_not_write_is_written_by_the_exit_flush()
     {
         var rig = new SchedulerRig();

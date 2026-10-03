@@ -2,7 +2,7 @@ namespace Clicalo.Domain.Settings;
 
 /// <summary>
 /// The allowed values of a numeric setting: an inclusive range and the step of its − / + controls. Used to clamp on
-/// load (§6.5) and to convert v1 values (MIG-006: opacity 0.68 becomes 0.70).
+/// load (§6.5) and to bring a value onto the grid of its − / + controls (TAC-005: opacity 0.68 becomes 0.70).
 /// </summary>
 /// <param name="Min">Lowest value.</param>
 /// <param name="Max">Highest value.</param>

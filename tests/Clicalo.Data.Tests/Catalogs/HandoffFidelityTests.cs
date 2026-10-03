@@ -27,9 +27,9 @@ public sealed class HandoffFidelityTests
     /// <summary>Keys added to a group on top of the handoff, with the requirement that asks for them.</summary>
     private static readonly Dictionary<string, string[]> AddedKeys = new(StringComparer.Ordinal)
     {
-        // Catalog §7.3: v1 «winright» needs a right Windows key.
+        // EDI-009: the side of Win, like the other modifiers (the right Windows key).
         ["sides"] = ["rwin"],
-        // MIG-005 and EDI-008: ` \ [ ] ' # used by v1; CAT-004: «%» of the Excel template.
+        // EDI-008: ` \ [ ] ' # complete the symbols of the selector; CAT-004: «%» of the Excel template.
         ["nums"] = ["char:`", "char:\\", "char:[", "char:]", "char:'", "char:#", "char:%"],
     };
 

@@ -6,7 +6,7 @@ namespace Clicalo.Domain.Settings;
 
 /// <summary>
 /// The schema of <see cref="UserSettings"/> (blueprint §6.3): ranges of docs/02 and the GEN-* requirements, defaults
-/// and the descriptor of every setting. The single source of the defaults, the repair on load, the v1 conversion, the
+/// and the descriptor of every setting. The single source of the defaults, the repair on load, the
 /// simple rows of the UI and the undo of settings (only undoable leaves are restored, §6.4).
 /// </summary>
 public static class SettingsSchema
@@ -121,7 +121,7 @@ public static class SettingsSchema
     /// the paths it changed so the mapper can log them. A missing group (<c>feedback</c>, <c>dock</c>…) takes its
     /// defaults. Values between the steps of their range are valid: only the − / + controls snap (TAC-005).
     /// </summary>
-    /// <param name="settings">Settings read from disk or converted from v1.</param>
+    /// <param name="settings">Settings read from disk or imported.</param>
     /// <param name="changedPaths">Paths of the values it changed.</param>
     public static UserSettings Clamp(UserSettings settings, out ImmutableArray<string> changedPaths)
     {

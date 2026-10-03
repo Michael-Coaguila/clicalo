@@ -93,11 +93,6 @@ internal sealed class FakeBackupService(TimeProvider time) : IBackupService
         );
     }
 
-    public Task<Result<BackupInfo>> KeepV1OriginalAsync(
-        ReadOnlyMemory<byte> original,
-        CancellationToken cancellationToken
-    ) => throw new NotSupportedException();
-
     public Task<ImmutableArray<BackupInfo>> ListAsync(CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 

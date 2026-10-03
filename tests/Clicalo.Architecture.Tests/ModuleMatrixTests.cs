@@ -8,7 +8,7 @@ public sealed class ModuleMatrixTests
 {
     private static readonly ModuleMatrix FixtureMatrix = new(
         FixtureArchitecture.Name("Modules.Domain"),
-        [("Keys", []), ("Library", ["Keys"]), ("Migration.V1", ["Library"])]
+        [("Keys", []), ("Library", ["Keys"]), ("Sharing.Profiles", ["Library"])]
     );
 
     /// <summary>The table of blueprint §4.3, row by row.</summary>
@@ -46,7 +46,6 @@ public sealed class ModuleMatrixTests
             "Errors",
             "Geometry",
         ],
-        ["Migration.V1"] = ["Library", "Keys", "Catalog", "Settings"],
         ["Templates"] = ["Library", "Catalog", "Keys"],
         ["Sharing"] = ["Library", "Catalog", "Keys"],
     };
