@@ -60,4 +60,16 @@
     <ClicaloWindowsTfm>net10.0-windows10.0.19041.0</ClicaloWindowsTfm>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+
+  <PropertyGroup Label="Shipped runtimes">
+    <!--
+      The runtimes Clícalo ships for (blueprint §11). The executables that are published (Clicalo.App, Clicalo.Sentinel)
+      declare them as RuntimeIdentifiers, so their lock files hold the graph of both and do not depend on the machine
+      that restored them.
+      A publish names its runtime with -p:ClicaloRuntimeIdentifier=win-x64 (or win-arm64), never with -r: -r is a global
+      property that reaches the restore of every referenced project (libraries, generators, analyzers) and fails it in
+      locked mode with NU1004, or rewrites their lock files outside it (docs/architecture/tooling.md).
+    -->
+    <ClicaloRuntimeIdentifiers>win-x64;win-arm64</ClicaloRuntimeIdentifiers>
+  </PropertyGroup>
 </Project>

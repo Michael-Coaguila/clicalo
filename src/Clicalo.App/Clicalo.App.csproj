@@ -9,6 +9,10 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>Clicalo.App.Program</StartupObject>
   </PropertyGroup>
+  <PropertyGroup Label="Shipped runtimes (Directory.Build.props)">
+    <RuntimeIdentifiers>$(ClicaloRuntimeIdentifiers)</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(ClicaloRuntimeIdentifier)' != ''">$(ClicaloRuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Clicalo.UI.Wpf\Clicalo.UI.Wpf.csproj" />
     <ProjectReference Include="..\Clicalo.Presentation\Clicalo.Presentation.csproj" />
