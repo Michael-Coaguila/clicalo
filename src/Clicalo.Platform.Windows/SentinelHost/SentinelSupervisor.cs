@@ -153,7 +153,8 @@ public sealed partial class SentinelSupervisor : IDisposable
                 read,
                 Timings.Guardian.PipeHeartbeatInterval,
                 crashLoop.Count,
-                crashLoop.Window
+                crashLoop.Window,
+                Timings.Guardian.RefusedReleaseWait
             );
             _process = GuardianProcess.Start(
                 _sentinelPath,

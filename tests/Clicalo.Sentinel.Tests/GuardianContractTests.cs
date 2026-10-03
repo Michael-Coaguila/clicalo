@@ -18,7 +18,8 @@ public sealed class GuardianContractTests
         0x3CC,
         TimeSpan.FromSeconds(1),
         3,
-        TimeSpan.FromMinutes(10)
+        TimeSpan.FromMinutes(10),
+        TimeSpan.FromSeconds(30)
     );
 
     [Fact]
@@ -26,13 +27,15 @@ public sealed class GuardianContractTests
     {
         Info.ToArguments()
             .ShouldBe([
-                "--protocol=1",
+                "--protocol=2",
                 "--parent=0x1A4",
                 "--ledger=0x2B8",
                 "--pipe=0x3CC",
                 "--heartbeat-ms=1000",
                 "--crash-loop=3/600000",
+                "--refused-release-wait-ms=30000",
             ]);
+        SentinelStartInfo.ProtocolVersion.ShouldBe(2);
         Info.InheritedHandles.Length.ShouldBe(SentinelStartInfo.InheritedHandleCount);
     }
 
@@ -45,7 +48,8 @@ public sealed class GuardianContractTests
     }
 
     [Theory]
-    [InlineData("--protocol=2")]
+    [InlineData("--protocol=1")]
+    [InlineData("--protocol=3")]
     [InlineData("--protocol=x")]
     [InlineData("--protocol=")]
     public void Another_protocol_version_is_refused(string protocol)
@@ -62,6 +66,10 @@ public sealed class GuardianContractTests
     [InlineData(4, "--heartbeat-ms=0")]
     [InlineData(5, "--crash-loop=3")]
     [InlineData(5, "--crash-loop=0/1000")]
+    [InlineData(6, "--refused-release-wait-ms=0")]
+    [InlineData(6, "--refused-release-wait-ms=-5")]
+    [InlineData(6, "--refused-release-wait-ms=")]
+    [InlineData(6, "--crash-loop=3/600000")]
     [InlineData(0, "--parent=0x1A4")]
     public void A_malformed_or_misplaced_argument_is_refused(int index, string argument)
     {
@@ -74,6 +82,7 @@ public sealed class GuardianContractTests
     public void Missing_or_extra_arguments_are_refused()
     {
         SentinelStartInfo.TryParse(Info.ToArguments().RemoveAt(5).AsSpan(), out _).ShouldBeFalse();
+        SentinelStartInfo.TryParse(Info.ToArguments().RemoveAt(6).AsSpan(), out _).ShouldBeFalse();
         SentinelStartInfo.TryParse(Info.ToArguments().Add("--x").AsSpan(), out _).ShouldBeFalse();
         SentinelStartInfo.TryParse([], out _).ShouldBeFalse();
     }
