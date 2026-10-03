@@ -19,6 +19,7 @@ public sealed class TestSurface : NonActivatingWindow
 {
     private readonly ConcurrentQueue<string> _activations = new();
     private readonly ConcurrentQueue<string> _sequence = new();
+    private readonly ConcurrentQueue<(long Timestamp, string Line)> _activationLog = new();
     private readonly ConcurrentQueue<(long Timestamp, string Line)> _pointerLog = new();
     private int _pointerUpdates;
     private int _pointerDowns;
@@ -59,6 +60,14 @@ public sealed class TestSurface : NonActivatingWindow
     /// negative test of <c>ActivationGuard</c>.
     /// </summary>
     public IReadOnlyList<string> ActivationSequence => [.. _sequence];
+
+    /// <summary>
+    /// The activation messages received since <paramref name="since"/> (<see cref="System.Diagnostics.Stopwatch"/>
+    /// ticks), each with its milliseconds after it, the <c>wParam</c> and the window <c>GetForegroundWindow</c> named
+    /// when it arrived: the timeline of the negative tests of <c>ActivationGuard</c>.
+    /// </summary>
+    public IReadOnlyList<(long Timestamp, string Line)> ActivationLogSince(long since) =>
+        [.. _activationLog.Where(entry => entry.Timestamp >= since)];
 
     public int PointerDowns => Volatile.Read(ref _pointerDowns);
 
@@ -202,16 +211,26 @@ public sealed class TestSurface : NonActivatingWindow
             return;
         }
 
+        var timestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         var active = msg == NativeSurface.WmActivate ? (wParam & 0xFFFF) != 0 : wParam != 0;
         var foreground = ForegroundWindows.Current;
-        _sequence.Enqueue(
+        var entry =
             name
-                + (active ? "(TRUE)" : "(FALSE)")
-                + (
-                    foreground == hwnd
-                        ? " in front"
-                        : " not in front (" + WhoIsInFront(foreground) + ")"
+            + (active ? "(TRUE)" : "(FALSE)")
+            + (
+                foreground == hwnd
+                    ? " in front"
+                    : " not in front (" + WhoIsInFront(foreground) + ")"
+            );
+        _sequence.Enqueue(entry);
+        _activationLog.Enqueue(
+            (
+                timestamp,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{Id} {entry}, wParam 0x{(long)wParam:X}, foreground 0x{foreground:X}"
                 )
+            )
         );
     }
 

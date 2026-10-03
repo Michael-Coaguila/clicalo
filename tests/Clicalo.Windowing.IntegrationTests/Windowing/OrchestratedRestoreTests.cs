@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Timing;
@@ -37,60 +38,98 @@ public sealed class OrchestratedRestoreTests(OrchestratedSurfaceFixture desktop)
         var restores = new List<double>();
         using var failures = DebugFailures.Capture();
 
+        long previousStart = 0;
+        var previousCursor = 0;
         for (var cycle = 1; cycle <= Cycles; cycle++)
         {
             var cursor = await desktop.PrepareAsync();
-            var before = desktop.Lab.Guard.Violations;
-            var sequenceStart = panel.ActivationSequence.Count;
-            string Sequence() =>
-                " Panel messages this cycle: "
-                + string.Join(", ", panel.ActivationSequence.Skip(sequenceStart))
-                + ".";
+            var cycleStart = Stopwatch.GetTimestamp();
+            desktop.Timeline.Note(
+                Say($"cycle {cycle}: the probe calls SetForegroundWindow on the panel")
+            );
+            var (traceStart, traceCursor) =
+                previousStart == 0 ? (cycleStart, cursor) : (previousStart, previousCursor);
+            try
+            {
+                var before = desktop.Lab.Guard.Violations;
+                var sequenceStart = panel.ActivationSequence.Count;
+                string Sequence() =>
+                    " Panel messages this cycle: "
+                    + string.Join(", ", panel.ActivationSequence.Skip(sequenceStart))
+                    + ".";
 
-            var answer = await desktop.Probe.RequestForegroundAsync(
-                panel.Handle,
-                SurfaceDesktopFixture.EventTimeout,
-                cancellationToken
-            );
-            answer.Succeeded.ShouldBeTrue(
-                Say($"Cycle {cycle}: Windows refused the probe's SetForegroundWindow on the panel.")
-            );
+                var answer = await desktop.Probe.RequestForegroundAsync(
+                    panel.Handle,
+                    SurfaceDesktopFixture.EventTimeout,
+                    cancellationToken
+                );
+                answer.Succeeded.ShouldBeTrue(
+                    Say(
+                        $"Cycle {cycle}: Windows refused the probe's SetForegroundWindow on the panel."
+                    )
+                );
 
-            await SurfaceDesktopFixture.WaitUntilAsync(
-                () => desktop.Lab.Guard.Violations > before,
-                Say($"Cycle {cycle}: ActivationGuard did not detect the forced activation.")
-                    + Sequence()
-            );
-            var events = await desktop.Probe.WaitForAsync(
-                cursor,
-                Reactivated,
-                SurfaceDesktopFixture.EventTimeout,
-                cancellationToken
-            );
-            var lost = events.OfType<ActivateEvent>().First(IsDeactivation);
-            var back = events
-                .OfType<ActivateEvent>()
-                .First(activate => !IsDeactivation(activate) && activate.Sequence > lost.Sequence);
-            var restoredAfter = TimeSpan.FromSeconds((back.Timestamp - lost.Timestamp) / frequency);
-            restores.Add(restoredAfter.TotalMilliseconds);
+                await SurfaceDesktopFixture.WaitUntilAsync(
+                    () => desktop.Lab.Guard.Violations > before,
+                    Say($"Cycle {cycle}: ActivationGuard did not detect the forced activation.")
+                        + Sequence()
+                );
+                var events = await desktop.Probe.WaitForAsync(
+                    cursor,
+                    Reactivated,
+                    SurfaceDesktopFixture.EventTimeout,
+                    cancellationToken
+                );
+                var lost = events.OfType<ActivateEvent>().First(IsDeactivation);
+                var back = events
+                    .OfType<ActivateEvent>()
+                    .First(activate =>
+                        !IsDeactivation(activate) && activate.Sequence > lost.Sequence
+                    );
+                var restoredAfter = TimeSpan.FromSeconds(
+                    (back.Timestamp - lost.Timestamp) / frequency
+                );
+                restores.Add(restoredAfter.TotalMilliseconds);
 
-            restoredAfter.ShouldBeLessThanOrEqualTo(
-                Timings.Windowing.ViolationRestoreBudget,
-                Say(
-                    $"Cycle {cycle}: the orchestrator gave the foreground back after {restoredAfter.TotalMilliseconds:F1} ms."
+                restoredAfter.ShouldBeLessThanOrEqualTo(
+                    Timings.Windowing.ViolationRestoreBudget,
+                    Say(
+                        $"Cycle {cycle}: the orchestrator gave the foreground back after {restoredAfter.TotalMilliseconds:F1} ms."
+                    )
+                );
+                desktop.Lab.Guard.Violations.ShouldBe(
+                    before + 1,
+                    Say($"Cycle {cycle}: one activation, one violation.") + Sequence()
+                );
+                NativeSurface
+                    .HasExStyle(panel.Handle, NativeSurface.ExNoActivate)
+                    .ShouldBeTrue(Say($"Cycle {cycle}: WS_EX_NOACTIVATE is gone."));
+                TestContext.Current.TestOutputHelper?.WriteLine(
+                    Say($"Cycle {cycle}:") + Sequence()
+                );
+                var violation = desktop.Lab.Arbiter.Violations[^1];
+                violation.Surface.ShouldBe(panel.Id);
+                violation.ProbableCause.ShouldBe(ActivationCause.External);
+            }
+            catch (Exception)
+                when (Explain(cycle, desktop.DescribeActivations(traceStart, traceCursor)))
+            {
+                throw;
+            }
+
+            if (
+                string.Equals(
+                    Environment.GetEnvironmentVariable("CLICALO_ACTIVATION_TRACE"),
+                    "1",
+                    StringComparison.Ordinal
                 )
-            );
-            desktop.Lab.Guard.Violations.ShouldBe(
-                before + 1,
-                Say($"Cycle {cycle}: one activation, one violation.") + Sequence()
-            );
-            NativeSurface
-                .HasExStyle(panel.Handle, NativeSurface.ExNoActivate)
-                .ShouldBeTrue(Say($"Cycle {cycle}: WS_EX_NOACTIVATE is gone."));
-            TestContext.Current.TestOutputHelper?.WriteLine(Say($"Cycle {cycle}:") + Sequence());
-            var violation = desktop.Lab.Arbiter.Violations[^1];
-            violation.Surface.ShouldBe(panel.Id);
-            violation.ProbableCause.ShouldBe(ActivationCause.External);
+            )
+            {
+                _ = Explain(cycle, desktop.DescribeActivations(cycleStart, cursor));
+            }
+
+            previousStart = cycleStart;
+            previousCursor = cursor;
         }
 
         desktop.Lab.Guard.Violations.ShouldBe(start + Cycles);
@@ -101,6 +140,17 @@ public sealed class OrchestratedRestoreTests(OrchestratedSurfaceFixture desktop)
                 $"Restore by ForegroundOrchestrator, measured by the probe: median {restores[restores.Count / 2]:F1} ms, maximum {restores[^1]:F1} ms."
             )
         );
+    }
+
+    /// <summary>Writes the timeline of a cycle to the test output; false, so a failure keeps propagating.</summary>
+    private static bool Explain(int cycle, string timeline)
+    {
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            Say($"Timeline up to cycle {cycle} (QPC, from the start of the cycle before it):")
+                + Environment.NewLine
+                + timeline
+        );
+        return false;
     }
 
     private static bool IsDeactivation(ActivateEvent activate) =>
