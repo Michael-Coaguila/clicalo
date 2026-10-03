@@ -3,10 +3,11 @@ using System.Text;
 using Clicalo.App.Interop;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
+using Clicalo.Application.UseCases;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Migration.V1;
 using Clicalo.Domain.Primitives;
-using Clicalo.Infrastructure.Content;
+using Clicalo.Infrastructure.Catalogs;
 using Clicalo.Infrastructure.Migration;
 using Microsoft.Extensions.Logging;
 
@@ -16,8 +17,9 @@ namespace Clicalo.App.Lifecycle;
 /// The document the start hands to the store (blueprint §3.1 step 1, §6.5, §6.6):
 /// <list type="number">
 /// <item>the document read by the recovery chain;</item>
-/// <item>on a new installation (no <c>clicalo.json</c> and nothing to recover), the seed of <c>content\seed.json</c>
-/// in the language of Windows, or the v1 file of <c>--migrate-v1</c> converted over it (EC-MIG-01: the original is
+/// <item>on a new installation (no <c>clicalo.json</c> and nothing to recover), the starter kit of <c>content</c> with
+/// the options it marks by default («Basics» only, user decision D2, until the welcome of M4 lets the user choose), in
+/// the language of Windows, or the v1 file of <c>--migrate-v1</c> converted over it (EC-MIG-01: the original is
 /// kept byte for byte first, MIG-004), written at once so the migration never repeats;</item>
 /// <item>a migration that fails writes nothing and leaves the mark <c>migration-v1.pending</c> in the local data
 /// folder, because the first change will write the seed: while the mark exists, a start with <c>--migrate-v1</c> tries
@@ -42,7 +44,7 @@ internal sealed partial class StartupDocuments(
 )
 {
     /// <summary>Loads the document of this start.</summary>
-    /// <param name="contentFolder">The folder with <c>seed.json</c>, or <see langword="null"/>.</param>
+    /// <param name="contentFolder">The folder with the starter content, or <see langword="null"/>.</param>
     /// <param name="language">
     /// The interface language of a new installation (Windows', when Clícalo has it); <see langword="null"/> keeps the
     /// default.
@@ -242,30 +244,16 @@ internal sealed partial class StartupDocuments(
         }
     }
 
-    private static UserDocument? ReadSeed(
-        string? contentFolder,
-        Domain.Settings.UserSettings settings
-    )
-    {
-        if (contentFolder is null)
-        {
-            return null;
-        }
-
-        var path = Path.Combine(contentFolder, SeedDocument.FileName);
-        try
-        {
-            return File.Exists(path) ? SeedDocument.Read(File.ReadAllBytes(path), settings) : null;
-        }
-        catch (IOException)
-        {
-            return null;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
+    /// <summary>
+    /// The document of the starter kit with the options it marks by default (user decision D2), or
+    /// <see langword="null"/> when the content cannot be read (the caller keeps General alone).
+    /// </summary>
+    private UserDocument? ReadSeed(string? contentFolder, Domain.Settings.UserSettings settings) =>
+        contentFolder is not null
+        && StarterContentFiles.Load(contentFolder) is { } content
+        && FirstDocument.CreateDefault(content, settings, ids).TryGetValue(out var document)
+            ? document
+            : null;
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "startup.seed_unavailable")]
     private static partial void LogSeedUnavailable(ILogger logger);

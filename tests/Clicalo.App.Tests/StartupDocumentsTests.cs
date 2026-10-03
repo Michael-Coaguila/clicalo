@@ -15,8 +15,9 @@ namespace Clicalo.App.Tests;
 
 /// <summary>
 /// The document a start hands to the store, against a real temporary data folder (blueprint §6.5, §6.6): a new
-/// installation gets the seed in the language of Windows, or the user's v1 file converted over it with the original
-/// kept first (EC-MIG-01, MIG-004), written at once so it never repeats; a failed migration writes nothing.
+/// installation gets the starter kit marked by default («Basics», user decision D2) in the language of Windows, or the
+/// user's v1 file converted over it with the original kept first (EC-MIG-01, MIG-004), written at once so it never
+/// repeats; a failed migration writes nothing.
 /// </summary>
 public sealed class StartupDocumentsTests : IDisposable
 {
@@ -53,17 +54,21 @@ public sealed class StartupDocumentsTests : IDisposable
 
     [Fact]
     [Trait("Req", "CAT-003")]
-    public async Task A_new_installation_gets_the_seed_in_the_language_of_windows_and_keeps_it()
+    [Trait("Req", "BIE-003")]
+    public async Task A_new_installation_gets_the_default_starter_kit_in_the_language_of_windows_and_keeps_it()
     {
         var load = await LoadAsync(ContentFolder, LangCode.En, null, Token);
 
         load.Outcome.ShouldBe(DocumentLoadOutcome.FirstRun);
         load.Document.Settings.Language.ShouldBe(LangCode.En);
         var library = load.Document.Library;
-        library.AlwaysVisible.Count.ShouldBe(4);
-        library.Profiles.ShouldHaveSingleItem().Id.ShouldBe(ProfileId.General);
+        library.AlwaysVisible.Count.ShouldBe(4, "«Basics» is marked by default (user decision D2)");
+        library
+            .Profiles.ShouldHaveSingleItem("no template is marked by default")
+            .Id.ShouldBe(ProfileId.General);
         var copy = library.General.Shortcuts[0];
-        copy.Id.ShouldBe(new ShortcutId("copy"));
+        copy.Origin.ShouldBe(new CatalogRef("seed", "1", "copy"));
+        copy.Id.ShouldNotBe(new ShortcutId("copy"), "installed content gets new ids (DAT-004)");
         copy.Action.ShouldBe(
             new TapAction(
                 KeyChord.Create([new KeyStroke(KeyIds.Ctrl), new KeyStroke(KeyIds.C)]),
