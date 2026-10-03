@@ -40,7 +40,8 @@ y sin espacios:
    cierre a propósito: espera cinco latidos a que el principal termine y, si no, sale con `CleanExit` sin soltar.
 2. Lee el *ledger* (si no es la versión 2, sale con `LedgerUnreadable`) y envía el lote de liberación en menos de
    200 ms (S9).
-3. Si `SendInput` no acepta todo el lote, vuelve a enviar lo que no salió en cada latido (argumento 5):
+3. Si `SendInput` no acepta todo el lote, vuelve a enviar lo que no salió en cada latido (argumento 5), sin separar
+   nunca la máscara de menú de su Alt o Win:
    - sin límite mientras el rechazo sea del escritorio seguro (nada aceptado y `ERROR_ACCESS_DENIED`: sesión
      bloqueada, UAC, Ctrl+Alt+Supr u otro escritorio de entrada);
    - como mucho el tiempo del argumento 7 de rechazos seguidos de otro tipo; después deja de soltar;

@@ -17,7 +17,8 @@ namespace Clicalo.Sentinel;
 /// <item>The release goes first, before anything else is read or decided: nothing Sentinel does after it can delay
 /// it.</item>
 /// <item>A release the desktop refuses (user decision D3 of 2026-10-03, ADR-0018) is sent again every
-/// <see cref="SentinelStartInfo.HeartbeatInterval"/>, only what did not go. A refusal by the secure desktop
+/// <see cref="SentinelStartInfo.HeartbeatInterval"/>, only what did not go (never a bare Alt or Win up: a cut inside
+/// the menu mask resends the whole mask). A refusal by the secure desktop
 /// (<c>SendInput</c> accepts nothing, <c>ERROR_ACCESS_DENIED</c>: a locked session, UAC, Ctrl+Alt+Supr or another
 /// input desktop) is retried without limit: Sentinel is the only one that knows what is down. Any other refusal is
 /// retried for at most <see cref="SentinelStartInfo.RefusedReleaseWait"/>, so a refusal that never clears cannot keep
@@ -68,7 +69,7 @@ internal sealed class GuardianLoop
         _environment = environment;
     }
 
-    /// <summary>What the last run released, for the tests.</summary>
+    /// <summary>How many events of the release batch went in the last run, each counted once, for the tests.</summary>
     internal int ReleasedEvents { get; private set; }
 
     /// <summary>How many sends the desktop refused in the last run, for the tests.</summary>
@@ -132,19 +133,22 @@ internal sealed class GuardianLoop
     /// </summary>
     private void ReleaseUntilAccepted(ReadOnlySpan<LowLevelInput> batch)
     {
-        var remaining = batch;
+        ReleasedEvents = 0;
+        RefusedSends = 0;
+        GaveUpOnRefusal = false;
+        var next = 0;
         long? otherRefusalsSince = null;
         while (true)
         {
-            var result = _sender.Send(remaining);
-            var sent = Math.Clamp(result.Sent, 0, remaining.Length);
-            ReleasedEvents += sent;
-            remaining = remaining[sent..];
-            if (remaining.IsEmpty)
+            var result = _sender.Send(batch[next..]);
+            next += Math.Clamp(result.Sent, 0, batch.Length - next);
+            ReleasedEvents = Math.Max(ReleasedEvents, next);
+            if (next == batch.Length)
             {
                 return;
             }
 
+            next = KeepMenuMaskWithItsKey(batch, next);
             RefusedSends++;
             if (IsSecureDesktopRefusal(result))
             {
@@ -167,6 +171,26 @@ internal sealed class GuardianLoop
             _environment.WaitBeforeRetry(_startInfo.HeartbeatInterval);
         }
     }
+
+    /// <summary>
+    /// Moves a resend point that falls inside a menu mask group (mask down, mask up, Alt or Win up) back to the start
+    /// of the group, so the resend never sends a bare Alt or Win up that could open the Start menu or a menu bar.
+    /// </summary>
+    /// <param name="batch">The release batch of <see cref="LedgerRelease.BuildReleaseBatch"/>.</param>
+    /// <param name="next">The first event that did not go.</param>
+    private static int KeepMenuMaskWithItsKey(ReadOnlySpan<LowLevelInput> batch, int next)
+    {
+        while (next > 0 && IsMenuMask(batch[next - 1]))
+        {
+            next--;
+        }
+
+        return next;
+    }
+
+    private static bool IsMenuMask(LowLevelInput input) =>
+        input.Kind is LowLevelInputKind.KeyDown or LowLevelInputKind.KeyUp
+        && input.Key == LedgerRelease.MenuMask;
 
     /// <summary>
     /// The secure desktop's refusal, as <c>InjectionGate</c> reads it: nothing accepted and

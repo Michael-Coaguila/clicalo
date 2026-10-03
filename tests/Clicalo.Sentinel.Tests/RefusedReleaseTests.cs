@@ -18,6 +18,11 @@ public sealed class RefusedReleaseTests
 {
     private static readonly PhysicalKey Ctrl = new(0xA2, 0x1D, LedgerKeyAttributes.None);
     private static readonly PhysicalKey Shift = new(0xA0, 0x2A, LedgerKeyAttributes.None);
+    private static readonly PhysicalKey Win = new(
+        0,
+        0x5B,
+        LedgerKeyAttributes.ScanCodeMode | LedgerKeyAttributes.Extended
+    );
     private static readonly DateTimeOffset DiedAt = new(2026, 10, 3, 22, 0, 0, TimeSpan.Zero);
     private static readonly TimeSpan Heartbeat = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RefusedReleaseWait = TimeSpan.FromSeconds(30);
@@ -40,10 +45,15 @@ public sealed class RefusedReleaseTests
 
     private static (KeyLedgerSection Engine, KeyLedgerSection View) HoldingCtrlShift(
         LedgerMarks marks = LedgerMarks.EngineAlive
+    ) => Holding(marks, Ctrl, Shift);
+
+    private static (KeyLedgerSection Engine, KeyLedgerSection View) Holding(
+        LedgerMarks marks,
+        params PhysicalKey[] keys
     )
     {
         var engine = KeyLedgerSection.CreateInMemory();
-        foreach (var key in new[] { Ctrl, Shift })
+        foreach (var key in keys)
         {
             engine.TryBeginDown(key, out var slot);
             engine.CommitDown(slot);
@@ -195,6 +205,44 @@ public sealed class RefusedReleaseTests
             sender.Batches[1].ShouldBe([LowLevelInput.KeyUp(Ctrl)]);
             loop.ReleasedEvents.ShouldBe(2);
             log.ShouldBe(["refused", "accepted", "relaunch"]);
+        }
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void A_partial_send_cut_inside_the_menu_mask_resends_the_whole_mask_with_win(
+        int accepted
+    )
+    {
+        // Win, then Ctrl: the batch is Ctrl up, mask down, mask up, Win up.
+        var (engine, view) = Holding(LedgerMarks.EngineAlive, Win, Ctrl);
+        using (engine)
+        using (view)
+        {
+            var mask = LedgerRelease.MenuMask;
+            var sender = new RefusingSender().AcceptOnly(accepted).LockedFor(2);
+            var (loop, _, log) = Machine(view, sender);
+
+            loop.Run().ShouldBe(SentinelExitCode.ReleasedAndRelaunched);
+
+            // A bare Win up after the unlock could open Start: the resend starts again at the mask.
+            sender.Batches[0].Length.ShouldBe(4);
+            sender
+                .Batches[1..]
+                .ShouldAllBe(batch =>
+                    batch.SequenceEqual(
+                        new[]
+                        {
+                            LowLevelInput.KeyDown(mask),
+                            LowLevelInput.KeyUp(mask),
+                            LowLevelInput.KeyUp(Win),
+                        }
+                    )
+                );
+            sender.Batches.Count.ShouldBe(4);
+            loop.ReleasedEvents.ShouldBe(4);
+            log[^1].ShouldBe("relaunch");
         }
     }
 

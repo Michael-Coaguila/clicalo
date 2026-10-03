@@ -93,7 +93,9 @@ Opción elegida: **«Contratos explícitos en código compartido»**, porque amb
    atómica.
 6. **Liberación rechazada (decisión D3 del usuario, 2026-10-03).** Si `SendInput` no acepta todo el lote de liberación,
    Sentinel vuelve a enviar **lo que no salió** cada `--heartbeat-ms` (`GuardianLoop`) y solo cuando todo salió decide
-   el relanzamiento del punto 5. Así el proceso nuevo nunca pulsa una tecla que Sentinel vaya a soltar después.
+   el relanzamiento del punto 5. Así el proceso nuevo nunca pulsa una tecla que Sentinel vaya a soltar después. Un
+   corte dentro de la máscara de menú reenvía la máscara entera con su Alt o Win: nunca sale un Alt o Win suelto que
+   abra Inicio o una barra de menús al desbloquear.
    - **Rechazo del escritorio seguro**: `SendInput` no acepta nada y devuelve `ERROR_ACCESS_DENIED` (sesión bloqueada,
      UAC, Ctrl+Alt+Supr u otro escritorio de entrada; la misma lectura que `InjectionGate`). Se reintenta
      **sin límite de tiempo** mientras dure. Sentinel es el único que sabe qué quedó pulsado: rendirse dejaría la tecla
@@ -142,7 +144,7 @@ Opción elegida: **«Contratos explícitos en código compartido»**, porque amb
 - `tests/Clicalo.Sentinel.Tests/GuardianContractTests` fija los siete argumentos del protocolo 2 y el rechazo del 1;
   `RefusedReleaseTests` (inyector falso que rechaza y después acepta, con `FakeTimeProvider`) fija el reintento en
   cada latido, la espera sin límite con la sesión bloqueada, el límite de los demás rechazos, el envío solo de lo que
-  no salió y el relanzamiento estrictamente después del último soltado; falla si se quita el reintento.
+  no salió (sin separar la máscara de menú de su Alt o Win) y el relanzamiento estrictamente después del último soltado; falla si se quita el reintento.
   `SystemGuardianEnvironmentTests` comprueba que la pausa sigue al `TimeProvider`, y
   `tests/Clicalo.Platform.IntegrationTests/Engine/SentinelSupervisorTests`, que el principal pasa los umbrales de
   `timings.json`.
