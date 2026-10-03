@@ -43,14 +43,14 @@ public sealed class PointerDesktopFixture : IAsyncLifetime
 
     public GestureHost Host => _host ?? throw NotStarted();
 
-    public ValueTask InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         if (!DesktopTestEnvironment.IsEnabled)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
 
-        WpfThread.Invoke(() =>
+        var firstFrame = WpfThread.Invoke(() =>
         {
             _anchor = new OwnerAnchor();
             var guard = new ActivationGuard(Arbiter, TimeProvider.System);
@@ -59,8 +59,10 @@ public sealed class PointerDesktopFixture : IAsyncLifetime
             var work = SystemParameters.WorkArea;
             surface.Left = work.Left + ((work.Width - surface.Width) / 2);
             surface.Top = work.Top + ((work.Height - surface.Height) / 2);
+            var composed = FirstFrame.Watch(surface);
             surface.ShowPassive();
             _surface = surface;
+            return composed;
         });
         WpfThread.Invoke(WpfThread.DrainPendingWork);
         WpfThread.Invoke(() =>
@@ -75,7 +77,9 @@ public sealed class PointerDesktopFixture : IAsyncLifetime
             );
             Recorder.Host = _host;
         });
-        return ValueTask.CompletedTask;
+
+        // A gesture sent before the surface is composed falls through to the window below (FirstFrame).
+        await firstFrame.WaitAsync(EventTimeout, TestContext.Current.CancellationToken);
     }
 
     /// <summary>

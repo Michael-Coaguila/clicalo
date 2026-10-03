@@ -30,6 +30,10 @@ namespace Clicalo.TestKit.Windows.Input;
 /// </list>
 /// A finger waits <see cref="PenTouchSettle.Window"/> after a pen left the detection range, since Windows drops a touch
 /// that comes sooner (pen and touch arbitration).
+/// The check cannot see whether the window under the point is on screen yet: Windows routes a contact to what the
+/// desktop window manager composed, so a contact sent right after a window was shown passes the check and falls through
+/// to the window below, whatever its process. Fixtures wait for <see cref="Rendering.FirstFrame"/> before the first
+/// gesture on a window they show. Every frame is traced for failure messages (<see cref="PointerFrameTrace"/>).
 /// Coordinates are physical screen pixels: every gesture runs its thread per-monitor DPI aware. The mouse gestures put
 /// the cursor back where it was, and mouse events carry <see cref="ExtraInfoMarker"/> in <c>dwExtraInfo</c>. Desktop
 /// tests run it only with <c>CLICALO_DESKTOP_TESTS=1</c>; the hosted CI runners run them systematically.
@@ -48,6 +52,7 @@ public sealed class SyntheticPointer : IDisposable
     private readonly Lock _gate = new();
     private HSYNTHETICPOINTERDEVICE _device;
     private bool _disposed;
+    private string _lastTarget = "not checked";
 
     /// <summary>Creates an injector of <paramref name="kind"/> that may only touch windows of <paramref name="allowedProcessIds"/>.</summary>
     public SyntheticPointer(SyntheticPointerKind kind, IReadOnlyCollection<int> allowedProcessIds)
@@ -121,6 +126,13 @@ public sealed class SyntheticPointer : IDisposable
             if (_device != default)
             {
                 PInvoke.DestroySyntheticPointerDevice(_device);
+                PointerFrameTrace.Add(
+                    Stopwatch.GetTimestamp(),
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{Kind} device 0x{Raw(_device):X} destroyed"
+                    )
+                );
                 _device = default;
             }
         }
@@ -185,6 +197,8 @@ public sealed class SyntheticPointer : IDisposable
         }
     }
 
+    private static unsafe nint Raw(HSYNTHETICPOINTERDEVICE device) => (nint)device.Value;
+
     private static Point Between(Point from, Point to, double fraction) =>
         new(
             from.X + (int)Math.Round((to.X - from.X) * fraction, MidpointRounding.AwayFromZero),
@@ -209,7 +223,9 @@ public sealed class SyntheticPointer : IDisposable
             );
         }
 
-        if (!IsAllowedTarget(point, AllowedProcessIds, out var description))
+        var allowed = IsAllowedTarget(point, AllowedProcessIds, out var description);
+        _lastTarget = description;
+        if (!allowed)
         {
             throw new InjectionRefusedException(
                 string.Create(
@@ -336,7 +352,16 @@ public sealed class SyntheticPointer : IDisposable
     {
         var info =
             Kind == SyntheticPointerKind.Pen ? PenFrame(point, frame) : TouchFrame(point, frame);
-        if (!PInvoke.InjectSyntheticPointerInput(Device(), &info, 1))
+        var device = Device();
+        var injected = PInvoke.InjectSyntheticPointerInput(device, &info, 1);
+        PointerFrameTrace.Add(
+            Stopwatch.GetTimestamp(),
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Kind} {frame} at ({point.X}, {point.Y}) on device 0x{Raw(device):X}: {(injected ? "injected" : "refused")}; checked target {_lastTarget}; foreground 0x{(nint)PInvoke.GetForegroundWindow():X}"
+            )
+        );
+        if (!injected)
         {
             var error = Marshal.GetLastPInvokeError();
             throw new InjectionRefusedException(
@@ -358,6 +383,13 @@ public sealed class SyntheticPointer : IDisposable
                     : POINTER_INPUT_TYPE.PT_TOUCH,
                 1,
                 POINTER_FEEDBACK_MODE.POINTER_FEEDBACK_NONE
+            );
+            PointerFrameTrace.Add(
+                Stopwatch.GetTimestamp(),
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{Kind} device 0x{Raw(_device):X} created"
+                )
             );
             if (_device == default)
             {
@@ -544,13 +576,21 @@ public sealed class SyntheticPointer : IDisposable
         return input;
     }
 
-    private static void SendMouse(INPUT[] inputs)
+    private void SendMouse(INPUT[] inputs)
     {
         uint inserted;
         unsafe
         {
             inserted = PInvoke.SendInput(inputs, sizeof(INPUT));
         }
+
+        PointerFrameTrace.Add(
+            Stopwatch.GetTimestamp(),
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"Mouse {string.Join("+", inputs.Select(input => input.Anonymous.mi.dwFlags))}: {inserted} of {inputs.Length} inserted; checked target {_lastTarget}"
+            )
+        );
 
         if (inserted != inputs.Length)
         {

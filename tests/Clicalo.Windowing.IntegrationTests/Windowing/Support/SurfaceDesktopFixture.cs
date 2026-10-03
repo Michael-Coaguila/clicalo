@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.TestKit.Windows;
@@ -23,6 +25,11 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
 
     private const double Gap = 12;
 
+    private readonly System.Collections.Concurrent.ConcurrentQueue<(
+        long Timestamp,
+        string Line
+    )> _timeline = new();
+    private ForegroundLog? _foreground;
     private InputProbeSession? _probe;
     private SurfaceLab? _lab;
     private TestSurface? _panel;
@@ -51,7 +58,15 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
             return;
         }
 
+        _foreground = ForegroundLog.Start();
+        Note("fixture starting");
         _probe = await InputProbeSession.StartAsync(TestContext.Current.CancellationToken);
+        Note(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"probe started: window 0x{_probe.Window:X}, bounds {Describe(NativeSurface.Bounds(_probe.Window))}"
+            )
+        );
         var probe = _probe;
         var arbiter = new RecordingArbiter
         {
@@ -68,6 +83,7 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
         var (work, dpi) = NativeSurface.PrimaryWorkArea();
         var scale = dpi / 96.0;
         TestSurface[] surfaces = [_panel, _dock, _side, _bubble];
+        var frames = new List<Task>();
         WpfThread.Invoke(() =>
         {
             var totalWidth = surfaces.Sum(surface => surface.Width) + (Gap * (surfaces.Length - 1));
@@ -83,13 +99,80 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
                         (int)Math.Round(surface.Height * scale)
                     )
                 );
+                frames.Add(FirstFrame.Watch(surface));
                 surface.ShowPassive();
+                Note(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{surface.Id} shown: window 0x{surface.Handle:X}, bounds {Describe(NativeSurface.Bounds(surface.Handle))}"
+                    )
+                );
                 left += (surface.Width + Gap) * scale;
             }
 
             lab.Integrity.Start();
         });
+
+        // A gesture sent before the surfaces are composed falls through to the window below (FirstFrame).
+        await Task.WhenAll(frames).WaitAsync(EventTimeout, TestContext.Current.CancellationToken);
+        Note("first frames composed; fixture ready");
     }
+
+    /// <summary>
+    /// What happened since <paramref name="since"/> (<see cref="Stopwatch"/> ticks), in order: the fixture's own steps,
+    /// the injected frames, the pointer messages of every surface, the foreground changes and the probe's events since
+    /// <paramref name="probeCursor"/>; then the top-level windows under <paramref name="x"/>, <paramref name="y"/>.
+    /// </summary>
+    public string Diagnose(long since, int probeCursor, int x, int y)
+    {
+        var lines = new List<(double Ms, string Line)>();
+        void Add(IEnumerable<string> entries)
+        {
+            foreach (var entry in entries)
+            {
+                var ms = entry.StartsWith('+')
+                    ? double.Parse(
+                        entry[1..entry.IndexOf(' ', StringComparison.Ordinal)],
+                        CultureInfo.InvariantCulture
+                    )
+                    : double.MaxValue;
+                lines.Add((ms, entry));
+            }
+        }
+
+        Add(_timeline.Select(entry => Stamp(since, entry.Timestamp, entry.Line)));
+        Add(PointerFrameTrace.Since(since));
+        foreach (var surface in new[] { _panel, _dock, _side, _bubble }.OfType<TestSurface>())
+        {
+            Add(surface.PointerLogSince(since));
+        }
+
+        if (_foreground is not null)
+        {
+            Add(_foreground.Relative(since));
+        }
+
+        if (_probe is not null)
+        {
+            Add(
+                _probe
+                    .EventsSince(probeCursor)
+                    .Where(received => received.Timestamp >= since)
+                    .Select(received => Stamp(since, received.Timestamp, "probe " + received.Json))
+            );
+        }
+
+        return string.Join(
+                Environment.NewLine,
+                lines.OrderBy(line => line.Ms).Select(line => line.Line)
+            )
+            + Environment.NewLine
+            + "Top-level windows under the point, from the top: "
+            + string.Join(" > ", WindowsAt.Describe(x, y));
+    }
+
+    /// <summary>Notes a step of the fixture or of a test for <see cref="Diagnose"/>.</summary>
+    public void Note(string line) => _timeline.Enqueue((Stopwatch.GetTimestamp(), line));
 
     /// <summary>The windows of <paramref name="surface"/> (the Tab view has two).</summary>
     public IReadOnlyList<TestSurface> WindowsOf(LabSurface surface) =>
@@ -126,7 +209,18 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
     }
 
     /// <summary>Waits until <paramref name="condition"/> holds, failing with <paramref name="because"/> on timeout.</summary>
-    public static async Task WaitUntilAsync(Func<bool> condition, string because)
+    public static Task WaitUntilAsync(Func<bool> condition, string because) =>
+        WaitUntilAsync(condition, because, diagnostics: null);
+
+    /// <summary>
+    /// Waits until <paramref name="condition"/> holds, failing with <paramref name="because"/> and
+    /// <paramref name="diagnostics"/> on timeout.
+    /// </summary>
+    public static async Task WaitUntilAsync(
+        Func<bool> condition,
+        string because,
+        Func<string>? diagnostics
+    )
     {
         ArgumentNullException.ThrowIfNull(condition);
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -140,7 +234,14 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                condition().ShouldBeTrue(because + " (" + ForegroundWindows.Describe() + ")");
+                condition()
+                    .ShouldBeTrue(
+                        because
+                            + " ("
+                            + ForegroundWindows.Describe()
+                            + ")"
+                            + (diagnostics is null ? "" : Environment.NewLine + diagnostics())
+                    );
                 return;
             }
         }
@@ -184,12 +285,25 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
+        _foreground?.Dispose();
         _lab?.Dispose();
         if (_probe is not null)
         {
             await _probe.DisposeAsync();
         }
     }
+
+    private static string Stamp(long since, long timestamp, string line) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"+{Stopwatch.GetElapsedTime(since, timestamp).TotalMilliseconds:0.0} ms {line}"
+        );
+
+    private static string Describe(NativeSurface.Rect bounds) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"({bounds.Left}, {bounds.Top}, {bounds.Right}, {bounds.Bottom})"
+        );
 
     private static InvalidOperationException NotStarted() => new(DesktopTestEnvironment.SkipReason);
 }

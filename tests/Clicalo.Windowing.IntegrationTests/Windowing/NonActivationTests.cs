@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Clicalo.Domain.Timing;
 using Clicalo.TestKit.Windows;
@@ -42,6 +43,7 @@ public sealed class NonActivationTests(SurfaceDesktopFixture desktop)
     )
     {
         var windows = desktop.WindowsOf(surface);
+        var started = Stopwatch.GetTimestamp();
         var cursor = await desktop.PrepareAsync();
         var violations = desktop.Lab.Guard.Violations;
         using var pointer = desktop.CreatePointer(kind);
@@ -56,7 +58,8 @@ public sealed class NonActivationTests(SurfaceDesktopFixture desktop)
 
             await SurfaceDesktopFixture.WaitUntilAsync(
                 () => Landed(window, kind) > landed,
-                Say($"Tap {tap} of {Cycles} by {kind} did not reach {window.Id}.")
+                Say($"Tap {tap} of {Cycles} by {kind} did not reach {window.Id}."),
+                () => desktop.Diagnose(started, cursor, x, y)
             );
             ShouldStillBeInFront(
                 Say($"after tap {tap} of {Cycles} on {window.Id} by {kind}"),
@@ -77,6 +80,7 @@ public sealed class NonActivationTests(SurfaceDesktopFixture desktop)
     )
     {
         var windows = desktop.WindowsOf(surface);
+        var started = Stopwatch.GetTimestamp();
         var cursor = await desktop.PrepareAsync();
         var violations = desktop.Lab.Guard.Violations;
         using var finger = desktop.CreatePointer(SyntheticPointerKind.Finger);
@@ -91,7 +95,8 @@ public sealed class NonActivationTests(SurfaceDesktopFixture desktop)
             finger.Hold(x, y, hold);
             await SurfaceDesktopFixture.WaitUntilAsync(
                 () => held.PointerUps > landed,
-                Say($"Hold {cycle} of {Cycles} did not reach {held.Id}.")
+                Say($"Hold {cycle} of {Cycles} did not reach {held.Id}."),
+                () => desktop.Diagnose(started, cursor, x, y)
             );
             ShouldStillBeInFront(Say($"after hold {cycle} of {Cycles} on {held.Id}"), violations);
 
@@ -102,7 +107,8 @@ public sealed class NonActivationTests(SurfaceDesktopFixture desktop)
             finger.Drag(fromX, fromY, toX, toY, drag);
             await SurfaceDesktopFixture.WaitUntilAsync(
                 () => dragged.PointerUps > landed,
-                Say($"Drag {cycle} of {Cycles} did not reach {dragged.Id}.")
+                Say($"Drag {cycle} of {Cycles} did not reach {dragged.Id}."),
+                () => desktop.Diagnose(started, cursor, fromX, fromY)
             );
             ShouldStillBeInFront(
                 Say($"after drag {cycle} of {Cycles} on {dragged.Id}"),

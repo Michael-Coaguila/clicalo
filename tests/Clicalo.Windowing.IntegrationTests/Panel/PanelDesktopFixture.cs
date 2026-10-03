@@ -127,7 +127,7 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
         LocalizationContext localization = PanelTestData.Localization("es");
         _tray = new TrayController(_icon, _menu, _orchestrator, Engine, localization);
 
-        WpfThread.Invoke(() =>
+        var firstFrame = WpfThread.Invoke(() =>
         {
             var session = new SessionStore(PanelSession.Initial(PanelTestData.Word));
             var controller = new PanelInteractionController(Engine, () => 1, TimeProvider.System);
@@ -145,13 +145,18 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
                 columns: 4,
                 ThemeId.Dark
             );
+            var composed = FirstFrame.Watch(window);
             window.Present();
             _session = session;
             _viewModel = viewModel;
             _window = window;
             _visibility = new PanelVisibilityCoordinator(session, Engine);
+            return composed;
         });
         WpfThread.Invoke(WpfThread.DrainPendingWork);
+
+        // A gesture sent before the panel is composed falls through to the window below (FirstFrame).
+        await firstFrame.WaitAsync(EventTimeout, TestContext.Current.CancellationToken);
     }
 
     /// <summary>

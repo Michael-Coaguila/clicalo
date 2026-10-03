@@ -19,6 +19,8 @@ public sealed class TestSurface : NonActivatingWindow
 {
     private readonly ConcurrentQueue<string> _activations = new();
     private readonly ConcurrentQueue<string> _sequence = new();
+    private readonly ConcurrentQueue<(long Timestamp, string Line)> _pointerLog = new();
+    private int _pointerUpdates;
     private int _pointerDowns;
     private int _pointerUps;
     private int _mouseDowns;
@@ -72,6 +74,26 @@ public sealed class TestSurface : NonActivatingWindow
     /// <summary>The owner when the first <c>WM_SHOWWINDOW(TRUE)</c> arrived.</summary>
     public nint? OwnerAtFirstShow => _ownerAtFirstShow;
 
+    /// <summary>
+    /// The pointer messages received since <paramref name="since"/> (<see cref="System.Diagnostics.Stopwatch"/> ticks),
+    /// each with its milliseconds after it, the pointer id and the screen point; <c>WM_POINTERUPDATE</c> only as a count.
+    /// </summary>
+    public IReadOnlyList<string> PointerLogSince(long since) =>
+        [
+            .. _pointerLog
+                .Where(entry => entry.Timestamp >= since)
+                .Select(entry =>
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"+{System.Diagnostics.Stopwatch.GetElapsedTime(since, entry.Timestamp).TotalMilliseconds:0.0} ms {Id} {entry.Line}"
+                    )
+                ),
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Id}: {Volatile.Read(ref _pointerUpdates)} WM_POINTERUPDATE in total"
+            ),
+        ];
+
     /// <summary>Sets <see cref="NonActivatingWindow.ShadowMargin"/> (logical units on every side).</summary>
     public void UseShadowMargin(double margin) => ShadowMargin = new Thickness(margin);
 
@@ -82,6 +104,7 @@ public sealed class TestSurface : NonActivatingWindow
     private nint Record(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
         RecordSequence(hwnd, (uint)msg, wParam);
+        RecordPointer((uint)msg, wParam, lParam);
         switch ((uint)msg)
         {
             case NativeSurface.WmActivate when (wParam & 0xFFFF) != 0:
@@ -115,6 +138,54 @@ public sealed class TestSurface : NonActivatingWindow
         }
 
         return 0;
+    }
+
+    private void RecordPointer(uint msg, nint wParam, nint lParam)
+    {
+        var name = msg switch
+        {
+            0x0238 => "WM_POINTERDEVICECHANGE",
+            0x0239 => "WM_POINTERDEVICEINRANGE",
+            0x023A => "WM_POINTERDEVICEOUTOFRANGE",
+            0x0241 => "WM_NCPOINTERUPDATE",
+            0x0242 => "WM_NCPOINTERDOWN",
+            0x0243 => "WM_NCPOINTERUP",
+            NativeSurface.WmPointerDown => "WM_POINTERDOWN",
+            NativeSurface.WmPointerUp => "WM_POINTERUP",
+            0x0249 => "WM_POINTERENTER",
+            0x024A => "WM_POINTERLEAVE",
+            NativeSurface.WmPointerActivate => "WM_POINTERACTIVATE",
+            0x024C => "WM_POINTERCAPTURECHANGED",
+            0x024D => "WM_TOUCHHITTESTING",
+            NativeSurface.WmMouseActivate => "WM_MOUSEACTIVATE",
+            NativeSurface.WmLeftButtonDown => "WM_LBUTTONDOWN",
+            NativeSurface.WmLeftButtonUp => "WM_LBUTTONUP",
+            0x0204 => "WM_RBUTTONDOWN",
+            0x0205 => "WM_RBUTTONUP",
+            0x007B => "WM_CONTEXTMENU",
+            _ => null,
+        };
+        if (msg == 0x0245)
+        {
+            Interlocked.Increment(ref _pointerUpdates);
+        }
+
+        if (name is null)
+        {
+            return;
+        }
+
+        var x = (short)((long)lParam & 0xFFFF);
+        var y = (short)(((long)lParam >> 16) & 0xFFFF);
+        _pointerLog.Enqueue(
+            (
+                System.Diagnostics.Stopwatch.GetTimestamp(),
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{name} id={(long)wParam & 0xFFFF} flags=0x{((long)wParam >> 16) & 0xFFFF:X} at ({x}, {y})"
+                )
+            )
+        );
     }
 
     private void RecordSequence(nint hwnd, uint msg, nint wParam)
