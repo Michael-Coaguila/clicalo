@@ -194,7 +194,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var scheduler = _scheduler;
         if (read.Documents.SavePending)
         {
-            // The seed or the migration of this start could not be written: saved at once and retried (DAT-002).
+            // The seed of a new installation could not be written: saved at once and retried (DAT-002).
             scheduler.MarkUnsaved(store.Current);
         }
 

@@ -1,6 +1,6 @@
 # Clícalo: catálogo de requisitos funcionales
 
-**Versión 1.0 · 2026-09-25.** Esta es la fuente de verdad funcional para reconstruir Clícalo, sucesor de Macro Quick Access, desde cero.
+**Versión 1.1 · 2026-10-03** (1.0 del 2026-09-25, más las decisiones del usuario de §6.2). Esta es la fuente de verdad funcional para reconstruir Clícalo, sucesor de Macro Quick Access, desde cero.
 
 **Base del catálogo.** Integra lo que informaron seis analistas sobre el paquete `design_handoff_clicalo` (README, docs 01–10, Prototipo v4, Auditoría y `data/*.json`) y sobre la app antigua. Algunos datos se comprobaron directamente:
 - las 8 reglas del README;
@@ -1252,7 +1252,13 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **EC-BIE-01.** Atrás al paso 1: se recalculan los efectos. Omitir tras el paso 1: se conserva lo aplicado.
 
 **Migración**
-- **EC-MIG-01, EC-MIG-02, EC-MIG-03, EC-MIG-04, EC-MIG-05.** **Retirado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): sin importación desde Macro Quick Access no tienen efecto.
+
+**Retirados por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): sin importación desde Macro Quick Access no tienen efecto. Los identificadores se conservan y no se reutilizan.
+- **EC-MIG-01.** Retirado · `profiles.json` y datos de Clícalo a la vez (D1).
+- **EC-MIG-02.** Retirado · Archivo v1 dañado (D1).
+- **EC-MIG-03.** Retirado · Perfil fijado o activo inexistente (D1).
+- **EC-MIG-04.** Retirado · Sin perfil General o General con proceso (D1).
+- **EC-MIG-05.** Retirado · Colores v1 no estándar (D1).
 
 ---
 

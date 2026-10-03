@@ -4,7 +4,8 @@ namespace Clicalo.Domain.Settings;
 
 /// <summary>
 /// Every setting of the user document (docs/02, DAT-001), the blueprint's <c>Settings</c> (renamed so it does not
-/// clash with its namespace). Ranges, defaults, clamping on load and the simple rows of the UI all come from <see cref="SettingsSchema"/>. Repeated combinations marked «It's fine» live in the document's
+/// clash with its namespace). Ranges, defaults, clamping on load and the simple rows of the UI all come from
+/// <see cref="SettingsSchema"/>. Repeated combinations marked «It's fine» live in the document's
 /// <c>DuplicatePolicy</c>, not here.
 /// </summary>
 public sealed record UserSettings
