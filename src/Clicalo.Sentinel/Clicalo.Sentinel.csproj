@@ -8,6 +8,10 @@
     <AssemblyName>Clicalo.Sentinel</AssemblyName>
     <RootNamespace>Clicalo.Sentinel</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup Label="Shipped runtimes (Directory.Build.props)">
+    <RuntimeIdentifiers>$(ClicaloRuntimeIdentifiers)</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(ClicaloRuntimeIdentifier)' != ''">$(ClicaloRuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
   </ItemGroup>

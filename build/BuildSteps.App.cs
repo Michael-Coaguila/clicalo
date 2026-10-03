@@ -134,8 +134,8 @@ internal sealed partial class BuildSteps
 
     /// <summary>
     /// <c>cl perf</c>, first step: publishes every <see cref="PublishVariant"/> of Clicalo.exe (and Sentinel next to it)
-    /// in Release under <paramref name="output"/>. The lock files are neither read nor written here: they hold no
-    /// runtime-specific graph and these publications are measurements, never releases.
+    /// in Release under <paramref name="output"/>, with the same restore as any build: the lock files hold the graphs of
+    /// both shipped runtimes, and in CI the restore is locked (<see cref="PublishArguments"/>).
     /// </summary>
     public Task PublishAsync(IReadOnlyList<PublishVariant> variants, string output) =>
         context.Steps.RunAsync(
@@ -205,6 +205,28 @@ internal sealed partial class BuildSteps
         + "es: \"\"\n"
         + "en: \"\"\n";
 
+    /// <summary>
+    /// The <c>dotnet publish</c> arguments of <paramref name="project"/> for this machine's runtime. The runtime goes in
+    /// <c>ClicaloRuntimeIdentifier</c>, which only the published executables turn into their <c>RuntimeIdentifier</c>
+    /// (Directory.Build.props): <c>-r</c> is a global property that would reach the restore of every library, generator
+    /// and analyzer they reference, whose lock files hold no runtime graph, and fail it with NU1004 in locked mode.
+    /// </summary>
+    internal static List<string> PublishArguments(
+        string project,
+        string folder,
+        IReadOnlyList<string> properties
+    ) =>
+        [
+            "publish",
+            project,
+            "-c",
+            Release,
+            "-p:ClicaloRuntimeIdentifier=" + RuntimeIdentifier,
+            "-o",
+            folder,
+            .. properties,
+        ];
+
     private async Task PublishProjectAsync(
         string project,
         string folder,
@@ -212,20 +234,7 @@ internal sealed partial class BuildSteps
     )
     {
         var log = PrepareErrorLog("publish");
-        List<string> args =
-        [
-            "publish",
-            project,
-            "-c",
-            Release,
-            "-r",
-            RuntimeIdentifier,
-            "-o",
-            layout.Relative(folder),
-            .. properties,
-            "-p:RestorePackagesWithLockFile=false",
-            "-p:RestoreLockedMode=false",
-        ];
+        var args = PublishArguments(project, layout.Relative(folder), properties);
         AddMsBuildSwitches(args, log);
         var exitCode = await RunAsync(args);
         if (exitCode != 0)
