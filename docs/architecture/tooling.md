@@ -38,7 +38,7 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl pr` | Abre el PR de la rama actual | M1 |
 | `cl run` | Arranca la compilación Debug de `Clicalo.exe` con datos aislados en `%TEMP%\clicalo-dev` y **sin envío de teclas** (`--no-input`) | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
-| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`, cada una con Sentinel) y ejecuta las mediciones `Category=Perf`; fuera de la CI, sin envío de teclas | M2 |
+| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`, cada una con Sentinel) y ejecuta las mediciones `Category=Perf`; fuera de la CI, sin envío de teclas. Necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio (el enlazador de Native AOT de Sentinel) | M2 |
 | `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
 | `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
 | `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
