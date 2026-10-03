@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Clicalo.TestKit.Windows.Probe;
 
 namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
@@ -55,6 +56,7 @@ public sealed class ActivationTimeline
                 .Where(received => received.Timestamp >= since)
                 .Select(received => (received.Timestamp, "probe " + received.Json))
         );
+        entries.Add((Stopwatch.GetTimestamp(), "now: " + DescribeThreadOf(probe.Window)));
         return string.Join(
             Environment.NewLine,
             entries
@@ -66,5 +68,55 @@ public sealed class ActivationTimeline
                     )
                 )
         );
+    }
+
+    /// <summary>
+    /// The activation state of the thread that owns <paramref name="window"/> (<c>GetGUIThreadInfo</c>): its active
+    /// window, its focus window and <c>GetForegroundWindow</c>. The foreground window can be a window whose thread
+    /// lost its focus.
+    /// </summary>
+    public static string DescribeThreadOf(nint window)
+    {
+        var thread = GetWindowThreadProcessId(window, out _);
+        var info = new GuiThreadInfo { Size = Marshal.SizeOf<GuiThreadInfo>() };
+        return GetGUIThreadInfo(thread, ref info)
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"thread of 0x{window:X}: active 0x{info.Active:X}, focus 0x{info.Focus:X}, flags 0x{info.Flags:X}; foreground 0x{GetForegroundWindow():X}"
+            )
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"thread of 0x{window:X}: GetGUIThreadInfo failed ({Marshal.GetLastPInvokeError()})"
+            );
+    }
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetGUIThreadInfo(uint thread, ref GuiThreadInfo info);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern nint GetForegroundWindow();
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GuiThreadInfo
+    {
+        public int Size;
+        public uint Flags;
+        public nint Active;
+        public nint Focus;
+        public nint Capture;
+        public nint MenuOwner;
+        public nint MoveSize;
+        public nint Caret;
+        public int CaretLeft;
+        public int CaretTop;
+        public int CaretRight;
+        public int CaretBottom;
     }
 }
