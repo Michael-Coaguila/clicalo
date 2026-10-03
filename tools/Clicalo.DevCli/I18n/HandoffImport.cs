@@ -10,6 +10,6 @@ internal sealed class HandoffImport
     /// <summary>Problems of the handoff or of the recipe; nothing is written when there is any.</summary>
     public List<string> Errors { get; } = [];
 
-    /// <summary>Number of keys of the handoff (669).</summary>
+    /// <summary>Number of keys of the handoff (669), the retired ones included.</summary>
     public int HandoffKeyCount { get; set; }
 }

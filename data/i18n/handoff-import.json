@@ -71,37 +71,10 @@
         "es": { "one": "Añadir {count} que falta" },
         "en": { "one": "Add {count} missing" }
       }
-    },
-    "migT": {
-      "notes": "Catálogo §9: variables {profiles} y {shortcuts}, y plural en las dos cantidades. Una familia de plurales solo elige por {count}, así que cada cantidad es un mensaje anidado con su propio plural (migTProfiles, migTShortcuts): el orden de la frase sigue en manos de quien traduce y no se concatenan fragmentos (IDI-004).",
-      "text": {
-        "es": "Importado desde tu versión anterior: {profiles} y {shortcuts}",
-        "en": "Imported from your previous version: {profiles} and {shortcuts}"
-      },
-      "arguments": {
-        "profiles": { "message": "migTProfiles", "count": "p" },
-        "shortcuts": { "message": "migTShortcuts", "count": "n" }
-      }
     }
   },
   "added": {
     "notes": "Claves que no están en el paquete y que la conversión necesita.",
-    "migTProfiles": {
-      "notes": "Cantidad de perfiles de migT.",
-      "after": "migT",
-      "plural": {
-        "es": { "one": "{count} perfil", "other": "{count} perfiles" },
-        "en": { "one": "{count} profile", "other": "{count} profiles" }
-      }
-    },
-    "migTShortcuts": {
-      "notes": "Cantidad de atajos de migT.",
-      "after": "migTProfiles",
-      "plural": {
-        "es": { "one": "{count} atajo", "other": "{count} atajos" },
-        "en": { "one": "{count} shortcut", "other": "{count} shortcuts" }
-      }
-    },
     "kgMods": {
       "notes": "Grupo de teclas del selector (data/catalogs/keys.json).",
       "after": "kgSides",
@@ -319,26 +292,15 @@
         "es": { "one": "Se excluyó {count} texto", "other": "Se excluyeron {count} textos" },
         "en": { "one": "{count} text was left out", "other": "{count} texts were left out" }
       }
+    }
+  },
+  "retired": {
+    "notes": "Claves del paquete que el producto ya no muestra por una decisión del usuario: no se importan. Cada una lleva su motivo. Las claves de «added» que solo existían para ellas se borran de la receta.",
+    "migT": {
+      "notes": "Tarjeta de migración de Sistema › Copias (COP-001, retirado). Decisión del usuario del 2026-10-03 (D1, ADR-0020): Clícalo no importa la configuración de Macro Quick Access. Con ella se retiraron las claves añadidas migTProfiles, migTShortcuts, migFailT, migFailD, migRetry y migReportT, y los marcadores {profiles} y {shortcuts}."
     },
-    "migFailT": {
-      "notes": "Título del aviso de migración fallida (MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
-      "after": "sharedTextsExcluded",
-      "text": { "es": "No se pudo importar tu configuración anterior", "en": "Your previous settings could not be imported" }
-    },
-    "migFailD": {
-      "notes": "Detalle del aviso de migración fallida (MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
-      "after": "migFailT",
-      "text": { "es": "Empezamos con los datos de ejemplo. Tu archivo original está a salvo.", "en": "We started with the example data. Your original file is safe." }
-    },
-    "migRetry": {
-      "notes": "Botón del aviso de migración fallida (MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
-      "after": "migFailD",
-      "text": { "es": "Reintentar migración", "en": "Retry migration" }
-    },
-    "migReportT": {
-      "notes": "Título del informe de la importación v1 (BIE-002, MIG-004). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
-      "after": "migRetry",
-      "text": { "es": "Informe de la importación", "en": "Import report" }
+    "migD": {
+      "notes": "Detalle de la tarjeta de migración (COP-001, retirado). Decisión del usuario del 2026-10-03 (D1, ADR-0020)."
     }
   }
 }

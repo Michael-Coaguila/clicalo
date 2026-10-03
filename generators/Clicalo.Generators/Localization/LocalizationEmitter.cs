@@ -127,7 +127,7 @@ internal static class LocalizationEmitter
         sb.Append(
             "/// Stable identifier of a localized text of <c>data/i18n</c>: the original key of the design handoff,\n"
         );
-        sb.Append("/// without plural suffix (for example <c>migT</c>).\n");
+        sb.Append("/// without plural suffix (for example <c>dupHead</c>).\n");
         sb.Append("/// </summary>\n");
         sb.Append("/// <param name=\"Value\">The key as written in <c>data/i18n</c>.</param>\n");
         sb.Append(GeneratedCode).Append('\n');

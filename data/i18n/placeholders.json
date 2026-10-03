@@ -7,14 +7,6 @@
     "type": "text",
     "description": "Nombre de un perfil tal como se muestra; puede ser un mensaje traducido, como «General»."
   },
-  "profiles": {
-    "type": "text",
-    "description": "Frase ya traducida con el número de perfiles: el mensaje migTProfiles."
-  },
-  "shortcuts": {
-    "type": "text",
-    "description": "Frase ya traducida con el número de atajos: el mensaje migTShortcuts."
-  },
   "name": {
     "type": "text",
     "description": "Nombre de un atajo o de un elemento, por ejemplo «Negrita»."

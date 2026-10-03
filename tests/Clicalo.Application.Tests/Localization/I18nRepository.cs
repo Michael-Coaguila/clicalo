@@ -80,6 +80,26 @@ internal static class I18nRepository
     public static JsonDocument Recipe() =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(DataDirectory, "handoff-import.json")));
 
+    /// <summary>The handoff keys a user decision removed from the product (<c>retired</c> of the recipe).</summary>
+    public static HashSet<string> Retired()
+    {
+        using var recipe = Recipe();
+        return recipe.RootElement.TryGetProperty("retired", out var retired)
+            ? retired
+                .EnumerateObject()
+                .Select(static p => p.Name)
+                .Where(static name => !string.Equals(name, "notes", StringComparison.Ordinal))
+                .ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+    }
+
+    /// <summary>The original strings of the design handoff that the product shows (without the retired keys).</summary>
+    public static List<KeyValuePair<string, string>> HandoffInProduct(string language)
+    {
+        var retired = Retired();
+        return [.. Handoff(language).Where(entry => !retired.Contains(entry.Key))];
+    }
+
     public static List<KeyValuePair<string, string>> ReadFlat(string path)
     {
         using var document = JsonDocument.Parse(File.ReadAllText(path));
