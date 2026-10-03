@@ -62,7 +62,7 @@ La arquitectura se apoya en seis ideas:
 | D8 | **Un único dispatcher de UI por defecto**, con dos *roles* lógicos (Surfaces y Workspace). Se separa en dos dispatchers solo si S2 mide que el Centro de control degrada el panel | Dos dispatchers desde el día 1 | No se diseña la concurrencia antes de medir. Los *roles* y la publicación inmutable permiten separar sin reescribir. |
 | D9 | Bandeja propia (`Shell_NotifyIcon`) en el hilo SysEvents. El menú vive en una **ventana de nivel superior oculta y propia**, con una concesión `TrayMenu` del `ForegroundOrchestrator` | H.NotifyIcon.Wpf; menú sobre `HWND_MESSAGE` | «Soltar todo» tiene que funcionar desde la bandeja aunque la UI esté colgada. El menú necesita el primer plano, y este debe volver verificado a la app anterior. |
 | D10 | Documento JSON con envoltorio, esquema `major.minor`, conservación de campos desconocidos, escritura atómica con `ReplaceFileW` y cuarentena. El **uso** va en un archivo aparte que se guarda de forma diferida | SQLite o LiteDB; esquema con un entero sin compatibilidad hacia delante; uso dentro del documento | Es pequeño, legible y atómico. Volver a N−1 no pierde datos, y cada toque no reescribe el documento. |
-| D11 | Migraciones como funciones puras sobre `JsonObject`; importador v1 independiente, idempotente y con límites contra bombas zip | Migrar a través de DTOs actuales | Una migración escrita hoy sigue compilando cuando mañana cambien los tipos. |
+| D11 | Migraciones como funciones puras sobre `JsonObject`. **Sin importador de Macro Quick Access v1** ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md), decisión D1 del usuario del 2026-10-03, que sustituye la segunda mitad de esta fila) | Migrar a través de DTOs actuales | Una migración escrita hoy sigue compilando cuando mañana cambien los tipos. |
 | D12 | **Elevación = proceso completo elevado.** El inicio elevado sin UAC (SIS-002) llega **en la 2.0** con un **componente de sistema opcional**: se instala una vez con UAC en `%ProgramFiles%` y ejecuta una copia verificada y protegida. uiAccess llega en M7 sobre ese mismo componente | Tarea `Highest` sobre `%LocalAppData%`; bróker elevado; aplazar SIS-002 | Ambas alternativas son escaladas de privilegios directas, y SIS-002 es MUST. |
 | D13 | La IPC entre instancias **no tiene verbos que inyecten**: solo `Show`, `OpenUri` e `ImportFile` (este último solo abre una vista previa) | IPC rica | La peor suplantación posible solo muestra el panel. |
 | D14 | Datos sensibles como tipos (`Sensitive<T>`, `SecretText` sin `string` de salida) con analizador `CLC0003` y prueba canario en CI | Filtrar con expresiones regulares al escribir el log | Las expresiones regulares fallan sin avisar; los tipos y los canarios fallan a la vista. |
@@ -601,7 +601,7 @@ Núcleo        Library (perfiles, atajos, acciones) · Settings
 Reglas        ProfileResolution · Frequents · Duplicates · Search · KeySafety · StickyModifiers
               Touch · PanelLayout · VoiceNumbering · Icons · Dimming · Interaction
 Ejecución     Execution (ActivationPolicy, planificadores por ActionKind, EngineReducer)
-Datos         Migration.V1 · Templates · Sharing
+Datos         Templates · Sharing
 ```
 
 | Módulo de Domain | Depende de |
@@ -624,7 +624,6 @@ Datos         Migration.V1 · Templates · Sharing
 | Dimming (`DimPolicy`) | Settings, Primitives |
 | Interaction (`NoticeQueue`, `CaptureState`, `TestModeState`) | Messages, Primitives, Library |
 | Execution | Library, KeySafety, StickyModifiers, Touch, Settings, Messages, Errors, Geometry |
-| Migration.V1 | Library, Keys, Catalog, Settings |
 | Templates, Sharing | Library, Catalog, Keys |
 
 La matriz está en `architecture/domain-modules.json` y es acíclica. Si aparece una arista que no está declarada, la CI falla.
@@ -735,7 +734,7 @@ clicalo/
 │  ├─ Clicalo.Domain/
 │  │   Primitives/ Geometry/ Messages/ Errors/ Privacy/ Keys/ Catalog/ Library/ Settings/
 │  │   ProfileResolution/ Frequents/ Duplicates/ Search/ KeySafety/ StickyModifiers/ Touch/
-│  │   PanelLayout/ VoiceNumbering/ Icons/ Dimming/ Interaction/ Execution/ Migration/V1/
+│  │   PanelLayout/ VoiceNumbering/ Icons/ Dimming/ Interaction/ Execution/
 │  │   Templates/ Sharing/
 │  ├─ Clicalo.Application/
 │  │   Ports/ Store/ Session/ Interaction/ Engine/ Foreground/ Projections/ Notices/
@@ -764,10 +763,10 @@ clicalo/
 │  ├─ Clicalo.Application.Tests/   Clicalo.Presentation.Tests/  Clicalo.Infrastructure.Tests/
 │  ├─ Clicalo.UI.Wpf.Tests/        Clicalo.Platform.IntegrationTests/  Clicalo.Windowing.IntegrationTests/
 │  ├─ Clicalo.E2E/                 Clicalo.Performance/  Clicalo.Sentinel.Tests/  Clicalo.Launcher.Tests/
-│  ├─ Clicalo.TestKit/             fixtures/ (pointer/, v1/, schema/<major.minor>/, render/)
+│  ├─ Clicalo.TestKit/             fixtures/ (pointer/, schema/<major.minor>/, render/)
 ├─ tools/
 │  ├─ InputProbe/                  ventana Win32 instrumentada (sin WPF)
-│  ├─ Clicalo.DevCli/              i18n-check, trace, notas, i18n-import, anonymize-v1, sign-manifest, states
+│  ├─ Clicalo.DevCli/              i18n-check, trace, notas, i18n-import, sign-manifest, states
 │  └─ fonts/subset.py              fonttools, se ejecuta a mano; la salida se versiona
 ├─ Clicalo.slnx · Core.slnf (Domain, Application, Presentation y sus pruebas)
 ├─ global.json · nuget.config · Directory.Build.props · Directory.Build.targets
@@ -913,7 +912,7 @@ public sealed record FrequentsState(ValueList<ShortcutId> Pins, ValueSet<Shortcu
 public sealed record SettingDescriptor(string Path, SettingScope Scope /* Presentation|Behavior|Placement */,
     bool Undoable, object Default, SettingRange? Range, MessageKey Label, MessageKey? Description);
 public static class SettingsSchema { public static IReadOnlyList<SettingDescriptor> All { get; } }
-// Fuente única de: valores por defecto, recorte al cargar, conversión v1, filas simples de la UI
+// Fuente única de: valores por defecto, recorte al cargar, filas simples de la UI
 // y pruebas (toda hoja de Settings tiene descriptor y textos ES/EN).
 
 public interface IDocumentCommand { Result<DocumentChange> Apply(UserDocument doc, DomainContext ctx); }
@@ -1027,7 +1026,6 @@ SealCoalescing(): al cambiar de atajo o perfil en el editor (EDI-021)
   clicalo.json · clicalo.json.prev · usage.json · usage.json.prev
   logs\clicalo.log (+ clicalo.1.log … clicalo.4.log)       (docs/08, LOG-001, ACE-003)
   backups\auto\ (12) · manual\ (sin límite) · pre-update\ pre-migrate\ pre-restore\ pre-import\ pre-reset\ (10 c/u)
-  backups\v1-original-<fecha>.json         (copia byte a byte; nunca se borra sola)
   quarantine\clicalo.<fecha>.json.corrupt
 %LocalAppData%\Clicalo\   diag\ · crash\ (volcados opt-in) · pending\ (guardado de emergencia) · crash-journal.json
 %LocalAppData%\Clicalo.App\  ← instalación de Velopack (packId distinto: desinstalar nunca toca los datos)
@@ -1083,7 +1081,9 @@ clicalo.json → parse → schema (major ≤ soportado) → validación semánti
 
 **Por qué JSON y no SQLite.** El documento pesa menos de 2 MB con 2000 atajos y se carga entero para las proyecciones. Una copia de seguridad es copiar un archivo. Es legible, se puede comparar entre versiones y es atómico con `ReplaceFileW`. Separar el uso elimina la única fuente de escrituras frecuentes. Se reconsiderará si NFR-016 crece 10 veces.
 
-### 6.6 Migraciones, incluida v1 → v2
+<a id="66-migraciones-incluida-v1--v2"></a>
+
+### 6.6 Migraciones del esquema
 
 ```csharp
 public interface IDocumentMigration
@@ -1098,32 +1098,13 @@ public sealed class MigrationRunner(IReadOnlyList<IDocumentMigration> chain, IBa
 - La cadena es contigua. Hay pruebas de «sin huecos ni ciclos» y de `Apply(Apply(x)) == Apply(x)`.
 - **Fixtures inmutables por versión** en `tests/fixtures/schema/<major.minor>/`. Cada migración nueva se prueba desde **todas** las versiones anteriores, con instantáneas de TestKit.
 
-**Importación desde Macro Quick Access (v1 → documento 1.0 de Clícalo 2.x):**
-- **Es una etapa aparte, no un eslabón de la cadena de migraciones.**
-- `ILegacyInstallLocator` encuentra las instalaciones v1 (MIG-001).
-- **Flujo:** copia byte a byte a `backups\v1-original-*` → `V1Reader` (tolera claves desconocidas, BOM y archivos truncados) → `V1Document` → `V1Converter.Convert(v1, KeyCatalog, IIdGenerator) → (UserDocument, MigrationReport)`. Es pura e idempotente.
-- **Límites de `.zip` (MIG-009, LOG-006), en `SafeZipReader`:**
-
-  | Límite | Valor |
-  |---|---|
-  | Tamaño total descomprimido | ≤50 MiB |
-  | Número de entradas | ≤1000 |
-  | Relación de compresión por entrada | ≤100:1, contada al leer, no confiando en la cabecera |
-  | Tamaño de cada JSON | ≤5 MiB |
-
-  Además:
-  - sin rutas con `..`, absolutas ni con unidad;
-  - no se siguen zips anidados;
-  - la lectura es en streaming con contador y aborta al superar un límite.
-
-  Los valores están en `timings.json`/`limits`.
-- **Tokenizador `V1ComboTokenizer`:** implementa la gramática del catálogo de requisitos (acordes, `ctrl++`, `num+`, alias, U+2212).
-- **Repetidos (MIG-008):** se calculan con `DuplicateIndex` sobre el resultado y se añaden a `dupIgnored` con su informe.
-- **Pruebas:**
-  - los 3 `profiles.json` reales anonimizados (`tools/anonymize-v1` conserva las combinaciones), los 2 respaldos por idioma, el zip y los casos dañados (EC-MIG-02 a 05);
-  - generadores CsCheck de zips hostiles (bomba de relación, miles de entradas, rutas con `..`, cabeceras que mienten) sobre `SafeZipReader`;
-  - SharpFuzz se añade después de la 2.0.
-- **Criterio: 210 → 210 atajos, ningún token vacío** (MIG-003 y MIG-004). La tarjeta de migración y el informe los muestra la bienvenida.
+**Sin importación desde Macro Quick Access.** Por decisión del usuario del 2026-10-03 (D1), Clícalo no lee el
+`profiles.json` v1 ni sus respaldos: no hay `ILegacyInstallLocator`, `V1Reader`, `V1Converter`, `SafeZipReader`, copia
+`v1-original`, opción `--migrate-v1`, pantalla previa en la bienvenida ni tarjeta de migración en Sistema › Copias
+([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md), que sustituye la parte v1 de ADR-0007). El único
+contenido importado es el formato propio (copias, Combinar o Reemplazar y perfiles compartidos), validado contra su
+esquema con los límites `Timings.Import.Share*` (§9.1); las migraciones de esta sección son solo entre versiones de ese
+esquema.
 
 ### 6.7 Cifrado y secretos
 
@@ -1145,7 +1126,6 @@ public sealed class MigrationRunner(IReadOnlyList<IDocumentMigration> chain, IBa
 | Automática | 30 s después del último cambio **en una porción significativa** (nunca por uso) | Las últimas 12, y como máximo una cada 30 s |
 | Manual | Botón | Sin límite |
 | pre-update, pre-migrate, pre-restore, pre-import-replace, pre-reset-frequents, pre-repair | Antes de la operación | 10 de cada tipo |
-| v1-original | Primera importación | Permanente |
 
 - Cada copia es un documento completo con su envoltorio e incluye el uso de ese momento. Los recuentos que se muestran son los de **esa** copia (COP-004).
 - Restaurar se confirma con dos toques (`TwoStepConfirm` → `ConfirmationToken`), crea antes una copia del estado actual y entra en el historial de deshacer (`Replace`).
@@ -1454,7 +1434,7 @@ Al tocar el panel, Windows lleva el cursor al punto del toque. Por eso `GetCurso
 | Burbuja de 64 px | `NonActivatingWindow` | Surfaces | Recuerda la forma a la que vuelve; opacidad mínima del 55 % |
 | Menú contextual y avisos flotantes | `NonActivatingWindow` hijas | Surfaces | Sustituyen a `ContextMenu` y `Popup` |
 | Centro de control | `Window` activable | Workspace | Secciones creadas de forma perezosa y virtualizadas; se abre y se cierra con la concesión `ControlCenter` (CCM-004) |
-| Bienvenida (pasos 0–4 y migración) | `Window` activable | Workspace | Concesión `ControlCenter` |
+| Bienvenida (pasos 0–4) | `Window` activable | Workspace | Concesión `ControlCenter` |
 | Bandeja | `Shell_NotifyIcon` + `TrayMenuHost` (ventana propia oculta) + `TrackPopupMenuEx` | SysEvents | Clic: mostrar u ocultar el panel. Menú: Centro de control, Soltar todo, Pausar, Salir. Concesión `TrayMenu` |
 
 **Opacidad, atenuado y desenfoque:**
@@ -1522,11 +1502,11 @@ data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion
 
 - **Fuente:** `strings.es.json` y `strings.en.json` del paquete, con las 669 claves. `cl i18n-import` hace una única conversión revisada a mano:
   - marcadores con nombre: `{p}`→`{profile}`/`{profiles}`, `{n}`→`{count}`, `{i}`→`{index}`, `{t}`→`{total}`, `{a}`→`{app}`, `{k}`→`{keys}`, `{v}`→`{version}`, `{x}`→`{name}`;
-  - plurales CLDR con sufijos `_one` y `_other` en las claves que marca el catálogo (`comboN`, `instNoteSome`, `sugLine`, `dupHead`, `twMacro`, `migT`, `addMissing`);
+  - plurales CLDR con sufijos `_one` y `_other` en las claves que marca el catálogo (`comboN`, `instNoteSome`, `sugLine`, `dupHead`, `twMacro`, `addMissing`; `migT` se retiró con ADR-0020);
   - eliminación de las 49 claves huérfanas.
   - **Condición vinculante:** una prueba de instantánea verifica que el texto que se muestra con los argumentos de muestra es idéntico al del paquete.
 - **`LocalizationGenerator`:**
-  - genera `MessageKey` (en Domain) y el API tipado `L.MigT(profiles, shortcuts)`;
+  - genera `MessageKey` (en Domain) y el API tipado `L.DupHead(count, index, total)`;
   - da error de compilación ante falta de paridad, marcadores distintos entre idiomas, un marcador desconocido o la falta de `_other`;
   - `XamlLocRefValidator` comprueba `{loc:T clave}`.
 - **En ejecución:** `ILocalizer` (Application) es una instantánea inmutable. `LocalizationSource` es una por dispatcher, con `PropertyChanged("Item[]")` para el cambio en caliente. Los campos que se están editando conservan su texto (IDI-001).
@@ -1704,10 +1684,10 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 |---|---|---|
 | Architecture.Tests | Lista blanca, ArchUnit, matriz de módulos, facetas de `ActionKind`, enrutadores sin eventos huérfanos, R4 (destructivos), R7 (`Record` salvo exenciones), escritor único | Cada PR |
 | Data.Tests | Esquemas, integridad referencial (`labelKey`, iconos en la fuente, `KeyId`), CAT-004, contenido inicial sin repetidos (CAT-003), `keys.json` ↔ `keys.win32.json`, coherencia de `timings.json` (umbrales únicos) | Cada PR |
-| Domain.Tests | Invariantes de `Library`, `KeyboardLedger`, `EngineReducer` (INV-1 a 12, incluido «congelar y reanudar»), `TouchFilter` y `GestureRecognizer`, `ActivationPolicy` por `Source`, `DimPolicy` (tabla de excepciones), `InteractionReducer`, resolución de perfil, Frecuentes, repetidos, capas, métricas, numeración, tokenizador v1, tabla de formas | Cada PR |
+| Domain.Tests | Invariantes de `Library`, `KeyboardLedger`, `EngineReducer` (INV-1 a 12, incluido «congelar y reanudar»), `TouchFilter` y `GestureRecognizer`, `ActivationPolicy` por `Source`, `DimPolicy` (tabla de excepciones), `InteractionReducer`, resolución de perfil, Frecuentes, repetidos, capas, métricas, numeración, tabla de formas | Cada PR |
 | Application.Tests | `DocumentStore` (porciones, agrupación, 20 entradas, borrador sin rastro, `ConfirmationToken`), `EngineHost` con `PhysicalStateInjector` e `InjectionGate`, `ForegroundOrchestrator` con `FakeForegroundControl` (escalera por origen, concesiones y prioridades), `TryNowUseCase` con `FakeTimeProvider`, coordinadores, programador de guardado (uso intensivo) | Cada PR |
 | Presentation.Tests | VM contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente | Cada PR |
-| Infrastructure.Tests | DTO ↔ dominio, migraciones con fixtures, importación v1 (instantáneas de TestKit), `SafeZipReader` con zips hostiles (CsCheck), `usage.json` y `usageEpoch`, `CrashingFileSystem`, cuarentena, DPAPI, cliente de IA con servidor falso y los 4 campos exactos, `SignedManifestSource` (firma incorrecta, `seq` menor, bajada legítima o atacante, revocada, `minSafeVersion`), `FixedNameRollingFileSink` | Cada PR |
+| Infrastructure.Tests | DTO ↔ dominio, migraciones con fixtures, importación y exportación del formato propio, `usage.json` y `usageEpoch`, `CrashingFileSystem`, cuarentena, DPAPI, cliente de IA con servidor falso y los 4 campos exactos, `SignedManifestSource` (firma incorrecta, `seq` menor, bajada legítima o atacante, revocada, `minSafeVersion`), `FixedNameRollingFileSink` | Cada PR |
 | UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con `RenderSnapshot` de TestKit y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos; hoy la tolerancia es por canal y el modo ΔE llega antes de las primeras referencias de la UI) | Cada PR (x64 y ARM64) |
 | Platform.IntegrationTests | Inyección en los dos modos con varias distribuciones, *hook* LL bajo presión de GC, `PointerPositionTracker` con toque sintético, sesión y suspensión, portapapeles, lanzador sin intérprete en el hilo Shell, ACL de la tarea elevada, escritura elevada y luego media | Alojado interactivo o equipo táctil |
 | Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847 y la de S3: `RaiseNotificationEvent` pasa una cadena ancha donde UI Automation lee un `BSTR`, que `LiveAnnouncer.ForUiaBstr` compensa, `wpf-notification-bstr`), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
@@ -1720,7 +1700,7 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 - `PhysicalStateInjector`, con `PressedKeys`, `Log`, `FailAfter(n)`, `BlockAt(n)` (congelar), y las aserciones `ShouldBeFullyReleased()` y `ShouldHaveSentInOrder()`;
 - `FakeForegroundMonitor`, con `SwitchTo(…, elevated)`, `Lock()` y `Suspend()`; `FakeForegroundControl`, con la política de derechos configurable;
 - `FakeClipboard`, `FakeAppCatalog`, `CannedTemplateGenerator`, `InMemoryFileSystem` y `CrashingFileSystem`;
-- constructores y generadores CsCheck (`KeyChord`, `TouchTrace`, `Document`, `HostileZip`);
+- constructores y generadores CsCheck (`KeyChord`, `TouchTrace`, `Document`);
 - `SyntheticPointer` (`CreateSyntheticPointerDevice` / `InjectSyntheticPointerInput`);
 - `RenderSnapshot` (comparador PNG con tolerancia) y `StateMatrixFixture`.
 
@@ -1802,7 +1782,7 @@ Se guardan en `tests/Clicalo.Performance/budgets.json`, que está versionado.
 | Presentation | 70 % | — | Informativa |
 | UI.Wpf y Platform | — | — | Se cubren con integración, instantáneas y E2E |
 
-- **Mutación y *fuzzing*: después de la 2.0 (M7).** Stryker.NET semanal sobre Domain y `Application.Engine` (umbral del 70 %); SharpFuzz sobre el lector del documento, `SafeZipReader`, el importador v1 y el tokenizador. Antes de la 2.0 los cubren los generadores CsCheck de entradas hostiles.
+- **Mutación y *fuzzing*: después de la 2.0 (M7).** Stryker.NET semanal sobre Domain y `Application.Engine` (umbral del 70 %); SharpFuzz sobre el lector del documento y el de importación. Antes de la 2.0 los cubren los generadores CsCheck de entradas hostiles.
 - **Trazabilidad:** rasgo `[Trait("Req", "SEG-007")]` ([D-06](deviations.md)) más `cl trace`, que genera `traceability.md` a partir de `docs/requirements/catalog.md` y los resultados. Desde el hito RC, ningún MUST puede quedar sin prueba automática o sin entrada en el guion manual o en la aceptación en hardware.
 - **Pruebas inestables:**
   - ningún reintento en unitarias ni en UI en proceso;
@@ -1927,10 +1907,10 @@ release-publish.yml
 | T4 | Elevación por UIA con uiAccess (M7) | Malware medio edita el documento e invoca un botón con una app elevada en primer plano | Hacia destinos elevados solo se acepta `IMO_HARDWARE` o una opción explícita del usuario | La opción explícita, documentada |
 | T5 | Manipulación de la actualización | Cuenta de GitHub, workflow o feed comprometidos | Manifiesto ECDSA firmado **solo** con una llave de hardware fuera de GitHub (PIN + toque); CI sin acceso a la clave; `release-publish` verifica con las claves fijadas; anti-rollback del manifiesto, anti-freeze, `rollbackAllowed`, Authenticode con editor fijado (SignPath aprueba con su propio MFA), hash por archivo | Compromiso simultáneo del equipo del mantenedor, su PIN y el toque físico, **y** de la firma de código |
 | T6 | Binarios manipulados en `%LocalAppData%` | Malware del mismo usuario | Firma verificada antes de elevar con UAC; la ejecución elevada sin UAC solo usa la copia protegida; `SetDefaultDllDirectories(APPLICATION_DIR \| SYSTEM32)`; autocontenido | Se acepta en la ejecución no elevada: es el mismo usuario |
-| T7 | Filtración por los registros | Paquete de diagnóstico, *issues* | Tipos sensibles, CLC0003, canarios, vista previa exacta, fixtures v1 anonimizados | — |
+| T7 | Filtración por los registros | Paquete de diagnóstico, *issues* | Tipos sensibles, CLC0003, canarios, vista previa exacta | — |
 | T8 | Filtración o abuso vía IA | Inyección de prompt o datos de más | **Exactamente 4 datos** (PLA-008) y prueba de que no sale nada más; validación con esquema; solo Pulsar; filtrado y marcado de combinaciones | Nombres engañosos, visibles en la vista previa |
 | T9 | Percepción de *keylogger* o antivirus | *Hook* LL | *Hook* de teclado temporal, indicador visible, 30 s como máximo, sin registrar; seguimiento del puntero por WinEvent (y `WH_MOUSE_LL` pasivo solo como repliegue); binario firmado, sin empaquetadores | — |
-| T10 | Denegación de servicio | Documento enorme, `clicalo://` gigante, spam por IPC, bomba zip | Límites de tamaño, `SafeZipReader`, 4 instancias de pipe, 2 s de tiempo máximo y 10 peticiones por segundo | — |
+| T10 | Denegación de servicio | Documento enorme, `clicalo://` gigante, spam por IPC | Límites de tamaño, 4 instancias de pipe, 2 s de tiempo máximo y 10 peticiones por segundo | — |
 | T11 | Portapapeles | Historial o nube | Formatos de exclusión y restauración condicionada al número de secuencia | Lecturas de terceros durante 500 ms |
 | T12 | Cadena de suministro | Paquete o acción comprometidos | *Lockfiles* en modo bloqueado, `packageSourceMapping`, `trustedSigners`, NuGetAudit, SHA fijados, Renovate con revisión y sin fusión automática en dependencias de runtime, Scorecard, SBOM, atestación, commits firmados | Dependencias con un solo mantenedor (planes de salida en `docs/architecture/dependencies.md`) |
 | T13 | Abuso del proxy de IA | Cuota gratis como LLM genérico | **No aplica en la 2.0** (proxy diferido). Cuando exista: prompt en el servidor, entrada enumerada, límites, presupuesto con corte, interruptor firmado | — |
@@ -2030,9 +2010,9 @@ Este plan sustituye al plan de fases del paquete. Las duraciones son estimacione
 |---|---|---|
 | **M0 · Cimientos y arnés** (≈2 semanas) | Esqueleto (§5); `cl`; `Directory.*`; `nuget.config`; ADR 0001, 0002 y 0015; `pr.yml` (x64 + ARM64); `Clicalo.Analyzers` (CLC0001, 0003, 0004, 0006 y 0010); `LocalizationGenerator` más `cl i18n-import`; `TokenGenerator` con contraste; `CatalogGenerator` (incluido `timings.json`); InputProbe; TestKit con `RenderSnapshot`; **S0** | CI en verde en un PR vacío; `cl check` idéntico en local y en CI; ArchUnit falla ante una referencia prohibida (prueba negativa); las 669 claves importadas con paridad y la instantánea de «texto visible idéntico» en verde; tokens generados sin CLCT002 (con los casos de TEM-004 corregidos); S0 resuelto |
 | **M1 · Spikes de riesgo** (≈5–6 semanas) | Bloqueantes primero: S1, S3, S4 y S2; después S5, S7, S15, S9, S6, S14, S8, S10, S11 y S12. **Cada spike se escribe como prueba** en `Windowing/Platform.IntegrationTests` y deja su informe en `docs/testing/spikes/` | Todos los criterios de §15 superados, o una decisión registrada (y, si afecta a un requisito, una propuesta al usuario). **Punto de decisión:** si S1, S3 o S4 fallan en WPF, ADR-0001 se reabre antes de escribir funcionalidad. Decisiones de dispatchers (S2), publicación (S5) y desenfoque (S6) documentadas con datos |
-| **M2 · Esqueleto andante** (≈6–8 semanas) | Domain núcleo (Keys, Library, Settings, Execution, KeySafety, Touch); `DocumentStore` con deshacer; persistencia completa (documento y uso) con cuarentena; `EngineHost` más *ledger* v2, `InjectionGate` y Sentinel; `PointerInputSource`; panel mínimo con un perfil; Tap, Hold y Toggle en los dos modos; importador v1 con `SafeZipReader`; bandeja propia con `TrayMenuHost`; `ForegroundOrchestrator` (concesiones `TrayMenu` y `ControlCenter`); `ActivationGuard` por mensajes | Tocar → `SendInput` en InputProbe con p95 ≤50 ms en el equipo táctil; propiedades INV-1 a 12, «muerte en cada paso» y «congelar y reanudar» en verde con 10 000 casos; caos de Sentinel 50 de 50; `CrashingFileSystem` sin ningún documento perdido; importación de los 3 archivos reales 210 → 210; `reg01.violations = 0` en la suite de no activación y la prueba negativa en verde; prueba de bandeja con el Bloc de notas en verde |
+| **M2 · Esqueleto andante** (≈6–8 semanas) | Domain núcleo (Keys, Library, Settings, Execution, KeySafety, Touch); `DocumentStore` con deshacer; persistencia completa (documento y uso) con cuarentena; `EngineHost` más *ledger* v2, `InjectionGate` y Sentinel; `PointerInputSource`; panel mínimo con un perfil; Tap, Hold y Toggle en los dos modos; bandeja propia con `TrayMenuHost`; `ForegroundOrchestrator` (concesiones `TrayMenu` y `ControlCenter`); `ActivationGuard` por mensajes | Tocar → `SendInput` en InputProbe con p95 ≤50 ms en el equipo táctil; propiedades INV-1 a 12, «muerte en cada paso» y «congelar y reanudar» en verde con 10 000 casos; caos de Sentinel 50 de 50; `CrashingFileSystem` sin ningún documento perdido; `reg01.violations = 0` en la suite de no activación y la prueba negativa en verde; prueba de bandeja con el Bloc de notas en verde |
 | **M3 · Panel completo** (≈8–10 semanas) | Todas las formas y superficies (Pestaña, laterales, burbuja, menú); perfiles automáticos y Auto/Fijo; Frecuentes; repetidos; búsqueda con la concesión `TextInput` y la escalera por origen; `InteractionStore` (avisos, captura, Modo prueba, atenuado con `DimPolicy`); teclas fijas; Texto, Mouse (con `PointerPositionTracker`), Macro, Web, App y Sistema (en el hilo Shell); números de voz; los 4 temas; idioma en caliente | Reglas UIA001–010 en verde en la matriz de estados; instantáneas de renderizado aprobadas contra el prototipo; guion manual con Narrador y voz superado en Windows 10 y 11; presupuestos de §10.3 en el equipo táctil; tabla de transiciones de PAN-001 al 100 %; tabla de `DimPolicy` al 100 %; todos los MUST de los módulos panel, motor, táctil y seguridad con `[Req]` |
-| **M4 · Centro de control y bienvenida** (≈8–10 semanas) | Editor de las 3 columnas y de todos los tipos (con 🎤 en cada campo libre); grabación con el *hook*; biblioteca y plantillas locales; vincular y «Probar ahora» (caso de uso); copias, importación y exportación; ajustes guiados por descriptores; bienvenida con migración; modo teclado y voz | Recorridos E2E (bienvenida sin teclado físico, crear cada tipo, vincular y probar, cerrar el CC devuelve el foco) en verde; S4 repetido sobre formularios reales con solo teclado en pantalla y dictado, 20 de 20 por origen; prueba de facetas de `ActionKind` y reglas R4 y R7 en verde; el *hook* sobrevive a GC forzados en S7 |
+| **M4 · Centro de control y bienvenida** (≈8–10 semanas) | Editor de las 3 columnas y de todos los tipos (con 🎤 en cada campo libre); grabación con el *hook*; biblioteca y plantillas locales; vincular y «Probar ahora» (caso de uso); copias, importación y exportación; ajustes guiados por descriptores; bienvenida; modo teclado y voz | Recorridos E2E (bienvenida sin teclado físico, crear cada tipo, vincular y probar, cerrar el CC devuelve el foco) en verde; S4 repetido sobre formularios reales con solo teclado en pantalla y dictado, 20 de 20 por origen; prueba de facetas de `ActionKind` y reglas R4 y R7 en verde; el *hook* sobrevive a GC forzados en S7 |
 | **M5 · Servicios y distribución** (≈4–6 semanas) | Velopack con `SignedManifestSource`, canales, reversión con `rollbackAllowed` y desinstalación propia; firma de código; `cl sign-manifest` con llave de hardware y `release-publish.yml`; **componente de sistema y Launcher** (SIS-002); actualización delegada desde una instancia elevada; IA con clave propia; paquete de diagnóstico; `patch-tuesday.yml`; winget | Primera **beta firmada** publicada con el manifiesto firmado fuera de GitHub; actualización delta, reversión legítima a N−1 y rechazo de las bajadas atacantes y de un paquete sin la firma esperada verificados; inicio elevado sin UAC en 20 de 20 inicios de sesión y dentro de NFR-001; actualización desde una instancia elevada sin archivos de propietario Administradores; prueba canario en verde; prueba de «4 datos exactos» de la IA en verde |
 | **M6 · Endurecimiento y 2.0.0** (≈4 semanas) | Los 60 hallazgos de la Auditoría cerrados y trazados; revisión del modelo de amenazas; ajuste de rendimiento; puerta de trazabilidad activa; aceptación completa en hardware táctil; documentación de usuario | Ningún MUST sin prueba o sin entrada en el guion manual o en la aceptación en hardware; propuestas de §1.4 resueltas por el usuario; ≥7 días en beta sin regresiones en `reg01.violations`, `emergency_releases` ni informes; guion manual y aceptación en hardware firmados; publicación **2.0.0 estable** (x64; ARM64 según P5) |
 | **M7 · Después de la 2.0** | uiAccess sobre el componente de sistema (con S13); proxy de IA si se ratifica P3 (ADR-0014); Stryker.NET y SharpFuzz; ARM64 estable; tercer idioma con Weblate; migración a .NET 12 LTS (≤6 meses tras su GA); reevaluación de Avalonia si cumple sus condiciones; decisión sobre el fin del soporte de Windows 10; `GOVERNANCE.md` al llegar un segundo mantenedor | Cada punto con su spike aprobado y su ADR cuando sea difícil de revertir |
@@ -2223,5 +2203,5 @@ Solo decisiones difíciles de revertir. Cada entrada sigue el formato **Contexto
 | 19 | Baja | Contradicciones menores | Umbrales unificados en `timings.json` (3 fallos en 10 min para guardián y app) con una prueba anti-duplicados. Guion de Windows 10 con Reconocimiento de voz de Windows. `SecretText.Reveal()` sustituido por `WithRevealed(ReadOnlySpanAction)`. Registro en `%AppData%\Clicalo\logs\clicalo.log` con nombre fijo (`FixedNameRollingFileSink`, 5 × 1 MB, según docs/08). PQ-35: instancia única obligatoria y propuesta de quitar [rSingle] (P2) | §3.1, §3.4, §6.2, §6.5, §9.4, §10.2, §13, §1.4 P2 |
 | 20 | Baja | `Launch` y los comandos de sistema bloqueaban el hilo del motor | Añadido el efecto `SystemCommand(id)`. `Launch` y `SystemCommand` se ejecutan en el hilo Shell (STA, BelowNormal), con resultados `LaunchCompleted`/`LaunchFailed`/`SystemCommandCompleted` de vuelta al buzón y la generación comprobada | §3.1, §3.2, §4.4, §7.1, §7.3 |
 | 21 | Baja | El proxy dependía del ensamblado Domain | Contrato `data/schemas/ai-template.v1.schema.json` con `contractVersion`. Al activar el proxy, validador compartido `Clicalo.Contracts.Templates` sin dependencia de Domain; el cliente valida estructura (esquema) y semántica (Domain) por separado | §4.2, §9.2, §11, ADR-0014 |
-| 22 | Baja | Desinstalación desde Configuración de Windows sin comportamiento definido; zips v1 sin límites | Desde Configuración siempre se conservan los datos (prueba en S8), y al reinstalar la bienvenida ofrece conservar o empezar de cero (P6). `SafeZipReader` con límites de tamaño total, entradas, relación de compresión, rutas y anidación, y generadores CsCheck hostiles (SharpFuzz después de la 2.0) | §1.4 P6, §6.6, §9.3, §10.1, §12.2 T10 |
+| 22 | Baja | Desinstalación desde Configuración de Windows sin comportamiento definido; zips v1 sin límites | Desde Configuración siempre se conservan los datos (prueba en S8), y al reinstalar la bienvenida ofrece conservar o empezar de cero (P6). La importación v1 y su `SafeZipReader` se retiraron después por decisión del usuario ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)) | §1.4 P6, §6.6, §9.3, §10.1, §12.2 T10 |
 | 23 | Baja | Cuota de IA por día UTC frente a medianoche local; el desenfoque no se validaba | Cuota visible contada en el cliente por fecha local, con el techo antiabuso del servidor por día UTC, sin enviar la zona horaria (en el diseño diferido; P3). Desenfoque: fondo de sistema de DWM en Windows 11 si S6 confirma la combinación con la opacidad; ausencia justificada en Windows 10 y con los efectos de transparencia desactivados | §8.1, §9.2, S6 |

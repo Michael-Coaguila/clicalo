@@ -13,7 +13,7 @@ Todo lo que define **qué hace el producto y cómo se ve y se usa**:
 | Qué | Dónde |
 |---|---|
 | Funcionalidades, comportamientos, flujos y estados | [Prototipo v4](<prototype/Prototipo v4.dc.html>) y [docs 02–09](docs/02-modelo-de-datos.md) |
-| Textos de la interfaz: las 669 claves en español e inglés | [strings.es.json](data/strings.es.json) y [strings.en.json](data/strings.en.json) |
+| Textos de la interfaz: las 669 claves en español e inglés, salvo las retiradas por una decisión del usuario (abajo) | [strings.es.json](data/strings.es.json) y [strings.en.json](data/strings.en.json) |
 | Medidas táctiles (objetivos de 44×44 px lógicos como mínimo) y orden de los elementos | Prototipo v4, [docs/04](docs/04-panel-flotante.md) y [docs/07](docs/07-diseno-accesibilidad-idioma.md) |
 | Colores de los temas, tamaños y ajustes de precisión táctil | [theme-palettes.json](data/theme-palettes.json) y [seed-and-catalogs.json](data/seed-and-catalogs.json) |
 | Contenido inicial: perfiles de ejemplo, plantillas, biblioteca, grupos de teclas, iconos y combinaciones bloqueadas | [seed-and-catalogs.json](data/seed-and-catalogs.json) |
@@ -42,6 +42,21 @@ Todo lo que prescribe **cómo se construye**. Se decide desde primeros principio
   [hoja de ruta por hitos del plano](../../architecture/blueprint.md#14-hoja-de-ruta-por-hitos);
 - la instrucción del [README.md](README.md) del paquete de implementar «por fases siguiendo
   `docs/10-plan-de-fases.md`».
+
+## Retirado por decisión del usuario
+
+El usuario puede retirar partes del paquete que sí eran vinculantes. Cada decisión se registra en la
+[sección 6.2 del catálogo](../../requirements/catalog.md#62-decisiones-del-usuario), y este paquete sigue sin
+editarse.
+
+- **D1 · 2026-10-03 · Sin migración desde Macro Quick Access.** Clícalo no se basa en nada de la app anterior:
+  no lee su `profiles.json` v1. Deja de ser vinculante todo lo que existía solo para esa migración: la pantalla
+  previa de la bienvenida ([docs/06](docs/06-bienvenida.md)), la tarjeta de migración de Sistema › Copias del
+  Prototipo v4 con sus textos `migT` y `migD`, y lo que [docs/02](docs/02-modelo-de-datos.md),
+  [docs/09](docs/09-criterios-de-aceptacion.md) y [docs/10](docs/10-plan-de-fases.md) dicen de importar la v1.
+  Todo lo demás del Prototipo v4 sigue siendo vinculante, incluidas la importación y la exportación del formato
+  propio (copias, Combinar o Reemplazar, compartir un perfil) y las migraciones entre versiones del esquema propio
+  ([ADR-0020](../../adr/0020-sin-migracion-desde-macro-quick-access.md)).
 
 Tampoco son requisito los **defectos del prototipo**: simulaciones (escritorio y barra de tareas falsos,
 usos y copias simulados), código muerto y fallos que violan una regla o un hallazgo aceptado. El catálogo los

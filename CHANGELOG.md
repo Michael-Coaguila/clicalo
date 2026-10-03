@@ -137,3 +137,15 @@ progress).
   `SendInput` p95 of 50 ms, the manual `lab.yml` workflow, the tray test with the real Notepad in CI, a test that
   rejects double-encoded text in every text file, and reduced counterexamples of the engine properties kept as
   regressions.
+
+### Removed
+
+- The import from Macro Quick Access v1, by the user's decision D1 of 2026-10-03 (ADR-0020, catalog §6.2): Clícalo
+  no longer reads `profiles.json` v1, its language backups or its `.zip`. Removed the `Clicalo.Domain.Migration.V1`
+  module, `V1Reader`, `V1Importer` and `SafeZipReader`, the `--migrate-v1` option and the `migration-v1.pending`
+  mark, the `v1-original` backup kind, the `anonymize-v1` DevCli verb, the v1 tests and anonymized fixtures, the
+  `Timings.Import.Zip*`, `Timings.Import.V1Max*` and `Timings.Backups.MigrationCardVisibility` limits, and the texts
+  `migT` and `migD` (now `retired` in `data/i18n/handoff-import.json`) with `migTProfiles`, `migTShortcuts`,
+  `migFailT`, `migFailD`, `migRetry` and `migReportT`. The import and export of Clícalo's own format and the
+  migrations between versions of its own schema are unchanged; requirements MIG-001 to MIG-009, BIE-002, COP-001 and
+  EC-MIG-01 to EC-MIG-05 are retired and REG-08 no longer covers a v1 migration.

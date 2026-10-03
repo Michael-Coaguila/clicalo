@@ -97,7 +97,7 @@ y el informe de errores de `cl`:
 | `adr-check --base <ref>` | Falla si los archivos cambiados desde la base de fusión con `<ref>` tocan una ruta de `architecture/sensitive-paths.json` sin un ADR nuevo o cambiado en `docs/adr/` (error `CLCA010`, [§13](blueprint.md#13-convenciones-de-ingeniería)) |
 
 Salida en formato MSBuild, última línea legible por Narrador y códigos de salida 0 (sin problemas), 1
-(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace`, `anonymize-v1` y `states`.
+(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace` y `states`.
 
 ### Opciones de `Clicalo.exe` para desarrollo
 
@@ -106,15 +106,12 @@ Salida en formato MSBuild, última línea legible por Narrador y códigos de sal
 - `--no-input`: ningún envío (inyector en seco, *ledger* desconectado, sin Sentinel ni soltado preventivo). Es lo que
   usan `cl run` y, fuera de la CI, `cl perf`.
 - `--data <carpeta>`: todos los datos, el diario de fallos incluido, dentro de esa carpeta.
-- `--migrate-v1 <archivo>`: en un primer arranque (sin `clicalo.json`), convierte ese `profiles.json` o zip de Macro
-  Quick Access; el original se guarda antes en `backups\`.
 - `--exit-after <segundos>`: tras el primer frame, recorre la salida completa sin intervención (diagnóstico).
 - `--guardian after-first-frame`: la variante de S5 que lanza Sentinel después del primer frame.
 - `--after-crash=<ms Unix>` y `--safe-mode` los pone Sentinel al relanzar ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
 
-La orden `anonymize-v1 --in <archivo> --out <archivo>` de `tools/Clicalo.DevCli` anonimiza un `profiles.json` real para
-versionarlo como *fixture*: conserva combinaciones, colores, recuentos y estructura, y sustituye todo nombre que no esté
-en la lista revisada de `tools/Clicalo.DevCli/AnonymizeV1/v1-public-names.json`.
+Clícalo no lee archivos de Macro Quick Access ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)):
+no hay opción `--migrate-v1` ni orden `anonymize-v1`.
 
 ### Compilar mientras se itera
 
