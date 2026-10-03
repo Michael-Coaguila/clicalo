@@ -16,7 +16,8 @@ public sealed class ForegroundLog : IDisposable
     private const uint EventSystemForeground = 0x0003;
     private const uint OutOfContext = 0x0000;
 
-    private readonly ConcurrentQueue<(long Timestamp, string Line)> _entries = new();
+    private readonly ConcurrentQueue<(long Timestamp, nint Window, uint ProcessId)> _entries =
+        new();
     private readonly WinEventProc _callback;
     private nint _hook;
 
@@ -59,7 +60,7 @@ public sealed class ForegroundLog : IDisposable
             .. _entries.Select(entry =>
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"+{Stopwatch.GetElapsedTime(origin, entry.Timestamp).TotalMilliseconds:0.0} ms foreground {entry.Line}"
+                    $"+{Stopwatch.GetElapsedTime(origin, entry.Timestamp).TotalMilliseconds:0.0} ms foreground 0x{entry.Window:X} of {ProcessName(entry.ProcessId)} (pid {entry.ProcessId})"
                 )
             ),
         ];
@@ -96,16 +97,9 @@ public sealed class ForegroundLog : IDisposable
         uint time
     )
     {
+        // On the WPF thread: only what is cheap; the process name is looked up when the log is read.
         _ = GetWindowThreadProcessId(window, out var processId);
-        _entries.Enqueue(
-            (
-                Stopwatch.GetTimestamp(),
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"0x{window:X} of {ProcessName(processId)} (pid {processId})"
-                )
-            )
-        );
+        _entries.Enqueue((Stopwatch.GetTimestamp(), window, processId));
     }
 
     [DllImport("user32.dll", ExactSpelling = true)]
