@@ -75,11 +75,16 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
                 );
                 var events = await desktop.Probe.WaitForAsync(
                     cursor,
-                    ProbeReactivation.Reactivated,
+                    received => ProbeReactivation.Reactivated(received, desktop.Probe.Window),
                     SurfaceDesktopFixture.EventTimeout,
                     cancellationToken
                 );
-                var restoredAfter = ProbeReactivation.RestoredAfter(events, requestedAt, frequency);
+                var restoredAfter = ProbeReactivation.RestoredAfter(
+                    events,
+                    desktop.Probe.Window,
+                    requestedAt,
+                    frequency
+                );
 
                 restoredAfter.ShouldBeLessThanOrEqualTo(
                     Timings.Windowing.ViolationRestoreBudget,
