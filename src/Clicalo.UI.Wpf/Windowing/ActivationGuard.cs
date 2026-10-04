@@ -27,9 +27,11 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// <para>
 /// One activation reaches the thread as several messages (<c>WM_ACTIVATEAPP</c> to every top-level window, then
 /// <c>WM_NCACTIVATE</c> and <c>WM_ACTIVATE</c> to the activated one), all sent while the thread retrieves the one
-/// activation event of its queue: they count as ONE violation, which stays open until the UI thread is back in its
-/// dispatcher after that burst, and ends earlier when the surface is deactivated, the application loses the
-/// activation (<c>WM_ACTIVATEAPP(FALSE)</c>) or the foreground is seen outside the process. Spike S1 showed why the end
+/// activation event of its queue, each one once: they count as ONE violation, which stays open until the UI thread is
+/// back in its dispatcher after that burst, and ends earlier when the surface is deactivated, the application loses
+/// the activation (<c>WM_ACTIVATEAPP(FALSE)</c>), the foreground is seen outside the process or the surface receives
+/// a message of the violation a second time (the next activation came before the UI thread was back in its
+/// dispatcher, which S1 saw happen 25 ms after a violation). Spike S1 showed why the end
 /// cannot wait for the deactivation messages or for a look at the foreground: when the restore wins the race against
 /// the activation, Windows may never deactivate the surface (no <c>WA_INACTIVE</c>, no <c>WM_ACTIVATEAPP(FALSE)</c>,
 /// and no <c>WM_ACTIVATEAPP(TRUE)</c> for the next activation either), and the foreground can come back to the app and
@@ -70,6 +72,12 @@ public sealed class ActivationGuard
     private ITimer? _recheck;
     private int _violationGeneration;
     private bool _lastSeenOutside;
+
+    // The messages the open violation has received so far: Windows sends each one once per activation.
+    private readonly HashSet<(
+        NonActivatingWindow Surface,
+        ActivationMessage Message
+    )> _openMessages = [];
 
     // Surfaces whose WM_ACTIVATE (not WA_INACTIVE) was kept from WPF: their WA_INACTIVE is kept too, so WPF never sees
     // the end of an activation it did not see begin. Only touched on the UI thread.
@@ -166,6 +174,14 @@ public sealed class ActivationGuard
         {
             // Another window of this thread is being activated: its own messages decide.
             return false;
+        }
+
+        if (_openViolation is not null && !_openMessages.Add((surface, message)))
+        {
+            // The open violation has had this message already: this is the next activation, delivered before the UI
+            // thread was back in its dispatcher to end the last one (spike S1: a lone WM_NCACTIVATE(TRUE), 25 ms after
+            // a violation whose restore never deactivated the panel).
+            CloseViolation();
         }
 
         if (_openViolation is null)
@@ -266,6 +282,8 @@ public sealed class ActivationGuard
     {
         ClearPending();
         _openViolation = surface;
+        _openMessages.Clear();
+        _ = _openMessages.Add((surface, message));
         EndWithTheBurst(surface);
 
         // Nothing the surfaces did explains it, and the last look at the foreground found it in another application:
@@ -398,6 +416,7 @@ public sealed class ActivationGuard
     private void CloseViolation()
     {
         _openViolation = null;
+        _openMessages.Clear();
         _violationGeneration++;
     }
 

@@ -44,11 +44,15 @@ public sealed class ActivationGuardTests
 
             // The rest of the same activation does not count again.
             Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
-            Send(window, NativeSurface.WmActivate, NativeSurface.Active);
             lab.Guard.Violations.ShouldBe(1);
+
+            // Windows sends each message once per activation: the same one again is the next activation, even
+            // before the UI thread is back in its dispatcher.
+            Send(window, NativeSurface.WmActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(2);
         });
 
-        var violation = lab.Arbiter.Violations.ShouldHaveSingleItem();
+        var violation = lab.Arbiter.Violations[0];
         violation.Surface.ShouldBe(surface.Id);
         violation.Window.ShouldBe(surface.SurfaceWindow);
         violation.Message.ShouldBe(ActivationMessage.Activate);
@@ -61,19 +65,19 @@ public sealed class ActivationGuardTests
         {
             // Once deactivated, even inside the same retrieval, a new activation is a new violation.
             Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
-            lab.Guard.Violations.ShouldBe(2, "another retrieval, another activation");
+            lab.Guard.Violations.ShouldBe(3, "another retrieval, another activation");
             Send(window, NativeSurface.WmActivate, NativeSurface.Inactive);
             Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
-            lab.Guard.Violations.ShouldBe(3);
+            lab.Guard.Violations.ShouldBe(4);
             lab.Arbiter.Violations[^1].Message.ShouldBe(ActivationMessage.NcActivate);
 
             // Losing the application activation also ends it.
             Send(window, NativeSurface.WmActivateApp, NativeSurface.Inactive);
             Send(window, NativeSurface.WmActivate, NativeSurface.Active);
-            lab.Guard.Violations.ShouldBe(4);
+            lab.Guard.Violations.ShouldBe(5);
         });
 
-        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 4 : 0);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 5 : 0);
         if (DebugFailures.AreLive)
         {
             failures.Messages.ShouldAllBe(message =>
@@ -426,6 +430,38 @@ public sealed class ActivationGuardTests
                 ActivationCause.External,
                 "nothing the surfaces did explains it, and the last violation came from outside"
             );
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    public void An_activation_before_the_UI_thread_is_back_in_its_dispatcher_is_a_new_violation()
+    {
+        // Spike S1 in CI (s0 37166997828, 41 of 600 iterations of OrchestratedRestoreTests): the UI thread did not get
+        // back to its dispatcher for 25 ms after a violation (no WinEvent and no posted message reached it), the restore
+        // never deactivated the panel, and the next forced activation, a lone WM_NCACTIVATE(TRUE), arrived first. The
+        // violation was still open and swallowed it; the panel kept the foreground.
+        using var failures = DebugFailures.Capture();
+        using var lab = SurfaceLab.Create();
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+
+        WpfThread.Invoke(() =>
+        {
+            lab.SimulatedForeground = panel;
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(1);
+
+            // The restore and the next forced activation happen while this thread is still away from its dispatcher.
+            lab.SimulatedForeground = AnotherApp;
+            lab.SimulatedForeground = panel;
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(2, "the second forced activation is detected");
+        });
+
+        lab.Arbiter.Violations.Count.ShouldBe(2, "and reported, so the orchestrator reverts it");
+        lab.Arbiter.Violations[^1].ProbableCause.ShouldBe(ActivationCause.External);
         failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
     }
 
