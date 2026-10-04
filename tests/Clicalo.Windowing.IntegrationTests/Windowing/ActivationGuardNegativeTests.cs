@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Globalization;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Timing;
-using Clicalo.TestKit.Windows.Probe;
 using Clicalo.Windowing.IntegrationTests.Desktop;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
 
