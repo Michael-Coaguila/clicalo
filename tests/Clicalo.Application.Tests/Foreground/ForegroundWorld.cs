@@ -125,6 +125,13 @@ internal sealed class ForegroundWorld : IDisposable
     /// waits on that delay (each attempt is verified again after it), at most <paramref name="maxWaits"/> times. The
     /// clock moves only once the delay exists: the orchestrator arms it on the thread pool, in real time.
     /// </summary>
+    /// <remarks>
+    /// It used to move the clock whenever the operation had not ended 20 ms after the last look. Under load that moved
+    /// it while a text lease was still being granted, so the lease armed its idle timer 50 ms late and
+    /// <c>Text_input_ends_after_its_idle_timeout_and_gives_the_foreground_back</c>, moving the clock to exactly
+    /// <c>TextInputLeaseIdle</c>, waited for its end forever (5 of the 5 hangs of the second local stress run of
+    /// 2026-10-03: the idle timer scheduled at +50 ms and due at +30.05 s).
+    /// </remarks>
     public async Task<T> CompleteAsync<T>(Task<T> pending, int maxWaits = 6)
     {
         for (var waits = 0; ; waits++)
