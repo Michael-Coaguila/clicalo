@@ -59,7 +59,7 @@ public sealed class ForegroundOrchestratorLadderTests : IDisposable
         _world.Time.AdvanceToJustBefore(deadline);
         _world.Control.Attempts.Count.ShouldBe(1, "the retry waits for the retry delay");
         _world.Time.AdvanceTo(deadline);
-        var result = await pending;
+        var result = await EndOf(pending);
 
         result
             .ShouldBeOfType<LeaseResult.Granted>()
