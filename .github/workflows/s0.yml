@@ -73,14 +73,13 @@ jobs:
         run: |
           $exe = "artifacts\bin\Clicalo.Windowing.IntegrationTests\debug\Clicalo.Windowing.IntegrationTests.exe"
           $env:CLICALO_DESKTOP_TESTS = "1"
-          $env:CLICALO_ACTIVATION_TRACE = "1"
           $loop = "artifacts\cl\loop"
           New-Item -ItemType Directory -Force $loop | Out-Null
           $classArgs = @()
           foreach ($class in $env:CLASSES.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) { $classArgs += @('-class', $class) }
           $failed = 0
           for ($i = 1; $i -le [int]$env:ITERATIONS; $i++) {
-            & $exe @classArgs -noColor -showLiveOutput -result-trx "$loop\iter-$i.trx" *> "$loop\iter-$i.log"
+            & $exe @classArgs -noColor -result-trx "$loop\iter-$i.trx" *> "$loop\iter-$i.log"
             $code = $LASTEXITCODE
             $summary = Select-String -Path "$loop\iter-$i.log" -Pattern 'Total: ' | Select-Object -Last 1
             Write-Host "iteration $i exit $code $summary"

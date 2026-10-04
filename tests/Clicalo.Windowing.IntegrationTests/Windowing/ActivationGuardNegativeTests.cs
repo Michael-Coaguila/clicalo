@@ -11,8 +11,9 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing;
 /// <summary>
 /// The mandatory negative test of blueprint §3.5 (ADR-0005, spike S1): InputProbe, in front, calls
 /// <c>SetForegroundWindow</c> on the panel. <c>reg01.violations</c> rises by exactly one, the foreground is back on
-/// the probe within <c>Timings.Windowing.ViolationRestoreBudget</c> (measured by the probe itself, from losing the
-/// activation to getting it back) and <c>WS_EX_NOACTIVATE</c> is still there. 20 of 20.
+/// the probe within <c>Timings.Windowing.ViolationRestoreBudget</c> (measured on the probe's clock up to its activation,
+/// from the moment the test asks for the forced activation: never shorter than the real loss, see
+/// <see cref="ProbeReactivation"/>) and <c>WS_EX_NOACTIVATE</c> is still there. 20 of 20.
 /// </summary>
 /// <remarks>
 /// The restore is the job of <c>ForegroundOrchestrator</c> (package foreground); this package's arbiter does what the
@@ -56,6 +57,7 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
                     + string.Join(", ", panel.ActivationSequence.Skip(sequenceStart))
                     + ".";
 
+                var requestedAt = Stopwatch.GetTimestamp();
                 var answer = await desktop.Probe.RequestForegroundAsync(
                     panel.Handle,
                     SurfaceDesktopFixture.EventTimeout,
@@ -74,19 +76,11 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
                 );
                 var events = await desktop.Probe.WaitForAsync(
                     cursor,
-                    Reactivated,
+                    ProbeReactivation.Reactivated,
                     SurfaceDesktopFixture.EventTimeout,
                     cancellationToken
                 );
-                var lost = events.OfType<ActivateEvent>().First(IsDeactivation);
-                var back = events
-                    .OfType<ActivateEvent>()
-                    .First(activate =>
-                        !IsDeactivation(activate) && activate.Sequence > lost.Sequence
-                    );
-                var restoredAfter = TimeSpan.FromSeconds(
-                    (back.Timestamp - lost.Timestamp) / frequency
-                );
+                var restoredAfter = ProbeReactivation.RestoredAfter(events, requestedAt, frequency);
 
                 restoredAfter.ShouldBeLessThanOrEqualTo(
                     Timings.Windowing.ViolationRestoreBudget,
@@ -147,18 +141,6 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
                 + timeline
         );
         return false;
-    }
-
-    private static bool IsDeactivation(ActivateEvent activate) =>
-        activate.State == ActivationState.Inactive;
-
-    private static bool Reactivated(IReadOnlyList<ProbeEvent> events)
-    {
-        var lost = events.OfType<ActivateEvent>().FirstOrDefault(IsDeactivation);
-        return lost is not null
-            && events
-                .OfType<ActivateEvent>()
-                .Any(activate => !IsDeactivation(activate) && activate.Sequence > lost.Sequence);
     }
 
     private static string Say(FormattableString text) =>
