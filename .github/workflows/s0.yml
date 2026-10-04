@@ -14,21 +14,13 @@ on:
         description: "Also windows-11-arm while the repository is private (paid minutes; always runs when public)"
         type: boolean
         default: false
-      iterations:
-        description: "INVESTIGATION (m2/stab-guard): repetitions of the guard tests per runner"
-        type: string
-        default: "30"
-      classes:
-        description: "INVESTIGATION (m2/stab-guard): test classes, separated by spaces"
-        type: string
-        default: "Clicalo.Windowing.IntegrationTests.Windowing.ActivationGuardNegativeTests Clicalo.Windowing.IntegrationTests.Windowing.OrchestratedRestoreTests"
 
 permissions:
   contents: read
 
 concurrency:
   # One measurement at a time; a second request waits instead of cancelling the first.
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
@@ -61,36 +53,9 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: cl build
+      - name: cl desk
         shell: pwsh
-        run: .\cl.cmd build
-
-      - name: Guard tests in a loop (INVESTIGATION, m2/stab-guard)
-        shell: pwsh
-        env:
-          ITERATIONS: ${{ inputs.iterations }}
-          CLASSES: ${{ inputs.classes }}
-        run: |
-          $exe = "artifacts\bin\Clicalo.Windowing.IntegrationTests\debug\Clicalo.Windowing.IntegrationTests.exe"
-          $env:CLICALO_DESKTOP_TESTS = "1"
-          $loop = "artifacts\cl\loop"
-          New-Item -ItemType Directory -Force $loop | Out-Null
-          $classArgs = @()
-          foreach ($class in $env:CLASSES.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) { $classArgs += @('-class', $class) }
-          $failed = 0
-          for ($i = 1; $i -le [int]$env:ITERATIONS; $i++) {
-            & $exe @classArgs -noColor -result-trx "$loop\iter-$i.trx" *> "$loop\iter-$i.log"
-            $code = $LASTEXITCODE
-            $summary = Select-String -Path "$loop\iter-$i.log" -Pattern 'Total: ' | Select-Object -Last 1
-            Write-Host "iteration $i exit $code $summary"
-            if ($code -ne 0) {
-              $failed++
-              Write-Host "::warning::iteration $i failed"
-              Get-Content "$loop\iter-$i.log" | Where-Object { $_ -match '\[FAIL\]|Cycle [0-9]+:|Timeline|^\s+\+[0-9]|Exception|Shouldly|should|Received|kind' } | Select-Object -Last 600
-            }
-          }
-          Write-Host "RESULT: $failed of $env:ITERATIONS iterations failed"
-          if ($failed -gt 0) { exit 1 }
+        run: .\cl.cmd desk
 
       - name: Upload cl report and test results
         # Always: a passing run is evidence too (the TRX shows that no desktop test was skipped).

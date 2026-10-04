@@ -113,17 +113,6 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
                 throw;
             }
 
-            if (
-                string.Equals(
-                    Environment.GetEnvironmentVariable("CLICALO_ACTIVATION_TRACE"),
-                    "1",
-                    StringComparison.Ordinal
-                )
-            )
-            {
-                _ = Explain(cycle, desktop.DescribeActivations(cycleStart, cursor));
-            }
-
             previousStart = cycleStart;
             previousCursor = cursor;
         }
