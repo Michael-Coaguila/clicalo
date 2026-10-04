@@ -144,6 +144,8 @@ public sealed class HighContrastTests(UiaSurfaceFixture surface) : IClassFixture
             });
         }
 
+        TestContext.Current.TestOutputHelper?.WriteLine("Contrast switch timeline:");
+        TestContext.Current.TestOutputHelper?.WriteLine(Timeline());
         surface.Guard.Violations.ShouldBe(0);
         WpfThread.Invoke(() => surface.Surface.IsActive).ShouldBeFalse();
     }
