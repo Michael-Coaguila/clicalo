@@ -54,7 +54,7 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         var latencies = new List<(SyntheticPointerKind Kind, TimeSpan Latency)>();
         var segments = new List<TapSegments>();
         var violationsBefore = fixture.Lab.Guard.Violations;
-        var pointers = kinds.Select(PanelDesktopFixture.CreatePointer).ToList();
+        var pointers = kinds.Select(fixture.CreateMeasuringPointer).ToList();
         using var finger = pointers[0];
         using var pen = pointers[1];
         using var mouse = pointers[2];

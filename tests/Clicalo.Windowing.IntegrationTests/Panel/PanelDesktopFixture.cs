@@ -191,9 +191,10 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
         new(kind, [Environment.ProcessId]);
 
     /// <summary>
-    /// Creates the device of <paramref name="device"/> and waits until the panel's thread has been told it arrived
-    /// (<c>WM_TABLET_ADDED</c>), so no measured tap carries the device's arrival (<see cref="SyntheticPointer.Connect"/>).
-    /// A mouse has no device.
+    /// Brings the device of <paramref name="device"/> into existence with a tap on InputProbe and waits until the
+    /// panel's thread has been told it arrived (<c>WM_TABLET_ADDED</c>), so no measured tap carries the device's
+    /// arrival and the panel's own code stays as cold as it was (<see cref="SyntheticPointer.Connect"/>). A mouse has
+    /// no device.
     /// </summary>
     public async Task ConnectAsync(SyntheticPointer device)
     {
@@ -203,13 +204,26 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
             return;
         }
 
+        await Probe.EnsureForegroundAsync(EventTimeout, TestContext.Current.CancellationToken);
+        var bounds = NativeSurface.Bounds(Probe.Window);
         var announced = Timeline.TabletsAdded;
-        device.Connect();
+        device.Connect(
+            (bounds.Left + bounds.Right) / 2,
+            (bounds.Top + bounds.Bottom) / 2,
+            Probe.ProcessId
+        );
         await WaitUntilAsync(
             () => Timeline.TabletsAdded > announced,
             "Windows never announced the synthetic " + device.Kind + " to the panel's thread."
         );
     }
+
+    /// <summary>
+    /// A pointer that may only touch this process's windows and InputProbe (only for <see cref="ConnectAsync"/>: a tap
+    /// meant for the panel that reached the probe fails the test, which waits for the engine).
+    /// </summary>
+    public SyntheticPointer CreateMeasuringPointer(SyntheticPointerKind kind) =>
+        new(kind, [Environment.ProcessId, Probe.ProcessId]);
 
     /// <summary>The center of the tile of <paramref name="shortcut"/>, in physical screen pixels.</summary>
     public PhysicalPoint TileCenter(ShortcutId shortcut) =>
