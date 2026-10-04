@@ -9,11 +9,12 @@ namespace Clicalo.Application.Tests.Engine;
 /// </summary>
 /// <remarks>
 /// The previous wait put its deadline in the cancellation token of each <c>Task.Delay</c>. When the thread pool is
-/// starved (the local stress run of 2026-10-03, six processes of this assembly at once, failed
-/// <c>Release_all_posted_from_another_thread_reaches_the_running_engine</c> in 2 of 93 runs that way), the timer queue
-/// can run the overdue poll and the overdue deadline in the same pass, in list order: the deadline then cancels the
-/// poll's delay and throw <see cref="TaskCanceledException"/> without the condition being checked again, whatever the
-/// engine had done by then.
+/// starved, the timer queue can run the overdue poll and the overdue deadline in the same pass, in list order: the
+/// deadline then cancels the poll's delay and throws <see cref="TaskCanceledException"/> without the condition being
+/// checked again, whatever the engine had done by then. That is the likely cause, not a proven one, of the
+/// <see cref="TaskCanceledException"/> of <c>Release_all_posted_from_another_thread_reaches_the_running_engine</c> in
+/// 2 of 93 runs of the local stress run of 2026-10-03 (six processes of this assembly at once): the condition was not
+/// recorded when it failed. Here the deadline lives on <see cref="Stopwatch"/> and a failure says what it saw.
 /// </remarks>
 internal static class Eventually
 {
