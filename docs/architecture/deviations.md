@@ -24,9 +24,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
 | D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | Repositorio privado en el plan gratuito, que no admite protección de ramas: *hook* local `pre-push` y *merge* solo por *squash* configurado en GitHub | M0 |
 | D-14 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
-| D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación | M1 |
+| D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF; la violación se cierra con la desactivación | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación, que termina con la ráfaga de mensajes que la abrió | M1 |
 | D-16 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
-| D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
+| D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación durante `RestoreRetryDelay` (miradas y aviso del monitor) sin reintentar sobre la elección de la persona, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
 | D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 | D-19 | Secuencia de los spikes | M1 cierra con todos los criterios de §15 superados; S5, S7, S9, S11, S6, S14, S8, S10, S12 y S15 dentro de M1 | M1 cerrado por decisión del usuario con la evidencia real; filas manuales de S1, S3 y S4 en la aceptación en hardware de M3; S5, S7, S9 y S11 en M2; S2 residual, S6 y S15 antes de M3; S12 en M3; S8, S10 y S14 antes de M5. Ningún criterio cambia | M1 |
 | D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
@@ -294,11 +294,13 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     así que el mensaje se retiene, se repara `WS_EX_NOACTIVATE` y el juicio se aplaza: cuando el hilo de UI ha
     entregado lo que tenía en cola y, si el primer plano sigue fuera, otra vez tras
     `Timings.Windowing.ActivationRecheck` (50 ms). Si entonces tiene el primer plano una ventana del proceso sin
-    concesión, cuenta una violación; si no, era tardío y no cuenta. Una violación abierta se cierra con
-    `WA_INACTIVE` o `WM_ACTIVATEAPP(FALSE)`, con el siguiente `WM_ACTIVATEAPP(TRUE)` y, porque esos mensajes llegan
-    tarde, desordenados o no llegan cuando la restauración gana la carrera (S1, hallazgo 8), en cuanto la guarda ve el
-    primer plano fuera del proceso: en cualquier mensaje de activación o desactivación (también
-    `WM_NCACTIVATE(FALSE)`) y cada `ActivationRecheck` mientras está abierta.
+    concesión, cuenta una violación; si no, era tardío y no cuenta. Una violación abierta termina cuando el hilo de UI
+    vuelve a su *dispatcher* tras la ráfaga de mensajes que la abrió (Windows entrega toda una activación en una sola
+    recuperación), y antes con `WA_INACTIVE`, `WM_ACTIVATEAPP(FALSE)`, el siguiente `WM_ACTIVATEAPP(TRUE)`, el primer
+    plano visto fuera del proceso o un mensaje que la violación ya había recibido para esa superficie (Windows envía
+    cada uno una vez por activación). El plano la cerraba con la desactivación, pero cuando la restauración gana la
+    carrera Windows puede no desactivar nunca la superficie, y una violación abierta se tragó la activación forzada
+    siguiente, que ni se contó ni se revirtió (S1, hallazgos 6, 8, 11 y 13).
   - Las superficies, `OwnerAnchor` y `SurfaceRegistry` viven en un único hilo; todas comparten `OwnerAnchor`, así que
     la banda *topmost* se pierde y se repara en familia.
 - **Motivo.** Sin el veto, una prueba sin escritorio mostró `WM_ACTIVATEAPP`, `WM_ACTIVATE` y `WM_SETFOCUS` en la
@@ -350,8 +352,13 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - Tipos públicos nuevos: `ForegroundPorts`, `LadderStep`, `LeaseEndReason`; en `ForegroundLease`, `Origin`,
     `GrantedAt`, `IsActive`, `EndReason`, `Ended` y `KeepAlive()`; en `ForegroundOrchestrator`, `ActiveLease` y
     `EndActiveLeaseAsync` (evento terminal).
-  - Cada `SetForegroundWindow` se vuelve a comprobar tras `RestoreRetryDelay` antes de contarse como rechazado: la
-    activación entre hilos es asíncrona (S4, hallazgo 1).
+  - Cada `SetForegroundWindow` que `GetForegroundWindow` no confirma al momento se vuelve a comprobar cada
+    `RestoreVerifyInterval` durante `RestoreRetryDelay`, y también lo confirma el aviso del monitor de que la ventana
+    llegó delante, antes de contarse como rechazado: la activación entre hilos es asíncrona (S4, hallazgo 1), y una
+    sola mirada al final de la espera daba por rechazada una restauración que había funcionado (S1, hallazgo 10). No se
+    reintenta si el monitor verificó entretanto un cambio a otra app, y una restauración tras una violación que esperó
+    su turno no hace nada si el monitor verificó otra ventana externa después del informe y ninguna superficie está
+    delante (S1, hallazgo 12): en ambos casos se tomaría el primer plano de lo que la persona eligió.
   - `TryNowTarget` vuelve al Centro de control que estaba delante y conserva el `prev` original (CCM-004).
   - `NOTIFYICONDATAW` escrito a mano, solo x64 y ARM64 (CsWin32 no lo genera para AnyCPU).
   - Una violación durante una concesión devuelve el primer plano al destino de la concesión, no a
