@@ -14,6 +14,7 @@ namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 /// </summary>
 /// <param name="Tap">The tap's number, from 1.</param>
 /// <param name="Device">Finger, pen or mouse.</param>
+/// <param name="WarmUp">A warm-up tap: reported, never judged.</param>
 /// <param name="TotalMs">Lift → mailbox, as the test asserts it.</param>
 /// <param name="QueueMs">Lift → <c>WM_POINTERUP</c> received.</param>
 /// <param name="HandlingMs"><c>WM_POINTERUP</c> received → mailbox.</param>
@@ -25,6 +26,7 @@ namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 internal sealed record TapSegments(
     int Tap,
     string Device,
+    bool WarmUp,
     double TotalMs,
     double QueueMs,
     double HandlingMs,
@@ -36,6 +38,9 @@ internal sealed record TapSegments(
 )
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+
+    /// <summary>Lift → mailbox.</summary>
+    public TimeSpan Total => TimeSpan.FromMilliseconds(TotalMs);
 
     /// <summary>
     /// Writes the taps to the test output and to <c>artifacts/cl/test-results/panel-tap-latency-*.json</c> (one file
@@ -67,6 +72,7 @@ internal sealed record TapSegments(
                 {
                     tap.Tap,
                     tap.Device,
+                    tap.WarmUp,
                     tap.TotalMs,
                     tap.QueueMs,
                     tap.HandlingMs,
@@ -85,6 +91,6 @@ internal sealed record TapSegments(
     public string Line() =>
         string.Create(
             CultureInfo.InvariantCulture,
-            $"tap {Tap} {Device}: total {TotalMs:0.00} ms = queue {QueueMs:0.00} + handling {HandlingMs:0.00}; gesture {GestureMs:0.0} ms, recorded→returned {RecordedToReturnMs:0.00} ms; {Runtime}; UI busy while queued: {UiBusy}"
+            $"{(WarmUp ? "warm-up tap" : "tap")} {Tap} {Device}: total {TotalMs:0.00} ms = queue {QueueMs:0.00} + handling {HandlingMs:0.00}; gesture {GestureMs:0.0} ms, recorded→returned {RecordedToReturnMs:0.00} ms; {Runtime}; UI busy while queued: {UiBusy}"
         );
 }

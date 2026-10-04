@@ -190,41 +190,6 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
     public static SyntheticPointer CreatePointer(SyntheticPointerKind kind) =>
         new(kind, [Environment.ProcessId]);
 
-    /// <summary>
-    /// Brings the device of <paramref name="device"/> into existence with a tap on InputProbe and waits until the
-    /// panel's thread has been told it arrived (<c>WM_TABLET_ADDED</c>), so no measured tap carries the device's
-    /// arrival and the panel's own code stays as cold as it was (<see cref="SyntheticPointer.Connect"/>). A mouse has
-    /// no device.
-    /// </summary>
-    public async Task ConnectAsync(SyntheticPointer device)
-    {
-        ArgumentNullException.ThrowIfNull(device);
-        if (device.Kind == SyntheticPointerKind.Mouse)
-        {
-            return;
-        }
-
-        await Probe.EnsureForegroundAsync(EventTimeout, TestContext.Current.CancellationToken);
-        var bounds = NativeSurface.Bounds(Probe.Window);
-        var announced = Timeline.TabletsAdded;
-        device.Connect(
-            (bounds.Left + bounds.Right) / 2,
-            (bounds.Top + bounds.Bottom) / 2,
-            Probe.ProcessId
-        );
-        await WaitUntilAsync(
-            () => Timeline.TabletsAdded > announced,
-            "Windows never announced the synthetic " + device.Kind + " to the panel's thread."
-        );
-    }
-
-    /// <summary>
-    /// A pointer that may only touch this process's windows and InputProbe (only for <see cref="ConnectAsync"/>: a tap
-    /// meant for the panel that reached the probe fails the test, which waits for the engine).
-    /// </summary>
-    public SyntheticPointer CreateMeasuringPointer(SyntheticPointerKind kind) =>
-        new(kind, [Environment.ProcessId, Probe.ProcessId]);
-
     /// <summary>The center of the tile of <paramref name="shortcut"/>, in physical screen pixels.</summary>
     public PhysicalPoint TileCenter(ShortcutId shortcut) =>
         WpfThread.Invoke(() =>
@@ -239,9 +204,17 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
         WpfThread.Invoke(() => CenterOf(Window.ReleaseAllButton));
 
     /// <summary>Waits until <paramref name="condition"/> holds, failing with <paramref name="because"/> on timeout.</summary>
-    public static async Task WaitUntilAsync(Func<bool> condition, string because)
+    public static Task WaitUntilAsync(Func<bool> condition, string because) =>
+        WaitUntilAsync(condition, () => because);
+
+    /// <summary>
+    /// Waits until <paramref name="condition"/> holds, failing on timeout with the message <paramref name="because"/>
+    /// builds then (only then: a message that queries the system must not run while a measured tap is in flight).
+    /// </summary>
+    public static async Task WaitUntilAsync(Func<bool> condition, Func<string> because)
     {
         ArgumentNullException.ThrowIfNull(condition);
+        ArgumentNullException.ThrowIfNull(because);
         var cancellationToken = TestContext.Current.CancellationToken;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(EventTimeout);
@@ -253,7 +226,7 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                condition().ShouldBeTrue(because);
+                condition().ShouldBeTrue(because());
                 return;
             }
         }

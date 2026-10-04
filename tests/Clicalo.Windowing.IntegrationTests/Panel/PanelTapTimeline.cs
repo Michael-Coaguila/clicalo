@@ -20,9 +20,6 @@ internal sealed class PanelTapTimeline : IDisposable
     private const int WmPointerDown = 0x0246;
     private const int WmPointerUp = 0x0247;
 
-    /// <summary><c>WM_TABLET_ADDED</c> (<c>tpcshrd.h</c>): a pen or touch device arrived.</summary>
-    private const int WmTabletAdded = 0x02C8;
-
     private static readonly PropertyInfo? OperationName = typeof(DispatcherOperation).GetProperty(
         "Name",
         BindingFlags.Instance | BindingFlags.NonPublic
@@ -39,7 +36,6 @@ internal sealed class PanelTapTimeline : IDisposable
     private readonly HwndSourceHook _hook;
     private long _upAt;
     private DateTimeOffset _upClock;
-    private int _tabletsAdded;
 
     private PanelTapTimeline(Window window)
     {
@@ -73,18 +69,6 @@ internal sealed class PanelTapTimeline : IDisposable
             lock (_gate)
             {
                 return (_upAt, _upClock);
-            }
-        }
-    }
-
-    /// <summary>How many <c>WM_TABLET_ADDED</c> the UI thread has taken from its queue.</summary>
-    public int TabletsAdded
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _tabletsAdded;
             }
         }
     }
@@ -230,11 +214,6 @@ internal sealed class PanelTapTimeline : IDisposable
         var message = msg.message;
         lock (_gate)
         {
-            if (message == WmTabletAdded)
-            {
-                _tabletsAdded++;
-            }
-
             _entries.Add(
                 new Entry(
                     now,

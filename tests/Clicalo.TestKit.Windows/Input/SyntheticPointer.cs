@@ -53,7 +53,6 @@ public sealed class SyntheticPointer : IDisposable
     private HSYNTHETICPOINTERDEVICE _device;
     private bool _disposed;
     private string _lastTarget = "not checked";
-    private IReadOnlyCollection<int> _checkedAgainst;
 
     /// <summary>Creates an injector of <paramref name="kind"/> that may only touch windows of <paramref name="allowedProcessIds"/>.</summary>
     public SyntheticPointer(SyntheticPointerKind kind, IReadOnlyCollection<int> allowedProcessIds)
@@ -69,7 +68,6 @@ public sealed class SyntheticPointer : IDisposable
 
         Kind = kind;
         AllowedProcessIds = allowedProcessIds;
-        _checkedAgainst = allowedProcessIds;
     }
 
     /// <summary>Time between two frames of a gesture.</summary>
@@ -92,44 +90,6 @@ public sealed class SyntheticPointer : IDisposable
     {
         using var dpi = ThreadDpiScope.PerMonitorV2();
         return IsAllowedTarget(new Point(x, y), AllowedProcessIds, out description);
-    }
-
-    /// <summary>
-    /// Brings the finger or pen device into existence with one tap at a physical screen point that may only land on a
-    /// window of <paramref name="processId"/> (one of <see cref="AllowedProcessIds"/>, typically InputProbe); a mouse
-    /// has no device and nothing is injected. Windows registers a synthetic device on its first frame, announces it to
-    /// every window (<c>WM_TABLET_ADDED</c>) and holds that first contact until then: 15–200 ms on the hosted runners,
-    /// which a touch screen, present since the session started, never adds to a tap. Latency measurements connect
-    /// their devices away from what they measure.
-    /// </summary>
-    /// <exception cref="ArgumentException"><paramref name="processId"/> is not an allowed process.</exception>
-    public void Connect(int x, int y, int processId)
-    {
-        if (!AllowedProcessIds.Contains(processId))
-        {
-            throw new ArgumentException(
-                "The connecting tap may only land on an allowed process.",
-                nameof(processId)
-            );
-        }
-
-        if (Kind == SyntheticPointerKind.Mouse)
-        {
-            return;
-        }
-
-        lock (_gate)
-        {
-            _checkedAgainst = [processId];
-            try
-            {
-                Gesture(new Point(x, y), new Point(x, y), TimeSpan.Zero);
-            }
-            finally
-            {
-                _checkedAgainst = AllowedProcessIds;
-            }
-        }
     }
 
     /// <summary>Down and up at a physical screen point, in one guarded gesture.</summary>
@@ -263,7 +223,7 @@ public sealed class SyntheticPointer : IDisposable
             );
         }
 
-        var allowed = IsAllowedTarget(point, _checkedAgainst, out var description);
+        var allowed = IsAllowedTarget(point, AllowedProcessIds, out var description);
         _lastTarget = description;
         if (!allowed)
         {
