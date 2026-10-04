@@ -151,6 +151,32 @@ public sealed class ActivationArbiterTests : IDisposable
     }
 
     [Fact]
+    public async Task A_restore_is_confirmed_by_the_monitor_even_if_the_foreground_moved_on_between_two_looks()
+    {
+        // Spike S1 in CI (s0 37171041134): Windows timers run the looks 15.6 ms apart, InputProbe was back and the panel
+        // forced again between two of them, and the retry at the end of the wait reverted that activation before
+        // ActivationGuard saw it. The monitor had verified InputProbe in front meanwhile.
+        _world.Control.Foreground = Panel;
+        _world.Control.Script.Enqueue(false);
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            _world
+                .Orchestrator.RestoreAfterViolationAsync(
+                    Word,
+                    TestContext.Current.CancellationToken
+                )
+                .AsTask()
+        );
+
+        _world.Monitor.SwitchTo(Word);
+        _world.Control.Foreground = Panel;
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        await pending.WaitAsync(OperationTimeout, TestContext.Current.CancellationToken);
+
+        _world.Control.Attempts.ShouldBe([Word], "the monitor's report confirmed the restore");
+        _world.Control.Foreground.ShouldBe(Panel);
+    }
+
+    [Fact]
     public async Task A_restore_is_never_retried_over_an_app_the_user_switched_to()
     {
         _world.Control.Foreground = Panel;

@@ -49,6 +49,7 @@ public sealed partial class ForegroundOrchestrator
     private ForegroundLease? _active;
     private int _disposed;
     private Task _violationRestore = Task.CompletedTask;
+    private Arrival? _arrival;
     private Task _foregroundChange = Task.CompletedTask;
 
     /// <summary>Creates the orchestrator and starts following <see cref="ForegroundPorts.Monitor"/>.</summary>
@@ -519,7 +520,8 @@ public sealed partial class ForegroundOrchestrator
     /// check often comes too early (measured in spike S4).
     /// </summary>
     /// <remarks>
-    /// The first look that finds the window confirms the attempt. A single look at the end of the wait judged a restore
+    /// The first look that finds the window confirms the attempt, and so does a report of the monitor that verified it
+    /// in front after the call. A single look at the end of the wait judged a restore
     /// that had worked as refused whenever the foreground moved on within the wait, and the retry that followed took
     /// the foreground back from whatever had it then (spike S1 in CI: the next forced activation of the panel, reverted
     /// by that stale retry before <c>ActivationGuard</c> saw the panel in front, so it was never counted).
@@ -527,6 +529,7 @@ public sealed partial class ForegroundOrchestrator
     private async ValueTask<bool> TakeAsync(WindowToken window, CancellationToken cancellationToken)
     {
         var control = _ports.Control;
+        var before = Current.Epoch;
         if (control.TrySetForeground(window))
         {
             return true;
@@ -536,6 +539,16 @@ public sealed partial class ForegroundOrchestrator
         var confirmed = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
+
+        // The monitor's report of the window is a confirmation too, and it is not a sample: it holds even when the
+        // foreground has moved on before the next look (the looks are 15.6 ms apart on Windows timers).
+        var arrival = new Arrival(window, confirmed);
+        Volatile.Write(ref _arrival, arrival);
+        if (Current is var now && now.Window == window && now.Epoch.Value > before.Value)
+        {
+            _ = confirmed.TrySetResult(true);
+        }
+
         using var timer = _time.CreateTimer(
             _ =>
             {
@@ -560,7 +573,14 @@ public sealed partial class ForegroundOrchestrator
         await using var cancelled = cancellationToken.Register(() =>
             confirmed.TrySetCanceled(cancellationToken)
         );
-        return await confirmed.Task.ConfigureAwait(false);
+        try
+        {
+            return await confirmed.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = Interlocked.CompareExchange(ref _arrival, null, arrival);
+        }
     }
 
     /// <summary>
@@ -655,6 +675,12 @@ public sealed partial class ForegroundOrchestrator
                 e.Foreground.ObservedAt
             );
             _current = snapshot;
+        }
+
+        // An attempt waiting for its window to come to the front is confirmed by the report (it never blocks).
+        if (Volatile.Read(ref _arrival) is { } arrival && arrival.Window == snapshot.Window)
+        {
+            _ = arrival.Confirmed.TrySetResult(true);
         }
 
         var lease = Volatile.Read(ref _active);
@@ -859,6 +885,9 @@ public sealed partial class ForegroundOrchestrator
 
         public bool Contains(WindowToken window) => Active == window || Pending == window;
     }
+
+    /// <summary>An attempt of <see cref="TakeAsync"/> waiting for <see cref="Window"/> to come to the front.</summary>
+    private sealed record Arrival(WindowToken Window, TaskCompletionSource<bool> Confirmed);
 
     /// <summary>The result of climbing the rights ladder: the step that worked, or why none did.</summary>
     [StructLayout(LayoutKind.Auto)]
