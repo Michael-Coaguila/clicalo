@@ -74,6 +74,7 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
         var probe = _probe;
         var timeline = Timeline;
         timeline.WatchStalls(_stopping.Token);
+        timeline.WatchDispatcher(WpfThread.Dispatcher, _stopping.Token);
         var arbiter = new RecordingArbiter
         {
             Trace = timeline.Note,

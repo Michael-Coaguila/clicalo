@@ -59,6 +59,63 @@ public sealed class ActivationTimeline
         thread.Start();
     }
 
+    /// <summary>
+    /// Starts a dedicated thread that keeps one item queued on <paramref name="dispatcher"/> at a time and notes every
+    /// item that waited longer than the stall threshold: whether the UI thread was away from its dispatcher. Stops with
+    /// <paramref name="cancellationToken"/>.
+    /// </summary>
+    public void WatchDispatcher(
+        System.Windows.Threading.Dispatcher dispatcher,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        var thread = new Thread(() =>
+        {
+            using var ran = new ManualResetEventSlim();
+            while (!cancellationToken.WaitHandle.WaitOne(2))
+            {
+                ran.Reset();
+                var queued = Stopwatch.GetTimestamp();
+                try
+                {
+                    _ = dispatcher.BeginInvoke(
+                        System.Windows.Threading.DispatcherPriority.Send,
+                        () =>
+                        {
+                            var waited = Stopwatch.GetElapsedTime(queued);
+                            if (waited > StallThreshold)
+                            {
+                                _notes.Enqueue(
+                                    (
+                                        Stopwatch.GetTimestamp(),
+                                        string.Create(
+                                            CultureInfo.InvariantCulture,
+                                            $"UI thread: an item queued on its dispatcher ran after {waited.TotalMilliseconds:0.0} ms"
+                                        )
+                                    )
+                                );
+                            }
+
+                            ran.Set();
+                        }
+                    );
+                }
+                catch (InvalidOperationException)
+                {
+                    return;
+                }
+
+                _ = WaitHandle.WaitAny([ran.WaitHandle, cancellationToken.WaitHandle]);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Activation dispatcher watch",
+        };
+        thread.Start();
+    }
+
     /// <summary>Notes a step of the test, the restore or the guard, stamped now.</summary>
     public void Note(string line) => _notes.Enqueue((Stopwatch.GetTimestamp(), line));
 

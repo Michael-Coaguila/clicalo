@@ -63,6 +63,7 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
         _hotkey = new InternalRightsHotkey(_thread, TimeProvider.System);
         var arbiter = new RecordingArbiter { Trace = Timeline.Note };
         Timeline.WatchStalls(_stopping.Token);
+        Timeline.WatchDispatcher(WpfThread.Dispatcher, _stopping.Token);
         var lab = SurfaceLab.Create(arbiter);
         _lab = lab;
         _orchestrator = new ForegroundOrchestrator(
