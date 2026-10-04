@@ -58,6 +58,7 @@ un `SemaphoreSlim` y su vuelta no espera a ningún temporizador; lo mide de extr
 | 37164966961 | Suite completa (`cl desk`), ídem | 10 | 0 | 6,2 · **47,4 ms** | 0,9 ms |
 | 37167016441 | **Criterio final**, suite del módulo (`dotnet test` con los filtros de `cl desk`) | 30 | 0 | 2,1 · 14,5 ms | 0,85 ms |
 | 37167016441 | **Criterio final**, sola | 30 | 0 | 2,0 · 5,9 ms | 0,86 ms |
+| 37170653929 | **Criterio final**, `cl desk` completo (commit final) | 10 | 0 | 2,0 · 6,7 ms | — |
 
 Con el criterio final, en las 60 ejecuciones: el trabajo del panel (`handling`) tiene p50 0,04 ms y máximo 2,5 ms; los
 toques medidos de dedo y de lápiz, p99 de 6,5 ms y 1,8 ms en la suite; los de ratón, máximo 13 ms. Los toques de

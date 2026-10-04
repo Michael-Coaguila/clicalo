@@ -638,8 +638,8 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   hilo de UI del panel ocioso: creaba un dispositivo nuevo en cada toque, y Windows retiene el primer contacto de un
   dispositivo sintético hasta anunciarlo (`WM_TABLET_ADDED`, 15–200 ms) y el primer contacto de cada dispositivo en una
   ventana recién mostrada (20–615 ms). Ninguno de los dos existe en un toque real con la pantalla táctil, que es un único
-  dispositivo y toca un panel que vive toda la sesión. Con el criterio nuevo: 0 fallos en 60 ejecuciones (30 con la
-  suite del módulo y 30 solas), p95 por ejecución de 14,5 ms como máximo.
+  dispositivo y toca un panel que vive toda la sesión. Con el criterio nuevo: 0 fallos en 70 ejecuciones (30 con la
+  suite del módulo, 30 solas y 10 de `cl desk`), p95 por ejecución de 14,5 ms como máximo.
 - **Coste.** El primer contacto de cada dispositivo sobre el panel queda fuera del p95 de la CI (sigue en la salida y en
   `panel-tap-latency-*.json`), y con él el JIT del primer toque en Debug (3–8 ms medidos). El presupuesto no cambia y no
   hay un umbral propio de la CI.
