@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -27,6 +28,9 @@ internal sealed class PanelTapTimeline : IDisposable
         BindingFlags.Instance | BindingFlags.NonPublic
     );
 
+    /// <summary><c>GetCurrentThread()</c>.</summary>
+    private static readonly nint CurrentThreadPseudoHandle = -2;
+
     private readonly Lock _gate = new();
     private readonly List<Entry> _entries = new(capacity: 8192);
     private readonly Stack<(DispatcherOperation Operation, long Started)> _running = new();
@@ -49,6 +53,7 @@ internal sealed class PanelTapTimeline : IDisposable
         _source.AddHook(_hook);
         _dispatcher.Hooks.OperationStarted += OnOperationStarted;
         _dispatcher.Hooks.OperationCompleted += OnOperationCompleted;
+        _dispatcher.Hooks.DispatcherInactive += OnInactive;
         ComponentDispatcher.ThreadFilterMessage += OnThreadMessage;
     }
 
@@ -102,17 +107,38 @@ internal sealed class PanelTapTimeline : IDisposable
     {
         lock (_gate)
         {
-            return
-            [
-                .. _entries
-                    .Where(entry => entry.End >= from && entry.Start <= to)
-                    .Select(entry =>
-                        string.Create(
+            var lines = new List<string>();
+            ulong previous = 0;
+            foreach (var entry in _entries.Where(entry => entry.End >= from && entry.Start <= to))
+            {
+                var cpu =
+                    previous != 0 && entry.Cycles >= previous
+                        ? string.Create(
                             CultureInfo.InvariantCulture,
-                            $"{Stopwatch.GetElapsedTime(from, entry.Start).TotalMilliseconds:+0.00;-0.00} ms {entry.What}{(entry.End > entry.Start ? string.Create(CultureInfo.InvariantCulture, $" ({Stopwatch.GetElapsedTime(entry.Start, entry.End).TotalMilliseconds:0.00} ms)") : string.Empty)}"
+                            $" [UI thread +{(entry.Cycles - previous) / 1e6:0.00} Mcycles]"
                         )
-                    ),
-            ];
+                        : string.Empty;
+                if (entry.Cycles != 0)
+                {
+                    previous = entry.Cycles;
+                }
+
+                var duration =
+                    entry.End > entry.Start
+                        ? string.Create(
+                            CultureInfo.InvariantCulture,
+                            $" ({Stopwatch.GetElapsedTime(entry.Start, entry.End).TotalMilliseconds:0.00} ms)"
+                        )
+                        : string.Empty;
+                lines.Add(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{Stopwatch.GetElapsedTime(from, entry.Start).TotalMilliseconds:+0.00;-0.00} ms {entry.What}{duration}{cpu}"
+                    )
+                );
+            }
+
+            return lines;
         }
     }
 
@@ -145,6 +171,7 @@ internal sealed class PanelTapTimeline : IDisposable
         ComponentDispatcher.ThreadFilterMessage -= OnThreadMessage;
         _dispatcher.Hooks.OperationStarted -= OnOperationStarted;
         _dispatcher.Hooks.OperationCompleted -= OnOperationCompleted;
+        _dispatcher.Hooks.DispatcherInactive -= OnInactive;
         _source.RemoveHook(_hook);
     }
 
@@ -162,36 +189,36 @@ internal sealed class PanelTapTimeline : IDisposable
 
     private nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
     {
-        if (msg is WmPointerDown or WmPointerUp or WmPointerUpdate)
+        var now = Stopwatch.GetTimestamp();
+        var cycles = Cycles();
+        var clock = TimeProvider.System.GetUtcNow();
+        var name = msg switch
         {
-            var now = Stopwatch.GetTimestamp();
-            var clock = TimeProvider.System.GetUtcNow();
-            var name = msg switch
+            WmPointerDown => "WM_POINTERDOWN",
+            WmPointerUp => "WM_POINTERUP",
+            WmPointerUpdate => "WM_POINTERUPDATE",
+            _ => string.Create(CultureInfo.InvariantCulture, $"0x{msg:X4}"),
+        };
+        lock (_gate)
+        {
+            if (msg == WmPointerUp)
             {
-                WmPointerDown => "WM_POINTERDOWN",
-                WmPointerUp => "WM_POINTERUP",
-                _ => "WM_POINTERUPDATE",
-            };
-            lock (_gate)
-            {
-                if (msg == WmPointerUp)
-                {
-                    _upAt = now;
-                    _upClock = clock;
-                }
-
-                _entries.Add(
-                    new Entry(
-                        now,
-                        now,
-                        string.Create(
-                            CultureInfo.InvariantCulture,
-                            $"{name} received (thread priority {Thread.CurrentThread.Priority})"
-                        ),
-                        null
-                    )
-                );
+                _upAt = now;
+                _upClock = clock;
             }
+
+            _entries.Add(
+                new Entry(
+                    now,
+                    now,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{name} received by the panel (thread priority {Thread.CurrentThread.Priority})"
+                    ),
+                    null,
+                    cycles
+                )
+            );
         }
 
         return 0;
@@ -216,7 +243,8 @@ internal sealed class PanelTapTimeline : IDisposable
                         CultureInfo.InvariantCulture,
                         $"message 0x{message:X4} taken from the queue"
                     ),
-                    null
+                    null,
+                    Cycles()
                 )
             );
         }
@@ -249,16 +277,36 @@ internal sealed class PanelTapTimeline : IDisposable
                         CultureInfo.InvariantCulture,
                         $"{operation.Priority} {NameOf(operation)}"
                     ),
-                    _running.Count == 0 ? operation.Priority : null
+                    _running.Count == 0 ? operation.Priority : null,
+                    Cycles()
                 )
             );
         }
     }
 
+    private void OnInactive(object? sender, EventArgs e)
+    {
+        var now = Stopwatch.GetTimestamp();
+        lock (_gate)
+        {
+            _entries.Add(new Entry(now, now, "dispatcher inactive", null, Cycles()));
+        }
+    }
+
+    /// <summary>CPU cycles the current thread has used (0 when unknown).</summary>
+    private static ulong Cycles() =>
+        QueryThreadCycleTime(CurrentThreadPseudoHandle, out var cycles) ? cycles : 0;
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryThreadCycleTime(nint thread, out ulong cycles);
+
     private readonly record struct Entry(
         long Start,
         long End,
         string What,
-        DispatcherPriority? Priority
+        DispatcherPriority? Priority,
+        ulong Cycles
     );
 }

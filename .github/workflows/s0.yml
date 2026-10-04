@@ -53,9 +53,20 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: cl desk
+      - name: cl build
         shell: pwsh
-        run: .\cl.cmd desk
+        run: .\cl.cmd build
+
+      - name: Windowing suite x3 (EXPERIMENT m2/stab-latency, not for main)
+        shell: pwsh
+        env:
+          CLICALO_DESKTOP_TESTS: "1"
+        run: |
+          $exe = "artifacts/bin/Clicalo.Windowing.IntegrationTests/debug/Clicalo.Windowing.IntegrationTests.exe"
+          New-Item -ItemType Directory -Force artifacts/cl/test-results | Out-Null
+          for ($i = 1; $i -le 3; $i++) {
+            & $exe -trait- "Category=Perf" -trx "artifacts/cl/test-results/suite-$i.trx" -noColor | Select-String -Pattern "\[FAIL\]|Total:"
+          }
 
       - name: Upload cl report and test results
         # Always: a passing run is evidence too (the TRX shows that no desktop test was skipped).
