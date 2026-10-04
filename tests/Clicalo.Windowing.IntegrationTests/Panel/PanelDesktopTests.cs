@@ -54,6 +54,15 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         var latencies = new List<(SyntheticPointerKind Kind, TimeSpan Latency)>();
         var segments = new List<TapSegments>();
         var violationsBefore = fixture.Lab.Guard.Violations;
+        var pointers = kinds.Select(PanelDesktopFixture.CreatePointer).ToList();
+        using var finger = pointers[0];
+        using var pen = pointers[1];
+        using var mouse = pointers[2];
+        foreach (var pointer in pointers)
+        {
+            await fixture.ConnectAsync(pointer);
+        }
+
         for (var tap = 0; tap < Taps; tap++)
         {
             var cursor = await fixture.PrepareAsync();
@@ -61,10 +70,7 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
             fixture.Timeline.Clear();
             var before = RuntimeCounters.Read();
             var tapStarted = Stopwatch.GetTimestamp();
-            using (var pointer = PanelDesktopFixture.CreatePointer(kinds[tap % kinds.Length]))
-            {
-                pointer.Tap(at.X, at.Y);
-            }
+            pointers[tap % kinds.Length].Tap(at.X, at.Y);
 
             var tapReturned = Stopwatch.GetTimestamp();
             await PanelDesktopFixture.WaitUntilAsync(

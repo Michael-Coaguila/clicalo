@@ -92,6 +92,25 @@ public sealed class SyntheticPointer : IDisposable
         return IsAllowedTarget(new Point(x, y), AllowedProcessIds, out description);
     }
 
+    /// <summary>
+    /// Creates the synthetic finger or pen device now instead of on the first gesture (nothing is injected; a mouse
+    /// has no device). Windows announces a new device to the windows of the desktop (<c>WM_TABLET_ADDED</c>) and
+    /// delivers the first contact of a device only after that: a device created inside a measured gesture adds
+    /// 15–200 ms (CI) that a touch screen, present since the session started, never adds. Latency measurements
+    /// connect first and wait for the announcement.
+    /// </summary>
+    public void Connect()
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (Kind != SyntheticPointerKind.Mouse)
+            {
+                _ = Device();
+            }
+        }
+    }
+
     /// <summary>Down and up at a physical screen point, in one guarded gesture.</summary>
     public void Tap(int x, int y) => Gesture(new Point(x, y), new Point(x, y), TimeSpan.Zero);
 

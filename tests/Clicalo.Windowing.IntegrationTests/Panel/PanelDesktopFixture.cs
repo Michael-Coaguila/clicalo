@@ -190,6 +190,27 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
     public static SyntheticPointer CreatePointer(SyntheticPointerKind kind) =>
         new(kind, [Environment.ProcessId]);
 
+    /// <summary>
+    /// Creates the device of <paramref name="device"/> and waits until the panel's thread has been told it arrived
+    /// (<c>WM_TABLET_ADDED</c>), so no measured tap carries the device's arrival (<see cref="SyntheticPointer.Connect"/>).
+    /// A mouse has no device.
+    /// </summary>
+    public async Task ConnectAsync(SyntheticPointer device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        if (device.Kind == SyntheticPointerKind.Mouse)
+        {
+            return;
+        }
+
+        var announced = Timeline.TabletsAdded;
+        device.Connect();
+        await WaitUntilAsync(
+            () => Timeline.TabletsAdded > announced,
+            "Windows never announced the synthetic " + device.Kind + " to the panel's thread."
+        );
+    }
+
     /// <summary>The center of the tile of <paramref name="shortcut"/>, in physical screen pixels.</summary>
     public PhysicalPoint TileCenter(ShortcutId shortcut) =>
         WpfThread.Invoke(() =>
