@@ -160,7 +160,11 @@ public sealed partial class ForegroundOrchestrator
         // ActivationGuard calls this inside the surface's window procedure on the UI thread: return at once and give
         // the foreground back from the thread pool. Awaiting the free gate here would complete synchronously and call
         // SetForegroundWindow inside that window procedure, on a thread that never changes the foreground (§3.2, §3.5).
-        Volatile.Write(ref _violationRestore, Task.Run(RestoreAfterViolationInBackgroundAsync));
+        var reportedIn = Current.Epoch;
+        Volatile.Write(
+            ref _violationRestore,
+            Task.Run(() => RestoreAfterViolationInBackgroundAsync(violation.Window, reportedIn))
+        );
     }
 
     /// <summary>The latest restoration started by <see cref="ReportViolation"/>; tests await it.</summary>
@@ -718,14 +722,37 @@ public sealed partial class ForegroundOrchestrator
     /// the user back to the app, which the monitor would then report as an app switch), and otherwise to the last
     /// verified external window (blueprint §3.5).
     /// </summary>
-    private async Task RestoreAfterViolationInBackgroundAsync()
+    /// <remarks>
+    /// Nothing is done when the monitor verified an external foreground after <paramref name="reportedIn"/> and no
+    /// surface is in front any more: the violation is over (an earlier restore, the user or another app took the
+    /// foreground out of the process while this one waited for the gate), and taking the foreground now would act on
+    /// whatever is in front now: the app the user switched to, or the next forced activation of a surface before
+    /// <c>ActivationGuard</c> sees it (spike S1 in CI: the restore of cycle 19, queued behind the retry of cycle 18,
+    /// reverted cycle 20 and hid it from the guard). With <paramref name="surface"/> or another surface in front, it
+    /// restores as usual.
+    /// </remarks>
+    private async Task RestoreAfterViolationInBackgroundAsync(
+        WindowToken surface,
+        ForegroundEpoch reportedIn
+    )
     {
         try
         {
             await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
             try
             {
-                var expected = Volatile.Read(ref _active)?.Target ?? Current.Window;
+                var now = Current;
+                if (now.Epoch.Value > reportedIn.Value)
+                {
+                    var inFront = _ports.Control.GetForeground();
+                    if (inFront != surface && !_ports.Surfaces.TryGetSurface(inFront, out _))
+                    {
+                        LogViolationEndedMeanwhile(_logger, now.Window);
+                        return;
+                    }
+                }
+
+                var expected = Volatile.Read(ref _active)?.Target ?? now.Window;
                 if (!expected.IsNone)
                 {
                     var outcome = await GiveBackAsync(
@@ -810,6 +837,13 @@ public sealed partial class ForegroundOrchestrator
         WindowToken window,
         RestoreOutcome outcome
     );
+
+    [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Information,
+        Message = "A REG-01 violation ended before its restore ran: {Window} was verified in front meanwhile"
+    )]
+    private static partial void LogViolationEndedMeanwhile(ILogger logger, WindowToken window);
 
     [LoggerMessage(
         EventId = 6,

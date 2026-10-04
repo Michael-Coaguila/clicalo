@@ -173,6 +173,54 @@ public sealed class ActivationArbiterTests : IDisposable
     }
 
     [Fact]
+    public async Task A_violation_restore_that_waited_for_another_does_nothing_once_the_app_is_back()
+    {
+        // Spike S1 in CI (OrchestratedRestoreTests, cycles 18 to 20): the restore of cycle 19 waited behind the retry of
+        // cycle 18, InputProbe was back meanwhile, and when its turn came it took the foreground from the forced
+        // activation of cycle 20 before ActivationGuard saw the panel in front.
+        _world.Control.Foreground = Panel;
+        _world.Control.Script.Enqueue(false);
+        var timers = _world.Time.TimersCreated;
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        await _world.Time.WhenTimersAsync(timers + 1);
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        var queued = _world.Orchestrator.ViolationRestore;
+
+        _world.Monitor.SwitchTo(Word);
+        _world.Time.Advance(Timings.Foreground.RestoreVerifyInterval);
+        await queued.WaitAsync(OperationTimeout, TestContext.Current.CancellationToken);
+
+        _world.Control.Attempts.ShouldBe(
+            [Word],
+            "Word was verified in front after the second report: that violation is over"
+        );
+    }
+
+    [Fact]
+    public async Task A_violation_restore_that_waited_still_runs_while_a_surface_is_in_front()
+    {
+        // The first restore is refused twice, so the panel stays in front all along.
+        _world.Control.Foreground = Panel;
+        _world.Control.Script.Enqueue(false);
+        _world.Control.Script.Enqueue(false);
+        var timers = _world.Time.TimersCreated;
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        await _world.Time.WhenTimersAsync(timers + 1);
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        var queued = _world.Orchestrator.ViolationRestore;
+
+        // Word was verified in front for a moment meanwhile, but the panel is in front when the queued restore runs.
+        _world.Monitor.SwitchTo(Word, alsoForeground: false);
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        await _world.Time.WhenTimersAsync(timers + 2);
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        await queued.WaitAsync(OperationTimeout, TestContext.Current.CancellationToken);
+
+        _world.Control.Attempts.ShouldBe([Word, Word, Word]);
+        _world.Control.Foreground.ShouldBe(Word);
+    }
+
+    [Fact]
     public async Task A_violation_on_a_leased_window_is_ignored()
     {
         _world.Control.HasRights = true;
