@@ -9,16 +9,21 @@ using System.Windows.Threading;
 namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 
 /// <summary>
-/// What the panel's UI thread did around each tap, on the performance counter (<see cref="Stopwatch"/>): the pointer
-/// messages of the panel as its window procedure receives them (before the product's own hook), every message the
-/// dispatcher's loop takes from the queue, and every dispatcher operation with its priority and duration. It only
-/// observes: nothing is handled, delayed or changed. Attached and detached on the WPF thread.
+/// What the panel's UI thread did around each tap, on the performance counter (<see cref="Stopwatch"/>): every message
+/// the panel's window procedure receives, sent ones included (before the product's own hook), every message the
+/// dispatcher's loop takes from the queue, every dispatcher operation with its priority and duration, when the
+/// dispatcher runs out of work, and the CPU cycles the thread used between two of them (so a gap reads as idle or as
+/// busy). It only observes: nothing is handled, delayed or changed. Attached and detached on the WPF thread; the tests
+/// clear it before each tap and it keeps at most <see cref="Capacity"/> entries.
 /// </summary>
 internal sealed class PanelTapTimeline : IDisposable
 {
     private const int WmPointerUpdate = 0x0245;
     private const int WmPointerDown = 0x0246;
     private const int WmPointerUp = 0x0247;
+
+    /// <summary>Entries kept at most; the oldest half goes when it is reached.</summary>
+    private const int Capacity = 50_000;
 
     private static readonly PropertyInfo? OperationName = typeof(DispatcherOperation).GetProperty(
         "Name",
@@ -191,7 +196,7 @@ internal sealed class PanelTapTimeline : IDisposable
                 _upClock = clock;
             }
 
-            _entries.Add(
+            Add(
                 new Entry(
                     now,
                     now,
@@ -214,7 +219,7 @@ internal sealed class PanelTapTimeline : IDisposable
         var message = msg.message;
         lock (_gate)
         {
-            _entries.Add(
+            Add(
                 new Entry(
                     now,
                     now,
@@ -248,7 +253,7 @@ internal sealed class PanelTapTimeline : IDisposable
 
         lock (_gate)
         {
-            _entries.Add(
+            Add(
                 new Entry(
                     started,
                     end,
@@ -263,12 +268,23 @@ internal sealed class PanelTapTimeline : IDisposable
         }
     }
 
+    /// <summary>Records one entry; the caller holds <see cref="_gate"/>.</summary>
+    private void Add(Entry entry)
+    {
+        if (_entries.Count >= Capacity)
+        {
+            _entries.RemoveRange(0, Capacity / 2);
+        }
+
+        _entries.Add(entry);
+    }
+
     private void OnInactive(object? sender, EventArgs e)
     {
         var now = Stopwatch.GetTimestamp();
         lock (_gate)
         {
-            _entries.Add(new Entry(now, now, "dispatcher inactive", null, Cycles()));
+            Add(new Entry(now, now, "dispatcher inactive", null, Cycles()));
         }
     }
 

@@ -1,4 +1,4 @@
-﻿# Spike S0 Â· CI desktop (blueprint Â§15.1): do the hosted runners windows-2025 and windows-11-arm give the tests that
+# Spike S0 · CI desktop (blueprint §15.1): do the hosted runners windows-2025 and windows-11-arm give the tests that
 # need an interactive desktop (`cl desk`: SendInput into InputProbe and taking the foreground) what they need?
 # Success criterion: 10 of 10 runs per runner without failures caused by a missing desktop. Each run is a separate job
 # on a fresh runner. Start it from the Actions tab (Run workflow) and record the outcome in docs/testing/spikes/S0.md.
@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   # One measurement at a time; a second request waits instead of cancelling the first.
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
@@ -53,27 +53,9 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: cl build
+      - name: cl desk
         shell: pwsh
-        run: .\cl.cmd build
-
-      - name: Panel latency in the suite and alone, x3 each (EXPERIMENT m2/stab-latency, not for main)
-        shell: pwsh
-        env:
-          CLICALO_DESKTOP_TESTS: "1"
-        run: |
-          $results = "artifacts/cl/test-results"
-          New-Item -ItemType Directory -Force $results | Out-Null
-          $exe = "artifacts/bin/Clicalo.Windowing.IntegrationTests/debug/Clicalo.Windowing.IntegrationTests.exe"
-          $method = "Clicalo.Windowing.IntegrationTests.MinimalPanel.PanelDesktopTests.Taps_of_finger_pen_and_mouse_reach_the_engine_and_never_take_the_foreground"
-          for ($i = 1; $i -le 3; $i++) {
-            dotnet test --project tests/Clicalo.Windowing.IntegrationTests/Clicalo.Windowing.IntegrationTests.csproj -c Debug --no-build --no-progress --results-directory "$results/suite-$i" --report-xunit-trx --filter-trait "Requires=Desktop" --filter-not-trait "Category=Perf" | Select-String -Pattern "failed |Total|total:|succeeded:"
-            New-Item -ItemType Directory -Force "$results/suite-$i" | Out-Null
-            Move-Item "$results/panel-tap-latency-*.json" "$results/suite-$i/" -ErrorAction SilentlyContinue
-            & $exe -method $method -trx "$results/alone-$i.trx" -noColor | Select-String -Pattern "FAIL|Total:"
-            New-Item -ItemType Directory -Force "$results/alone-$i" | Out-Null
-            Move-Item "$results/panel-tap-latency-*.json" "$results/alone-$i/" -ErrorAction SilentlyContinue
-          }
+        run: .\cl.cmd desk
 
       - name: Upload cl report and test results
         # Always: a passing run is evidence too (the TRX shows that no desktop test was skipped).

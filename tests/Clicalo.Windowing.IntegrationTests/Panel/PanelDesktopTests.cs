@@ -27,7 +27,10 @@ namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
     : IClassFixture<PanelDesktopFixture>
 {
-    /// <summary>Taps of the non-activation cycle (20 per M2 criterion, spread over finger, pen and mouse).</summary>
+    /// <summary>
+    /// Measured taps of the non-activation cycle, spread over finger, pen and mouse (at least the 20 of the M2 criterion
+    /// and of <c>minSamples</c> in <c>TouchToSendInput</c>).
+    /// </summary>
     private const int Taps = 21;
 
     /// <summary>Taps slower than this carry the UI thread's timeline in the measurement report.</summary>
