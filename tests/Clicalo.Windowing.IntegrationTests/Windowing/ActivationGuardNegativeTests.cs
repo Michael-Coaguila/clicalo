@@ -69,8 +69,8 @@ public sealed class ActivationGuardNegativeTests(SurfaceDesktopFixture desktop)
 
                 await SurfaceDesktopFixture.WaitUntilAsync(
                     () => desktop.Lab.Guard.Violations > before,
-                    Say($"Cycle {cycle}: ActivationGuard did not detect the forced activation.")
-                        + Sequence()
+                    Say($"Cycle {cycle}: ActivationGuard did not detect the forced activation."),
+                    Sequence
                 );
                 var events = await desktop.Probe.WaitForAsync(
                     cursor,
