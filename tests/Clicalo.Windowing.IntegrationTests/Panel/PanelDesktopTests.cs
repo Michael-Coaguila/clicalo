@@ -30,12 +30,6 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
     /// <summary>Taps of the non-activation cycle (20 per M2 criterion, spread over finger, pen and mouse).</summary>
     private const int Taps = 21;
 
-    /// <summary>
-    /// p95 of «Windows records the lift → the activation is in the engine mailbox»: the panel's share of the 50 ms budget
-    /// of NFR-001 (the whole «touch → SendInput» is measured end to end by Clicalo.Performance in the CI).
-    /// </summary>
-    private static readonly TimeSpan PanelLatencyBudget = TimeSpan.FromMilliseconds(50);
-
     /// <summary>Taps slower than this carry the UI thread's timeline in the measurement report.</summary>
     private static readonly TimeSpan TimelineThreshold = TimeSpan.FromMilliseconds(5);
 
@@ -54,10 +48,14 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         var latencies = new List<(SyntheticPointerKind Kind, TimeSpan Latency)>();
         var segments = new List<TapSegments>();
         var violationsBefore = fixture.Lab.Guard.Violations;
-        var pointers = kinds.Select(fixture.CreateMeasuringPointer).ToList();
-        using var finger = pointers[0];
-        using var pen = pointers[1];
-        using var mouse = pointers[2];
+
+        // One device per kind for the whole cycle, brought into existence on InputProbe first: Windows holds the first
+        // contact of a new synthetic device until it has announced the device (15–200 ms on the hosted runners), which a
+        // touch screen never adds to a tap (docs/testing/panel-latency.md). The panel's own code stays cold.
+        using var finger = fixture.CreateMeasuringPointer(SyntheticPointerKind.Finger);
+        using var pen = fixture.CreateMeasuringPointer(SyntheticPointerKind.Pen);
+        using var mouse = fixture.CreateMeasuringPointer(SyntheticPointerKind.Mouse);
+        SyntheticPointer[] pointers = [finger, pen, mouse];
         foreach (var pointer in pointers)
         {
             await fixture.ConnectAsync(pointer);
@@ -129,8 +127,14 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         TapSegments.Record(segments);
         (fixture.Lab.Guard.Violations - violationsBefore).ShouldBe(0, "reg01.violations");
         fixture.Lab.Arbiter.Violations.ShouldBeEmpty();
+
+        // The panel's share of NFR-001 («Windows records the lift → the activation is in the engine mailbox») under the
+        // numbers of TouchToSendInput: p95 ≤ 50 ms over at least 20 taps. Every tap counts, the first one (cold code)
+        // included; the whole «touch → SendInput» is measured on the published app by Clicalo.Performance.
+        var budget = CatalogBudget.Read("TouchToSendInput");
         var all = latencies.Select(static sample => sample.Latency).ToList();
-        var p95 = Percentile(all, 0.95);
+        all.Count.ShouldBeGreaterThanOrEqualTo(budget.MinSamples);
+        var measured = budget.Of(all);
 
         // Per device too: a slow path of one device (the pen's hover and leave frames, the mouse routed through
         // WM_POINTER) must be visible in the CI log without another run.
@@ -161,7 +165,17 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
                 + " taps: "
                 + summary
         );
-        p95.ShouldBeLessThanOrEqualTo(PanelLatencyBudget, summary);
+        measured.ShouldBeLessThanOrEqualTo(
+            budget.Limit,
+            summary
+                + Environment.NewLine
+                + string.Join(
+                    Environment.NewLine,
+                    segments
+                        .Where(tap => tap.TotalMs > TimelineThreshold.TotalMilliseconds)
+                        .Select(static tap => tap.Line())
+                )
+        );
     }
 
     [DesktopFact]
