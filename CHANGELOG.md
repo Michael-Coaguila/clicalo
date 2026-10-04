@@ -141,7 +141,8 @@ progress).
   universal shortcuts of General and Always visible) marked by default and the nine templates unmarked;
   `StarterLibrary` and the `FirstDocument` use case build the first document from a selection (nothing marked starts
   empty, «Skip» applies the default), and `StarterContentFiles` loads and validates the kit, the seed and the
-  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD`.
+  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD` (the description awaits
+  ratification, R-15 in §6.1 of the catalog).
 
 ### Changed
 

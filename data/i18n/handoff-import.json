@@ -163,12 +163,12 @@
       "text": { "es": "Texto", "en": "Text" }
     },
     "kitBasics": {
-      "notes": "Chip «Básicos» del paso «¿Qué apps usas más?» de la bienvenida (BIE-006), marcado por defecto: los atajos universales de General y de Siempre visible (data/content/starter.json). Texto ratificado por la decisión D2 del usuario del 2026-10-03.",
+      "notes": "Chip «Básicos» del paso «¿Qué apps usas más?» de la bienvenida (BIE-006), marcado por defecto: los atajos universales de General y de Siempre visible (data/content/starter.json). Nombre fijado por la decisión D2 del usuario del 2026-10-03.",
       "after": "ob2b",
       "text": { "es": "Básicos", "en": "Basics" }
     },
     "kitBasicsD": {
-      "notes": "Descripción del chip «Básicos» (BIE-006, decisión D2 del usuario del 2026-10-03): qué instala y que sirve en cualquier app.",
+      "notes": "Descripción del chip «Básicos» (BIE-006, decisión D2 del usuario del 2026-10-03): qué instala y que sirve en cualquier app. Texto nuevo, pendiente de ratificar en §6.1 del catálogo (R-15).",
       "after": "kitBasics",
       "text": { "es": "Copiar, pegar, deshacer, dictar y más, en cualquier app", "en": "Copy, paste, undo, dictate and more, in any app" }
     },

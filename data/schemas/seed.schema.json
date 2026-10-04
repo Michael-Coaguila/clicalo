@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/seed.schema.json",
   "title": "Clícalo initial content",
-  "description": "Content of a new document: the Always visible row and the General profile (CAT-003, PQ-44). Other sample profiles are templates installed from the welcome.",
+  "description": "Content of the «Basics» option of the starter kit (starter.json, user decision D2): the shortcuts of the Always visible row and of the General profile (CAT-003, PQ-44). General and Always visible exist in every new document; without «Basics» they start empty. Other sample profiles are templates installed from the welcome.",
   "type": "object",
   "required": ["catalogVersion", "alwaysVisible", "general"],
   "additionalProperties": false,
