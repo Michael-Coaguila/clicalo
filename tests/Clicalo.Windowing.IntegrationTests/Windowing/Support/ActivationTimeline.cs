@@ -14,7 +14,50 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 /// </summary>
 public sealed class ActivationTimeline
 {
+    private static readonly TimeSpan StallThreshold = TimeSpan.FromMilliseconds(25);
+
     private readonly ConcurrentQueue<(long Timestamp, string Line)> _notes = new();
+
+    /// <summary>
+    /// Starts a dedicated thread that notes every time it woke up much later than it asked to: a stall of the whole
+    /// process or of the machine (a garbage collection, a starved runner), told apart from a late thread pool.
+    /// Stops with <paramref name="cancellationToken"/>.
+    /// </summary>
+    public void WatchStalls(CancellationToken cancellationToken)
+    {
+        var thread = new Thread(() =>
+        {
+            var last = Stopwatch.GetTimestamp();
+            var pauses = GC.GetTotalPauseDuration();
+            while (!cancellationToken.WaitHandle.WaitOne(2))
+            {
+                var now = Stopwatch.GetTimestamp();
+                var gap = Stopwatch.GetElapsedTime(last, now);
+                if (gap > StallThreshold)
+                {
+                    var gc = GC.GetTotalPauseDuration();
+                    _notes.Enqueue(
+                        (
+                            now,
+                            string.Create(
+                                CultureInfo.InvariantCulture,
+                                $"stall: a thread that waits 2 ms woke after {gap.TotalMilliseconds:0.0} ms (GC pauses meanwhile {(gc - pauses).TotalMilliseconds:0.0} ms)"
+                            )
+                        )
+                    );
+                    pauses = gc;
+                }
+
+                last = now;
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Activation stall watch",
+            Priority = ThreadPriority.Highest,
+        };
+        thread.Start();
+    }
 
     /// <summary>Notes a step of the test, the restore or the guard, stamped now.</summary>
     public void Note(string line) => _notes.Enqueue((Stopwatch.GetTimestamp(), line));
@@ -56,7 +99,17 @@ public sealed class ActivationTimeline
                 .Where(received => received.Timestamp >= since)
                 .Select(received => (received.Timestamp, "probe " + received.Json))
         );
-        entries.Add((Stopwatch.GetTimestamp(), "now: " + DescribeThreadOf(probe.Window)));
+        entries.Add(
+            (
+                Stopwatch.GetTimestamp(),
+                "now: "
+                    + DescribeThreadOf(probe.Window)
+                    + string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"; thread pool {ThreadPool.ThreadCount} threads, {ThreadPool.PendingWorkItemCount} items queued; GC pauses {GC.GetTotalPauseDuration().TotalMilliseconds:0.0} ms in total"
+                    )
+            )
+        );
         return string.Join(
             Environment.NewLine,
             entries

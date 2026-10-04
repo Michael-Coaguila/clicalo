@@ -468,7 +468,8 @@ public sealed partial class ForegroundOrchestrator
     /// <summary>
     /// Gives the foreground to <paramref name="window"/>, verified with <c>GetForegroundWindow</c> (see
     /// <see cref="TakeAsync"/>), with one retry: <see cref="RestoreOutcome.Restored"/> when the first attempt worked,
-    /// <see cref="RestoreOutcome.RestoredAfterRetry"/> when the retry did.
+    /// <see cref="RestoreOutcome.RestoredAfterRetry"/> when the retry did. There is no retry when the user switched to
+    /// another app while the first attempt was being verified: the foreground is never taken from their choice.
     /// </summary>
     private async ValueTask<RestoreOutcome> GiveBackAsync(
         WindowToken window,
@@ -481,9 +482,15 @@ public sealed partial class ForegroundOrchestrator
             return RestoreOutcome.Failed;
         }
 
+        var start = Current;
         if (await TakeAsync(window, cancellationToken).ConfigureAwait(false))
         {
             return RestoreOutcome.Restored;
+        }
+
+        if (Changed(start, window))
+        {
+            return RestoreOutcome.Failed;
         }
 
         if (await TakeAsync(window, cancellationToken).ConfigureAwait(false))
@@ -502,10 +509,17 @@ public sealed partial class ForegroundOrchestrator
 
     /// <summary>
     /// One verified attempt: <c>SetForegroundWindow</c> and, when <c>GetForegroundWindow</c> does not show
-    /// <paramref name="window"/> yet, the same check once more after <c>Timings.Foreground.RestoreRetryDelay</c> without
-    /// calling again. The thread that owns a window activates it asynchronously when the call comes from another thread
-    /// (a surface on the UI thread, another app), so the first check often comes too early (measured in spike S4).
+    /// <paramref name="window"/> yet, the same check every <c>Timings.Foreground.RestoreVerifyInterval</c> for up to
+    /// <c>Timings.Foreground.RestoreRetryDelay</c>, without calling again. The thread that owns a window activates it
+    /// asynchronously when the call comes from another thread (a surface on the UI thread, another app), so the first
+    /// check often comes too early (measured in spike S4).
     /// </summary>
+    /// <remarks>
+    /// The first look that finds the window confirms the attempt. A single look at the end of the wait judged a restore
+    /// that had worked as refused whenever the foreground moved on within the wait, and the retry that followed took
+    /// the foreground back from whatever had it then (spike S1 in CI: the next forced activation of the panel, reverted
+    /// by that stale retry before <c>ActivationGuard</c> saw the panel in front, so it was never counted).
+    /// </remarks>
     private async ValueTask<bool> TakeAsync(WindowToken window, CancellationToken cancellationToken)
     {
         var control = _ports.Control;
@@ -514,9 +528,35 @@ public sealed partial class ForegroundOrchestrator
             return true;
         }
 
-        await Task.Delay(Timings.Foreground.RestoreRetryDelay, _time, cancellationToken)
-            .ConfigureAwait(false);
-        return control.GetForeground() == window;
+        var started = _time.GetTimestamp();
+        var confirmed = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using var timer = _time.CreateTimer(
+            _ =>
+            {
+                if (confirmed.Task.IsCompleted)
+                {
+                    return;
+                }
+
+                if (control.GetForeground() == window)
+                {
+                    _ = confirmed.TrySetResult(true);
+                }
+                else if (_time.GetElapsedTime(started) >= Timings.Foreground.RestoreRetryDelay)
+                {
+                    _ = confirmed.TrySetResult(false);
+                }
+            },
+            null,
+            Timings.Foreground.RestoreVerifyInterval,
+            Timings.Foreground.RestoreVerifyInterval
+        );
+        await using var cancelled = cancellationToken.Register(() =>
+            confirmed.TrySetCanceled(cancellationToken)
+        );
+        return await confirmed.Task.ConfigureAwait(false);
     }
 
     /// <summary>

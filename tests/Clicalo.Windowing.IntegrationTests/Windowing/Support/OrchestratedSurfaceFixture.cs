@@ -21,6 +21,7 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 /// </summary>
 public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
 {
+    private readonly CancellationTokenSource _stopping = new();
     private InputProbeSession? _probe;
     private ForegroundLog? _foreground;
     private SysEventsThread? _thread;
@@ -60,7 +61,8 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
 
         // Never registered: a violation is restored by step 1 alone, and no lease here climbs the ladder.
         _hotkey = new InternalRightsHotkey(_thread, TimeProvider.System);
-        var arbiter = new RecordingArbiter();
+        var arbiter = new RecordingArbiter { Trace = Timeline.Note };
+        Timeline.WatchStalls(_stopping.Token);
         var lab = SurfaceLab.Create(arbiter);
         _lab = lab;
         _orchestrator = new ForegroundOrchestrator(
@@ -143,6 +145,8 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
+        await _stopping.CancelAsync();
+        _stopping.Dispose();
         _foreground?.Dispose();
         _orchestrator?.Dispose();
         _lab?.Dispose();

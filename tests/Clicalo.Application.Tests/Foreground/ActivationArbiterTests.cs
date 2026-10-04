@@ -13,6 +13,9 @@ namespace Clicalo.Application.Tests.Foreground;
 [Trait("Req", "REG-01")]
 public sealed class ActivationArbiterTests : IDisposable
 {
+    /// <summary>How long a test waits for an operation whose clock it has already moved past every wait.</summary>
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(5);
+
     private readonly ForegroundWorld _world = new();
 
     public void Dispose() => _world.Dispose();
@@ -107,13 +110,66 @@ public sealed class ActivationArbiterTests : IDisposable
                 .AsTask()
         );
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        await pending;
+        await pending.WaitAsync(OperationTimeout, TestContext.Current.CancellationToken);
 
         _world.Control.Attempts.ShouldBe([Word, Word]);
         Timings.Foreground.RestoreRetryDelay.ShouldBeLessThan(
             Timings.Windowing.ViolationRestoreBudget,
             "the retry fits inside the REG-01 restore budget"
         );
+    }
+
+    [Fact]
+    public async Task A_restore_that_reached_the_window_is_not_retried_once_the_foreground_moves_on()
+    {
+        // Spike S1 in CI (OrchestratedRestoreTests): GetForegroundWindow did not confirm the restore at once, InputProbe
+        // got the foreground back a moment later, and the next forced activation put the panel in front before the
+        // single look at the end of the wait. That look judged the restore refused, and its retry took the foreground
+        // back before the panel saw itself in front, so ActivationGuard never counted that activation.
+        _world.Control.Foreground = Panel;
+        _world.Control.Script.Enqueue(false);
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            _world
+                .Orchestrator.RestoreAfterViolationAsync(
+                    Word,
+                    TestContext.Current.CancellationToken
+                )
+                .AsTask()
+        );
+
+        _world.Control.Foreground = Word;
+        _world.Time.Advance(Timings.Foreground.RestoreVerifyInterval);
+        _world.Control.Foreground = Panel;
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        await pending.WaitAsync(OperationTimeout, TestContext.Current.CancellationToken);
+
+        _world.Control.Attempts.ShouldBe(
+            [Word],
+            "the restore was confirmed when Word came back; the new activation is the guard's to report"
+        );
+        _world.Control.Foreground.ShouldBe(Panel);
+    }
+
+    [Fact]
+    public async Task A_restore_is_never_retried_over_an_app_the_user_switched_to()
+    {
+        _world.Control.Foreground = Panel;
+        _world.Control.Script.Enqueue(false);
+        var pending = await _world.StartUntilItWaitsAsync(() =>
+            _world
+                .Orchestrator.RestoreAfterViolationAsync(
+                    Word,
+                    TestContext.Current.CancellationToken
+                )
+                .AsTask()
+        );
+
+        _world.Monitor.SwitchTo(Notepad);
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        await pending.WaitAsync(OperationTimeout, TestContext.Current.CancellationToken);
+
+        _world.Control.Attempts.ShouldBe([Word], "the user chose Notepad meanwhile");
+        _world.Control.Foreground.ShouldBe(Notepad);
     }
 
     [Fact]

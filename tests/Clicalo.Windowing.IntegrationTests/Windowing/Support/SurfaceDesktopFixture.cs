@@ -29,6 +29,7 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
         long Timestamp,
         string Line
     )> _timeline = new();
+    private readonly CancellationTokenSource _stopping = new();
     private ForegroundLog? _foreground;
     private InputProbeSession? _probe;
     private SurfaceLab? _lab;
@@ -72,8 +73,10 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
         );
         var probe = _probe;
         var timeline = Timeline;
+        timeline.WatchStalls(_stopping.Token);
         var arbiter = new RecordingArbiter
         {
+            Trace = timeline.Note,
             Restore = async _ =>
             {
                 timeline.Note(
@@ -324,6 +327,8 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
+        await _stopping.CancelAsync();
+        _stopping.Dispose();
         _foreground?.Dispose();
         _lab?.Dispose();
         if (_probe is not null)
