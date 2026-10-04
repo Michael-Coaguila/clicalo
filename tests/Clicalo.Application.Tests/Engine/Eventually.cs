@@ -10,8 +10,8 @@ namespace Clicalo.Application.Tests.Engine;
 /// <remarks>
 /// The previous wait put its deadline in the cancellation token of each <c>Task.Delay</c>. When the thread pool is
 /// starved (the local stress run of 2026-10-03, six processes of this assembly at once, failed
-/// <c>Release_all_posted_from_another_thread_reaches_the_running_engine</c> 2 times in 90 that way), the timer queue
-/// runs the overdue poll and the overdue deadline in the same pass, in list order: the deadline could cancel the
+/// <c>Release_all_posted_from_another_thread_reaches_the_running_engine</c> in 2 of 93 runs that way), the timer queue
+/// can run the overdue poll and the overdue deadline in the same pass, in list order: the deadline then cancels the
 /// poll's delay and throw <see cref="TaskCanceledException"/> without the condition being checked again, whatever the
 /// engine had done by then.
 /// </remarks>
