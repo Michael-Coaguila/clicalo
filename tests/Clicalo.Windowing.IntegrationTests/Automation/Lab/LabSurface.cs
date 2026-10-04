@@ -36,4 +36,14 @@ public sealed class LabSurface : NonActivatingWindow
 
     /// <summary>The hosted lab.</summary>
     public TileLab Lab { get; }
+
+    /// <summary>Raised on the UI thread each time WPF applies the window's template (again after a system theme change).</summary>
+    public event EventHandler? TemplateApplied;
+
+    /// <inheritdoc />
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        TemplateApplied?.Invoke(this, EventArgs.Empty);
+    }
 }
