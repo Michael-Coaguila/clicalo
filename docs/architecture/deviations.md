@@ -260,6 +260,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   obligatorio, comprobaciones `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal,
   conversaciones resueltas, sin *force push* ni borrado y **sin excepciones para administradores**. El *hook*
   `pre-push` de `cl setup` se conserva porque avisa antes de llegar a la red, pero ya no es la única barrera.
+  Con los niveles de pruebas del mismo día, `desk (x64)` sale de `pr.yml` (corre cada noche): las comprobaciones
+  obligatorias pasan a ser `verify (x64)`, `verify (arm64)`, `codeql (csharp)`, `codeql (actions)`, `title`, `adr` y
+  `dco` (las de D-04, cuando tengan su primera ejecución en verde), y el usuario quita `desk (x64)` de la protección.
   También se activaron las alertas de Dependabot, la detección de secretos con bloqueo de *push* y el informe
   privado de vulnerabilidades que promete `SECURITY.md`.
 
