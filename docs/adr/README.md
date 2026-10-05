@@ -60,7 +60,7 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0015](0015-licencia-mit-y-dco.md) | Licencia MIT y DCO | Aceptado | 2026-09-25 |
 | [0016](0016-soporte-de-windows-10.md) | Soporte completo de Windows 10 22H2 en la 2.x con revisión en 2027 | Aceptado | 2026-09-25 |
 | [0017](0017-sin-plugins-de-codigo.md) | Sin *plugins* de código: extensibilidad solo por datos | Aceptado | 2026-09-25 |
-| [0018](0018-contratos-de-sentinel-ledger-y-envoltorio.md) | Contratos de M2: arranque de Sentinel, *ledger* v2 y envoltorio del documento 1.0 | Propuesto | 2026-09-26 |
+| [0018](0018-contratos-de-sentinel-ledger-y-envoltorio.md) | Contratos de M2: arranque de Sentinel (protocolo 2), *ledger* v2, envoltorio del documento 1.0 y reintento del soltado rechazado con la sesión bloqueada (decisión D3 del usuario) | Aceptado | 2026-09-26 |
 | [0019](0019-valla-en-las-escrituras-del-motor-y-reenvio-de-liberaciones.md) | Valla en las escrituras del motor, reenvío de liberaciones rechazadas y emergencia sin guardián | Propuesto | 2026-09-26 |
 | [0020](0020-sin-migracion-desde-macro-quick-access.md) | Sin migración desde Macro Quick Access v1 (decisión D1 del usuario; sustituye la parte v1 de ADR-0007 y de D11) | Aceptado | 2026-10-03 |
 | [0021](0021-kit-inicial-y-perfiles-con-varios-procesos.md) | Kit inicial como dato versionado y perfiles vinculados a varios procesos (decisión D2 del usuario) | Aceptado | 2026-10-03 |

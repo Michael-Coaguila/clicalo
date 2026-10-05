@@ -1,5 +1,5 @@
 ---
-status: Propuesto
+status: Aceptado
 date: 2026-09-26
 decision-makers: Michael Coaguila (mantenedor)
 consulted: ADR-0004, ADR-0007, plano §3.1, §6.5 y §7.4; contratos de M2; decisión D3 del usuario (2026-10-03)
@@ -7,6 +7,10 @@ informed: paquetes de M2, mediante docs/testing/spikes/M2-ownership.md
 ---
 
 # ADR-0018 · Contratos de M2: arranque de Sentinel, *ledger* v2 y envoltorio del documento 1.0
+
+Aceptado el 2026-10-05, al integrar M2, con la resolución de la decisión D3 del usuario (ratificada el 2026-10-03) en
+el punto 6. Las decisiones D1 y D2 no cambian el envoltorio 1.0 ([ADR-0020](0020-sin-migracion-desde-macro-quick-access.md),
+[ADR-0021](0021-kit-inicial-y-perfiles-con-varios-procesos.md)).
 
 ## Contexto y planteamiento del problema
 

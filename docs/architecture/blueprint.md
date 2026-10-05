@@ -221,7 +221,7 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 | Proceso | Tecnología | Vida | Responsabilidad | Presupuesto |
 |---|---|---|---|---|
 | `Clicalo.exe` | WPF sobre .NET 10, autocontenido, R2R | Toda la sesión | UI, motor, persistencia, actualizaciones, IA | ≤120 MB de *working set* con 4 superficies; CPU media <0,5 % en reposo |
-| `Clicalo.Sentinel.exe` | .NET 10 Native AOT, sin WPF ni reflexión | Mientras viva el principal | Soltar lo que registra el *ledger*; relanzar el principal cuando procede; registrar el fallo | ≤5 MB; 0 % de CPU (bloqueado en espera) |
+| `Clicalo.Sentinel.exe` | .NET 10 Native AOT, sin WPF ni reflexión | Mientras viva el principal y, si muere con la sesión bloqueada, hasta que el escritorio acepte su soltado ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md), punto 6) | Soltar lo que registra el *ledger*; relanzar el principal cuando procede; registrar el fallo | ≤5 MB; 0 % de CPU (bloqueado en espera) |
 | `Clicalo.Launcher.exe` | .NET 10 Native AOT (solo con el componente de sistema) | Segundos, al iniciar sesión o tras actualizar | Sincronizar y verificar la copia protegida y lanzarla elevada | ≤5 MB; ≤300 ms sin sincronización |
 | `Update.exe` | Velopack | Puntual, siempre en integridad media | Aplicar un paquete ya verificado | — |
 
@@ -709,7 +709,7 @@ clicalo/
 │  ├─ catalogs/   keys.json · keys.win32.json · mouse.json · categories.json · icons.json
 │  │              combo-icons.es.json · combo-icons.en.json · blocked-combos.json
 │  │              system-commands.json · touch-presets.json · sizes.json · timings.json
-│  ├─ content/    library.json · seed.json · templates/{word,browser,vscode,excel,…}.json
+│  ├─ content/    library.json · seed.json · starter.json · templates/{word,browser,vscode,excel,…}.json
 │  ├─ i18n/       strings.es.json · strings.en.json · locales.json · allow-unused.txt
 │  ├─ tokens/     theme-palettes.json · extra-tokens.json · contrast-pairs.json
 │  │              hc-system-map.json · motion.json
@@ -1299,7 +1299,7 @@ Notación:
 | Instalar una actualización | Updater | Solo si `R = ∅`; si no, se aplaza. `Terminal(Update)` + `CleanShutdown \| NoRelaunch` |
 | Excepción en el motor | `EngineHost` | Liberación de emergencia, estado vacío y aviso |
 | Motor sin latido durante 2 s | SysEvents | `EmergencyReleaser` con valla de generación, o reinicio del proceso (§3.2, regla 6) |
-| Muerte del proceso | Guardián | Liberaciones del *ledger*; relanzar según las marcas |
+| Muerte del proceso | Guardián | Liberaciones del *ledger*, reintentadas en cada latido hasta que el escritorio las acepte; relanzar después según las marcas ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md), punto 6) |
 | Arranque | App | Soltado preventivo con máscara |
 
 ### 7.7 Detalles del envío (NFR-004)

@@ -109,7 +109,7 @@ progress).
   `PersistenceScheduler`, `EngineHost` and its mailbox, `TwoStepConfirm` and `ConfirmationToken`, and the engine and
   persistence ports); Platform.Core (the ledger v2 layout, `InjectionGate`, `LowLevelInjector` and the Sentinel start
   contract); Infrastructure (the `major.minor` envelope, `AtomicFile`, quarantine, repositories, backups, the v1
-  importer and `SafeZipReader`); and Sentinel's guardian loop. ADR-0018 (proposed) fixes the Sentinel start contract,
+  importer and `SafeZipReader`); and Sentinel's guardian loop. ADR-0018 (accepted when M2 was integrated) fixes the Sentinel start contract,
   the ledger v2 layout and the document envelope 1.0.
 - Test projects `Clicalo.Infrastructure.Tests`, `Clicalo.Sentinel.Tests` and `Clicalo.Performance`.
 - Milestone M2 implementation, integrated from the domain, engine, persistence, migration and app packages: the
@@ -141,8 +141,8 @@ progress).
   universal shortcuts of General and Always visible) marked by default and the nine templates unmarked;
   `StarterLibrary` and the `FirstDocument` use case build the first document from a selection (nothing marked starts
   empty, «Skip» applies the default), and `StarterContentFiles` loads and validates the kit, the seed and the
-  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD` (the description awaits
-  ratification, R-15 in §6.1 of the catalog).
+  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD` (the description, R-15 in
+  §6.1 of the catalog, ratified by the user on 2026-10-03).
 - `docs/architecture/contracts.md`: the command-line contracts between `Clicalo.exe` and Sentinel (protocol 2, the
   relaunch and Sentinel's exit codes).
 
