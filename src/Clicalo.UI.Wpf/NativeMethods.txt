@@ -47,6 +47,7 @@ WINDOWS_HOOK_ID
 HCBT_ACTIVATE
 GetCurrentThreadId
 GetWindowThreadProcessId
+WM_WINDOWPOSCHANGED
 // ---- end of Windowing ----
 
 // ---- Pointer (PointerInputSource, PointerSetup) ----

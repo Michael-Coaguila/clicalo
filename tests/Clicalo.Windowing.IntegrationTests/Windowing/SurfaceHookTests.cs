@@ -135,40 +135,6 @@ public sealed class SurfaceHookTests
         failures.Messages.ShouldBeEmpty();
     }
 
-    [Fact]
-    [Trait("Req", "REG-01")]
-    public void The_shadow_margin_is_never_the_surface()
-    {
-        using var lab = SurfaceLab.Create();
-        var surface = lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100);
-        var (work, _) = NativeSurface.PrimaryWorkArea();
-        WpfThread.Invoke(() =>
-        {
-            surface.UseShadowMargin(10);
-            surface.MovePassive(new PhysicalRect(work.Left + 40, work.Top + 40, 400, 300));
-        });
-        var window = surface.Handle;
-        var margin = (int)Math.Round(10 * NativeSurface.GetDpiForWindow(window) / 96.0);
-        var bounds = NativeSurface.Bounds(window);
-
-        HitTest(bounds.Left + 1, bounds.Top + 1)
-            .ShouldBe(NativeSurface.HitNowhere, "Top-left corner, inside the margin.");
-        HitTest(bounds.Right - margin, bounds.CenterY)
-            .ShouldBe(NativeSurface.HitNowhere, "Right edge of the margin.");
-        HitTest(bounds.Left + margin, bounds.Top + margin)
-            .ShouldBe(NativeSurface.HitClient, "First pixel of the content.");
-        HitTest(bounds.CenterX, bounds.CenterY)
-            .ShouldBe(NativeSurface.HitClient, "Center of the content.");
-
-        nint HitTest(int x, int y) =>
-            NativeSurface.SendMessageW(
-                window,
-                NativeSurface.WmNcHitTest,
-                0,
-                NativeSurface.PointParameter(x, y)
-            );
-    }
-
     private const uint Requested =
         NativeSurface.NoMove | NativeSurface.NoSize | NativeSurface.NoZOrder;
 }

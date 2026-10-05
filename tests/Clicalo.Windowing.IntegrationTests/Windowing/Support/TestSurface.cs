@@ -29,10 +29,20 @@ public sealed class TestSurface : NonActivatingWindow
     private uint? _styleAtFirstShow;
     private nint? _ownerAtFirstShow;
 
-    /// <summary>Creates a hidden surface of <paramref name="width"/> × <paramref name="height"/> logical units.</summary>
-    public TestSurface(SurfaceId id, SurfaceRegistry registry, double width, double height)
+    /// <summary>
+    /// Creates a hidden surface of <paramref name="width"/> × <paramref name="height"/> logical units, with
+    /// <paramref name="look"/> when given (spike S6).
+    /// </summary>
+    public TestSurface(
+        SurfaceId id,
+        SurfaceRegistry registry,
+        double width,
+        double height,
+        SurfaceLook? look = null
+    )
         : base(id, registry)
     {
+        Look = look;
         Width = width;
         Height = height;
         WindowStyle = WindowStyle.None;
@@ -103,8 +113,8 @@ public sealed class TestSurface : NonActivatingWindow
             ),
         ];
 
-    /// <summary>Sets <see cref="NonActivatingWindow.ShadowMargin"/> (logical units on every side).</summary>
-    public void UseShadowMargin(double margin) => ShadowMargin = new Thickness(margin);
+    /// <summary>Tries to set <see cref="NonActivatingWindow.Look"/> after creation (it throws once the handle exists).</summary>
+    public void ChangeLook(SurfaceLook? look) => Look = look;
 
     /// <inheritdoc />
     protected override void OnSurfaceInitialized() =>

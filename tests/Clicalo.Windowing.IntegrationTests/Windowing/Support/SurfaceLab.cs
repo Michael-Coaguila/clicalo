@@ -63,10 +63,22 @@ public sealed class SurfaceLab : IDisposable
         );
 
     /// <summary>A new hidden surface; its handle exists only after <see cref="WithHandle"/>, a show or a move.</summary>
-    public TestSurface CreateSurface(SurfaceKind kind, int instance, double width, double height) =>
+    public TestSurface CreateSurface(
+        SurfaceKind kind,
+        int instance,
+        double width,
+        double height,
+        SurfaceLook? look = null
+    ) =>
         WpfThread.Invoke(() =>
         {
-            var surface = new TestSurface(new SurfaceId(kind, instance), Registry, width, height);
+            var surface = new TestSurface(
+                new SurfaceId(kind, instance),
+                Registry,
+                width,
+                height,
+                look
+            );
             _surfaces.Add(surface);
             return surface;
         });
