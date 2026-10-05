@@ -15,6 +15,9 @@ Spikes de M2, como pruebas y sin laboratorio: [S5](S5.md) (arranque y publicaci�
 producto en InputProbe), [S9](S9.md) (guardián, *ledger* y valla; el caos solo en la CI) y [S11](S11.md) (escritura
 atómica y bloqueos). Reparto de rutas: [M2-ownership.md](M2-ownership.md).
 
+Spike de M3: [S6](S6.md) (apariencia de las ventanas no activables: esquinas, sombra que deja pasar los toques,
+opacidad y atenuado; sin desenfoque).
+
 ## Cómo se abre
 
 - **VS Code:** paleta de tareas (*Terminal › Ejecutar tarea…*) → **«SpikeLab: abrir»**. Se abre la ventana de control

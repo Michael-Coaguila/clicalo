@@ -733,8 +733,11 @@ Se resuelven en el hito indicado; mientras tanto, esta es la interpretación vig
 
 | Punto | Detalle | Interpretación vigente | Cuándo se resuelve |
 |---|---|---|---|
-| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) respondía `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo). El plano ya lo recoge | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | Antes de M3, S6 ([D-19](#d-19--spikes-resecuenciados-al-cerrar-m1)) |
 | Firma de todas las DLL | [§2.1](blueprint.md#21-stack-elegido) y [§11](blueprint.md#11-distribución-versionado-y-publicación) firman todas las DLL tras R2R; las condiciones de SignPath Foundation solo permiten firmar artefactos compilados desde el código propio | Se firman los ejecutables y ensamblados propios; la verificación de las DLL de terceros se decide en S8 y, si cambia, con un ADR que sustituya a ADR-0013 | Antes de M5, S8 ([D-19](#d-19--spikes-resecuenciados-al-cerrar-m1)) |
+
+Resuelto en M3.1 por [S6](../testing/spikes/S6.md): el margen de sombra no clicable. La superficie ya no tiene
+margen; la sombra va en una ventana aparte con `WS_EX_TRANSPARENT` que no captura ningún toque entre procesos
+(medido), y el plano lo recoge en §3.5 y §8.1.
 
 Resuelto al integrar M0: la numeración del catálogo (las preguntas abiertas son su sección 6, las
 propuestas pendientes la 6.1 y las discrepancias la 5; el catálogo y el plano ya se citan así).
