@@ -625,6 +625,8 @@
   "autoA": "Auto (azul): cambia con la app activa. Toca para fijar el perfil actual.",
   "profLocked": "Fijo en",
   "profAuto": "Auto: sigue la app activa",
+  "profLockedOn": "Fijo en: {profile}",
+  "profAutoOn": "Auto: sigue la app activa: {profile}",
   "stickyMods": "Teclas fijas",
   "modOnce": "se sumará a tu próximo toque o clic",
   "modLock": "bloqueada · toca otra vez para soltar",

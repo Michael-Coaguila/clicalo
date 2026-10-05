@@ -625,6 +625,8 @@
   "autoA": "Auto (blue): follows the active app. Tap to fix the current profile.",
   "profLocked": "Fixed on",
   "profAuto": "Auto: follows the active app",
+  "profLockedOn": "Fixed on: {profile}",
+  "profAutoOn": "Auto: follows the active app: {profile}",
   "stickyMods": "Sticky keys",
   "modOnce": "will be added to your next tap or click",
   "modLock": "locked · tap again to release",

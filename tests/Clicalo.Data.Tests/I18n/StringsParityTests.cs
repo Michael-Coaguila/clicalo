@@ -81,6 +81,8 @@ public sealed class StringsParityTests
                 "macroCancelled",
                 "macroRunning",
                 "processTaken",
+                "profAutoOn",
+                "profLockedOn",
                 "releasedOnLock",
                 "saveFailD",
                 "saveFailT",
