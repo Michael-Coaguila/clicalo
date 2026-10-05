@@ -635,16 +635,18 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   Cada toque se parte en tramos (espera en la cola del hilo de UI y trabajo del panel) con la línea de tiempo del hilo
   de UI de los toques lentos ([panel-latency.md](../testing/panel-latency.md)).
 - **Motivo.** La prueba fallaba de forma intermitente en los *runners* alojados (6 de 50 ejecuciones de `s0`) con el
-  hilo de UI del panel ocioso: creaba un dispositivo nuevo en cada toque, y Windows retiene el primer contacto de un
-  dispositivo sintético hasta anunciarlo (`WM_TABLET_ADDED`, 15–200 ms) y el primer contacto de cada dispositivo en una
-  ventana recién mostrada (20–615 ms). Ninguno de los dos existe en un toque real con la pantalla táctil, que es un único
-  dispositivo y toca un panel que vive toda la sesión. Con el criterio nuevo: 0 fallos en 70 ejecuciones (30 con la
-  suite del módulo, 30 solas y 10 de `cl desk`), p95 por ejecución de 14,5 ms como máximo.
+  hilo de UI del panel sin trabajo del panel: creaba un dispositivo nuevo en cada toque, y Windows retiene el primer
+  contacto de un dispositivo sintético hasta anunciarlo (`WM_TABLET_ADDED`, 15–200 ms), algo que una pantalla táctil,
+  un único dispositivo, no añade a un toque. Quedan además dos retrasos de un solo toque antes de que el panel reciba el
+  contacto: el primer contacto sobre la ventana del panel recién creada (12–38 ms, una vez por ventana) y, sobre todo
+  con la suite, el primer contacto del lápiz (hasta 615 ms, causa no identificada). Con el criterio nuevo: 0 fallos en
+  70 ejecuciones (30 con la suite del módulo, 30 solas y 10 de `cl desk`), p95 por ejecución de 14,5 ms como máximo.
 - **Coste.** El primer contacto de cada dispositivo sobre el panel queda fuera del p95 de la CI (sigue en la salida y en
   `panel-tap-latency-*.json`), y con él el JIT del primer toque en Debug (3–8 ms medidos). El presupuesto no cambia y no
   hay un umbral propio de la CI.
-- **Revisión.** En la aceptación en hardware (equipo táctil) del requisito, y en S2 para el retraso del primer contacto
-  del lápiz con un lápiz real.
+- **Revisión.** En la aceptación en hardware (equipo táctil) del requisito, incluido si el primer toque tras mostrar
+  de nuevo el panel paga otra vez el retraso del primer contacto, y en S2 para el retraso del primer contacto del lápiz
+  con un lápiz real.
 
 ## Puntos del plano pendientes de resolver
 

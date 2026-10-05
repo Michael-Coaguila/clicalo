@@ -9,18 +9,30 @@ qué hacía fallar la prueba de forma intermitente en la CI de escritorio, qué 
 
 ## Resumen
 
-- **No era el producto.** En los picos el hilo de UI del panel estaba **ocioso**: ningún mensaje en la cola, ninguna
-  operación del *dispatcher* y menos de 6 ms de CPU en 500 ms. El trabajo del panel, de `WM_POINTERUP` al buzón, es de
-  0,04 ms (p50) en un toque normal y de 3–8 ms en el primero del proceso (JIT en Debug).
+- **No era el producto.** En los picos el hilo de UI del panel no hacía trabajo del panel: ninguna operación del
+  *dispatcher*, ningún mensaje tomado de la cola y menos de 6 ms de CPU en 500 ms; el único manejador del producto que
+  corre en esos huecos (`WM_NCHITTEST` de `SurfaceHook`, un `GetWindowRect`) no bloquea. El contacto llegaba tarde al
+  panel: el `WM_POINTERDOWN` se recibía después de que Windows hubiera registrado el levantamiento. El trabajo del
+  panel, de `WM_POINTERUP` al buzón, es de 0,04 ms (p50) en un toque normal y de 3–8 ms en el primero del proceso (JIT
+  en Debug).
 - **Era el arnés.** La prueba creaba un dispositivo sintético nuevo (`CreateSyntheticPointerDevice`) en **cada**
   toque. Windows anuncia cada dispositivo nuevo a todas las ventanas (`WM_TABLET_ADDED`, `0x02C8`; al destruirlo,
   `WM_TABLET_DELETED`, `0x02C9`) y retiene su primer contacto hasta entonces: 15–40 ms de costumbre en los *runners*
   alojados, hasta 200 ms. Una pantalla táctil es un único dispositivo durante toda la sesión: ese coste no existe en un
   toque real.
-- **Primer contacto en una ventana recién mostrada.** Aun con el dispositivo ya creado, el primer contacto de cada
-  dispositivo sobre el panel recién compuesto llega tarde (20–50 ms el dedo; el lápiz, hasta 615 ms con la suite
-  completa): Windows envía `WM_NCHITTEST` y `WM_POINTERACTIVATE` y entrega el contacto solo después, con el hilo de UI
-  ocioso. Pasa una vez por ventana y por dispositivo; el panel vive toda la sesión.
+- **Primeros contactos sobre el panel.** Aun con los dispositivos ya creados quedan dos retrasos de un solo toque, los
+  dos antes de que el panel reciba el contacto (tabla «Toques de calentamiento»):
+  - **El primer contacto sobre una ventana del panel recién creada**, sea del dispositivo que sea: 12–38 ms en las 90
+    ejecuciones de la prueba sola (siempre el dedo, que toca primero), mientras que el lápiz y el ratón que tocan
+    después, también dispositivos nuevos para esa ventana, tardan lo normal. En la suite, donde otras pruebas de la
+    clase ya han tocado el panel con otros dedos sintéticos, el primer toque del dedo de esta prueba se queda en 9 ms o menos
+    en 48 de 50 ejecuciones (las otras dos, 21 y 47 ms, en 37164966961). En los datos es una vez por ventana, no por
+    dispositivo; no se ha medido si vuelve al ocultar y mostrar el panel.
+  - **El primer contacto del lápiz en la suite**: a veces 18–615 ms (13 de 50 ejecuciones de la suite por encima de
+    15 ms), con `WM_TABLET_QUERYSYSTEMGESTURESTATUS` y `WM_NCHITTEST` justo antes y el contacto entregado solo después
+    de `WM_POINTERACTIVATE`. En la prueba sola casi nunca (2 de 90 por encima de 15 ms: 16 y 85 ms). **Su causa no está
+    identificada:** depende de lo que el proceso o la sesión hicieron antes, y está fuera del manejo del panel. Después
+    del primero, ninguno de los 490 toques de lápiz medidos pasó de 8,9 ms.
 - **Criterio de la CI.** Un dispositivo por tipo para todo el ciclo y **un toque de calentamiento por dispositivo**
   sobre el mismo mosaico, que tiene que llegar al motor como cualquier otro y cuya latencia se informa pero no se
   juzga; después, **21 toques medidos** (7 de dedo, 7 de lápiz y 7 de ratón) juzgados con los números de
@@ -62,8 +74,18 @@ un `SemaphoreSlim` y su vuelta no espera a ningún temporizador; lo mide de extr
 
 Con el criterio final, en las 60 ejecuciones: el trabajo del panel (`handling`) tiene p50 0,04 ms y máximo 2,5 ms; los
 toques medidos de dedo y de lápiz, p99 de 6,5 ms y 1,8 ms en la suite; los de ratón, máximo 13 ms. Los toques de
-calentamiento siguen enseñando el efecto que se deja fuera: dedo hasta 38 ms (sola) y lápiz hasta 433 ms (suite), con
-el hilo de UI ocioso.
+calentamiento siguen enseñando el efecto que se deja fuera: dedo hasta 38 ms (sola) y lápiz hasta 433 ms (suite), sin
+trabajo del panel en el hilo de UI.
+
+### Toques de calentamiento (primer contacto de cada dispositivo sobre el panel)
+
+Primer toque de cada dispositivo ya creado (37164219850 y 37164966961: primer toque medido; 37167016441 y 37170653929:
+toque de calentamiento). El dedo toca siempre primero, después el lápiz y después el ratón.
+
+| Condición | Ejecuciones | Dedo (mín.–máx.) | Lápiz: > 15 ms | Lápiz máx. | Ratón máx. |
+|---|---|---|---|---|---|
+| Sola (panel recién creado) | 90 | 11,7–38,2 ms | 2 | 85,5 ms | 8,7 ms |
+| Suite (el panel ya se ha tocado con otros dedos) | 50 | 0,4–47,4 ms (48 de 50 ≤ 9 ms) | 13 | 615,1 ms | 14,0 ms |
 
 La ejecución 37164966961 enseñó el segundo efecto: con dos primeros contactos lentos en la misma ejecución (dedo 47 ms
 y lápiz 615 ms), el p95 de 21 muestras (el segundo valor más alto) se quedó a 2,6 ms del presupuesto.
@@ -93,15 +115,23 @@ Primer toque de lápiz sobre el panel en la suite completa (37166010499):
 +504.73 ms WM_POINTERDOWN received by the panel
 ```
 
-479 ms sin mensajes y con unos 16 millones de ciclos de CPU del hilo de UI (≈5 ms): el hilo esperaba en su cola.
+479 ms sin mensajes, sin operaciones del *dispatcher* y con unos 16 millones de ciclos de CPU del hilo de UI (≈5 ms).
+El último manejador que corrió antes del hueco es el `WM_NCHITTEST` de `SurfaceHook`, que no bloquea; la línea de tiempo
+no distingue por sí sola un hilo esperando en su cola de uno detenido dentro de un manejador, pero ningún código del
+panel en ese camino espera. En ese mismo toque Windows ya había enviado `WM_TABLET_QUERYSYSTEMGESTURESTATUS`
+(`0x02CC`, +22,71 ms), al que el panel responde con el 0 de `DefWindowProc`.
 
 ## Por qué el criterio no rebaja el requisito
 
 - **El presupuesto es el mismo** (`TouchToSendInput`, p95 ≤ 50 ms, ≥ 20 muestras), leído del catálogo en lugar de
   repetido en la prueba.
-- **Lo que se deja fuera no es un toque de la persona:** es la llegada de un dispositivo sintético y el primer contacto
-  de ese dispositivo sobre una ventana recién mostrada, que en el uso real ocurren una vez por sesión. El calentamiento
-  se ejecuta, se comprueba (llega al motor, no quita el primer plano ni el foco) y su latencia queda en la salida.
+- **Lo que se deja fuera es un toque por dispositivo:** el primer contacto sobre una ventana del panel recién creada y
+  el primer contacto del lápiz, cuya causa no está identificada. La llegada de un dispositivo sintético ya no está en
+  la prueba (los dispositivos se crean antes). El calentamiento se ejecuta, se comprueba (llega al motor, no quita el
+  primer plano ni el foco) y su latencia queda en la salida y en el JSON.
+- **El p95 de 20 ya tolera un primer toque lento.** Con rango más próximo, el p95 de 20 muestras es el valor 19.º: con
+  una pantalla táctil (un solo dispositivo) el primer toque lento de la serie ya queda fuera del p95 sin excluir nada.
+  La CI usa tres dispositivos y por eso aparta uno por dispositivo; no aparta ningún toque más.
 - **El código frío no se esconde:** el primer toque del proceso cuesta 3–8 ms de JIT en Debug (dentro de `handling`),
   visible en los datos de la ejecución sola, y la app publicada usa ReadyToRun. El coste de arranque del primer toque
   es asunto de `TouchToSendInputTests` sobre la app publicada.
@@ -116,5 +146,8 @@ Primer toque de lápiz sobre el panel en la suite completa (37166010499):
   con el primer contacto en la ventana del panel. Con 20 muestras el p95 tolera un valor atípico; un toque de
   calentamiento como el de esta prueba lo dejaría fuera sin tocar el presupuesto.
 - El retraso del primer contacto del **lápiz** (hasta 615 ms con la suite completa, con `WM_TABLET_QUERYSYSTEMGESTURESTATUS`
-  recibido justo antes) no se ha visto con el dedo ni con el ratón. Ocurre fuera del proceso y una vez por ventana, pero
-  merece comprobarse con un lápiz real en S2 (gestos del sistema para lápiz) antes de descartarlo.
+  recibido justo antes) no se ha visto con el dedo ni con el ratón y su causa no está identificada: aparece sobre todo
+  en la suite (13 de 50) y casi nunca con la prueba sola (2 de 90), así que depende de lo que pasó antes en el proceso o
+  en la sesión. Hay que comprobarlo con un lápiz real en S2 (gestos del sistema para lápiz) antes de descartarlo.
+- No se ha medido si el retraso del primer contacto sobre el panel vuelve cada vez que el panel se oculta y se muestra.
+  Si volviera, lo pagaría el primer toque tras cada aparición: se comprueba en la aceptación en hardware.

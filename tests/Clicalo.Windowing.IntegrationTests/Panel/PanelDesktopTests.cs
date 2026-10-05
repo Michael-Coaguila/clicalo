@@ -45,10 +45,11 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         var violationsBefore = fixture.Lab.Guard.Violations;
 
         // One device per kind for the whole cycle (as a touch screen is one device for the whole session), and one
-        // warm-up tap of each on the tile before the measured ones: Windows holds the first contact of a synthetic device
-        // and the first contact of a device on a newly shown window for 15–600 ms on the hosted runners while the
-        // panel's UI thread is idle (docs/testing/panel-latency.md). The warm-up taps must reach the engine like any
-        // other; their latency is reported, not judged.
+        // warm-up tap of each on the tile before the measured ones. On the hosted runners Windows holds the first contact
+        // of a new synthetic device (15–200 ms), the first contact of any device on a newly created panel (12–38 ms) and,
+        // mostly within the suite, the first pen contact (up to 615 ms, cause not identified), all before the panel
+        // receives it and with no panel work on its UI thread (docs/testing/panel-latency.md). The warm-up taps must
+        // reach the engine like any other; their latency is reported, not judged.
         using var finger = PanelDesktopFixture.CreatePointer(SyntheticPointerKind.Finger);
         using var pen = PanelDesktopFixture.CreatePointer(SyntheticPointerKind.Pen);
         using var mouse = PanelDesktopFixture.CreatePointer(SyntheticPointerKind.Mouse);
