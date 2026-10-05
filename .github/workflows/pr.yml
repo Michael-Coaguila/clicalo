@@ -1,6 +1,10 @@
 # Pull-request and main gate (blueprint §10.5). The `verify` job runs exactly `cl check`, the same command
 # maintainers run locally, so a green `cl check` on a PC means a green check here.
 #
+# Only deterministic tests gate a pull request: `cl check` leaves out the desktop, chaos (Category=Chaos), the
+# measurements (Category=Perf) and the quarantine (Category=Quarantine). Those run every night in nightly.yml, which
+# opens an issue when they fail and can also be started by hand on a pull request's branch (testing-strategy.md).
+#
 # Rules for this file (blueprint §10.5, §12.2 T12 and T14; `cl check` enforces the first one):
 # - every action is pinned by full commit SHA with its version as a comment (Renovate keeps both current);
 # - permissions are read-only at the top and widened per job only where a job needs it;
@@ -59,116 +63,6 @@ jobs:
           path: artifacts/cl/
           if-no-files-found: ignore
           retention-days: 14
-
-  desk:
-    name: desk (x64)
-    # Desktop tests (SendInput into InputProbe, foreground): S0 proved hosted windows-2025 runners support them
-    # (docs/testing/spikes/S0.md), so they gate every pull request instead of waiting for the touch lab. Since M2 they
-    # include S7, the panel and the tray, and the Sentinel chaos of S9 (Category=Chaos, only here).
-    runs-on: windows-2025
-    timeout-minutes: 45
-    env:
-      CI: true
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up .NET (global.json)
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-
-      - name: Cache NuGet packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Stop the compatibility appraiser
-        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
-        shell: pwsh
-        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
-
-      - name: cl desk
-        shell: pwsh
-        run: .\cl.cmd desk
-
-      - name: Upload cl report
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: cl-report-desk-x64
-          path: artifacts/cl/
-          if-no-files-found: ignore
-          retention-days: 14
-
-  perf:
-    name: perf (x64)
-    # Spike S5 and the touch -> SendInput budget (blueprint §10.3, docs/testing/spikes/S5.md). It gates: each budget of
-    # data/catalogs/budgets.json says where it fails the run. The M2 exit criterion (touch -> SendInput p95 <= 50 ms)
-    # has the gate everyRun, so a slower run fails here; the S5 start-up budgets have the gate touchLab and are a trend
-    # here, until lab.yml repeats them on the touch lab with CLICALO_PERF_GATE=1. It never continues on error: the build
-    # tests (WorkflowGateTests) reject that.
-    runs-on: windows-2025
-    timeout-minutes: 45
-    env:
-      CI: true
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up .NET (global.json)
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          global-json-file: global.json
-
-      - name: Cache NuGet packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Stop the compatibility appraiser
-        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
-        shell: pwsh
-        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
-
-      - name: cl perf
-        shell: pwsh
-        run: .\cl.cmd perf
-
-      - name: Publish the numbers
-        if: always()
-        shell: pwsh
-        run: |
-          $reports = @(Get-ChildItem artifacts/perf -Filter *.md -File -ErrorAction SilentlyContinue | Sort-Object Name)
-          if ($reports.Count -eq 0) {
-            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Value "perf: no hay números (la medición no llegó a escribirlos)."
-          }
-          foreach ($report in $reports) {
-            Get-Content -Path $report.FullName -Raw -Encoding utf8 | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
-          }
-
-      - name: Upload the numbers
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: perf-x64
-          path: |
-            artifacts/perf/*.json
-            artifacts/perf/*.md
-            artifacts/perf/*.txt
-            artifacts/cl/
-          if-no-files-found: warn
-          retention-days: 30
 
   adr:
     name: adr

@@ -1,0 +1,284 @@
+# Nightly tier (docs/architecture/testing-strategy.md, «Niveles de pruebas»): everything that does not gate a pull
+# request because it is not deterministic. `cl desk` (the desktop tests, Sentinel's chaos included), `cl perf` (the
+# budgets of data/catalogs/budgets.json; touch -> SendInput p95 <= 50 ms fails the run) and `cl quarantine` (the
+# flaky tests registered with an issue). It never blocks a merge; when a scheduled run fails, the `report` job opens
+# the issue labelled `nightly`, or comments on the one already open, with the summary of each failed job. Every job of
+# this file must be green before any release (M5 onwards), together with the touch lab and the hardware acceptance.
+#
+# By hand (Actions > nightly > Run workflow): pick the branch of a pull request, or write a ref in «ref»
+# (refs/pull/<number>/head for a pull request from a fork), to run the desktop tests on it before merging. Manual runs
+# never touch the issue.
+#
+# Same rules as pr.yml: actions pinned by full SHA with their version, read-only permissions (only `report` may write
+# issues), no secrets, no top-level env or defaults.
+name: nightly
+
+on:
+  schedule:
+    # Every day at 03:17 UTC, after the day's merges and outside the busy hour of the hosted runners.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Rama, etiqueta o refs/pull/<número>/head que probar (vacío: la rama elegida arriba)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per ref at a time; a second request waits instead of cancelling the first.
+  group: ${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  desk:
+    name: desk (x64)
+    # The desktop tests (SendInput into InputProbe, foreground, panel, tray) and Sentinel's chaos (S9), on a hosted
+    # runner with an interactive desktop (S0: 10 of 10).
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      CI: true
+    outputs:
+      summary: ${{ steps.failure.outputs.summary }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Stop the compatibility appraiser
+        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        shell: pwsh
+        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
+
+      - name: cl desk
+        shell: pwsh
+        run: .\cl.cmd desk
+
+      - name: Summarize the failure
+        id: failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $report = 'artifacts/cl/last-error.md'
+          $lines = if (Test-Path $report) { Get-Content -Path $report -Encoding utf8 -TotalCount 40 } else { @('Sin informe de cl: el trabajo falló antes de escribirlo.') }
+          $delimiter = 'NIGHTLY_' + [guid]::NewGuid().ToString('N')
+          Add-Content -Path $env:GITHUB_OUTPUT -Encoding utf8 -Value (@("summary<<$delimiter") + $lines + @($delimiter))
+
+      - name: Upload cl report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cl-report-desk-x64
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  perf:
+    name: perf (x64)
+    # Spike S5 and the touch -> SendInput budget (blueprint §10.3, docs/testing/spikes/S5.md). Each budget of
+    # data/catalogs/budgets.json says where it fails the run: touch -> SendInput (M2 exit criterion, NFR-001) has the
+    # gate everyRun and fails here; the S5 start-up budgets have the gate touchLab and are a trend here, until lab.yml
+    # repeats them on the touch lab with CLICALO_PERF_GATE=1. It never continues on error (WorkflowGateTests).
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      CI: true
+    outputs:
+      summary: ${{ steps.failure.outputs.summary }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Stop the compatibility appraiser
+        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        shell: pwsh
+        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
+
+      - name: cl perf
+        shell: pwsh
+        run: .\cl.cmd perf
+
+      - name: Summarize the failure
+        id: failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $report = 'artifacts/cl/last-error.md'
+          $lines = if (Test-Path $report) { Get-Content -Path $report -Encoding utf8 -TotalCount 40 } else { @('Sin informe de cl: el trabajo falló antes de escribirlo.') }
+          $delimiter = 'NIGHTLY_' + [guid]::NewGuid().ToString('N')
+          Add-Content -Path $env:GITHUB_OUTPUT -Encoding utf8 -Value (@("summary<<$delimiter") + $lines + @($delimiter))
+
+      - name: Publish the numbers
+        if: always()
+        shell: pwsh
+        run: |
+          $reports = @(Get-ChildItem artifacts/perf -Filter *.md -File -ErrorAction SilentlyContinue | Sort-Object Name)
+          if ($reports.Count -eq 0) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Value "perf: no hay números (la medición no llegó a escribirlos)."
+          }
+          foreach ($report in $reports) {
+            Get-Content -Path $report.FullName -Raw -Encoding utf8 | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          }
+
+      - name: Upload the numbers
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: perf-x64
+          path: |
+            artifacts/perf/*.json
+            artifacts/perf/*.md
+            artifacts/perf/*.txt
+            artifacts/cl/
+          if-no-files-found: warn
+          retention-days: 30
+
+  quarantine:
+    name: quarantine (x64)
+    # The flaky tests (Category=Quarantine, each with its issue), headless or on the desktop. With none in quarantine it
+    # passes with zero tests.
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      CI: true
+    outputs:
+      summary: ${{ steps.failure.outputs.summary }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up .NET (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Stop the compatibility appraiser
+        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        shell: pwsh
+        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
+
+      - name: cl quarantine
+        shell: pwsh
+        run: .\cl.cmd quarantine
+
+      - name: Summarize the failure
+        id: failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $report = 'artifacts/cl/last-error.md'
+          $lines = if (Test-Path $report) { Get-Content -Path $report -Encoding utf8 -TotalCount 40 } else { @('Sin informe de cl: el trabajo falló antes de escribirlo.') }
+          $delimiter = 'NIGHTLY_' + [guid]::NewGuid().ToString('N')
+          Add-Content -Path $env:GITHUB_OUTPUT -Encoding utf8 -Value (@("summary<<$delimiter") + $lines + @($delimiter))
+
+      - name: Upload cl report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cl-report-quarantine-x64
+          path: artifacts/cl/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    name: report
+    # Only scheduled runs report, and only when a job failed (or timed out). The single job that may write issues; it
+    # checks nothing out and runs no code of the repository.
+    needs: [desk, perf, quarantine]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the nightly issue
+        shell: bash
+        env:
+          # Everything reaches the script through the environment, never interpolated into it (injection-safe).
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          DESK_RESULT: ${{ needs.desk.result }}
+          DESK_SUMMARY: ${{ needs.desk.outputs.summary }}
+          PERF_RESULT: ${{ needs.perf.result }}
+          PERF_SUMMARY: ${{ needs.perf.outputs.summary }}
+          QUARANTINE_RESULT: ${{ needs.quarantine.result }}
+          QUARANTINE_SUMMARY: ${{ needs.quarantine.outputs.summary }}
+        run: |
+          body=$(mktemp)
+          {
+            echo "El nivel nocturno falló en ${COMMIT:0:12}: $RUN_URL"
+            echo
+            echo "- desk (x64): $DESK_RESULT"
+            echo "- perf (x64): $PERF_RESULT"
+            echo "- quarantine (x64): $QUARANTINE_RESULT"
+            for job in DESK PERF QUARANTINE; do
+              summary_var="${job}_SUMMARY"
+              if [ -n "${!summary_var}" ]; then
+                echo
+                echo "<details><summary>${job,,}: inicio de artifacts/cl/last-error.md</summary>"
+                echo
+                echo '````markdown'
+                echo "${!summary_var}"
+                echo '````'
+                echo
+                echo "</details>"
+              fi
+            done
+            echo
+            echo "No bloquea los PR. Si es un defecto del producto, se corrige; si la prueba es inestable, se pone en cuarentena con su issue (testing-strategy.md, «Pruebas inestables»). Se cierra cuando una ejecución nocturna vuelve a estar en verde."
+          } > "$body"
+          gh label create nightly --color B60205 --description "Fallo del nivel nocturno (nightly.yml)" --force
+          number=$(gh issue list --label nightly --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file "$body"
+            echo "nightly: comentario añadido al issue #$number."
+          else
+            gh issue create --title "Nivel nocturno en rojo" --label nightly --body-file "$body"
+          fi
