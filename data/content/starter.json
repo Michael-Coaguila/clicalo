@@ -1,0 +1,23 @@
+{
+  "$schema": "../schemas/starter.schema.json",
+  "version": 1,
+  "options": [
+    {
+      "id": "basics",
+      "kind": "basics",
+      "selected": true,
+      "icon": "apps",
+      "labelKey": "kitBasics",
+      "descriptionKey": "kitBasicsD"
+    },
+    { "id": "word", "kind": "template", "selected": false },
+    { "id": "browser", "kind": "template", "selected": false },
+    { "id": "vscode", "kind": "template", "selected": false },
+    { "id": "excel", "kind": "template", "selected": false },
+    { "id": "ppt", "kind": "template", "selected": false },
+    { "id": "zoom", "kind": "template", "selected": false },
+    { "id": "explorer", "kind": "template", "selected": false },
+    { "id": "outlook", "kind": "template", "selected": false },
+    { "id": "notepad", "kind": "template", "selected": false }
+  ]
+}

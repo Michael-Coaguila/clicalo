@@ -1542,6 +1542,7 @@ data/tokens/{theme-palettes, extra-tokens, contrast-pairs, hc-system-map, motion
 ### 9.1 Plantillas
 
 - **Fuentes:** `data/content/templates/*.json` (una por archivo; versión, autoría, idiomas revisados, procesos y variantes) y `library.json`. Se incrustan como recursos y se cargan de forma perezosa.
+- **Kit inicial** ([ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md), decisión D2 del usuario): `data/content/starter.json` ordena las opciones del paso 2 de la bienvenida, «Básicos» (el *seed*) marcado y las plantillas sin marcar. `StarterLibrary` (Domain.Templates) y el caso de uso `FirstDocument` construyen el documento inicial; «Omitir» y el primer arranque sin bienvenida aplican el valor por defecto. Una plantilla vincula **todos** sus procesos (PQ-45) y se instala con la variante del idioma de los programas.
 - **Tratadas como contenido no confiable (LOG-006):** se validan contra el esquema al compilar y al cargar.
 - **Flujo:** `ITemplateSource` → `TemplatePreview`. La vista previa es editable y las acciones de riesgo aparecen desmarcadas (LOG-008). El usuario confirma y se ejecuta `InstallTemplate(plan)`, un solo paso de deshacer. `CatalogRef` guarda el origen con su versión (DAT-004).
 - **Compartir perfiles:** formato `clicalo.profile-share` con su propio `schemaVersion`. La importación siempre pasa por vista previa. Límites: 5 MiB, `MaxDepth 32`, 200 perfiles y 10 000 atajos como máximo. «Reemplazar» es destructivo (`ConfirmationToken`).

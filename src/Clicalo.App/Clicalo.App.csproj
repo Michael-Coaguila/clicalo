@@ -36,7 +36,10 @@
     <InternalsVisibleTo Include="Clicalo.App.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Data loaded at run time (blueprint §8.5, D17): the texts and the seed of a new installation. -->
+    <!--
+      Data loaded at run time (blueprint §8.5, D17): the texts and the starter content of a new installation (the kit,
+      «Basics» and the templates, user decision D2).
+    -->
     <Content
       Include="..\..\data\i18n\locales.json;..\..\data\i18n\strings.*.json"
       LinkBase="i18n"
@@ -44,8 +47,14 @@
       CopyToPublishDirectory="PreserveNewest"
     />
     <Content
-      Include="..\..\data\content\seed.json"
+      Include="..\..\data\content\starter.json;..\..\data\content\seed.json"
       LinkBase="content"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+    <Content
+      Include="..\..\data\content\templates\*.json"
+      LinkBase="content\templates"
       CopyToOutputDirectory="PreserveNewest"
       CopyToPublishDirectory="PreserveNewest"
     />

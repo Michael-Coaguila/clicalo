@@ -108,6 +108,7 @@ public sealed class StartupReaderTests : IDisposable
         return new StartupDocuments(
             new ThreadRecordingDocuments(repository, threads),
             new UsageRepository(_locations, writer, time, NullLogger<UsageRepository>.Instance),
+            new RandomIdGenerator(),
             time,
             NullLogger<StartupDocuments>.Instance
         );

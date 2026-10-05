@@ -22,7 +22,7 @@
     "icon": { "$ref": "common.schema.json#/$defs/iconId" },
     "category": { "$ref": "common.schema.json#/$defs/categoryId" },
     "processes": {
-      "description": "Processes the profile binds to (PER-002). Several per profile await decision PQ-45.",
+      "description": "Processes the profile binds to (PER-002): every program the shortcuts were reviewed for, such as the five browsers of the Browser template (user decision D2, PQ-45). A process belongs to one template.",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,

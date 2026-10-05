@@ -491,7 +491,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - `lockProfile` (Auto o Fijo);
   - `lastProfile`.
   ‹P4:1398; d03:11›
-- **PER-002 · MUST · Perfil de un proceso.** profileFor(proceso) devuelve el primer perfil, en orden, cuyo proceso no vacío coincide con el ejecutable en primer plano **sin distinguir mayúsculas**. General nunca coincide. Las apps de la Tienda se resuelven a su proceso real. ‹d03:17›
+- **PER-002 · MUST · Perfil de un proceso.** profileFor(proceso) devuelve el primer perfil, en orden, **alguno de cuyos procesos** no vacíos coincide con el ejecutable en primer plano **sin distinguir mayúsculas**. General nunca coincide. Las apps de la Tienda se resuelven a su proceso real. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): un perfil puede vincular varios procesos (PQ-45), para que una plantilla como Navegador siga a todos sus programas. ‹d03:17; D2›
 - **PER-003 · MUST · Cambio de app en Auto.** Cuando cambia la app en primer plano (ignorando las ventanas propias, las del shell y las del teclado táctil o Acceso por voz):
   1. soltado (SEG-005);
   2. vinculación pendiente (ATJ-008);
@@ -522,7 +522,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Renombrar un perfil no cambia su id.
   ‹P4 script 1876; EC›
 - **PER-009 · MUST · Sugerencia de perfil.**
-  - **Cuándo:** la app activa no tiene perfil, «Detectar» (autoSuggestProfiles) está activo, esa app no se descartó en la sesión, no se está buscando y **existe plantilla**.
+  - **Cuándo:** la app activa no tiene perfil, «Detectar» (autoSuggestProfiles) está activo, esa app no se descartó en la sesión, no se está buscando y **existe plantilla** que incluya su proceso entre los suyos. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): una plantilla puede tener varios procesos y cualquiera de ellos cuenta (`StarterContent.TemplateFor`).
   - **Tarjeta:** accentWash con borde accent, «**{app}** [suggest]», [create] (principal) y [notNow].
   - **Crear perfil:** instala la plantilla con deshacer y el aviso «[installedT]: {app}», y la muestra.
   - **Ahora no:** descarta la app hasta cerrar Clícalo.
@@ -655,8 +655,8 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - [linkDetect]: modo captura;
   - [linkNone]: solo manual, con aviso [linkRemoved].
   Todo cambio tiene deshacer. ‹P4:471-477; script 1878-1882›
-- **ATJ-007 · MUST · Proceso único.** Vincular un proceso ya usado por otro perfil pide confirmación (textos nuevos: «{proceso} ya abre «{p}». ¿Pasarlo a este perfil?») y desvincula el anterior, con deshacer. ‹d02:79; DIS-32›
-- **ATJ-008 · MUST · Modo captura.** Muestra el aviso fijo [waitingApp] **con Cancelar en el panel**. La siguiente app válida en primer plano queda vinculada: no cuentan las ventanas de Clícalo, el shell, el teclado táctil ni el cambio de «Probar ahora». Aviso «[linkedTo] {proceso}». Si la app deseada ya está en primer plano detrás del CC, la lista [linkOpenApps] la ofrece marcada «activa». ‹P4 script 1498-1499; d03:8; DIS-16›
+- **ATJ-007 · MUST · Proceso único.** Un perfil puede vincular varios procesos, pero **cada proceso** pertenece a un solo perfil. Vincular un proceso ya usado por otro perfil pide confirmación (textos nuevos: «{proceso} ya abre «{p}». ¿Pasarlo a este perfil?») y lo quita del anterior, que conserva sus demás procesos, con deshacer. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): la unicidad pasa a ser por proceso (PQ-45), porque un perfil puede vincular varios. ‹d02:79; DIS-32; D2›
+- **ATJ-008 · MUST · Modo captura.** Muestra el aviso fijo [waitingApp] **con Cancelar en el panel**. La siguiente app válida en primer plano queda vinculada (su proceso se añade a los del perfil): no cuentan las ventanas de Clícalo, el shell, el teclado táctil ni el cambio de «Probar ahora». Aviso «[linkedTo] {proceso}». Si la app deseada ya está en primer plano detrás del CC, la lista [linkOpenApps] la ofrece marcada «activa». **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): la captura añade un proceso a los del perfil en lugar de sustituir el único que había, porque un perfil puede vincular varios (PQ-45). ‹P4 script 1498-1499; d03:8; DIS-16; D2›
 - **ATJ-009 · MUST · Cuadrícula del perfil.**
   - **Fichas:** 88 de alto y 96 de ancho como mínimo, con icono de 26, nombre de 13 y teclas (o «n pasos»).
   - **Indicadores:**
@@ -850,7 +850,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Con Detectar desactivado, esas plantillas aparecen en Plantillas disponibles.
   ‹P4:952-971; DIS-61›
 - **PLA-012 · MUST · Plantillas disponibles.** Tarjetas de 200 o más con icono, nombre, «N atajos» y 6 iconos. Tocar la tarjeta la abre en la vista previa, con borde accent. [Instalar] instala todo sin vista previa, con deshacer. Si no queda ninguna: [allInstalled]. ‹P4:972-989›
-- **PLA-013 · MUST · Instalar.** Instala los marcados (por defecto todos) con id nuevo, el nombre editado en ES y EN, y la variante del idioma de los programas si existe. Crea el perfil con el nombre, icono y proceso de la plantilla, al final. Si el proceso ya está vinculado, se aplica ATJ-007. Si ya existe un perfil con ese id de plantilla, **nunca** se sobrescribe: se ofrece «Añadir los que faltan». Aviso [installedT] con deshacer. Después, PER-007. ‹P4 script 1492-1496; EC›
+- **PLA-013 · MUST · Instalar.** Instala los marcados (por defecto todos) con id nuevo, el nombre editado en ES y EN, y la variante del idioma de los programas si existe. Crea el perfil con el nombre, icono y **procesos** de la plantilla, al final. Si alguno de sus procesos ya está vinculado, se aplica ATJ-007 a ese proceso. Si ya existe un perfil con ese id de plantilla, **nunca** se sobrescribe: se ofrece «Añadir los que faltan». Aviso [installedT] con deshacer. Después, PER-007. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): el perfil recibe **todos** los procesos de la plantilla (antes, uno) y la unicidad se aplica por proceso. ‹P4 script 1492-1496; EC; D2›
 - **PLA-014 · MUST · Tus perfiles e importar.** Título [tplInst] con el recuento. Botones de 48 por perfil (incluido General; no Siempre visible) con nombre, número de atajos y ›, que abren Atajos. [importProf] con la nota [shareHint]: el perfil importado se abre en la vista previa **sin instalar** ([importedPv]). ‹P4:990-999›
 - **PLA-015 · MUST · Vista previa.**
   - **Cabecera:** vacía, icono y [pvEmpty]. Con contenido: icono, nombre, proceso monoespaciado recortado, [instNoteAll]/[instNoteSome], línea de teclado y [onlyEs] si los programas están en inglés y la plantilla no tiene variantes.
@@ -957,7 +957,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 
 - **BIE-001 · MUST · Apertura.** Se abre automáticamente en el primer arranque, y si no se completó, en el siguiente. También desde [seeWelcome]. Es modal y siempre encima: 600 de ancho, padding 32, radio 20 y 5 barras de progreso. Esc no la cierra. Cerrarla con Alt+F4 equivale a Omitir. ‹P4:1234-1237; d06:3›
 - **BIE-002 · Retirado · Pantalla previa de migración.** **Retirado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): la bienvenida no busca ni importa la configuración de Macro Quick Access; empieza siempre en el paso 0. ‹d06:14; DIS-72›
-- **BIE-003 · MUST · Navegación.** Botones de 52: [Atrás] (oculto en el paso 0), [Omitir] (secundario) y [Siguiente], que en el paso 4 dice [finish]. **Omitir** cierra el asistente conservando lo ya aplicado en vivo (idioma, efectos del paso 1, vista, tamaño y tema), **sin** instalar las apps del paso 2. ‹P4:1277-1282; DIS-73›
+- **BIE-003 · MUST · Navegación.** Botones de 52: [Atrás] (oculto en el paso 0), [Omitir] (secundario) y [Siguiente], que en el paso 4 dice [finish]. **Omitir** cierra el asistente conservando lo ya aplicado en vivo (idioma, efectos del paso 1, vista, tamaño y tema) y aplica **el valor por defecto del kit inicial** del paso 2 (solo «Básicos», BIE-006), sin instalar ninguna plantilla. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): antes Omitir no instalaba nada del paso 2; ahora General y Siempre visible no se quedan vacíos para quien omite. ‹P4:1277-1282; DIS-73; D2›
 - **BIE-004 · MUST · Paso 0.** Logotipo, «Clícalo», [tagline], [ob0t] y [ob0b], tarjeta con [story1] y la firma, y los botones Español y English (52), que cambian el idioma al instante. **Decisión:** el idioma inicial es el de Windows (es* → ES; cualquier otro → EN). ‹P4:1238-1247›
 - **BIE-005 · MUST · Paso 1.** [ob1t] y [ob1b]. 5 opciones de selección múltiple (84 o más, en 2 columnas, con icono y estado accesible): Pantalla táctil, Control por voz, No puedo usar el teclado, Tengo temblor y Mouse o trackball.
   - **Efectos:**
@@ -969,11 +969,15 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Decisión:** para un usuario nuevo no hay nada preseleccionado (§6 PQ-39).
   - **«No puedo usar el teclado»** oculta [recPhys], pone el preset leve, destaca la biblioteca y la IA frente a escribir (la biblioteca se abre en lugar del recuadro vacío al crear) y garantiza 🎤 en todos los campos. Se puede cambiar después en General.
   ‹P4:1248-1254; script 1903; AUD-47›
-- **BIE-006 · MUST · Paso 2.** [ob2t] y [ob2b]. Línea del teclado detectado, que se puede cambiar (PLA-009). Chips de selección múltiple (48) con las plantillas locales, en las que se convierten Word, Navegador y VS Code (CAT-003). Las marcadas se instalan **al pulsar Empezar** y se vinculan a su proceso, en un único paso de deshacer y un único aviso. ‹P4:1255-1262; script 1905; DIS-74›
+- **BIE-006 · MUST · Paso 2: kit inicial.** [ob2t] y [ob2b]. Línea del teclado detectado, que se puede cambiar (PLA-009). Chips de selección múltiple (48), en el orden de `data/content/starter.json`:
+  - primero **«Básicos»** ([kitBasics], descripción [kitBasicsD]), **marcado por defecto**: los atajos universales de Siempre visible y de General del contenido inicial (CAT-003);
+  - después las 9 plantillas locales, **sin marcar**: Word, Navegador, VS Code, Excel, PowerPoint, Zoom (la antigua Videollamada), Explorador, Correo y Bloc de notas.
+
+  Lo marcado se instala **al pulsar Empezar**, en un único paso de deshacer y un único aviso; cada plantilla crea un perfil vinculado a **todos** sus procesos (Navegador: Chrome, Edge, Firefox, Brave y Opera; Correo: Outlook clásico y el nuevo Outlook) con la variante de teclas del idioma de los programas (PLA-013). Se puede desmarcar todo: General y Siempre visible existen siempre y se empieza vacío. **Acepta:** sin tocar nada, Empezar u Omitir dejan solo «Básicos»; todo desmarcado deja General y Siempre visible vacíos; con Navegador marcado, Edge y Firefox abren el mismo perfil. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): antes solo había chips de plantillas, sin «Básicos» y sin nada preseleccionado (PQ-39), y cada plantilla tenía un proceso; así quien omite ya tiene atajos útiles, quien quiere empezar de cero puede hacerlo, y Navegador y Correo sirven con el programa de cada persona. ‹P4:1255-1262; script 1905; DIS-74; D2›
 - **BIE-007 · MUST · Paso 3.** [obVt] y [obVb]; 3 tarjetas con miniatura, nombre y descripción. Se aplica al tocar. ‹P4:1263-1269›
 - **BIE-008 · MUST · Paso 4.** [ob3t]. 3 tamaños con un botón «Copiar» de muestra a escala real, rotulados [sizeS/M/L], y tema en una fila de 4 botones de 44 ([themeAutoS] y los demás). Se aplica al instante. ‹P4:1270-1276; DIS-75›
 - **BIE-009 · MUST · Empezar.** Guarda todo, instala lo marcado, cierra el asistente, muestra el panel sin minimizar y avisa [welcome]. **Decisión:** no concatena [ready]. ‹P4 script 1902-1907; DIS-76›
-- **BIE-010 · SHOULD · Al repetir la bienvenida.** Se muestran preseleccionadas las respuestas guardadas. Desmarcar una plantilla ya instalada no la desinstala. Los efectos del paso 1 solo se aplican a los ajustes que el usuario no cambió a mano después (con un aviso de qué cambia). ‹EC-BIE›
+- **BIE-010 · SHOULD · Al repetir la bienvenida.** Se muestran preseleccionadas las respuestas guardadas. Desmarcar una plantilla ya instalada, o «Básicos», no la desinstala. Los efectos del paso 1 solo se aplican a los ajustes que el usuario no cambió a mano después (con un aviso de qué cambia). **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): «Básicos» es una opción más del paso 2 y, como una plantilla, desmarcarla no borra lo instalado (REG-08). ‹EC-BIE; D2›
 
 ### 2.29 DAT · Datos e integridad
 
@@ -981,7 +985,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **DAT-002 · MUST · Escritura atómica y agrupada.** Tras un corte, el documento es la versión anterior íntegra o la nueva íntegra. Diez cambios en 1 s producen como máximo una escritura. Hay reintentos ante bloqueos del sistema de archivos o de la sincronización, y un fallo persistente se muestra al usuario, nunca solo en el registro. ‹d02:3; lección v1›
 - **DAT-003 · MUST · Documento ilegible.** Un documento corrupto, truncado o de un esquema futuro nunca se sobrescribe. Se aparta, se restaura la última copia válida y se avisa. ‹REG-08; lección v1›
 - **DAT-004 · MUST · Identificadores.** Los ids son únicos en todo el documento, opacos y estables: no dependen del nombre ni de la hora. Duplicar, añadir, instalar, importar o generar crea siempre ids nuevos. Renombrar no cambia el id. Los elementos de catálogo llevan una referencia de origen (plantilla, versión y elemento). ‹d02:53; DIS-77›
-- **DAT-005 · MUST · Pertenencia.** Un botón vive en una sola lista. General y Siempre visible no se pueden borrar. General no tiene proceso. Los procesos son únicos entre perfiles (ATJ-007). ‹d02:76-79›
+- **DAT-005 · MUST · Pertenencia.** Un botón vive en una sola lista. General y Siempre visible no se pueden borrar. General no tiene proceso. Un perfil puede tener varios procesos y cada proceso pertenece a un solo perfil (ATJ-007). **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): antes, un proceso por perfil; la unicidad pasa a ser por proceso (PQ-45). ‹d02:76-79; D2›
 - **DAT-006 · MUST · Deshacer.** Pila de 20 estados que abarca **todo el documento**, incluidos Frecuentes y dupIgnored. Las ediciones seguidas de un mismo botón forman un paso. Los ajustes de presentación (tema, tamaño, opacidad) **no** entran en la pila, porque se revierten con el mismo control. Las operaciones masivas (Reemplazar, Restaurar, Reiniciar Frecuentes) dejan además una copia persistente para sobrevivir a un reinicio. ‹d02:81; DIS-78›
 - **DAT-007 · MUST · Compartir un perfil.** Exportar genera `clicalo-perfil-<id>.json` con un solo perfil y `"type":"profile-share"`, con versión de esquema. Los textos cifrados se excluyen, con aviso, salvo que el usuario elija incluirlos en claro. Se importa desde Plantillas con vista previa. ‹d02:98; DIS-79›
 - **DAT-008 · COULD · Compartir con enlace.** Enlace `clicalo://perfil/...` que **contenga** el perfil codificado y se valide como no confiable. Si no puede transportar el contenido, no se ofrece. ‹P4 script 1866; DIS-79›
@@ -1096,18 +1100,19 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 
 - **CAT-001 · MUST · Catálogos versionados con identificadores neutros.** Teclas, acciones de mouse, categorías, iconos con etiquetas por idioma, la tabla combinación→icono por idioma de programas, las combinaciones bloqueadas o especiales (con acción alternativa), la biblioteca, las plantillas, los presets y los tamaños son datos versionados con esquema. Se cargan de una sola fuente, no se copian en el código y las etiquetas van en los archivos de idioma. ‹DIS-90›
 - **CAT-002 · MUST · Cobertura de iconos.** ICONLIB cubre el 100 % de los iconos usados, incluidos los 32 que faltan, como `apps`, `history`, `link` y `favorite`, y tiene etiquetas con tildes separadas por idioma. ‹DIS-91›
-- **CAT-003 · MUST · Contenido inicial.**
-  - Siempre visible:
+- **CAT-003 · MUST · Contenido inicial.** General y Siempre visible existen siempre; su contenido es la opción «Básicos» del kit inicial (BIE-006), marcada por defecto, y sin ella empiezan vacíos.
+  - Siempre visible («Básicos»):
     - Dictar Win+H, **como Pulsar**, porque Win+H ya alterna el dictado;
     - Hablar Ctrl+Espacio (Mantener);
     - Silenciar Win+Alt+K;
     - Escritorio Win+D.
-  - General con 12 atajos (Cerrar ventana con confirmación).
+  - General con 12 atajos (Cerrar ventana con confirmación), también de «Básicos».
   - Word, Navegador y VS Code pasan a ser plantillas instalables con variantes por idioma de los programas. Se instalan según la bienvenida.
+  - El primer arranque sin bienvenida (hasta M4) aplica el valor por defecto del kit: solo «Básicos».
   - El contenido inicial no genera repetidos: se elimina el `copyb` duplicado del Navegador.
-  - Plantillas: Excel 9, PowerPoint 6, Videollamada 6, Explorador 5, Correo 5 y Bloc de notas 4.
+  - Plantillas: Excel 9, PowerPoint 6, Zoom 6 (la antigua Videollamada: sus atajos son de Zoom), Explorador 5, Correo 5 y Bloc de notas 4.
   - Biblioteca: Edición 7, Ventanas 7, Mouse 5, Voz 4, Textos 3 y Sistema 6, con «Bloquear» como acción de sistema.
-  ‹seed; DIS-92; §6 PQ-44›
+  **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): antes General y Siempre visible traían siempre ese contenido; ahora es la opción «Básicos», marcada por defecto, y se puede empezar vacío. ‹seed; DIS-92; §6 PQ-44; D2›
 - **CAT-004 · MUST · Datos del catálogo válidos.** Todo botón del catálogo usa teclas válidas:
   - «Clic izq.» pasa a mouse:drag;
   - «ñ» pasa a «Ñ»;
@@ -1115,7 +1120,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - los pasos de macro llevan `kind`.
   Una prueba automática valida el catálogo. ‹DIS-93›
 - **CAT-005 · SHOULD · Variantes por idioma.** Las plantillas que dependen del idioma de Office (Word, PowerPoint, Correo, Excel) tienen variante EN. El mapa combinación→icono se separa por idioma de programas (en ES, Ctrl+N es negrita; en EN, Ctrl+B). ‹DIS-53; DIS-94›
-- **CAT-006 · COULD · Plantillas como archivos independientes.** Cada plantilla es un archivo con versión, autoría, idiomas revisados y procesos, para aceptar contribuciones mediante revisión. Un perfil puede vincular **varios** procesos (por ejemplo, Navegador con chrome, msedge y firefox): pendiente de decisión (§6 PQ-45). ‹escala›
+- **CAT-006 · COULD · Plantillas como archivos independientes.** Cada plantilla es un archivo con versión, autoría, idiomas revisados y procesos, para aceptar contribuciones mediante revisión. Un perfil puede vincular **varios** procesos: Navegador vincula `chrome.exe`, `msedge.exe`, `firefox.exe`, `brave.exe` y `opera.exe`, y Correo `outlook.exe` (clásico) y `olk.exe` (el nuevo Outlook). Los atajos de una plantilla con varios programas deben figurar en la documentación oficial de todos ellos. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): resuelve PQ-45 para que Navegador y Correo sirvan con el programa que use cada persona. ‹escala; D2›
 - **CAT-007 · MUST · Explorador de archivos.** El perfil de `explorer.exe` solo se activa con ventanas de carpeta, no con el escritorio ni la barra de tareas. ‹EC; v1›
 
 ---
@@ -1225,7 +1230,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **EC-PER-01.** Modo captura con la app deseada ya en primer plano detrás del CC: ATJ-008.
 - **EC-PER-02.** App sin perfil y sin plantilla: no hay sugerencia (PER-009). La ficha «Crear para» tampoco aparece (PQ-14).
 - **EC-PER-03.** Proceso protegido que no se puede abrir: no se da un falso aviso de administrador (EJE-013).
-- **EC-PER-04.** Apps que comparten proceso (PWA, Terminal): el perfil se vincula por proceso y la limitación se documenta (PQ-45).
+- **EC-PER-04.** Apps que comparten proceso (PWA, Terminal): el perfil se vincula por proceso y la limitación se documenta. Un perfil puede tener varios procesos, pero no distingue dos apps que comparten uno. **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): se añade que un perfil puede tener varios procesos (PQ-45).
 
 **Editor**
 - **EC-EDI-01.** Cambiar las teclas con lados elegidos: se conservan en los modificadores que siguen (EDI-009).
@@ -1402,13 +1407,13 @@ Cada pregunta lleva una **propuesta por defecto** que se aplica si no hay respue
 | PQ-36 | ¿Detectar Macro Quick Access en ejecución? | Sí (SIS-005). | SIS-005 |
 | PQ-37 | Portabilidad de los textos cifrados | Excluidos por defecto al exportar, con opción de incluirlos en claro y aviso. | COP-005, DAT-007 |
 | PQ-38 | Vía para enviar el registro | ACE-004. ¿Se muestra el correo personal del autor en la app? Pendiente de confirmar. | ACE-004/005 |
-| PQ-39 | Preselecciones de la bienvenida | Nada marcado para usuarios nuevos. | BIE-005/006 |
+| PQ-39 | Preselecciones de la bienvenida | Nada marcado para usuarios nuevos en el paso 1. En el paso 2, **cerrada por la decisión D2 del usuario (2026-10-03):** «Básicos» marcado y las plantillas sin marcar. | BIE-005/006 |
 | PQ-40 | Los 8 atajos de la v1 que nunca funcionaron | Se migran con el significado del nombre y la marca «Revisar». **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG-007 |
 | PQ-41 | Repetidos de la migración | Se añaden a dupIgnored y se listan (MIG-008). **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG-008 |
 | PQ-42 | ¿El estado atenuado queda exento del contraste? | Sí. | TEM-004 |
 | PQ-43 | ¿Tiempos de confirmación y avisos ajustables? | Sí, ×1, ×2 y ×3 (ACC-006). | ACC-006 |
-| PQ-44 | Perfiles de ejemplo | Siempre se instala General. Word, Navegador y VS Code, solo si se eligen. | CAT-003 |
-| PQ-45 | ¿Varios procesos por perfil? | Recomendado sí (el autor tiene Chrome y Firefox separados, y el Navegador de fábrica). Cambia la regla de unicidad a «por proceso». | CAT-006, ATJ-007 |
+| PQ-44 | Perfiles de ejemplo | **Cerrada por la decisión D2 del usuario (2026-10-03):** General y Siempre visible existen siempre y «Básicos» (marcado por defecto) los rellena; las 9 plantillas, solo si se eligen. | CAT-003, BIE-006 |
+| PQ-45 | ¿Varios procesos por perfil? | **Cerrada por la decisión D2 del usuario (2026-10-03): sí.** La unicidad es por proceso (ATJ-007, DAT-005); Navegador vincula cinco navegadores y Correo los dos Outlook. | CAT-006, ATJ-007 |
 | PQ-46 | Latencia máxima del cambio de perfil | < 300 ms. | NFR-002 |
 | PQ-47 | Herramientas de dictado con Alt der. o Ctrl der.: ¿pulsar o mantener? ¿Qué reciben en latinoamericano? | Pulsar; se envía el lado exacto sin añadir Ctrl. Se valida con Spokenly, Voibe, Wispr Flow y el dictado de Windows. | EDI-009, NFR-004 |
 | PQ-48 | IA: proveedor y quién paga la cuota gratuita | La IA es opcional; sin un servicio intermedio propio no hay cuota gratuita, solo clave propia. Las plantillas locales siempre funcionan. | PLA-* |
@@ -1434,7 +1439,7 @@ Propuestas del plano (P1–P6, [§1.4](../architecture/blueprint.md#14-propuesta
 | R-04 | Etiquetas ES/EN de teclas, acciones de mouse, iconos y comandos de sistema como dato en `data/catalogs` (con nombre hablado para los glifos), frente a la letra de IDI-002 e IDI-006, que pide todo texto en `data/i18n`. | Viven en los catálogos. | IDI-002, IDI-006, UIA008 |
 | R-05 | Corrección de contraste de TEM-004 también en el tema oscuro (líneas, texto sobre peligro, insignia de categoría activa); separar aviso y peligro en relleno y texto (warn/warnText, danger/dangerText); éxito blanco en alto contraste. Cambia el aspecto: las líneas pasan de α 0,14/0,16 a 0,34/0,43. | Corregido en `data/tokens` (correcciones mínimas documentadas en `extra-tokens.json`). | TEM-002, TEM-004 |
 | R-06 | Subir y Bajar brillo en la sección Sistema de la biblioteca (EJE-016), lo que lleva Sistema de 6 a 8 elementos frente al recuento de CAT-003. | Los comandos existen en `system-commands.json`, pero no están en la biblioteca. | EJE-016, CAT-003 |
-| R-07 | Variantes EN añadidas a las plantillas Word (Negrita Ctrl+B, Cursiva Ctrl+I, Subrayado Ctrl+U, Reemplazar Ctrl+H) y Correo (Nuevo mensaje Ctrl+Shift+M), y reparto de `combo-icons` por idioma (Ctrl+G guardar en ES y Ctrl+S en EN). | Así en `data/content` y `data/catalogs`. | CAT-004, CAT-005 |
+| R-07 | Variantes EN añadidas a las plantillas Word (Negrita Ctrl+B, Cursiva Ctrl+I, Subrayado Ctrl+U, Reemplazar Ctrl+H) y reparto de `combo-icons` por idioma (Ctrl+G guardar en ES y Ctrl+S en EN). La variante de Correo (Nuevo mensaje Ctrl+Shift+M) la sustituye la revisión de D2 (§6.2). | Así en `data/content` y `data/catalogs`. | CAT-004, CAT-005 |
 | R-08 | Las combinaciones bloqueadas o especiales se comparan sin el lado del modificador (Ctrl der.+Alt+Supr está tan reservada como Ctrl+Alt+Supr), a diferencia de REP-001 para los repetidos. | Así en `blocked-combos.json` y sus pruebas, y en `CanonicalChord.ForBlockedComparison` (`tests/Clicalo.Domain.Tests/Keys/CanonicalChordTests.cs`). | EJE-014, REP-001 |
 | R-09 | Autoría de las plantillas incluidas: el nombre personal del autor o «Clícalo». | `authors` es «Michael Coaguila». | CAT-006 |
 | R-10 | Herramientas de dictado con gancho de teclado (Wispr Flow, Typeless) pueden tragarse el AltGr o el Ctrl derecho que inyecta Clícalo: se observó en la prueba S7-lite de M0. Propuesta: un aviso o una nota en la ayuda. | Se valida en S7 con el equipo sin esas herramientas. | PQ-47, NFR-004 |
@@ -1442,6 +1447,7 @@ Propuestas del plano (P1–P6, [§1.4](../architecture/blueprint.md#14-propuesta
 | R-12 | Sin efecto: la sección 7, MIG-006 y EC-MIG-02 quedaron retirados por la decisión D1 del usuario (2026-10-03, §6.2). Proponía dos correcciones de la sección 7 al integrar la migración (el ejemplo de `window_pos` con la escala entera de Qt 5 y el BOM de EC-MIG-02). | — | MIG-006, EC-MIG-02 |
 | R-13 | «Fijo/Automático» (`lockProfile`) y el último perfil (`lastProfile`) no se deshacen: son de colocación, como la posición del panel, para que deshacer no cambie la vista bajo el dedo. REG-07 y DAT-006 no los nombran. | Así en `SettingsSchema` (alcance de colocación). | REG-07, DAT-006, PER-001 |
 | R-14 | «Dejar solo en Siempre visible» (REP-005) borra de un toque las apariciones repetidas con el mismo nombre, pero no está en la lista cerrada de `destructive-operations.json`, y REG-04 cuenta borrar una aparición repetida como destructivo. Propuesta: añadirlo a la lista (dos toques), o construirlo como movimientos más `DeleteDuplicate`. | No se implementa en M2. | REP-005, REG-04 |
+| R-15 | Descripción del chip «Básicos» del kit inicial (decisión D2): kitBasicsD «Copiar, pegar, deshacer, dictar y más, en cualquier app»/«Copy, paste, undo, dictate and more, in any app». El nombre [kitBasics] es el de la decisión. | Está en `data/i18n` (receta `handoff-import.json`); la mostrará la bienvenida de M4. | BIE-006, IDI-001 |
 
 ### 6.2 Decisiones del usuario
 
@@ -1450,7 +1456,7 @@ Decisiones que el usuario, dueño del producto, toma y ratifica sobre el propio 
 | ID | Fecha | Decisión | Requisitos afectados | Registro |
 |---|---|---|---|---|
 | D1 | 2026-10-03 | Clícalo no se basa en nada de la app anterior (Macro Quick Access): se elimina solo la capacidad de leer su `profiles.json` v1 y las piezas que existían únicamente para ella (conversor e importador, sus pruebas y *fixtures*, la orden `anonymize-v1`, la opción `--migrate-v1`, los textos de migración, la pantalla previa de la bienvenida y la tarjeta de migración de Sistema › Copias). Se mantiene todo lo demás del Prototipo v4, incluida la importación y la exportación del formato propio y las migraciones del esquema propio. | Retirados: MIG-001 a MIG-009, BIE-002, COP-001, EC-MIG-01 a EC-MIG-05 y §7. Modificados: REG-08, NFR-013 y TEM-008. Cerradas: PQ-06, PQ-08, PQ-09, PQ-40 y PQ-41. Sin efecto: R-12, y R-01 y R-11 en su parte de migración. | [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md); plano §1.2 (D11) y §6.6; sección `retired` de `data/i18n/handoff-import.json` |
-
+| D2 | 2026-10-03 | **Kit inicial elegible.** En el paso «¿Qué apps usas más?» se ofrece «Básicos» (los atajos universales de General y de Siempre visible del contenido inicial) **marcado** por defecto y las 9 plantillas **sin marcar**. Se puede desmarcar todo y empezar vacío; «Omitir» aplica el valor por defecto (solo «Básicos»), igual que el primer arranque mientras no exista la bienvenida. Las plantillas reconocen varios programas: Navegador = Chrome, Edge, Firefox, Brave y Opera; Correo = Outlook clásico y el nuevo Outlook. El nombre del chip, [kitBasics] «Básicos»/«Basics», es el de la decisión; su descripción [kitBasicsD] queda pendiente de ratificar (R-15). **Motivo:** Quien omite la bienvenida ya tiene atajos útiles, quien quiere empezar de cero puede hacerlo, y una plantilla de Navegador o Correo sirve con el programa que use cada persona. Al aplicarla, las plantillas se revisaron con la documentación oficial de cada programa: Recargar del Navegador pasa a Ctrl+R (Opera no documenta F5); Correo usa Nuevo correo Ctrl+N y Enviar Ctrl+Entrar, comunes a los dos Outlook (la ayuda en español da Ctrl+D para Responder en el nuevo Outlook y Ctrl+R en el clásico: se mantiene Ctrl+R); y «Videollamada» pasa a llamarse «Zoom», porque sus seis atajos son de Zoom y solo vincula `zoom.exe`. Fuentes en `data/content/README.md`. | BIE-003, BIE-006, BIE-010, CAT-003, CAT-006, PER-002, PER-009, ATJ-007, ATJ-008, PLA-013, DAT-005, EC-PER-04, PQ-39, PQ-44, PQ-45, R-07 | [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md), `data/content/starter.json` |
 ---
 
 ## 7. Esquema v1 exacto (Macro Quick Access) y conversión

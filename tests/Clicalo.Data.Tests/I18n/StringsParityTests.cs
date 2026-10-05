@@ -76,6 +76,8 @@ public sealed class StringsParityTests
                 "keyMissing",
                 "kgFn",
                 "kgMods",
+                "kitBasics",
+                "kitBasicsD",
                 "macroCancelled",
                 "macroRunning",
                 "processTaken",

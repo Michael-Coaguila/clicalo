@@ -1,4 +1,5 @@
 using System.IO;
+using Clicalo.App.Composition;
 using Clicalo.App.Lifecycle;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Keys;
@@ -13,7 +14,8 @@ namespace Clicalo.App.Tests;
 
 /// <summary>
 /// The document a start hands to the store, against a real temporary data folder (blueprint §6.5): a new installation
-/// gets the seed in the language of Windows, written at once; files of Macro Quick Access are never read (ADR-0020).
+/// gets the starter kit marked by default («Basics», user decision D2) in the language of Windows, written at once;
+/// files of Macro Quick Access are never read (ADR-0020).
 /// </summary>
 public sealed class StartupDocumentsTests : IDisposable
 {
@@ -50,17 +52,21 @@ public sealed class StartupDocumentsTests : IDisposable
 
     [Fact]
     [Trait("Req", "CAT-003")]
-    public async Task A_new_installation_gets_the_seed_in_the_language_of_windows_and_keeps_it()
+    [Trait("Req", "BIE-003")]
+    public async Task A_new_installation_gets_the_default_starter_kit_in_the_language_of_windows_and_keeps_it()
     {
         var load = await LoadAsync(ContentFolder, LangCode.En, Token);
 
         load.Outcome.ShouldBe(DocumentLoadOutcome.FirstRun);
         load.Document.Settings.Language.ShouldBe(LangCode.En);
         var library = load.Document.Library;
-        library.AlwaysVisible.Count.ShouldBe(4);
-        library.Profiles.ShouldHaveSingleItem().Id.ShouldBe(ProfileId.General);
+        library.AlwaysVisible.Count.ShouldBe(4, "«Basics» is marked by default (user decision D2)");
+        library
+            .Profiles.ShouldHaveSingleItem("no template is marked by default")
+            .Id.ShouldBe(ProfileId.General);
         var copy = library.General.Shortcuts[0];
-        copy.Id.ShouldBe(new ShortcutId("copy"));
+        copy.Origin.ShouldBe(new CatalogRef("seed", "1", "copy"));
+        copy.Id.ShouldNotBe(new ShortcutId("copy"), "installed content gets new ids (DAT-004)");
         copy.Action.ShouldBe(
             new TapAction(
                 KeyChord.Create([new KeyStroke(KeyIds.Ctrl), new KeyStroke(KeyIds.C)]),
@@ -154,6 +160,7 @@ public sealed class StartupDocumentsTests : IDisposable
         return new StartupDocuments(
             documents ?? Repository(),
             new UsageRepository(_locations, writer, time, NullLogger<UsageRepository>.Instance),
+            new RandomIdGenerator(),
             time,
             NullLogger<StartupDocuments>.Instance
         );

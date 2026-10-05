@@ -83,12 +83,13 @@ agente.** Si un requisito parece inviable o inseguro:
 4. **Solo el usuario la ratifica.** Mientras no lo haga, el requisito sigue vigente tal cual.
 
 Cuando el usuario decide (por iniciativa propia o al ratificar una propuesta), la decisión se registra en la
-[sección 6.2 del catálogo](catalog.md#62-decisiones-del-usuario) con su fecha, y cada requisito afectado se marca
-en su sitio como **«Modificado por decisión del usuario del AAAA-MM-DD»** o **«Retirado por decisión del usuario
-del AAAA-MM-DD»**, con el motivo. Un requisito retirado conserva su identificador con la prioridad «Retirado» y su
-título; el identificador no se reutiliza. Si la decisión cambia un límite de confianza, un formato persistido o un
-contrato público, va con su ADR (por ejemplo, la decisión D1 del 2026-10-03 con
-[ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)).
+[sección 6.2 del catálogo](catalog.md#62-decisiones-del-usuario) con su fecha y su motivo, y cada requisito afectado
+se marca en su sitio como **«Modificado por decisión del usuario del AAAA-MM-DD»** o **«Retirado por decisión del
+usuario del AAAA-MM-DD»**, con el identificador de la decisión y el motivo. Un requisito retirado conserva su
+identificador con la prioridad «Retirado» y su título; el identificador no se reutiliza. Si la decisión cambia un
+límite de confianza, un formato persistido o un contrato público, va con su ADR (por ejemplo, la decisión D1 del
+2026-10-03 con [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md) y la D2 con
+[ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)) y una línea en el `CHANGELOG.md`.
 
 Los textos de producto nuevos o corregidos entran por un PR de i18n con las dos lenguas
 (`strings.es.json` y `strings.en.json`).

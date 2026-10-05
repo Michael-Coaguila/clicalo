@@ -125,6 +125,7 @@ internal static class AppServices
         services.AddSingleton(sp => new StartupDocuments(
             sp.Get<IDocumentRepository>(),
             sp.Get<IUsageRepository>(),
+            sp.Get<IIdGenerator>(),
             sp.Time(),
             sp.Log<StartupDocuments>()
         ));

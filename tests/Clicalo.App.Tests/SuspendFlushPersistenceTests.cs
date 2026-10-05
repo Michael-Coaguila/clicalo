@@ -1,4 +1,5 @@
 using System.IO;
+using Clicalo.App.Composition;
 using Clicalo.App.Lifecycle;
 using Clicalo.App.Shutdown;
 using Clicalo.Application.Coordinators;
@@ -121,5 +122,11 @@ public sealed class SuspendFlushPersistenceTests : IDisposable
         new(_locations, _writer, TimeProvider.System, NullLogger<BackupService>.Instance);
 
     private StartupDocuments Start() =>
-        new(Documents(), Usage(), TimeProvider.System, NullLogger<StartupDocuments>.Instance);
+        new(
+            Documents(),
+            Usage(),
+            new RandomIdGenerator(),
+            TimeProvider.System,
+            NullLogger<StartupDocuments>.Instance
+        );
 }

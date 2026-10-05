@@ -137,6 +137,28 @@ progress).
   `SendInput` p95 of 50 ms, the manual `lab.yml` workflow, the tray test with the real Notepad in CI, a test that
   rejects double-encoded text in every text file, and reduced counterexamples of the engine properties kept as
   regressions.
+- Starter kit (user decision D2, ADR-0021): `data/content/starter.json` with its schema offers «Basics» (the
+  universal shortcuts of General and Always visible) marked by default and the nine templates unmarked;
+  `StarterLibrary` and the `FirstDocument` use case build the first document from a selection (nothing marked starts
+  empty, «Skip» applies the default), and `StarterContentFiles` loads and validates the kit, the seed and the
+  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD` (the description awaits
+  ratification, R-15 in §6.1 of the catalog).
+- `docs/architecture/contracts.md`: the command-line contracts between `Clicalo.exe` and Sentinel (protocol 2, the
+  relaunch and Sentinel's exit codes).
+
+### Changed
+
+- A first start installs the default starter kit («Basics» only) with new ids for every shortcut, instead of the raw
+  seed with its catalog ids; the `content` folder next to `Clicalo.exe` now also holds `starter.json` and the
+  templates. `Infrastructure.Content.SeedDocument` is replaced by `Infrastructure.Catalogs`.
+- Templates bind several processes (PQ-45 decided): Browser binds Chrome, Edge, Firefox, Brave and Opera and Mail
+  binds classic Outlook and the new Outlook (`olk.exe`); templates install the variant of the programs language. After
+  checking each program's official documentation, Browser reloads with Ctrl+R, Mail creates with Ctrl+N and sends with
+  Ctrl+Enter, and «Video call» is renamed «Zoom», since its shortcuts are Zoom's.
+- Sentinel resends a key release refused by the secure desktop every heartbeat until the session is unlocked, and
+  relaunches Clícalo only afterwards; other refusals are retried for at most `Timings.Guardian.RefusedReleaseWait`
+  (30 s). A resend never separates the menu mask from its Alt or Win key. The Sentinel start-up contract moves to
+  protocol 2 with a seventh argument, `--refused-release-wait-ms` (ADR-0018, user decision D3 of 2026-10-03).
 
 ### Removed
 
@@ -149,3 +171,16 @@ progress).
   `migFailT`, `migFailD`, `migRetry` and `migReportT`. The import and export of Clícalo's own format and the
   migrations between versions of its own schema are unchanged; requirements MIG-001 to MIG-009, BIE-002, COP-001 and
   EC-MIG-01 to EC-MIG-05 are retired and REG-08 no longer covers a v1 migration.
+
+### Fixed
+
+- REG-01: a forced activation of a surface could get past `ActivationGuard` when Windows gave the foreground back
+  without deactivating the panel, and the panel kept the foreground. A violation now ends with its burst, a repeated
+  activation message or a deactivation, and the WA_INACTIVE of a leased activation reaches WPF whole (D-15).
+  `ForegroundOrchestrator` confirms an attempt at the first look that finds the window (every new
+  `Timings.Foreground.RestoreVerifyInterval`, 5 ms) or at the monitor's report, never retries over an app the user
+  switched to, and a queued violation restore does nothing once the violation is over (D-17).
+- Test harness: the `Clicalo.Application.Tests` hang (the fake clock moved before a delay was armed), the rights
+  hotkey wait measured on the timer's own clock, the high contrast tree read after the window template is applied
+  again, the panel tap latency measured with one synthetic device per kind and a checked warm-up tap (D-24), and COM
+  diagnostics in the out-of-process UIA client.
