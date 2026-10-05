@@ -32,7 +32,7 @@ public sealed class DesktopSessionFixture : IAsyncLifetime
         // The process must not exit with the WPF thread still pumping messages: once its windows have had the
         // foreground, the thread holds the text input framework (TextInputFramework.dll, CoreMessaging.dll), and a
         // process that exits around it ended 1 in about 2,600 runs with the fail-fast code 0xE0464645 after every
-        // test had passed; with the thread shut down first, 0 in 25,000 (S1.md, finding 20). A thread that does not
+        // test had passed; with the thread shut down first, 0 in 25,000. A thread that does not
         // end fails the run here instead.
         WpfThread.Shutdown(WpfShutdownTimeout);
         _lock?.Dispose();

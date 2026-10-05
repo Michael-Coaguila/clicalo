@@ -64,7 +64,7 @@ jobs:
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Stop the compatibility appraiser
-        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        # CompatTelRunner starves the desktop tests on the runner; see the header of the script.
         shell: pwsh
         run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
 
@@ -124,7 +124,7 @@ jobs:
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Stop the compatibility appraiser
-        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        # CompatTelRunner starves the desktop tests on the runner; see the header of the script.
         shell: pwsh
         run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
 
@@ -198,7 +198,7 @@ jobs:
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Stop the compatibility appraiser
-        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        # CompatTelRunner starves the desktop tests on the runner; see the header of the script.
         shell: pwsh
         run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
 

@@ -1,7 +1,7 @@
 # Keeps the Windows compatibility appraiser (CompatTelRunner.exe, started by the Application Experience scheduled
 # tasks) from running on a hosted CI runner. It takes three of the four CPUs of the runner for seconds at a time and
 # starves the desktop and performance tests: it was the busiest process every time a REG-01 restore went over its
-# budget on a saturated runner (docs/testing/spikes/S1.md, finding 19).
+# budget on a saturated runner (observed on the hosted windows-2025 runners in October 2026).
 #
 # CI runners only: the workflows call it before cl desk and cl perf. Never run it on a developer's machine.
 # Some of those tasks refuse to be disabled even by an administrator, so the executable itself is blocked through

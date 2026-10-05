@@ -238,7 +238,7 @@ public sealed class PanelDesktopTests(PanelDesktopFixture fixture)
         // The strip grows the panel downwards (SizeToContent) and «Soltar todo» sits in the new part. Windows routes a
         // touch by what DWM has composed, so a tap sent before the grown panel is on screen falls through to the window
         // below: in CI, 47 of 300 taps sent 5–10 ms after the strip went to the runner's terminal and activated it, and
-        // 300 of 300 reached the panel after this wait (S1.md, finding 17).
+        // 300 of 300 reached the panel after this wait (s0 run 37332298779).
         await ComposedFrame.WaitAsync(fixture.Window, TestContext.Current.CancellationToken);
         var at = fixture.ReleaseAllCenter();
 

@@ -14,7 +14,7 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing;
 /// InputProbe that grows downwards and is tapped in its new part as soon as the grown frame is composed receives the
 /// touch; nothing falls through to the probe below. Without the condition, the tap on «Soltar todo» of
 /// <c>PanelDesktopTests</c>, sent 5–10 ms after the panic strip grew the panel, fell through to the window below in 47
-/// of 300 CI runs (S1.md, finding 17). 20 surfaces, each grown once.
+/// of 300 CI runs (s0 run 37332298779). 20 surfaces, each grown once.
 /// </summary>
 [Collection(DesktopCollectionDefinition.Name)]
 [Trait("Requires", "Desktop")]
