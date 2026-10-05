@@ -418,17 +418,17 @@ public abstract class NonActivatingWindow : Window
 WM_ACTIVATE / WM_NCACTIVATE / WM_ACTIVATEAPP sobre hwnd ∈ SurfaceRegistry
    ─► ¿ForegroundOrchestrator tiene una concesión activa para hwnd? ─ sí ─► legítimo
                                                                   └ no ─► VIOLACIÓN:
-        1 Orchestrator.RestoreAfterViolation(lastExternalForeground)  (asíncrono, restauración verificada)
-        2 volver a aplicar WS_EX_NOACTIVATE
-        3 métrica reg01.violations++ y registro con la causa probable (DPI, Topmost, Show, desconocida)
+        1 volver a aplicar WS_EX_NOACTIVATE
+        2 métrica reg01.violations++ con la causa probable (DPI, Topmost, Show, External, desconocida)
+        3 pedir UNA restauración (encolada en el dispatcher; las activaciones que llegan mientras sigue en cola se suman a ella)
         4 Debug y CI: Debug.Fail
 ```
 
-Una activación son varios mensajes (`WM_ACTIVATEAPP` a todas las ventanas del hilo, luego `WM_NCACTIVATE` y `WM_ACTIVATE`): `ActivationGuard` cuenta **una** violación por activación y la cierra con el `WA_INACTIVE` de esa superficie, con `WM_ACTIVATEAPP(FALSE)` o al destruirla. `WM_ACTIVATEAPP(TRUE)` solo cuenta en la superficie que está en primer plano, para que activar el Centro de control (otra ventana del hilo) no parezca una violación. `ReportViolation` vuelve enseguida, porque se llama dentro del procedimiento de ventana; el orquestador restaura desde el grupo de hilos, y con una concesión activa devuelve el primer plano a su destino en lugar de a `lastExternalForeground` ([D-17](deviations.md#d-17--primer-plano-implementado-en-m1)).
+Es una regla simple, sin máquina de estados ([ADR-0024](../adr/0024-vigilante-de-foco-simple.md)): cada activación sin concesión es una violación, salvo que ya haya una petición de restauración en cola, a la que se suma. La petición sale del procedimiento de ventana por el dispatcher, así que la restauración siempre llega después de todas las activaciones que cubre. `WM_ACTIVATEAPP(TRUE)` solo cuenta en la superficie que está en primer plano, para que activar el Centro de control (otra ventana del hilo) no parezca una violación. El `WM_ACTIVATE` de una violación no llega a WPF ni a `DefWindowProc`, y su `WA_INACTIVE` tampoco. `ReportViolation` vuelve enseguida; el orquestador restaura desde el grupo de hilos al último primer plano externo verificado (o, con una concesión activa, a su destino; [D-17](deviations.md#d-17--primer-plano-implementado-en-m1)): `SetForegroundWindow` verificado, un reintento y, si los dos fallan, `FlashWindowEx`. No restaura si el monitor verificó otra app externa después del aviso y ninguna superficie sigue delante: el usuario ya eligió otra app.
 
 `SurfaceIntegrityCheck` se ejecuta cada 30 s y después de cada `WM_DPICHANGED`, `WM_DISPLAYCHANGE` o cambio de tema. Comprueba `GWL_EXSTYLE` y `HWND_TOPMOST` en cada superficie y los repara con `SWP_NOACTIVATE`. Todas las superficies comparten `OwnerAnchor`, así que sacar una de la banda *topmost* saca a toda la familia (S1): ninguna superficie pone `Topmost = false`.
 
-**Prueba negativa obligatoria.** `ActivationGuardNegativeTests` (Windowing) hace que InputProbe, estando en primer plano, llame a `SetForegroundWindow` sobre el panel. La prueba exige tres cosas: que `reg01.violations` suba en 1, que el primer plano vuelva a InputProbe en ≤200 ms y que `WS_EX_NOACTIVATE` esté presente.
+**Prueba negativa obligatoria.** `ActivationGuardNegativeTests` y `OrchestratedRestoreTests` (Windowing, de escritorio: ejecución nocturna y obligatoria antes de publicar) hacen que InputProbe, estando en primer plano, llame a `SetForegroundWindow` sobre el panel. Exigen que `reg01.violations` suba, que el primer plano vuelva a InputProbe en ≤200 ms y que `WS_EX_NOACTIVATE` esté presente. La regla en sí se prueba de forma determinista y sin escritorio en `ActivationGuardTests` y `ActivationArbiterTests` (en `cl check`).
 
 ### 3.6 `ForegroundOrchestrator`: el único dueño de los cambios de primer plano
 
@@ -442,7 +442,6 @@ public enum LeaseOrigin { Touch, UiaInvoke, GlobalHotkey, Tray, Internal }
 public interface IForegroundOrchestrator
 {
     ValueTask<LeaseResult> AcquireAsync(LeaseRequest request, CancellationToken ct);
-    ValueTask RestoreAfterViolationAsync(WindowToken expected, CancellationToken ct);
     ForegroundSnapshot Current { get; }   // último primer plano EXTERNO verificado + época
 }
 public sealed record LeaseRequest(LeaseKind Kind, WindowToken Target, LeaseOrigin Origin, TimeSpan? IdleTimeout);
