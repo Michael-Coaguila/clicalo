@@ -27,8 +27,9 @@ namespace Clicalo.UI.Wpf.Controls;
 /// <c>WM_SYSCOLORCHANGE</c> are current). Dispose it with the surface: it subscribes to a static event.
 /// </para>
 /// <para>
-/// The theme service of milestone M3 resolves «Auto» and listens to <c>WM_SYSCOLORCHANGE</c>; it drives this scope
-/// through <see cref="Preferred"/> and <see cref="Refresh"/>.
+/// It publishes the same resources as <see cref="ThemeService"/> (colors, categories, fonts, the type scale at
+/// 100 %), but resolves only the explicit themes. <see cref="ThemeService"/> also resolves «Auto», the text scale and
+/// reduce motion, and serves every window of a dispatcher; a surface uses one or the other, not both.
 /// </para>
 /// </remarks>
 public sealed class ThemeScope : IDisposable
@@ -146,12 +147,13 @@ public sealed class ThemeScope : IDisposable
         var effective = Resolve(_preferred, SystemParameters.HighContrast);
         var palette = ThemeCatalog.GetPalette(effective);
         var resources = Root.Resources;
-        foreach (var key in ThemeBrushKey.All)
+        ThemeResources.WritePalette(resources, palette);
+        if (!resources.Contains(ThemeKeys.UiFont))
         {
-            resources[key] = palette.CreateBrush(key.Token);
+            ThemeResources.WriteTypography(resources, TypeScale.MinScalePercent);
+            ThemeResources.WriteMotion(resources, reduceMotion: false);
         }
 
-        resources[BorderThicknessKey] = new Thickness(palette.BorderThickness);
         Effective = effective;
         Palette = palette;
         Applied?.Invoke(this, EventArgs.Empty);
