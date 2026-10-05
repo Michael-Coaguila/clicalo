@@ -1,4 +1,5 @@
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.CommonActions;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Settings;
@@ -8,7 +9,7 @@ using Clicalo.UI.Wpf.Theming;
 
 namespace Clicalo.App.Composition;
 
-/// <summary>What the pieces of M2 take from the user settings (blueprint §6.3).</summary>
+/// <summary>What the pieces of the app take from the user settings (blueprint §6.3).</summary>
 internal static class SettingsProjection
 {
     /// <summary>The touch filter of the surfaces (TAC-001, TAC-002).</summary>
@@ -24,16 +25,24 @@ internal static class SettingsProjection
         );
     }
 
-    /// <summary>What the engine obeys (SEG-004, SEG-005, NFR-004).</summary>
-    public static EngineConfig Engine(UserSettings settings)
+    /// <summary>
+    /// What the engine obeys (SEG-004, SEG-005, NFR-004), with the programs language that picks variants (CAT-005)
+    /// and the common actions it adapts to the app in front (decision D4, EJE-018).
+    /// </summary>
+    public static EngineConfig Engine(UserSettings settings, CommonActionTable commonActions)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(commonActions);
         return new EngineConfig(
             settings.KeySafety.MaxHold,
             settings.KeySafety.ReleaseOnAppSwitch,
             Timings.Injection.InterEventDelay,
             Touch(settings)
-        );
+        )
+        {
+            AppsLanguage = settings.Keyboard.AppsLanguage,
+            CommonActions = commonActions,
+        };
     }
 
     /// <summary>The tile and gap sizes of the panel size in use (GEN-004).</summary>

@@ -64,7 +64,7 @@ internal sealed partial class StartupReader(
             LogLanguageSkipped(logger, language);
         }
 
-        return new StartupRead(load, localization);
+        return new StartupRead(load, localization, RuntimeCatalogs.Load(request.BaseDirectory));
     }
 
     /// <summary>Appends the crash of <c>--after-crash</c> to the journal Sentinel reads (ADR-0018).</summary>

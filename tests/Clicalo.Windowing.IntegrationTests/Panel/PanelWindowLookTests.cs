@@ -3,6 +3,7 @@ using Clicalo.Application.Engine;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.KeySafety;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Panel;
@@ -150,12 +151,17 @@ public sealed class PanelWindowLookTests
             viewModel.Apply(
                 PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es)
             );
+            viewModel.ApplyLayout(
+                PanelLayoutSettings.Default with
+                {
+                    Columns = 4,
+                    TextScalePercent = textScalePercent,
+                }
+            );
             var window = new PanelWindow(
                 viewModel,
                 lab.Registry,
                 time,
-                PanelSizes.M,
-                columns: 4,
                 theme,
                 new DimSettings(AutoDim: false, Opacity: 1, DimTo: 1)
             );

@@ -7,8 +7,10 @@ using Clicalo.Application.Foreground;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
+using Clicalo.Application.Profiles;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
+using Clicalo.Application.UseCases;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
@@ -17,7 +19,6 @@ using Clicalo.Infrastructure.Persistence;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
-using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
@@ -171,7 +172,10 @@ internal static class AppServices
         {
             var host = new EngineHost(
                 sp.Get<EngineHostPorts>(),
-                SettingsProjection.Engine(sp.Slot().Load.Document.Settings),
+                SettingsProjection.Engine(
+                    sp.Slot().Load.Document.Settings,
+                    sp.Slot().Catalogs.CommonActions
+                ),
                 sp.Time(),
                 sp.Log<EngineHost>()
             );
@@ -256,17 +260,38 @@ internal static class AppServices
             sp.Get<SessionStore>(),
             sp.Get<IEngineInbox>()
         ));
+        services.AddSingleton(sp => new ProfileViewCoordinator(sp.Get<DocumentStore>()));
+        services.AddSingleton<ITouchKeyboard>(sp => new TouchKeyboard(
+            sp.Get<EngineAdapterSet>().KeyEffects
+        ));
         services.AddSingleton(sp =>
         {
-            var store = sp.Get<DocumentStore>();
-            var localization = sp.Get<ILocalizationContext>();
-            return new PanelViewModel(
-                sp.Get<PanelInteractionController>(),
-                localization,
-                SettingsProjection.Touch(store.Current.Settings),
-                id => NameOf(store.Current, id, localization)
+            var coordinator = sp.Get<ForegroundChangeCoordinator>();
+            return new PanelSearch(
+                sp.Get<IForegroundOrchestrator>(),
+                sp.Get<IEngineInbox>(),
+                () => coordinator.CurrentEpoch,
+                sp.Time(),
+                sp.Get<ITouchKeyboard>()
             );
         });
+        // The full panel (docs/04): its view models and the wiring to the document, the session and the foreground.
+        services.AddSingleton(sp => new PanelComposer(
+            sp.Get<DocumentStore>(),
+            sp.Get<SessionStore>(),
+            sp.Get<ProfileViewCoordinator>(),
+            sp.Get<PanelInteractionController>(),
+            sp.Get<EngineObserverRelay>(),
+            sp.Get<IEngineInbox>(),
+            sp.Get<ILocalizationContext>(),
+            sp.Slot().Catalogs,
+            sp.Get<PanelSearch>(),
+            sp.Get<IIdGenerator>(),
+            sp.Time(),
+            sp.Get<Dispatcher>(),
+            Environment.IsPrivilegedProcess
+        ));
+        services.AddSingleton(sp => sp.Get<PanelComposer>().Panel);
         // One theme service for the UI thread (blueprint §8.4): every surface of the thread attaches to it. The
         // container disposes both at the end, after the surfaces are closed.
         services.AddSingleton<WindowsSystemThemeSource>();
@@ -283,15 +308,19 @@ internal static class AppServices
         services.AddSingleton(sp =>
         {
             var settings = sp.Get<DocumentStore>().Current.Settings;
-            return new PanelWindow(
-                sp.Get<PanelViewModel>(),
+            var composer = sp.Get<PanelComposer>();
+            var window = new PanelWindow(
+                composer.Panel,
                 sp.Get<SurfaceRegistry>(),
                 sp.Time(),
-                SettingsProjection.Size(settings),
-                settings.Columns,
                 sp.Get<ThemeService>(),
-                SettingsProjection.Dim(settings)
+                SettingsProjection.Dim(settings),
+                composer.Header,
+                composer.Search,
+                composer.Suggestion
             );
+            composer.AttachWindow(window);
+            return window;
         });
     }
 
@@ -307,15 +336,6 @@ internal static class AppServices
             sp.Get<ILocalizationContext>()
         ));
     }
-
-    private static string? NameOf(
-        UserDocument document,
-        ShortcutId id,
-        ILocalizationContext localization
-    ) =>
-        document.Library.TryGetShortcut(id, out var shortcut)
-            ? shortcut.Name.Get(new LangCode(localization.Current.Locale.Code), LangCode.Es)
-            : null;
 
     private static T Get<T>(this IServiceProvider services)
         where T : notnull => services.GetRequiredService<T>();
