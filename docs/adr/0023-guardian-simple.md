@@ -1,5 +1,5 @@
 ---
-status: Propuesto
+status: Aceptado
 date: 2026-10-05
 decision-makers: Michael Coaguila (dueño del producto y mantenedor)
 consulted: decisión del usuario del 2026-10-05 (simplicidad primero); decisión D3 del usuario (2026-10-03); ADR-0004, ADR-0018 y ADR-0019; plano §3.1, §3.2, §7.4 a §7.6 y §7.10; catálogo REG-03, SEG-003, SEG-006, SEG-007, NFR-005 y SIS-004

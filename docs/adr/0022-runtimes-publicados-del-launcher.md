@@ -1,5 +1,5 @@
 ---
-status: Propuesto
+status: Aceptado
 date: 2026-10-05
 decision-makers: Michael Coaguila (mantenedor)
 consulted: ADR-0009; plano §11 y P5; docs/architecture/tooling.md («Runtimes publicados»); ejecución s0 37325950329 (10 de 10 trabajos arm64 parados en NU1004)
