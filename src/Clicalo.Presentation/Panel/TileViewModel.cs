@@ -1,6 +1,7 @@
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
+using Clicalo.Domain.VoiceNumbering;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.Panel;
@@ -18,6 +19,7 @@ public sealed class TileViewModel : ObservableObject
     private string _accessibleHelpText = string.Empty;
     private string _badge = string.Empty;
     private bool _isLatched;
+    private int? _voiceNumber;
 
     /// <summary>Creates the tile.</summary>
     /// <param name="model">What it shows and runs.</param>
@@ -79,6 +81,26 @@ public sealed class TileViewModel : ObservableObject
         private set => SetProperty(ref _isLatched, value);
     }
 
+    /// <summary>
+    /// Its voice number while «Numbers for voice» is on (ACC-009, ACC-010), shown in yellow at the top left; the UI
+    /// Automation name then reads <see cref="SpokenName"/>. <see langword="null"/> when off.
+    /// </summary>
+    public int? VoiceNumber
+    {
+        get => _voiceNumber;
+        private set
+        {
+            if (SetProperty(ref _voiceNumber, value))
+            {
+                OnPropertyChanged(nameof(SpokenName));
+            }
+        }
+    }
+
+    /// <summary>The name voice users say: «{n} {name}» with a voice number, the name otherwise (ACC-009).</summary>
+    public string SpokenName =>
+        VoiceNumber is { } number ? VoiceNumbers.Prefix(number, AccessibleName) : AccessibleName;
+
     /// <summary>An accepted tap lifted on the tile.</summary>
     /// <param name="contactId">The pointer id.</param>
     /// <param name="device">Finger, pen or mouse.</param>
@@ -120,6 +142,7 @@ public sealed class TileViewModel : ObservableObject
         if (renamed)
         {
             OnPropertyChanged(nameof(AccessibleName));
+            OnPropertyChanged(nameof(SpokenName));
         }
 
         if (reiconed)
@@ -132,6 +155,10 @@ public sealed class TileViewModel : ObservableObject
             OnPropertyChanged(nameof(Category));
         }
     }
+
+    /// <summary>Applies its voice number, or <see langword="null"/> when the option is off.</summary>
+    /// <param name="number">The number.</param>
+    internal void ApplyVoiceNumber(int? number) => VoiceNumber = number;
 
     /// <summary>Applies the engine state and the texts of the interface language.</summary>
     /// <param name="latched">Whether the engine holds something for the tile.</param>

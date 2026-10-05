@@ -3,33 +3,76 @@ using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Session;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.StickyModifiers;
 using Clicalo.Domain.Touch;
+using Clicalo.Domain.VoiceNumbering;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.Panel;
 
 /// <summary>
-/// The minimal panel of M2 (blueprint §8.2): the tiles of one profile, the panic strip and the presence of the panel,
-/// all applied from immutable inputs (<see cref="PanelModel"/>, <see cref="PanelSession"/>, <see cref="EngineSnapshot"/>)
-/// on the UI thread of the Surfaces role. It keeps no rule of its own: tiles forward intentions to the
-/// <see cref="PanelInteractionController"/>, and every visible text is formatted from <c>data/i18n</c> when applied,
-/// so a language change only needs <see cref="Relocalize"/> (IDI-001).
+/// The panel (blueprint §8.2): the tiles of the page in view, the Always visible row, the sticky modifiers, the profile
+/// selector and its grid, the pager, the notice bar, the empty profile card, the administrator notice and the panic
+/// strip, all applied from immutable inputs (<see cref="PanelModel"/>, <see cref="PanelLayoutSettings"/>,
+/// <see cref="PanelBodyContext"/>, <see cref="EngineSnapshot"/> and the measured space of the grid) on the UI thread of
+/// the Surfaces role. It keeps no rule of its own: rows, pages, the hiding for lack of space, the visibility of every
+/// part and the voice numbers come from <c>Clicalo.Domain.PanelLayout</c> and <c>Clicalo.Domain.VoiceNumbering</c>;
+/// tiles forward intentions to the <see cref="PanelInteractionController"/> and the rest to
+/// <see cref="IPanelBodyIntents"/>. Every visible text is formatted from <c>data/i18n</c> when applied, so a language
+/// change only needs <see cref="Relocalize"/> (IDI-001).
 /// </summary>
 public sealed class PanelViewModel : ObservableObject
 {
+    /// <summary>The icon of the notice bar at rest (AVI-001).</summary>
+    private const string RestIcon = "info";
+
+    /// <summary>The page context of Frequents and of the search (they are not profiles).</summary>
+    private const string FrequentsView = "frequents";
+
+    private const string SearchView = "search";
+
     private readonly PanelInteractionController _controller;
     private readonly ILocalizationContext _localization;
     private readonly Func<ShortcutId, string?> _nameOfShortcut;
+    private readonly Dictionary<ShortcutId, TileViewModel> _listById = [];
+    private readonly Dictionary<ShortcutId, TileViewModel> _stripById = [];
+    private List<TileViewModel> _list = [];
+    private List<TileViewModel> _strip = [];
     private PanelModel _model = PanelModel.Empty;
     private EngineSnapshot _engine = EngineSnapshot.Empty;
+    private PanelLayoutSettings _layout = PanelLayoutSettings.Default;
+    private PanelBodyContext _context = PanelBodyContext.Idle;
     private TouchSettings _touch;
+    private double? _gridSpace;
+    private int _page;
+    private PageContext? _pageContext;
+    private StripWindow _stripWindow;
+    private bool _cramped;
+    private GridShape _shape;
+    private BodyLayers _layers = BodyLayerRules.Evaluate(
+        new BodyLayerInputs(
+            PanelLayoutSettings.Default,
+            false,
+            false,
+            false,
+            false,
+            0,
+            1,
+            false,
+            false,
+            false,
+            false
+        )
+    );
     private string _accessibleName = string.Empty;
     private bool _isVisible;
 
-    /// <summary>Creates the panel.</summary>
+    /// <summary>Creates the panel with no destination for the intentions of its body (M2 composition).</summary>
     /// <param name="controller">Where the intentions of the tiles go.</param>
     /// <param name="localization">The interface language.</param>
     /// <param name="touch">The touch filter of the surfaces (TAC-001, TAC-002).</param>
@@ -43,23 +86,100 @@ public sealed class PanelViewModel : ObservableObject
         TouchSettings touch,
         Func<ShortcutId, string?> nameOfShortcut
     )
+        : this(controller, localization, touch, nameOfShortcut, NoBodyIntents.Instance, null) { }
+
+    /// <summary>Creates the panel.</summary>
+    /// <param name="controller">Where the intentions of the tiles go.</param>
+    /// <param name="localization">The interface language.</param>
+    /// <param name="touch">The touch filter of the surfaces (TAC-001, TAC-002).</param>
+    /// <param name="nameOfShortcut">The name of a shortcut that is not on the panel, or <see langword="null"/>.</param>
+    /// <param name="intents">Where the intentions of the body go (selector, profile grid, notices, empty card…).</param>
+    /// <param name="keyLabelOf">
+    /// The label of a sticky modifier as <c>data/catalogs/keys.json</c> shows it; <see langword="null"/> uses the names
+    /// of <see cref="ModifierKind"/> (Ctrl, Alt, Shift, Win, the same in every language today).
+    /// </param>
+    public PanelViewModel(
+        PanelInteractionController controller,
+        ILocalizationContext localization,
+        TouchSettings touch,
+        Func<ShortcutId, string?> nameOfShortcut,
+        IPanelBodyIntents intents,
+        Func<ModifierKind, string>? keyLabelOf
+    )
     {
         ArgumentNullException.ThrowIfNull(controller);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(nameOfShortcut);
+        ArgumentNullException.ThrowIfNull(intents);
         _controller = controller;
         _localization = localization;
         _touch = touch;
         _nameOfShortcut = nameOfShortcut;
+        _shape = GridMetrics.Shape(_layout, null);
         Panic = new PanicStripViewModel(controller);
+        Pager = new PagerViewModel(GoToPage);
+        Strip = new AlwaysVisibleRowViewModel(NextStripPage);
+        Sticky = new StickyKeysRowViewModel(
+            keyLabelOf ?? (static modifier => modifier.ToString()),
+            intents.AdvanceSticky
+        );
+        Selector = new SelectorRowViewModel(intents);
+        Picker = new PickerGridViewModel(intents);
+        Notices = new NoticeBarViewModel(intents);
+        Admin = new AdminNoticeViewModel(intents);
+        Empty = new EmptyStateViewModel(intents);
         Relocalize();
     }
 
-    /// <summary>The tiles in display order; a tile keeps its view model while its shortcut stays on the panel.</summary>
+    /// <summary>
+    /// The tiles of the page in view, in display order (CUA-004); a tile keeps its view model while its shortcut stays
+    /// in the list.
+    /// </summary>
     public ObservableCollection<TileViewModel> Tiles { get; } = [];
 
     /// <summary>The panic strip (SEG-002).</summary>
     public PanicStripViewModel Panic { get; }
+
+    /// <summary>◀, the page dots and ▶ (CUA-004, CUA-005).</summary>
+    public PagerViewModel Pager { get; }
+
+    /// <summary>The Always visible row (FIJ-001 to FIJ-004).</summary>
+    public AlwaysVisibleRowViewModel Strip { get; }
+
+    /// <summary>The sticky modifiers row (FIJ-005).</summary>
+    public StickyKeysRowViewModel Sticky { get; }
+
+    /// <summary>The profile selector (SEL-001, SEL-002).</summary>
+    public SelectorRowViewModel Selector { get; }
+
+    /// <summary>The profile grid (SEL-003).</summary>
+    public PickerGridViewModel Picker { get; }
+
+    /// <summary>The notice bar (AVI-001, AVI-003, AVI-004).</summary>
+    public NoticeBarViewModel Notices { get; }
+
+    /// <summary>The administrator notice (EJE-013).</summary>
+    public AdminNoticeViewModel Admin { get; }
+
+    /// <summary>The empty profile card (CUA-010).</summary>
+    public EmptyStateViewModel Empty { get; }
+
+    /// <summary>The shape of the grid: columns, visible rows and tile height (CUA-001).</summary>
+    public GridShape Shape
+    {
+        get => _shape;
+        private set => SetProperty(ref _shape, value);
+    }
+
+    /// <summary>Which parts of the body show (PAN-007, PAN-008).</summary>
+    public BodyLayers Layers
+    {
+        get => _layers;
+        private set => SetProperty(ref _layers, value);
+    }
+
+    /// <summary>The layout settings in use.</summary>
+    public PanelLayoutSettings Layout => _layout;
 
     /// <summary>The profile in view.</summary>
     public ProfileId Profile => _model.Profile;
@@ -90,52 +210,56 @@ public sealed class PanelViewModel : ObservableObject
 
     /// <summary>
     /// Applies a projection: tiles whose shortcut stays keep their view model (and its UI Automation element), new
-    /// ones are added and removed ones dropped, in the new order.
+    /// ones are added and removed ones dropped, in the new order; then the page in view is composed again.
     /// </summary>
     /// <param name="model">The projection.</param>
     public void Apply(PanelModel model)
     {
         ArgumentNullException.ThrowIfNull(model);
         _model = model;
-        var existing = Tiles.ToDictionary(static tile => tile.Id);
-
-        // A tile whose behavior changed counts as a new layout too: the surface picks the tile's UI Automation pattern
-        // (Invoke or Toggle) and its touch target kind when it builds the control.
-        var sameOrder =
-            existing.Count == model.Tiles.Length
-            && model
-                .Tiles.Select(static tile => (tile.Id, tile.Behavior))
-                .SequenceEqual(Tiles.Select(static tile => (tile.Id, tile.Behavior)));
-        if (sameOrder)
-        {
-            foreach (var tile in model.Tiles)
-            {
-                existing[tile.Id].Update(tile);
-            }
-        }
-        else
-        {
-            var next = model
-                .Tiles.Select(tile =>
-                {
-                    if (existing.TryGetValue(tile.Id, out var kept))
-                    {
-                        kept.Update(tile);
-                        return kept;
-                    }
-
-                    return new TileViewModel(tile, _controller);
-                })
-                .ToList();
-            Tiles.Clear();
-            foreach (var tile in next)
-            {
-                Tiles.Add(tile);
-            }
-        }
-
+        _list = SyncById(_listById, model.Tiles);
+        _strip = SyncById(_stripById, model.StripTiles);
         OnPropertyChanged(nameof(Profile));
         ApplyEngine(_engine);
+    }
+
+    /// <summary>Applies the layout settings (size, view, columns, rows, text scale and the optional rows).</summary>
+    /// <param name="layout">The settings.</param>
+    public void ApplyLayout(PanelLayoutSettings layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        _layout = layout;
+        OnPropertyChanged(nameof(Layout));
+        Recompose();
+    }
+
+    /// <summary>Applies what the session, the interaction and the foreground say (<see cref="PanelBodyContext"/>).</summary>
+    /// <param name="context">The context.</param>
+    public void ApplyContext(PanelBodyContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        _context = context;
+        Recompose();
+    }
+
+    /// <summary>
+    /// The space the surface <b>measured</b> for the grid: the height from the top of the grid area down to the bottom
+    /// of the work area, less the bottom margin and what goes below the grid (CUA-001, CUA-002, CUA-003). Rows that
+    /// fit and the hiding for lack of space are decided from it.
+    /// </summary>
+    /// <param name="gridSpacePx">The measured height, in device-independent pixels.</param>
+    public void ApplyGridSpace(double gridSpacePx)
+    {
+        if (
+            double.IsNaN(gridSpacePx)
+            || (_gridSpace is { } known && Math.Abs(known - gridSpacePx) < 0.5)
+        )
+        {
+            return;
+        }
+
+        _gridSpace = gridSpacePx;
+        Recompose();
     }
 
     /// <summary>Applies the session: the presence of the panel.</summary>
@@ -152,7 +276,7 @@ public sealed class PanelViewModel : ObservableObject
 
     /// <summary>
     /// Applies what the engine holds: the panic strip appears while anything is held (SEG-002) and names every held
-    /// shortcut; each tile shows whether it holds («Manteniendo») or is latched.
+    /// shortcut; each tile shows whether it holds («Manteniendo») or is latched; the sticky modifiers show their level.
     /// </summary>
     /// <param name="snapshot">The engine snapshot.</param>
     public void ApplyEngine(EngineSnapshot snapshot)
@@ -169,7 +293,7 @@ public sealed class PanelViewModel : ObservableObject
             }
         }
 
-        foreach (var tile in Tiles)
+        foreach (var tile in _list.Concat(_strip))
         {
             var isHeld = held.TryGetValue(tile.Id, out var item);
             tile.ApplyState(
@@ -195,6 +319,7 @@ public sealed class PanelViewModel : ObservableObject
             ),
             localizer.Format(L.ReleaseAll)
         );
+        Recompose();
     }
 
     /// <summary>
@@ -213,6 +338,24 @@ public sealed class PanelViewModel : ObservableObject
     {
         AccessibleName = _localization.Current.Format(L.AppName);
         ApplyEngine(_engine);
+    }
+
+    /// <summary>Makes <paramref name="target"/> hold <paramref name="items"/>, in order, touching it only when they differ.</summary>
+    internal static void Sync(
+        ObservableCollection<TileViewModel> target,
+        IReadOnlyList<TileViewModel> items
+    )
+    {
+        if (target.Count == items.Count && target.SequenceEqual(items))
+        {
+            return;
+        }
+
+        target.Clear();
+        foreach (var item in items)
+        {
+            target.Add(item);
+        }
     }
 
     private static Message StateOf(PressedItem item) =>
@@ -234,7 +377,228 @@ public sealed class PanelViewModel : ObservableObject
             _ => null,
         };
 
+    private static Message StickyStateOf(StickyLevel level) =>
+        level switch
+        {
+            StickyLevel.Once => L.ModOnce,
+            StickyLevel.Locked => L.ModLock,
+            _ => L.ModOff,
+        };
+
+    /// <summary>
+    /// Keeps the view model of every tile whose shortcut stays (a tile whose behavior changed counts as new: the
+    /// surface picks its UI Automation pattern and touch target kind when it builds the control).
+    /// </summary>
+    private List<TileViewModel> SyncById(
+        Dictionary<ShortcutId, TileViewModel> byId,
+        IReadOnlyList<TileModel> tiles
+    )
+    {
+        var next = new List<TileViewModel>(tiles.Count);
+        var kept = new Dictionary<ShortcutId, TileViewModel>();
+        foreach (var tile in tiles)
+        {
+            if (byId.TryGetValue(tile.Id, out var existing) && existing.Behavior == tile.Behavior)
+            {
+                existing.Update(tile);
+            }
+            else
+            {
+                existing = new TileViewModel(tile, _controller);
+            }
+
+            kept.TryAdd(tile.Id, existing);
+            next.Add(existing);
+        }
+
+        byId.Clear();
+        foreach (var pair in kept)
+        {
+            byId.Add(pair.Key, pair.Value);
+        }
+
+        return next;
+    }
+
     private string? NameOf(ShortcutId shortcut) =>
-        Tiles.FirstOrDefault(tile => tile.Id == shortcut)?.AccessibleName
+        (
+            _listById.GetValueOrDefault(shortcut) ?? _stripById.GetValueOrDefault(shortcut)
+        )?.AccessibleName
         ?? _nameOfShortcut(shortcut);
+
+    private void GoToPage(int page)
+    {
+        _page = page;
+        Recompose();
+    }
+
+    private void NextStripPage()
+    {
+        _stripWindow = StripLayout.Window(
+            _strip.Count,
+            StripLayout.Capacity(_layout),
+            _stripWindow.NextPage
+        );
+        Recompose();
+    }
+
+    private string ViewKey() =>
+        _context.SearchingWithText ? SearchView
+        : _context.Frequents ? FrequentsView
+        : _model.Profile.Value;
+
+    /// <summary>Composes the body from the latest inputs; every decision is a call to the domain rules.</summary>
+    private void Recompose()
+    {
+        var shape = GridMetrics.Shape(_layout, _gridSpace);
+        var alert = Panic.IsVisible || _context.ElevatedApp is not null;
+        _cramped = CrampedRule.Evaluate(_cramped, alert, _gridSpace, shape.TileHeightPx);
+
+        var count = _list.Count;
+        var pageContext = new PageContext(ViewKey(), shape.Columns, shape.Rows, _layout.Compact);
+        _page = Paging.Reconcile(
+            _page,
+            _pageContext,
+            pageContext,
+            Paging.PageCount(count, shape.PerPage)
+        );
+        _pageContext = pageContext;
+        var window = Paging.Window(count, shape.PerPage, _page);
+        _stripWindow = StripLayout.Window(
+            _strip.Count,
+            StripLayout.Capacity(_layout),
+            _stripWindow.Page
+        );
+        var layers = BodyLayerRules.Evaluate(
+            new BodyLayerInputs(
+                _layout,
+                _context.SearchingWithText,
+                _cramped,
+                _context.Frequents,
+                _context.PickerOpen,
+                count,
+                window.PageCount,
+                _context.Notice is not null,
+                _context.CanRepeat,
+                _context.EditMode,
+                _context.ElevatedApp is not null
+            )
+        );
+        Layers = layers;
+        Shape = shape;
+
+        for (var i = 0; i < _list.Count; i++)
+        {
+            _list[i].ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForList(i) : null);
+        }
+
+        for (var i = 0; i < _strip.Count; i++)
+        {
+            _strip[i]
+                .ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForStrip(count, i) : null);
+        }
+
+        Sync(Tiles, _list.GetRange(window.Start, window.Count));
+        ApplyParts(window, layers);
+    }
+
+    private void ApplyParts(PageWindow window, BodyLayers layers)
+    {
+        var l = _localization.Current;
+        Pager.Apply(
+            window,
+            layers.Pager,
+            l.Format(L.PrevPage),
+            l.Format(L.NextPage),
+            l.Format(L.PageN)
+        );
+        Strip.Apply(
+            _strip.GetRange(_stripWindow.Start, _stripWindow.Count),
+            layers.AlwaysVisibleRow,
+            layers.AlwaysVisibleLabel,
+            StripLayout.ShowsNames(_layout),
+            l.Format(L.Always),
+            _stripWindow.HasMore,
+            _stripWindow.MoreLabel,
+            l.Format(L.StripMoreA),
+            StripLayout.TileHeight(_layout)
+        );
+        Sticky.Apply(
+            layers.StickyRow,
+            _engine.Sticky,
+            l.Format(L.StickyMods),
+            level => l.Format(StickyStateOf(level))
+        );
+        Selector.Apply(
+            layers.Selector,
+            _context.Frequents,
+            _context.PickerOpen,
+            _context.ActiveAppProfile == _model.Profile,
+            _model.ProfileName,
+            _model.ProfileIcon?.Name ?? string.Empty,
+            l.Format(L.Freq),
+            l.Format(L.ActiveApp),
+            l.Format(L.SwitchProf)
+        );
+        Picker.Apply(
+            _model.PickerEntries,
+            layers.PickerGrid,
+            _context.Frequents ? null : _model.Profile,
+            _context.ActiveAppProfile,
+            _context.SuggestionApp is { } app ? l.Format(L.CreateFor(app)) : null,
+            l.Format(L.MorePf),
+            l.Format(L.ActiveLegend)
+        );
+        var notice = _context.Notice;
+        Notices.Apply(
+            layers.NoticeBar,
+            notice is null ? l.Format(L.Ready) : l.Format(notice.Text),
+            notice?.Icon.Name ?? RestIcon,
+            notice?.Tone ?? NoticeTone.Rest,
+            notice?.CanUndo ?? false,
+            layers.Repeat,
+            l.Format(L.Undo),
+            l.Format(L.Repeat)
+        );
+        Admin.Apply(
+            layers.AdminNotice,
+            _context.ElevatedApp is { } elevated ? l.Format(L.AdminMsg(elevated)) : string.Empty,
+            l.Format(L.AdminBtn)
+        );
+        Empty.Apply(
+            layers.EmptyProfile,
+            _model.Profile,
+            l.Format(L.EmptyProfT),
+            l.Format(L.EmptyProfS(_model.ProfileName)),
+            l.Format(L.AddShortcut)
+        );
+    }
+
+    /// <summary>The intentions of a panel composed without them (M2): nothing happens.</summary>
+    private sealed class NoBodyIntents : IPanelBodyIntents
+    {
+        public static NoBodyIntents Instance { get; } = new();
+
+        public void ShowFrequents() { }
+
+        public void ReturnFromFrequents() { }
+
+        public void TogglePicker() { }
+
+        public void ChooseProfile(ProfileId profile) { }
+
+        public void CreateProfileForActiveApp() { }
+
+        public void OpenTemplates() { }
+
+        public void AdvanceSticky(ModifierKind modifier) { }
+
+        public void Undo() { }
+
+        public void Repeat() { }
+
+        public void AddShortcut(ProfileId profile) { }
+
+        public void RelaunchElevated() { }
+    }
 }
