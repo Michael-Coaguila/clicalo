@@ -191,7 +191,7 @@ TEM-004 citaba los fallos del tema claro (warn, accent sobre cardHi, peligro y l
 ## 8. Formas y foco
 
 - **Radios** (`Radii`): `Compact` 6, `Control` 8, `Button` 10, `Tile` 12, `LargeCard` 14, `Window` 16, `Panel` 18, `Modal` 20.
-- **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema; en alto contraste devuelve transparente.
+- **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %, `Bubble` 0 10 30 al 40 % y `Handle` (asa de la barra) 0 6 20 al 35 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema; en alto contraste devuelve transparente.
 - **Anillo de foco** (`FocusRing`): 3 px separados 2 px del control, en `focusRing`.
 
 ## 9. Código generado
