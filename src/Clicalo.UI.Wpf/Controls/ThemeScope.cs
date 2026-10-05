@@ -15,8 +15,11 @@ namespace Clicalo.UI.Wpf.Controls;
 /// <para>
 /// TEM-001: while a Windows contrast theme is on, the effective theme is always
 /// <see cref="ThemeId.SystemHighContrast"/>, whatever the preference. The switch happens in place when
-/// <see cref="SystemParameters.HighContrast"/> changes: only the resources are replaced, so the visual tree and the
-/// UI Automation tree (names, control types, patterns and states) stay exactly the same (S3, REG-06).
+/// <see cref="SystemParameters.HighContrast"/> changes: this scope only replaces resources, and once the switch is over
+/// the UI Automation tree (names, control types, patterns and states) is the same as before (S3, REG-06). While it
+/// happens it is not: WPF applies the window template again after each <c>WM_THEMECHANGED</c> (the default style of the
+/// window comes from the system theme dictionary), which rebuilds for a moment the subtree that UI Automation walks
+/// (S3, finding 3).
 /// </para>
 /// <para>
 /// Created and used on the UI thread of <see cref="Root"/>. The system notification may arrive on another UI thread;
