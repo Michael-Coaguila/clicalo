@@ -37,13 +37,26 @@ public sealed class TrayDesktopTests(PanelDesktopFixture fixture)
     {
         await PrepareWithRightsAsync();
         await fixture.Tray.UpdateStateAsync(panelVisible: true, anythingHeld: true);
-
-        var command = await ChooseAsync("Soltar todo");
+        var directReleases = 0;
+        EventHandler onRelease = (_, _) => Interlocked.Increment(ref directReleases);
+        fixture.Tray.ReleasePressedRequested += onRelease;
+        TrayCommand? command;
+        try
+        {
+            command = await ChooseAsync("Soltar todo");
+        }
+        finally
+        {
+            fixture.Tray.ReleasePressedRequested -= onRelease;
+        }
 
         command.ShouldBe(TrayCommand.ReleaseAll);
         fixture
             .Engine.Events.ShouldHaveSingleItem()
             .ShouldBe(new EngineEvent.ReleaseAll(ReleaseReason.User));
+        Volatile
+            .Read(ref directReleases)
+            .ShouldBe(1, "«Soltar todo» also releases without the engine (ADR-0023)");
         fixture.Probe.IsForeground.ShouldBeTrue(
             "the lease gives the foreground back before the command runs"
         );
