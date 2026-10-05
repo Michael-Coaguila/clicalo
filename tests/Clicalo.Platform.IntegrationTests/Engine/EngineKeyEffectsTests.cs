@@ -13,6 +13,8 @@ namespace Clicalo.Platform.IntegrationTests.Engine;
 /// </summary>
 [Trait("Req", "REG-03")]
 [Trait("Req", "BUS-003")]
+[Trait("Category", "Quarantine")]
+[Trait("Issue", "4")]
 public sealed class EngineKeyEffectsTests
 {
     private static readonly EngineConfig Config = new(

@@ -20,6 +20,8 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 /// </summary>
 [Trait("Req", "DAT-002")]
 [Trait("Req", "NFR-006")]
+[Trait("Category", "Quarantine")]
+[Trait("Issue", "4")]
 public sealed class S11LockTests : IDisposable
 {
     private static readonly TimeSpan Slack = TimeSpan.FromMilliseconds(300);

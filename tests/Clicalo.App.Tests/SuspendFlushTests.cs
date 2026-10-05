@@ -13,6 +13,8 @@ namespace Clicalo.App.Tests;
 [Trait("Req", "DAT-002")]
 [Trait("Req", "REG-08")]
 [Trait("Req", "SEG-006")]
+[Trait("Category", "Quarantine")]
+[Trait("Issue", "4")]
 public sealed class SuspendFlushTests
 {
     [Fact]

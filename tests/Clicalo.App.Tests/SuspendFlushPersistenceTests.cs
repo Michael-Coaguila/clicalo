@@ -21,6 +21,8 @@ namespace Clicalo.App.Tests;
 /// </summary>
 [Trait("Req", "DAT-002")]
 [Trait("Req", "REG-08")]
+[Trait("Category", "Quarantine")]
+[Trait("Issue", "4")]
 public sealed class SuspendFlushPersistenceTests : IDisposable
 {
     private static readonly string ContentFolder = RepoPaths.Combine("data", "content");
