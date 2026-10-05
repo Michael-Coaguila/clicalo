@@ -72,6 +72,8 @@ public sealed class StringsParityTests
                 "importInvalid",
                 "importTooLarge",
                 "incompleteTap",
+                // Texts of the M3 search and profile suggestion (catalog §6.1).
+                "installedApp",
                 "itemGone",
                 "keyMissing",
                 "kgFn",
@@ -88,6 +90,9 @@ public sealed class StringsParityTests
                 "saveFailT",
                 "saveReadOnly",
                 "schemaNewer",
+                "searchDenied",
+                "searchDictate",
+                "searchNoReturn",
                 "settingInvalid",
                 "sharedTextsExcluded",
                 "stepDeleted",

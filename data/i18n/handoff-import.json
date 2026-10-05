@@ -312,6 +312,26 @@
         "es": { "one": "Se excluyó {count} texto", "other": "Se excluyeron {count} textos" },
         "en": { "one": "{count} text was left out", "other": "{count} texts were left out" }
       }
+    },
+    "searchDictate": {
+      "notes": "Botón 🎤 junto al campo de búsqueda: pone el foco en el campo y abre el dictado de Windows (BUS-003). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "search",
+      "text": { "es": "Dictar", "en": "Dictate" }
+    },
+    "searchDenied": {
+      "notes": "Windows no dejó que el campo de búsqueda tomara el teclado (concesión TextInput denegada, BUS-002). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "searchDictate",
+      "text": { "es": "No pude abrir la búsqueda para escribir", "en": "Couldn’t open the search for typing" }
+    },
+    "searchNoReturn": {
+      "notes": "No se pudo devolver el primer plano a la app antes de ejecutar un resultado, así que no se envió nada (BUS-002 d). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "searchDenied",
+      "text": { "es": "No pude volver a la app anterior: no se envió nada", "en": "Couldn’t get back to the previous app: nothing was sent" }
+    },
+    "installedApp": {
+      "notes": "Aviso al crear el perfil desde la sugerencia, «[installedT]: {app}» sin concatenar fragmentos (PER-009, IDI-004). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "installedT",
+      "text": { "es": "Perfil instalado: {app}", "en": "Profile installed: {app}" }
     }
   },
   "retired": {
