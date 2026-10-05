@@ -66,6 +66,7 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0021](0021-kit-inicial-y-perfiles-con-varios-procesos.md) | Kit inicial como dato versionado y perfiles vinculados a varios procesos (decisión D2 del usuario) | Aceptado | 2026-10-03 |
 | [0022](0022-runtimes-publicados-del-launcher.md) | `Clicalo.Launcher` restaura y publica para los dos runtimes distribuidos | Propuesto | 2026-10-05 |
 | [0023](0023-guardian-simple.md) | Guardián simple: Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia (sustituye partes de ADR-0004, ADR-0018 y ADR-0019) | Propuesto | 2026-10-05 |
+| [0024](0024-vigilante-de-foco-simple.md) | Vigilante de foco simple: una restauración por activación sin concesión, coalescida mientras haya una en cola (precisa ADR-0005) | Aceptado | 2026-10-05 |
 
 El hito M0 exige expresamente los ADR 0001, 0002 y 0015
 ([§14 del plano](../architecture/blueprint.md#14-hoja-de-ruta-por-hitos)); el resto recoge las demás

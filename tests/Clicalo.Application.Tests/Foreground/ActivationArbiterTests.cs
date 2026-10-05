@@ -8,7 +8,8 @@ namespace Clicalo.Application.Tests.Foreground;
 /// <summary>
 /// The orchestrator as <see cref="IActivationArbiter"/> for <c>ActivationGuard</c> (blueprint §3.5, deviation D-14):
 /// an activation is legitimate only for the target of the lease being granted or active, and a reported violation
-/// gives the foreground back to the last verified external window, or to the target of the active lease.
+/// gives the foreground back to the last verified external window, or to the target of the active lease, with one
+/// retry and the taskbar flashing when both fail; never over an app the user switched to.
 /// </summary>
 [Trait("Req", "REG-01")]
 public sealed class ActivationArbiterTests : IDisposable
@@ -98,18 +99,11 @@ public sealed class ActivationArbiterTests : IDisposable
         _world.Control.Script.Enqueue(false);
         _world.Control.Script.Enqueue(true);
 
-        var pending = await _world.StartUntilItWaitsAsync(() =>
-            _world
-                .Orchestrator.RestoreAfterViolationAsync(
-                    Word,
-                    TestContext.Current.CancellationToken
-                )
-                .AsTask()
-        );
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        await EndOf(pending);
+        await RunRestoreAsync();
 
         _world.Control.Attempts.ShouldBe([Word, Word]);
+        _world.Control.Flashed.ShouldBeEmpty();
+        _world.Control.Foreground.ShouldBe(Word);
         Timings.Foreground.RestoreRetryDelay.ShouldBeLessThan(
             Timings.Windowing.ViolationRestoreBudget,
             "the retry fits inside the REG-01 restore budget"
@@ -117,22 +111,26 @@ public sealed class ActivationArbiterTests : IDisposable
     }
 
     [Fact]
-    public async Task A_restore_that_reached_the_window_is_not_retried_once_the_foreground_moves_on()
+    public async Task A_violation_restore_that_Windows_refuses_twice_flashes_the_app()
     {
-        // Spike S1 in CI (OrchestratedRestoreTests): GetForegroundWindow did not confirm the restore at once, InputProbe
-        // got the foreground back a moment later, and the next forced activation put the panel in front before the
-        // single look at the end of the wait. That look judged the restore refused, and its retry took the foreground
-        // back before the panel saw itself in front, so ActivationGuard never counted that activation.
         _world.Control.Foreground = Panel;
         _world.Control.Script.Enqueue(false);
-        var pending = await _world.StartUntilItWaitsAsync(() =>
-            _world
-                .Orchestrator.RestoreAfterViolationAsync(
-                    Word,
-                    TestContext.Current.CancellationToken
-                )
-                .AsTask()
-        );
+        _world.Control.Script.Enqueue(false);
+
+        await RunRestoreAsync();
+
+        _world.Control.Attempts.ShouldBe([Word, Word]);
+        _world.Control.Flashed.ShouldBe([Word]);
+    }
+
+    [Fact]
+    public async Task A_restore_that_reached_the_window_is_not_retried_once_the_foreground_moves_on()
+    {
+        // The first look that finds the window confirms the attempt: a retry at the end of the wait would take the
+        // foreground from whatever is in front by then.
+        _world.Control.Foreground = Panel;
+        _world.Control.Script.Enqueue(false);
+        var pending = await _world.StartUntilItWaitsAsync(Report);
 
         _world.Control.Foreground = Word;
         _world.Time.Advance(Timings.Foreground.RestoreVerifyInterval);
@@ -140,37 +138,7 @@ public sealed class ActivationArbiterTests : IDisposable
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
         await EndOf(pending);
 
-        _world.Control.Attempts.ShouldBe(
-            [Word],
-            "the restore was confirmed when Word came back; the new activation is the guard's to report"
-        );
-        _world.Control.Foreground.ShouldBe(Panel);
-    }
-
-    [Fact]
-    public async Task A_restore_is_confirmed_by_the_monitor_even_if_the_foreground_moved_on_between_two_looks()
-    {
-        // Spike S1 in CI (s0 37171041134): Windows timers run the looks 15.6 ms apart, InputProbe was back and the panel
-        // forced again between two of them, and the retry at the end of the wait reverted that activation before
-        // ActivationGuard saw it. The monitor had verified InputProbe in front meanwhile.
-        _world.Control.Foreground = Panel;
-        _world.Control.Script.Enqueue(false);
-        var pending = await _world.StartUntilItWaitsAsync(() =>
-            _world
-                .Orchestrator.RestoreAfterViolationAsync(
-                    Word,
-                    TestContext.Current.CancellationToken
-                )
-                .AsTask()
-        );
-
-        _world.Monitor.SwitchTo(Word);
-        _world.Control.Foreground = Panel;
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        await EndOf(pending);
-
-        _world.Control.Attempts.ShouldBe([Word], "the monitor's report confirmed the restore");
-        _world.Control.Foreground.ShouldBe(Panel);
+        _world.Control.Attempts.ShouldBe([Word]);
     }
 
     [Fact]
@@ -178,68 +146,52 @@ public sealed class ActivationArbiterTests : IDisposable
     {
         _world.Control.Foreground = Panel;
         _world.Control.Script.Enqueue(false);
-        var pending = await _world.StartUntilItWaitsAsync(() =>
-            _world
-                .Orchestrator.RestoreAfterViolationAsync(
-                    Word,
-                    TestContext.Current.CancellationToken
-                )
-                .AsTask()
-        );
+        var pending = await _world.StartUntilItWaitsAsync(Report);
 
         _world.Monitor.SwitchTo(Notepad);
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
         await EndOf(pending);
 
         _world.Control.Attempts.ShouldBe([Word], "the user chose Notepad meanwhile");
+        _world.Control.Flashed.ShouldBeEmpty();
         _world.Control.Foreground.ShouldBe(Notepad);
     }
 
     [Fact]
-    public async Task A_violation_restore_that_waited_for_another_does_nothing_once_the_app_is_back()
+    public async Task A_queued_restore_does_nothing_once_the_user_switched_apps()
     {
-        // Spike S1 in CI (OrchestratedRestoreTests, cycles 18 to 20): the restore of cycle 19 waited behind the retry of
-        // cycle 18, InputProbe was back meanwhile, and when its turn came it took the foreground from the forced
-        // activation of cycle 20 before ActivationGuard saw the panel in front.
+        // The second report waits behind the first restore; meanwhile the user picks Notepad.
         _world.Control.Foreground = Panel;
         _world.Control.Script.Enqueue(false);
-        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
-        (await _world.WaitsToVerifyAsync(_world.Orchestrator.ViolationRestore)).ShouldBeTrue(
-            "the first restore verifies its refused attempt"
-        );
-        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
-        var queued = _world.Orchestrator.ViolationRestore;
+        var first = await _world.StartUntilItWaitsAsync(Report);
+        var queued = Report();
 
-        _world.Monitor.SwitchTo(Word);
-        _world.Time.Advance(Timings.Foreground.RestoreVerifyInterval);
+        _world.Monitor.SwitchTo(Notepad);
+        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        await EndOf(first);
         await EndOf(queued);
 
         _world.Control.Attempts.ShouldBe(
             [Word],
-            "Word was verified in front after the second report: that violation is over"
+            "Notepad was verified in front: nothing is taken from it"
         );
+        _world.Control.Foreground.ShouldBe(Notepad);
     }
 
     [Fact]
-    public async Task A_violation_restore_that_waited_still_runs_while_a_surface_is_in_front()
+    public async Task A_queued_restore_still_runs_while_a_surface_is_in_front()
     {
         // The first restore is refused twice, so the panel stays in front all along.
         _world.Control.Foreground = Panel;
         _world.Control.Script.Enqueue(false);
         _world.Control.Script.Enqueue(false);
-        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
-        (await _world.WaitsToVerifyAsync(_world.Orchestrator.ViolationRestore)).ShouldBeTrue(
-            "the first restore verifies its refused attempt"
-        );
-        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
-        var queued = _world.Orchestrator.ViolationRestore;
+        var first = await _world.StartUntilItWaitsAsync(Report);
+        var queued = Report();
 
         // Word was verified in front for a moment meanwhile, but the panel is in front when the queued restore runs.
         _world.Monitor.SwitchTo(Word, alsoForeground: false);
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        _ = await _world.WaitsToVerifyAsync(queued);
-        _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        await EndOf(queued);
+        await RunToTheEndAsync(first);
+        await RunToTheEndAsync(queued);
 
         _world.Control.Attempts.ShouldBe([Word, Word, Word]);
         _world.Control.Foreground.ShouldBe(Word);
@@ -281,10 +233,6 @@ public sealed class ActivationArbiterTests : IDisposable
 
         world.Orchestrator.ReportViolation(Violation(Panel, PanelSurface));
         await world.Orchestrator.ViolationRestore;
-        await world.Orchestrator.RestoreAfterViolationAsync(
-            WindowToken.None,
-            TestContext.Current.CancellationToken
-        );
 
         world.Control.Attempts.ShouldBeEmpty();
     }
@@ -308,6 +256,27 @@ public sealed class ActivationArbiterTests : IDisposable
         attemptedInsideTheReport.ShouldBeFalse();
         _world.Control.Attempts.ShouldBe([Word]);
         _world.Control.Foreground.ShouldBe(Word);
+    }
+
+    /// <summary>Reports a violation of the panel and returns the restore it started.</summary>
+    private Task Report()
+    {
+        Arbiter.ReportViolation(Violation(Panel, PanelSurface));
+        return _world.Orchestrator.ViolationRestore;
+    }
+
+    /// <summary>Reports a violation of the panel and runs its restore to the end, through every verification wait.</summary>
+    private Task RunRestoreAsync() => RunToTheEndAsync(Report());
+
+    private async Task RunToTheEndAsync(Task restore)
+    {
+        for (var waits = 0; await _world.WaitsToVerifyAsync(restore); waits++)
+        {
+            waits.ShouldBeLessThan(4);
+            _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
+        }
+
+        await EndOf(restore);
     }
 
     private ActivationViolation Violation(WindowToken window, SurfaceId surface) =>

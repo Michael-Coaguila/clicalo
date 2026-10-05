@@ -19,10 +19,4 @@ public interface IForegroundOrchestrator
     /// <see cref="LeaseKind.TrayMenu"/>.
     /// </summary>
     ValueTask<LeaseResult> AcquireAsync(LeaseRequest request, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// After a REG-01 violation, gives the foreground back to <paramref name="expected"/> (normally
-    /// <see cref="Current"/>) with verification, within <c>Timings.Windowing.ViolationRestoreBudget</c>.
-    /// </summary>
-    ValueTask RestoreAfterViolationAsync(WindowToken expected, CancellationToken cancellationToken);
 }

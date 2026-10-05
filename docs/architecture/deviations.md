@@ -300,21 +300,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - `WM_DPICHANGED` se maneja como pide el plano y además se reenvía a `HwndTarget` (con un indicador de reentrada)
     dentro del veto, porque WPF necesita el mensaje para reescalar (ACC-008) y su `SetWindowPos` no lleva
     `SWP_NOACTIVATE` (#7561).
-  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes). Un mensaje de activación
-    para una superficie que no tiene el primer plano (`GetForegroundWindow`) se juzga por quién lo tiene: una ventana
-    del propio proceso sin concesión (otra superficie, `OwnerAnchor`) es una violación al momento; una ventana de otra
-    app puede ser un mensaje tardío (la restauración va por el grupo de hilos mientras el hilo de UI aún entrega los
-    mensajes de la activación) o una activación que `GetForegroundWindow` todavía no confirma (S1 la vio llegar así),
-    así que el mensaje se retiene, se repara `WS_EX_NOACTIVATE` y el juicio se aplaza: cuando el hilo de UI ha
-    entregado lo que tenía en cola y, si el primer plano sigue fuera, otra vez tras
-    `Timings.Windowing.ActivationRecheck` (50 ms). Si entonces tiene el primer plano una ventana del proceso sin
-    concesión, cuenta una violación; si no, era tardío y no cuenta. Una violación abierta termina cuando el hilo de UI
-    vuelve a su *dispatcher* tras la ráfaga de mensajes que la abrió (Windows entrega toda una activación en una sola
-    recuperación), y antes con `WA_INACTIVE`, `WM_ACTIVATEAPP(FALSE)`, el siguiente `WM_ACTIVATEAPP(TRUE)`, el primer
-    plano visto fuera del proceso o un mensaje que la violación ya había recibido para esa superficie (Windows envía
-    cada uno una vez por activación). El plano la cerraba con la desactivación, pero cuando la restauración gana la
-    carrera Windows puede no desactivar nunca la superficie, y una violación abierta se tragó la activación forzada
-    siguiente, que ni se contó ni se revirtió (S1, hallazgos 6, 8, 11 y 13).
+  - `ActivationGuard` sigue una regla simple ([ADR-0024](../adr/0024-vigilante-de-foco-simple.md)): cada
+    activación sin concesión pide una restauración, salvo que ya haya una en cola en el *dispatcher*, a la que se
+    suma, así que la restauración siempre llega después de las activaciones que cubre. Sustituye al juicio aplazado
+    y a las violaciones abiertas de M1, que se tragaron activaciones forzadas cuando Windows no desactivaba la
+    superficie (S1, hallazgos 6, 8, 11 y 13).
   - Las superficies, `OwnerAnchor` y `SurfaceRegistry` viven en un único hilo; todas comparten `OwnerAnchor`, así que
     la banda *topmost* se pierde y se repara en familia.
 - **Motivo.** Sin el veto, una prueba sin escritorio mostró `WM_ACTIVATEAPP`, `WM_ACTIVATE` y `WM_SETFOCUS` en la
@@ -367,8 +357,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     `GrantedAt`, `IsActive`, `EndReason`, `Ended` y `KeepAlive()`; en `ForegroundOrchestrator`, `ActiveLease` y
     `EndActiveLeaseAsync` (evento terminal).
   - Cada `SetForegroundWindow` que `GetForegroundWindow` no confirma al momento se vuelve a comprobar cada
-    `RestoreVerifyInterval` durante `RestoreRetryDelay`, y también lo confirma el aviso del monitor de que la ventana
-    llegó delante, antes de contarse como rechazado: la activación entre hilos es asíncrona (S4, hallazgo 1), y una
+    `RestoreVerifyInterval` durante `RestoreRetryDelay` antes de contarse como rechazado: la activación entre hilos es asíncrona (S4, hallazgo 1), y una
     sola mirada al final de la espera daba por rechazada una restauración que había funcionado (S1, hallazgo 10). No se
     reintenta si el monitor verificó entretanto un cambio a otra app, y una restauración tras una violación que esperó
     su turno no hace nada si el monitor verificó otra ventana externa después del informe y ninguna superficie está
