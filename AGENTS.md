@@ -117,7 +117,7 @@ Su API pública son los tipos `public` de la raíz del módulo; los detalles son
 |---|---|---|
 | UI (roles Surfaces y Workspace) | Ventanas no activables, `PointerInputSource`, `SessionStore` e `InteractionStore` (Surfaces); Centro de control y bienvenida (Workspace) | E/S, esperas, `SendInput`, `SetForegroundWindow` |
 | Engine | `EngineHost`, `SendInput` a través de `IInputInjector` | E/S de disco o red, llamadas a la UI, esperas bloqueantes, `ShellExecute`, WMI |
-| SysEvents | *Hooks* de WinEvent, sesión, energía, bandeja, portapapeles, `ForegroundOrchestrator`, `PointerPositionTracker`, `EmergencyReleaser` | Lógica de negocio y llamadas que puedan bloquear |
+| SysEvents | *Hooks* de WinEvent, sesión, energía, bandeja, portapapeles, `ForegroundOrchestrator`, `PointerPositionTracker` | Lógica de negocio y llamadas que puedan bloquear |
 | Shell | Lanzar apps y webs, comandos de sistema | Enviar entrada o tocar la UI |
 | Hook (bajo demanda) | `WH_KEYBOARD_LL` y `WH_MOUSE_LL` temporales | Cualquier cosa distinta de escribir en un anillo prealocado |
 | Persistence | Serializar, validar y escribir el documento y el uso; copias | Tocar la UI |

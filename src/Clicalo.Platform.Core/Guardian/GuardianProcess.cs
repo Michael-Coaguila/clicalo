@@ -157,10 +157,6 @@ public sealed unsafe class GuardianProcess : IDisposable
     public bool WaitForExit(TimeSpan timeout) =>
         GuardianHandles.WaitForExit((nint)_process.Value, timeout);
 
-    /// <summary>Ends the process at once (the chaos tests of S9: «muerte del proceso»).</summary>
-    /// <param name="exitCode">Its exit code.</param>
-    public bool Kill(int exitCode) => PInvoke.TerminateProcess(_process, (uint)exitCode);
-
     /// <inheritdoc />
     public void Dispose()
     {
