@@ -31,12 +31,13 @@ public sealed class PanelHeader : Border
     private const double TitleIconSize = 18;
     private const double TitleTextSize = 15;
     private const double TitleGap = 5;
+    private const double TitlePadding = 2;
     private const double DotSize = 8;
     private const double Gap = 2;
 
     private readonly PanelHeaderViewModel _viewModel;
     private readonly Border _grip;
-    private readonly StackPanel _title;
+    private readonly DockPanel _title;
     private readonly SymbolIcon _titleIcon;
     private readonly TextBlock _titleText;
     private readonly Ellipse _dot;
@@ -80,6 +81,7 @@ public sealed class PanelHeader : Border
         _titleIcon = new SymbolIcon
         {
             Size = TitleIconSize,
+            Margin = new Thickness(TitlePadding, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
         _titleIcon.SetResourceReference(
@@ -106,21 +108,25 @@ public sealed class PanelHeader : Border
         {
             Width = DotSize,
             Height = DotSize,
-            Margin = new Thickness(TitleGap, 0, 0, 0),
+            Margin = new Thickness(TitleGap, 0, TitlePadding, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
         _dot.SetResourceReference(Shape.FillProperty, ThemeBrushKey.For(ColorToken.Accent));
-        _title = new StackPanel
+        // A dock panel, not a stack panel: the name takes the remaining width (flex: 1 in the prototype), so a long
+        // name is trimmed with «…» instead of being measured without limit and cut.
+        _title = new DockPanel
         {
-            Orientation = Orientation.Horizontal,
+            LastChildFill = true,
             Height = TouchTarget.AtLeastMinimum(height),
             Margin = new Thickness(Gap, -Overflow(height), 0, -Overflow(height)),
             Background = Brushes.Transparent,
             ClipToBounds = true,
         };
+        DockPanel.SetDock(_titleIcon, Dock.Left);
+        DockPanel.SetDock(_dot, Dock.Right);
         _title.Children.Add(_titleIcon);
-        _title.Children.Add(_titleText);
         _title.Children.Add(_dot);
+        _title.Children.Add(_titleText);
 
         _autoFixed = new AutoFixedButton
         {
