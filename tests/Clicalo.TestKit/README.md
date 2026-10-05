@@ -14,6 +14,21 @@ Ayudas compartidas por los proyectos de prueba (blueprint §10.1). `Clicalo.Test
 
 - Las pruebas que necesitan un escritorio interactivo llevan además `[Trait("Requires", "Desktop")]` (ver más abajo).
 
+## Cuarentena: `[Trait("Category", "Quarantine")]`
+
+Una prueba inestable que no es un defecto del producto sale del nivel PR sin borrarse:
+
+```csharp
+[Trait("Category", "Quarantine")]
+[Trait("Issue", "123")] // el issue de GitHub, con la etiqueta flaky
+```
+
+- `cl check`, `cl test`, `cl fast` y `cl desk` la dejan fuera; `cl quarantine` la ejecuta, y `nightly.yml` cada noche.
+- Se escribe con literales, como `Req`. `QuarantineTests` (`build/Build.Tests`, dentro de `cl check`) falla si un archivo
+  de `tests/` lleva la cuarentena sin un `Issue` numérico.
+- Se sale corrigiendo la causa: el mismo PR quita los dos rasgos y cierra el *issue*. El detalle está en
+  [Pruebas inestables](../../docs/architecture/testing-strategy.md#pruebas-inestables).
+
 ## Instantáneas de texto (`TextSnapshot`)
 
 ```csharp

@@ -4,7 +4,7 @@ namespace Clicalo.Build.Tests;
 public sealed class ClApplicationTests
 {
     private const string Verbs =
-        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import, adr-check, run, note y perf";
+        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import, adr-check, run, note, perf y quarantine";
 
     private const string VerbList = "cl: las órdenes son " + Verbs;
 

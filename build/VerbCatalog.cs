@@ -20,6 +20,7 @@ internal static class VerbCatalog
     public const string Run = "run";
     public const string Note = "note";
     public const string Perf = "perf";
+    public const string Quarantine = "quarantine";
 
     /// <summary>
     /// Verbs that run a verb of <c>tools/Clicalo.DevCli</c> with the same name. Everything written after one of
@@ -27,9 +28,12 @@ internal static class VerbCatalog
     /// </summary>
     public static IReadOnlyList<string> DevCli { get; } = [I18nCheck, I18nImport, AdrCheck];
 
-    /// <summary>Verbs implemented so far (M0 and the M2 walking skeleton), in the order they are listed to people.</summary>
+    /// <summary>
+    /// Verbs implemented so far (M0, the M2 walking skeleton and the nightly quarantine), in the order they are listed
+    /// to people.
+    /// </summary>
     public static IReadOnlyList<string> Available { get; } =
-    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli, Run, Note, Perf];
+    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli, Run, Note, Perf, Quarantine];
 
     /// <summary>Verbs of later milestones (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =
