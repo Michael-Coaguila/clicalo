@@ -1,0 +1,149 @@
+{
+  "$schema": "../schemas/common-actions.schema.json",
+  "catalogVersion": 1,
+  "origins": ["seed", "library"],
+  "sources": [
+    {
+      "id": "word-es",
+      "url": "https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-de-word-95ef89dd-7142-4b50-afb2-f762f663ceb2",
+      "documents": "Word en español: «Aplicar formato en negrita al texto» Ctrl+N; «Buscar texto» Ctrl+B; «Seleccionar todo el contenido de documento» Ctrl+E; «Abrir un documento» Ctrl+A; «Crear un nuevo documento» Ctrl+U. La página mezcla filas sin traducir (por ejemplo Guardar Ctrl+S o Cursiva Ctrl+I), que no se usan."
+    },
+    {
+      "id": "word-save-es",
+      "url": "https://support.microsoft.com/es-es/office/usar-un-lector-de-pantalla-para-guardar-un-documento-en-word-2e3df620-c7e6-47e3-8892-f14e75575cfc",
+      "documents": "Word en español: para guardar un documento, «presione Ctrl+G»."
+    },
+    {
+      "id": "excel-es",
+      "url": "https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-de-excel-1798d9d5-842a-42b8-9c99-9b7213f0040f",
+      "documents": "Excel en español: negrita Ctrl+N; cursiva Ctrl+K; subrayado Ctrl+S; «seleccionar toda la hoja de cálculo» Ctrl+E; «Mostrar el cuadro de diálogo Buscar» Ctrl+B; «Abrir un libro de trabajo» Ctrl+A; «Abrir un nuevo libro en blanco» Ctrl+U."
+    },
+    {
+      "id": "excel-save-es",
+      "url": "https://support.microsoft.com/es-es/excel/basic-tasks-in-excel",
+      "documents": "Excel en español: para guardar, «presione Ctrl+G»."
+    },
+    {
+      "id": "powerpoint-es",
+      "url": "https://support.microsoft.com/es-es/office/usar-m%C3%A9todos-abreviados-de-teclado-para-crear-presentaciones-de-powerpoint-ebb3d20e-dcd4-444f-a38e-bb5c5ed180f4",
+      "documents": "PowerPoint en español: «Aplicar el formato de negrita» Ctrl+N; «Aplicar formato de subrayado» Ctrl+S; «Aplicar el formato de cursiva» Ctrl+K; «Seleccionar todo el texto de la Vista Esquema» y «Seleccionar todos los objetos en una diapositiva» Ctrl+E. Buscar aparece como Ctrl+F sin traducir: no hay excepción de Buscar."
+    },
+    {
+      "id": "powerpoint-save-es",
+      "url": "https://support.microsoft.com/es-es/powerpoint/basic-tasks-for-creating-a-powerpoint-presentation",
+      "documents": "PowerPoint en español: «Presione Ctrl+G a menudo» para guardar."
+    },
+    {
+      "id": "outlook-es",
+      "url": "https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-para-outlook-3cdeb221-7ae5-4c1d-8c1d-9e63216c1efd",
+      "documents": "Outlook en español (clásico y nuevo): «Aplicar el formato de negrita» Ctrl+N; «Aplicar el formato de cursiva» Ctrl+K; «Subrayar texto» Ctrl+S; «Guardar un elemento» Ctrl+G. Seleccionar todo y Buscar no tienen una combinación española común documentada: no hay excepción."
+    }
+  ],
+  "families": [
+    { "id": "word", "processes": ["winword.exe"] },
+    { "id": "excel", "processes": ["excel.exe"] },
+    { "id": "powerpoint", "processes": ["powerpnt.exe"] },
+    { "id": "outlook", "processes": ["outlook.exe", "olk.exe"] }
+  ],
+  "actions": [
+    {
+      "id": "save",
+      "keys": ["ctrl", "s"],
+      "exceptions": [
+        {
+          "families": ["word", "excel", "powerpoint", "outlook"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "g"],
+          "sources": ["word-save-es", "excel-save-es", "powerpoint-save-es", "outlook-es"]
+        }
+      ]
+    },
+    {
+      "id": "find",
+      "keys": ["ctrl", "f"],
+      "exceptions": [
+        {
+          "families": ["word", "excel"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "b"],
+          "sources": ["word-es", "excel-es"]
+        }
+      ]
+    },
+    {
+      "id": "selall",
+      "keys": ["ctrl", "a"],
+      "exceptions": [
+        {
+          "families": ["word", "excel", "powerpoint"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "e"],
+          "sources": ["word-es", "excel-es", "powerpoint-es"],
+          "note": "En español, Ctrl+A abre un archivo en Word y Excel."
+        }
+      ]
+    },
+    {
+      "id": "bold",
+      "keys": ["ctrl", "b"],
+      "exceptions": [
+        {
+          "families": ["word", "excel", "powerpoint", "outlook"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "n"],
+          "sources": ["word-es", "excel-es", "powerpoint-es", "outlook-es"]
+        }
+      ]
+    },
+    {
+      "id": "italic",
+      "keys": ["ctrl", "i"],
+      "exceptions": [
+        {
+          "families": ["word", "excel", "powerpoint", "outlook"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "k"],
+          "sources": ["excel-es", "powerpoint-es", "outlook-es"],
+          "note": "La página de Word deja Cursiva Ctrl+I sin traducir; Word usa la misma combinación que el resto de Office en español, como la plantilla word.json."
+        }
+      ]
+    },
+    {
+      "id": "underline",
+      "keys": ["ctrl", "u"],
+      "exceptions": [
+        {
+          "families": ["word", "excel", "powerpoint", "outlook"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "s"],
+          "sources": ["excel-es", "powerpoint-es", "outlook-es"],
+          "note": "La página de Word deja Subrayado Ctrl+U sin traducir; Word usa la misma combinación que el resto de Office en español, como la plantilla word.json."
+        }
+      ]
+    },
+    {
+      "id": "open",
+      "keys": ["ctrl", "o"],
+      "exceptions": [
+        {
+          "families": ["word", "excel"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "a"],
+          "sources": ["word-es", "excel-es"]
+        }
+      ]
+    },
+    {
+      "id": "new",
+      "keys": ["ctrl", "n"],
+      "exceptions": [
+        {
+          "families": ["word", "excel"],
+          "appsLanguage": "es",
+          "keys": ["ctrl", "u"],
+          "sources": ["word-es", "excel-es"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+using Clicalo.Domain.CommonActions;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 
@@ -26,4 +27,10 @@ public sealed record EngineConfig(
     /// <c>vk</c>); <see langword="null"/> uses the saved combination.
     /// </summary>
     public LangCode? AppsLanguage { get; init; }
+
+    /// <summary>
+    /// The adaptive common actions (decision D4): a tap of a common action sends the combination of the app in front
+    /// and <see cref="AppsLanguage"/>. Empty by default: every tap is sent as saved.
+    /// </summary>
+    public CommonActionTable CommonActions { get; init; } = CommonActionTable.Empty;
 }

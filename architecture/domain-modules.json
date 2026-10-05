@@ -80,6 +80,13 @@
       "dependsOn": ["Library"]
     },
     {
+      "name": "CommonActions",
+      "group": "rules",
+      "description": "Adaptive common actions: the combination a common action sends to the app in front (decision D4, data/catalogs/common-actions.json).",
+      "dependsOn": ["Library", "Keys", "Primitives"],
+      "deviation": "Not in §4.3: added by decision D4 of the user (2026-10-05)."
+    },
+    {
       "name": "Duplicates",
       "group": "rules",
       "description": "Repeated shortcuts detection and DuplicatePolicy.",
@@ -145,8 +152,8 @@
       "name": "Execution",
       "group": "execution",
       "description": "ActivationPolicy, planners per ActionKind and EngineReducer.",
-      "dependsOn": ["Library", "KeySafety", "StickyModifiers", "Touch", "Settings", "Messages", "Errors", "Geometry", "Timing"],
-      "deviation": "Timing added: the delay between injected events is Timings.Injection.InterEventDelay (§7.7)."
+      "dependsOn": ["Library", "KeySafety", "StickyModifiers", "Touch", "Settings", "Messages", "Errors", "Geometry", "Timing", "CommonActions"],
+      "deviation": "Timing added: the delay between injected events is Timings.Injection.InterEventDelay (§7.7). CommonActions added: a tap of a common action sends the combination of the app in front (decision D4)."
     },
     {
       "name": "Document",
