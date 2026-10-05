@@ -157,6 +157,13 @@ public sealed class ActivationGuard
 
         if (Arbiter.IsActivationLeased(window))
         {
+            if (message == ActivationMessage.Activate)
+            {
+                // WPF sees this activation begin, so it must see its end: a kept WM_ACTIVATE whose WA_INACTIVE never
+                // came (a restore that did not deactivate the surface, spike S1) no longer applies.
+                _ = _keptActivations.Remove(surface);
+            }
+
             return false;
         }
 

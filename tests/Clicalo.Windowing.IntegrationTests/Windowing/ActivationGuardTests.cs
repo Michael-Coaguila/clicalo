@@ -465,6 +465,41 @@ public sealed class ActivationGuardTests
         failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
     }
 
+    [Fact]
+    [Trait("Req", "REG-01")]
+    [Trait("Req", "BUS-002")]
+    public void A_leased_activation_after_a_violation_that_was_never_deactivated_reaches_WPF_whole()
+    {
+        // Spike S1 in CI: the restore of a violation may never deactivate the panel, so the WA_INACTIVE that would match
+        // its kept WM_ACTIVATE never comes. A later activation under a lease (text input) is WPF's to see: so is its end,
+        // or WPF keeps the panel active after the lease.
+        using var failures = DebugFailures.Capture();
+        using var lab = SurfaceLab.Create();
+        var surface = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100));
+        var panel = surface.Handle;
+
+        lab.SimulatedForeground = panel;
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmActivate, NativeSurface.Active));
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+        lab.Guard.Violations.ShouldBe(1);
+        WpfThread
+            .Invoke(() => surface.IsActive)
+            .ShouldBeFalse("the violating WM_ACTIVATE is kept from WPF");
+
+        lab.Arbiter.Lease(surface.SurfaceWindow);
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmActivate, NativeSurface.Active));
+        WpfThread.Invoke(() => surface.IsActive).ShouldBeTrue("the leased activation reaches WPF");
+
+        lab.Arbiter.EndLease(surface.SurfaceWindow);
+        lab.SimulatedForeground = AnotherApp;
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmActivate, NativeSurface.Inactive));
+
+        WpfThread
+            .Invoke(() => surface.IsActive)
+            .ShouldBeFalse("WPF sees the end of the activation it saw begin");
+        lab.Guard.Violations.ShouldBe(1);
+    }
+
     /// <summary>
     /// Runs the deferred judgment of the guard to the end: the look queued behind the work of the WPF thread, then the
     /// recheck after <c>Timings.Windowing.ActivationRecheck</c> on <paramref name="clock"/>.
