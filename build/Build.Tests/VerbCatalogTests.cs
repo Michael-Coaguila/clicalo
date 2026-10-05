@@ -60,6 +60,7 @@ public sealed class VerbCatalogTests
             "run",
             "note",
             "perf",
+            "quarantine",
         ]);
 
     [Fact]

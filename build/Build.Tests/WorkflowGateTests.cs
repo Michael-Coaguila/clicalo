@@ -2,10 +2,16 @@ namespace Clicalo.Build.Tests;
 
 /// <summary>
 /// The M2 exit criterion «tocar → SendInput en InputProbe con p95 ≤ 50 ms» (blueprint §10.3, §14; NFR-001) is enforced by
-/// a run, not only measured: the <c>perf</c> job of pr.yml runs <c>cl perf</c>, fails when a budget with the gate
-/// <c>everyRun</c> is broken and publishes the numbers, and lab.yml repeats it on the touch lab with every budget gating
-/// (<c>CLICALO_PERF_GATE=1</c>). A <c>continue-on-error</c> would turn the gate back into a trend, so no job has one.
+/// a run, not only measured: the <c>perf</c> job of nightly.yml runs <c>cl perf</c> every night, fails when a budget with
+/// the gate <c>everyRun</c> is broken and publishes the numbers, and lab.yml repeats it on the touch lab with every budget
+/// gating (<c>CLICALO_PERF_GATE=1</c>). Every nightly job must be green before a release. A <c>continue-on-error</c>
+/// would turn the gate back into a trend, so no job has one.
 /// </summary>
+/// <remarks>
+/// The tiers (testing-strategy.md): a pull request is gated only by deterministic tests (<c>verify</c> = <c>cl check</c>);
+/// the desktop, the measurements, chaos and the quarantine run in nightly.yml, which reports a scheduled failure as an
+/// issue from the only job allowed to write issues.
+/// </remarks>
 [Trait("Req", "NFR-001")]
 public sealed class WorkflowGateTests
 {
@@ -16,9 +22,53 @@ public sealed class WorkflowGateTests
     );
 
     [Fact]
-    public void The_perf_job_of_pr_yml_gates_and_publishes_the_numbers()
+    public void A_pull_request_is_gated_only_by_the_deterministic_tier()
     {
-        var job = Job("pr.yml", "perf");
+        var jobs = Section(File.ReadAllText(Path.Combine(Workflows, "pr.yml")), "jobs");
+
+        jobs.ShouldNotContain("  desk:", StringComparer.Ordinal);
+        jobs.ShouldNotContain("  perf:", StringComparer.Ordinal);
+        Job("pr.yml", "verify").ShouldContain(@"run: .\cl.cmd check");
+        Job("pr.yml", "verify-arm64").ShouldContain(@"run: .\cl.cmd check");
+    }
+
+    [Fact]
+    public void The_nightly_tier_runs_every_day_and_by_hand_on_any_ref()
+    {
+        var text = File.ReadAllText(Path.Combine(Workflows, "nightly.yml"));
+        var on = string.Join('\n', Section(text, "on"));
+
+        on.ShouldContain("  schedule:");
+        on.ShouldContain("  workflow_dispatch:");
+        on.ShouldContain("      ref:");
+        Job("nightly.yml", "desk").ShouldContain(@"run: .\cl.cmd desk");
+        Job("nightly.yml", "quarantine").ShouldContain(@"run: .\cl.cmd quarantine");
+        foreach (var job in new[] { "desk", "perf", "quarantine" })
+        {
+            Job("nightly.yml", job).ShouldContain("ref: ${{ inputs.ref }}");
+            Job("nightly.yml", job).ShouldContain("persist-credentials: false");
+        }
+    }
+
+    [Fact]
+    public void Only_the_report_job_of_the_nightly_tier_writes_issues_and_only_for_a_scheduled_failure()
+    {
+        var text = File.ReadAllText(Path.Combine(Workflows, "nightly.yml"));
+        var report = Job("nightly.yml", "report");
+
+        Section(text, "permissions").ShouldBe(["permissions:", "  contents: read"]);
+        text.Split("issues: write").Length.ShouldBe(2, "issues: write appears only once");
+        report.ShouldContain("issues: write");
+        report.ShouldContain("needs: [desk, perf, quarantine]");
+        report.ShouldContain("if: ${{ failure() && github.event_name == 'schedule' }}");
+        report.ShouldContain("--label nightly");
+        report.ShouldNotContain("actions/checkout");
+    }
+
+    [Fact]
+    public void The_perf_job_of_the_nightly_tier_gates_and_publishes_the_numbers()
+    {
+        var job = Job("nightly.yml", "perf");
 
         job.ShouldContain(@"run: .\cl.cmd perf");
         job.ShouldContain("CI: true");
@@ -50,6 +100,7 @@ public sealed class WorkflowGateTests
 
     [Theory]
     [InlineData("pr.yml")]
+    [InlineData("nightly.yml")]
     [InlineData("lab.yml")]
     [InlineData("s0.yml")]
     public void No_job_turns_its_failure_into_a_success(string workflow) =>

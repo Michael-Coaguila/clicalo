@@ -33,6 +33,12 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
     /// <summary>The trait of the performance measurements: only <c>cl perf</c> runs them.</summary>
     public const string PerfTrait = "Category=Perf";
 
+    /// <summary>
+    /// The trait of a flaky test registered with a GitHub issue (<c>[Trait("Issue", "&lt;number&gt;")]</c>): it never
+    /// gates a pull request; only <c>cl quarantine</c> runs it, every night.
+    /// </summary>
+    public const string QuarantineTrait = "Category=Quarantine";
+
     /// <summary>Tells desktop tests that the run is deliberate (they self-skip otherwise).</summary>
     public const string DesktopVariable = "CLICALO_DESKTOP_TESTS";
 
@@ -245,6 +251,7 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
             {
                 TestSelection.DesktopOnly => Messages.DeskPurpose,
                 TestSelection.PerfOnly => Messages.PerfPurpose,
+                TestSelection.QuarantineOnly => Messages.QuarantinePurpose,
                 _ => Messages.TestPurpose,
             },
             async () =>
@@ -276,7 +283,7 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
                 ];
                 var variables = new Dictionary<string, string?>(StringComparer.Ordinal)
                 {
-                    [DesktopVariable] = selection == TestSelection.WithoutDesktop ? null : "1",
+                    [DesktopVariable] = selection == TestSelection.Deterministic ? null : "1",
                 };
                 foreach (
                     var (name, value) in environment
@@ -330,57 +337,48 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
         );
 
     /// <summary>
-    /// How a test run selects its tests: without the desktop tests, only the desktop tests, or only the performance
-    /// measurements. Desktop test modules run one at a time, because each one takes the foreground with its own
-    /// InputProbe and two at once would take it from each other. The performance measurements run only through
-    /// <c>cl perf</c>. Outside continuous integration the desktop tests that inject reserved keys
-    /// (<see cref="ReservedKeysTrait"/>) and the chaos tests (<see cref="ChaosTrait"/>) are left out too.
+    /// How a test run selects its tests (<see cref="TestSelection"/>). The pull request tier leaves out everything that
+    /// is not deterministic: the desktop, chaos, the measurements and the quarantine. The other selections may touch the
+    /// desktop, so their modules run one at a time, because each one takes the foreground with its own InputProbe and
+    /// two at once would take it from each other; outside continuous integration they also leave out the tests that
+    /// inject reserved keys (<see cref="ReservedKeysTrait"/>) and the chaos tests (<see cref="ChaosTrait"/>).
     /// </summary>
-    internal static string[] SelectionArguments(TestSelection selection, bool ci) =>
-        selection switch
+    internal static string[] SelectionArguments(TestSelection selection, bool ci)
+    {
+        if (selection == TestSelection.Deterministic)
         {
-            TestSelection.DesktopOnly when ci =>
+            return
             [
-                "--filter-trait",
+                "--filter-not-trait",
                 DesktopTrait,
                 "--filter-not-trait",
+                ChaosTrait,
+                "--filter-not-trait",
                 PerfTrait,
-                "--max-parallel-test-modules",
-                "1",
-            ],
+                "--filter-not-trait",
+                QuarantineTrait,
+            ];
+        }
+
+        string[] filters = selection switch
+        {
             TestSelection.DesktopOnly =>
             [
                 "--filter-trait",
                 DesktopTrait,
                 "--filter-not-trait",
-                ReservedKeysTrait,
-                "--filter-not-trait",
-                ChaosTrait,
-                "--filter-not-trait",
-                PerfTrait,
-                "--max-parallel-test-modules",
-                "1",
-            ],
-            TestSelection.PerfOnly when ci =>
-            [
-                "--filter-trait",
-                PerfTrait,
-                "--max-parallel-test-modules",
-                "1",
-            ],
-            TestSelection.PerfOnly =>
-            [
-                "--filter-trait",
                 PerfTrait,
                 "--filter-not-trait",
-                ReservedKeysTrait,
-                "--filter-not-trait",
-                ChaosTrait,
-                "--max-parallel-test-modules",
-                "1",
+                QuarantineTrait,
             ],
-            _ => ["--filter-not-trait", DesktopTrait],
+            TestSelection.PerfOnly => ["--filter-trait", PerfTrait],
+            _ => ["--filter-trait", QuarantineTrait, "--filter-not-trait", PerfTrait],
         };
+        string[] local = ci
+            ? []
+            : ["--filter-not-trait", ReservedKeysTrait, "--filter-not-trait", ChaosTrait];
+        return [.. filters, .. local, "--max-parallel-test-modules", "1"];
+    }
 
     /// <summary>
     /// Runs the i18n verbs of the developer CLI: <c>i18n-check</c> (the generator's validation, CLDR rules and unused

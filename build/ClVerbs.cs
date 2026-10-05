@@ -25,14 +25,14 @@ internal sealed class ClVerbs(
     public async Task FastAsync()
     {
         await steps.BuildAsync(layout.CoreFilter, BuildMode.Debug);
-        await steps.TestAsync(layout.CoreFilter, BuildMode.Debug, TestSelection.WithoutDesktop);
+        await steps.TestAsync(layout.CoreFilter, BuildMode.Debug, TestSelection.Deterministic);
     }
 
-    /// <summary><c>cl test</c>: every test that runs headless.</summary>
+    /// <summary><c>cl test</c>: every deterministic test (the pull request tier of <see cref="TestSelection"/>).</summary>
     public async Task TestAsync()
     {
         await steps.BuildAsync(layout.Solution, BuildMode.Debug);
-        await steps.TestAsync(layout.Solution, BuildMode.Debug, TestSelection.WithoutDesktop);
+        await steps.TestAsync(layout.Solution, BuildMode.Debug, TestSelection.Deterministic);
     }
 
     /// <summary><c>cl desk</c>: only the tests that need an interactive desktop.</summary>
@@ -40,6 +40,13 @@ internal sealed class ClVerbs(
     {
         await steps.BuildAsync(layout.Solution, BuildMode.Debug);
         await steps.TestAsync(layout.Solution, BuildMode.Debug, TestSelection.DesktopOnly);
+    }
+
+    /// <summary><c>cl quarantine</c>: only the quarantined tests, headless or on the desktop (nightly.yml).</summary>
+    public async Task QuarantineAsync()
+    {
+        await steps.BuildAsync(layout.Solution, BuildMode.Debug);
+        await steps.TestAsync(layout.Solution, BuildMode.Debug, TestSelection.QuarantineOnly);
     }
 
     /// <summary><c>cl fix</c>: formats C# with CSharpier.</summary>
@@ -57,7 +64,7 @@ internal sealed class ClVerbs(
         await steps.FormatCheckAsync();
         await steps.RestoreLockedAsync();
         await steps.BuildAsync(layout.Solution, BuildMode.ReleaseGate);
-        await steps.TestAsync(layout.Solution, BuildMode.ReleaseGate, TestSelection.WithoutDesktop);
+        await steps.TestAsync(layout.Solution, BuildMode.ReleaseGate, TestSelection.Deterministic);
         await steps.I18nCheckAsync();
     }
 

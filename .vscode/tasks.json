@@ -133,6 +133,14 @@
       "problemMatcher": ["$msCompile"]
     },
     {
+      "label": "cl quarantine",
+      "detail": "Ejecuta solo las pruebas en cuarentena (Category=Quarantine).",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["quarantine"],
+      "problemMatcher": ["$msCompile"]
+    },
+    {
       "label": "cl: abrir el último error",
       "detail": "Abre artifacts/cl/last-error.md, el informe del último fallo.",
       "type": "shell",

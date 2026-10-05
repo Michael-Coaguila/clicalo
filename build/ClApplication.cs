@@ -191,6 +191,7 @@ internal sealed class ClApplication(
         targets.Add(VerbCatalog.Run, Messages.RunDescription, verbs.RunAppAsync);
         targets.Add(VerbCatalog.Note, Messages.NoteDescription, verbs.NoteAsync);
         targets.Add(VerbCatalog.Perf, Messages.PerfDescription, verbs.PerfAsync);
+        targets.Add(VerbCatalog.Quarantine, Messages.QuarantineDescription, verbs.QuarantineAsync);
         foreach (var future in VerbCatalog.Future)
         {
             // Listed for discoverability; RunAsync answers "available in Mx" before Bullseye runs anything.
@@ -235,6 +236,7 @@ internal sealed class ClApplication(
             VerbCatalog.Run => Messages.RunDescription,
             VerbCatalog.Note => Messages.NoteDescription,
             VerbCatalog.Perf => Messages.PerfDescription,
+            VerbCatalog.Quarantine => Messages.QuarantineDescription,
             _ => string.Empty,
         };
 

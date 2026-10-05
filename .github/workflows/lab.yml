@@ -1,6 +1,6 @@
 # Touch lab (blueprint §10.5): the dedicated physical touch machine repeats the desktop suites and the performance
 # gate. Every budget of data/catalogs/budgets.json fails the run here (CLICALO_PERF_GATE=1), the S5 start-up budgets
-# included; on the hosted runners of pr.yml only the budgets with the gate everyRun do (touch -> SendInput p95).
+# included; on the hosted runners of nightly.yml only the budgets with the gate everyRun do (touch -> SendInput p95).
 #
 # The runner is registered with the labels self-hosted, Windows and lab, as an interactive process with automatic
 # sign-in, and only on the dedicated lab machine: never on the maintainer's work computer (cl desk injects real keys

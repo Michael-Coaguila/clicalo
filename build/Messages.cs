@@ -19,7 +19,7 @@ internal static class Messages
     public const string FastDescription =
         "Compila y prueba el núcleo portátil (Core.slnf). Objetivo: menos de 45 s.";
     public const string TestDescription =
-        "Compila y ejecuta todas las pruebas salvo las de escritorio (Requires=Desktop).";
+        "Compila y ejecuta las pruebas deterministas: sin escritorio, caos, rendimiento ni cuarentena.";
     public const string DeskDescription =
         "Compila y ejecuta solo las pruebas de escritorio, con CLICALO_DESKTOP_TESTS=1.";
     public const string FixDescription = "Da formato al código C# con CSharpier.";
@@ -39,6 +39,8 @@ internal static class Messages
         "Compila y abre Clícalo con datos aislados en %TEMP%\\clicalo-dev y sin envío de teclas.";
     public const string NoteDescription =
         "Crea la nota de novedades para usuarios de la rama, en español e inglés, en changes/unreleased.";
+    public const string QuarantineDescription =
+        "Compila y ejecuta solo las pruebas en cuarentena (Category=Quarantine), con CLICALO_DESKTOP_TESTS=1.";
     public const string PerfDescription =
         "Publica las variantes de S5 y mide el arranque, la memoria y, en la CI, del toque al envío.";
 
@@ -54,7 +56,8 @@ internal static class Messages
     public const string RestorePurpose = "restauración bloqueada de NuGet";
     public const string BuildDebugPurpose = "compilación Debug";
     public const string BuildReleasePurpose = "compilación Release sin advertencias";
-    public const string TestPurpose = "pruebas sin las de escritorio";
+    public const string TestPurpose = "pruebas deterministas";
+    public const string QuarantinePurpose = "pruebas en cuarentena";
     public const string DeskPurpose = "pruebas de escritorio";
     public const string I18nPurpose = "comprobación de textos (i18n-check e i18n-import --check)";
     public const string CleanPurpose = "borrado de artifacts";
