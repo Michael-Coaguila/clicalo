@@ -181,14 +181,14 @@
     },
     "Clicalo.Infrastructure.Tests": {
       "area": "tests",
-      "rule": "Tests Infrastructure against real temporary folders (blueprint §10.1): envelope, atomic writes, quarantine, backups, the v1 import and SafeZipReader with hostile zips (S11).",
+      "rule": "Tests Infrastructure against real temporary folders (blueprint §10.1): envelope, atomic writes, quarantine, backups, the import of Clícalo's own format and shared profiles (S11).",
       "platform": "windows",
       "projectReferences": ["Clicalo.Infrastructure", "Clicalo.Application", "Clicalo.Domain", "Clicalo.TestKit"],
       "packageReferences": ["xunit.v3", "Shouldly", "CsCheck", "Microsoft.Extensions.TimeProvider.Testing"]
     },
     "Clicalo.App.Tests": {
       "area": "tests",
-      "rule": "Headless tests of the composition root (blueprint §10.1): the command line, the single-instance pipe protocol, the adapters of a start without key sending (ADR-0004) and the document of a new installation or a v1 migration against a real temporary folder.",
+      "rule": "Headless tests of the composition root (blueprint §10.1): the command line, the single-instance pipe protocol, the adapters of a start without key sending (ADR-0004) and the document of a new installation against a real temporary folder.",
       "platform": "windows",
       "projectReferences": [
         "Clicalo.App",

@@ -163,13 +163,6 @@
       "deviation": "Not in §4.3: §6.3 lists the command contracts with the document; they are a module of their own because DocumentChange carries UndoIntent and a command applies to UserDocument, and CLC0010 binds to Clicalo.Domain.Commands.IDestructiveCommand."
     },
     {
-      "name": "Migration.V1",
-      "group": "data",
-      "description": "Pure conversion of v1 profiles.json into the current model.",
-      "dependsOn": ["Library", "Keys", "Catalog", "Settings", "Document"],
-      "deviation": "Document added: V1Converter.Convert returns a UserDocument with its Frequents and DuplicatePolicy (§6.6, MIG-008)."
-    },
-    {
       "name": "Templates",
       "group": "data",
       "description": "Template model and its semantic validation (TemplateSchema).",

@@ -24,14 +24,8 @@ public sealed class BackupLayoutTests
     }
 
     [Fact]
-    [Trait("Req", "MIG-004")]
-    public void The_v1_original_is_kept_forever_at_the_root()
-    {
-        BackupLayout.Retention(BackupKind.V1Original).ShouldBeNull();
-        BackupLayout
-            .V1FileName(new DateTimeOffset(2026, 9, 25, 10, 31, 2, TimeSpan.Zero), 0)
-            .ShouldBe("v1-original-20260925T103102Z.json");
-    }
+    public void Every_kind_has_its_own_folder() =>
+        BackupLayout.FolderKinds.Order().ShouldBe(Enum.GetValues<BackupKind>().Order());
 
     [Fact]
     public void Ids_round_trip()

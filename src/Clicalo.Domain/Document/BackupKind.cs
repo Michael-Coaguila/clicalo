@@ -26,7 +26,4 @@ public enum BackupKind
 
     /// <summary>Before repairing a document on load; 10.</summary>
     PreRepair,
-
-    /// <summary>Byte-for-byte copy of the first v1 file imported; never deleted automatically.</summary>
-    V1Original,
 }

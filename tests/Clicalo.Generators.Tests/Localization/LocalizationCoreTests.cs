@@ -33,7 +33,7 @@ public sealed class LocalizationCoreTests
     }
 
     [Theory]
-    [InlineData("migT", "migT", null)]
+    [InlineData("impT", "impT", null)]
     [InlineData("comboN_one", "comboN", "one")]
     [InlineData("comboN_other", "comboN", "other")]
     [InlineData("vh2_few", "vh2", "few")]
@@ -61,7 +61,7 @@ public sealed class LocalizationCoreTests
         KeyNaming.TrySplit(key, out _, out _).ShouldBeFalse();
 
     [Theory]
-    [InlineData("migT", "MigT")]
+    [InlineData("impT", "ImpT")]
     [InlineData("vh2", "Vh2")]
     [InlineData("rSingle", "RSingle")]
     [InlineData("Search", "Search")]

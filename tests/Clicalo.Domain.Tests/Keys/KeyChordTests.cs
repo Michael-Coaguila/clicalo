@@ -6,7 +6,7 @@ namespace Clicalo.Domain.Tests.Keys;
 
 /// <summary>
 /// <see cref="KeyChord.Create"/>: press order kept (EJE-003), one side mechanism (EDI-009), no repeated stroke and no
-/// empty token (MIG-004).
+/// empty token (EJE-015: a chord is complete or visibly incomplete, never silently empty).
 /// </summary>
 public sealed class KeyChordTests
 {
@@ -74,7 +74,7 @@ public sealed class KeyChordTests
     }
 
     [Fact]
-    [Trait("Req", "MIG-004")]
+    [Trait("Req", "EJE-015")]
     public void An_empty_key_never_becomes_a_token()
     {
         var chord = KeyChord.Create([

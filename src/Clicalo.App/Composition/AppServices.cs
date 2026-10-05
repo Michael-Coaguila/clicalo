@@ -13,7 +13,6 @@ using Clicalo.Domain.Document;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
-using Clicalo.Infrastructure.Migration;
 using Clicalo.Infrastructure.Persistence;
 using Clicalo.Platform.Core.Injection;
 using Clicalo.Platform.Windows.Foreground;
@@ -123,16 +122,9 @@ internal static class AppServices
             sp.Log<PersistenceScheduler>()
         ));
         services.AddSingleton<IIdGenerator, RandomIdGenerator>();
-        services.AddSingleton(_ => new SafeZipReader(SafeZipLimits.Default));
-        services.AddSingleton(sp => new V1Importer(sp.Get<SafeZipReader>(), sp.Log<V1Importer>()));
         services.AddSingleton(sp => new StartupDocuments(
             sp.Get<IDocumentRepository>(),
             sp.Get<IUsageRepository>(),
-            sp.Get<IBackupService>(),
-            sp.Get<V1Importer>(),
-            sp.Get<IAtomicFileWriter>(),
-            AppDataLocations.PendingMigration(sp.Get<DataLocations>()),
-            sp.Get<IIdGenerator>(),
             sp.Time(),
             sp.Log<StartupDocuments>()
         ));

@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Developer utilities behind `cl`: i18n-check, i18n-import, trace, notes, anonymize-v1, states. -->
+  <!-- Developer utilities behind `cl`: i18n-check, i18n-import, trace, notes, states. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>$(ClicaloPortableTfm)</TargetFramework>
@@ -13,8 +13,5 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Clicalo.DevCli.Tests" />
-  </ItemGroup>
-  <ItemGroup Label="anonymize-v1 keeps only the reviewed public names">
-    <EmbeddedResource Include="AnonymizeV1/v1-public-names.json" LogicalName="Clicalo.DevCli.AnonymizeV1.v1-public-names.json" />
   </ItemGroup>
 </Project>

@@ -4,7 +4,7 @@ namespace Clicalo.Domain.Settings;
 
 /// <summary>
 /// Everything the product knows about one setting (blueprint §6.3): the single source of its default, clamping on
-/// load, v1 conversion, the simple rows of the UI and the tests (every leaf of <see cref="UserSettings"/> has a
+/// load, the simple rows of the UI and the tests (every leaf of <see cref="UserSettings"/> has a
 /// descriptor and texts in ES and EN).
 /// </summary>
 /// <param name="Path">Dotted path in the persisted settings (<c>keySafety.maxHoldSec</c>).</param>

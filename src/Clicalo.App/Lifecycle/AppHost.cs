@@ -36,8 +36,7 @@ namespace Clicalo.App.Lifecycle;
 /// The life of the running instance (blueprint §3.1, §3.2, §7.6), on the UI thread of the Surfaces role:
 /// <list type="number">
 /// <item>off the UI thread (<see cref="StartupReader"/>): a crash Sentinel reported goes to its journal; the document
-/// is read (persistence; on a new installation the seed, or the v1 file of <c>--migrate-v1</c>) and the language files
-/// loaded;</item>
+/// is read (persistence; on a new installation the seed) and the language files loaded;</item>
 /// <item>the preventive release of the start (SEG-006), before the engine accepts anything;</item>
 /// <item>autosave, and the engine thread: it accepts touches from the first frame, it does not wait for the guardian;
 /// with key sending, the emergency release watches its heartbeat (§3.2 rule 6);</item>
@@ -169,7 +168,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 new StartupRequest(
                     AppContext.BaseDirectory,
                     LanguageFiles.WindowsLanguage(),
-                    _options.MigrateV1,
                     _options.AfterCrash
                 ),
                 _stop.Token
@@ -196,7 +194,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var scheduler = _scheduler;
         if (read.Documents.SavePending)
         {
-            // The seed or the migration of this start could not be written: saved at once and retried (DAT-002).
+            // The seed of a new installation could not be written: saved at once and retried (DAT-002).
             scheduler.MarkUnsaved(store.Current);
         }
 

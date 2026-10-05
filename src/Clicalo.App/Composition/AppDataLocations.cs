@@ -21,17 +21,6 @@ internal static class AppDataLocations
     }
 
     /// <summary>
-    /// The mark of a v1 migration that failed (<c>migration-v1.pending</c>, blueprint §6.6, D-21): while it exists, a
-    /// start with <c>--migrate-v1</c> tries again. In the local data folder, like the v1 file it names.
-    /// </summary>
-    /// <param name="locations">The data folders.</param>
-    public static string PendingMigration(DataLocations locations)
-    {
-        ArgumentNullException.ThrowIfNull(locations);
-        return Path.Combine(locations.LocalRoot ?? locations.Root, "migration-v1.pending");
-    }
-
-    /// <summary>
     /// The crash journal Sentinel reads to detect a crash loop (ADR-0018, <c>CrashJournal</c>): in the local data
     /// folder, which Sentinel reads from <c>%LocalAppData%\Clicalo</c>.
     /// </summary>

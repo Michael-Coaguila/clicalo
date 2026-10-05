@@ -11,8 +11,8 @@ namespace Clicalo.Application.Tests.Localization;
 /// original sentence, and the expected text is written out by hand, so a swapped or wrong mapping fails.
 /// </summary>
 /// <remarks>
-/// Sample values are all different (index 2, total 5, count 3; profiles 4, shortcuts 210), so two placeholders that
-/// trade places change the text. Plural families are checked in their <c>one</c> and <c>other</c> forms. When the
+/// Sample values are all different (index 2, total 5, count 3), so two placeholders that trade places change the
+/// text. Plural families are checked in their <c>one</c> and <c>other</c> forms. When the
 /// user ratifies a text change (catalog §6.1 and §9), this golden changes in the same pull request.
 /// </remarks>
 public sealed partial class HandoffTextGoldenTests
@@ -31,18 +31,6 @@ public sealed partial class HandoffTextGoldenTests
             [MessageArgument.Text("version", "2.0.1")],
             "Volver a la versión 2.0.1",
             "Go back to version 2.0.1"
-        ),
-        new(
-            "migT",
-            [Nested("profiles", "migTProfiles", 4), Nested("shortcuts", "migTShortcuts", 210)],
-            "Importado desde tu versión anterior: 4 perfiles y 210 atajos",
-            "Imported from your previous version: 4 profiles and 210 shortcuts"
-        ),
-        new(
-            "migT",
-            [Nested("profiles", "migTProfiles", 1), Nested("shortcuts", "migTShortcuts", 1)],
-            "Importado desde tu versión anterior: 1 perfil y 1 atajo",
-            "Imported from your previous version: 1 profile and 1 shortcut"
         ),
         new(
             "stepEditMsg",
@@ -211,7 +199,7 @@ public sealed partial class HandoffTextGoldenTests
     public void The_golden_covers_exactly_the_handoff_texts_with_placeholders(string language)
     {
         var withPlaceholders = I18nRepository
-            .Handoff(language)
+            .HandoffInProduct(language)
             .Where(static entry => Marker().IsMatch(entry.Value))
             .Select(static entry => entry.Key)
             .Order(StringComparer.Ordinal);
@@ -237,12 +225,6 @@ public sealed partial class HandoffTextGoldenTests
     private static MessageArgument Index() => MessageArgument.WholeNumber("index", 2);
 
     private static MessageArgument Total() => MessageArgument.WholeNumber("total", 5);
-
-    private static MessageArgument Nested(string name, string key, long count) =>
-        MessageArgument.Text(
-            name,
-            new Message(new MessageKey(key), MessageArgument.WholeNumber("count", count))
-        );
 
     /// <summary>One handoff key formatted with named arguments, and the text expected in each language.</summary>
     private sealed record GoldenText(

@@ -25,33 +25,16 @@ public sealed class LocalizerTests
     }
 
     [Theory]
-    [InlineData(
-        1,
-        1,
-        "Importado desde tu versión anterior: 1 perfil y 1 atajo",
-        "Imported from your previous version: 1 profile and 1 shortcut"
-    )]
-    [InlineData(
-        3,
-        1,
-        "Importado desde tu versión anterior: 3 perfiles y 1 atajo",
-        "Imported from your previous version: 3 profiles and 1 shortcut"
-    )]
-    [InlineData(
-        1,
-        210,
-        "Importado desde tu versión anterior: 1 perfil y 210 atajos",
-        "Imported from your previous version: 1 profile and 210 shortcuts"
-    )]
+    [InlineData(1, "Para 1 tecla · se guarda solo", "For 1 key · auto-saved")]
+    [InlineData(3, "Para 3 teclas · se guarda solo", "For 3 keys · auto-saved")]
     [Trait("Req", "IDI-004")]
-    public void Each_quantity_of_a_sentence_gets_its_own_plural(
-        long profiles,
-        long shortcuts,
+    public void A_nested_plural_message_chooses_its_own_form(
+        long count,
         string spanish,
         string english
     )
     {
-        var message = L.MigT(L.MigTProfiles(profiles), L.MigTShortcuts(shortcuts));
+        var message = L.LcFor(L.ComboN(count));
 
         Es.Format(message).ShouldBe(spanish);
         En.Format(message).ShouldBe(english);

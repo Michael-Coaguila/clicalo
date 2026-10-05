@@ -177,39 +177,6 @@ public sealed class BackupServiceTests : IDisposable
             .ShouldBe([BackupKind.PreImportReplace, BackupKind.PreRestore]);
     }
 
-    [Fact]
-    [Trait("Req", "MIG-004")]
-    public async Task The_v1_original_is_kept_byte_for_byte_and_never_overwritten()
-    {
-        byte[] original = [0xEF, 0xBB, 0xBF, (byte)'{', (byte)'}'];
-
-        var first = (await _service.KeepV1OriginalAsync(original, Token)).Value;
-        var second = (await _service.KeepV1OriginalAsync(original.AsMemory(3), Token)).Value;
-
-        first.Id.Value.ShouldBe("v1-original-20260105T090000Z.json");
-        second.Id.Value.ShouldBe("v1-original-20260105T090000Z-1.json");
-        File.ReadAllBytes(Path.Combine(_folder.Locations.Backups, first.Id.Value))
-            .ShouldBe(original);
-        (await _service.ListAsync(Token)).ShouldBeEmpty();
-    }
-
-    [Fact]
-    [Trait("Req", "MIG-004")]
-    public async Task The_same_v1_original_is_kept_once_and_a_zip_keeps_its_extension()
-    {
-        byte[] original = [(byte)'{', (byte)'}'];
-        byte[] zip = [(byte)'P', (byte)'K', 3, 4, 0, 0];
-
-        var first = (await _service.KeepV1OriginalAsync(original, Token)).Value;
-        var again = (await _service.KeepV1OriginalAsync(original, Token)).Value;
-        var archive = (await _service.KeepV1OriginalAsync(zip, Token)).Value;
-
-        again.Id.ShouldBe(first.Id);
-        archive.Id.Value.ShouldBe("v1-original-20260105T090000Z.zip");
-        Directory.GetFiles(_folder.Locations.Backups, "v1-original-*").Length.ShouldBe(2);
-        File.ReadAllBytes(Path.Combine(_folder.Locations.Backups, archive.Id.Value)).ShouldBe(zip);
-    }
-
     [Theory]
     [Trait("Req", "LOG-006")]
     [InlineData("../clicalo.json")]

@@ -61,7 +61,7 @@ public sealed class ShortcutLibrary : IEquatable<ShortcutLibrary>
     }
 
     /// <summary>
-    /// Validates and builds a library: the only entry point for persistence, the seed and the v1 import. Fails with
+    /// Validates and builds a library: the only entry point for persistence, the seed and imports. Fails with
     /// the first broken invariant; the persistence mapper repairs what is repairable before calling it (§6.5).
     /// </summary>
     /// <param name="alwaysVisible">The Always visible row.</param>

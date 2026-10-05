@@ -40,13 +40,6 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
     /// <summary>The value of <see cref="GuardianOption"/> that launches Sentinel in parallel (the default).</summary>
     public const string Parallel = "parallel";
 
-    /// <summary>
-    /// The option that migrates a Macro Quick Access v1 file (<c>profiles.json</c> or its zip) on a first run, when no
-    /// Clícalo document exists yet (EC-MIG-01). Until the finder of v1 installations exists (MIG-001), the file is
-    /// named on the command line.
-    /// </summary>
-    public const string MigrateV1Option = "--migrate-v1";
-
     /// <summary>The diagnostic option that exits normally a number of seconds after the first frame.</summary>
     public const string ExitAfterOption = "--exit-after";
 
@@ -61,9 +54,6 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
 
     /// <summary>Sentinel's <c>--safe-mode</c>: the previous processes crashed in a loop (<c>Timings.App.CrashLoop</c>).</summary>
     public bool SafeMode { get; init; }
-
-    /// <summary>The v1 file of <see cref="MigrateV1Option"/>, as a full path.</summary>
-    public string? MigrateV1 { get; init; }
 
     /// <summary>The delay of <see cref="ExitAfterOption"/>: the start and the whole exit sequence, unattended.</summary>
     public TimeSpan? ExitAfter { get; init; }
@@ -80,7 +70,6 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
         var afterFirstFrame = false;
         var safeMode = false;
         DateTimeOffset? afterCrash = null;
-        string? migrate = null;
         TimeSpan? exitAfter = null;
         for (var i = 0; i < arguments.Count; i++)
         {
@@ -118,10 +107,6 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
             {
                 afterCrash = DateTimeOffset.FromUnixTimeMilliseconds(diedAt);
             }
-            else if (Is(argument, MigrateV1Option) && i + 1 < arguments.Count)
-            {
-                migrate = Path.GetFullPath(arguments[++i]);
-            }
             else if (
                 Is(argument, ExitAfterOption)
                 && i + 1 < arguments.Count
@@ -142,7 +127,6 @@ public sealed record AppOptions(string DataDirectory, bool SendInput, bool Guard
             IsolatedData = isolated,
             AfterCrash = afterCrash,
             SafeMode = safeMode,
-            MigrateV1 = migrate,
             ExitAfter = exitAfter,
         };
     }

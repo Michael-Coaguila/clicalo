@@ -599,11 +599,6 @@
           "req": ["COP-003"],
           "source": "blueprint §6.8"
         },
-        "MigrationCardVisibility": {
-          "duration": "30d",
-          "description": "The migration card stays visible at most this long.",
-          "req": ["COP-001"]
-        },
         "PreviousVersionRetention": {
           "duration": "7d",
           "description": "The previous version is kept, and rollback offered, this long after an update.",
@@ -753,42 +748,6 @@
           "description": "Most shortcuts in one import.",
           "req": ["LOG-006"],
           "source": "blueprint §9.1"
-        },
-        "ZipMaxTotalBytes": {
-          "bytes": "50MiB",
-          "description": "Largest total uncompressed size of an imported zip.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "ZipMaxEntries": {
-          "count": 1000,
-          "description": "Most entries in an imported zip.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "ZipMaxCompressionRatio": {
-          "ratio": 100,
-          "description": "Largest compression ratio per zip entry, counted while reading.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "ZipMaxJsonBytes": {
-          "bytes": "5MiB",
-          "description": "Largest JSON entry inside an imported zip.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "V1MaxBytes": {
-          "bytes": "5MiB",
-          "description": "Largest Macro Quick Access v1 file (profiles.json or a language backup) the import reads.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "V1MaxDepth": {
-          "count": 32,
-          "description": "Deepest JSON nesting accepted in a Macro Quick Access v1 file.",
-          "req": ["MIG-002", "LOG-006"],
-          "source": "blueprint §6.6"
         }
       }
     },

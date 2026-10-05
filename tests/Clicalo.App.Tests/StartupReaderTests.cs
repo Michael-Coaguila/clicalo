@@ -5,7 +5,6 @@ using Clicalo.App.Lifecycle;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Errors;
 using Clicalo.Infrastructure.Backup;
-using Clicalo.Infrastructure.Migration;
 using Clicalo.Infrastructure.Persistence;
 using Clicalo.TestKit;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -73,7 +72,6 @@ public sealed class StartupReaderTests : IDisposable
                 new StartupRequest(
                     RepoPaths.Data,
                     "es",
-                    null,
                     new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.Zero)
                 ),
                 TestContext.Current.CancellationToken
@@ -110,14 +108,6 @@ public sealed class StartupReaderTests : IDisposable
         return new StartupDocuments(
             new ThreadRecordingDocuments(repository, threads),
             new UsageRepository(_locations, writer, time, NullLogger<UsageRepository>.Instance),
-            backups,
-            new V1Importer(
-                new SafeZipReader(SafeZipLimits.Default),
-                NullLogger<V1Importer>.Instance
-            ),
-            writer,
-            AppDataLocations.PendingMigration(_locations),
-            new RandomIdGenerator(),
             time,
             NullLogger<StartupDocuments>.Instance
         );

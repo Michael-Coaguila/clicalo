@@ -7,7 +7,8 @@ namespace Clicalo.Application.Tests.Localization;
 
 /// <summary>
 /// Binding condition of the i18n conversion (blueprint §1.3 and §8.5, ADR-0011): for every key of the design handoff
-/// and every language, formatting the converted text with sample arguments gives exactly the text of the handoff with
+/// that the product shows (the recipe's <c>retired</c> keys were removed by a user decision, ADR-0020) and every
+/// language, formatting the converted text with sample arguments gives exactly the text of the handoff with
 /// its one-letter markers replaced by the same values.
 /// </summary>
 /// <remarks>
@@ -31,8 +32,6 @@ public sealed partial class VisibleTextSnapshotTests
         ["count"] = 3,
         ["index"] = 2,
         ["total"] = 5,
-        ["profiles"] = 4,
-        ["shortcuts"] = 210,
     };
 
     [Theory]
@@ -44,7 +43,7 @@ public sealed partial class VisibleTextSnapshotTests
     {
         var localizer = I18nRepository.Localizer(language);
         using var recipe = I18nRepository.Recipe();
-        var handoff = I18nRepository.Handoff(language);
+        var handoff = I18nRepository.HandoffInProduct(language);
         var mismatches = new List<string>();
 
         foreach (var (key, original) in handoff)
@@ -59,7 +58,8 @@ public sealed partial class VisibleTextSnapshotTests
             }
         }
 
-        handoff.Count.ShouldBe(669);
+        handoff.Count.ShouldBe(669 - I18nRepository.Retired().Count);
+        I18nRepository.Retired().Order(StringComparer.Ordinal).ShouldBe(["migD", "migT"]);
         mismatches.ShouldBeEmpty();
     }
 

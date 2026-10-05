@@ -1,6 +1,6 @@
 # Clícalo: catálogo de requisitos funcionales
 
-**Versión 1.0 · 2026-09-25.** Esta es la fuente de verdad funcional para reconstruir Clícalo, sucesor de Macro Quick Access, desde cero.
+**Versión 1.1 · 2026-10-03** (1.0 del 2026-09-25, más las decisiones del usuario de §6.2). Esta es la fuente de verdad funcional para reconstruir Clícalo, sucesor de Macro Quick Access, desde cero.
 
 **Base del catálogo.** Integra lo que informaron seis analistas sobre el paquete `design_handoff_clicalo` (README, docs 01–10, Prototipo v4, Auditoría y `data/*.json`) y sobre la app antigua. Algunos datos se comprobaron directamente:
 - las 8 reglas del README;
@@ -71,7 +71,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **REG-05 · MUST · Todo se hace sin teclado físico.** Escribir es la última opción. Todo campo de texto libre tiene 🎤 (dictado) y, cuando aplica, selección, biblioteca o IA. **Acepta:** un recorrido completo (bienvenida, crear perfil, crear atajo de cada tipo, vincular, probar) sin teclado físico, solo con toque y con Acceso por voz. ‹README R5; d07:45; AUD-47›
 - **REG-06 · MUST · Todo control se expone a UI Automation.** Tiene nombre localizado, con el número de voz si está activo, rol, estado y patrones. Las regiones de aviso son *live*. **Acepta:** «mostrar números», «clic 4» y «clic Negrita» funcionan, y Narrador lee Auto/Fijo, ACTIVO, los avisos y el pánico. ‹README R6; d09:61-62; AUD-53›
 - **REG-07 · MUST · Autoguardado y todo se puede deshacer.** No hay botón Guardar. Cada cambio de datos se puede deshacer, incluido editar un perfil (nombre, icono, modo compatible) y «Está bien así». ‹README R7; AUD-15›
-- **REG-08 · MUST · Nunca se pierden datos.** Migración desde `profiles.json` v1 sin pérdidas, copia antes de migrar, actualizar, reemplazar o restaurar, copias versionadas y un documento ilegible nunca se sobrescribe. ‹README R8; AUD-42›
+- **REG-08 · MUST · Nunca se pierden datos.** Copia antes de migrar el esquema, actualizar, reemplazar o restaurar, copias versionadas y un documento ilegible nunca se sobrescribe. **Modificado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): se quita «Migración desde `profiles.json` v1 sin pérdidas», porque Clícalo no importa la configuración de Macro Quick Access; el resto de la regla no cambia. ‹README R8; AUD-42›
 
 ---
 
@@ -722,8 +722,8 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - Rejilla de 7 columnas para letras y números, 6 para F1–F12 y celdas de 92 como mínimo con el nombre completo en el resto. Todas las celdas y los grupos, de 44 táctil.
   - Tocar una tecla la añade al final; si ya está, la quita. La elegida lleva accentWash, borde accent y estado accesible.
   - Nota [orderHint2].
-  - El catálogo incluye además ` \ [ ] ' #, que la v1 usaba.
-  ‹P4:610-613; seed KEYG; MIG-005›
+  - El catálogo incluye además ` \ [ ] ' #. Se conservan aunque MIG-005, que los pedía para la v1, está retirado (D1, §6.2).
+  ‹P4:610-613; seed KEYG›
 - **EDI-009 · MUST · Lado del modificador.** Cada modificador elegido admite Cualquiera, Izquierda o Derecha. En Alt: «Alt izq.» o, según la distribución, «AltGr» / «Alt der.». Etiquetas: «Ctrl izq.» en ES y «Left Ctrl» en EN. El lado forma parte de la clave canónica y se envía tal cual. **Decisión:** existe un solo mecanismo para el lado (un atributo de la tecla); las teclas con lado del grupo Izq./Der. son atajos de ese mismo mecanismo. Cambiar las teclas no borra en silencio el lado de los modificadores que siguen. ‹P4 script 1389-1395,1832; DIS-55›
 - **EDI-010 · SHOULD · Grabar con teclado.** «[recPhys]» con [recHint]. Solo se ve si el usuario no marcó «No puedo usar el teclado», o si ya se está grabando.
   - Pulsar solo modificadores no termina la grabación. La primera tecla que no es modificador la cierra con los modificadores activos más esa tecla, **en orden de pulsación** y con su lado.
@@ -930,7 +930,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 
 ### 2.26 COP · Copias de seguridad
 
-- **COP-001 · MUST · Tarjeta de migración.** «[migT]» con [migD], visible **solo si hubo migración**, hasta que el usuario la cierre o hayan pasado 30 días. **Decisión:** la variable {p} de migT se renombra a {profiles} (IDI-004). ‹P4:1123-1126; d02:90; DIS-66›
+- **COP-001 · Retirado · Tarjeta de migración.** **Retirado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): sin importación desde Macro Quick Access no hay migración que anunciar; [migT] y [migD] no se importan (sección `retired` de `data/i18n/handoff-import.json`). ‹P4:1123-1126; d02:90; DIS-66›
 - **COP-002 · MUST · Carpeta y acciones.** Línea con la carpeta de copias y «JSON con versión». Acciones:
   - [Crear copia ahora]: añade «Manual · Hoy, HH:MM» arriba y avisa [backupDone].
   - [Exportar].
@@ -956,7 +956,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 ### 2.28 BIE · Bienvenida
 
 - **BIE-001 · MUST · Apertura.** Se abre automáticamente en el primer arranque, y si no se completó, en el siguiente. También desde [seeWelcome]. Es modal y siempre encima: 600 de ancho, padding 32, radio 20 y 5 barras de progreso. Esc no la cierra. Cerrarla con Alt+F4 equivale a Omitir. ‹P4:1234-1237; d06:3›
-- **BIE-002 · MUST · Pantalla previa de migración.** Si se detecta v1, antes del paso 0 se muestra una pantalla (textos nuevos) con «Encontramos tu configuración anterior: {profiles} perfiles, {shortcuts} atajos. La importamos (se guarda una copia).» y [Continuar]. Si hay varias copias, se aplica MIG-001. Si la migración falla, aparece «Reintentar migración». ‹d06:14; DIS-72›
+- **BIE-002 · Retirado · Pantalla previa de migración.** **Retirado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): la bienvenida no busca ni importa la configuración de Macro Quick Access; empieza siempre en el paso 0. ‹d06:14; DIS-72›
 - **BIE-003 · MUST · Navegación.** Botones de 52: [Atrás] (oculto en el paso 0), [Omitir] (secundario) y [Siguiente], que en el paso 4 dice [finish]. **Omitir** cierra el asistente conservando lo ya aplicado en vivo (idioma, efectos del paso 1, vista, tamaño y tema), **sin** instalar las apps del paso 2. ‹P4:1277-1282; DIS-73›
 - **BIE-004 · MUST · Paso 0.** Logotipo, «Clícalo», [tagline], [ob0t] y [ob0b], tarjeta con [story1] y la firma, y los botones Español y English (52), que cambian el idioma al instante. **Decisión:** el idioma inicial es el de Windows (es* → ES; cualquier otro → EN). ‹P4:1238-1247›
 - **BIE-005 · MUST · Paso 1.** [ob1t] y [ob1b]. 5 opciones de selección múltiple (84 o más, en 2 columnas, con icono y estado accesible): Pantalla táctil, Control por voz, No puedo usar el teclado, Tengo temblor y Mouse o trackball.
@@ -986,28 +986,19 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **DAT-007 · MUST · Compartir un perfil.** Exportar genera `clicalo-perfil-<id>.json` con un solo perfil y `"type":"profile-share"`, con versión de esquema. Los textos cifrados se excluyen, con aviso, salvo que el usuario elija incluirlos en claro. Se importa desde Plantillas con vista previa. ‹d02:98; DIS-79›
 - **DAT-008 · COULD · Compartir con enlace.** Enlace `clicalo://perfil/...` que **contenga** el perfil codificado y se valide como no confiable. Si no puede transportar el contenido, no se ofrece. ‹P4 script 1866; DIS-79›
 
-### 2.30 MIG · Migración desde la v1
+### 2.30 MIG · Migración desde la v1 (retirada)
 
-- **MIG-001 · MUST · Localizar la configuración v1.** Se busca `profiles.json` v1 junto al ejecutable de Clícalo, en las carpetas de los accesos directos o procesos de `MacroQuickAccess.exe` y en `Documentos\Macro Quick Access\**`. Se puede elegir un archivo a mano. Si hay varias copias, se muestran con su fecha de modificación y sus recuentos, y se **preselecciona la más reciente**. Nunca se fusionan copias sin pedirlo. **Acepta:** en el equipo del autor se ofrecen 3 copias y se preselecciona `dist\MacroQuickAccess\profiles.json` (25-sep, 14 perfiles y 210 atajos). ‹v1 overlay.py:32-38; comprobado›
-- **MIG-002 · MUST · Esquema v1 completo.** Se aceptan todas las claves y variantes de §8, se toleran las claves desconocidas y los campos que falten toman los valores por defecto de v1. ‹§8›
-- **MIG-003 · MUST · Tokenizador de combinaciones.** Implementa la gramática de §8.3 (acordes separados por espacios, «+» como tecla, `num+`, alias y lados). **Acepta:** 0 tokens vacíos o sin resolver en los 210 atajos reales; `ctrl++` → Ctrl + «+»; `ctrl+num-` → Ctrl + Num −; `ctrl+k ctrl+c` → macro de 2 pasos. ‹§8.3›
-- **MIG-004 · MUST · Sin pérdidas y con informe.**
-  - Copia byte a byte del original en `backups\v1-original-<fecha>.json`.
-  - Los recuentos de salida son iguales a los de entrada, contando separadores, URL y apps.
-  - Informe visible de lo que no tiene equivalente directo: color hexadecimal, separadores, pinned_profile, buttons_per_page, window_size, edit_size, procesos duplicados y atajos que nunca funcionaron en v1.
-  - Todo sigue recuperable desde la copia.
-  - Idempotente.
-  - Si falla, no se escribe nada y se ofrece «Reintentar migración».
-  ‹d02:83-91; AUD-42›
-- **MIG-005 · MUST · Catálogo de teclas para migrar.** Se añaden al catálogo ` \ [ ] ' #. Los tokens sin equivalente se marcan «Revisar» conservando el texto original. ‹§8.3›
-- **MIG-006 · MUST · Conversión de ajustes.** Según la tabla de §8.4, sin romper el mínimo táctil y avisando de los cambios visibles (tamaño, opacidad, perfil base, vuelta a General en apps sin perfil). ‹§8.4›
-- **MIG-007 · MUST · Atajos especiales.**
-  - `win+l` (Bloquear) pasa a la acción de sistema «Bloquear equipo».
-  - `ctrl+shift+esc` se conserva con el aviso de combinación especial.
-  - Los 8 atajos que nunca funcionaron en v1 (§8.5) se migran con el significado **que dice su nombre** y se marcan «Revisar» en el informe (PQ-40).
-  ‹EC; §8.5›
-- **MIG-008 · MUST · Repetidos de la migración.** Los repetidos que surgen solo por la migración (mismo nombre en perfiles distintos) no inundan de avisos: la regla REP-002(c) solo marca repetidos entre perfiles si alguno está en Siempre visible o si están en la misma lista. **Decisión:** se aplica REP-002 tal cual y, tras migrar, las claves repetidas se añaden a dupIgnored, se listan en el informe y se pueden revisar. ‹DIS-80; §6 PQ-41›
-- **MIG-009 · MUST · Importar archivos v1 en cualquier momento.** Importar acepta también archivos v1: cualquier `profiles.json`, `profiles.backup.en.json`, `profiles.backup.es.json` (con `_nota`) y el `.zip` de respaldo que contiene un `profiles.json`. Siempre con vista previa, copia y deshacer. ‹v1 edit_panel.py:1241-1291›
+**Retirado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): Clícalo no se basa en nada de la app anterior y no lee su `profiles.json` v1, sus respaldos por idioma ni su `.zip`. Todos los requisitos de esta sección quedan retirados y sus identificadores no se reutilizan. Siguen vigentes la importación y la exportación del formato propio (COP-002, COP-005, DAT-007) y las migraciones entre versiones del esquema propio (NFR-006). El texto anterior está en la versión 1.0 del catálogo (historial de git).
+
+- **MIG-001 · Retirado · Localizar la configuración v1.** (D1).
+- **MIG-002 · Retirado · Esquema v1 completo.** (D1).
+- **MIG-003 · Retirado · Tokenizador de combinaciones.** (D1).
+- **MIG-004 · Retirado · Sin pérdidas y con informe.** (D1).
+- **MIG-005 · Retirado · Catálogo de teclas para migrar.** (D1).
+- **MIG-006 · Retirado · Conversión de ajustes.** (D1).
+- **MIG-007 · Retirado · Atajos especiales.** (D1).
+- **MIG-008 · Retirado · Repetidos de la migración.** (D1).
+- **MIG-009 · Retirado · Importar archivos v1 en cualquier momento.** (D1).
 
 ### 2.31 LOG · Registros, privacidad y seguridad
 
@@ -1041,7 +1032,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **TEM-005 · MUST · Tipografía e iconos incluidos en la app.** Atkinson Hyperlegible 400/700 para la interfaz, JetBrains Mono 500 para teclas y procesos, y Material Symbols Rounded con el eje FILL para los estados activos. Todo empaquetado, sin red, con versión fijada y licencias incluidas. Cada nombre de icono de los datos existe en la versión incluida y hay un icono de respaldo. ‹d07:9-14; DIS-85›
 - **TEM-006 · MUST · Reducir movimiento.** Con el ajuste propio o con las animaciones de Windows desactivadas, todas las transiciones pasan a 0 ms: opacidad 350, escala 80, fondo 150, puntos 200, interruptores 150, bienvenida, progreso y Probar. El destello de 240 ms se mantiene como cambio de color sin animación. ‹d07:43; AUD-35›
 - **TEM-007 · MUST · Tamaño mínimo de texto.** Ningún texto baja de 11 px lógicos al 100 %. Las insignias de 8, las teclas en S de 9 y las etiquetas de 10 suben a 11, y el recorte o el alto se ajustan. ‹d07:14; DIS-27›
-- **TEM-008 · MUST · Marca.** «Clícalo» con tilde en la interfaz; «clicalo» sin tilde solo en carpetas, identificadores y el esquema de enlaces. Logotipo «Cl» + ı sin punto + «calo» con la tilde en accent. El icono de la app es provisional. No quedan restos de «Macro Quick Access» en textos, enlaces ni nombres de archivo, salvo cuando se habla de la migración. ‹d07:3-8; AUD-62›
+- **TEM-008 · MUST · Marca.** «Clícalo» con tilde en la interfaz; «clicalo» sin tilde solo en carpetas, identificadores y el esquema de enlaces. Logotipo «Cl» + ı sin punto + «calo» con la tilde en accent. El icono de la app es provisional. No quedan restos de «Macro Quick Access» en textos, enlaces ni nombres de archivo, salvo en la convivencia con la app anterior (SIS-005). **Modificado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): ya no hay migración de la que hablar. ‹d07:3-8; AUD-62›
 - **TEM-009 · MUST · Anillo de foco.** Anillo de 3 px en accent, separado 2 px, en todo control, incluidos los campos. En alto contraste, amarillo. ‹d07:40; AUD-19›
 
 ### 2.33 IDI · Idioma
@@ -1150,13 +1141,14 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **NFR-010 · MUST · Actualizable y recuperable.** Canal Estable o Beta, instalación en reposo, versión anterior conservada 7 días, instalador y desinstalador que pregunta si conservar los datos, y una versión visible en la app.
 - **NFR-011 · MUST · Compatibilidad.** Windows 10 22H2+ y Windows 11, pantallas táctiles, varios monitores, escalas mixtas, barra de tareas en cualquier borde o con autoocultado, y equipos 2 en 1 que rotan.
 - **NFR-012 · MUST · Separación de responsabilidades (atributo de calidad, sin prescribir tecnología).** Las reglas de negocio se implementan una sola vez y son deterministas, sin depender de la interfaz ni del sistema operativo:
-  - resolución de perfil, Frecuentes, repetidos, filtro táctil, teclas fijas, registro de pulsadas, confirmaciones, visibilidad de capas, disposición (filas y capacidad de la barra), numeración de voz, migración y deshacer.
+  - resolución de perfil, Frecuentes, repetidos, filtro táctil, teclas fijas, registro de pulsadas, confirmaciones, visibilidad de capas, disposición (filas y capacidad de la barra), numeración de voz, migraciones del esquema y deshacer.
   El estado de dominio, los ajustes, el estado del motor y el estado transitorio de la interfaz tienen cada uno su dueño. ‹lecciones v1 y prototipo›
 - **NFR-013 · MUST · Testabilidad.**
   - Reloj y planificador simulables.
   - Fuente de app activa, receptor de entrada, servicio de IA, red y enumeración de ventanas simulables.
-  - Pruebas automáticas de: envío (orden, lados, Unicode, ES/EN, códigos físicos), seguridad de teclas, filtro táctil, resolución de perfil, repetidos, migración (los 3 archivos v1 reales anonimizados, los 2 respaldos, el zip y casos dañados), paridad de idiomas, esquemas de catálogos, que el panel no se active, y UI Automation.
-  - Todo en integración continua obligatoria. ‹d10:22-28; AUD-57›
+  - Pruebas automáticas de: envío (orden, lados, Unicode, ES/EN, códigos físicos), seguridad de teclas, filtro táctil, resolución de perfil, repetidos, migraciones del esquema e importación del formato propio (copias, perfiles compartidos y casos dañados), paridad de idiomas, esquemas de catálogos, que el panel no se active, y UI Automation.
+  - Todo en integración continua obligatoria.
+  **Modificado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): las pruebas de migración de los archivos v1 se sustituyen por las del formato propio. ‹d10:22-28; AUD-57›
 - **NFR-014 · MUST · Builds reproducibles.** Dependencias con versión fija, inventario de componentes y solo dependencias declaradas (la v1 pesaba 147 MB con paquetes que no usaba).
 - **NFR-015 · MUST · Mantenibilidad y escala.** Catálogos, textos, tokens y ajustes se declaran como datos (clave, tipo, rango, texto y descripción), de modo que añadir un ajuste, una sección, un idioma o una plantilla no toca lo demás. Una capacidad tiene un solo modelo y una sola orden. Los artefactos generados no se editan a mano. Los cambios pasan por ramas, revisión y un historial de cambios.
 - **NFR-016 · MUST · Escala de datos.** Funciona con 50 perfiles y 2000 atajos sin degradación perceptible. El usuario real tiene 14 y 210.
@@ -1260,11 +1252,13 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **EC-BIE-01.** Atrás al paso 1: se recalculan los efectos. Omitir tras el paso 1: se conserva lo aplicado.
 
 **Migración**
-- **EC-MIG-01.** `profiles.json` y datos de Clícalo presentes a la vez: no se migra de forma automática. Se ofrece importar.
-- **EC-MIG-02.** v1 con el JSON dañado, vacío, con BOM, truncado o sin «profiles»: informe de error, datos de ejemplo y «Reintentar».
-- **EC-MIG-03.** pinned_profile o active_profile que apuntan a un perfil que no existe: se ignoran y se informa.
-- **EC-MIG-04.** Sin perfil «General», o General con proceso: se crea General vacío. El proceso de General pasa a un perfil «General ({proceso})» y se informa.
-- **EC-MIG-05.** Colores #RGB, con nombre o #AARRGGBB: se normalizan y, si no son válidos, se informa sin fallar.
+
+**Retirados por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): sin importación desde Macro Quick Access no tienen efecto. Los identificadores se conservan y no se reutilizan.
+- **EC-MIG-01.** Retirado · `profiles.json` y datos de Clícalo a la vez (D1).
+- **EC-MIG-02.** Retirado · Archivo v1 dañado (D1).
+- **EC-MIG-03.** Retirado · Perfil fijado o activo inexistente (D1).
+- **EC-MIG-04.** Retirado · Sin perfil General o General con proceso (D1).
+- **EC-MIG-05.** Retirado · Colores v1 no estándar (D1).
 
 ---
 
@@ -1274,7 +1268,7 @@ Criterio: §0.1. «Manda» indica la fuente que prevalece.
 
 | ID | Tema | docs | Prototipo v4 / otro | Manda | Resolución |
 |---|---|---|---|---|---|
-| DIS-01 | App sin perfil en Auto | General (d03:16) | Se queda en el anterior | README glosario + docs | General (PER-003). Evita enviar atajos de Word a Excel. Cambio perceptible frente a la v1: se anuncia en el informe de migración. |
+| DIS-01 | App sin perfil en Auto | General (d03:16) | Se queda en el anterior | README glosario + docs | General (PER-003). Evita enviar atajos de Word a Excel. (Sin informe de migración desde la decisión D1 del usuario del 2026-10-03.) |
 | DIS-02 | Fijo→Auto sin perfil | Salta a la app | No cambia | docs | Salta a General (PER-006). |
 | DIS-03 | Auto→Fijo en Frecuentes | Fija retProf | Anuncia sin guardar | docs + coherencia | lastProfile = retProf; se queda en Frecuentes. |
 | DIS-04 | Orden de retProf | App/último/General | Añade «perfil de la app» | Prototipo | PER-004. |
@@ -1338,29 +1332,29 @@ Criterio: §0.1. «Manda» indica la fuente que prevalece.
 | DIS-63 | Orden de General | Idioma, Tema, Vista, Tamaño | …Tamaño, Vista | Prototipo | GEN-001. |
 | DIS-64 | Atenuar más opaco que la opacidad normal | — | Posible | Decisión | min(dimTo, opacidad). |
 | DIS-65 | Versión anterior tras migrar el esquema | — | — | Decisión | ACT-005. |
-| DIS-66 | Tarjeta de migración | Solo si hubo migración | Siempre | docs | COP-001. |
+| DIS-66 | Tarjeta de migración | Solo si hubo migración | Siempre | docs | COP-001, retirado por la decisión D1 del usuario (2026-10-03). |
 | DIS-67 | Orden de Importar | — | Pregunta antes de elegir el archivo | Decisión (R8) | COP-002. |
 | DIS-68 | Texto de la copia automática | A los 30 s | «Cada vez que cambias» | docs | Se corrige el texto. |
 | DIS-69 | Confirmación de Restaurar | Doble toque | Sin plazo; recuentos actuales | Coherencia | 3,5 s y recuentos de la copia. |
 | DIS-70 | Marca antigua | Clícalo | «Macro Quick Access», macro_quick_access.log, repositorio antiguo | Auditoría + d07 | TEM-008. |
 | DIS-71 | Adjuntar el registro por correo | mailto con adjunto | Imposible | Decisión | ACE-004. |
-| DIS-72 | Pantalla de migración | Antes del paso 0 | No existe | docs | BIE-002. |
+| DIS-72 | Pantalla de migración | Antes del paso 0 | No existe | docs | BIE-002, retirado por la decisión D1 del usuario (2026-10-03). |
 | DIS-73 | Omitir la bienvenida | Valores por defecto | Conserva lo aplicado | Prototipo | BIE-003. |
 | DIS-74 | Cuándo se instala | Al pasar del paso 2 | Al pulsar Empezar | Prototipo | BIE-006. |
 | DIS-75 | Nombres de tamaño | — | «Compacto/Normal/Grande» en la bienvenida | Decisión | [sizeS/M/L] en todo; «Compacto» chocaba con la vista Compacta. |
 | DIS-76 | Aviso final de la bienvenida | — | «¡Todo listo! Listo…» | Decisión | Solo [welcome]. |
 | DIS-77 / 78 | ids y alcance de deshacer | Únicos | Hechos con Date.now(); Frecuentes fuera | docs | DAT-004/006. |
-| DIS-80 | Repetidos tras migrar | Regla del mismo nombre | ≈45 grupos | Decisión | MIG-008. |
+| DIS-80 | Repetidos tras migrar | Regla del mismo nombre | ≈45 grupos | Decisión | MIG-008, retirado por la decisión D1 del usuario (2026-10-03). |
 | DIS-81 | Datos personales en la biblioteca | — | Firma y dirección del autor | Privacidad | LOG-005. |
 | DIS-82 | Alto contraste siempre o solo en Auto | Solo en Auto | — | Auditoría | TEM-001. |
 | DIS-83 / 84 | Paleta incompleta; contraste del tema claro | 4,5:1 | Fallos calculados | docs | TEM-002/004. |
 | DIS-85 | Fuentes | — | Cargadas de la red | Decisión | Incluidas en la app (TEM-005). |
 | DIS-86 / 87 | Textos escritos en el código; nombres de tecla solo en ES | Todo traducible | 17 textos en el código; KEYG en ES | d07 | IDI-002/003. |
-| DIS-88 | {p} usado como número en migT | {p} = perfil | Número | d07 | Variables semánticas (IDI-004). |
+| DIS-88 | {p} usado como número en migT | {p} = perfil | Número | d07 | Variables semánticas (IDI-004). Sin efecto: migT se retiró por la decisión D1 del usuario (2026-10-03). |
 | DIS-89 | Número de hallazgos y de textos | README: 60; Auditoría: 558 textos | 62 hallazgos; 669 claves | Datos | Referencia: 62 y 669. |
 | DIS-90–94 | Catálogos: identificadores, iconos, semilla, teclas no válidas, variantes | — | Varios defectos | Decisión | CAT-001…005. |
 | DIS-95 | Intervalo entre eventos | ~15 ms | v1 necesitó 20 ms | Medición | NFR-004, ajustable. |
-| DIS-96 | Opacidad | Paso de 0,05 | v1 usaba pasos de 0,08 | docs | Redondeo al migrar (§8.4). |
+| DIS-96 | Opacidad | Paso de 0,05 | v1 usaba pasos de 0,08 | docs | Paso de 0,05 (GEN-009). El redondeo al migrar desapareció con la decisión D1 del usuario (2026-10-03). |
 
 ---
 
@@ -1375,10 +1369,10 @@ Cada pregunta lleva una **propuesta por defecto** que se aplica si no hay respue
 | PQ-03 | Punto objetivo de las acciones de mouse | Última posición del puntero fuera de Clícalo (EJE-009). | EJE-009 |
 | PQ-04 | ¿Qué significa Alternar? | «Teclas presionadas mientras está activo». Win+H y Alt+A pasan a ser Pulsar. | EJE-007, CAT-003 |
 | PQ-05 | Versión de lanzamiento de Clícalo | 2.0.0, continuando la numeración de Macro Quick Access. La reversión solo se ofrece desde la primera actualización. | ACE, ACT |
-| PQ-06 | ¿Cómo se representa pinned_profile de la v1 (perfil base de 27 atajos)? | Informe más la sugerencia de fijar sus 4–8 atajos más usados en Siempre visible. Se valora una función «perfil base» si el usuario la echa de menos. | MIG-006 |
+| PQ-06 | ¿Cómo se representa pinned_profile de la v1 (perfil base de 27 atajos)? | Informe más la sugerencia de fijar sus 4–8 atajos más usados en Siempre visible. Se valora una función «perfil base» si el usuario la echa de menos. **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG-006 |
 | PQ-07 | ¿Acceso a Ajustes rápidos desde la barra? | Sí, con el botón `tune` (PES-009). | PES-009 |
-| PQ-08 | Color personalizado por botón (usado por el autor en 4 botones) | Se mapea a la categoría más cercana y el hexadecimal va al informe. Posible campo de color libre más adelante. | MIG, TEM |
-| PQ-09 | Separadores de la v1 | Se descartan con informe; no hay ninguno en los datos reales. | MIG |
+| PQ-08 | Color personalizado por botón (usado por el autor en 4 botones) | Se mapea a la categoría más cercana y el hexadecimal va al informe. Posible campo de color libre más adelante. **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG, TEM |
+| PQ-09 | Separadores de la v1 | Se descartan con informe; no hay ninguno en los datos reales. **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG |
 | PQ-10 | Numeración de voz de la fila fija y de Fijos | Continúa tras N (ACC-010). | ACC-010 |
 | PQ-11 | Primer toque sobre el panel atenuado | Despierta y ejecuta (prototipo). | EJE-017 |
 | PQ-12 | ¿Respuesta a un toque ignorado? | Sí, discreta y desactivable (TAC-003). | TAC-003 |
@@ -1409,8 +1403,8 @@ Cada pregunta lleva una **propuesta por defecto** que se aplica si no hay respue
 | PQ-37 | Portabilidad de los textos cifrados | Excluidos por defecto al exportar, con opción de incluirlos en claro y aviso. | COP-005, DAT-007 |
 | PQ-38 | Vía para enviar el registro | ACE-004. ¿Se muestra el correo personal del autor en la app? Pendiente de confirmar. | ACE-004/005 |
 | PQ-39 | Preselecciones de la bienvenida | Nada marcado para usuarios nuevos. | BIE-005/006 |
-| PQ-40 | Los 8 atajos de la v1 que nunca funcionaron | Se migran con el significado del nombre y la marca «Revisar». | MIG-007 |
-| PQ-41 | Repetidos de la migración | Se añaden a dupIgnored y se listan (MIG-008). | MIG-008 |
+| PQ-40 | Los 8 atajos de la v1 que nunca funcionaron | Se migran con el significado del nombre y la marca «Revisar». **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG-007 |
+| PQ-41 | Repetidos de la migración | Se añaden a dupIgnored y se listan (MIG-008). **Cerrada por la decisión D1 del usuario (2026-10-03):** no hay migración desde la v1. | MIG-008 |
 | PQ-42 | ¿El estado atenuado queda exento del contraste? | Sí. | TEM-004 |
 | PQ-43 | ¿Tiempos de confirmación y avisos ajustables? | Sí, ×1, ×2 y ×3 (ACC-006). | ACC-006 |
 | PQ-44 | Perfiles de ejemplo | Siempre se instala General. Word, Navegador y VS Code, solo si se eligen. | CAT-003 |
@@ -1434,7 +1428,7 @@ Propuestas del plano (P1–P6, [§1.4](../architecture/blueprint.md#14-propuesta
 | P4 | SIS-002 se cumple en la 2.0 con el componente de sistema; solo si S14 fracasa se pediría rebajarlo a SHOULD. | Se cumple. | SIS-002 |
 | P5 | ARM64 se publica en beta desde el principio y en estable tras la aceptación en un equipo ARM64 físico. | ARM64 solo en beta. | Distribución |
 | P6 | Al desinstalar desde Configuración de Windows no hay UI y siempre se conservan los datos; la pregunta se hace en Sistema › Desinstalar y, al reinstalar, en la bienvenida. Requiere dos textos nuevos. | Se implementa así. | NFR-010 |
-| R-01 | Textos de plural nuevos (forma `_one`, ES y EN) de comboN, instNoteSome, sugLine, dupHead, twMacro y addMissing; claves nuevas migTProfiles y migTShortcuts; migT pasa a «Importado desde tu versión anterior: {profiles} y {shortcuts}». twMacro_one omite «uno tras otro» (un solo paso). | Están en `data/i18n` (receta `handoff-import.json`); con los argumentos de muestra, el texto visible es idéntico al del paquete. | §9, IDI-001, IDI-004 |
+| R-01 | Textos de plural nuevos (forma `_one`, ES y EN) de comboN, instNoteSome, sugLine, dupHead, twMacro y addMissing; claves nuevas migTProfiles y migTShortcuts; migT pasa a «Importado desde tu versión anterior: {profiles} y {shortcuts}». twMacro_one omite «uno tras otro» (un solo paso). La parte de migT, migTProfiles y migTShortcuts quedó sin efecto por la decisión D1 del usuario (2026-10-03, §6.2). | Están en `data/i18n` (receta `handoff-import.json`); con los argumentos de muestra, el texto visible es idéntico al del paquete. | §9, IDI-001, IDI-004 |
 | R-02 | Las claves huérfanas de §10 se conservan en M0 en `allow-unused.txt` en lugar de borrarse. §10 dice «49 claves», pero su lista tiene 58. | Se conservan hasta que se decida PQ-51. | PQ-51, IDI-005 |
 | R-03 | Etiquetas nuevas de los catálogos: kgMods «Modificadores»/«Modifiers», kgFn «F1–F12», y las categorías catEdit «Edición»/«Editing», catHist «Historial»/«History», catFile «Archivo»/«File», catSel «Selección»/«Selection», catWin «Ventanas»/«Windows», catVoice «Voz»/«Voice», catNav «Navegación»/«Navigation», catFmt «Formato»/«Formatting», catWeb «Web» y catText «Texto»/«Text». | Están en `data/i18n`. | CAT-001, PQ-50 |
 | R-04 | Etiquetas ES/EN de teclas, acciones de mouse, iconos y comandos de sistema como dato en `data/catalogs` (con nombre hablado para los glifos), frente a la letra de IDI-002 e IDI-006, que pide todo texto en `data/i18n`. | Viven en los catálogos. | IDI-002, IDI-006, UIA008 |
@@ -1444,144 +1438,24 @@ Propuestas del plano (P1–P6, [§1.4](../architecture/blueprint.md#14-propuesta
 | R-08 | Las combinaciones bloqueadas o especiales se comparan sin el lado del modificador (Ctrl der.+Alt+Supr está tan reservada como Ctrl+Alt+Supr), a diferencia de REP-001 para los repetidos. | Así en `blocked-combos.json` y sus pruebas, y en `CanonicalChord.ForBlockedComparison` (`tests/Clicalo.Domain.Tests/Keys/CanonicalChordTests.cs`). | EJE-014, REP-001 |
 | R-09 | Autoría de las plantillas incluidas: el nombre personal del autor o «Clícalo». | `authors` es «Michael Coaguila». | CAT-006 |
 | R-10 | Herramientas de dictado con gancho de teclado (Wispr Flow, Typeless) pueden tragarse el AltGr o el Ctrl derecho que inyecta Clícalo: se observó en la prueba S7-lite de M0. Propuesta: un aviso o una nota en la ayuda. | Se valida en S7 con el equipo sin esas herramientas. | PQ-47, NFR-004 |
-| R-11 | Textos nuevos de M2 (ES/EN en `data/i18n`, receta `handoff-import.json`). Del esqueleto andante: hidePanel «Ocultar panel», exitApp «Salir», appName «Clícalo», trayHidden «Clícalo · panel oculto», actionUnavailable «Esta acción aún no está disponible». De la integración: processTaken, undoEditsIn, stepDeleted, itemGone, generalFixed, settingInvalid, backupDamaged, handleLock (dominio); engineFault, incompleteTap, elevatedRefused, keyMissing, releasedOnLock, macroRunning, macroCancelled, tapSent (motor); guardianUnstable (verificación de M2); saveFailT, saveFailD, saveReadOnly, dataUnreadable, textUnavailable, schemaNewer, importInvalid, importTooLarge, sharedTextsExcluded (persistencia); migFailT, migFailD, migRetry, migReportT (migración). Marcadores nuevos `{process}`, `{setting}` y `{key}`. | Están en `data/i18n` con el texto que pidió cada paquete; los que aún no tienen quien los muestre (editor, bienvenida, resolución de teclas) esperan a M3. | IDI-001, IDI-002, DAT-002, EJE-003, EJE-010, EJE-013, EJE-015, SEG-006, NFR-005, MIG-004 |
-| R-12 | Dos correcciones de la sección 7 al integrar la migración: (a) en la fila `window_pos` de §7.4 el ejemplo debe decir «x = 1963 con 1200 lógicos (2400 al 175 %, que Qt 5 redondea a escala 2)», porque v1 usaba la escala entera de Qt 5; la regla no cambia; (b) EC-MIG-02 cuenta «con BOM» entre los errores, pero el plano (§6.6) tolera el BOM y aceptarlo no pierde datos. | La conversión redondea la escala como Qt 5 y el lector v1 acepta el BOM. | MIG-006, EC-MIG-02 |
+| R-11 | Textos nuevos de M2 (ES/EN en `data/i18n`, receta `handoff-import.json`). Del esqueleto andante: hidePanel «Ocultar panel», exitApp «Salir», appName «Clícalo», trayHidden «Clícalo · panel oculto», actionUnavailable «Esta acción aún no está disponible». De la integración: processTaken, undoEditsIn, stepDeleted, itemGone, generalFixed, settingInvalid, backupDamaged, handleLock (dominio); engineFault, incompleteTap, elevatedRefused, keyMissing, releasedOnLock, macroRunning, macroCancelled, tapSent (motor); guardianUnstable (verificación de M2); saveFailT, saveFailD, saveReadOnly, dataUnreadable, textUnavailable, schemaNewer, importInvalid, importTooLarge, sharedTextsExcluded (persistencia); migFailT, migFailD, migRetry, migReportT (migración, retirados por la decisión D1 del usuario del 2026-10-03, §6.2). Marcadores nuevos `{process}`, `{setting}` y `{key}`. | Están en `data/i18n` con el texto que pidió cada paquete; los que aún no tienen quien los muestre (editor, bienvenida, resolución de teclas) esperan a M3. | IDI-001, IDI-002, DAT-002, EJE-003, EJE-010, EJE-013, EJE-015, SEG-006, NFR-005, MIG-004 |
+| R-12 | Sin efecto: la sección 7, MIG-006 y EC-MIG-02 quedaron retirados por la decisión D1 del usuario (2026-10-03, §6.2). Proponía dos correcciones de la sección 7 al integrar la migración (el ejemplo de `window_pos` con la escala entera de Qt 5 y el BOM de EC-MIG-02). | — | MIG-006, EC-MIG-02 |
 | R-13 | «Fijo/Automático» (`lockProfile`) y el último perfil (`lastProfile`) no se deshacen: son de colocación, como la posición del panel, para que deshacer no cambie la vista bajo el dedo. REG-07 y DAT-006 no los nombran. | Así en `SettingsSchema` (alcance de colocación). | REG-07, DAT-006, PER-001 |
 | R-14 | «Dejar solo en Siempre visible» (REP-005) borra de un toque las apariciones repetidas con el mismo nombre, pero no está en la lista cerrada de `destructive-operations.json`, y REG-04 cuenta borrar una aparición repetida como destructivo. Propuesta: añadirlo a la lista (dos toques), o construirlo como movimientos más `DeleteDuplicate`. | No se implementa en M2. | REP-005, REG-04 |
+
+### 6.2 Decisiones del usuario
+
+Decisiones que el usuario, dueño del producto, toma y ratifica sobre el propio catálogo. Mandan sobre todas las demás fuentes (§0.1, nivel 1). Cada requisito afectado lleva la marca «Modificado» o «Retirado por decisión del usuario» con la fecha y el motivo, y los identificadores retirados no se reutilizan.
+
+| ID | Fecha | Decisión | Requisitos afectados | Registro |
+|---|---|---|---|---|
+| D1 | 2026-10-03 | Clícalo no se basa en nada de la app anterior (Macro Quick Access): se elimina solo la capacidad de leer su `profiles.json` v1 y las piezas que existían únicamente para ella (conversor e importador, sus pruebas y *fixtures*, la orden `anonymize-v1`, la opción `--migrate-v1`, los textos de migración, la pantalla previa de la bienvenida y la tarjeta de migración de Sistema › Copias). Se mantiene todo lo demás del Prototipo v4, incluida la importación y la exportación del formato propio y las migraciones del esquema propio. | Retirados: MIG-001 a MIG-009, BIE-002, COP-001, EC-MIG-01 a EC-MIG-05 y §7. Modificados: REG-08, NFR-013 y TEM-008. Cerradas: PQ-06, PQ-08, PQ-09, PQ-40 y PQ-41. Sin efecto: R-12, y R-01 y R-11 en su parte de migración. | [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md); plano §1.2 (D11) y §6.6; sección `retired` de `data/i18n/handoff-import.json` |
 
 ---
 
 ## 7. Esquema v1 exacto (Macro Quick Access) y conversión
 
-### 7.1 Archivos reales
-
-Comprobado el 2026-09-25.
-
-| Ruta (bajo `Documentos\Macro Quick Access\`) | Modificado | Perfiles | Botones | Nota |
-|---|---|---|---|---|
-| `dist\MacroQuickAccess\profiles.json` | 25-sep-2026 | 14 | 210 | **La que se usa**; contiene todo lo de las otras dos |
-| `dist\profiles.json` | 17-may | 14 | 204 | |
-| `profiles.json` (raíz) | 23-abr | 13 | 192 | |
-
-También hay respaldos manuales: `profiles.backup.es.json` (con la clave `_nota`), `profiles.backup.en.json` y `profiles.backup.zip` (contiene un `profiles.json` del 25-mar).
-
-### 7.2 Esquema
-
-Es JSON en UTF-8, con indentación de 2 y sin campo de versión. **Todas las claves son opcionales** al leer y su orden varía.
-
-```jsonc
-{
-  "active_profile": "Chrome",        // string: nombre de perfil. Defecto "General"
-  "pinned_profile": "General",       // string: perfil base (2.ª pestaña con el perfil completo). "" = ninguno
-  "window_pos":   [875, 134],        // [x, y] px lógicos (Qt) en el escritorio virtual. Defecto [80, 80]
-  "window_size":  [239, 250],        // [w, h] del modo uso. Defecto [300, 280]
-  "edit_size":    [391, 742],        // [w, h] del modo edición. Defecto [330, 500]
-  "window_opacity": 0.68,            // float 0.30..1.00, 2 decimales, pasos ±0.08. Defecto 0.92
-  "button_size":  [55, 40],          // [w (siempre 55, se ignora), h 40..110 paso 7]. Defecto [85, 62]
-  "profiles": {                      // objeto nombre → perfil; el orden de inserción es el orden en pantalla
-    "<Nombre visible>": {            // el nombre ES la identidad: único, distingue mayúsculas, Unicode, sin espacios al borde
-      "process": "chrome.exe",       // nombre del .exe sin ruta, en minúsculas; "" = manual. Defecto ""
-      "buttons_per_page": 9,         // int 1..50. Defecto 9
-      "buttons": [ /* Button v1[] ordenado */ ]
-    }
-  }
-  // Claves desconocidas toleradas (p. ej. "_nota": string en profiles.backup.es.json)
-}
-```
-
-**Variantes de Button v1:**
-
-```jsonc
-{ "label": "Negrita", "hotkey": "ctrl+n", "color": "#2980B9" }                  // (a) atajo implícito: los 210 del usuario
-{ "label": "…", "type": "hotkey", "hotkey": "ctrl+s", "color": "#27AE60" }      // (b) atajo explícito
-{ "label": "…", "action": "ctrl+s", "color": "…" }                              // (c) atajo con "action" en vez de "hotkey"
-{ "label": "Gmail", "type": "url", "action": "https://example.com", "color": "…" } // (d) URL
-{ "label": "Notas", "type": "app", "action": "notepad.exe", "color": "…" }      // (e) App o comando (v1 lo ejecutaba con un intérprete: inseguro)
-{ "type": "separator", "label": "" }                                            // (f) separador: ocupa una fila y cuenta como hueco en la página
-```
-
-- `color`: «#RRGGBB» en mayúsculas de la paleta (#2980B9, #E67E22, #8E44AD, #27AE60, #7F8C8D, #C0392B, #16A085, #F39C12, #E74C3C) o en minúsculas desde el selector (reales: #55ff00 ×2, #5500ff y #00ffff).
-- `label`: texto libre de 3 a 16 caracteres observados, con tildes y ñ.
-
-**Uso real:**
-- Perfiles y atajos: General 27, VS Code 21, Navegador 10, Chrome 19, Firefox 18, Word 13, Excel 12, PowerPoint 12, Zoom 9, Teams 9, Photoshop 18, Notepad++ 12, Explorador 9 y Antigravity 21 (copia de VS Code).
-- 12 perfiles vinculados a chrome.exe, firefox.exe, code.exe, winword.exe, excel.exe, powerpnt.exe, zoom.exe, ms-teams.exe, photoshop.exe, notepad++.exe, explorer.exe y antigravity.exe. General y Navegador son manuales.
-- Ajustes: active_profile «Chrome», pinned_profile «General», opacidad 0,68 y botón de 40 de alto.
-
-### 7.3 Gramática de combinaciones v1 y tokenizador
-
-- Cadena en minúsculas.
-- **Acordes** separados por uno o más espacios, por ejemplo `ctrl+k ctrl+c`.
-- Dentro de un acorde, los tokens van separados por `+`. Un `+` es **tecla** si va al final tras otro `+` (`ctrl++`) o si sigue a `num` (`num+`).
-- Se recortan los espacios.
-- Se conserva el orden guardado.
-- Lo que escribió el compositor de v1 viene en el orden win, ctrl, ctrlright, alt, altright, shift, shiftright, tecla. Lo escrito a mano conserva su orden (`shift+alt+f`, `win+ctrl+space`).
-
-| Token v1 | Tecla del catálogo | Nota |
-|---|---|---|
-| `ctrl` / `ctrlleft` | Ctrl / Ctrl izq. | «Ctrl» a secas se envía como izquierdo |
-| `ctrlright` | Ctrl der. | Solo modificador válido (Voibe) |
-| `alt` / `altleft` | Alt / Alt izq. | |
-| `altright` | Alt der. / AltGr | Se muestra según la distribución; se envía **solo** Alt der. (PQ-47) |
-| `shift` / `shiftleft` / `shiftright` | Shift / Shift izq. / Shift der. | |
-| `win` / `winleft` / `winright` | Win / Win / Win der. | Win der. se añade al catálogo |
-| `a`–`z`, `ñ` | A–Z, Ñ | |
-| `0`–`9` | 0–9 | |
-| `f1`–`f24` | F1–F24 | |
-| `tab`, `enter`/`return`, `esc`/`escape`, `space` | Tab, Enter, Esc, Espacio | |
-| `delete`/`del`, `backspace`, `insert` | Supr, Retroceso, Insert | |
-| `home`, `end`, `pageup`/`pgup`, `pagedown`/`pgdn` | Inicio, Fin, RePág, AvPág | |
-| `left`, `right`, `up`, `down` | ←, →, ↑, ↓ | Real: `alt+right` |
-| `printscreen`/`prtsc`, `pause`, `capslock`, `numlock`, `scrolllock`, `apps` | ImprPant, Pausa, Bloq Mayús, Bloq Num, Bloq Despl, Menú | |
-| `+`/`plus`, `-`/`minus`, `=`, `,`, `.`, `;`, `/`/`slash` | +, − (U+2212), =, `,`, `.`, ;, / | Reales: `ctrl++`, `ctrl+plus`, `ctrl+minus` |
-| `grave`/`` ` ``, `backslash`/`\`, `[`, `]`, `'`, `#` | ` \ [ ] ' # | **Se añaden al catálogo** (MIG-005) |
-| `num0`–`num9`, `num+`/`add`, `num-`/`subtract`, `num*`/`multiply`, `num/`/`divide`, `decimal` | Num 0–9, Num +, Num −, Num *, Num /, Num . | Reales: `ctrl+num+` y `ctrl+num-` |
-| `volumeup`, `volumedown`, `volumemute`, `playpause`, `nexttrack`, `prevtrack`, `stop` | Vol +, Vol −, Silencio, Play/Pausa, Siguiente, Anterior, Detener | |
-| Cualquier otro | — | «Revisar» conservando el texto original |
-
-**Combinaciones de solo modificadores:** son válidas y no están incompletas. Reales: `altright` (Dictado), `altright+shiftright` (Traducir), `ctrlright` (Voibe), `ctrl+win` (Spokenly). También `altright+space` (Preguntar).
-
-### 7.4 Conversión a Clícalo
-
-| v1 | Clícalo | Regla |
-|---|---|---|
-| Archivo elegido | Copia byte a byte en `backups\v1-original-<fecha>.json` | Siempre, antes de convertir |
-| `profiles` (orden) | Perfiles y orden | Id opaco estable; nombre ES = EN = nombre v1; icono con suggestIcons, autoIcon verdadero y modo compatible falso |
-| Perfil «General» | Perfil General | Si no existe, se crea vacío. Si tiene proceso, EC-MIG-04 |
-| `process` | Proceso del perfil | Minúsculas. Si hay duplicados, el primero en orden conserva el proceso y los demás quedan manuales (informe) |
-| `buttons_per_page` | — | Informe; Clícalo calcula columnas × filas |
-| Button (a)(b)(c) | Pulsar con las teclas tokenizadas | Un acorde → Pulsar; varios acordes → Macro con un paso de teclas por acorde |
-| Button (d) | Web | Solo http y https; otros esquemas → «Revisar» |
-| Button (e) | App | La ruta se conserva; el comando con argumentos de intérprete → «Revisar», sin ejecutar nunca por intérprete |
-| Button (f) | — | Informe (PQ-09) |
-| `label` | Nombre ES = EN | |
-| `color` | Categoría (PQ-08) | Hexadecimal en el informe |
-| `hotkey` = `win+l` | Acción de sistema «Bloquear equipo» | MIG-007 |
-| `active_profile` | lastProfile | Si no existe, General |
-| `pinned_profile` | — (PQ-06) | Informe con sugerencia |
-| `window_pos` | Posición del panel en el monitor que contiene el punto | Fuera de todo monitor (p. ej. x = 1963 con 1371 lógicos) → se recoloca en el principal |
-| `window_opacity` | Opacidad | Al paso de 0,05 más cercano, entre 0,30 y 1,00 (0,68→0,70; 0,54→0,55; 0,78→0,80) |
-| `button_size.h` | Tamaño | ≤ 66 → S; ≤ 78 → M; > 78 → L. El h = 40 real pasa a S; se avisa de que el mínimo táctil impide 40 |
-| `window_size`, `edit_size` | — | Informe |
-| Claves desconocidas | — | Se ignoran; quedan en la copia |
-| Frecuentes, Siempre visible, dupIgnored | Vacíos (PQ-44) | Las claves repetidas de la migración van a dupIgnored (MIG-008) |
-
-### 7.5 Atajos reales con conversión especial (8 + 2)
-
-| Perfil · atajo | v1 | En v1 enviaba | En Clícalo |
-|---|---|---|---|
-| Firefox · Acercar | `ctrl++` | Ctrl solo (token vacío) | Ctrl + «+» |
-| Photoshop · Acercar | `ctrl++` | Ctrl solo | Ctrl + «+» |
-| Excel · Inser. fila | `ctrl+num+` | Nada útil (nombre no reconocido) | Ctrl + Num + |
-| Excel · Elim. fila | `ctrl+num-` | Nada útil | Ctrl + Num − |
-| VS Code · Comentar | `ctrl+k ctrl+c` | Ctrl+C (Copiar) | Macro: Ctrl+K → Ctrl+C |
-| VS Code · Descomentar | `ctrl+k ctrl+u` | Ctrl+U | Macro: Ctrl+K → Ctrl+U |
-| Antigravity · Comentar | `ctrl+k ctrl+c` | Ctrl+C | Macro |
-| Antigravity · Descomentar | `ctrl+k ctrl+u` | Ctrl+U | Macro |
-| General · Bloquear | `win+l` | Win+L | Acción de sistema «Bloquear equipo» |
-| General · Admin. tar. | `ctrl+shift+esc` | Ctrl+Shift+Esc | Se conserva, con aviso de combinación especial |
-
-Todos se marcan «Revisar» en el informe (PQ-40). **Acepta:** 210 → 210, sin tokens vacíos.
+**Retirado por decisión del usuario del 2026-10-03** (D1, [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)): Clícalo no lee archivos de Macro Quick Access, así que esta sección (archivos reales, esquema v1, gramática de combinaciones, tabla de conversión y atajos con conversión especial) deja de ser requisito. El texto anterior está en la versión 1.0 del catálogo (historial de git). Las lecciones de la app antigua de la sección 8 siguen siendo válidas.
 
 ---
 
@@ -1598,7 +1472,7 @@ Todos se marcan «Revisar» en el informe (PQ-40). **Acepta:** 210 → 210, sin 
 - **L-DAT-2.** Carga destructiva: un JSON dañado se sustituía por los perfiles de fábrica y se guardaba al momento. → DAT-003.
 - **L-DAT-3.** Los datos vivían junto al .exe y dentro de OneDrive: 3 copias separadas; fallos de guardado por bloqueos (WinError 5 y 32) que solo quedaban en el registro; al extraer un zip reaparecieron los perfiles de fábrica y el script de empaquetado podía publicar datos personales. → Carpeta del usuario, escritura agrupada con reintentos y fallos visibles (DAT-001/002).
 - **L-DAT-4.** Escrituras en cada arrastre, cada paso de opacidad o cada tecla de un campo. → Escritura agrupada.
-- **L-DAT-5.** Combinaciones guardadas como texto libre partido por «+»: 8 de 210 atajos nunca hicieron lo que decían, sin que nadie lo supiera. → Modelo estructurado de teclas y fallos visibles (§7.5).
+- **L-DAT-5.** Combinaciones guardadas como texto libre partido por «+»: 8 de 210 atajos nunca hicieron lo que decían, sin que nadie lo supiera. → Modelo estructurado de teclas y fallos visibles.
 - **L-DAT-6.** El usuario hacía copias a mano (zip, respaldos por idioma). → Copias automáticas con historial.
 - **L-DAT-7.** Las combinaciones cambian con el idioma de Office (Negrita Ctrl+N en ES, Ctrl+B en EN): el autor mantenía perfiles duplicados por idioma. → Las variantes por idioma son parte del modelo (CAT-005).
 
@@ -1647,11 +1521,11 @@ Todos se marcan «Revisar» en el informe (PQ-40). **Acepta:** 210 → 210, sin 
 - [autoReleaseD] → que no prometa soltar siempre al cambiar de app.
 - [aiPrivacy] y [consentD] → los 4 datos enviados.
 - [voiceNums] y [vh3] → un solo nombre.
-- migT → variables {profiles} y {shortcuts}.
+- ~~migT → variables {profiles} y {shortcuts}.~~ Sin efecto: migT se retiró (D1, §6.2).
 - «Auto» del candado → «Se pliega».
 - Unificar «Copia automática» en EN ([rAuto] y [stBackup]).
 - Pasar a los archivos de idioma los 17 textos escritos en el código (IDI-002).
-- Con plural: comboN, instNoteSome, sugLine, dupHead, twMacro, migT y addMissing.
+- Con plural: comboN, instNoteSome, sugLine, dupHead, twMacro y addMissing (migT se retiró, D1).
 
 **Claves nuevas (ES y EN)**
 - **Frecuentes:** estado vacío (título, subtítulo y botón); límite de 9 fijados.
@@ -1665,7 +1539,7 @@ Todos se marcan «Revisar» en el informe (PQ-40). **Acepta:** 210 → 210, sin 
 - **IA:** errores unavailable, invalid y badkey; sección IA en General (consentimiento y desactivar).
 - **Actualizaciones:** estados de error.
 - **Copias:** «Sin copias aún»; tipos «Antes de actualizar» y «Antes de migrar»; resumen de importación.
-- **Migración:** pantalla previa, «Reintentar migración», informe y «Revisar».
+- ~~**Migración:** pantalla previa, «Reintentar migración», informe y «Revisar».~~ Retiradas por la decisión D1 del usuario (2026-10-03, §6.2).
 - **Pestaña:** bloquear posición del asa; «Ver la guía de la pestaña»; «Se pliega».
 - **Bandeja:** Pausar, Reanudar y Soltar todo.
 - **Mover panel:** posiciones predefinidas.

@@ -91,7 +91,7 @@ public sealed class KeyCatalogTests
     }
 
     [Fact]
-    [Trait("Req", "MIG-003")]
+    [Trait("Req", "CAT-001")]
     public void Every_spelling_resolves_to_exactly_one_key()
     {
         var owners = Keys
@@ -104,7 +104,7 @@ public sealed class KeyCatalogTests
     }
 
     [Fact]
-    [Trait("Req", "MIG-003")]
+    [Trait("Req", "CAT-001")]
     public void Aliases_are_lower_case_and_do_not_repeat_the_id_or_a_label()
     {
         foreach (var key in Keys.Keys)
@@ -160,10 +160,10 @@ public sealed class KeyCatalogTests
     }
 
     /// <summary>
-    /// Every token of the version 1 key table (catalog §7.3) and the catalog key it becomes. «winleft» is the
-    /// generic Win, which is already sent as the left key.
+    /// Every text spelling of a key that the catalog accepts when it reads a combination written as text, and the
+    /// catalog key it becomes. «winleft» is the generic Win, which is already sent as the left key.
     /// </summary>
-    public static TheoryData<string, string> Version1Tokens() =>
+    public static TheoryData<string, string> TextSpellings() =>
         new()
         {
             { "ctrl", "ctrl" },
@@ -247,9 +247,9 @@ public sealed class KeyCatalogTests
         };
 
     [Theory]
-    [MemberData(nameof(Version1Tokens))]
-    [Trait("Req", "MIG-005")]
-    public void Every_version_1_token_resolves_to_its_catalog_key(string token, string keyId)
+    [MemberData(nameof(TextSpellings))]
+    [Trait("Req", "CAT-001")]
+    public void Every_text_spelling_resolves_to_its_catalog_key(string token, string keyId)
     {
         Keys.Resolve(token).ShouldNotBeNull(token)!.Id.ShouldBe(keyId, token);
     }

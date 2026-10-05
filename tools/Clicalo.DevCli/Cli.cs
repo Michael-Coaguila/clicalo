@@ -1,5 +1,4 @@
 using Clicalo.DevCli.Adr;
-using Clicalo.DevCli.AnonymizeV1;
 using Clicalo.DevCli.I18n;
 
 namespace Clicalo.DevCli;
@@ -10,7 +9,6 @@ internal static class Cli
     private const string CheckVerb = "i18n-check";
     private const string ImportVerb = "i18n-import";
     private const string AdrVerb = "adr-check";
-    private const string AnonymizeVerb = "anonymize-v1";
 
     private const string Help = """
         Clicalo developer CLI (behind `cl`).
@@ -26,11 +24,6 @@ internal static class Cli
           adr-check     Fail when the files changed since the merge base with <ref> touch a path of
                         architecture/sensitive-paths.json and no ADR (docs/adr/NNNN-*.md) changed with them.
                         --base <ref>     required: the branch or commit the change is compared with.
-          anonymize-v1  Write a test fixture from a real Macro Quick Access v1 profiles.json, language backup or
-                        .zip backup: combinations, colours, numbers and structure kept; names kept only when public,
-                        every other text replaced by a placeholder of the same length. The input is only read.
-                        --in <file>      required: the real v1 file.
-                        --out <file>     required: the fixture to write (never the input).
           help          Show this help.
 
         Common options:
@@ -60,7 +53,7 @@ internal static class Cli
             return ExitCodes.Success;
         }
 
-        if (verb is not (CheckVerb or ImportVerb or AdrVerb or AnonymizeVerb))
+        if (verb is not (CheckVerb or ImportVerb or AdrVerb))
         {
             error.WriteLine(Help);
             error.WriteLine("Unknown verb '" + verb + "'.");
@@ -72,12 +65,6 @@ internal static class Cli
             error.WriteLine(Help);
             error.WriteLine(problem);
             return ExitCodes.Usage;
-        }
-
-        if (string.Equals(verb, AnonymizeVerb, StringComparison.Ordinal))
-        {
-            // Works on files outside the repository; it needs no repository root.
-            return AnonymizeV1Command.Run(options.In!, options.Out!, output);
         }
 
         var root = options.Repo is null
@@ -106,7 +93,7 @@ internal static class Cli
         out string problem
     )
     {
-        options = new CliOptions(null, false, false, null, null, null);
+        options = new CliOptions(null, false, false, null);
         problem = string.Empty;
         for (var i = 0; i < args.Count; i++)
         {
@@ -127,16 +114,6 @@ internal static class Cli
                         && i + 1 < args.Count:
                     options = options with { Base = args[++i] };
                     break;
-                case "--in"
-                    when string.Equals(verb, AnonymizeVerb, StringComparison.Ordinal)
-                        && i + 1 < args.Count:
-                    options = options with { In = args[++i] };
-                    break;
-                case "--out"
-                    when string.Equals(verb, AnonymizeVerb, StringComparison.Ordinal)
-                        && i + 1 < args.Count:
-                    options = options with { Out = args[++i] };
-                    break;
                 default:
                     problem = "Unknown or incomplete option '" + args[i] + "' for " + verb + ".";
                     return false;
@@ -146,15 +123,6 @@ internal static class Cli
         if (string.Equals(verb, AdrVerb, StringComparison.Ordinal) && options.Base is null)
         {
             problem = "adr-check needs --base <ref>.";
-            return false;
-        }
-
-        if (
-            string.Equals(verb, AnonymizeVerb, StringComparison.Ordinal)
-            && (options.In is null || options.Out is null)
-        )
-        {
-            problem = "anonymize-v1 needs --in <file> and --out <file>.";
             return false;
         }
 

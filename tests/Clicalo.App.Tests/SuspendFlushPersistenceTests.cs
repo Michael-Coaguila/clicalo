@@ -1,5 +1,4 @@
 using System.IO;
-using Clicalo.App.Composition;
 using Clicalo.App.Lifecycle;
 using Clicalo.App.Shutdown;
 using Clicalo.Application.Coordinators;
@@ -8,7 +7,6 @@ using Clicalo.Application.Store;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
-using Clicalo.Infrastructure.Migration;
 using Clicalo.Infrastructure.Persistence;
 using Clicalo.TestKit;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -60,7 +58,7 @@ public sealed class SuspendFlushPersistenceTests : IDisposable
     public async Task The_suspend_writes_the_pending_document_and_usage_before_it_is_answered()
     {
         var token = TestContext.Current.CancellationToken;
-        var start = await Start().LoadAsync(ContentFolder, LangCode.Es, null, token);
+        var start = await Start().LoadAsync(ContentFolder, LangCode.Es, token);
         var before = start.Load.Document;
         var after = before with
         {
@@ -123,18 +121,5 @@ public sealed class SuspendFlushPersistenceTests : IDisposable
         new(_locations, _writer, TimeProvider.System, NullLogger<BackupService>.Instance);
 
     private StartupDocuments Start() =>
-        new(
-            Documents(),
-            Usage(),
-            Backups(),
-            new V1Importer(
-                new SafeZipReader(SafeZipLimits.Default),
-                NullLogger<V1Importer>.Instance
-            ),
-            _writer,
-            AppDataLocations.PendingMigration(_locations),
-            new RandomIdGenerator(),
-            TimeProvider.System,
-            NullLogger<StartupDocuments>.Instance
-        );
+        new(Documents(), Usage(), TimeProvider.System, NullLogger<StartupDocuments>.Instance);
 }

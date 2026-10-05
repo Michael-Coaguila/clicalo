@@ -12,7 +12,8 @@ namespace Clicalo.DevCli.I18n;
 /// the recipe does not map is an error, so no unknown marker can slip through;</item>
 /// <item>keys with extra plural forms become families <c>key_one</c> … <c>key_other</c>, where <c>_other</c> is the
 /// converted original text, so the visible text for the sample arguments stays identical;</item>
-/// <item>keys with a replacement text and composed arguments use nested plural messages added by the recipe.</item>
+/// <item>keys with a replacement text and composed arguments use nested plural messages added by the recipe;</item>
+/// <item>keys the recipe lists as <c>retired</c> (removed from the product by a user decision) are not imported.</item>
 /// </list>
 /// Original key names are kept for traceability with the requirements catalog.
 /// </summary>
@@ -56,7 +57,7 @@ internal static partial class HandoffImporter
         }
 
         var emittedAdded = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var key in order)
+        foreach (var key in order.Where(k => !recipe.Retired.Contains(k)))
         {
             ConvertKey(recipe, key, texts, import);
             EmitAddedAfter(recipe, key, import, emittedAdded);
@@ -112,11 +113,25 @@ internal static partial class HandoffImporter
     )
     {
         var added = recipe.Added.Select(static a => a.Key).ToHashSet(StringComparer.Ordinal);
+        foreach (var key in recipe.Retired.Order(StringComparer.Ordinal))
+        {
+            if (!reference.ContainsKey(key))
+            {
+                errors.Add("retired." + key + " is not a key of the handoff.");
+            }
+        }
+
         foreach (var (key, rule) in recipe.Keys.OrderBy(static k => k.Key, StringComparer.Ordinal))
         {
             if (!reference.ContainsKey(key))
             {
                 errors.Add("keys." + key + " is not a key of the handoff.");
+                continue;
+            }
+
+            if (recipe.Retired.Contains(key))
+            {
+                errors.Add("keys." + key + " converts a retired key; remove the rule.");
                 continue;
             }
 

@@ -13,7 +13,7 @@ public readonly record struct ProcessName
     /// <summary>The executable name.</summary>
     public string Value { get; }
 
-    /// <summary>Whether there is no name (the manual binding of v1 and of General).</summary>
+    /// <summary>Whether there is no name (a manual profile, and General).</summary>
     public bool IsEmpty => string.IsNullOrEmpty(Value);
 
     /// <summary>Equality without distinguishing case (PER-002).</summary>

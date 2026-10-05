@@ -8,12 +8,13 @@ public sealed class MessageTests
     [Fact]
     public void Messages_have_value_equality_including_nested_messages()
     {
-        L.MigT(L.MigTProfiles(2), "210 atajos").ShouldBe(L.MigT(L.MigTProfiles(2), "210 atajos"));
-        L.MigT(L.MigTProfiles(2), "210 atajos")
+        L.ProcessTaken(L.ComboN(2), "winword.exe")
+            .ShouldBe(L.ProcessTaken(L.ComboN(2), "winword.exe"));
+        L.ProcessTaken(L.ComboN(2), "winword.exe")
             .GetHashCode()
-            .ShouldBe(L.MigT(L.MigTProfiles(2), "210 atajos").GetHashCode());
-        L.MigT(L.MigTProfiles(2), "210 atajos")
-            .ShouldNotBe(L.MigT(L.MigTProfiles(3), "210 atajos"));
+            .ShouldBe(L.ProcessTaken(L.ComboN(2), "winword.exe").GetHashCode());
+        L.ProcessTaken(L.ComboN(2), "winword.exe")
+            .ShouldNotBe(L.ProcessTaken(L.ComboN(3), "winword.exe"));
         (L.ComboN(1) == L.ComboN(1)).ShouldBeTrue();
         (L.ComboN(1) != L.ComboN(2)).ShouldBeTrue();
     }
@@ -63,12 +64,8 @@ public sealed class MessageTests
     [Trait("Req", "IDI-001")]
     public void The_catalog_lists_every_key_with_its_expected_arguments()
     {
-        MessageCatalog.All.Length.ShouldBe(718);
-        MessageCatalog.TryGet("migT", out var migT).ShouldBeTrue();
-        migT.Parameters.ShouldBe([
-            new MessageParameter("profiles", MessageArgumentType.Text),
-            new MessageParameter("shortcuts", MessageArgumentType.Text),
-        ]);
+        MessageCatalog.All.Length.ShouldBe(710);
+        MessageCatalog.TryGet("migT", out _).ShouldBeFalse("retired by the user (ADR-0020)");
         MessageCatalog.TryGet("processTaken", out var processTaken).ShouldBeTrue();
         processTaken.Parameters.ShouldBe([
             new MessageParameter("profile", MessageArgumentType.Text),
@@ -77,6 +74,6 @@ public sealed class MessageTests
         MessageCatalog.TryGet("comboN", out var comboN).ShouldBeTrue();
         comboN.IsPlural.ShouldBeTrue();
         MessageCatalog.TryGet("comboN_one", out _).ShouldBeFalse();
-        MessageCatalog.TryGet("MigT", out _).ShouldBeFalse();
+        MessageCatalog.TryGet("ComboN", out _).ShouldBeFalse();
     }
 }

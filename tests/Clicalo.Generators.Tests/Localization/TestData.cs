@@ -22,7 +22,7 @@ internal static class TestData
         }
         """;
 
-    // Line 2 search, 3 comboN_one, 4 comboN_other, 5 zoom, 6 createFor, 7 migT.
+    // Line 2 search, 3 comboN_one, 4 comboN_other, 5 zoom, 6 createFor, 7 impT.
     public const string Es = """
         {
           "search": "Buscar",
@@ -30,7 +30,7 @@ internal static class TestData
           "comboN_other": "{count} teclas",
           "zoom": "Zoom {ratio}",
           "createFor": "Crear para {app}",
-          "migT": "Importado: {profiles} & <más>"
+          "impT": "Importado: {profiles} & <más>"
         }
         """;
 
@@ -41,7 +41,7 @@ internal static class TestData
           "comboN_other": "{count} keys",
           "zoom": "Zoom {ratio}",
           "createFor": "Create for {app}",
-          "migT": "Imported: {profiles} & <more>"
+          "impT": "Imported: {profiles} & <more>"
         }
         """;
 

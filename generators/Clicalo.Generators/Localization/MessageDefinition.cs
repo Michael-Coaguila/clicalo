@@ -11,10 +11,10 @@ internal sealed class MessageDefinition(
     ImmutableArray<MessageForm> defaultForms
 )
 {
-    /// <summary>Base key, identical to the original handoff key (<c>migT</c>).</summary>
+    /// <summary>Base key, identical to the original handoff key (<c>dupHead</c>).</summary>
     public string Key { get; } = key;
 
-    /// <summary>PascalCase member name (<c>MigT</c>).</summary>
+    /// <summary>PascalCase member name (<c>DupHead</c>).</summary>
     public string MemberName { get; } = memberName;
 
     /// <summary>True for a plural family selected by <c>{count}</c>.</summary>

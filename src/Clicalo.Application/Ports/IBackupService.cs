@@ -38,17 +38,6 @@ public interface IBackupService
         CancellationToken cancellationToken
     );
 
-    /// <summary>
-    /// Keeps a byte-for-byte copy of an imported v1 file as <c>backups\v1-original-&lt;date&gt;.json</c>, never deleted
-    /// automatically (MIG-004).
-    /// </summary>
-    /// <param name="original">The bytes exactly as read.</param>
-    /// <param name="cancellationToken">Cancels before the write starts.</param>
-    Task<Result<BackupInfo>> KeepV1OriginalAsync(
-        ReadOnlyMemory<byte> original,
-        CancellationToken cancellationToken
-    );
-
     /// <summary>Every backup, newest first.</summary>
     /// <param name="cancellationToken">Cancels the listing.</param>
     Task<ImmutableArray<BackupInfo>> ListAsync(CancellationToken cancellationToken);
