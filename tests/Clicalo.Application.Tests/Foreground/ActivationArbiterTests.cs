@@ -107,7 +107,7 @@ public sealed class ActivationArbiterTests : IDisposable
                 .AsTask()
         );
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
-        await pending;
+        await EndOf(pending);
 
         _world.Control.Attempts.ShouldBe([Word, Word]);
         Timings.Foreground.RestoreRetryDelay.ShouldBeLessThan(

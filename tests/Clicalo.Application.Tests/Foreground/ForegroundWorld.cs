@@ -22,9 +22,6 @@ internal sealed class ForegroundWorld : IDisposable
     public static readonly SurfaceId SearchSurface = new(SurfaceKind.Panel, 0);
     public static readonly SurfaceId PanelSurface = new(SurfaceKind.Panel, 1);
 
-    private static readonly TimeSpan ContinuationGrace = TimeSpan.FromMilliseconds(20);
-    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(5);
-
     private ForegroundOrchestrator? _orchestrator;
 
     public ForegroundWorld(bool seedWord = true)
@@ -124,23 +121,55 @@ internal sealed class ForegroundWorld : IDisposable
     }
 
     /// <summary>
-    /// Runs <paramref name="pending"/> to the end, advancing the fake clock by <c>RestoreRetryDelay</c> while it
-    /// waits (each attempt is verified again after that delay), at most <paramref name="maxWaits"/> times.
+    /// Runs <paramref name="pending"/> to the end, advancing the fake clock by <c>RestoreRetryDelay</c> each time it
+    /// waits on that delay (each attempt is verified again after it), at most <paramref name="maxWaits"/> times. The
+    /// clock moves only once the delay exists: the orchestrator arms it on the thread pool, in real time.
     /// </summary>
+    /// <remarks>
+    /// It used to move the clock whenever the operation had not ended 20 ms after the last look. Under load that moved
+    /// it while a text lease was still being granted, so the lease armed its idle timer 50 ms late and
+    /// <c>Text_input_ends_after_its_idle_timeout_and_gives_the_foreground_back</c>, moving the clock to exactly
+    /// <c>TextInputLeaseIdle</c>, waited for its end forever (5 of the 5 hangs of the second local stress run of
+    /// 2026-10-03: the idle timer scheduled at +50 ms and due at +30.05 s).
+    /// </remarks>
     public async Task<T> CompleteAsync<T>(Task<T> pending, int maxWaits = 6)
     {
-        for (var wait = 0; wait < maxWaits && !pending.IsCompleted; wait++)
+        for (var waits = 0; ; waits++)
         {
-            // Continuations that hop to the thread pool (cancellation callbacks, the gate) run in real time.
-            _ = await Task.WhenAny(pending, Task.Delay(ContinuationGrace));
-            if (!pending.IsCompleted)
+            if (!await WaitsOnRetryDelayAsync(pending))
             {
-                Time.Advance(Timings.Foreground.RestoreRetryDelay);
+                break;
             }
+
+            waits.ShouldBeLessThan(
+                maxWaits,
+                "the operation kept waiting on the retry delay after " + maxWaits + " of them"
+            );
+            Time.Advance(Timings.Foreground.RestoreRetryDelay);
         }
 
-        return await pending.WaitAsync(OperationTimeout);
+        return await pending.WaitAsync(WatchedTime.Liveness);
     }
+
+    /// <summary>
+    /// Waits until <paramref name="operation"/> ends (false) or waits on a <c>RestoreRetryDelay</c> it has armed
+    /// (true); fails after <see cref="WatchedTime.Liveness"/> of real time without either.
+    /// </summary>
+    public Task<bool> WaitsOnRetryDelayAsync(Task operation) =>
+        Time.WaitUntilAsync(
+            () => Time.IsWaiting(Timings.Foreground.RestoreRetryDelay),
+            operation,
+            "armed the retry delay"
+        );
+
+    /// <summary>
+    /// The result of an operation that ends without the clock moving again, or a failure after
+    /// <see cref="WatchedTime.Liveness"/> of real time, never a hang.
+    /// </summary>
+    public static Task<T> EndOf<T>(Task<T> pending) => pending.WaitAsync(WatchedTime.Liveness);
+
+    /// <inheritdoc cref="EndOf{T}(Task{T})" />
+    public static Task EndOf(Task pending) => pending.WaitAsync(WatchedTime.Liveness);
 
     private Task<LeaseResult> AcquireAsync(LeaseRequest request) =>
         CompleteAsync(
@@ -148,16 +177,16 @@ internal sealed class ForegroundWorld : IDisposable
         );
 
     /// <summary>
-    /// Starts <paramref name="operation"/> and returns it once it has armed its next timer (the verification delay after
-    /// a refused attempt) or ended: the orchestrator continues on the thread pool, so the test must not move the clock
-    /// before the delay exists.
+    /// Starts <paramref name="operation"/> and returns it once it waits on the verification delay after a refused
+    /// attempt (<c>RestoreRetryDelay</c>), or once it has ended: the orchestrator continues on the thread pool, so the
+    /// test must not move the clock before the delay exists. Fails, instead of returning, when neither happens within
+    /// <see cref="WatchedTime.Liveness"/>.
     /// </summary>
     public async Task<TTask> StartUntilItWaitsAsync<TTask>(Func<TTask> operation)
         where TTask : Task
     {
-        var timers = Time.TimersCreated;
         var pending = operation();
-        _ = await Task.WhenAny(pending, Time.WhenTimersAsync(timers + 1));
+        _ = await WaitsOnRetryDelayAsync(pending);
         return pending;
     }
 

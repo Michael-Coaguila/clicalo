@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Domain.Execution;
@@ -15,6 +17,13 @@ namespace Clicalo.Application.Tests.Coordinators;
 [Trait("Req", "SEG-002")]
 public sealed class EngineObserverRelayTests
 {
+    /// <summary>
+    /// Real time a test waits for a continuation that the relay queues on the thread pool. A liveness bound of the
+    /// harness, not a duration of the product: the product bounds its own blocking wait on this task with
+    /// <c>Timings.KeySafety.SuspendReleaseWait</c> (App/Shutdown) and the exit with <c>ExitReleaseWait</c>.
+    /// </summary>
+    private static readonly TimeSpan PoolHopLiveness = TimeSpan.FromSeconds(30);
+
     private readonly Queue<Action> _surfaces = new();
     private readonly EngineObserverRelay _relay;
     private readonly List<long> _painted = [];
@@ -103,11 +112,41 @@ public sealed class EngineObserverRelayTests
         released.IsCompleted.ShouldBeFalse("still held");
         _relay.OnSnapshot(Snapshot(3));
 
-        await released.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await ReleasedAsync(released);
         _painted.ShouldBeEmpty("no Surfaces turn was needed");
         _relay
             .WhenNothingHeldAsync(TestContext.Current.CancellationToken)
             .IsCompleted.ShouldBeTrue("nothing held: at once");
+    }
+
+    /// <summary>
+    /// Awaits the end of a session-end wait that the last snapshot has already released: the waiter completes on the
+    /// thread pool (never on the engine thread that published the snapshot), so the test waits for that hop, at most
+    /// <see cref="PoolHopLiveness"/>, and says how long it took.
+    /// </summary>
+    private static async Task ReleasedAsync(Task released)
+    {
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            await released.WaitAsync(PoolHopLiveness, TestContext.Current.CancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            released.IsCompleted.ShouldBeTrue(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"the released wait did not complete within {PoolHopLiveness.TotalSeconds:0} s of real time (thread pool: {ThreadPool.ThreadCount} threads, {ThreadPool.PendingWorkItemCount} work items pending)"
+                )
+            );
+        }
+
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"The released wait completed {Stopwatch.GetElapsedTime(started).TotalMilliseconds:0.0} ms after the idle snapshot"
+            )
+        );
     }
 
     private static ValueList<PressedItem> Holding()

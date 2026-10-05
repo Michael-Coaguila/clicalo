@@ -62,7 +62,10 @@ public sealed class EngineHostFenceTests
         using var world = new HostWorld(realReducer: true);
         using var stop = new CancellationTokenSource();
         var engine = world.Host.StartOnDedicatedThread(stop.Token);
-        await WaitUntil(() => world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive));
+        await Eventually.WaitUntilAsync(
+            () => world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive),
+            "The engine marking itself alive"
+        );
 
         // The emergency's new engine owns the ledger (and its EngineAlive mark) from now on.
         world.Ledger.CurrentGeneration = new EngineGeneration(HostWorld.Generation.Value + 1);
@@ -90,14 +93,5 @@ public sealed class EngineHostFenceTests
         world.Seen.ShouldBeEmpty();
         world.Ledger.Marks.ShouldBe(KeyLedgerMarks.None);
         world.Ledger.Heartbeats.ShouldBeEmpty();
-    }
-
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        while (!condition())
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(5), timeout.Token);
-        }
     }
 }

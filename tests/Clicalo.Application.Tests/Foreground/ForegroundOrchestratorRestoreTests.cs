@@ -57,7 +57,7 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         search.IsActive.ShouldBeTrue("the lease ends after the retry");
         _world.Time.AdvanceTo(deadline);
 
-        (await pending).ShouldBe(RestoreOutcome.RestoredAfterRetry);
+        (await EndOf(pending)).ShouldBe(RestoreOutcome.RestoredAfterRetry);
         _world.Control.Foreground.ShouldBe(Word);
     }
 
@@ -73,7 +73,7 @@ public sealed class ForegroundOrchestratorRestoreTests : IDisposable
         _world.Control.Foreground = Word;
         _world.Time.Advance(Timings.Foreground.RestoreRetryDelay);
 
-        (await pending).ShouldBe(
+        (await EndOf(pending)).ShouldBe(
             RestoreOutcome.Restored,
             "the first attempt, verified once Windows finished"
         );

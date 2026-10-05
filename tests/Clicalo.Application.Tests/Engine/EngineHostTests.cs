@@ -418,7 +418,10 @@ public sealed class EngineHostTests
         using var world = new HostWorld(HostWorld.HoldingShift(), realReducer: true);
         using var stop = new CancellationTokenSource();
         var engine = world.Host.StartOnDedicatedThread(stop.Token);
-        await WaitUntil(() => world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive));
+        await Eventually.WaitUntilAsync(
+            () => world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive),
+            "The engine marking itself alive"
+        );
         await stop.CancelAsync();
         engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
 
@@ -439,20 +442,14 @@ public sealed class EngineHostTests
         var engine = world.Host.StartOnDedicatedThread(stop.Token);
 
         world.Host.Post(new EngineEvent.ReleaseAll(ReleaseReason.User)).ShouldBeTrue();
-        await WaitUntil(() => world.Injector.Batches.Count > 0);
+        await Eventually.WaitUntilAsync(
+            () => world.Injector.Batches.Count > 0,
+            "The engine sending the release"
+        );
         world.Host.Post(new EngineEvent.Terminal(TerminalReason.Exit));
 
         engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
         world.Injector.Batches[0].Events.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
         world.Observer.Notices.ShouldNotBeEmpty();
-    }
-
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        while (!condition())
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(5), timeout.Token);
-        }
     }
 }
