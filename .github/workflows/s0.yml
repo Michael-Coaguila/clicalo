@@ -53,6 +53,11 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-${{ runner.arch }}-
 
+      - name: Stop the compatibility appraiser
+        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        shell: pwsh
+        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
+
       - name: cl desk
         shell: pwsh
         run: .\cl.cmd desk
@@ -97,6 +102,11 @@ jobs:
           key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/packages.lock.json', '.config/dotnet-tools.json', 'global.json') }}
           restore-keys: |
             nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Stop the compatibility appraiser
+        # CompatTelRunner starves the desktop tests on the runner (docs/testing/spikes/S1.md, finding 19).
+        shell: pwsh
+        run: .\.github\scripts\Stop-CompatibilityAppraiser.ps1
 
       - name: cl desk
         shell: pwsh
