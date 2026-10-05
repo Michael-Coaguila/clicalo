@@ -30,7 +30,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 | D-19 | Secuencia de los spikes | M1 cierra con todos los criterios de §15 superados; S5, S7, S9, S11, S6, S14, S8, S10, S12 y S15 dentro de M1 | M1 cerrado por decisión del usuario con la evidencia real; filas manuales de S1, S3 y S4 en la aceptación en hardware de M3; S5, S7, S9 y S11 en M2; S2 residual, S6 y S15 antes de M3; S12 en M3; S8, S10 y S14 antes de M5. Ningún criterio cambia | M1 |
 | D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
-| D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, semilla y migración del primer arranque, `Clicalo.App.Tests` | M2 |
+| D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, kit inicial del primer arranque (la migración v1, retirada por ADR-0020), `Clicalo.App.Tests` | M2 |
 | D-22 | Correcciones del motor tras verificar M2 | Reintento de lo que rechaza el escritorio seguro solo al desbloquear o reanudar; escalada de la emergencia a `TerminateProcess` sin condiciones; INV-10 como propiedad de `LayoutPlanner`; Sentinel vive mientras viva el principal y suelta una vez | Reenvío también con «Soltar todo», los eventos terminales y el regreso del escritorio de entrada (UAC, Ctrl+Alt+Supr); latido y marcas del motor bajo la valla; acordes internos desde el motor; sin guardián la emergencia nunca termina el proceso; INV-10 aplazada a M3; Sentinel reintenta lo rechazado hasta el desbloqueo y solo entonces relanza (decisión D3 del usuario, protocolo 2) | M2 |
 | D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados y `perf (x64)` obligatorio; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck | M2 |
 | D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
@@ -440,8 +440,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - `SecretText` vive en `Clicalo.Domain.Privacy` (donde lo buscan CLC0003 y `docs/guides/analyzers.md`), no en Library.
   - Módulo nuevo `Clicalo.Domain.Commands` (`IDocumentCommand`, `IDestructiveCommand`, `UndoIntent`, `DocumentChange`,
     `DomainContext`, `DomainEvent`, `BackupRequirement`): CLC0010 lo espera ahí y así no hay ciclo con `Document`.
-    `Library` suma `Timing` (el rango de `WaitStep`, I6) y `Migration.V1` suma `Document` (el conversor devuelve un
-    `UserDocument`); todo en `architecture/domain-modules.json`.
+    `Library` suma `Timing` (el rango de `WaitStep`, I6) y `Migration.V1` sumaba `Document` (el conversor devolvía un
+    `UserDocument`; el módulo se retiró con [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)); todo en
+    `architecture/domain-modules.json`.
   - `WebAction` es `UrlAction` (el tipo persistido es `url`); `InjectedKey` está en `Keys` porque lo necesita el
     *ledger* lógico (`KeySafety` solo depende de `Keys`); el efecto que cuenta un uso es `EngineEffect.CountUsage`,
     porque `RecordUsage` es el comando exento de `undo-exemptions.json`.
@@ -493,6 +494,8 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     `Infrastructure/Logging`, fuera del reparto de M2, porque `banned-api-exceptions.json` espera ahí su *sink*.
   - **Migración.** `V1Importer.MigrateAsync` (guarda el original byte a byte antes de convertir), `V1ComboScan`,
     `V1Counts.Of` y tres valores de `MigrationNoteKind`; los repetidos de una importación salen de `DuplicateIndex`.
+    **Retirado** con todo el módulo `Migration.V1` por la decisión D1 del usuario del 2026-10-03
+    ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)).
   - **App.** La instancia única (mutex y *pipe* con DACL) vive en `Clicalo.App/SingleInstance` hasta que la IPC de
     `ImportFile` y `OpenUri` la lleve a `Platform.Windows/SingleInstance` y `Platform.Core/Ipc`; es ruta sensible. La
     comprobación va en los dos sentidos, con lo que M2 tiene: el cliente compara la imagen del servidor con su propia
@@ -503,16 +506,18 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     `Platform.Windows.SingleInstance` hasta que exista `Application.Ipc`. Un segundo arranque que encuentra el nombre
     ocupado solo lo dice con su código de salida (`InstanceSquatted`): el registro `ipc.squat_detected` y el aviso de
     §3.4 llegan con la IPC de M4, porque ese proceso no abre el registro (lo tiene el primero) ni tiene ventana.
-    `App/Interop` conserva solo `MonitorLayout` (los monitores de la migración v1), que pasa a `Platform.Windows` con
-    el localizador de MIG-001. `sidHash` se calcula sobre el SID binario, y la DACL da también `CreateNewInstance` al
-    usuario, que el SDDL de §3.4 omite. `PanelProjector` está en
+    `App/Interop` conservaba solo `MonitorLayout` (los monitores de la migración v1); se retiró con
+    [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md). `sidHash` se calcula sobre el SID binario, y la
+    DACL da también `CreateNewInstance` al usuario, que el SDDL de §3.4 omite. `PanelProjector` está en
     `Presentation/Panel`, no en `Application.Projections`, y sus pruebas sin ventana en el proyecto de Windowing. La
     franja de «Soltar todo» va debajo de las fichas, para no mover ninguna bajo el dedo.
-  - **Arranque.** Un primer arranque sin documento carga la semilla de `content\seed.json` en el idioma de Windows, o
-    convierte el archivo v1 de `--migrate-v1` sobre ella, y la escribe al momento; hasta que exista el localizador de
-    MIG-001, el archivo v1 se nombra en la línea de órdenes. `--exit-after` recorre la salida completa sin intervención
-    (diagnóstico). Bloquear y suspender sueltan por `SessionKeyRelease` (SEG-006). El proyecto copia `i18n`, la semilla
-    y `Clicalo.Sentinel.exe` junto a `Clicalo.exe`, y los textos ya no se buscan en carpetas superiores.
+  - **Arranque.** Un primer arranque sin documento instala el kit inicial por defecto de `content` («Básicos», decisión
+    D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)) en el idioma de Windows y lo escribe al
+    momento. La conversión del archivo v1 de `--migrate-v1` sobre la semilla se retiró con
+    [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md). `--exit-after` recorre la salida completa sin
+    intervención (diagnóstico). Bloquear y suspender sueltan por `SessionKeyRelease` (SEG-006). El proyecto copia
+    `i18n`, el contenido inicial (kit, semilla y plantillas) y `Clicalo.Sentinel.exe` junto a `Clicalo.exe`, y los
+    textos ya no se buscan en carpetas superiores.
   - **Pruebas.** Proyecto nuevo `Clicalo.App.Tests` (opciones, protocolo del *pipe*, adaptadores sin envío, documento
     del primer arranque) con `InternalsVisibleTo` en `Clicalo.App`.
   - **Tras la verificación de M2 (persistencia e IPC).**
@@ -522,11 +527,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
       reglas de un guardado fallido, hasta hacerse visible (DAT-006, §6.8: «crea antes una copia»).
     - La E/S del arranque (diario de fallos, documento e idiomas) corre en el grupo de hilos (`StartupReader`), nunca en
       el hilo de UI (§3.2).
-    - Un documento del arranque que no se pudo escribir (semilla o migración) pasa al autoguardado
-      (`PersistenceScheduler.MarkUnsaved`). Una migración v1 fallida deja la marca `migration-v1.pending` en
-      `%LocalAppData%\Clicalo`, un archivo que §6.5 no lista: mientras exista, un arranque con `--migrate-v1` vuelve a
-      migrar sobre la semilla tras una copia `pre-migrate` del documento que reemplaza. La bienvenida de M3 la usará
-      para «Reintentar migración».
+    - Un documento del arranque que no se pudo escribir pasa al autoguardado (`PersistenceScheduler.MarkUnsaved`). La
+      marca `migration-v1.pending` de una migración v1 fallida, un archivo que §6.5 no listaba, se retiró con
+      [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md).
     - Un idioma con la entrada o los textos rotos se omite y se registra (`startup.language_skipped`); solo
       `locales.json` ilegible o sin textos del idioma por defecto detienen el arranque.
     - **Hilo SysEvents.** Al suspender, `SuspendRelease` espera en SysEvents, como mucho
@@ -539,9 +542,8 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Coste.** Una copia a mano de la tabla Win32 hasta cambiar el generador; la instancia única y su interoperabilidad
   en la raíz de composición durante M2.
 - **Revisión.** Al cerrar M2, con la primera ejecución de `desk (x64)` y `perf (x64)` en la CI; la tabla Win32, al
-  cambiar `KeysEmitter`; la instancia única, su aviso de nombre ocupado y `MonitorLayout`, con la IPC de M4 y MIG-001;
-  la marca `migration-v1.pending`, con la bienvenida de M3; la espera de SysEvents al suspender, si la CI mide que
-  retrasa la bandeja o el primer plano.
+  cambiar `KeysEmitter`; la instancia única y su aviso de nombre ocupado, con la IPC de M4; la espera de SysEvents al
+  suspender, si la CI mide que retrasa la bandeja o el primer plano.
 
 ## D-22 · Correcciones del motor tras verificar M2
 

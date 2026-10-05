@@ -51,7 +51,7 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 | `Clicalo.TestKit` | Existe (biblioteca) | `RepoPaths`, instantáneas de texto (`TextSnapshot`), reloj simulado (`TestTime`) y comprobación de `[Trait("Req")]` contra el catálogo |
 | `Clicalo.TestKit.Windows` | Existe (biblioteca) | Instantáneas de renderizado WPF (`RenderSnapshot`), sesiones de `tools/InputProbe` y un inyector de pruebas con barrera de seguridad |
 | `Clicalo.Presentation.Tests` | Previsto | ViewModels contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente |
-| `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación v1, `SafeZipReader`, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
+| `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación y exportación del formato propio, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
 | `Clicalo.UI.Wpf.Tests` | Previsto | *Peers*, 44 px, disposición, pseudolocalización, contraste resuelto, instantáneas de renderizado |
 | `Clicalo.Windowing.IntegrationTests` | Existe (M1) | No activación de las superficies, `ActivationGuard` (prueba negativa), concesiones por origen, bandeja, `Upstream/` |
 | `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | *Ledger* v2 y relanzamiento; verificación tras la copia y `minSafeVersion` |
@@ -123,7 +123,7 @@ Dónde se usan:
 - el texto visible de los 669 textos con argumentos de muestra, idéntico al del paquete (condición
   vinculante de [ADR-0011](../adr/0011-formato-i18n.md));
 - la salida de los generadores y los diagnósticos de los analizadores;
-- la importación v1 y las migraciones con *fixtures* por versión;
+- las migraciones del esquema propio con *fixtures* por versión;
 - el árbol UIA por ventana y estado (un cambio de accesibilidad aparece en el *diff*);
 - el renderizado (`RenderTargetBitmap`) por forma, tamaño S/M/L, tema, escala y estado, recorrido por
   `StateMatrixFixture`. `cl states` genera todas las instantáneas y abre la carpeta.
@@ -136,8 +136,9 @@ Dónde se usan:
   ([§7.5 del plano](blueprint.md#75-invariantes-de-seguridad-de-teclas)).
 - «Muerte en cada paso» y «congelar y reanudar» usan el mismo `KeyLedger` que Sentinel.
 - Los contraejemplos reducidos se guardan como pruebas de regresión.
-- Generadores de entradas hostiles (zips con bomba de compresión, rutas con `..`, cabeceras que mienten)
-  sobre `SafeZipReader`. Stryker.NET y SharpFuzz llegan después de la 2.0 (M7).
+- Generadores de entradas hostiles (documentos y perfiles compartidos enormes, anidados o con campos que
+  mienten) sobre el lector del documento y el de importación. Stryker.NET y SharpFuzz llegan después de la 2.0
+  (M7).
 
 ## Accesibilidad
 

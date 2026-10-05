@@ -57,14 +57,12 @@ C4Context
   System_Ext(windows, "Windows", "UI Automation, TSF y teclado táctil, WinEvent, bandeja, DPAPI y Administrador de credenciales")
   System_Ext(github, "GitHub Releases", "Paquetes y manifiesto de actualización firmado")
   System_Ext(ia, "Proveedor de IA", "Opcional, con la clave del usuario")
-  System_Ext(v1, "Macro Quick Access", "Configuración v1 que se importa")
 
   Rel(usuario, clicalo, "Toca, dicta o invoca por UIA")
   Rel(clicalo, apps, "Inyecta teclas y mouse", "SendInput")
   Rel(clicalo, windows, "Expone UIA y recibe eventos del sistema")
   Rel(clicalo, github, "Comprueba y descarga actualizaciones", "HTTPS")
   Rel(clicalo, ia, "Pide una plantilla con 4 datos", "HTTPS")
-  Rel(clicalo, v1, "Importa profiles.json", "lectura local")
   Rel(mantenedor, github, "Publica versiones firmadas")
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
@@ -79,7 +77,9 @@ Descripción textual:
 - Consulta **GitHub Releases** para actualizarse (un GET anónimo al arrancar y cada 24 h, desactivable).
 - Solo si el usuario lo activa con su clave, envía 4 datos a un **proveedor de IA** para generar una
   plantilla.
-- Importa una vez la configuración de **Macro Quick Access** (v1).
+- No lee nada de **Macro Quick Access**, la app anterior: el primer arranque instala el kit inicial
+  ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md),
+  [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)).
 - El **mantenedor** publica versiones firmando el manifiesto con una llave de hardware fuera de GitHub.
 
 ## 4. Estrategia de solución

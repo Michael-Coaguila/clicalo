@@ -45,7 +45,7 @@ El título del PR sigue [Conventional Commits](https://www.conventionalcommits.o
 - `!` (por ejemplo `feat(ai)!:`) solo si se rompe un contrato público: formato del documento, formato para
   compartir, CLI, `clicalo://` o IPC.
 - Ejemplos: `fix(keysafety): release scan-code keys in the mode they were pressed`,
-  `i18n: add missing plural forms for migT`, `docs: add ADR-0018 for the AI proxy`.
+  `i18n: add missing plural forms for comboN`, `docs: add ADR-0018 for the AI proxy`.
 
 ### Certificado de origen (DCO) y firma de commits
 

@@ -389,7 +389,7 @@ eso `DocumentStore.Dispatch(IDocumentCommand)` deberá rechazar en ejecución un
 **Cómo suprimir.**
 
 ```csharp
-[SuppressMessage("Clicalo.Safety", "CLC0010", Justification = "The v1 migration replays deletions the user already confirmed.")]
+[SuppressMessage("Clicalo.Safety", "CLC0010", Justification = "Undo replays deletions the user already confirmed.")]
 ```
 
 ## Añadir o cambiar una regla

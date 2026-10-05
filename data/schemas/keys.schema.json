@@ -68,7 +68,7 @@
         },
         "side": { "enum": ["left", "right"] },
         "aliases": {
-          "description": "Extra lower-case spellings accepted when parsing combinations (catalog §7.3).",
+          "description": "Extra lower-case text spellings of the key, besides its id and its labels, accepted when a combination is read from text (key selector; catalog CAT-001 and EDI-008).",
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
