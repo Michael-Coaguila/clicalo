@@ -54,6 +54,8 @@ public sealed class SentinelSupervisorTests
         supervisor.LastStartInfo!.InheritedHandles.Length.ShouldBe(
             SentinelStartInfo.InheritedHandleCount
         );
+        supervisor.LastStartInfo.HeartbeatInterval.ShouldBe(Timings.Guardian.PipeHeartbeatInterval);
+        supervisor.LastStartInfo.RefusedReleaseWait.ShouldBe(Timings.Guardian.RefusedReleaseWait);
         time.Advance(Timings.Guardian.PipeHeartbeatInterval);
         supervisor.ProcessId.ShouldBe(first);
 

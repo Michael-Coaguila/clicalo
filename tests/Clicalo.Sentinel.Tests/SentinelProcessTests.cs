@@ -34,7 +34,7 @@ public sealed class SentinelProcessTests
     [Fact]
     public void Sentinel_refuses_arguments_that_do_not_follow_the_contract()
     {
-        using var sentinel = GuardianProcess.Start(SentinelPath(), ["--protocol=2"], []);
+        using var sentinel = GuardianProcess.Start(SentinelPath(), ["--protocol=1"], []);
 
         sentinel.WaitForExit(TimeSpan.FromSeconds(10)).ShouldBeTrue();
         sentinel.ExitCode.ShouldBe((int)SentinelExitCode.InvalidArguments);
@@ -54,7 +54,8 @@ public sealed class SentinelProcessTests
             read,
             TimeSpan.FromMilliseconds(100),
             3,
-            TimeSpan.FromMinutes(10)
+            TimeSpan.FromMinutes(10),
+            TimeSpan.FromSeconds(30)
         );
         GuardianProcess sentinel;
         try

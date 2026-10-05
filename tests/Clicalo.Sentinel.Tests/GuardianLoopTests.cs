@@ -22,7 +22,8 @@ public sealed class GuardianLoopTests
         3,
         TimeSpan.FromSeconds(1),
         3,
-        TimeSpan.FromMinutes(10)
+        TimeSpan.FromMinutes(10),
+        TimeSpan.FromSeconds(30)
     );
 
     private static (KeyLedgerSection Engine, KeyLedgerSection View) HoldingCtrlShift()
@@ -177,6 +178,14 @@ public sealed class GuardianLoopTests
         SentinelEntryPoint.Run(["--protocol=9"]).ShouldBe((int)SentinelExitCode.InvalidArguments);
 
     [Fact]
+    public void Arguments_of_protocol_1_end_sentinel_with_invalid_arguments()
+    {
+        var protocol1 = Info.ToArguments().SetItem(0, "--protocol=1").RemoveAt(6);
+
+        SentinelEntryPoint.Run(protocol1.AsSpan()).ShouldBe((int)SentinelExitCode.InvalidArguments);
+    }
+
+    [Fact]
     public void A_handle_that_is_not_a_ledger_ends_sentinel_with_ledger_unreadable()
     {
         var arguments = new SentinelStartInfo(
@@ -185,7 +194,8 @@ public sealed class GuardianLoopTests
             3,
             TimeSpan.FromSeconds(1),
             3,
-            TimeSpan.FromMinutes(10)
+            TimeSpan.FromMinutes(10),
+            TimeSpan.FromSeconds(30)
         ).ToArguments();
 
         SentinelEntryPoint.Run(arguments.AsSpan()).ShouldBe((int)SentinelExitCode.LedgerUnreadable);

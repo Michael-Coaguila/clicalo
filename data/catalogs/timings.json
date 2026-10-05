@@ -313,6 +313,12 @@
           "description": "Guardian deaths within the window that stop relaunching and raise a warning in System › Startup and stability.",
           "req": ["SEG-006"],
           "source": "blueprint §3.1"
+        },
+        "RefusedReleaseWait": {
+          "duration": "30s",
+          "description": "Sentinel resends a release the desktop refuses every heartbeat and relaunches only once it went; a refusal by the secure desktop (locked session) is retried without limit, any other refusal for at most this long before Sentinel gives up and relaunches. Passed as the seventh start-up argument.",
+          "req": ["SEG-006", "SEG-007", "REG-03"],
+          "source": "ADR-0018, user decision D3 of 2026-10-03"
         }
       }
     },

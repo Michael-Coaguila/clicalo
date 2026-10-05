@@ -21,12 +21,14 @@ código, los identificadores y los comentarios, en inglés.
 | [overview.md](overview.md) | Resumen arc42 con diagramas C4 en Mermaid | Descriptivo; si discrepa del plano, manda el plano |
 | [testing-strategy.md](testing-strategy.md) | Pirámide de pruebas, proyectos, trazabilidad `[Trait("Req", …)]` e instantáneas propias de TestKit | Reversible |
 | [tooling.md](tooling.md) | Verbos de `cl`, Central Package Management, *lock files*, analizadores, CSharpier y CI | Reversible |
+| [contracts.md](contracts.md) | Contratos de línea de órdenes entre ejecutables: arranque de Sentinel (protocolo 2), relanzamiento y códigos de salida | Contrato público: se cambia con un ADR |
 | [deviations.md](deviations.md) | Desviaciones del plano con su motivo | Registro vivo |
 | [../adr/](../adr/README.md) | ADR en formato MADR 4 | Inmutables una vez aceptados |
 
 Páginas previstas por el plano ([§5](blueprint.md#5-estructura-del-repositorio-y-de-la-solución)) que se
 escribirán cuando el código correspondiente exista: `threading.md`, `windowing.md`, `foreground.md`,
-`engine.md`, `persistence.md` y `contracts.md` (contratos públicos: CLI, `clicalo://` e IPC).
+`engine.md` y `persistence.md`. [contracts.md](contracts.md) ya recoge los contratos entre `Clicalo.exe` y Sentinel;
+la línea de órdenes de `Clicalo.exe`, `clicalo://` y la IPC se añadirán cuando existan.
 
 ## Registro de la decisión tecnológica
 
