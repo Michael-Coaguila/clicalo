@@ -4,6 +4,9 @@ using System.Windows.Controls;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
+using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
@@ -17,6 +20,8 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// </summary>
 public sealed class PanelBodyView : StackPanel
 {
+    private const double NoResultsPx = 14;
+
     private readonly PanelViewModel _viewModel;
 
     /// <summary>Creates the body of <paramref name="viewModel"/>.</summary>
@@ -35,9 +40,22 @@ public sealed class PanelBodyView : StackPanel
         EmptyState = new EmptyStateView(viewModel.Empty);
         Pager = new PagerView(viewModel.Pager);
         Notices = new NoticeBarView(viewModel.Notices);
+        NoResults = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            TextAlignment = TextAlignment.Center,
+            Margin = new Thickness(12, 16, 12, 16),
+            Visibility = Visibility.Collapsed,
+        };
+        NoResults.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(NoResultsPx));
+        NoResults.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
         GridArea = new Grid { Margin = new Thickness(0, 6, 0, 0) };
         GridArea.Children.Add(ShortcutGrid);
         GridArea.Children.Add(EmptyState);
+        GridArea.Children.Add(NoResults);
 
         Children.Add(Strip);
         Children.Add(Sticky);
@@ -77,6 +95,9 @@ public sealed class PanelBodyView : StackPanel
 
     /// <summary>The notice bar.</summary>
     public NoticeBarView Notices { get; }
+
+    /// <summary>[noResults], in place of the grid while a search with text finds nothing (BUS-005).</summary>
+    public TextBlock NoResults { get; }
 
     /// <summary>The area of the grid: the only part that shrinks when vertical space runs out (CUA-002).</summary>
     public Grid GridArea { get; }
@@ -150,7 +171,13 @@ public sealed class PanelBodyView : StackPanel
 
     private void OnPanelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(PanelViewModel.Layout) or nameof(PanelViewModel.Layers))
+        if (
+            e.PropertyName
+            is nameof(PanelViewModel.Layout)
+                or nameof(PanelViewModel.Layers)
+                or nameof(PanelViewModel.ShowsNoResults)
+                or nameof(PanelViewModel.NoResultsText)
+        )
         {
             ApplyWidth();
         }
@@ -159,8 +186,10 @@ public sealed class PanelBodyView : StackPanel
     private void ApplyWidth()
     {
         Width = GridMetrics.PanelWidth(_viewModel.Layout);
-        ShortcutGrid.Visibility = _viewModel.Layers.EmptyProfile
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        var noResults = _viewModel.ShowsNoResults;
+        ShortcutGrid.Visibility =
+            _viewModel.Layers.EmptyProfile || noResults ? Visibility.Collapsed : Visibility.Visible;
+        NoResults.Text = _viewModel.NoResultsText;
+        NoResults.Visibility = noResults ? Visibility.Visible : Visibility.Collapsed;
     }
 }

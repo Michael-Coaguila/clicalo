@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Clicalo.Domain.Catalog;
 using Clicalo.Presentation.Panel;
+using Clicalo.UI.Wpf.Theming;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
@@ -72,7 +73,8 @@ public sealed class ShortcutGridView : Border
                 shape.TileHeightPx,
                 shape.GapPx,
                 size.TileIconPx,
-                size.TileLabelPx
+                size.TileLabelPx,
+                TypeScale.Scale(size.TileKeysPx, _viewModel.Layout.TextScalePercent)
             );
             _tiles.Add((new PanelTileControl(viewModel, control), handler));
             _grid.Children.Add(control);

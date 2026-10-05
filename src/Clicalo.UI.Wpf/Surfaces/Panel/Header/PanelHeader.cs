@@ -167,6 +167,19 @@ public sealed class PanelHeader : Border
     /// <summary>The Search, Edit, Quick settings and Minimize buttons, in order.</summary>
     public IReadOnlyList<IconButton> Buttons => [_search, _edit, _quick, _minimize];
 
+    /// <summary>
+    /// Auto/Fixed and the header buttons as targets of the panel's pointer layer, which never lets WPF raise their
+    /// Click (<see cref="PanelTapTarget"/>); hidden ones have no bounds and the surface skips them.
+    /// </summary>
+    public IReadOnlyList<PanelTapTarget> TapTargets =>
+        [
+            new(_autoFixed, _viewModel.ToggleLock),
+            new(_search, _viewModel.Search),
+            new(_edit, _viewModel.Edit),
+            new(_quick, _viewModel.QuickSettings),
+            new(_minimize, _viewModel.Minimize),
+        ];
+
     private static double Overflow(double visual) =>
         Math.Max(0, (TouchTarget.MinimumSize - visual) / 2);
 

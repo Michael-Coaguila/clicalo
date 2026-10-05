@@ -2,6 +2,7 @@ using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Domain.VoiceNumbering;
+using Clicalo.Presentation.Panel.Search;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.Panel;
@@ -14,6 +15,7 @@ namespace Clicalo.Presentation.Panel;
 public sealed class TileViewModel : ObservableObject
 {
     private readonly PanelInteractionController _controller;
+    private readonly SearchResultViewModel? _result;
     private TileModel _model;
     private string _accessibleState = string.Empty;
     private string _accessibleHelpText = string.Empty;
@@ -32,6 +34,20 @@ public sealed class TileViewModel : ObservableObject
         _controller = controller;
     }
 
+    /// <summary>
+    /// Creates the tile of a search result (BUS-005): it looks like the others, and what happens on it goes to the
+    /// search, which gives the foreground back before it runs (BUS-002 c).
+    /// </summary>
+    /// <param name="model">What it shows and runs.</param>
+    /// <param name="controller">The panel's controller (unused by a result, kept for the shared state).</param>
+    /// <param name="result">The search result.</param>
+    internal TileViewModel(
+        TileModel model,
+        PanelInteractionController controller,
+        SearchResultViewModel result
+    )
+        : this(model, controller) => _result = result;
+
     /// <summary>The shortcut id: the key of the tile.</summary>
     public ShortcutId Id => _model.Id;
 
@@ -46,6 +62,14 @@ public sealed class TileViewModel : ObservableObject
 
     /// <summary>The color category id (TEM-003), such as <c>edit</c> or <c>voice</c>.</summary>
     public string Category => _model.Category.Value;
+
+    /// <summary>
+    /// The line under the name (CUA-007): the combination it sends (abbreviated in S, CUA-008), or its origin.
+    /// </summary>
+    public string Keys => _model.Keys;
+
+    /// <summary>The same line with full key names, for screen readers (CUA-008).</summary>
+    public string SpokenKeys => _model.SpokenKeys;
 
     /// <summary>The type badge in words (CUA-007): «MANTENER», «ALTERNAR» or empty.</summary>
     public string Badge
@@ -111,7 +135,16 @@ public sealed class TileViewModel : ObservableObject
         PointerKind device,
         ContactSummary summary,
         DateTimeOffset at
-    ) => _ = _controller.Tapped(_model.Binding, contactId, device, summary, at);
+    )
+    {
+        if (_result is { } result)
+        {
+            result.Tapped(contactId, device, summary, at);
+            return;
+        }
+
+        _ = _controller.Tapped(_model.Binding, contactId, device, summary, at);
+    }
 
     /// <summary>
     /// A hold started on the tile. Its end belongs to the contact, not to the tile
@@ -124,7 +157,16 @@ public sealed class TileViewModel : ObservableObject
         _ = _controller.HoldStarted(_model.Binding, contactId, device, at);
 
     /// <summary>A UI Automation Invoke or Toggle (voice, keyboard or switch, EJE-005).</summary>
-    public void Invoke() => _ = _controller.Invoked(_model.Binding);
+    public void Invoke()
+    {
+        if (_result is { } result)
+        {
+            result.Invoke();
+            return;
+        }
+
+        _ = _controller.Invoked(_model.Binding);
+    }
 
     /// <summary>Takes a newer projection of the same shortcut (a rename, a language change).</summary>
     /// <param name="model">The newer projection; its <see cref="TileModel.Id"/> must match.</param>
@@ -138,7 +180,16 @@ public sealed class TileViewModel : ObservableObject
         var renamed = !string.Equals(model.Name, _model.Name, StringComparison.Ordinal);
         var reiconed = model.Icon != _model.Icon;
         var recolored = model.Category != _model.Category;
+        var rekeyed =
+            !string.Equals(model.Keys, _model.Keys, StringComparison.Ordinal)
+            || !string.Equals(model.SpokenKeys, _model.SpokenKeys, StringComparison.Ordinal);
         _model = model;
+        if (rekeyed)
+        {
+            OnPropertyChanged(nameof(Keys));
+            OnPropertyChanged(nameof(SpokenKeys));
+        }
+
         if (renamed)
         {
             OnPropertyChanged(nameof(AccessibleName));

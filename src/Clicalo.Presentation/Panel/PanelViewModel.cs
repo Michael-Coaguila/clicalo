@@ -11,6 +11,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.StickyModifiers;
 using Clicalo.Domain.Touch;
 using Clicalo.Domain.VoiceNumbering;
+using Clicalo.Presentation.Panel.Search;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.Panel;
@@ -43,6 +44,9 @@ public sealed class PanelViewModel : ObservableObject
     private readonly Dictionary<ShortcutId, TileViewModel> _stripById = [];
     private List<TileViewModel> _list = [];
     private List<TileViewModel> _strip = [];
+    private List<TileViewModel> _results = [];
+    private string _noResultsText = string.Empty;
+    private bool _showsNoResults;
     private PanelModel _model = PanelModel.Empty;
     private EngineSnapshot _engine = EngineSnapshot.Empty;
     private PanelLayoutSettings _layout = PanelLayoutSettings.Default;
@@ -178,6 +182,20 @@ public sealed class PanelViewModel : ObservableObject
         private set => SetProperty(ref _layers, value);
     }
 
+    /// <summary>[noResults], shown in place of the grid while a search with text finds nothing (BUS-005).</summary>
+    public string NoResultsText
+    {
+        get => _noResultsText;
+        private set => SetProperty(ref _noResultsText, value);
+    }
+
+    /// <summary>Whether the search with text found nothing: <see cref="NoResultsText"/> replaces the grid.</summary>
+    public bool ShowsNoResults
+    {
+        get => _showsNoResults;
+        private set => SetProperty(ref _showsNoResults, value);
+    }
+
     /// <summary>The layout settings in use.</summary>
     public PanelLayoutSettings Layout => _layout;
 
@@ -220,6 +238,37 @@ public sealed class PanelViewModel : ObservableObject
         _list = SyncById(_listById, model.Tiles);
         _strip = SyncById(_stripById, model.StripTiles);
         OnPropertyChanged(nameof(Profile));
+        ApplyEngine(_engine);
+    }
+
+    /// <summary>
+    /// Applies the results of the search (BUS-005): while <see cref="PanelBodyContext.SearchingWithText"/> they replace
+    /// the list in view, paginated and numbered like it, each showing its origin under its name.
+    /// </summary>
+    /// <param name="results">The results, in order.</param>
+    /// <param name="noResultsText">[noResults] in the interface language.</param>
+    public void ApplySearch(IReadOnlyList<SearchResultViewModel> results, string noResultsText)
+    {
+        ArgumentNullException.ThrowIfNull(results);
+        ArgumentNullException.ThrowIfNull(noResultsText);
+        NoResultsText = noResultsText;
+        _results =
+        [
+            .. results.Select(result => new TileViewModel(
+                new TileModel(
+                    result.Id,
+                    result.AccessibleName,
+                    result.Behavior,
+                    result.Binding,
+                    result.Binding.Shortcut.Icon,
+                    result.Binding.Shortcut.Category,
+                    result.Origin,
+                    result.Origin
+                ),
+                _controller,
+                result
+            )),
+        ];
         ApplyEngine(_engine);
     }
 
@@ -293,14 +342,20 @@ public sealed class PanelViewModel : ObservableObject
             }
         }
 
-        foreach (var tile in _list.Concat(_strip))
+        foreach (var tile in _list.Concat(_strip).Concat(_results))
         {
             var isHeld = held.TryGetValue(tile.Id, out var item);
             tile.ApplyState(
                 isHeld,
                 isHeld ? localizer.Format(StateOf(item!)) : string.Empty,
-                localizer.Format(HelpOf(tile.Behavior)),
-                BadgeOf(tile.Behavior) is { } badge ? localizer.Format(badge) : string.Empty
+                tile.SpokenKeys.Length > 0
+                    ? tile.SpokenKeys
+                    : localizer.Format(HelpOf(tile.Behavior)),
+                // The Always visible row is too low for a type badge (docs/04 §7); its type stays in the help text.
+                BadgeOf(tile.Behavior) is { } badge
+                && !ReferenceEquals(_stripById.GetValueOrDefault(tile.Id), tile)
+                    ? localizer.Format(badge)
+                    : string.Empty
             );
         }
 
@@ -454,7 +509,9 @@ public sealed class PanelViewModel : ObservableObject
         var alert = Panic.IsVisible || _context.ElevatedApp is not null;
         _cramped = CrampedRule.Evaluate(_cramped, alert, _gridSpace, shape.TileHeightPx);
 
-        var count = _list.Count;
+        var list = _context.SearchingWithText ? _results : _list;
+        ShowsNoResults = _context.SearchingWithText && _results.Count == 0;
+        var count = list.Count;
         var pageContext = new PageContext(ViewKey(), shape.Columns, shape.Rows, _layout.Compact);
         _page = Paging.Reconcile(
             _page,
@@ -487,9 +544,9 @@ public sealed class PanelViewModel : ObservableObject
         Layers = layers;
         Shape = shape;
 
-        for (var i = 0; i < _list.Count; i++)
+        for (var i = 0; i < list.Count; i++)
         {
-            _list[i].ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForList(i) : null);
+            list[i].ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForList(i) : null);
         }
 
         for (var i = 0; i < _strip.Count; i++)
@@ -498,7 +555,7 @@ public sealed class PanelViewModel : ObservableObject
                 .ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForStrip(count, i) : null);
         }
 
-        Sync(Tiles, _list.GetRange(window.Start, window.Count));
+        Sync(Tiles, list.GetRange(window.Start, window.Count));
         ApplyParts(window, layers);
     }
 

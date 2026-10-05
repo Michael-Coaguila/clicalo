@@ -76,14 +76,21 @@ internal static class TileFactory
     /// <param name="gap">The gap around it.</param>
     /// <param name="iconSize">Its icon.</param>
     /// <param name="labelPx">Its name, before the text scale; at least 11 (TEM-007).</param>
+    /// <param name="keysFontSize">Its key line, already scaled (CUA-011); 0 keeps the default size.</param>
     public static void Size(
         ShortcutTile control,
         double height,
         double gap,
         double iconSize,
-        double labelPx
+        double labelPx,
+        double keysFontSize = 0
     )
     {
+        if (keysFontSize > 0)
+        {
+            control.KeysFontSize = keysFontSize;
+        }
+
         control.Height = height;
         control.Margin = new Thickness(gap / 2);
         control.Padding = new Thickness(gap / 2);
@@ -96,6 +103,7 @@ internal static class TileFactory
 
     private static void Paint(ShortcutTile control, TileViewModel viewModel)
     {
+        control.Keys = viewModel.Keys;
         control.AccessibleName = viewModel.AccessibleName;
         control.AccessibleState = viewModel.AccessibleState;
         control.AccessibleHelpText = viewModel.AccessibleHelpText;

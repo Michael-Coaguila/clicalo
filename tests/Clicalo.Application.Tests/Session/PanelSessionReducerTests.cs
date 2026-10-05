@@ -61,6 +61,51 @@ public sealed class PanelSessionReducerTests
     }
 
     [Fact]
+    [Trait("Req", "SEL-002")]
+    public void The_profile_button_opens_and_closes_the_profile_grid()
+    {
+        var session = PanelSession.Initial(ProfileId.General);
+
+        var open = PanelSessionReducer.Reduce(session, new SessionAction.TogglePicker());
+        var closed = PanelSessionReducer.Reduce(open, new SessionAction.TogglePicker());
+
+        open.PickerOpen.ShouldBeTrue();
+        open.Version.ShouldBe(1);
+        closed.PickerOpen.ShouldBeFalse();
+        closed.Version.ShouldBe(2);
+        PanelSessionReducer
+            .Reduce(closed, new SessionAction.ClosePicker())
+            .ShouldBeSameAs(closed, "closing a closed grid changes nothing");
+    }
+
+    [Fact]
+    [Trait("Req", "SEL-004")]
+    public void Choosing_a_profile_or_hiding_the_panel_closes_the_profile_grid()
+    {
+        var open = PanelSessionReducer.Reduce(
+            PanelSession.Initial(ProfileId.General),
+            new SessionAction.TogglePicker()
+        );
+
+        PanelSessionReducer
+            .Reduce(open, new SessionAction.ShowProfile(Word))
+            .PickerOpen.ShouldBeFalse();
+        PanelSessionReducer.Reduce(open, new SessionAction.Hide()).PickerOpen.ShouldBeFalse();
+        PanelSessionReducer
+            .Reduce(open, new SessionAction.ToggleVisibility())
+            .PickerOpen.ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "SEL-002")]
+    public void A_hidden_panel_does_not_open_the_profile_grid()
+    {
+        var hidden = new PanelSession(PanelPresence.Hidden, ProfileId.General, 3);
+
+        PanelSessionReducer.Reduce(hidden, new SessionAction.TogglePicker()).ShouldBeSameAs(hidden);
+    }
+
+    [Fact]
     [Trait("Req", "NFR-001")]
     public void A_new_process_starts_with_the_panel_visible()
     {

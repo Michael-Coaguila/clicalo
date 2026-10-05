@@ -148,7 +148,7 @@ public sealed class NoticeBarView : Border
     }
 
     /// <summary>
-    /// Shows the message; a notice is announced once as a polite live region (AVI-001), the text at rest is only
+    /// Shows the message; a notice is announced once as a live region (AVI-001, polite; a warning assertive), the text at rest is only
     /// shown (silence is never announced).
     /// </summary>
     private void Say(string message, NoticeTone tone)
@@ -165,6 +165,10 @@ public sealed class NoticeBarView : Border
             return;
         }
 
-        _announcer.Announce(message, AnnouncementUrgency.Polite);
+        // Errors and safety notices are assertive (ACC-001); confirmations polite.
+        _announcer.Announce(
+            message,
+            tone == NoticeTone.Warning ? AnnouncementUrgency.Assertive : AnnouncementUrgency.Polite
+        );
     }
 }
