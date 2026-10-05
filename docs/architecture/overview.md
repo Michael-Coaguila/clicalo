@@ -90,8 +90,9 @@ Las seis ideas del plano ([§1.1](blueprint.md#11-en-una-página)):
    por pruebas (ventana sonda que registra `WM_ACTIVATE`) y en producción (`ActivationGuard`). Los pocos
    flujos que necesitan el primer plano pasan por un único `ForegroundOrchestrator`
    ([ADR-0005](../adr/0005-superficies-no-activables-y-foreground-orchestrator.md)).
-2. **Nunca queda una tecla pulsada:** motor puro con actor, *ledger* con escritura adelantada, valla de
-   generación y guardián Sentinel ([ADR-0004](../adr/0004-motor-ledger-valla-y-sentinel.md)).
+2. **Nunca queda una tecla pulsada:** motor puro con actor y guardián Sentinel, que suelta lo que Windows dice que
+   está pulsado si muere el principal ([ADR-0004](../adr/0004-motor-ledger-valla-y-sentinel.md),
+   [ADR-0022](../adr/0022-guardian-simple.md)).
 3. **Cuatro dueños de estado inmutables** y UI proyectada por funciones puras
    ([ADR-0003](../adr/0003-cuatro-duenos-de-estado.md)).
 4. **Los datos son la fuente de verdad y lo generado no se edita:** textos, tokens de tema, catálogos,
@@ -116,9 +117,8 @@ C4Container
 
   System_Boundary(sesion, "Sesión interactiva del usuario") {
     Container(app, "Clicalo.exe", "WPF sobre .NET 10, autocontenido, R2R", "UI, motor, persistencia, actualizaciones e IA")
-    Container(sentinel, "Clicalo.Sentinel.exe", ".NET 10 Native AOT", "Suelta lo registrado si muere el principal y lo relanza cuando procede")
+    Container(sentinel, "Clicalo.Sentinel.exe", ".NET 10 Native AOT", "Suelta lo que Windows dice que está pulsado si muere el principal y lo relanza tras una salida anómala")
     Container(update, "Update.exe", "Velopack", "Aplica un paquete ya verificado, siempre en integridad media")
-    ContainerDb(ledger, "KeyLedger", "Memoria compartida sin nombre de 4 KiB", "Lo pulsado, la generación del motor y el latido")
     ContainerDb(datos, "Datos del usuario", "JSON en AppData Roaming", "Documento, uso, copias y registros")
   }
   System_Boundary(sistema, "Componente de sistema opcional en Program Files") {
@@ -127,10 +127,9 @@ C4Container
   }
 
   Rel(usuario, app, "Toca, dicta o invoca por UIA")
-  Rel(app, apps, "SendInput tras InjectionGate")
-  Rel(app, ledger, "Escribe antes de cada pulsación")
-  Rel(sentinel, ledger, "Lee al morir el principal")
-  Rel(app, sentinel, "Lanza y vigila", "pipe anónimo con latido")
+  Rel(app, apps, "SendInput tras IInputInjector")
+  Rel(sentinel, apps, "Suelta lo pulsado al morir el principal")
+  Rel(app, sentinel, "Lanza y vigila", "un handle heredado")
   Rel(app, datos, "Escritura atómica", "ReplaceFileW")
   Rel(app, github, "Manifiesto firmado y paquetes", "HTTPS")
   Rel(app, update, "Delega la aplicación del paquete")
@@ -143,13 +142,13 @@ Descripción textual:
 | Contenedor | Tecnología | Vida | Responsabilidad | Presupuesto |
 |---|---|---|---|---|
 | `Clicalo.exe` | WPF sobre .NET 10, autocontenido, R2R | Toda la sesión | UI, motor, persistencia, actualizaciones e IA | 120 MB o menos de *working set* con 4 superficies; CPU media por debajo del 0,5 % en reposo |
-| `Clicalo.Sentinel.exe` | .NET 10 Native AOT, sin WPF ni reflexión | Mientras viva el principal | Soltar lo que registra el *ledger*, relanzar el principal cuando procede y registrar el fallo | 5 MB o menos; 0 % de CPU (bloqueado en espera) |
+| `Clicalo.Sentinel.exe` | .NET 10 Native AOT, sin WPF ni reflexión | Mientras viva el principal | Soltar lo que Windows dice que está pulsado, relanzar el principal tras una salida anómala y pasarle la hora del fallo | 5 MB o menos; 0 % de CPU (bloqueado en espera) |
 | `Clicalo.Launcher.exe` | .NET 10 Native AOT (solo con el componente de sistema) | Segundos, al iniciar sesión o tras actualizar | Sincronizar y verificar la copia protegida y lanzarla elevada | 5 MB o menos; 300 ms o menos sin sincronización |
 | `Update.exe` | Velopack | Puntual, siempre en integridad media | Aplicar un paquete ya verificado | — |
 
-`Clicalo.exe` hereda a Sentinel solo tres *handles*: el proceso padre, el *ledger* en solo lectura y un
-extremo de un pipe anónimo con latido cada segundo. El detalle está en
-[§3.1 del plano](blueprint.md#31-vista-de-procesos).
+`Clicalo.exe` hereda a Sentinel un solo *handle*, el del proceso padre, y comprueba cada segundo que sigue
+vivo. El detalle está en [§3.1 del plano](blueprint.md#31-vista-de-procesos) y en
+[contracts.md](contracts.md).
 
 ### 5.2 Componentes por capa (C4, nivel 3)
 
@@ -182,7 +181,7 @@ C4Component
     Component(sys, "SysEvents y adaptadores", "Win32 y CsWin32", "WinEvent, bandeja, primer plano y hilo Shell")
   }
   Container_Boundary(pcb, "Clicalo.Platform.Core") {
-    Component(core, "Núcleo AOT", "Compatible con AOT", "KeyLedger, InjectionGate, SendInput, contratos IPC y Trust")
+    Component(core, "Núcleo AOT", "Compatible con AOT", "SendInput, soltado de lo pulsado, contrato del guardián, contratos IPC y Trust")
   }
   Container_Boundary(infb, "Clicalo.Infrastructure") {
     Component(persist, "Persistencia", "System.Text.Json", "Escritura atómica, migraciones y copias")
@@ -195,7 +194,7 @@ C4Component
   Rel(proj, stores, "Lee instantáneas")
   Rel(vms, engine, "Peticiones de activación")
   Rel(engine, reducer, "Reduce eventos")
-  Rel(engine, core, "Efectos bajo la valla")
+  Rel(engine, core, "SendInput por IInputInjector")
   Rel(fg, sys, "IForegroundControl")
   Rel(stores, persist, "IDocumentRepository")
   Rel(composition, stores, "Registra y conecta")
@@ -217,15 +216,16 @@ Descripción textual, capa por capa (de fuera hacia dentro):
   `DimPolicy` y el resto de reglas puras. Solo BCL.
 - **`Clicalo.Platform.Windows`:** adaptadores Win32 que implementan los puertos: hilo SysEvents, WinEvent,
   bandeja, primer plano, lanzamiento en el hilo Shell, sesión, portapapeles, secretos.
-- **`Clicalo.Platform.Core`:** compatible con AOT y compartido con Sentinel y Launcher: `KeyLedger`,
-  `InjectionGate`, inyección de bajo nivel, contratos IPC y verificación de confianza (`Trust`).
+- **`Clicalo.Platform.Core`:** compatible con AOT y compartido con Sentinel y Launcher: inyección de bajo
+  nivel (el único `SendInput`), soltado de lo pulsado, contrato del guardián, contratos IPC y verificación de confianza
+  (`Trust`).
 - **`Clicalo.Infrastructure`:** persistencia (DTO, migraciones, escritura atómica, uso), copias,
   catálogos, localización, IA, actualizaciones, registros y diagnóstico.
 
 Relaciones principales: el puntero produce `PointerFrame` para el reconocedor de gestos; las vistas se
 enlazan a los ViewModels; los ViewModels leen modelos proyectados desde los *stores* y envían peticiones
-de activación a `EngineHost`; `EngineHost` reduce cada evento con `EngineReducer` y ejecuta sus efectos
-bajo la valla de `Platform.Core`; `ForegroundOrchestrator` usa el puerto `IForegroundControl` de la
+de activación a `EngineHost`; `EngineHost` reduce cada evento con `EngineReducer` y envía su entrada por
+`IInputInjector` hasta el `SendInput` de `Platform.Core`; `ForegroundOrchestrator` usa el puerto `IForegroundControl` de la
 plataforma; `DocumentStore` persiste por `IDocumentRepository`.
 
 ### 5.3 Reglas de dependencia entre proyectos
@@ -267,7 +267,7 @@ sequenceDiagram
   participant PIC as PanelInteractionController
   participant EH as EngineHost
   participant ER as EngineReducer
-  participant IG as InjectionGate y KeyLedger
+  participant IG as InputInjector
   participant FG as App en primer plano
   U->>PIS: Toca un atajo
   PIS->>GR: PointerFrame
@@ -275,10 +275,8 @@ sequenceDiagram
   PIC->>EH: EngineInput con ActivationContext
   EH->>ER: Reduce con el estado y el evento
   ER-->>EH: Estado nuevo y efectos
-  EH->>IG: TryRun con la generación vigente
-  IG->>IG: BeginDown en el ledger
+  EH->>IG: Send con los eventos del efecto
   IG->>FG: SendInput
-  IG->>IG: Commit en el ledger
   EH-->>PIC: EngineSnapshot, como máximo una por frame
 ```
 
@@ -286,8 +284,8 @@ Descripción textual: el toque llega como `WM_POINTER` a `PointerInputSource` (U
 `PointerFrame`. `GestureRecognizer` (Domain, puro) emite el inicio y el fin del contacto.
 `PanelInteractionController` (Presentation) añade el contexto de activación (origen, perfil, modo de
 inyección, época de primer plano, última posición externa del puntero) y lo envía al buzón del motor.
-`EngineHost` reduce el evento con `EngineReducer` y ejecuta cada efecto con `InjectionGate.TryRun`: anota la
-pulsación en el *ledger*, llama a `SendInput` y confirma. Presupuestos: toque → `SendInput` y toque → frame
+`EngineHost` reduce el evento con `EngineReducer` y envía cada efecto por `IInputInjector`, que llama a
+`SendInput`. Presupuestos: toque → `SendInput` y toque → frame
 con p95 ≤ 50 ms ([§7.1 del plano](blueprint.md#71-del-toque-a-la-acción)).
 
 ### 6.2 Si el proceso principal muere
@@ -295,24 +293,21 @@ con p95 ≤ 50 ms ([§7.1 del plano](blueprint.md#71-del-toque-a-la-acción)).
 ```mermaid
 sequenceDiagram
   participant App as Clicalo.exe
-  participant L as KeyLedger
   participant S as Clicalo.Sentinel.exe
   participant W as Windows
-  App->>L: BeginDown de Ctrl
   App->>W: SendInput con Ctrl abajo
-  App->>L: Commit
   Note over App: El proceso muere
   S->>S: La espera sobre el proceso padre termina
-  S->>L: Lee las ranuras ocupadas
+  S->>W: GetAsyncKeyState de 0x01 a 0xFE
   S->>W: SendInput con las liberaciones y la máscara de menú
-  S->>S: Escribe el crash-journal y relanza si procede
+  S->>S: Si la salida fue anómala, relanza con la hora del fallo
 ```
 
-Descripción textual: toda pulsación se anota en el *ledger* antes de enviarse. Si `Clicalo.exe` muere,
-Sentinel, que espera sobre el proceso padre, lee las ranuras ocupadas y envía las liberaciones en el modo
-registrado, con la máscara de menú para Alt y Win. Después escribe el `crash-journal` y relanza la app,
-salvo que el *ledger* tenga `CleanShutdown` o `NoRelaunch` o se haya superado el umbral de bucle de fallos
-([ADR-0004](../adr/0004-motor-ledger-valla-y-sentinel.md)).
+Descripción textual: si `Clicalo.exe` muere, Sentinel, que espera sobre el proceso padre, pregunta a Windows
+qué teclas y botones siguen pulsados y los suelta todos en modo VK, con la máscara de menú antes de Alt y Win.
+Si Windows lo rechaza (sesión bloqueada), lo intenta otra vez cada segundo. Después relanza la app solo si
+el código de salida no es 0, en modo seguro si se alcanzó el bucle de fallos
+([ADR-0022](../adr/0022-guardian-simple.md)).
 
 ## 7. Vista de despliegue
 
@@ -396,8 +391,7 @@ más relevantes hoy:
 | Superficie | Cualquier ventana no activable del panel (panel, barra, asa, burbuja, laterales, menús, avisos) |
 | Rol Surfaces / Workspace | Los dos roles lógicos del hilo de UI: superficies del panel, y Centro de control y bienvenida |
 | Concesión | Permiso tipado y temporal del `ForegroundOrchestrator` para cambiar el primer plano |
-| *Ledger* | Registro en memoria compartida de todo lo que Clícalo mantiene pulsado, escrito antes de pulsar |
-| Valla de generación | Número de generación del motor que impide que un hilo viejo inyecte después de una emergencia |
+| *Ledger* | Registro lógico (`KeyboardLedger`) de lo que mantiene pulsado cada titular dentro del motor |
 | Sentinel | Proceso guardián Native AOT que suelta las teclas si muere el principal |
 | Componente de sistema | Pieza opcional instalada con un UAC que permite iniciar elevado sin UAC |
 | Proyección | Función pura que convierte el estado en el modelo que pinta la UI |

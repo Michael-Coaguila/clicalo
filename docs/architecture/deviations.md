@@ -30,10 +30,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
 | D-19 | Secuencia de los spikes | M1 cierra con todos los criterios de §15 superados; S5, S7, S9, S11, S6, S14, S8, S10, S12 y S15 dentro de M1 | M1 cerrado por decisión del usuario con la evidencia real; filas manuales de S1, S3 y S4 en la aceptación en hardware de M3; S5, S7, S9 y S11 en M2; S2 residual, S6 y S15 antes de M3; S12 en M3; S8, S10 y S14 antes de M5. Ningún criterio cambia | M1 |
 | D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
-| D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, kit inicial del primer arranque (la migración v1, retirada por ADR-0020), `Clicalo.App.Tests` | M2 |
+| D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador (retirado por ADR-0022), instancia única en `Clicalo.App`, kit inicial del primer arranque (la migración v1, retirada por ADR-0020), `Clicalo.App.Tests` | M2 |
 | D-22 | Correcciones del motor tras verificar M2 | Reintento de lo que rechaza el escritorio seguro solo al desbloquear o reanudar; escalada de la emergencia a `TerminateProcess` sin condiciones; INV-10 como propiedad de `LayoutPlanner` | Reenvío también con «Soltar todo», los eventos terminales y el regreso del escritorio de entrada (UAC, Ctrl+Alt+Supr); latido y marcas del motor bajo la valla; acordes internos desde el motor; sin guardián la emergencia nunca termina el proceso; INV-10 aplazada a M3; Sentinel reintenta lo rechazado hasta el desbloqueo y solo entonces relanza (decisión D3 del usuario, protocolo 2; el plano lo recoge desde que se aceptó ADR-0018) | M2 |
-| D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados y `perf (x64)` obligatorio; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck | M2 |
+| D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados y `perf (x64)` obligatorio; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck (retirados por ADR-0022) | M2 |
 | D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
+| D-25 | Guardián simple | Hasta el 2026-10-05, *ledger* en memoria compartida, valla de generación, emergencia y protocolo 2 de Sentinel; desde entonces el plano recoge [ADR-0022](../adr/0022-guardian-simple.md) | Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia; las partes de D-21, D-22 y D-23 sobre ellos quedan retiradas | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -498,9 +499,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     prueba, hasta que el generador la emita. Una liberación que `SendInput` envía solo en parte vuelve como
     `ReleasesBlocked`, y `GateInputInjector` suelta lo que un lote equilibrado (clic o texto) dejó pulsado. Sentinel no
     escribe el diario de fallos: lo añade el principal relanzado con `--after-crash` ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md),
-    punto 5). `EmergencyReleaser` corre en su propio temporizador de `TimeProvider`, no en el hilo SysEvents, para que
-    ni la UI ni SysEvents colgados lo bloqueen. S9 congela el motor en la CI con el modelo, no con una compilación Chaos
-    con punto de ruptura.
+    punto 5). `EmergencyReleaser`, el *ledger* y la valla se retiraron después con
+    [ADR-0022](../adr/0022-guardian-simple.md) ([D-25](#d-25--guardián-simple)); `GateInputInjector` pasó a ser
+    `InputInjector`.
   - **Persistencia.** `DocumentLoadOutcome.RecoveredFromPending` (la copia de emergencia de `pending\`). Los esquemas
     persistidos viven en `data/schemas` y los valida `Clicalo.Data.Tests`. El registro está en
     `Infrastructure/Logging`, fuera del reparto de M2, porque `banned-api-exceptions.json` espera ahí su *sink*.
@@ -558,6 +559,13 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   suspender, si la CI mide que retrasa la bandeja o el primer plano.
 
 ## D-22 · Correcciones del motor tras verificar M2
+
+> **Retirado en parte el 2026-10-05 por [ADR-0022](../adr/0022-guardian-simple.md) ([D-25](#d-25--guardián-simple)).**
+> Ya no existen el latido y las marcas bajo la valla, el reenvío desde el *ledger* físico, los lotes equilibrados «en la
+> valla» (siguen equilibrados, en `InputInjector`), la emergencia sin guardián ni el protocolo 2 con
+> `--refused-release-wait-ms`. Siguen vigentes el reenvío de `BlockedReleases` con «Soltar todo», los eventos terminales
+> y el regreso del escritorio de entrada, los acordes internos desde el motor, el aviso `guardianUnstable`, el vaciado al
+> suspender, INV-10 y la decisión D3 (ahora sin límite para cualquier rechazo).
 
 - **Plano.** [§3.2, regla 6](blueprint.md#32-modelo-de-hilos) escala la emergencia a `TerminateProcess` siempre que no
   puede tomar la valla o en el segundo cuelgue en 10 minutos; [§7.6](blueprint.md#76-eventos-terminales-seg-007) reintenta
@@ -650,18 +658,16 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - **Prueba de bandeja**: el clic en el icono se sustituye por un toque sintético en el panel del propio proceso (el
     mismo derecho de primer plano, paso 1 de la escalera de §3.6) y el menú se abre con `TrayController.OpenMenuAsync`;
     el Bloc de notas real solo se usa en la CI, e InputProbe sigue siendo la app delante en local.
-  - **Muerte en cada paso y congelar y reanudar** reducen sus contraejemplos con un reductor propio (`Counterexamples`)
-    sobre las mismas 10 000 semillas deterministas, no con CsCheck: `architecture/allowed-dependencies.json` no permite
-    CsCheck en `Clicalo.Platform.IntegrationTests`. Las regresiones guardan valores, no semillas
-    ([property-regressions.md](../testing/property-regressions.md)).
+  - **Muerte en cada paso y congelar y reanudar** reducían sus contraejemplos con un reductor propio (`Counterexamples`).
+    Se retiraron con el *ledger* y la valla ([ADR-0022](../adr/0022-guardian-simple.md), [D-25](#d-25--guardián-simple)):
+    la muerte del proceso la cubren las pruebas deterministas de Sentinel y la prueba de caos nocturna de S9.
 - **Motivo.** La verificación encontró que ninguna ejecución hacía cumplir el p95 de 50 ms, que la prueba de bandeja no
   usaba el Bloc de notas y que los contraejemplos no se guardaban. En un *runner* alojado el icono nuevo queda en el
   desbordamiento del área de notificación y hacer clic ahí inyectaría en el Explorador.
 - **Coste.** Un PR puede fallar por el rendimiento de un alojado ruidoso; el camino real del icono (`TrayIcon`,
   `NIN_SELECT`, `WM_CONTEXTMENU`) queda para la aceptación en hardware de §10.2.
 - **Revisión.** Cuando el equipo táctil sea *runner*: volver a la puerta en `lab.yml` según §10.5 y decidir si
-  `perf (x64)` sigue siendo obligatorio. Si se permite CsCheck en `Clicalo.Platform.IntegrationTests`, pasar las dos
-  pruebas a `Gen.Sample` sin cambiar sus regresiones.
+  `perf (x64)` sigue siendo obligatorio.
 
 ## D-24 · Latencia del panel medida en la CI
 
@@ -688,6 +694,43 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** En la aceptación en hardware (equipo táctil) del requisito, incluido si el primer toque tras mostrar
   de nuevo el panel paga otra vez el retraso del primer contacto, y en S2 para el retraso del primer contacto del lápiz
   con un lápiz real.
+
+## D-25 · Guardián simple
+
+- **Plano.** Hasta el 2026-10-05, [§3.1](blueprint.md#31-vista-de-procesos), [§3.2, regla 6](blueprint.md#32-modelo-de-hilos),
+  [§7.4 a §7.6](blueprint.md#74-registro-de-pulsadas) y [§7.10](blueprint.md#710-grabación-de-combinaciones-y-verificación)
+  describían el *ledger* v2 en memoria compartida, la valla de generación, `EmergencyReleaser` y el protocolo 2 de
+  Sentinel (ADR-0004, ADR-0018 y ADR-0019). Desde esa fecha el plano recoge [ADR-0022](../adr/0022-guardian-simple.md)
+  y esta entrada solo registra el cambio del repositorio.
+- **Repositorio.**
+  - `Clicalo.Platform.Core.Injection.PressedInputRelease` lee `GetAsyncKeyState` de `0x01` a `0xFE` y suelta todo lo
+    pulsado (modo VK, `KEYEVENTF_EXTENDEDKEY` según `MapVirtualKey`, modificadores al final, máscara antes de Alt o Win,
+    botones primero). Lo usan Sentinel, `IInputInjector.ReleasePressed` (excepción en el motor), «Soltar todo» de la
+    bandeja (`TrayController.ReleasePressedRequested`, en el *ThreadPool*) y el soltado preventivo del arranque
+    (`IPressedRelease`), que antes solo soltaba los modificadores.
+  - Sentinel espera al padre con `WaitForSingleObject`, suelta, reintenta cada `Timings.Guardian.ReleaseRetryInterval`
+    mientras no puede leer el estado (`OpenInputDesktop`) o Windows no acepta el lote, y relanza solo si el código de
+    salida no es 0, con `Timings.App.CrashLoop`. Protocolo 3: `--protocol=3 --parent=0x… --retry-ms=… --crash-loop=n/ms`
+    y un solo *handle* heredado.
+  - El principal comprueba cada `Timings.Guardian.WatchInterval` que Sentinel sigue vivo (sin *pipe*); `Stop` solo deja
+    de supervisar.
+  - Se retiran `KeyLedgerSection` y su diseño, `InjectionGate`, `LedgerRelease`, `EmergencyReleaser`, `KeyLedgerPort`,
+    `PreventiveRelease`, `IKeyLedger`, `KeyLedgerMarks`, `EngineGeneration`, `InjectionStatus.Fenced`,
+    `EngineEffect.ReleasePendingRecorded`, el latido del motor, el reinicio del motor y los umbrales
+    `Engine.LedgerHeartbeatInterval`, `EngineStallThreshold`, `EmergencyGateWait`, `EmergencyGateRetryWaits`,
+    `EngineHangLoop`, `Guardian.PipeHeartbeatInterval` y `Guardian.RefusedReleaseWait`. `GateInputInjector` pasa a
+    `InputInjector`, que conserva el equilibrado de los lotes parciales y salta en los acordes internos las teclas que
+    Windows ya da por pulsadas. `LedgerKeyAttributes` y `LedgerMouseButtons` pasan a `PhysicalKeyAttributes` y
+    `LowLevelMouseButtons`, en `Platform.Core.Injection`.
+  - Pruebas: las de Sentinel son deterministas, con un estado de teclas y un `SendInput` falsos, y bloquean el PR; la de
+    caos de S9 queda en la ejecución nocturna (`Category=Chaos`) con el criterio «nada pulsado 1 s después de la
+    muerte». Se retiran «muerte en cada paso», «congelar y reanudar», el motor zombi, la emergencia y la valla.
+- **Motivo.** Decisión del usuario del 2026-10-05: la solución más simple que cumple REG-03. El usuario no usa teclado
+  físico, así que lo que Windows da por pulsado lo pulsó Clícalo.
+- **Coste.** Ver las consecuencias de [ADR-0022](../adr/0022-guardian-simple.md): un motor colgado no se sustituye solo
+  (el usuario usa «Soltar todo» de la bandeja y, si hace falta, sale); una tecla del teclado físico pulsada en ese
+  instante también se suelta.
+- **Revisión.** Con la primera ejecución nocturna de S9 en la CI y en la aceptación en hardware (sesión bloqueada real).
 
 ## Puntos del plano pendientes de resolver
 

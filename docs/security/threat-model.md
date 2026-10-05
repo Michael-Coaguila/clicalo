@@ -54,7 +54,7 @@ en apps de administrador. Por eso cada límite de confianza tiene su control y s
 | T12 | Cadena de suministro | Paquete o acción comprometidos | *Lock files* en modo bloqueado, `packageSourceMapping`, `trustedSigners`, NuGetAudit, acciones fijadas por SHA, Renovate con revisión y sin fusión automática en dependencias de runtime, Scorecard, SBOM, atestación, commits firmados | Dependencias con un solo mantenedor (planes de salida en `docs/architecture/dependencies.md`, previsto) | [ADR-0013](../adr/0013-firma-de-codigo-y-manifiesto-firmado.md) |
 | T13 | Abuso del proxy de IA | Cuota gratuita usada como LLM genérico | **No aplica en la 2.0** (proxy diferido). Cuando exista: *prompt* en el servidor, entrada enumerada, límites, presupuesto con corte, interruptor firmado | — | [ADR-0014](../adr/0014-ia-con-clave-propia.md) |
 | T14 | PR malicioso en la CI | *Fork* | Sin secretos, sin `pull_request_target`, laboratorio solo con etiqueta y aprobación, CodeQL | — | — |
-| T15 | Hilo del motor zombi | Cuelgue y reanudación tras la emergencia | Valla de generación bajo *lock*; escalada a reinicio del proceso si no se puede tomar la valla | — | [ADR-0004](../adr/0004-motor-ledger-valla-y-sentinel.md) |
+| T15 | Motor colgado con teclas pulsadas | Cuelgue del hilo del motor | «Soltar todo» de la bandeja suelta lo que Windows dice que está pulsado sin el motor; al terminar el proceso, Sentinel hace lo mismo | — | [ADR-0022](../adr/0022-guardian-simple.md) |
 
 ### Nota sobre T9: repliegue `WH_MOUSE_LL` pasivo
 
@@ -75,7 +75,7 @@ controles de T12 y T14 se mantienen.
 ## Riesgos residuales aceptados fuera de la tabla
 
 - **Intervalo sin guardián al arrancar** (menos de 200 ms, medido en S9): lo cubren `EngineHost`,
-  `EmergencyReleaser` y el soltado preventivo del siguiente arranque.
+  «Soltar todo» de la bandeja y el soltado preventivo del siguiente arranque.
 - **«Finalizar árbol de procesos»** mata a la vez a `Clicalo.exe` y a Sentinel: lo cubre el soltado
   preventivo del siguiente arranque. No se usan trucos de *re-parenting*, que son frágiles y los antivirus
   tratan como sospechosos.

@@ -42,7 +42,7 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 |---|---|---|
 | `Clicalo.Architecture.Tests` | Existe | Lista blanca de referencias, ArchUnit, matriz de módulos, facetas de `ActionKind`, enrutadores sin eventos huérfanos, R4 (destructivos), R7 (deshacer), escritor único |
 | `Clicalo.Data.Tests` | Existe | Esquemas, integridad referencial (`labelKey`, iconos, `KeyId`), contenido inicial sin repetidos, `keys.json` ↔ `keys.win32.json`, coherencia de `timings.json` |
-| `Clicalo.Domain.Tests` | Existe | Invariantes de `Library` y `KeyboardLedger`, `EngineReducer` (INV-1 a INV-12), `TouchFilter`, `GestureRecognizer`, `ActivationPolicy`, `DimPolicy`, resolución de perfil, Frecuentes, repetidos |
+| `Clicalo.Domain.Tests` | Existe | Invariantes de `Library` y `KeyboardLedger`, `EngineReducer` (INV-1, INV-3 a INV-10 e INV-12), `TouchFilter`, `GestureRecognizer`, `ActivationPolicy`, `DimPolicy`, resolución de perfil, Frecuentes, repetidos |
 | `Clicalo.Application.Tests` | Existe | `DocumentStore`, `EngineHost` con `PhysicalStateInjector`, `ForegroundOrchestrator`, `TryNowUseCase`, coordinadores, programador de guardado |
 | `Clicalo.Generators.Tests` | Existe | Generadores y analizadores de Roslyn: salida determinista y diagnósticos con ubicación exacta en el JSON |
 | `Clicalo.Platform.IntegrationTests` | Existe | Inyección en los dos modos con varias distribuciones, *hook* LL bajo GC, `PointerPositionTracker`, sesión, portapapeles, lanzador, ACL de la tarea elevada |
@@ -54,7 +54,7 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 | `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación y exportación del formato propio, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
 | `Clicalo.UI.Wpf.Tests` | Previsto | *Peers*, 44 px, disposición, pseudolocalización, contraste resuelto, instantáneas de renderizado |
 | `Clicalo.Windowing.IntegrationTests` | Existe (M1) | No activación de las superficies, `ActivationGuard` (prueba negativa), concesiones por origen, bandeja, `Upstream/` |
-| `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | *Ledger* v2 y relanzamiento; verificación tras la copia y `minSafeVersion` |
+| `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | Sentinel con un estado de teclas y un `SendInput` falsos (soltado, reintentos y relanzamiento, ADR-0022); verificación tras la copia y `minSafeVersion` |
 | `Clicalo.E2E`, `Clicalo.Performance` | Previstos | Recorridos sobre la app publicada; presupuestos (`budgets.json`) |
 
 `Core.slnf` reúne Domain, Application y Presentation, los generadores que usan, sus pruebas y
@@ -132,9 +132,9 @@ Dónde se usan:
 
 - El motor se prueba con secuencias de hasta 200 eventos generadas con CsCheck (toques, varios contactos,
   temporizadores, cambios de app, bloqueos, suspensiones, fallos de inyección, Modo prueba, teclas fijas y
-  los dos modos de inyección). En cada paso se comprueban INV-1 a INV-12
+  los dos modos de inyección). En cada paso se comprueban INV-1, INV-3 a INV-10 e INV-12
   ([§7.5 del plano](blueprint.md#75-invariantes-de-seguridad-de-teclas)).
-- «Muerte en cada paso» y «congelar y reanudar» usan el mismo `KeyLedger` que Sentinel.
+- La muerte real del proceso la cubre la prueba de caos nocturna de S9 (`Category=Chaos`, ADR-0022).
 - Los contraejemplos reducidos se guardan como pruebas de regresión.
 - Generadores de entradas hostiles (documentos y perfiles compartidos enormes, anidados o con campos que
   mienten) sobre el lector del documento y el de importación. Stryker.NET y SharpFuzz llegan después de la 2.0
