@@ -510,7 +510,8 @@ public sealed class PanelViewModel : ObservableObject
             layers.Pager,
             l.Format(L.PrevPage),
             l.Format(L.NextPage),
-            l.Format(L.PageN)
+            l.Format(L.PageN),
+            l.Format(L.On)
         );
         Strip.Apply(
             _strip.GetRange(_stripWindow.Start, _stripWindow.Count),
@@ -538,7 +539,8 @@ public sealed class PanelViewModel : ObservableObject
             _model.ProfileIcon?.Name ?? string.Empty,
             l.Format(L.Freq),
             l.Format(L.ActiveApp),
-            l.Format(L.SwitchProf)
+            l.Format(L.SwitchProf),
+            l.Format(L.On)
         );
         Picker.Apply(
             _model.PickerEntries,
@@ -547,7 +549,9 @@ public sealed class PanelViewModel : ObservableObject
             _context.ActiveAppProfile,
             _context.SuggestionApp is { } app ? l.Format(L.CreateFor(app)) : null,
             l.Format(L.MorePf),
-            l.Format(L.ActiveLegend)
+            l.Format(L.ActiveLegend),
+            l.Format(L.On),
+            l.Format(L.ActiveApp)
         );
         var notice = _context.Notice;
         Notices.Apply(

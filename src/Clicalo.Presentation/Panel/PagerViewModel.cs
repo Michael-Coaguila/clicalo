@@ -69,7 +69,8 @@ public sealed class PagerViewModel : ObservableObject
         bool visible,
         string previousName,
         string nextName,
-        string pageWord
+        string pageWord,
+        string currentWord
     )
     {
         var moved = window != _window;
@@ -89,7 +90,12 @@ public sealed class PagerViewModel : ObservableObject
         for (var i = 0; i < dots.Length; i++)
         {
             Dots[i]
-                .Apply(dots[i].IsActive, dots[i].WidthPx, Paging.DotName(pageWord, dots[i].Page));
+                .Apply(
+                    dots[i].IsActive,
+                    dots[i].WidthPx,
+                    Paging.DotName(pageWord, dots[i].Page),
+                    dots[i].IsActive ? currentWord : string.Empty
+                );
         }
 
         IsVisible = visible;

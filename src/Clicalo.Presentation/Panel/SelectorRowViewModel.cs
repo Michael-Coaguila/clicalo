@@ -14,6 +14,7 @@ public sealed class SelectorRowViewModel : ObservableObject
     private bool _isVisible;
     private bool _frequents;
     private string _frequentsName = string.Empty;
+    private string _frequentsState = string.Empty;
     private string _profileName = string.Empty;
     private string _profileIcon = string.Empty;
     private bool _isActiveApp;
@@ -43,6 +44,13 @@ public sealed class SelectorRowViewModel : ObservableObject
     {
         get => _frequentsName;
         private set => SetProperty(ref _frequentsName, value);
+    }
+
+    /// <summary>The state of ★ in words for UI Automation while Frequents is in view ([on]); never color alone.</summary>
+    public string FrequentsState
+    {
+        get => _frequentsState;
+        private set => SetProperty(ref _frequentsState, value);
     }
 
     /// <summary>The profile the button shows: the one in view, or the return profile from Frequents.</summary>
@@ -128,10 +136,12 @@ public sealed class SelectorRowViewModel : ObservableObject
         string profileIcon,
         string frequentsName,
         string activeAppName,
-        string switchProfile
+        string switchProfile,
+        string onWord
     )
     {
         IsFrequentsActive = frequents;
+        FrequentsState = frequents ? onWord : string.Empty;
         FrequentsName = frequentsName;
         ProfileName = profileName;
         ProfileIcon = profileIcon;

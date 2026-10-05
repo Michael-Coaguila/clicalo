@@ -70,7 +70,9 @@ public sealed class PickerGridViewModel : ObservableObject
         ProfileId? activeApp,
         string? suggestionName,
         string moreName,
-        string legend
+        string legend,
+        string currentWord,
+        string activeAppWord
     )
     {
         var same =
@@ -87,7 +89,14 @@ public sealed class PickerGridViewModel : ObservableObject
 
         for (var i = 0; i < entries.Count; i++)
         {
-            Entries[i].Apply(entries[i], entries[i].Id == current, entries[i].Id == activeApp);
+            Entries[i]
+                .Apply(
+                    entries[i],
+                    entries[i].Id == current,
+                    entries[i].Id == activeApp,
+                    currentWord,
+                    activeAppWord
+                );
         }
 
         HasSuggestion = suggestionName is not null;

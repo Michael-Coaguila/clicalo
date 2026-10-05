@@ -240,7 +240,7 @@ public sealed class PickerGridView : Border
         foreach (var (entry, control) in _entries)
         {
             control.AccessibleName = entry.Name;
-            control.AccessibleState = entry.IsActiveApp ? _viewModel.Legend : string.Empty;
+            control.AccessibleState = entry.AccessibleState;
             control.Tag = EntryContent(entry);
             if (entry.IsCurrent)
             {

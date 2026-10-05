@@ -12,6 +12,7 @@ public sealed class PageDotViewModel : ObservableObject
     private bool _isActive;
     private double _widthPx;
     private string _accessibleName = string.Empty;
+    private string _accessibleState = string.Empty;
 
     internal PageDotViewModel(int page, Action<int> goTo)
     {
@@ -43,13 +44,21 @@ public sealed class PageDotViewModel : ObservableObject
         private set => SetProperty(ref _accessibleName, value);
     }
 
+    /// <summary>[on] on the page in view, empty otherwise: the active dot is never told by color alone.</summary>
+    public string AccessibleState
+    {
+        get => _accessibleState;
+        private set => SetProperty(ref _accessibleState, value);
+    }
+
     /// <summary>A tap or UI Automation Invoke: show this page.</summary>
     public void Select() => _goTo(Page);
 
-    internal void Apply(bool active, double widthPx, string name)
+    internal void Apply(bool active, double widthPx, string name, string state)
     {
         IsActive = active;
         WidthPx = widthPx;
         AccessibleName = name;
+        AccessibleState = state;
     }
 }

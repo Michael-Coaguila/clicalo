@@ -94,6 +94,9 @@ public sealed class PagerView : DockPanel
         Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
         _previous.AccessibleName = _viewModel.PreviousName;
         _next.AccessibleName = _viewModel.NextName;
+        // CUA-004: the arrows dim on the first and the last page; UI Automation hears it as not enabled, not by color alone.
+        _previous.IsEnabled = _viewModel.CanGoPrevious;
+        _next.IsEnabled = _viewModel.CanGoNext;
         _previous.SetResourceReference(
             Control.ForegroundProperty,
             ThemeBrushKey.For(_viewModel.CanGoPrevious ? ColorToken.Text : ColorToken.Line)
@@ -110,6 +113,7 @@ public sealed class PagerView : DockPanel
             control.Width = dot.WidthPx;
             control.Height = DotHeight;
             control.AccessibleName = dot.AccessibleName;
+            control.AccessibleState = dot.AccessibleState;
             PanelChrome.Paint(
                 control,
                 dot.IsActive ? ColorToken.Accent : ColorToken.Line,

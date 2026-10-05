@@ -22,6 +22,7 @@ public sealed class PanelBodyViewModelTests
 
     [Fact]
     [Trait("Req", "CUA-004")]
+    [Trait("Req", "ACC-003")]
     public void Twenty_shortcuts_on_three_by_three_make_three_pages_and_the_arrows_stay_inside_them()
     {
         var panel = Panel(20);
@@ -31,6 +32,7 @@ public sealed class PanelBodyViewModelTests
         panel.Pager.IsVisible.ShouldBeTrue();
         panel.Pager.Dots.Select(static d => d.WidthPx).ShouldBe([24d, 10, 10]);
         panel.Pager.Dots[1].AccessibleName.ShouldBe("Página 2");
+        panel.Pager.Dots.Select(static d => d.AccessibleState).ShouldBe(["Activado", "", ""]);
         panel.Pager.CanGoPrevious.ShouldBeFalse();
 
         panel.Pager.Next();
@@ -214,6 +216,7 @@ public sealed class PanelBodyViewModelTests
     [Fact]
     [Trait("Req", "SEL-001")]
     [Trait("Req", "SEL-002")]
+    [Trait("Req", "ACC-003")]
     public void The_profile_button_opens_the_grid_and_from_Frequents_returns_in_one_tap()
     {
         var panel = Panel(3);
@@ -234,6 +237,7 @@ public sealed class PanelBodyViewModelTests
         panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
         panel.Selector.Caret.ShouldBe(SelectorCaret.Return);
         panel.Selector.IsFrequentsActive.ShouldBeTrue();
+        panel.Selector.FrequentsState.ShouldBe("Activado");
         panel.Selector.ProfileButton();
 
         _intents.Calls.ShouldBe(["TogglePicker", "ShowFrequents", "ReturnFromFrequents"]);
@@ -242,6 +246,7 @@ public sealed class PanelBodyViewModelTests
     [Fact]
     [Trait("Req", "SEL-003")]
     [Trait("Req", "SEL-004")]
+    [Trait("Req", "ACC-003")]
     public void The_profile_grid_lists_every_profile_marks_the_current_one_and_the_active_app()
     {
         var panel = Panel(3);
@@ -260,6 +265,9 @@ public sealed class PanelBodyViewModelTests
         panel.Picker.Entries.Select(static e => e.Name).ShouldBe(["General", "Word", "Excel"]);
         panel.Picker.Entries.Select(static e => e.IsCurrent).ShouldBe([false, true, false]);
         panel.Picker.Entries.Select(static e => e.IsActiveApp).ShouldBe([false, false, true]);
+        panel
+            .Picker.Entries.Select(static e => e.AccessibleState)
+            .ShouldBe(["", "Activado", "app activa"]);
         panel.Picker.SuggestionName.ShouldBe("Crear para Notion");
         panel.Picker.MoreName.ShouldBe("Más");
         panel.Picker.Legend.ShouldBe("El punto marca la app activa");

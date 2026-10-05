@@ -14,6 +14,7 @@ public sealed class PickerEntryViewModel : ObservableObject
     private string _icon;
     private bool _isCurrent;
     private bool _isActiveApp;
+    private string _accessibleState = string.Empty;
 
     internal PickerEntryViewModel(PickerEntry entry, Action<ProfileId> choose)
     {
@@ -54,14 +55,38 @@ public sealed class PickerEntryViewModel : ObservableObject
         private set => SetProperty(ref _isActiveApp, value);
     }
 
+    /// <summary>
+    /// The state in words for UI Automation (never color alone): [on] for the profile in view and [activeApp] for the
+    /// profile of the active app, joined with « · ».
+    /// </summary>
+    public string AccessibleState
+    {
+        get => _accessibleState;
+        private set => SetProperty(ref _accessibleState, value);
+    }
+
     /// <summary>A tap or UI Automation SelectionItem.Select.</summary>
     public void Choose() => _choose(Id);
 
-    internal void Apply(PickerEntry entry, bool current, bool activeApp)
+    internal void Apply(
+        PickerEntry entry,
+        bool current,
+        bool activeApp,
+        string currentWord,
+        string activeAppWord
+    )
     {
         Name = entry.Name;
         Icon = entry.Icon.Name;
         IsCurrent = current;
         IsActiveApp = activeApp;
+        AccessibleState = string.Join(
+            " · ",
+            new[]
+            {
+                current ? currentWord : null,
+                activeApp ? activeAppWord : null,
+            }.OfType<string>()
+        );
     }
 }

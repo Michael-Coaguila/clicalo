@@ -157,6 +157,7 @@ public sealed class SelectorRowView : Grid
     {
         Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
         _frequents.AccessibleName = _viewModel.FrequentsName;
+        _frequents.AccessibleState = _viewModel.FrequentsState;
         _frequentsText.Text = _viewModel.FrequentsName;
         if (_viewModel.IsFrequentsActive)
         {
