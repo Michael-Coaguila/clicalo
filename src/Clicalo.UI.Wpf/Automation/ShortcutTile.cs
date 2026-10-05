@@ -3,7 +3,10 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Automation;
 
@@ -91,6 +94,103 @@ public sealed class ShortcutTile : Control
         new PropertyMetadata(string.Empty, OnAccessibleStateChanged)
     );
 
+    /// <summary>Identifies <see cref="Symbol"/>.</summary>
+    public static readonly DependencyProperty SymbolProperty = TouchButton.SymbolProperty.AddOwner(
+        typeof(ShortcutTile)
+    );
+
+    /// <summary>Identifies <see cref="IconSize"/>.</summary>
+    public static readonly DependencyProperty IconSizeProperty = DependencyProperty.Register(
+        nameof(IconSize),
+        typeof(double),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(28d)
+    );
+
+    /// <summary>Identifies <see cref="Category"/>.</summary>
+    public static readonly DependencyProperty CategoryProperty = DependencyProperty.Register(
+        nameof(Category),
+        typeof(CategoryToken),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(CategoryToken.Edit, OnCategoryChanged)
+    );
+
+    /// <summary>Identifies <see cref="CategoryTint"/>.</summary>
+    public static readonly DependencyProperty CategoryTintProperty = DependencyProperty.Register(
+        nameof(CategoryTint),
+        typeof(Brush),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(null)
+    );
+
+    /// <summary>Identifies <see cref="CategoryWash"/>.</summary>
+    public static readonly DependencyProperty CategoryWashProperty = DependencyProperty.Register(
+        nameof(CategoryWash),
+        typeof(Brush),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(null)
+    );
+
+    /// <summary>Identifies <see cref="Keys"/>.</summary>
+    public static readonly DependencyProperty KeysProperty = DependencyProperty.Register(
+        nameof(Keys),
+        typeof(string),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(string.Empty)
+    );
+
+    /// <summary>Identifies <see cref="KeysFontSize"/>.</summary>
+    public static readonly DependencyProperty KeysFontSizeProperty = DependencyProperty.Register(
+        nameof(KeysFontSize),
+        typeof(double),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(11d)
+    );
+
+    /// <summary>Identifies <see cref="Badge"/>.</summary>
+    public static readonly DependencyProperty BadgeProperty = DependencyProperty.Register(
+        nameof(Badge),
+        typeof(string),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(string.Empty, OnBadgeChanged)
+    );
+
+    private static readonly DependencyPropertyKey BadgeTextPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(BadgeText),
+            typeof(string),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(string.Empty)
+        );
+
+    /// <summary>Identifies <see cref="BadgeText"/>.</summary>
+    public static readonly DependencyProperty BadgeTextProperty =
+        BadgeTextPropertyKey.DependencyProperty;
+
+    /// <summary>Identifies <see cref="IsHeld"/>.</summary>
+    public static readonly DependencyProperty IsHeldProperty = DependencyProperty.Register(
+        nameof(IsHeld),
+        typeof(bool),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(false)
+    );
+
+    /// <summary>Identifies <see cref="IsArmed"/>.</summary>
+    public static readonly DependencyProperty IsArmedProperty = DependencyProperty.Register(
+        nameof(IsArmed),
+        typeof(bool),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(false)
+    );
+
+    /// <summary>Identifies <see cref="IsFlashing"/>.</summary>
+    public static readonly DependencyProperty IsFlashingProperty = DependencyProperty.Register(
+        nameof(IsFlashing),
+        typeof(bool),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(false)
+    );
+
     static ShortcutTile()
     {
         DefaultStyleKeyProperty.OverrideMetadata(
@@ -106,6 +206,13 @@ public sealed class ShortcutTile : Control
             new FrameworkPropertyMetadata(FocusRingStyle.Tile)
         );
         TouchTarget.Enforce(typeof(ShortcutTile));
+    }
+
+    /// <summary>Creates a tile in the theme's colors and fonts, in the Edit category.</summary>
+    public ShortcutTile()
+    {
+        SetResourceReference(FontFamilyProperty, ThemeKeys.UiFont);
+        UseCategory(this, Category);
     }
 
     /// <summary>The localized name of the shortcut, without the voice number (from the view model).</summary>
@@ -167,6 +274,95 @@ public sealed class ShortcutTile : Control
         set => SetValue(AccessibleStateProperty, value);
     }
 
+    /// <summary>Material Symbols name of the shortcut's icon (CUA-007); null for none.</summary>
+    public string? Symbol
+    {
+        get => (string?)GetValue(SymbolProperty);
+        set => SetValue(SymbolProperty, value);
+    }
+
+    /// <summary>Side of the icon: 20, 28 or 34 in S, M or L (CUA-007).</summary>
+    public double IconSize
+    {
+        get => (double)GetValue(IconSizeProperty);
+        set => SetValue(IconSizeProperty, value);
+    }
+
+    /// <summary>
+    /// The color category of the shortcut (TEM-003): the icon, the badge text and the outline of an active tile take
+    /// its tint, and an active, held, armed or flashing tile its wash.
+    /// </summary>
+    public CategoryToken Category
+    {
+        get => (CategoryToken)GetValue(CategoryProperty);
+        set => SetValue(CategoryProperty, value);
+    }
+
+    /// <summary>The theme brush of the tint of <see cref="Category"/> (a resource reference; repaints with the theme).</summary>
+    public Brush? CategoryTint
+    {
+        get => (Brush?)GetValue(CategoryTintProperty);
+        set => SetValue(CategoryTintProperty, value);
+    }
+
+    /// <summary>The theme brush of the wash of <see cref="Category"/> (a resource reference; repaints with the theme).</summary>
+    public Brush? CategoryWash
+    {
+        get => (Brush?)GetValue(CategoryWashProperty);
+        set => SetValue(CategoryWashProperty, value);
+    }
+
+    /// <summary>
+    /// The line under the name (CUA-007), in JetBrains Mono and <c>muted</c>: the combination, or the destination,
+    /// action or profile; empty hides it (Compacta, «Mostrar teclas» off).
+    /// </summary>
+    public string Keys
+    {
+        get => (string)GetValue(KeysProperty);
+        set => SetValue(KeysProperty, value);
+    }
+
+    /// <summary>Size of <see cref="Keys"/>: the size's keys text by the text scale, at least 11 (CUA-011, TEM-007).</summary>
+    public double KeysFontSize
+    {
+        get => (double)GetValue(KeysFontSizeProperty);
+        set => SetValue(KeysFontSizeProperty, value);
+    }
+
+    /// <summary>
+    /// The type badge at the top right (CUA-007): MANTENER, ALTERNAR, the number of steps, WEB, APP, TXT or the pin;
+    /// empty for none. While <see cref="AccessibleState"/> is set (ACTIVO), the badge shows the state instead.
+    /// </summary>
+    public string Badge
+    {
+        get => (string)GetValue(BadgeProperty);
+        set => SetValue(BadgeProperty, value);
+    }
+
+    /// <summary>What the badge shows: <see cref="AccessibleState"/> when set, otherwise <see cref="Badge"/> (ACC-003).</summary>
+    public string BadgeText => (string)GetValue(BadgeTextProperty);
+
+    /// <summary>A Mantener tile held down: scale 0.95, category wash and a 2 px tint outline (CUA-009).</summary>
+    public bool IsHeld
+    {
+        get => (bool)GetValue(IsHeldProperty);
+        set => SetValue(IsHeldProperty, value);
+    }
+
+    /// <summary>A tile armed for confirmation: category wash and a 2 px <c>warn</c> outline (CUA-009).</summary>
+    public bool IsArmed
+    {
+        get => (bool)GetValue(IsArmedProperty);
+        set => SetValue(IsArmedProperty, value);
+    }
+
+    /// <summary>The 240 ms flash after running: category wash (CUA-009); the view model times it.</summary>
+    public bool IsFlashing
+    {
+        get => (bool)GetValue(IsFlashingProperty);
+        set => SetValue(IsFlashingProperty, value);
+    }
+
     /// <summary>
     /// UI Automation invoked the tile (<c>IInvokeProvider.Invoke</c>). Raised on the UI thread right after the UI
     /// Automation call has returned, as UIA requires of Invoke.
@@ -206,6 +402,28 @@ public sealed class ShortcutTile : Control
         voiceNumber is { } number
             ? string.Create(CultureInfo.InvariantCulture, $"{number} {accessibleName}")
             : accessibleName ?? string.Empty;
+
+    private static void UseCategory(ShortcutTile tile, CategoryToken category)
+    {
+        tile.SetResourceReference(CategoryTintProperty, CategoryBrushKey.Tint(category));
+        tile.SetResourceReference(CategoryWashProperty, CategoryBrushKey.Wash(category));
+    }
+
+    private static void OnCategoryChanged(
+        DependencyObject tile,
+        DependencyPropertyChangedEventArgs e
+    ) => UseCategory((ShortcutTile)tile, (CategoryToken)e.NewValue);
+
+    private static void OnBadgeChanged(
+        DependencyObject tile,
+        DependencyPropertyChangedEventArgs e
+    ) => ((ShortcutTile)tile).UpdateBadgeText();
+
+    private void UpdateBadgeText() =>
+        SetValue(
+            BadgeTextPropertyKey,
+            string.IsNullOrEmpty(AccessibleState) ? Badge ?? string.Empty : AccessibleState
+        );
 
     private static ShortcutTileAutomationPeer? ExistingPeer(DependencyObject tile) =>
         UIElementAutomationPeer.FromElement((ShortcutTile)tile) as ShortcutTileAutomationPeer;
@@ -270,7 +488,9 @@ public sealed class ShortcutTile : Control
     private static void OnAccessibleStateChanged(
         DependencyObject tile,
         DependencyPropertyChangedEventArgs e
-    ) =>
+    )
+    {
+        ((ShortcutTile)tile).UpdateBadgeText();
         ExistingPeer(tile)
             ?.RaiseTextPropertyChanged(
                 AutomationElementIdentifiers.ItemStatusProperty,
@@ -278,4 +498,5 @@ public sealed class ShortcutTile : Control
                 (string?)e.OldValue,
                 (string?)e.NewValue
             );
+    }
 }
