@@ -13,7 +13,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-01 | Instantáneas | Verify.XunitV3 | Comparador propio en `Clicalo.TestKit` | M0 |
 | D-02 | Versión de xUnit | xUnit v3, línea 3.x | `xunit.v3` 4.x | M0 |
 | D-03 | Roslyn de generadores y analizadores | Sin versión fijada | `Microsoft.CodeAnalysis` 4.14 | M0 |
-| D-04 | Visibilidad del repositorio | Público (ARM64, CodeQL y Scorecard en cada PR) | Privado al inicio; esos trabajos, condicionados a que sea público | M0 |
+| D-04 | Visibilidad del repositorio | Público (ARM64, CodeQL y Scorecard en cada PR) | **Cerrada el 2026-10-05**: el repositorio es público y esos trabajos se ejecutan en cada PR | M0 |
 | D-05 | Ubicación del repositorio | Sin especificar | `C:\dev\clicalo`, fuera de OneDrive | M0 |
 | D-06 | Notación de trazabilidad | `[Req("ID")]` | `[Trait("Req", "ID")]` | M0 |
 | D-07 | Formato de `CHANGELOG.md` | El que genere release-please | Keep a Changelog; release-please se configurará en M5 para respetarlo | M0 |
@@ -22,7 +22,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
-| D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | Repositorio privado en el plan gratuito, que no admite protección de ramas: *hook* local `pre-push` y *merge* solo por *squash* configurado en GitHub | M0 |
+| D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | **Cerrada el 2026-10-05**: protección real activa en GitHub; el *hook* `pre-push` se conserva como aviso local | M0 |
 | D-14 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
 | D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF; la violación se cierra con la desactivación | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación, que termina con la ráfaga de mensajes que la abrió | M1 |
 | D-16 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
@@ -113,6 +113,12 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   [Scorecard Action](https://github.com/ossf/scorecard-action),
   [facturación de GitHub Actions](https://docs.github.com/en/billing/concepts/product-billing/github-actions),
   [*runners* alojados por GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
+- **Cierre (2026-10-05).** El usuario decidió hacer público el repositorio, ya que Clícalo será una herramienta
+  que cualquiera podrá usar. Además, el límite de gasto de GitHub Actions había detenido la CI del repositorio
+  privado. Desde ese día, los trabajos ARM64, CodeQL y Scorecard se ejecutan en cada PR. Pasarán a ser
+  comprobaciones obligatorias de la protección de `main` cuando tengan su primera ejecución en verde. La
+  solicitud a SignPath Foundation sigue pendiente para antes de M5.
 
 ## D-05 · Repositorio en `C:\dev\clicalo`, fuera de OneDrive
 
@@ -249,6 +255,12 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** Al hacer público el repositorio (o con GitHub Pro) se activa la protección real: PR
   obligatorio, checks `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal, conversación
   resuelta y sin excepciones para administradores. Entonces esta entrada se elimina.
+- **Cierre (2026-10-05).** Con el repositorio público, `main` tiene la protección real de GitHub: PR
+  obligatorio, comprobaciones `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal,
+  conversaciones resueltas, sin *force push* ni borrado y **sin excepciones para administradores**. El *hook*
+  `pre-push` de `cl setup` se conserva porque avisa antes de llegar a la red, pero ya no es la única barrera.
+  También se activaron las alertas de Dependabot, la detección de secretos con bloqueo de *push* y el informe
+  privado de vulnerabilidades que promete `SECURITY.md`.
 
 ## D-14 · Contratos de M1 para el primer plano
 
