@@ -103,7 +103,7 @@ public sealed class LeaseDesktopFixture : IAsyncLifetime
 
         var (work, dpi) = NativeSurface.PrimaryWorkArea();
         var scale = dpi / 96.0;
-        WpfThread.Invoke(() =>
+        var firstFrame = WpfThread.Invoke(() =>
         {
             var panel = new LeasePanel(new SurfaceId(SurfaceKind.Panel, 0), lab.Registry, 200, 140);
             var search = new SearchSurface(
@@ -127,10 +127,15 @@ public sealed class LeaseDesktopFixture : IAsyncLifetime
                     scale
                 )
             );
+            var composed = FirstFrame.Watch(panel);
             panel.ShowPassive();
             _panel = panel;
             _search = search;
+            return composed;
         });
+
+        // The tests tap the panel first: a tap sent before it is composed falls through to the window below.
+        await firstFrame.WaitAsync(EventTimeout, TestContext.Current.CancellationToken);
     }
 
     /// <summary>A new orchestrator over the real adapters, or <paramref name="control"/>; the caller disposes it.</summary>

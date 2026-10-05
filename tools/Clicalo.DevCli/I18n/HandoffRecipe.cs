@@ -5,14 +5,16 @@ namespace Clicalo.DevCli.I18n;
 
 /// <summary>
 /// The reviewed conversion from the design handoff to <c>data/i18n</c> (<c>data/i18n/handoff-import.json</c>).
-/// Strict: unknown properties are errors, so a typo never silently changes the import.
+/// Strict: unknown properties are errors, so a typo never silently changes the import. <see cref="Retired"/> lists the
+/// handoff keys a user decision removed from the product: they are not imported and need a reason in <c>notes</c>.
 /// </summary>
 internal sealed record HandoffRecipe(
     string Source,
     ImmutableArray<string> Languages,
     ImmutableDictionary<string, string> Placeholders,
     ImmutableDictionary<string, HandoffKeyRule> Keys,
-    ImmutableArray<HandoffAddedKey> Added
+    ImmutableArray<HandoffAddedKey> Added,
+    ImmutableHashSet<string> Retired
 )
 {
     /// <summary>Reads the recipe.</summary>
@@ -30,7 +32,8 @@ internal sealed record HandoffRecipe(
             "languages",
             "placeholders",
             "keys",
-            "added"
+            "added",
+            "retired"
         );
         var languages = Required(root, "languages", "the root")
             .EnumerateArray()
@@ -86,12 +89,25 @@ internal sealed record HandoffRecipe(
             }
         }
 
+        var retired = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (root.TryGetProperty("retired", out var retiredElement))
+        {
+            foreach (var key in Objects(retiredElement, "'retired'"))
+            {
+                var owner = "retired." + key.Name;
+                AllowOnly(key.Value, owner, "notes");
+                _ = String(Required(key.Value, "notes", owner), owner + ".notes");
+                retired.Add(key.Name);
+            }
+        }
+
         return new HandoffRecipe(
             String(Required(root, "source", "the root"), "source"),
             languages,
             Strings(Required(root, "placeholders", "the root"), "placeholders"),
             keys.ToImmutable(),
-            added.ToImmutable()
+            added.ToImmutable(),
+            retired.ToImmutable()
         );
     }
 

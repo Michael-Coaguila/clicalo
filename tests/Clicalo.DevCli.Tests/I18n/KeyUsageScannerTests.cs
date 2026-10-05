@@ -7,7 +7,7 @@ public sealed class KeyUsageScannerTests
 {
     private static readonly Dictionary<string, string> Members = new(StringComparer.Ordinal)
     {
-        ["MigT"] = "migT",
+        ["ImpT"] = "impT",
         ["ComboN"] = "comboN",
         ["RSingle"] = "rSingle",
         ["Search"] = "search",
@@ -17,7 +17,7 @@ public sealed class KeyUsageScannerTests
     public void Finds_CSharp_XAML_and_data_usages_with_their_position()
     {
         using var repo = new TemporaryRepository();
-        repo.Write("src/Clicalo.Presentation/Vm.cs", "class Vm\n{\n    object M => L.MigT;\n}\n");
+        repo.Write("src/Clicalo.Presentation/Vm.cs", "class Vm\n{\n    object M => L.ImpT;\n}\n");
         repo.Write(
             "src/Clicalo.UI.Wpf/View.xaml",
             "<Grid>\n  <TextBlock Text=\"{loc:T comboN}\" />\n</Grid>\n"
@@ -26,8 +26,8 @@ public sealed class KeyUsageScannerTests
 
         var usages = KeyUsageScanner.Scan(repo.Root, Members);
 
-        usages.Keys.Order(StringComparer.Ordinal).ShouldBe(["comboN", "migT", "search"]);
-        usages["migT"].ShouldBe(new KeyUsage("migT", usages["migT"].Path, 3, 17));
+        usages.Keys.Order(StringComparer.Ordinal).ShouldBe(["comboN", "impT", "search"]);
+        usages["impT"].ShouldBe(new KeyUsage("impT", usages["impT"].Path, 3, 17));
         usages["comboN"].Line.ShouldBe(2);
         usages["comboN"].Column.ShouldBe(20);
         usages["search"].Line.ShouldBe(2);
@@ -50,7 +50,7 @@ public sealed class KeyUsageScannerTests
     public void Only_properties_named_Key_count_and_i18n_data_bin_and_obj_are_skipped()
     {
         using var repo = new TemporaryRepository();
-        repo.Write("data/catalogs/sample.json", "{ \"label\": \"search\", \"id\": \"migT\" }");
+        repo.Write("data/catalogs/sample.json", "{ \"label\": \"search\", \"id\": \"impT\" }");
         repo.Write("data/i18n/strings.es.json", "{ \"searchKey\": \"search\" }");
         repo.Write("src/Clicalo.App/obj/Generated.cs", "var x = L.Search;");
         repo.Write("src/Clicalo.App/bin/Copy.xaml", "{loc:T search}");

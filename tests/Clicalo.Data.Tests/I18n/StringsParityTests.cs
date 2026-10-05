@@ -14,16 +14,20 @@ public sealed class StringsParityTests
 
     [Fact]
     [Trait("Req", "IDI-001")]
-    public void Every_one_of_the_669_handoff_keys_is_kept_with_its_original_name()
+    public void Every_one_of_the_669_handoff_keys_is_kept_with_its_original_name_unless_retired()
     {
         var handoff = I18nData.Handoff("es").Select(static e => e.Key).ToList();
+        var retired = I18nData.RetiredHandoffKeys();
         var imported = I18nData
             .Strings("es")
             .Select(static e => I18nData.BaseKey(e.Key))
             .ToHashSet(StringComparer.Ordinal);
 
         handoff.Count.ShouldBe(669);
-        handoff.Where(k => !imported.Contains(k)).ShouldBeEmpty();
+        // Decision D1 of the user (2026-10-03, ADR-0020): no import from Macro Quick Access, so no migration card.
+        retired.Order(StringComparer.Ordinal).ShouldBe(["migD", "migT"]);
+        handoff.Where(k => !retired.Contains(k) && !imported.Contains(k)).ShouldBeEmpty();
+        retired.Where(imported.Contains).ShouldBeEmpty();
     }
 
     [Fact]
@@ -41,6 +45,11 @@ public sealed class StringsParityTests
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+                // Texts of the M2 walking skeleton: the tray, the app name and the actions of M3 (catalog §6.1).
+                "actionUnavailable",
+                "appName",
+                // Texts of the M2 integration: failures, undo labels and notices of the five packages (catalog §6.1).
+                "backupDamaged",
                 // Key-group and category labels of data/catalogs (keys.json, categories.json).
                 "catEdit",
                 "catFile",
@@ -52,11 +61,38 @@ public sealed class StringsParityTests
                 "catVoice",
                 "catWeb",
                 "catWin",
+                "dataUnreadable",
+                "elevatedRefused",
+                "engineFault",
+                "exitApp",
+                "generalFixed",
+                "guardianUnstable",
+                "handleLock",
+                "hidePanel",
+                "importInvalid",
+                "importTooLarge",
+                "incompleteTap",
+                "itemGone",
+                "keyMissing",
                 "kgFn",
                 "kgMods",
-                // Nested plural quantities of migT.
-                "migTProfiles",
-                "migTShortcuts",
+                "kitBasics",
+                "kitBasicsD",
+                "macroCancelled",
+                "macroRunning",
+                "processTaken",
+                "releasedOnLock",
+                "saveFailD",
+                "saveFailT",
+                "saveReadOnly",
+                "schemaNewer",
+                "settingInvalid",
+                "sharedTextsExcluded",
+                "stepDeleted",
+                "tapSent",
+                "textUnavailable",
+                "trayHidden",
+                "undoEditsIn",
             ]);
         entries
             .Where(static e => I18nData.Category(e.Key) is not null)
@@ -68,8 +104,7 @@ public sealed class StringsParityTests
                 "comboN",
                 "dupHead",
                 "instNoteSome",
-                "migTProfiles",
-                "migTShortcuts",
+                "sharedTextsExcluded",
                 "sugLine",
                 "twMacro",
             ]);

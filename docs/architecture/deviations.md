@@ -13,7 +13,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-01 | Instantáneas | Verify.XunitV3 | Comparador propio en `Clicalo.TestKit` | M0 |
 | D-02 | Versión de xUnit | xUnit v3, línea 3.x | `xunit.v3` 4.x | M0 |
 | D-03 | Roslyn de generadores y analizadores | Sin versión fijada | `Microsoft.CodeAnalysis` 4.14 | M0 |
-| D-04 | Visibilidad del repositorio | Público (ARM64, CodeQL y Scorecard en cada PR) | Privado al inicio; esos trabajos, condicionados a que sea público | M0 |
+| D-04 | Visibilidad del repositorio | Público (ARM64, CodeQL y Scorecard en cada PR) | **Cerrada el 2026-10-05**: el repositorio es público y esos trabajos se ejecutan en cada PR | M0 |
 | D-05 | Ubicación del repositorio | Sin especificar | `C:\dev\clicalo`, fuera de OneDrive | M0 |
 | D-06 | Notación de trazabilidad | `[Req("ID")]` | `[Trait("Req", "ID")]` | M0 |
 | D-07 | Formato de `CHANGELOG.md` | El que genere release-please | Keep a Changelog; release-please se configurará en M5 para respetarlo | M0 |
@@ -22,12 +22,19 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-10 | Puertos y revelado de secretos | Puertos de primer plano en `Application.Foreground`; `WithRevealed` solo en la ejecución y el editor | Puertos en `Application.Ports`; `WithRevealed` también en `Application.Engine` e `Infrastructure.Persistence` | M0 |
 | D-11 | Tabla de APIs prohibidas | §4.4 | Ampliada: más fuentes de tiempo y aleatoriedad, `UIElement.Focus`, carga dinámica de ensamblados; `ShellExecuteEx` permitido en `Platform.Windows/Elevation` | M0 |
 | D-12 | Historial de M0 | `main` lineal, solo *squash*, ámbitos de una lista cerrada, `Signed-off-by` en cada commit | El historial de M0, anterior a la protección de `main`, tiene fusiones `--no-ff`, tres ámbitos fuera de la lista y commits sin `Signed-off-by` | M0 |
-| D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | Repositorio privado en el plan gratuito, que no admite protección de ramas: *hook* local `pre-push` y *merge* solo por *squash* configurado en GitHub | M0 |
+| D-13 | Protección de `main` | Rama protegida en GitHub (PR obligatorio, checks, historial lineal) | **Cerrada el 2026-10-05**: protección real activa en GitHub; el *hook* `pre-push` se conserva como aviso local | M0 |
 | D-14 | Contratos de M1 para el primer plano | `SurfaceId` junto a las ventanas; `ActivationGuard` llama al orquestador | `SurfaceId` y `WindowToken` en `Application.Ports`; tres puertos más (`IActivationArbiter`, `ISurfaceLookup`, `IInternalKeyEffects`) | M1 |
-| D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación | M1 |
+| D-15 | No activación medida en S1 | `SWP_NOACTIVATE` en `WM_WINDOWPOSCHANGING`; `WM_DPICHANGED` sin pasar a WPF; la violación se cierra con la desactivación | Además `ActivationVeto` (`WH_CBT` de hilo, ámbito mínimo); `WM_DPICHANGED` reenviado a WPF dentro del veto; una violación por activación, que termina con la ráfaga de mensajes que la abrió | M1 |
 | D-16 | Capa de punteros | Sin fijar cómo llega el mouse ni quién ejecuta los plazos | `EnableMouseInPointer`, `GestureHost`, muestras válidas solo durante `OnFrame`, umbral de palma y regla de objetivo | M1 |
-| D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación tras `RestoreRetryDelay`, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
+| D-17 | Primer plano | §3.6 y §7.9; el orquestador en el hilo SysEvents (§3.2) | Monitor sin `WINEVENT_SKIPOWNPROCESS`, verificación durante `RestoreRetryDelay` (miradas y aviso del monitor) sin reintentar sobre la elección de la persona, violación durante una concesión, orquestador en el grupo de hilos, espera a que se suelte el atajo interno | M1 |
 | D-18 | UI Automation | Cortés = `ImportantMostRecent` | Cortés = `MostRecent`; `Invoke` asíncrono; relleno `BSTR` de `RaiseNotificationEvent` | M1 |
+| D-19 | Secuencia de los spikes | M1 cierra con todos los criterios de §15 superados; S5, S7, S9, S11, S6, S14, S8, S10, S12 y S15 dentro de M1 | M1 cerrado por decisión del usuario con la evidencia real; filas manuales de S1, S3 y S4 en la aceptación en hardware de M3; S5, S7, S9 y S11 en M2; S2 residual, S6 y S15 antes de M3; S12 en M3; S8, S10 y S14 antes de M5. Ningún criterio cambia | M1 |
+| D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
+| D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador (retirado por ADR-0023), instancia única en `Clicalo.App`, kit inicial del primer arranque (la migración v1, retirada por ADR-0020), `Clicalo.App.Tests` | M2 |
+| D-22 | Correcciones del motor tras verificar M2 | Reintento de lo que rechaza el escritorio seguro solo al desbloquear o reanudar; escalada de la emergencia a `TerminateProcess` sin condiciones; INV-10 como propiedad de `LayoutPlanner` | Reenvío también con «Soltar todo», los eventos terminales y el regreso del escritorio de entrada (UAC, Ctrl+Alt+Supr); latido y marcas del motor bajo la valla; acordes internos desde el motor; sin guardián la emergencia nunca termina el proceso; INV-10 aplazada a M3; Sentinel reintenta lo rechazado hasta el desbloqueo y solo entonces relanza (decisión D3 del usuario, protocolo 2; el plano lo recoge desde que se aceptó ADR-0018) | M2 |
+| D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados, con `perf (x64)` cada noche y obligatorio antes de cada versión; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck (retirados por ADR-0023) | M2 |
+| D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
+| D-25 | Guardián simple | Hasta el 2026-10-05, *ledger* en memoria compartida, valla de generación, emergencia y protocolo 2 de Sentinel; desde entonces el plano recoge [ADR-0023](../adr/0023-guardian-simple.md) | Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia; las partes de D-21, D-22 y D-23 sobre ellos quedan retiradas | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -107,6 +114,12 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   [Scorecard Action](https://github.com/ossf/scorecard-action),
   [facturación de GitHub Actions](https://docs.github.com/en/billing/concepts/product-billing/github-actions),
   [*runners* alojados por GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
+- **Cierre (2026-10-05).** El usuario decidió hacer público el repositorio, ya que Clícalo será una herramienta
+  que cualquiera podrá usar. Además, el límite de gasto de GitHub Actions había detenido la CI del repositorio
+  privado. Desde ese día, los trabajos ARM64, CodeQL y Scorecard se ejecutan en cada PR. Pasarán a ser
+  comprobaciones obligatorias de la protección de `main` cuando tengan su primera ejecución en verde. La
+  solicitud a SignPath Foundation sigue pendiente para antes de M5.
 
 ## D-05 · Repositorio en `C:\dev\clicalo`, fuera de OneDrive
 
@@ -243,6 +256,15 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** Al hacer público el repositorio (o con GitHub Pro) se activa la protección real: PR
   obligatorio, checks `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal, conversación
   resuelta y sin excepciones para administradores. Entonces esta entrada se elimina.
+- **Cierre (2026-10-05).** Con el repositorio público, `main` tiene la protección real de GitHub: PR
+  obligatorio, comprobaciones `verify (x64)`, `desk (x64)`, `title`, `adr` y `dco`, historial lineal,
+  conversaciones resueltas, sin *force push* ni borrado y **sin excepciones para administradores**. El *hook*
+  `pre-push` de `cl setup` se conserva porque avisa antes de llegar a la red, pero ya no es la única barrera.
+  Con los niveles de pruebas del mismo día, `desk (x64)` sale de `pr.yml` (corre cada noche): las comprobaciones
+  obligatorias pasan a ser `verify (x64)`, `verify (arm64)`, `codeql (csharp)`, `codeql (actions)`, `title`, `adr` y
+  `dco` (las de D-04, cuando tengan su primera ejecución en verde), y el usuario quita `desk (x64)` de la protección.
+  También se activaron las alertas de Dependabot, la detección de secretos con bloqueo de *push* y el informe
+  privado de vulnerabilidades que promete `SECURITY.md`.
 
 ## D-14 · Contratos de M1 para el primer plano
 
@@ -281,19 +303,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - `WM_DPICHANGED` se maneja como pide el plano y además se reenvía a `HwndTarget` (con un indicador de reentrada)
     dentro del veto, porque WPF necesita el mensaje para reescalar (ACC-008) y su `SetWindowPos` no lleva
     `SWP_NOACTIVATE` (#7561).
-  - `ActivationGuard` cuenta **una** violación por activación (que son varios mensajes). Un mensaje de activación
-    para una superficie que no tiene el primer plano (`GetForegroundWindow`) se juzga por quién lo tiene: una ventana
-    del propio proceso sin concesión (otra superficie, `OwnerAnchor`) es una violación al momento; una ventana de otra
-    app puede ser un mensaje tardío (la restauración va por el grupo de hilos mientras el hilo de UI aún entrega los
-    mensajes de la activación) o una activación que `GetForegroundWindow` todavía no confirma (S1 la vio llegar así),
-    así que el mensaje se retiene, se repara `WS_EX_NOACTIVATE` y el juicio se aplaza: cuando el hilo de UI ha
-    entregado lo que tenía en cola y, si el primer plano sigue fuera, otra vez tras
-    `Timings.Windowing.ActivationRecheck` (50 ms). Si entonces tiene el primer plano una ventana del proceso sin
-    concesión, cuenta una violación; si no, era tardío y no cuenta. Una violación abierta se cierra con
-    `WA_INACTIVE` o `WM_ACTIVATEAPP(FALSE)`, con el siguiente `WM_ACTIVATEAPP(TRUE)` y, porque esos mensajes llegan
-    tarde, desordenados o no llegan cuando la restauración gana la carrera (S1, hallazgo 8), en cuanto la guarda ve el
-    primer plano fuera del proceso: en cualquier mensaje de activación o desactivación (también
-    `WM_NCACTIVATE(FALSE)`) y cada `ActivationRecheck` mientras está abierta.
+  - `ActivationGuard` sigue una regla simple ([ADR-0024](../adr/0024-vigilante-de-foco-simple.md)): cada
+    activación sin concesión pide una restauración, salvo que ya haya una en cola en el *dispatcher*, a la que se
+    suma, así que la restauración siempre llega después de las activaciones que cubre. Sustituye al juicio aplazado
+    y a las violaciones abiertas de M1, que se tragaron activaciones forzadas cuando Windows no desactivaba la
+    superficie (S1, hallazgos 6, 8, 11 y 13).
   - Las superficies, `OwnerAnchor` y `SurfaceRegistry` viven en un único hilo; todas comparten `OwnerAnchor`, así que
     la banda *topmost* se pierde y se repara en familia.
 - **Motivo.** Sin el veto, una prueba sin escritorio mostró `WM_ACTIVATEAPP`, `WM_ACTIVATE` y `WM_SETFOCUS` en la
@@ -345,8 +359,12 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - Tipos públicos nuevos: `ForegroundPorts`, `LadderStep`, `LeaseEndReason`; en `ForegroundLease`, `Origin`,
     `GrantedAt`, `IsActive`, `EndReason`, `Ended` y `KeepAlive()`; en `ForegroundOrchestrator`, `ActiveLease` y
     `EndActiveLeaseAsync` (evento terminal).
-  - Cada `SetForegroundWindow` se vuelve a comprobar tras `RestoreRetryDelay` antes de contarse como rechazado: la
-    activación entre hilos es asíncrona (S4, hallazgo 1).
+  - Cada `SetForegroundWindow` que `GetForegroundWindow` no confirma al momento se vuelve a comprobar cada
+    `RestoreVerifyInterval` durante `RestoreRetryDelay` antes de contarse como rechazado: la activación entre hilos es asíncrona (S4, hallazgo 1), y una
+    sola mirada al final de la espera daba por rechazada una restauración que había funcionado (S1, hallazgo 10). No se
+    reintenta si el monitor verificó entretanto un cambio a otra app, y una restauración tras una violación que esperó
+    su turno no hace nada si el monitor verificó otra ventana externa después del informe y ninguna superficie está
+    delante (S1, hallazgo 12): en ambos casos se tomaría el primer plano de lo que la persona eligió.
   - `TryNowTarget` vuelve al Centro de control que estaba delante y conserva el `prev` original (CCM-004).
   - `NOTIFYICONDATAW` escrito a mano, solo x64 y ARM64 (CsWin32 no lo genera para AnyCPU).
   - Una violación durante una concesión devuelve el primer plano al destino de la concesión, no a
@@ -385,6 +403,329 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   corrige, pero no si cambia a otro formato.
 - **Revisión.** Con Narrador en la fila manual 9a (quizá `CurrentThenMostRecent`) y con cada actualización de WPF.
 
+## D-19 · Spikes resecuenciados al cerrar M1
+
+- **Plano.** [§14](blueprint.md#14-hoja-de-ruta-por-hitos) pone en M1 todos los spikes salvo S13 (primero S1, S3, S4 y
+  S2; después S5, S7, S15, S9, S6, S14, S8, S10, S11 y S12) y cierra M1 con «todos los criterios de §15 superados, o una
+  decisión registrada».
+- **Repositorio.**
+  - M1 se cierra con la **decisión registrada** del usuario (2026-09-26, «continuar») sobre la evidencia real:
+    473 toques reales sin ningún cambio de primer plano ni violación `reg01` (p95 15,7 ms) y todas las pruebas
+    automáticas de S1, S3 y S4 en verde en la CI. Las filas manuales de S1 (panel, Pestaña, burbuja, IME y menús), S3
+    (Acceso por voz y Narrador) y S4 (dictado) se repiten con el panel real en la aceptación en hardware de M3,
+    **midiendo automáticamente** ([M1-closure.md](../testing/spikes/M1-closure.md)).
+  - S5, S7, S9 y S11 se resuelven **dentro de M2** como pruebas (sus paquetes están en
+    [M2-ownership.md](../testing/spikes/M2-ownership.md)).
+  - S2 residual (el *dispatcher* con el Centro de control cargado; conectar y desconectar la pantalla táctil), S6 y S15,
+    **antes de M3**.
+  - S12, en la aceptación en hardware de M3.
+  - S8, S10 y S14, **antes de M5**.
+  - S13, en M7, como ya fijaba §15.1.
+- **Ningún criterio se rebaja.** Los criterios de éxito y las reglas «si falla» de
+  [§15.1](blueprint.md#151-spikes-con-criterio-de-éxito) y de cada guion siguen intactos; solo cambia el hito en que se
+  miden. En particular, si en M3 falla una fila de toque de S1 o S4, se reabre ADR-0001 antes de seguir con
+  funcionalidad.
+- **Motivo.** La sesión manual mostró que el laboratorio pedía al usuario contar y pulsar «Funcionó», y la tira-guía
+  acaparó los toques; repetir con el panel real y medición automática da mejor evidencia y respeta la preferencia del
+  usuario. Los spikes de M2 son de las piezas que M2 construye (arranque, inyección, guardián y persistencia).
+- **Coste.** M2 se construye sin la prueba manual del panel real (riesgo acotado: M2 no añade superficies y todo lo que
+  construye es independiente de la capa de UI). Las decisiones de *dispatchers* (S2), publicación (S5) y desenfoque (S6)
+  se documentan con datos más tarde de lo previsto.
+- **Revisión.** En la aceptación en hardware de M3, con las filas manuales hechas.
+
+## D-20 · Contratos de M2
+
+- **Plano.** [§6.1 a §6.6](blueprint.md#6-modelo-de-dominio-y-persistencia) y [§7.2 a §7.4](blueprint.md#72-política-de-activación-única-eje-001)
+  nombran los tipos del dominio y del motor; §4.3 la matriz de módulos.
+- **Repositorio.**
+  - `Library` es `ShortcutLibrary` y `Settings` es `UserSettings`: un tipo con el mismo nombre que su espacio de nombres
+    (`Clicalo.Domain.Library.Library`) hace ambiguas todas las referencias desde los módulos hermanos.
+  - `Error` es `Failure`, y las fábricas de `Result<T>` están en `Results`: `Error` es palabra reservada de Visual Basic
+    (CA1716) y un genérico no puede tener miembros estáticos (CA1000).
+  - `SecretText` vive en `Clicalo.Domain.Privacy` (donde lo buscan CLC0003 y `docs/guides/analyzers.md`), no en Library.
+  - Módulo nuevo `Clicalo.Domain.Commands` (`IDocumentCommand`, `IDestructiveCommand`, `UndoIntent`, `DocumentChange`,
+    `DomainContext`, `DomainEvent`, `BackupRequirement`): CLC0010 lo espera ahí y así no hay ciclo con `Document`.
+    `Library` suma `Timing` (el rango de `WaitStep`, I6) y `Migration.V1` sumaba `Document` (el conversor devolvía un
+    `UserDocument`; el módulo se retiró con [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)); todo en
+    `architecture/domain-modules.json`.
+  - `WebAction` es `UrlAction` (el tipo persistido es `url`); `InjectedKey` está en `Keys` porque lo necesita el
+    *ledger* lógico (`KeySafety` solo depende de `Keys`); el efecto que cuenta un uso es `EngineEffect.CountUsage`,
+    porque `RecordUsage` es el comando exento de `undo-exemptions.json`.
+  - `EngineState` no lleva teclas fijas (llegan en M3) y la distribución viaja en `ForegroundInfo`; `ActivationContext`
+    lleva `TestMode` como `bool` porque `Execution` no depende de `Interaction`.
+  - Los puertos del motor (`IInputInjector`, `IKeyLedger`, `IShellExecutor`, `IClipboardPaster`, `IEngineInbox`) y de
+    la persistencia (`IDocumentRepository`, `IUsageRepository`, `IAtomicFileWriter`, `IBackupService`) viven en
+    `Application.Ports`, como en [D-10](#d-10--puertos-en-applicationports-y-revelado-de-secretos). `IInputInjector` e
+    `IClipboardPaster` reciben el texto como `ReadOnlySpan<char>`: solo el motor llama a `WithRevealed`. El estado de un
+    envío es `InjectionStatus` (SpikeLab ya tiene un `InjectionOutcome`).
+  - `PersistenceScheduler` vive en `Application.Persistence`, separado de `Application.Store`, para que dos paquetes no
+    compartan carpeta.
+  - Sentinel recibe sus umbrales por la línea de órdenes, porque no puede leer `timings.json`
+    ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
+  - El arnés de `CatalogGeneratorHarness` compila también `Domain/Primitives`, del que ahora dependen `Keys` y `Catalog`.
+  - Proyectos de prueba nuevos: `Clicalo.Infrastructure.Tests`, `Clicalo.Sentinel.Tests` y `Clicalo.Performance`.
+- **Motivo.** Que los contratos compilen con las reglas de §4 (capas, módulos, analizadores) sin ambigüedades.
+- **Coste.** Nombres distintos de los del plano en seis tipos; la tabla de arriba es la traducción.
+- **Revisión.** Al cerrar M2; si el plano pasa a 1.2, se adoptan los nombres del repositorio.
+
+## D-21 · Integración de M2
+
+- **Plano.** [§3.1](blueprint.md#31-vista-de-procesos), [§3.2](blueprint.md#32-modelo-de-hilos),
+  [§6](blueprint.md#6-modelo-de-dominio-y-persistencia) y [§7](blueprint.md#7-motor-de-ejecución) describen el dominio,
+  el motor, la persistencia, la migración y el arranque; [D-20](#d-20--contratos-de-m2) fijó sus contratos.
+- **Repositorio.** Lo que los cinco paquetes y la integración añadieron o hicieron de otra forma:
+  - **Dominio.** Módulo `ProfileResolution` (tabla PER-001 a PER-008) con sus rutas en el paquete `domain`. Comando
+    nuevo `DiscardDraft` (ATJ-011, EC-EDI-04). `SetSetting` no es genérico: recibe `(Path, Value)`, para que su nombre
+    coincida con `undo-exemptions.json`. `CanonicalChord.TryFrom` y `TryParse` en lugar de `From(KeyChord, KeyCatalog)`;
+    `ForBlockedComparison` compara sin el lado del modificador (R-08). La porción `Settings` del deshacer solo restaura
+    los ajustes deshacibles; `lockProfile` y `lastProfile` son de colocación y no se deshacen (propuesta R-13);
+    `RestoreSlices` corrige un `lastProfile` que apunta a un perfil que ya no existe. `Settings` depende ahora de `Timing`
+    y `Catalog` (`domain-modules.json`), y sus valores por defecto salen de `Timings` y `TouchPresets`.
+  - **Almacén.** `DocumentStore` descarta una entrada agrupada cuyo deshacer no cambiaría nada, entrega `Changed` en
+    orden de revisión por una cola (posiblemente en otro hilo que también despacha) y gasta el `ConfirmationToken` al
+    aplicarlo (`store.confirmation.spent`): dos toques ejecutan un solo borrado (REG-04).
+  - **Motor.** Miembros y tipos públicos nuevos (`EngineState.Outbox`, `QueuedStep`, `PressedBatch`, `StickyState`,
+    `HoldOrigin.Tap`, `KeyLedgerSection.ReadOnlyView`, `InjectionGate.TryReleaseEverything`, `GuardianProcess`,
+    `CrashJournal`…) y los eventos `ReleasesBlocked`, `SessionResumed`, `StickyTapped` y `ClearSticky`. La tabla fija de
+    `keys.win32.json` es una copia a mano en `Domain.Execution.Internal.Win32FixedKeys`, comparada con el JSON por una
+    prueba, hasta que el generador la emita. Una liberación que `SendInput` envía solo en parte vuelve como
+    `ReleasesBlocked`, y `GateInputInjector` suelta lo que un lote equilibrado (clic o texto) dejó pulsado. Sentinel no
+    escribe el diario de fallos: lo añade el principal relanzado con `--after-crash` ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md),
+    punto 5). `EmergencyReleaser`, el *ledger* y la valla se retiraron después con
+    [ADR-0023](../adr/0023-guardian-simple.md) ([D-25](#d-25--guardián-simple)); `GateInputInjector` pasó a ser
+    `InputInjector`.
+  - **Persistencia.** `DocumentLoadOutcome.RecoveredFromPending` (la copia de emergencia de `pending\`). Los esquemas
+    persistidos viven en `data/schemas` y los valida `Clicalo.Data.Tests`. El registro está en
+    `Infrastructure/Logging`, fuera del reparto de M2, porque `banned-api-exceptions.json` espera ahí su *sink*.
+  - **Migración.** `V1Importer.MigrateAsync` (guarda el original byte a byte antes de convertir), `V1ComboScan`,
+    `V1Counts.Of` y tres valores de `MigrationNoteKind`; los repetidos de una importación salen de `DuplicateIndex`.
+    **Retirado** con todo el módulo `Migration.V1` por la decisión D1 del usuario del 2026-10-03
+    ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)).
+  - **App.** La instancia única (mutex y *pipe* con DACL) vive en `Clicalo.App/SingleInstance` hasta que la IPC de
+    `ImportFile` y `OpenUri` la lleve a `Platform.Windows/SingleInstance` y `Platform.Core/Ipc`; es ruta sensible. La
+    comprobación va en los dos sentidos, con lo que M2 tiene: el cliente compara la imagen del servidor con su propia
+    ruta (el editor fijado y la copia protegida del componente llegan con `Platform.Core/Trust` en M5), y el servidor
+    exige la misma sesión y el SID del usuario en el *token* del cliente y lee su integridad (`PipeAdmission`; con
+    `show` como único verbo, un cliente de menor integridad no obtiene más). Su interoperabilidad (`PipePeer`,
+    `ProcessIdentity`) ya está en `Platform.Windows/SingleInstance`, y D13 se vigila en `App.SingleInstance` y
+    `Platform.Windows.SingleInstance` hasta que exista `Application.Ipc`. Un segundo arranque que encuentra el nombre
+    ocupado solo lo dice con su código de salida (`InstanceSquatted`): el registro `ipc.squat_detected` y el aviso de
+    §3.4 llegan con la IPC de M4, porque ese proceso no abre el registro (lo tiene el primero) ni tiene ventana.
+    `App/Interop` conservaba solo `MonitorLayout` (los monitores de la migración v1); se retiró con
+    [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md). `sidHash` se calcula sobre el SID binario, y la
+    DACL da también `CreateNewInstance` al usuario, que el SDDL de §3.4 omite. `PanelProjector` está en
+    `Presentation/Panel`, no en `Application.Projections`, y sus pruebas sin ventana en el proyecto de Windowing. La
+    franja de «Soltar todo» va debajo de las fichas, para no mover ninguna bajo el dedo.
+  - **Arranque.** Un primer arranque sin documento instala el kit inicial por defecto de `content` («Básicos», decisión
+    D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)) en el idioma de Windows y lo escribe al
+    momento. La conversión del archivo v1 de `--migrate-v1` sobre la semilla se retiró con
+    [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md). `--exit-after` recorre la salida completa sin
+    intervención (diagnóstico). Bloquear y suspender sueltan por `SessionKeyRelease` (SEG-006). El proyecto copia
+    `i18n`, el contenido inicial (kit, semilla y plantillas) y `Clicalo.Sentinel.exe` junto a `Clicalo.exe`, y los
+    textos ya no se buscan en carpetas superiores.
+  - **Pruebas.** Proyecto nuevo `Clicalo.App.Tests` (opciones, protocolo del *pipe*, adaptadores sin envío, documento
+    del primer arranque) con `InternalsVisibleTo` en `Clicalo.App`.
+  - **Tras la verificación de M2 (persistencia e IPC).**
+    - Un único consumidor de persistencia (§3.1, §6.4): `BackupService` ya no tiene hilo propio. `SnapshotNow` solo
+      encola dentro del *lock* del almacén, y `PersistenceScheduler` escribe esas copias en cuanto llega el cambio y
+      siempre antes del documento. Si una no se puede escribir, el documento cambiado espera y el fallo sigue las
+      reglas de un guardado fallido, hasta hacerse visible (DAT-006, §6.8: «crea antes una copia»).
+    - La E/S del arranque (diario de fallos, documento e idiomas) corre en el grupo de hilos (`StartupReader`), nunca en
+      el hilo de UI (§3.2).
+    - Un documento del arranque que no se pudo escribir pasa al autoguardado (`PersistenceScheduler.MarkUnsaved`). La
+      marca `migration-v1.pending` de una migración v1 fallida, un archivo que §6.5 no listaba, se retiró con
+      [ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md).
+    - Un idioma con la entrada o los textos rotos se omite y se registra (`startup.language_skipped`); solo
+      `locales.json` ilegible o sin textos del idioma por defecto detienen el arranque.
+    - **Hilo SysEvents.** Al suspender, `SuspendRelease` espera en SysEvents, como mucho
+      `Timings.KeySafety.SuspendReleaseWait` (500 ms), a que el motor confirme que no retiene nada, porque el equipo
+      puede dormirse en cuanto se responde `WM_POWERBROADCAST`. §3.2 dice que SysEvents nunca hace llamadas que puedan
+      bloquear: esta espera acotada es la excepción `app-suspend` de `banned-api-exceptions.json`, separada de
+      `app-shutdown` (solo el vaciado de fin de sesión) y de `app-second-start` (la espera del segundo proceso).
+- **Motivo.** Que los cinco paquetes compongan un `Clicalo.exe` que arranca, envía por la valla y se cierra limpio sin
+  cambiar ningún contrato de D-20 ni rebajar ningún requisito.
+- **Coste.** Una copia a mano de la tabla Win32 hasta cambiar el generador; la instancia única y su interoperabilidad
+  en la raíz de composición durante M2.
+- **Revisión.** Al cerrar M2, con la primera ejecución de `desk (x64)` y `perf (x64)` en la CI; la tabla Win32, al
+  cambiar `KeysEmitter`; la instancia única y su aviso de nombre ocupado, con la IPC de M4; la espera de SysEvents al
+  suspender, si la CI mide que retrasa la bandeja o el primer plano.
+
+## D-22 · Correcciones del motor tras verificar M2
+
+> **Retirado en parte el 2026-10-05 por [ADR-0023](../adr/0023-guardian-simple.md) ([D-25](#d-25--guardián-simple)).**
+> Ya no existen el latido y las marcas bajo la valla, el reenvío desde el *ledger* físico, los lotes equilibrados «en la
+> valla» (siguen equilibrados, en `InputInjector`), la emergencia sin guardián ni el protocolo 2 con
+> `--refused-release-wait-ms`. Siguen vigentes el reenvío de `BlockedReleases` con «Soltar todo», los eventos terminales
+> y el regreso del escritorio de entrada, los acordes internos desde el motor, el aviso `guardianUnstable`, el vaciado al
+> suspender, INV-10 y la decisión D3 (ahora sin límite para cualquier rechazo).
+
+- **Plano.** [§3.2, regla 6](blueprint.md#32-modelo-de-hilos) escala la emergencia a `TerminateProcess` siempre que no
+  puede tomar la valla o en el segundo cuelgue en 10 minutos; [§7.6](blueprint.md#76-eventos-terminales-seg-007) reintenta
+  lo que rechaza el escritorio seguro «en `UNLOCK`»; [§7.5](blueprint.md#75-invariantes-de-seguridad-de-teclas) verifica
+  INV-10 como propiedad de `LayoutPlanner`; [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano)
+  y [D-14](#d-14--contratos-de-m1-para-el-primer-plano) dejan el atajo interno y Win+H al motor; [§3.1](blueprint.md#31-vista-de-procesos)
+  daba a Sentinel la vida del principal y, en la fila «Muerte del proceso» de §7.6, un solo soltado antes de relanzar
+  (hasta aceptar ADR-0018).
+- **Repositorio.** Lo que corrigió la verificación de M2 en el motor ([ADR-0019](../adr/0019-valla-en-las-escrituras-del-motor-y-reenvio-de-liberaciones.md)):
+  - **Latido y marcas bajo la valla.** `EngineHost` escribe el latido y sus marcas (`EngineAlive`, `CleanShutdown`,
+    `NoRelaunch`) con `InjectionGate.TryWriteHeartbeat` y `TryUpdateMarks` y su generación: un motor zombi que se
+    reanuda se detiene en su primera vuelta y nunca renueva el latido del motor que lo sustituyó (`IKeyLedger`
+    cambia `WriteHeartbeat` por `TryWriteHeartbeat` y gana `TryUpdateMarks`).
+  - **Escritorio seguro sin bloqueo.** «Soltar todo» y todos los eventos terminales reenvían las liberaciones
+    rechazadas (sin soltar una tecla que un titular volvió a pulsar). Un *hook* `EVENT_SYSTEM_DESKTOPSWITCH` del hilo
+    SysEvents (`InputDesktopWatch`) publica `SessionResumed` en cuanto el escritorio de entrada se puede abrir, y lo
+    vuelve a comprobar un número acotado de veces (`Timings.KeySafety.InputDesktopRecheck`). `SessionResumed` pide
+    además a la valla que reenvíe lo que el *ledger* físico guarda en `ReleasePending`
+    (`InjectionGate.TryReleasePending`), así que tampoco se pierde lo que rechazó una emergencia o el soltado de un
+    motor que falló, que ahora conserva `BlockedReleases`.
+  - **Lotes equilibrados en la valla.** `InjectionGate.TryInjectBalanced` y `TryInjectChord` sueltan en el mismo
+    *lock* lo que un `SendInput` parcial dejó pulsado, con la máscara de menú delante de Alt o Win.
+  - **Acordes internos desde el motor.** `EngineKeyEffects` publica `InternalChordRequested`; el reductor emite
+    `SendInternalChord` (también en modo de prueba o pausa, INV-7) y el anfitrión lo envía con su generación
+    (`IInputInjector.SendChord`) y responde por `InternalChordReplies`; un motor colgado o sustituido responde «no
+    enviado» tras `Timings.Engine.InternalChordWait`. Desaparece `InternalKeyEffects`.
+  - **Emergencia sin guardián.** Sin Sentinel en marcha (antes de lanzarlo, entre dos lanzamientos o tras
+    `GuardianUnstable`) la emergencia nunca termina el proceso: en el segundo cuelgue suelta y reinicia el motor, y si
+    no puede tomar la valla lo reintenta en cada comprobación con esperas crecientes
+    (`Timings.Engine.EmergencyGateRetryWaits`). `IGuardian.Unstable` se registra y se avisa en el panel, de forma
+    asertiva, de que la protección de teclas está desactivada hasta reiniciar Clícalo (`GuardianUnstableNotice`, clave
+    `guardianUnstable`).
+  - **Liberación pendiente y tecla pulsada otra vez.** Si un titular vuelve a pulsar una tecla cuya liberación rechazó
+    el escritorio seguro, la ranura del *ledger* vuelve a contar una sola referencia (la subida pendiente ya anuló las
+    anteriores), así que la liberación de ese titular la deja libre y los acordes internos no la saltan; si esa pulsación
+    no llega a `SendInput`, la ranura vuelve a `ReleasePending` (las pulsaciones de un lote se deshacen de la última a la
+    primera).
+  - **Suspender vacía la persistencia.** Tras el soltado, el manejador de `PBT_APMSUSPEND` ejecuta el vaciado de la salida
+    (documento, uso y copias en cola, todo por el consumidor de persistencia) con límite
+    `Timings.App.SuspendFlushTimeout` (`App/Shutdown/SuspendFlush`). Es otra espera acotada en SysEvents: comparte con
+    `SuspendRelease` la excepción `app-suspend` de `banned-api-exceptions.json`. Un vaciado que corta su límite (un
+    bloqueo de OneDrive o del antivirus) deja pendiente lo que no escribió y vuelve a armar sus temporizadores: el
+    autoguardado lo escribe al reanudar y el vaciado de la salida si se sale antes (REG-08).
+  - **Sentinel con la sesión bloqueada (decisión D3 del usuario, 2026-10-03).** Si el principal muere y `SendInput`
+    rechaza el lote de liberación, Sentinel vuelve a enviar lo que no salió en cada latido
+    (`Timings.Guardian.PipeHeartbeatInterval`) y solo cuando todo salió decide el relanzamiento, así que el proceso nuevo
+    nunca pulsa una tecla que Sentinel vaya a soltar después. El rechazo del escritorio seguro (nada aceptado y
+    `ERROR_ACCESS_DENIED`) se reintenta sin límite mientras dure el bloqueo; cualquier otro, como mucho
+    `Timings.Guardian.RefusedReleaseWait` (30 s), y después relanza igualmente. Si la sesión termina, Windows termina
+    Sentinel con ella y no se relanza nada. El arranque pasa al protocolo 2 con un séptimo argumento
+    `--refused-release-wait-ms` ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md), punto 6;
+    [contracts.md](contracts.md#arranque-de-clicalosentinelexe)). La propuesta preparada aquí lo llamaba
+    `LockedReleaseWait`; se renombró al decidir que la espera con la sesión bloqueada no tiene límite.
+  - **INV-10.** No existe `LayoutPlanner` en M2: la propiedad llega con él en M3. Mientras tanto, un contacto conserva el
+    objetivo sobre el que bajó (`GestureRecognizer`, PAN-009) y la franja de «Soltar todo» va debajo de las fichas
+    ([D-21](#d-21--integración-de-m2)). Las pruebas del modelo del motor enumeran lo que comprueban de verdad.
+- **Motivo.** Sin estas correcciones, un motor zombi ocultaba el cuelgue del siguiente, una tecla soltada durante un
+  aviso de UAC quedaba pulsada sin que «Soltar todo» la arreglara, un acorde interno parcial dejaba Ctrl+Alt+Mayús o
+  Win pulsados sin titular, un cuelgue sin guardián terminaba el proceso sin que nadie soltara ni relanzara, y una
+  muerte con la sesión bloqueada dejaba las teclas pulsadas al desbloquear (REG-03).
+- **Coste.** Un *hook* WinEvent más en SysEvents; el latido toma el *lock* de la valla en cada vuelta (sin contención
+  salvo durante un `SendInput`); una vuelta del buzón del motor en cada acorde interno; Sentinel puede sobrevivir al
+  principal tanto como dure el bloqueo (un `SendInput` fallido por segundo, bloqueado en un evento entre medias) y
+  Clícalo no vuelve hasta el desbloqueo.
+- **Revisión.** INV-10, con `LayoutPlanner` en M3. La espera de Sentinel con la sesión bloqueada quedó resuelta el
+  2026-10-03 por la decisión D3 del usuario ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md),
+  punto 6). Con ADR-0018 aceptado al integrar M2 (2026-10-05), §3.1 y la fila «Muerte del proceso» de §7.6 del plano
+  ya lo recogen, y esa parte deja de ser una desviación. Queda comprobar en un escritorio real bloqueado (CI o
+  aceptación en hardware, como el regreso del escritorio de entrada) que el rechazo llega como `ERROR_ACCESS_DENIED`
+  y que la tecla sube al desbloquear; si un escritorio bloqueado devolviera otro código, se amplía la lectura del
+  rechazo con un ADR, no se rebaja D3.
+
+## D-23 · Criterios de salida de M2 tras la verificación
+
+- **Plano.** [§10.3](blueprint.md#103-presupuestos-de-rendimiento) guarda los presupuestos en
+  `tests/Clicalo.Performance/budgets.json` y los mide en el equipo táctil; [§10.5](blueprint.md#105-cicd) dice que el
+  rendimiento no es obligatorio en el PR y ejecuta `lab.yml` cada semana y antes de cada beta; la fila M2 de §14 pide la
+  prueba de bandeja con el Bloc de notas y las propiedades de 10 000 casos con contraejemplos reducidos (CsCheck).
+- **Repositorio.** Lo que corrigió la verificación de M2 en los criterios de salida
+  ([M2-ownership.md](../testing/spikes/M2-ownership.md#criterios-de-salida)):
+  - **Presupuestos en `data/catalogs/budgets.json`**, con su esquema en `data/schemas/budgets.schema.json` validado por
+    `Clicalo.Data.Tests`: son datos versionados como el resto de catálogos. Solo están los que hace cumplir una medición.
+  - **La puerta de toque → `SendInput` (p95 ≤ 50 ms) también en los *runners* alojados** (`gate: everyRun`), y el
+    trabajo `perf (x64)` la hace cumplir cada noche (`nightly.yml`) y debe estar en verde antes de cada versión; desde
+    el 2026-10-05 ya no bloquea cada PR, porque solo lo determinista lo hace
+    ([niveles de pruebas](testing-strategy.md#niveles-de-pruebas)). Es más estricto que el plano: mientras no exista el equipo táctil,
+    es la única forma de que una ejecución haga cumplir el criterio de M2. Los presupuestos de S5 siguen siendo
+    tendencia en los alojados. Si un alojado supera 50 ms, el criterio no se rebaja: se mide en el equipo táctil o se
+    abre una propuesta en §6.1 del catálogo.
+  - **`lab.yml` solo a mano** (`workflow_dispatch`) hasta que el equipo táctil esté registrado como *runner*
+    (`self-hosted`, `Windows`, `lab`); entonces gana la programación semanal y la ejecución antes de cada beta.
+  - **Prueba de bandeja**: el clic en el icono se sustituye por un toque sintético en el panel del propio proceso (el
+    mismo derecho de primer plano, paso 1 de la escalera de §3.6) y el menú se abre con `TrayController.OpenMenuAsync`;
+    el Bloc de notas real solo se usa en la CI, e InputProbe sigue siendo la app delante en local.
+  - **Muerte en cada paso y congelar y reanudar** reducían sus contraejemplos con un reductor propio (`Counterexamples`).
+    Se retiraron con el *ledger* y la valla ([ADR-0023](../adr/0023-guardian-simple.md), [D-25](#d-25--guardián-simple)):
+    la muerte del proceso la cubren las pruebas deterministas de Sentinel y la prueba de caos nocturna de S9.
+- **Motivo.** La verificación encontró que ninguna ejecución hacía cumplir el p95 de 50 ms, que la prueba de bandeja no
+  usaba el Bloc de notas y que los contraejemplos no se guardaban. En un *runner* alojado el icono nuevo queda en el
+  desbordamiento del área de notificación y hacer clic ahí inyectaría en el Explorador.
+- **Coste.** Una noche puede fallar por el rendimiento de un alojado ruidoso; el camino real del icono (`TrayIcon`,
+  `NIN_SELECT`, `WM_CONTEXTMENU`) queda para la aceptación en hardware de §10.2.
+- **Revisión.** Cuando el equipo táctil sea *runner*: volver a la puerta en `lab.yml` según §10.5 y decidir si
+  `perf (x64)` sigue siendo obligatorio.
+
+## D-24 · Latencia del panel medida en la CI
+
+- **Plano.** [§7.1](blueprint.md#71-del-toque-a-la-acción) y [§10.3](blueprint.md#103-presupuestos-de-rendimiento):
+  toque → `SendInput` con p95 ≤ 50 ms (NFR-001), medido con puntero sintético; la fila M2 de §14 lo exige en el equipo
+  táctil sobre 20 toques.
+- **Repositorio.** `PanelDesktopTests` juzga la parte del panel (Windows registra el levantamiento → la activación está
+  en el buzón del motor) con los números de `TouchToSendInput` de `data/catalogs/budgets.json` (p95 ≤ 50 ms, al menos
+  20 muestras), leídos del catálogo, sobre **21 toques medidos** (dedo, lápiz y ratón). Usa **un dispositivo sintético
+  por tipo** durante todo el ciclo y hace antes **un toque de calentamiento por dispositivo** sobre el mismo mosaico, que
+  tiene que llegar al motor sin quitar el primer plano ni el foco, y cuya latencia se informa pero no entra en el p95.
+  Cada toque se parte en tramos (espera en la cola del hilo de UI y trabajo del panel) con la línea de tiempo del hilo
+  de UI de los toques lentos ([panel-latency.md](../testing/panel-latency.md)).
+- **Motivo.** La prueba fallaba de forma intermitente en los *runners* alojados (6 de 50 ejecuciones de `s0`) con el
+  hilo de UI del panel sin trabajo del panel: creaba un dispositivo nuevo en cada toque, y Windows retiene el primer
+  contacto de un dispositivo sintético hasta anunciarlo (`WM_TABLET_ADDED`, 15–200 ms), algo que una pantalla táctil,
+  un único dispositivo, no añade a un toque. Quedan además dos retrasos de un solo toque antes de que el panel reciba el
+  contacto: el primer contacto sobre la ventana del panel recién creada (12–38 ms, una vez por ventana) y, sobre todo
+  con la suite, el primer contacto del lápiz (hasta 615 ms, causa no identificada). Con el criterio nuevo: 0 fallos en
+  70 ejecuciones (30 con la suite del módulo, 30 solas y 10 de `cl desk`), p95 por ejecución de 14,5 ms como máximo.
+- **Coste.** El primer contacto de cada dispositivo sobre el panel queda fuera del p95 de la CI (sigue en la salida y en
+  `panel-tap-latency-*.json`), y con él el JIT del primer toque en Debug (3–8 ms medidos). El presupuesto no cambia y no
+  hay un umbral propio de la CI.
+- **Revisión.** En la aceptación en hardware (equipo táctil) del requisito, incluido si el primer toque tras mostrar
+  de nuevo el panel paga otra vez el retraso del primer contacto, y en S2 para el retraso del primer contacto del lápiz
+  con un lápiz real.
+
+## D-25 · Guardián simple
+
+- **Plano.** Hasta el 2026-10-05, [§3.1](blueprint.md#31-vista-de-procesos), [§3.2, regla 6](blueprint.md#32-modelo-de-hilos),
+  [§7.4 a §7.6](blueprint.md#74-registro-de-pulsadas) y [§7.10](blueprint.md#710-grabación-de-combinaciones-y-verificación)
+  describían el *ledger* v2 en memoria compartida, la valla de generación, `EmergencyReleaser` y el protocolo 2 de
+  Sentinel (ADR-0004, ADR-0018 y ADR-0019). Desde esa fecha el plano recoge [ADR-0023](../adr/0023-guardian-simple.md)
+  y esta entrada solo registra el cambio del repositorio.
+- **Repositorio.**
+  - `Clicalo.Platform.Core.Injection.PressedInputRelease` lee `GetAsyncKeyState` de `0x01` a `0xFE` y suelta todo lo
+    pulsado (modo VK, `KEYEVENTF_EXTENDEDKEY` según `MapVirtualKey`, modificadores al final, máscara antes de Alt o Win,
+    botones primero). Lo usan Sentinel, `IInputInjector.ReleasePressed` (excepción en el motor), «Soltar todo» de la
+    bandeja (`TrayController.ReleasePressedRequested`, en el *ThreadPool*) y el soltado preventivo del arranque
+    (`IPressedRelease`), que antes solo soltaba los modificadores.
+  - Sentinel espera al padre con `WaitForSingleObject`, suelta, reintenta cada `Timings.Guardian.ReleaseRetryInterval`
+    mientras no puede leer el estado (`OpenInputDesktop`) o Windows no acepta el lote, y relanza solo si el código de
+    salida no es 0, con `Timings.App.CrashLoop`. Protocolo 3: `--protocol=3 --parent=0x… --retry-ms=… --crash-loop=n/ms`
+    y un solo *handle* heredado.
+  - El principal comprueba cada `Timings.Guardian.WatchInterval` que Sentinel sigue vivo (sin *pipe*); `Stop` solo deja
+    de supervisar.
+  - Se retiran `KeyLedgerSection` y su diseño, `InjectionGate`, `LedgerRelease`, `EmergencyReleaser`, `KeyLedgerPort`,
+    `PreventiveRelease`, `IKeyLedger`, `KeyLedgerMarks`, `EngineGeneration`, `InjectionStatus.Fenced`,
+    `EngineEffect.ReleasePendingRecorded`, el latido del motor, el reinicio del motor y los umbrales
+    `Engine.LedgerHeartbeatInterval`, `EngineStallThreshold`, `EmergencyGateWait`, `EmergencyGateRetryWaits`,
+    `EngineHangLoop`, `Guardian.PipeHeartbeatInterval` y `Guardian.RefusedReleaseWait`. `GateInputInjector` pasa a
+    `InputInjector`, que conserva el equilibrado de los lotes parciales y salta en los acordes internos las teclas que
+    Windows ya da por pulsadas. `LedgerKeyAttributes` y `LedgerMouseButtons` pasan a `PhysicalKeyAttributes` y
+    `LowLevelMouseButtons`, en `Platform.Core.Injection`.
+  - Pruebas: las de Sentinel son deterministas, con un estado de teclas y un `SendInput` falsos, y bloquean el PR; la de
+    caos de S9 queda en la ejecución nocturna (`Category=Chaos`) con el criterio «nada pulsado 1 s después de la
+    muerte». Se retiran «muerte en cada paso», «congelar y reanudar», el motor zombi, la emergencia y la valla.
+- **Motivo.** Decisión del usuario del 2026-10-05: la solución más simple que cumple REG-03. El usuario no usa teclado
+  físico, así que lo que Windows da por pulsado lo pulsó Clícalo.
+- **Coste.** Ver las consecuencias de [ADR-0023](../adr/0023-guardian-simple.md): un motor colgado no se sustituye solo
+  (el usuario usa «Soltar todo» de la bandeja y, si hace falta, sale); una tecla del teclado físico pulsada en ese
+  instante también se suelta.
+- **Revisión.** Con la primera ejecución nocturna de S9 en la CI y en la aceptación en hardware (sesión bloqueada real).
+
 ## Puntos del plano pendientes de resolver
 
 No son desviaciones del repositorio, sino contradicciones o huecos detectados al redactar la documentación.
@@ -392,8 +733,8 @@ Se resuelven en el hito indicado; mientras tanto, esta es la interpretación vig
 
 | Punto | Detalle | Interpretación vigente | Cuándo se resuelve |
 |---|---|---|---|
-| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) respondía `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo). El plano ya lo recoge | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | M1, S6 |
-| Firma de todas las DLL | [§2.1](blueprint.md#21-stack-elegido) y [§11](blueprint.md#11-distribución-versionado-y-publicación) firman todas las DLL tras R2R; las condiciones de SignPath Foundation solo permiten firmar artefactos compilados desde el código propio | Se firman los ejecutables y ensamblados propios; la verificación de las DLL de terceros se decide en S8 y, si cambia, con un ADR que sustituya a ADR-0013 | M1, S8 |
+| Margen de sombra no clicable | La tabla del *hook* común de [§3.5](blueprint.md#35-ventanas-no-activables) respondía `HTTRANSPARENT` a `WM_NCHITTEST` en el margen de sombra, pero la verificación adversarial lo refutó para clics entre procesos (solo actúa entre ventanas del mismo hilo). El plano ya lo recoge | El mecanismo se decide en S6 (`SetWindowRgn` ajustado o alfa 0 en ventana *layered*) con el criterio «el margen no captura clics» | Antes de M3, S6 ([D-19](#d-19--spikes-resecuenciados-al-cerrar-m1)) |
+| Firma de todas las DLL | [§2.1](blueprint.md#21-stack-elegido) y [§11](blueprint.md#11-distribución-versionado-y-publicación) firman todas las DLL tras R2R; las condiciones de SignPath Foundation solo permiten firmar artefactos compilados desde el código propio | Se firman los ejecutables y ensamblados propios; la verificación de las DLL de terceros se decide en S8 y, si cambia, con un ADR que sustituya a ADR-0013 | Antes de M5, S8 ([D-19](#d-19--spikes-resecuenciados-al-cerrar-m1)) |
 
 Resuelto al integrar M0: la numeración del catálogo (las preguntas abiertas son su sección 6, las
 propuestas pendientes la 6.1 y las discrepancias la 5; el catálogo y el plano ya se citan así).

@@ -43,3 +43,6 @@ GetSystemMetrics
 SYSTEM_METRICS_INDEX
 SetThreadDpiAwarenessContext
 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+
+// First frame on screen (Rendering/FirstFrame): a synthetic gesture waits until DWM composed the window it touches
+DwmFlush

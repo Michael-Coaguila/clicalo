@@ -120,11 +120,11 @@ internal static class EvidenceEvaluator
         ImmutableArray<string>.Builder problems
     )
     {
-        if (checks.HasFlag(EvidenceCheck.ViolationCountedOnce) && evidence.Delta.Violations != 1)
+        if (checks.HasFlag(EvidenceCheck.ViolationCounted) && evidence.Delta.Violations < 1)
         {
             problems.Add(
                 Format(
-                    $"reg01.violations subió en {evidence.Delta.Violations}; debía subir exactamente en 1."
+                    $"reg01.violations subió en {evidence.Delta.Violations}; debía subir al menos en 1."
                 )
             );
         }

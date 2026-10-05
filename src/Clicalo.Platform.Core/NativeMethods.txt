@@ -1,0 +1,31 @@
+// Win32 for Clicalo.Platform.Core (blueprint §3.1, §7.7, ADR-0023). Generated internal and without marshalling, so
+// the project stays AOT-compatible for Sentinel. One section per M2 package, headed by // <package>.
+
+// engine
+// ---- Injection: the only SendInput of the product, and the key state the releases read ----
+SendInput
+INPUT
+KEYBDINPUT
+MOUSEINPUT
+GetSystemMetrics
+XBUTTON1
+XBUTTON2
+WHEEL_DELTA
+GetAsyncKeyState
+MapVirtualKey
+OpenInputDesktop
+CloseDesktop
+
+// ---- Guardian: Sentinel start-up with an explicit handle list, the wait on the parent and the relaunch ----
+CloseHandle
+DuplicateHandle
+GetCurrentProcess
+CreateProcess
+InitializeProcThreadAttributeList
+UpdateProcThreadAttribute
+DeleteProcThreadAttributeList
+STARTUPINFOEXW
+PROC_THREAD_ATTRIBUTE_HANDLE_LIST
+WaitForSingleObject
+GetExitCodeProcess
+WAIT_EVENT

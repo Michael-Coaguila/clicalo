@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sentinel and the release of what Windows reports down (ADR-0023), with fakes. Tests that kill processes are nightly (Category=Chaos). -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <RootNamespace>Clicalo.Sentinel.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.Sentinel\Clicalo.Sentinel.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>

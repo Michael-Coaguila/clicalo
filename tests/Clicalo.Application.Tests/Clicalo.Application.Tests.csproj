@@ -10,4 +10,7 @@
     <PackageReference Include="CsCheck" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
+  <ItemGroup Label="CsCheck generators of the domain model, shared with Clicalo.Domain.Tests (public API only)">
+    <Compile Include="..\Clicalo.Domain.Tests\Generators\**\*.cs" Link="Generators\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

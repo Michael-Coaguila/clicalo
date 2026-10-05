@@ -55,6 +55,36 @@ public static class WpfThread
         Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
     }
 
+    /// <summary>
+    /// Shuts the dispatcher down and waits for the thread to end, so the process never exits with a WPF thread still
+    /// pumping messages. Call it once, from another thread, when no test of the process uses the thread any more.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Called on the WPF thread.</exception>
+    /// <exception cref="TimeoutException">The thread did not end within <paramref name="timeout"/>.</exception>
+    public static void Shutdown(TimeSpan timeout)
+    {
+        if (!SharedDispatcher.IsValueCreated)
+        {
+            return;
+        }
+
+        var dispatcher = SharedDispatcher.Value;
+        if (dispatcher.CheckAccess())
+        {
+            throw new InvalidOperationException(
+                "Shut the WPF thread down from another thread: it cannot wait for itself to end."
+            );
+        }
+
+        dispatcher.InvokeShutdown();
+        if (!dispatcher.Thread.Join(timeout))
+        {
+            throw new TimeoutException(
+                "The WPF test thread did not end after its dispatcher was shut down."
+            );
+        }
+    }
+
     private static Dispatcher Start()
     {
         using var started = new ManualResetEventSlim();

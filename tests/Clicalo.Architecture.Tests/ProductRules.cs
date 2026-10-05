@@ -168,7 +168,7 @@ internal static class ProductRules
                 scope.Namespace("Clicalo.Application.Ports")
             ),
             scope.Universe,
-            "only the engine injects input, through InjectionGate (§4.4, ADR-0004)"
+            "only the engine injects input, through IInputInjector (§4.4, ADR-0023)"
         );
 
     /// <summary>
@@ -274,6 +274,39 @@ internal static class ProductRules
                     )
                 ),
             "the IPC server only shows the app and opens previews through IShellNavigator (D13, ADR-0010)"
+        );
+
+    /// <summary>
+    /// The single-instance pipe that exists today (invariant D13): <c>Clicalo.App.SingleInstance</c>, the M2 server in
+    /// the composition root (D-21), and <c>Platform.Windows.SingleInstance</c>, where it moves with the IPC of M4, reach
+    /// neither the engine, the foreground, the document store nor the input. The composition root may depend on
+    /// everything, so without this rule nothing would stop the server from posting to the engine.
+    /// </summary>
+    public static IArchRule SingleInstancePipeIsConfined(Scope scope) =>
+        DependencyRules.NotDependOn(
+            SingleInstancePipe(scope),
+            Zone.AnyOf(
+                "the engine, the foreground, the document store and the input",
+                scope.Namespace("Clicalo.Application.Engine"),
+                scope.Namespace("Clicalo.Application.Foreground"),
+                scope.Namespace("Clicalo.Application.Store"),
+                scope.Type("Clicalo.Application.Ports.IEngineInbox"),
+                scope.Type("Clicalo.Application.Ports.IInputInjector"),
+                scope.Type("Clicalo.Application.Ports.IClipboardPaster"),
+                scope.Type("Clicalo.Application.Ports.IForegroundControl"),
+                scope.Namespace("Clicalo.Platform.Core.Injection"),
+                scope.Namespace("Clicalo.Platform.Windows.Foreground"),
+                scope.Namespace("Clicalo.Platform.Windows.Input")
+            ),
+            "the single-instance pipe only shows the panel: it can neither inject, edit the document nor take the foreground (D13, ADR-0010, D-21)"
+        );
+
+    /// <summary>The namespaces of the single-instance pipe (see <see cref="SingleInstancePipeIsConfined"/>).</summary>
+    public static Zone SingleInstancePipe(Scope scope) =>
+        Zone.AnyOf(
+            "the single-instance pipe",
+            scope.Namespace("Clicalo.App.SingleInstance"),
+            scope.Namespace("Clicalo.Platform.Windows.SingleInstance")
         );
 
     /// <summary>

@@ -27,9 +27,9 @@ public sealed class HandoffFidelityTests
     /// <summary>Keys added to a group on top of the handoff, with the requirement that asks for them.</summary>
     private static readonly Dictionary<string, string[]> AddedKeys = new(StringComparer.Ordinal)
     {
-        // Catalog §7.3: v1 «winright» needs a right Windows key.
+        // EDI-009: the side of Win, like the other modifiers (the right Windows key).
         ["sides"] = ["rwin"],
-        // MIG-005 and EDI-008: ` \ [ ] ' # used by v1; CAT-004: «%» of the Excel template.
+        // EDI-008: ` \ [ ] ' # complete the symbols of the selector; CAT-004: «%» of the Excel template.
         ["nums"] = ["char:`", "char:\\", "char:[", "char:]", "char:'", "char:#", "char:%"],
     };
 
@@ -76,8 +76,37 @@ public sealed class HandoffFidelityTests
             """{ "type": "tap", "keys": ["ctrl", "s"], "variants": { "en": ["ctrl", "u"] } }""",
         [("word", "replace")] =
             """{ "type": "tap", "keys": ["ctrl", "l"], "variants": { "en": ["ctrl", "h"] } }""",
-        [("outlook", "o1")] =
-            """{ "type": "tap", "keys": ["ctrl", "u"], "variants": { "en": ["ctrl", "shift", "m"] } }""",
+        // User decision D2 (2026-10-03): the Mail template binds classic Outlook and the new Outlook (olk.exe), so it
+        // only uses combinations both document in Spanish and English: New mail Ctrl+N (Ctrl+U and Ctrl+Shift+M are
+        // not in the new Outlook) and Send Ctrl+Enter (Alt+S only exists in classic Outlook). data/content/README.md.
+        [("outlook", "o1")] = """{ "type": "tap", "keys": ["ctrl", "n"] }""",
+        [("outlook", "o5")] = """{ "type": "tap", "keys": ["ctrl", "enter"] }""",
+        // User decision D2: the Browser template binds Chrome, Edge, Firefox, Brave and Opera; Opera documents Reload as
+        // Ctrl+R only, which the other four also document (data/content/README.md).
+        [("browser", "reload")] = """{ "type": "tap", "keys": ["ctrl", "r"] }""",
+    };
+
+    /// <summary>
+    /// Template processes changed by a documented decision: user decision D2 (2026-10-03, PQ-45) binds a template to
+    /// every program its shortcuts were reviewed for.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> ChangedProcesses = new(
+        StringComparer.Ordinal
+    )
+    {
+        ["browser"] = ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe"],
+        ["outlook"] = ["outlook.exe", "olk.exe"],
+    };
+
+    /// <summary>
+    /// Template names changed by a documented decision: the shortcuts of «Video call» are Zoom's (Alt+A, Alt+V, Alt+S,
+    /// Alt+Y, Alt+H, Alt+Q in the Zoom Workplace documentation) and bind only zoom.exe, so the template is «Zoom».
+    /// </summary>
+    private static readonly Dictionary<string, (string Es, string En)> ChangedNames = new(
+        StringComparer.Ordinal
+    )
+    {
+        ["zoom"] = ("Zoom", "Zoom"),
     };
 
     /// <summary>Handoff shortcuts intentionally left out.</summary>
@@ -387,15 +416,29 @@ public sealed class HandoffFidelityTests
             var template = ContentCatalog.Templates.Single(t =>
                 Ordinal.Is(t["id"]!.GetValue<string>(), id)
             );
-            template["name"]!["es"]!
-                .GetValue<string>()
-                .ShouldBe(source!["es"]!.GetValue<string>(), id);
-            template["name"]!["en"]!
-                .GetValue<string>()
-                .ShouldBe(source["en"]!.GetValue<string>(), id);
-            template["icon"]!.GetValue<string>().ShouldBe(source["icon"]!.GetValue<string>(), id);
+            var (es, en) = ChangedNames.TryGetValue(id, out var renamed)
+                ? renamed
+                : (source!["es"]!.GetValue<string>(), source["en"]!.GetValue<string>());
+            if (renamed != default)
+            {
+                Ordinal
+                    .Is(source!["es"]!.GetValue<string>(), es)
+                    .ShouldBeFalse(id + ": stale name decision");
+            }
+
+            template["name"]!["es"]!.GetValue<string>().ShouldBe(es, id);
+            template["name"]!["en"]!.GetValue<string>().ShouldBe(en, id);
+            template["icon"]!.GetValue<string>().ShouldBe(source!["icon"]!.GetValue<string>(), id);
+            var handoffProcess = source["process"]!.GetValue<string>().ToLowerInvariant();
             Strings(template["processes"]!)
-                .ShouldBe([source["process"]!.GetValue<string>().ToLowerInvariant()], id);
+                .ShouldBe(
+                    ChangedProcesses.TryGetValue(id, out var processes)
+                        ? processes
+                        : [handoffProcess],
+                    id
+                );
+            Strings(template["processes"]!)[0]
+                .ShouldBe(handoffProcess, id + " keeps the handoff process first");
             template["category"]
                 ?.GetValue<string>()
                 .ShouldBe(source["cat"]?.GetValue<string>(), id);

@@ -1,12 +1,12 @@
 {
   "$schema": "../../schemas/template.schema.json",
   "id": "browser",
-  "version": 1,
+  "version": 2,
   "authors": ["Michael Coaguila"],
   "appsLanguages": ["es", "en"],
   "name": { "es": "Navegador", "en": "Browser" },
   "icon": "public",
-  "processes": ["chrome.exe"],
+  "processes": ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe"],
   "shortcuts": [
     {
       "id": "newtab",
@@ -41,7 +41,7 @@
       "name": { "es": "Recargar", "en": "Reload" },
       "icon": "refresh",
       "category": "file",
-      "action": { "type": "tap", "keys": ["f5"] }
+      "action": { "type": "tap", "keys": ["ctrl", "r"] }
     },
     {
       "id": "urlbar",

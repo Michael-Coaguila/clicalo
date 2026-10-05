@@ -155,6 +155,12 @@
           "description": "The synchronous suspend handler waits up to this long for the engine to confirm the release.",
           "req": ["SEG-006"],
           "source": "blueprint §7.6"
+        },
+        "InputDesktopRecheck": {
+          "durations": ["250ms", "500ms", "1s", "2s", "4s"],
+          "description": "After a desktop switch, while the input desktop is still the secure one (UAC, Ctrl+Alt+Del, lock screen), it is checked again after each of these waits; once it is Clícalo's again the releases it refused are sent again. The next switch starts over.",
+          "req": ["SEG-006", "REG-03"],
+          "source": "blueprint §7.6; deviations.md D-22"
         }
       }
     },
@@ -212,31 +218,13 @@
       }
     },
     "Engine": {
-      "description": "Engine actor, heartbeat and generation fence.",
+      "description": "Engine actor.",
       "entries": {
-        "LedgerHeartbeatInterval": {
-          "duration": "250ms",
-          "description": "The engine writes its heartbeat to the key ledger at least this often.",
+        "InternalChordWait": {
+          "duration": "1s",
+          "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H); a hung engine answers «not sent».",
           "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6"
-        },
-        "EngineStallThreshold": {
-          "duration": "2s",
-          "description": "Without heartbeat progress for this long, SysEvents runs the emergency release.",
-          "req": ["REG-03", "SEG-007"],
-          "source": "blueprint §3.2, §7.6"
-        },
-        "EmergencyGateWait": {
-          "duration": "250ms",
-          "description": "Longest wait of the emergency releaser for the injection gate before escalating to a process restart.",
-          "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6"
-        },
-        "EngineHangLoop": {
-          "countWindow": { "count": 2, "window": "10min" },
-          "description": "This many engine hangs within the window escalate directly to a process restart.",
-          "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6"
+          "source": "blueprint §3.6; deviations.md D-22"
         },
         "UiPingInterval": {
           "duration": "1s",
@@ -260,17 +248,29 @@
           "description": "At most one engine snapshot reaches the UI per this interval (about one frame).",
           "req": ["NFR-001"],
           "source": "blueprint §3.2 rule 5"
+        },
+        "ScrollAccelerationEvery": {
+          "count": 8,
+          "description": "A held scroll action speeds up every this many wheel steps: its repeat interval shrinks by a quarter each time (engine package).",
+          "req": ["EJE-009"],
+          "source": "docs/03 «con aceleración progresiva»"
+        },
+        "ScrollRepeatFloor": {
+          "duration": "15ms",
+          "description": "The accelerated repeat interval of a held scroll action never goes below this (engine package).",
+          "req": ["EJE-009"],
+          "source": "docs/03 «con aceleración progresiva»"
         }
       }
     },
     "Guardian": {
       "description": "Clicalo.Sentinel supervision.",
       "entries": {
-        "PipeHeartbeatInterval": {
+        "WatchInterval": {
           "duration": "1s",
-          "description": "Heartbeat period on the pipe inherited by the guardian.",
+          "description": "The main process checks this often that its guardian still runs, and starts it again after the backoff when it died.",
           "req": ["SEG-006"],
-          "source": "blueprint §3.1"
+          "source": "blueprint §3.1, ADR-0023"
         },
         "RestartBackoff": {
           "durations": ["1s", "5s", "30s"],
@@ -283,6 +283,12 @@
           "description": "Guardian deaths within the window that stop relaunching and raise a warning in System › Startup and stability.",
           "req": ["SEG-006"],
           "source": "blueprint §3.1"
+        },
+        "ReleaseRetryInterval": {
+          "duration": "1s",
+          "description": "While Windows refuses the release (a locked session or the secure desktop), Sentinel reads the key state and tries again this often, without limit, and relaunches only once it went. Passed as the --retry-ms start-up argument.",
+          "req": ["SEG-006", "SEG-007", "REG-03"],
+          "source": "ADR-0023, user decision D3 of 2026-10-03"
         }
       }
     },
@@ -318,6 +324,30 @@
           "description": "The elevated instance waits this long for the previous instance to release the single-instance mutex.",
           "req": ["EJE-013", "SIS-003"],
           "source": "blueprint §3.3"
+        },
+        "ExitReleaseWait": {
+          "duration": "500ms",
+          "description": "On exit the engine has this long to release everything and stop; the process ends anyway afterwards and Sentinel releases whatever Windows still reports down.",
+          "req": ["SEG-006", "SEG-007"],
+          "source": "blueprint §7.6"
+        },
+        "ExitFlushTimeout": {
+          "duration": "2s",
+          "description": "Longest flush of the document and usage when Clícalo exits.",
+          "req": ["DAT-002", "REG-08"],
+          "source": "blueprint §6.4"
+        },
+        "SuspendFlushTimeout": {
+          "duration": "1500ms",
+          "description": "Longest flush of the document, the usage and the queued backups when the computer suspends, after the release (Timings.KeySafety.SuspendReleaseWait): Windows allows about two seconds for PBT_APMSUSPEND, and the battery may run out while it sleeps.",
+          "req": ["DAT-002", "REG-08", "SEG-006"],
+          "source": "blueprint §6.4, §7.6"
+        },
+        "SentinelLateThreshold": {
+          "duration": "200ms",
+          "description": "A guardian that is not running this long after the first frame is logged as startup.sentinel_late (the accepted gap of blueprint §3.1 and §15.2).",
+          "req": ["SEG-006"],
+          "source": "blueprint §3.1, §15.2"
         }
       }
     },
@@ -340,6 +370,12 @@
           "duration": "50ms",
           "description": "After a SetForegroundWindow that GetForegroundWindow does not confirm yet, wait this long and check again (the thread that owns the window activates it asynchronously); the single retry of a lease that takes or gives back the foreground follows the same wait. Provisional: S4 measured the first check failing and this one succeeding in 20 of 20 cycles.",
           "req": ["BUS-002", "CCM-004"],
+          "source": "blueprint §3.6"
+        },
+        "RestoreVerifyInterval": {
+          "duration": "5ms",
+          "description": "During RestoreRetryDelay, GetForegroundWindow is read this often, and the first time it names the window the attempt is confirmed. One look at the end of the wait missed a restore that had worked when the foreground had moved on since (spike S1 in CI).",
+          "req": ["REG-01", "BUS-002", "CCM-004"],
           "source": "blueprint §3.6"
         },
         "RightsHotkeyTimeout": {
@@ -368,12 +404,6 @@
         "ViolationRestoreBudget": {
           "duration": "200ms",
           "description": "After an activation without a lease, the previous external foreground must be back within this time (ActivationGuardNegativeTests, spike S1).",
-          "req": ["REG-01"],
-          "source": "blueprint §3.5"
-        },
-        "ActivationRecheck": {
-          "duration": "50ms",
-          "description": "An activation message that reaches a surface while the foreground is outside the process is judged again once the UI thread has delivered what it had queued and, if the foreground is still outside, once more after this wait: a window of the process in front without a lease is one violation, anything else was a late message. It is spent inside ViolationRestoreBudget (spike S1: a real forced activation arrived as a WM_ACTIVATE that GetForegroundWindow did not confirm yet).",
           "req": ["REG-01"],
           "source": "blueprint §3.5"
         }
@@ -509,6 +539,12 @@
           "description": "Entries kept in the undo history.",
           "req": ["DAT-006"],
           "source": "docs/02"
+        },
+        "UnsavedNoticeAfter": {
+          "duration": "3s",
+          "description": "A save that keeps failing becomes the visible «not saved» state this long after its first failed attempt started; shorter locks (antivirus, indexer) stay silent.",
+          "req": ["DAT-002"],
+          "source": "blueprint §15.1 (S11)"
         }
       }
     },
@@ -526,11 +562,6 @@
           "description": "Backups kept per kind before update, migration, restore, import or reset.",
           "req": ["COP-003"],
           "source": "blueprint §6.8"
-        },
-        "MigrationCardVisibility": {
-          "duration": "30d",
-          "description": "The migration card stays visible at most this long.",
-          "req": ["COP-001"]
         },
         "PreviousVersionRetention": {
           "duration": "7d",
@@ -681,30 +712,6 @@
           "description": "Most shortcuts in one import.",
           "req": ["LOG-006"],
           "source": "blueprint §9.1"
-        },
-        "ZipMaxTotalBytes": {
-          "bytes": "50MiB",
-          "description": "Largest total uncompressed size of an imported zip.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "ZipMaxEntries": {
-          "count": 1000,
-          "description": "Most entries in an imported zip.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "ZipMaxCompressionRatio": {
-          "ratio": 100,
-          "description": "Largest compression ratio per zip entry, counted while reading.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
-        },
-        "ZipMaxJsonBytes": {
-          "bytes": "5MiB",
-          "description": "Largest JSON entry inside an imported zip.",
-          "req": ["MIG-009", "LOG-006"],
-          "source": "blueprint §6.6"
         }
       }
     },

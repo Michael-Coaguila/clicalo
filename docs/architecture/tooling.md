@@ -27,8 +27,8 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl setup` | Restaura las herramientas locales y ajusta git (`core.autocrlf=false`, `core.longpaths`, `pull.rebase`, `fetch.prune`, `push.autoSetupRemote`); instala el *hook* versionado `build/githooks/prepare-commit-msg`, que añade `Signed-off-by` (DCO), y activa la firma de commits solo si ya hay una clave SSH configurada. Nunca crea ni lee claves: si falta, escribe los pasos en `artifacts/cl/setup.md` | M0 |
 | `cl build` | Compila la solución completa en Debug | M0 |
 | `cl fast` | Compila y prueba solo el núcleo (`Core.slnf`: Domain, Application y Presentation, los generadores que usan, sus pruebas y TestKit). Objetivo: menos de 45 s; la línea final avisa si se supera | M0 |
-| `cl test` | Compila y ejecuta todas las pruebas salvo las de escritorio (`Requires=Desktop`) | M0 |
-| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva), un módulo de pruebas cada vez porque cada uno toma el primer plano con su InputProbe. Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr: las capturan las herramientas de dictado y voz del mantenedor | M0 |
+| `cl test` | Compila y ejecuta las pruebas deterministas (el nivel PR): todas salvo las de escritorio (`Requires=Desktop`), caos (`Category=Chaos`), rendimiento (`Category=Perf`) y cuarentena (`Category=Quarantine`) | M0 |
+| `cl desk` | Solo las pruebas de escritorio, con `CLICALO_DESKTOP_TESTS=1` (necesitan una sesión interactiva), un módulo de pruebas cada vez porque cada uno toma el primer plano con su InputProbe. Nunca ejecuta las mediciones (`Category=Perf`, son de `cl perf`) ni la cuarentena (`cl quarantine`). Fuera de la CI deja fuera las de `[Trait("Injects", "ReservedKeys")]`, que inyectan Ctrl derecho o AltGr (las capturan las herramientas de dictado y voz del mantenedor), y las de caos (`Category=Chaos`), que matan procesos con teclas pulsadas o congelan hilos | M0 |
 | `cl fix` | Da formato al C# con CSharpier | M0 |
 | `cl check` | **Lo mismo que el trabajo `verify` de la CI.** Todo PR termina con él (ver abajo) | M0 |
 | `cl clean` | Vacía `artifacts/`, salvo la salida del propio orquestador, y dice qué archivos siguen en uso | M0 |
@@ -36,9 +36,10 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl i18n-import [--check]` | Ejecuta `i18n-import` de `tools/Clicalo.DevCli`: reconstruye `data/i18n` o, con `--check`, solo compara | M0 |
 | `cl adr-check --base <ref>` | Ejecuta `adr-check` de `tools/Clicalo.DevCli`, lo mismo que el trabajo `adr` de la CI (`cl adr-check --base main` en local) | M0 |
 | `cl pr` | Abre el PR de la rama actual | M1 |
-| `cl run` | Arranca la app con datos aislados en `%TEMP%\clicalo-dev` | M2 |
+| `cl run` | Arranca la compilación Debug de `Clicalo.exe` con datos aislados en `%TEMP%\clicalo-dev` y **sin envío de teclas** (`--no-input`) | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
-| `cl perf` | Mide los presupuestos de rendimiento | M2 |
+| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`, cada una con Sentinel) y ejecuta las mediciones `Category=Perf`; fuera de la CI, sin envío de teclas. Necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio (el enlazador de Native AOT de Sentinel) | M2 |
+| `cl quarantine` | Solo las pruebas en cuarentena (`Category=Quarantine`, cada una con su *issue*), sin escritorio o de escritorio, con `CLICALO_DESKTOP_TESTS=1` y un módulo cada vez; nunca las mediciones. Fuera de la CI deja fuera las de teclas reservadas y las de caos, como `cl desk`. Lo ejecuta `nightly.yml` | M2 |
 | `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
 | `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
 | `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
@@ -55,7 +56,8 @@ Los mismos pasos, en este orden, en local y en la CI; el primero que falla detie
 3. **format**: `dotnet csharpier check .`
 4. **restore**: `dotnet restore --locked-mode` (los *lock files* deben coincidir).
 5. **build**: compilación Release con `-warnaserror`.
-6. **test**: todas las pruebas salvo `Requires=Desktop`, con resultados TRX: un `<Ensamblado>.trx` por módulo de
+6. **test**: las pruebas deterministas (sin `Requires=Desktop`, `Category=Chaos`, `Category=Perf` ni
+   `Category=Quarantine`), con resultados TRX: un `<Ensamblado>.trx` por módulo de
    pruebas (`-p:ClicaloTrxReport=true`, que lee `Directory.Build.targets`), para que ningún módulo sobrescriba los
    resultados de otro.
 7. **i18n**: `Clicalo.DevCli i18n-check` y `Clicalo.DevCli i18n-import --check`.
@@ -97,7 +99,21 @@ y el informe de errores de `cl`:
 | `adr-check --base <ref>` | Falla si los archivos cambiados desde la base de fusión con `<ref>` tocan una ruta de `architecture/sensitive-paths.json` sin un ADR nuevo o cambiado en `docs/adr/` (error `CLCA010`, [§13](blueprint.md#13-convenciones-de-ingeniería)) |
 
 Salida en formato MSBuild, última línea legible por Narrador y códigos de salida 0 (sin problemas), 1
-(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace`, `anonymize-v1` y `states`.
+(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace` y `states`.
+
+### Opciones de `Clicalo.exe` para desarrollo
+
+`Clicalo.exe` no tiene opciones en un arranque normal. Para desarrollar y medir:
+
+- `--no-input`: ningún envío (inyector en seco, *ledger* desconectado, sin Sentinel ni soltado preventivo). Es lo que
+  usan `cl run` y, fuera de la CI, `cl perf`.
+- `--data <carpeta>`: todos los datos, el diario de fallos incluido, dentro de esa carpeta.
+- `--exit-after <segundos>`: tras el primer frame, recorre la salida completa sin intervención (diagnóstico).
+- `--guardian after-first-frame`: la variante de S5 que lanza Sentinel después del primer frame.
+- `--after-crash=<ms Unix>` y `--safe-mode` los pone Sentinel al relanzar ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
+
+Clícalo no lee archivos de Macro Quick Access ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)):
+no hay opción `--migrate-v1` ni orden `anonymize-v1`.
 
 ### Compilar mientras se itera
 
@@ -142,6 +158,26 @@ vivos que bloqueen archivos entre compilaciones.
   la restauración falla.
 - Para regenerarlos tras cambiar una versión: `dotnet restore Clicalo.slnx --force-evaluate`.
 - NuGet los escribe con CRLF en Windows; `.gitattributes` los mantiene en CRLF para evitar *diffs* falsos.
+- **Runtimes publicados.** `Directory.Build.props` fija los dos que se distribuyen
+  (`ClicaloRuntimeIdentifiers` = `win-x64;win-arm64`, [§11 del plano](blueprint.md)). Los ejecutables que se
+  publican (`Clicalo.App`, `Clicalo.Sentinel` y `Clicalo.Launcher`) los declaran como `RuntimeIdentifiers`, así
+  que sus *lock files* guardan el grafo de los dos y no dependen del equipo que restauró (con `PublishAot`, el SDK
+  añadía solo el runtime del equipo y una restauración bloqueada en ARM64 fallaba con NU1004).
+- **Publicar con la restauración bloqueada.** El runtime se elige con
+  `-p:ClicaloRuntimeIdentifier=win-x64` (o `win-arm64`), que solo los ejecutables convierten en su
+  `RuntimeIdentifier`; **nunca con `-r`**. `-r` es una propiedad global que llega a la restauración de todos los
+  proyectos referenciados (bibliotecas, generadores y analizadores, cuyos *lock files* no tienen grafo por
+  runtime): en la CI falla con NU1004 y fuera de ella reescribe sus *lock files*. Desactivar los *lock files* en la
+  línea de órdenes tampoco sirve: NuGet lo rechaza con NU1005 mientras existan. Así publica `cl perf`
+  (`BuildSteps.PublishArguments`), y así debe publicar el empaquetado de M5 (Velopack con `vpk pack`, R2R
+  autocontenido por runtime): `dotnet publish src/Clicalo.App/Clicalo.App.csproj -c Release
+  -p:ClicaloRuntimeIdentifier=<rid> --self-contained true -p:PublishReadyToRun=true`, con la restauración
+  bloqueada, ya comprobado para `win-x64` y `win-arm64`.
+- **`Clicalo.Launcher`** no los declaraba desde el andamiaje: su *lock file* solo tenía el grafo `win-x64` y la
+  restauración bloqueada de ARM64 falló con NU1004 en cuanto la CI ejecutó ARM64 (s0 37325950329). Ahora los declara
+  como Sentinel ([ADR-0022](../adr/0022-runtimes-publicados-del-launcher.md), porque `src/Clicalo.Launcher/**` es una
+  ruta sensible), y `ShippedRuntimeTests` (`Clicalo.Architecture.Tests`) comprueba que todo ejecutable de `src/` declara
+  `$(ClicaloRuntimeIdentifiers)` y que su *lock file* tiene el grafo de cada runtime.
 
 ## Analizadores y reglas de compilación
 
@@ -201,13 +237,24 @@ pruebas) están acotadas a ellos: `tests/.editorconfig` y su copia `build/Build.
 
 ## Integración continua
 
-Workflows previstos ([§10.5 del plano](blueprint.md#105-cicd)). En M0 existen `pr.yml` (trabajos
-`verify (x64)` = `cl check`, `desk (x64)` = `cl desk` (pruebas de escritorio en el *runner* alojado, validado por
-[S0](../testing/spikes/S0.md)), `adr` = `adr-check` y `dco` (cada commit del PR con `Signed-off-by` de su autor,
-[ADR-0015](../adr/0015-licencia-mit-y-dco.md)) en cada PR; `verify (arm64)`, CodeQL y Scorecard solo con el
-repositorio público), `pr-title.yml` (título en Conventional Commits) y `s0.yml` (spike S0: `cl desk` diez
-veces en `windows-2025` y, con el repositorio público o bajo petición, en `windows-11-arm`; se lanza a mano y
-su resultado va a [S0.md](../testing/spikes/S0.md)):
+Workflows previstos ([§10.5 del plano](blueprint.md#105-cicd)). Las pruebas se ejecutan en tres niveles (PR,
+nocturno y publicación, ver [testing-strategy.md](testing-strategy.md#niveles-de-pruebas)). Hoy existen:
+
+- `pr.yml`, en cada PR y *push* a `main`, solo con lo determinista: `verify (x64)` = `cl check`, `adr` =
+  `adr-check` y `dco` (cada commit del PR con `Signed-off-by` de su autor,
+  [ADR-0015](../adr/0015-licencia-mit-y-dco.md)); `verify (arm64)`, CodeQL y Scorecard con el repositorio público.
+- `nightly.yml`, cada día y a mano: `desk (x64)` = `cl desk` (escritorio en el *runner* alojado, validado por
+  [S0](../testing/spikes/S0.md), con el caos de Sentinel), `perf (x64)` = `cl perf` y `quarantine (x64)` =
+  `cl quarantine`. No bloquea: si una ejecución programada falla, el trabajo `report` (el único con
+  `issues: write`) abre o comenta el *issue* con la etiqueta `nightly`. A mano admite una rama o
+  `refs/pull/<n>/head` para probar el escritorio de un PR antes de fusionarlo; esas ejecuciones no tocan el
+  *issue*.
+- `pr-title.yml` (título en Conventional Commits), `lab.yml` (equipo táctil, a mano) y `s0.yml` (spike S0:
+  `cl desk` diez veces en `windows-2025` y, con el repositorio público o bajo petición, en `windows-11-arm`; se
+  lanza a mano y su resultado va a [S0.md](../testing/spikes/S0.md)).
+
+Antes de cualquier versión (M5 en adelante) todo debe estar en verde, incluido el nivel nocturno, `lab.yml` y
+la aceptación en hardware. Lo previsto por el plano:
 
 | Workflow | Cuándo | Qué hace |
 |---|---|---|

@@ -28,6 +28,21 @@ internal static partial class I18nData
     public static List<KeyValuePair<string, string>> Handoff(string language) =>
         ReadFlat(Path.Combine(RepoPaths.Handoff, "data", "strings." + language + ".json"));
 
+    /// <summary>
+    /// The handoff keys a user decision removed from the product: <c>retired</c> of <c>handoff-import.json</c>.
+    /// </summary>
+    public static HashSet<string> RetiredHandoffKeys()
+    {
+        using var recipe = Json("handoff-import.json");
+        return recipe.RootElement.TryGetProperty("retired", out var retired)
+            ? retired
+                .EnumerateObject()
+                .Select(static p => p.Name)
+                .Where(static name => !string.Equals(name, "notes", StringComparison.Ordinal))
+                .ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+    }
+
     public static JsonDocument Json(string fileName) =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(Directory, fileName)));
 

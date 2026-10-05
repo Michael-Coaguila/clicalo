@@ -45,7 +45,7 @@ El título del PR sigue [Conventional Commits](https://www.conventionalcommits.o
 - `!` (por ejemplo `feat(ai)!:`) solo si se rompe un contrato público: formato del documento, formato para
   compartir, CLI, `clicalo://` o IPC.
 - Ejemplos: `fix(keysafety): release scan-code keys in the mode they were pressed`,
-  `i18n: add missing plural forms for migT`, `docs: add ADR-0018 for the AI proxy`.
+  `i18n: add missing plural forms for comboN`, `docs: add ADR-0018 for the AI proxy`.
 
 ### Certificado de origen (DCO) y firma de commits
 
@@ -80,6 +80,19 @@ no el historial de `main`: los commits de M0, anteriores a este trabajo, no llev
    novedades en español e inglés con `cl note` (en `changes/unreleased/`), salvo que lleven la etiqueta
    `no-user-note`.
 6. **Nada generado a mano.** Lo que producen los generadores no se edita: se cambia el dato o el generador.
+
+### Qué comprueba la CI
+
+- **En cada PR (bloquea):** `verify` (= `cl check`, solo pruebas deterministas: sin escritorio, caos,
+  rendimiento ni cuarentena), `title`, `adr` y `dco`; con el repositorio público, también `verify (arm64)`,
+  CodeQL y Scorecard.
+- **Cada noche (no bloquea):** `nightly.yml` ejecuta `cl desk`, `cl perf` y `cl quarantine`. Si falla, abre o
+  actualiza el *issue* con la etiqueta `nightly`. Para probar el escritorio de tu PR antes de fusionarlo:
+  Actions › nightly › *Run workflow* con tu rama (o `refs/pull/<número>/head`).
+- **Antes de publicar una versión (M5 en adelante):** todo en verde, incluido el nivel nocturno, el equipo
+  táctil (`lab.yml`) y la aceptación en hardware.
+- Una prueba inestable que no es un defecto del producto se pone en cuarentena con su *issue*, no se
+  reintenta (ver [pruebas inestables](docs/architecture/testing-strategy.md#pruebas-inestables)).
 
 ### Cuándo hace falta un ADR
 
@@ -170,6 +183,12 @@ history of `main`: the M0 commits, which predate the job, do not carry it.
 5. `feat`, `fix`, `a11y` and `perf` PRs that touch `src/` add a user-facing note in Spanish and English with
    `cl note`, unless labeled `no-user-note`.
 6. Never edit generated code: change the data or the generator.
+
+The CI gates a PR only with deterministic tests (`verify` = `cl check`, plus `title`, `adr` and `dco`). Desktop,
+performance, chaos and quarantined tests run every night in `nightly.yml`, which opens or updates an issue labeled
+`nightly` when they fail; run it by hand on your branch (Actions › nightly › Run workflow) to try the desktop tests
+before merging. Before any release (M5 onwards) everything must be green, including the nightly tier, the touch lab
+and the hardware acceptance.
 
 ### ADRs and requirements
 

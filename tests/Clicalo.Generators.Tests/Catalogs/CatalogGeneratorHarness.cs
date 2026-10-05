@@ -88,10 +88,13 @@ internal static class CatalogGeneratorHarness
         return new GeneratorRun(driver, driver.GetRunResult(), output, driverDiagnostics);
     }
 
-    /// <summary>Compilation of the hand-written Domain types the generated code needs.</summary>
+    /// <summary>
+    /// Compilation of the hand-written Domain types the generated code needs: its modules and Primitives, which Keys
+    /// and Catalog depend on (architecture/domain-modules.json).
+    /// </summary>
     public static CSharpCompilation DomainCompilation()
     {
-        var sources = new[] { "Keys", "Catalog", "Timing" }
+        var sources = new[] { "Primitives", "Keys", "Catalog", "Timing" }
             .SelectMany(folder =>
                 Directory.GetFiles(
                     Path.Combine(RepoPaths.Root, "src", "Clicalo.Domain", folder),

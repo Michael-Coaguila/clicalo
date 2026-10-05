@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using Clicalo.TestKit.Windows.Rendering;
@@ -62,6 +64,17 @@ public sealed class UiaClientRunner
         )
             ? WpfThread.Invoke(ShowOwnWindow)
             : null;
+        // FlaUI turns an unknown COM failure into a Win32Exception that keeps the message and loses the HRESULT: keep
+        // the last COMException of the call to report it.
+        COMException? lastCom = null;
+        EventHandler<FirstChanceExceptionEventArgs> record = (_, e) =>
+        {
+            if (e.Exception is COMException com)
+            {
+                Volatile.Write(ref lastCom, com);
+            }
+        };
+        AppDomain.CurrentDomain.FirstChanceException += record;
         try
         {
             Say("ready " + (own is null ? "0" : WpfThread.Invoke(() => Handle(own))));
@@ -71,6 +84,7 @@ public sealed class UiaClientRunner
             )
             {
                 var parts = line.Split(' ', 2);
+                Volatile.Write(ref lastCom, null);
                 try
                 {
                     client.Run(parts[0], parts.Length > 1 ? parts[1] : string.Empty);
@@ -78,18 +92,41 @@ public sealed class UiaClientRunner
                 }
                 catch (Exception ex)
                 {
-                    Say("error " + ex.GetType().Name + ": " + ex.Message.ReplaceLineEndings(" "));
+                    Say("error " + Describe(ex, Volatile.Read(ref lastCom)));
                 }
             }
         }
         finally
         {
+            AppDomain.CurrentDomain.FirstChanceException -= record;
             if (own is not null)
             {
                 WpfThread.Invoke(own.Close);
             }
         }
     }
+
+    /// <summary>One line: the exception, its HRESULT, the COM failure under it and where it was thrown.</summary>
+    private static string Describe(Exception exception, COMException? com) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"{exception.GetType().Name} (HRESULT 0x{exception.HResult:X8}): {exception.Message.ReplaceLineEndings(" ")}"
+        )
+        + (
+            com is null
+                ? string.Empty
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"; COM HRESULT 0x{com.HResult:X8}: {com.Message.ReplaceLineEndings(" ")}"
+                )
+        )
+        + "; at "
+        + string.Join(
+            " | ",
+            (exception.StackTrace ?? string.Empty)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Take(8)
+        );
 
     private static void Say(string text) => Console.Out.WriteLine(Marker + " " + text);
 

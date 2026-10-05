@@ -6,7 +6,7 @@ namespace Clicalo.Architecture.Tests;
 
 /// <summary>
 /// Who may use the dangerous capabilities (blueprint §4.4, mechanism 2): ports, the input injector, the foreground
-/// control, secret text, the single-writer stores and the IPC server. Each product rule is also run on the violating
+/// control, secret text, the single-writer stores, the IPC server and the single-instance pipe. Each product rule is also run on the violating
 /// fixtures of <c>Fixtures.Confinement</c>, which mirror the product namespaces.
 /// </summary>
 public sealed class ConfinementRulesTests
@@ -141,6 +141,40 @@ public sealed class ConfinementRulesTests
             );
             violations.ShouldNotContain("ShowRequestHandler", Case.Sensitive);
         }
+    }
+
+    [Fact]
+    public void The_single_instance_pipe_reaches_neither_the_engine_the_foreground_nor_the_document() =>
+        ProductRules.SingleInstancePipeIsConfined(Scope.Product).Check(Product.Architecture);
+
+    [Fact]
+    public void The_single_instance_pipe_rule_inspects_the_real_pipe_server()
+    {
+        // The IPC rules above watch Application.Ipc, which has no types until M4: this one must never pass empty.
+        var pipe = ProductRules.SingleInstancePipe(Scope.Product);
+
+        Product
+            .Architecture.Types.Where(pipe.Contains)
+            .ShouldContain(type =>
+                string.Equals(type.Name, "ShowPipeServer", StringComparison.Ordinal)
+            );
+    }
+
+    [Fact]
+    public void A_pipe_server_that_posts_to_the_engine_fails_the_single_instance_rule()
+    {
+        var violations = FixtureViolations(ProductRules.SingleInstancePipeIsConfined(Fixture));
+
+        violations.ShouldContain("LeakyPipeServer", Case.Sensitive);
+        violations.ShouldContain(
+            "depends on " + Fixture.Name("Clicalo.Application.Engine.EngineHost"),
+            Case.Sensitive
+        );
+        violations.ShouldContain(
+            "depends on " + Fixture.Name("Clicalo.Application.Ports.IInputInjector"),
+            Case.Sensitive
+        );
+        violations.ShouldNotContain("ShowOnlyPipeServer", Case.Sensitive);
     }
 
     private static string FixtureViolations(IArchRule rule)

@@ -90,6 +90,8 @@ public sealed class SurfaceHookTests
         (size.Width, size.Height).ShouldBe((300, 150), "200 × 100 logical units at 150 %.");
     }
 
+    [Trait("Category", "Quarantine")]
+    [Trait("Issue", "4")]
     [Fact]
     [Trait("Req", "REG-01")]
     [Trait("Req", "ACC-008")]

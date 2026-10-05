@@ -11,6 +11,10 @@ se publica y sus textos no están localizados (M1 no añade textos de producto).
 Guiones: [S1](S1.md) (no activación), [S3](S3.md) (UI Automation) y [S4](S4.md) (primer plano por origen). Reparto de
 rutas: [M1-ownership.md](M1-ownership.md).
 
+Spikes de M2, como pruebas y sin laboratorio: [S5](S5.md) (arranque y publicación), [S7](S7.md) (inyección del
+producto en InputProbe), [S9](S9.md) (guardián, *ledger* y valla; el caos solo en la CI) y [S11](S11.md) (escritura
+atómica y bloqueos). Reparto de rutas: [M2-ownership.md](M2-ownership.md).
+
 ## Cómo se abre
 
 - **VS Code:** paleta de tareas (*Terminal › Ejecutar tarea…*) → **«SpikeLab: abrir»**. Se abre la ventana de control
@@ -98,6 +102,14 @@ trabajo: si crece o se pliega, conserva su borde de abajo (o el de arriba, si la
 | **Mover la tira** | La lleva a la otra mitad de la pantalla, arriba o abajo (con el dedo se arrastra por su asa) | Igual |
 
 Plegar, mover y arrastrar la tira no cuentan como repeticiones ni cambian «Última orden».
+
+## Lección de M1: el laboratorio debe contar solo
+
+En la sesión real del 2026-09-26 la tira-guía pidió contar y pulsar «Funcionó»: los toques acabaron en la propia tira
+(216 `NoTarget` y 78 `Debounced`) y ninguna fila del panel quedó registrada. Desde M3, la aceptación en hardware y
+cualquier laboratorio **cuentan solos**: detectan superficie, dispositivo y app objetivo, deciden con lo medido, no
+tienen botones de veredicto por repetición y no piden 20 repeticiones seguidas. Las reglas completas están en
+[M1-closure.md](M1-closure.md#lección-el-laboratorio-cuenta-solo); lo que sigue describe el SpikeLab de M1 tal como es.
 
 ## Cómo se cuentan las repeticiones
 

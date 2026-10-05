@@ -5,9 +5,11 @@ using Clicalo.Architecture.Tests.Support;
 namespace Clicalo.Architecture.Tests;
 
 /// <summary>
-/// Structural side of the product rules R4 and R7 (blueprint §4.4, mechanism 6). The behavioural side (apply every
-/// command to generated documents) lands with DocumentStore in M2–M4; these rules are active from M0 so no command
-/// can be added outside the registries.
+/// Structural side of the product rules R4 and R7 (blueprint §4.4, mechanism 6), active from M0 so no command can be
+/// added outside the registries. Since M2 every listed destructive command exists, and the behavioural side (every
+/// document command applied to 10 000 generated documents: only the listed ones remove entities, and every one records
+/// an undo step except the exemptions) runs in <c>tests/Clicalo.Domain.Tests/Commands/ProductRuleBehaviourTests.cs</c>,
+/// next to the CsCheck generators it needs; the store side runs in Application.Tests (<c>DocumentStorePropertyTests</c>).
 /// </summary>
 public sealed class ProductRuleTests
 {
@@ -31,6 +33,21 @@ public sealed class ProductRuleTests
         ProductRules
             .DestructiveCommandsAreTheClosedList(Scope.Product, Commands)
             .Check(Product.Architecture);
+
+    [Fact]
+    [Trait("Req", "REG-04")]
+    public void Every_listed_destructive_command_exists()
+    {
+        var destructive = typeof(Domain.Commands.IDestructiveCommand);
+
+        destructive
+            .Assembly.GetTypes()
+            .Where(t =>
+                destructive.IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false }
+            )
+            .Select(t => t.Name)
+            .ShouldBe(Commands, ignoreOrder: true);
+    }
 
     [Fact]
     [Trait("Req", "REG-04")]

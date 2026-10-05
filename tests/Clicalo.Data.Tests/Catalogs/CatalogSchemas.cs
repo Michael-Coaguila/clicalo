@@ -90,7 +90,8 @@ internal sealed class CatalogSchemas
 
     private JsonSchema? Fetch(Uri uri)
     {
-        var text = uri.ToString();
+        // A reference into a schema not loaded yet («usage.schema.json#/$defs/usage») names its file without the pointer.
+        var text = uri.GetLeftPart(UriPartial.Path);
         return text.StartsWith(BaseUri, StringComparison.Ordinal)
             ? Get(text[BaseUri.Length..])
             : null;

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Headless tests of the composition root (blueprint §10.1): the command line, the single-instance pipe protocol, the
+    adapters of a start without key sending (ADR-0004) and the document of a new installation against
+    a real temporary folder. Nothing here opens a window or sends input.
+  -->
+  <PropertyGroup>
+    <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Clicalo.App.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Clicalo.App\Clicalo.App.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Infrastructure\Clicalo.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Application\Clicalo.Application.csproj" />
+    <ProjectReference Include="..\..\src\Clicalo.Domain\Clicalo.Domain.csproj" />
+    <ProjectReference Include="..\Clicalo.TestKit\Clicalo.TestKit.csproj" />
+  </ItemGroup>
+</Project>

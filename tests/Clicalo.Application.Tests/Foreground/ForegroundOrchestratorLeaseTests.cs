@@ -45,7 +45,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         controlCenter.PreviousForeground.ShouldBe(Word, "not the search surface that was in front");
         search.IsActive.ShouldBeFalse();
         search.EndReason.ShouldBe(LeaseEndReason.Replaced);
-        (await search.Ended).ShouldBe(LeaseEndReason.Replaced);
+        (await EndOf(search.Ended)).ShouldBe(LeaseEndReason.Replaced);
         _world.Log.ShouldBe(["set ControlCenter", "noactivate " + SearchSurface]);
         _world.Control.Attempts.ShouldNotContain(Word, "nothing is restored between two leases");
         _world.Orchestrator.ActiveLease.ShouldBeSameAs(controlCenter);
@@ -142,7 +142,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         _world.Monitor.SwitchTo(Chrome);
         await _world.Orchestrator.ForegroundChangeHandled;
 
-        (await search.Ended).ShouldBe(LeaseEndReason.ForegroundChanged);
+        (await EndOf(search.Ended)).ShouldBe(LeaseEndReason.ForegroundChanged);
         _world.Orchestrator.ActiveLease.ShouldBeNull();
         _world.Orchestrator.IsActivationLeased(Search).ShouldBeFalse();
         _world.Log.ShouldBe(["external Chrome", "noactivate " + SearchSurface]);
@@ -173,7 +173,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
 
         _world.Monitor.SwitchTo(Word);
         await _world.Orchestrator.ForegroundChangeHandled;
-        _ = await search.Ended;
+        _ = await EndOf(search.Ended);
 
         (await search.RestoreAsync(TestContext.Current.CancellationToken)).ShouldBe(
             RestoreOutcome.Restored
@@ -232,7 +232,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         search.IsActive.ShouldBeTrue();
         _world.Time.AdvanceTo(deadline);
 
-        (await search.Ended).ShouldBe(LeaseEndReason.IdleTimeout);
+        (await EndOf(search.Ended)).ShouldBe(LeaseEndReason.IdleTimeout);
         _world.Control.Foreground.ShouldBe(Word);
         _world.Surfaces.Activatable.ShouldBeEmpty();
         (await search.RestoreAsync(TestContext.Current.CancellationToken)).ShouldBe(
@@ -253,7 +253,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
         search.IsActive.ShouldBeTrue("the idle time restarted at the interaction");
         _world.Time.Advance(half);
 
-        (await search.Ended).ShouldBe(LeaseEndReason.IdleTimeout);
+        (await EndOf(search.Ended)).ShouldBe(LeaseEndReason.IdleTimeout);
     }
 
     [Fact]
@@ -279,7 +279,7 @@ public sealed class ForegroundOrchestratorLeaseTests : IDisposable
 
         _world.Time.Advance(idle);
 
-        (await navigation.Ended).ShouldBe(LeaseEndReason.IdleTimeout);
+        (await EndOf(navigation.Ended)).ShouldBe(LeaseEndReason.IdleTimeout);
         _world.Control.Foreground.ShouldBe(Word);
     }
 

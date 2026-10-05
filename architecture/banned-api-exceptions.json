@@ -20,7 +20,7 @@
       "id": "injection",
       "paths": ["src/Clicalo.Platform.Core/Injection/**"],
       "apis": ["SendInput"],
-      "justification": "LowLevelInjector sends input only inside InjectionGate.TryRun, fenced by the engine generation (ADR-0004).",
+      "justification": "LowLevelInjector is the product's only SendInput, behind IInputInjector and PressedInputRelease (ADR-0023).",
       "blueprint": "§3.2, §4.4, §7.7"
     },
     {
@@ -67,10 +67,24 @@
     },
     {
       "id": "app-shutdown",
-      "paths": ["src/Clicalo.App/Shutdown/**"],
-      "apis": ["Task.Result", "Task.Wait", "GetAwaiter().GetResult()"],
-      "justification": "The last synchronous flush on process exit (session end, WM_ENDSESSION) cannot await.",
+      "paths": ["src/Clicalo.App/Shutdown/SessionEnd.cs"],
+      "apis": ["GetAwaiter().GetResult()"],
+      "justification": "The last synchronous flush on process exit: WM_QUERYENDSESSION must be answered after it and cannot await. Bounded by Timings.App.ExitReleaseWait and ExitFlushTimeout; it never needs the UI thread.",
       "blueprint": "§4.4, §6.4"
+    },
+    {
+      "id": "app-suspend",
+      "paths": ["src/Clicalo.App/Shutdown/SuspendRelease.cs", "src/Clicalo.App/Shutdown/SuspendFlush.cs"],
+      "apis": ["GetAwaiter().GetResult()"],
+      "justification": "PBT_APMSUSPEND: the machine may sleep as soon as WM_POWERBROADCAST is answered, so the SysEvents thread waits for the engine's release, bounded by Timings.KeySafety.SuspendReleaseWait (500 ms), then for the flush of the document, the usage and the queued copies, bounded by Timings.App.SuspendFlushTimeout. Bounded waits on SysEvents that §3.2 does not foresee: recorded in D-21 and D-22.",
+      "blueprint": "§3.2, §7.6"
+    },
+    {
+      "id": "app-second-start",
+      "paths": ["src/Clicalo.App/Shutdown/SecondStart.cs"],
+      "apis": ["GetAwaiter().GetResult()"],
+      "justification": "The second process of a session, before any window or engine exists: its STA Main cannot await and waits for one answer of the running instance, bounded by Timings.Ipc.IpcRequestTimeout, then ends.",
+      "blueprint": "§3.4, §4.4"
     },
     {
       "id": "workspace-controls",

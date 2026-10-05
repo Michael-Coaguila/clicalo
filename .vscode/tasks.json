@@ -109,6 +109,38 @@
       "problemMatcher": []
     },
     {
+      "label": "cl run",
+      "detail": "Compila y abre Clícalo con datos aislados y sin envío de teclas.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["run"],
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "cl note",
+      "detail": "Crea la nota de novedades para usuarios de la rama, en español e inglés.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["note"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl perf",
+      "detail": "Publica las variantes de S5 y mide arranque y memoria.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["perf"],
+      "problemMatcher": ["$msCompile"]
+    },
+    {
+      "label": "cl quarantine",
+      "detail": "Ejecuta solo las pruebas en cuarentena (Category=Quarantine).",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["quarantine"],
+      "problemMatcher": ["$msCompile"]
+    },
+    {
       "label": "cl: abrir el último error",
       "detail": "Abre artifacts/cl/last-error.md, el informe del último fallo.",
       "type": "shell",

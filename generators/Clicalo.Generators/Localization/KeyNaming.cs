@@ -66,7 +66,7 @@ internal static class KeyNaming
         return IsValidBaseKey(baseKey) && PluralCategories.IsCategory(category);
     }
 
-    /// <summary>C# member name of a base key: the key with its first letter in upper case (<c>migT</c> → <c>MigT</c>).</summary>
+    /// <summary>C# member name of a base key: the key with its first letter in upper case (<c>dupHead</c> → <c>DupHead</c>).</summary>
     public static string ToMemberName(string baseKey) =>
         baseKey.Length == 0 ? baseKey : char.ToUpperInvariant(baseKey[0]) + baseKey.Substring(1);
 

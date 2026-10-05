@@ -1,0 +1,23 @@
+{
+  "format": "clicalo.usage",
+  "schema": {
+    "major": 1,
+    "minor": 0
+  },
+  "writtenBy": "2.0.0",
+  "seq": 7,
+  "writtenAtUtc": "2026-09-25T10:31:02.000Z",
+  "payloadSha256": "1c13bd7d4399cb778b79563b29402dc8fee6b9537b7638de1399563e81b8748a",
+  "payload": {
+    "usageEpoch": 3,
+    "usage": {
+      "copy": [
+        1767603600000,
+        1767603660000
+      ],
+      "web": [
+        1767603720000
+      ]
+    }
+  }
+}

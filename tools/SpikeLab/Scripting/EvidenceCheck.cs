@@ -22,8 +22,8 @@ internal enum EvidenceCheck
     /// <summary>The app that was in front when the step started is still in front.</summary>
     TargetStillInFront = 1 << 3,
 
-    /// <summary>Forced activation: <c>reg01.violations</c> increased by exactly one.</summary>
-    ViolationCountedOnce = 1 << 4,
+    /// <summary>Forced activation: <c>reg01.violations</c> increased (at least once; ADR-0024 may count a late message too).</summary>
+    ViolationCounted = 1 << 4,
 
     /// <summary>Forced activation: the previous foreground came back within <c>Timings.Windowing.ViolationRestoreBudget</c>.</summary>
     RestoredWithinBudget = 1 << 5,
@@ -53,7 +53,7 @@ internal enum EvidenceCheck
     NonActivation = NoSurfaceActivation | NoOwnForeground | NoViolation | TargetStillInFront,
 
     /// <summary>The checks of the forced activation of S1 row 31.</summary>
-    ForcedActivationReverted = ViolationCountedOnce | RestoredWithinBudget | NoActivateStyleKept,
+    ForcedActivationReverted = ViolationCounted | RestoredWithinBudget | NoActivateStyleKept,
 
     /// <summary>The checks of every S4 cycle.</summary>
     LeaseRoundTrip = LeaseGranted | ForegroundReturned | NoViolation,

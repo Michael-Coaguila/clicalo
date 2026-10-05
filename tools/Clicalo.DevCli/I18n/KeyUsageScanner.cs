@@ -6,8 +6,8 @@ namespace Clicalo.DevCli.I18n;
 /// <summary>
 /// Finds which i18n keys the product uses, without compiling it:
 /// <list type="bullet">
-/// <item><c>src/**/*.cs</c>: members of the generated class, <c>L.MigT</c>;</item>
-/// <item><c>src/**/*.xaml</c>: the markup extension <c>{loc:T migT}</c>;</item>
+/// <item><c>src/**/*.cs</c>: members of the generated class, <c>L.DupHead</c>;</item>
+/// <item><c>src/**/*.xaml</c>: the markup extension <c>{loc:T dupHead}</c>;</item>
 /// <item><c>data/**/*.json</c> (except <c>data/i18n</c>): string values of properties whose name ends in
 /// <c>Key</c>, such as <c>"labelKey": "copy"</c>.</item>
 /// </list>

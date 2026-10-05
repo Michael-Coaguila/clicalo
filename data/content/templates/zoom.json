@@ -1,10 +1,10 @@
 {
   "$schema": "../../schemas/template.schema.json",
   "id": "zoom",
-  "version": 1,
+  "version": 2,
   "authors": ["Michael Coaguila"],
   "appsLanguages": ["es", "en"],
-  "name": { "es": "Videollamada", "en": "Video call" },
+  "name": { "es": "Zoom", "en": "Zoom" },
   "icon": "videocam",
   "category": "voice",
   "processes": ["zoom.exe"],

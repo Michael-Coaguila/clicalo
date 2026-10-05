@@ -187,7 +187,7 @@ public sealed class DestructiveCommandAnalyzerTests
 
             public static class Upgrade
             {
-                [SuppressMessage("Clicalo.Safety", "CLC0010", Justification = "Migration replays commands the user already confirmed in v1.")]
+                [SuppressMessage("Clicalo.Safety", "CLC0010", Justification = "Undo replays commands the user already confirmed.")]
                 public static void Replay(DocumentStore store, IDestructiveCommand command) => store.Dispatch(command);
             }
             """,

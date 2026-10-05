@@ -2,53 +2,34 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Windows.Threading;
 using Clicalo.Application.Ports;
-using Clicalo.Domain.Timing;
 using Windows.Win32;
-using Windows.Win32.Foundation;
 
 namespace Clicalo.UI.Wpf.Windowing;
 
 /// <summary>
-/// REG-01 at run time (blueprint §3.5, ADR-0005). Fed synchronously by the activation messages of the surfaces
-/// themselves (<c>WM_ACTIVATE</c> other than <c>WA_INACTIVE</c>, <c>WM_NCACTIVATE(TRUE)</c>,
-/// <c>WM_ACTIVATEAPP(TRUE)</c>) on the UI thread, so it does not depend on WinEvents (which skip the own process)
-/// and also catches Clícalo itself being in front (EC-EJE-05).
+/// REG-01 at run time (blueprint §3.5, ADR-0005, ADR-0024). Fed synchronously by the activation messages of the
+/// surfaces themselves (<c>WM_ACTIVATE</c> other than <c>WA_INACTIVE</c>, <c>WM_NCACTIVATE(TRUE)</c>,
+/// <c>WM_ACTIVATEAPP(TRUE)</c>) on the UI thread, so it does not depend on WinEvents (which skip the own process) and
+/// also catches Clícalo itself being in front (EC-EJE-05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// On an activation: if <see cref="IActivationArbiter.IsActivationLeased"/> says a lease targets the window, it is
-/// legitimate. Otherwise it is a VIOLATION: <see cref="IActivationArbiter.ReportViolation"/> (the orchestrator
-/// restores the last verified external foreground within <c>Timings.Windowing.ViolationRestoreBudget</c>),
-/// <c>WS_EX_NOACTIVATE</c> is applied again, <see cref="Violations"/> (metric <see cref="MetricName"/>) increases by
-/// one, <see cref="ViolationDetected"/> is raised and, in Debug builds (the desktop tests of <c>cl desk</c> and the
-/// CI run in Debug), <c>Debug.Fail</c> stops the run. A test that forces a violation on purpose replaces the
+/// One simple rule. An activation of a surface that no lease targets
+/// (<see cref="IActivationArbiter.IsActivationLeased"/>) is a violation: <c>WS_EX_NOACTIVATE</c> is applied again at
+/// once, <see cref="Violations"/> (metric <see cref="MetricName"/>) increases by one, <see cref="ViolationDetected"/> is
+/// raised, and ONE restoration is asked of the arbiter (<see cref="IActivationArbiter.ReportViolation"/>, which gives
+/// the foreground back to the last verified external app from the thread pool). The request leaves the window
+/// procedure: it is queued on the dispatcher, and every activation that arrives while it is still queued joins it
+/// instead of counting again (the several messages of one activation, or a second forced activation before the UI
+/// thread is back in its dispatcher). The restoration therefore always runs after every activation it covers. In Debug
+/// builds <c>Debug.Fail</c> stops the run; a test that forces a violation on purpose replaces the
 /// <see cref="Trace.Listeners"/> for the length of the test.
 /// </para>
 /// <para>
-/// One activation reaches the thread as several messages (<c>WM_ACTIVATEAPP</c> to every top-level window, then
-/// <c>WM_NCACTIVATE</c> and <c>WM_ACTIVATE</c> to the activated one): they count as ONE violation, which stays open
-/// until the surface is deactivated (<c>WM_ACTIVATE(WA_INACTIVE)</c>), the application loses the activation
-/// (<c>WM_ACTIVATEAPP(FALSE)</c>) or the foreground is seen outside the process: at any activation or deactivation
-/// message of a surface (<c>WM_NCACTIVATE(FALSE)</c> included), and every <c>Timings.Windowing.ActivationRecheck</c>
-/// while it is open. Spike S1 showed why the messages alone are not enough: when the restore wins the race against
-/// the activation, the deactivation messages arrive late, out of order or not at all, and a violation left open
-/// swallowed the next forced activation. <c>WM_ACTIVATEAPP(TRUE)</c> is sent to every top-level window of the thread,
-/// also when a window that is not a surface (the Control Center under its lease) is activated, so it only counts on
-/// the surface that owns the foreground.
-/// </para>
-/// <para>
-/// A <c>WM_NCACTIVATE(TRUE)</c> or <c>WM_ACTIVATE</c> for a surface that does not own the foreground
-/// (<c>GetForegroundWindow</c>) is judged by who does. A window of this process without a lease (another surface,
-/// the <see cref="OwnerAnchor"/>) means the foreground was taken from the app in front: a violation now. A window
-/// outside the process may mean two things that the message alone cannot tell apart: a late message of an activation
-/// that has already ended (the orchestrator gives the foreground back from the thread pool while the UI thread still
-/// delivers the messages of the activation) or a real activation that <c>GetForegroundWindow</c> does not confirm
-/// yet (spike S1 saw a lone <c>WM_ACTIVATE</c> of a forced activation arrive that way). The message is kept from WPF
-/// and <c>WS_EX_NOACTIVATE</c> is applied again at once, and the judgment is deferred: once the UI thread has
-/// delivered what it had queued and, if the foreground is still outside the process, once more after
-/// <c>Timings.Windowing.ActivationRecheck</c>. A window of this process in front without a lease then is one
-/// violation, reported from there; anything else was a late message and counts nothing. One forced activation is
-/// exactly one violation either way.
+/// <c>WM_ACTIVATEAPP(TRUE)</c> reaches every top-level window of the thread, also when a window that is not a surface
+/// (the Control Center under its lease) is the one activated, so it only counts on the surface that owns the
+/// foreground. A violating <c>WM_ACTIVATE</c> is kept from WPF and <c>DefWindowProc</c> (no focus moves in), and so is
+/// its matching <c>WA_INACTIVE</c>.
 /// </para>
 /// </remarks>
 public sealed class ActivationGuard
@@ -58,15 +39,13 @@ public sealed class ActivationGuard
 
     private readonly Func<WindowToken> _foregroundWindow;
     private long _violations;
-    private NonActivatingWindow? _openViolation;
-    private bool _applicationActive;
-    private NonActivatingWindow? _pendingSurface;
-    private ActivationMessage _pendingMessage;
-    private ActivationCause _pendingCause;
-    private int _pendingGeneration;
-    private ITimer? _recheck;
-    private ITimer? _watch;
-    private bool _lastSeenOutside;
+
+    // The restoration asked for and not yet handed to the arbiter. Only touched on the UI thread.
+    private ActivationViolation? _pending;
+
+    // Surfaces whose WM_ACTIVATE (not WA_INACTIVE) was kept from WPF: their WA_INACTIVE is kept too, so WPF never sees
+    // the end of an activation it did not see begin. Only touched on the UI thread.
+    private readonly HashSet<NonActivatingWindow> _keptActivations = [];
 
     /// <summary>Creates the guard that reports to <paramref name="arbiter"/> and stamps with <paramref name="timeProvider"/>.</summary>
     public ActivationGuard(IActivationArbiter arbiter, TimeProvider timeProvider)
@@ -97,24 +76,22 @@ public sealed class ActivationGuard
     /// <summary>Violations detected since the process started (<see cref="MetricName"/>).</summary>
     public long Violations => Interlocked.Read(ref _violations);
 
-    /// <summary>Raised on the UI thread after each violation has been reported and repaired.</summary>
+    /// <summary>Raised on the UI thread after each violation has been counted and repaired.</summary>
     public event EventHandler<ActivationViolationEventArgs>? ViolationDetected;
 
     /// <summary>The orchestrator side that decides whether an activation is leased.</summary>
     public IActivationArbiter Arbiter { get; }
 
-    /// <summary>Clock for <see cref="ActivationViolation.DetectedAt"/> and for the deferred judgment.</summary>
+    /// <summary>Clock for <see cref="ActivationViolation.DetectedAt"/>.</summary>
     public TimeProvider Clock { get; }
 
     /// <summary>
     /// Called by the common hook of <paramref name="surface"/> for each activation message. Returns true when the
-    /// message is kept from WPF: the first message of a violation, which has been reported, repaired and counted; the
-    /// later messages of the same activation, which do not count again; and a message for a surface that does not own
-    /// the foreground while the foreground is outside the process, whose judgment is deferred.
+    /// message is a violation and must be kept from WPF.
     /// </summary>
     /// <param name="surface">The surface that received the message.</param>
     /// <param name="message">Which activation message.</param>
-    /// <param name="probableCause">What the hook saw just before (DPI change, topmost, show).</param>
+    /// <param name="probableCause">What the hook saw just before (DPI change, topmost, show, another app).</param>
     public bool OnActivated(
         NonActivatingWindow surface,
         ActivationMessage message,
@@ -128,155 +105,70 @@ public sealed class ActivationGuard
             return false;
         }
 
-        if (message == ActivationMessage.ActivateApp && !_applicationActive)
-        {
-            // WM_ACTIVATEAPP(TRUE) reaches this thread only when the application was inactive, first of all the
-            // messages of an activation. A violation still open here belongs to an earlier activation whose end never
-            // arrived (a lost deactivation, a late message after the restore): it is over, and this activation must
-            // be judged on its own instead of being swallowed as part of it. So is a deferred judgment: the messages
-            // of this activation decide.
-            _applicationActive = true;
-            CloseViolation();
-            ClearPending();
-        }
-
         if (Arbiter.IsActivationLeased(window))
         {
+            if (message == ActivationMessage.Activate)
+            {
+                // WPF sees this activation begin, so it must see its end.
+                _ = _keptActivations.Remove(surface);
+            }
+
             return false;
         }
 
-        var foreground = _foregroundWindow();
-        var ownsForeground = foreground == window;
-        var outside = !ownsForeground && !IsTakenByThisProcess(foreground);
-        if (outside)
+        if (message == ActivationMessage.ActivateApp && _foregroundWindow() != window)
         {
-            // The foreground is outside the process: whatever was open has ended.
-            CloseViolation();
-            _lastSeenOutside = true;
-        }
-
-        if (message == ActivationMessage.ActivateApp && !ownsForeground)
-        {
-            // Another window of this thread is being activated: its own messages decide.
+            // Another window of this thread is the one being activated: its own messages decide.
             return false;
         }
 
-        if (_openViolation is not null)
+        surface.ReapplyNonActivation();
+        if (message == ActivationMessage.Activate)
         {
-            return true;
+            _ = _keptActivations.Add(surface);
         }
 
-        if (outside)
-        {
-            // The foreground is outside the process: a late message, or an activation not confirmed yet. Keep it from
-            // WPF, repair, and judge it once the thread has caught up.
-            surface.ReapplyNonActivation();
-            Defer(surface, message, probableCause);
-            return true;
-        }
-
-        Report(surface, message, probableCause);
+        RequestRestore(surface, message, probableCause);
         return true;
     }
 
     /// <summary>
     /// Called by the common hook for <c>WM_ACTIVATE(WA_INACTIVE)</c>, <c>WM_NCACTIVATE(FALSE)</c> and
-    /// <c>WM_ACTIVATEAPP(FALSE)</c>: closes the open violation when its surface is deactivated, the whole application
-    /// loses the activation, or the foreground is already outside the process. Returns true for the
-    /// <c>WA_INACTIVE</c> that ends an activation the hook kept from WPF, so the hook keeps that one too.
+    /// <c>WM_ACTIVATEAPP(FALSE)</c>. Returns true for the <c>WA_INACTIVE</c> that ends an activation the hook kept from
+    /// WPF, so the hook keeps that one too.
     /// </summary>
-    internal bool OnDeactivated(NonActivatingWindow surface, ActivationMessage message)
-    {
-        if (message == ActivationMessage.ActivateApp)
-        {
-            _applicationActive = false;
-        }
+    internal bool OnDeactivated(NonActivatingWindow surface, ActivationMessage message) =>
+        message == ActivationMessage.Activate && _keptActivations.Remove(surface);
 
-        var open = _openViolation;
-        if (open is null)
-        {
-            return false;
-        }
-
-        var sameSurface = ReferenceEquals(open, surface);
-        var outside = !IsTakenByThisProcess(_foregroundWindow());
-        _lastSeenOutside |= outside;
-        if (
-            message == ActivationMessage.ActivateApp
-            || (sameSurface && message == ActivationMessage.Activate)
-            || outside
-        )
-        {
-            CloseViolation();
-        }
-
-        return sameSurface && message == ActivationMessage.Activate;
-    }
-
-    /// <summary>A destroyed surface can no longer be deactivated: its open violation ends with it.</summary>
-    internal void Forget(NonActivatingWindow surface)
-    {
-        if (ReferenceEquals(_openViolation, surface))
-        {
-            CloseViolation();
-        }
-
-        if (ReferenceEquals(_pendingSurface, surface))
-        {
-            ClearPending();
-        }
-    }
-
-    private static bool IsOfThisProcess(WindowToken window)
-    {
-        _ = PInvoke.GetWindowThreadProcessId((HWND)window.Handle, out var processId);
-        return processId != 0 && processId == (uint)Environment.ProcessId;
-    }
+    /// <summary>A destroyed surface will never be deactivated.</summary>
+    internal void Forget(NonActivatingWindow surface) => _ = _keptActivations.Remove(surface);
 
     /// <summary>
-    /// True when <paramref name="foreground"/> is a window of this process that no lease lets activate: the
-    /// foreground was taken from the app in front.
+    /// Counts the violation and queues one restoration request, unless one is already queued: then this activation
+    /// joins it.
     /// </summary>
-    private bool IsTakenByThisProcess(WindowToken foreground) =>
-        !foreground.IsNone
-        && IsOfThisProcess(foreground)
-        && !Arbiter.IsActivationLeased(foreground);
-
-    /// <summary>Opens, reports, repairs and counts one violation of <paramref name="surface"/>.</summary>
-    private void Report(
+    private void RequestRestore(
         NonActivatingWindow surface,
         ActivationMessage message,
         ActivationCause probableCause
     )
     {
-        ClearPending();
-        _openViolation = surface;
-        Watch(surface);
+        if (_pending is not null)
+        {
+            return;
+        }
 
-        // Nothing the surfaces did explains it, and the last look at the foreground found it in another application:
-        // the activation came from outside (a lone WM_NCACTIVATE, without the WM_ACTIVATEAPP that notes it, in S1).
-        var cause =
-            probableCause == ActivationCause.Unknown && _lastSeenOutside
-                ? ActivationCause.External
-                : probableCause;
-        _lastSeenOutside = false;
         var violation = new ActivationViolation(
             surface.Id,
             surface.SurfaceWindow,
             message,
-            cause,
+            probableCause,
             Clock.GetUtcNow()
         );
-        try
-        {
-            Arbiter.ReportViolation(violation);
-        }
-        finally
-        {
-            surface.ReapplyNonActivation();
-            Record(violation);
-        }
-
+        _pending = violation;
+        _ = surface.Dispatcher.InvokeAsync(SendPending, DispatcherPriority.Send);
+        Interlocked.Increment(ref _violations);
+        ViolationDetected?.Invoke(this, new ActivationViolationEventArgs(violation));
         Debug.Fail(
             string.Create(
                 CultureInfo.InvariantCulture,
@@ -285,121 +177,14 @@ public sealed class ActivationGuard
         );
     }
 
-    /// <summary>
-    /// Keeps the first message of an unconfirmed activation and queues its judgment behind what the UI thread has
-    /// already queued. Later messages of the same activation join the pending one.
-    /// </summary>
-    private void Defer(
-        NonActivatingWindow surface,
-        ActivationMessage message,
-        ActivationCause probableCause
-    )
+    /// <summary>Hands the queued request to the arbiter, which restores from the thread pool and returns at once.</summary>
+    private void SendPending()
     {
-        if (_pendingSurface is not null)
+        var violation = _pending;
+        _pending = null;
+        if (violation is not null)
         {
-            return;
+            Arbiter.ReportViolation(violation);
         }
-
-        _pendingSurface = surface;
-        _pendingMessage = message;
-        // The foreground was in another application when the message arrived: unless the surfaces were doing
-        // something that explains it, the activation came from outside.
-        _pendingCause =
-            probableCause == ActivationCause.Unknown ? ActivationCause.External : probableCause;
-        var generation = ++_pendingGeneration;
-        _ = surface.Dispatcher.InvokeAsync(
-            () => Judge(generation, final: false),
-            DispatcherPriority.Background
-        );
-    }
-
-    /// <summary>
-    /// The deferred judgment: a window of this process in front without a lease is one violation; otherwise, the first
-    /// time, one more look after <c>Timings.Windowing.ActivationRecheck</c>, and the second time it was a late message.
-    /// </summary>
-    private void Judge(int generation, bool final)
-    {
-        var surface = _pendingSurface;
-        if (surface is null || generation != _pendingGeneration)
-        {
-            return;
-        }
-
-        if (_openViolation is not null || surface.SurfaceWindow.IsNone)
-        {
-            // Counted meanwhile by the messages of the same activation, or the surface is gone.
-            ClearPending();
-            return;
-        }
-
-        if (IsTakenByThisProcess(_foregroundWindow()))
-        {
-            Report(surface, _pendingMessage, _pendingCause);
-            return;
-        }
-
-        _lastSeenOutside = true;
-        if (final)
-        {
-            ClearPending();
-            return;
-        }
-
-        var dispatcher = surface.Dispatcher;
-        _recheck?.Dispose();
-        _recheck = Clock.CreateTimer(
-            _ => _ = dispatcher.InvokeAsync(() => Judge(generation, final: true)),
-            null,
-            Timings.Windowing.ActivationRecheck,
-            Timeout.InfiniteTimeSpan
-        );
-    }
-
-    /// <summary>
-    /// While a violation is open, looks at the foreground every <c>Timings.Windowing.ActivationRecheck</c> and closes
-    /// the violation once the foreground is outside the process (the restore worked, or the user switched apps), so a
-    /// lost deactivation message cannot keep it open and swallow the next activation.
-    /// </summary>
-    private void Watch(NonActivatingWindow surface)
-    {
-        var dispatcher = surface.Dispatcher;
-        _watch?.Dispose();
-        _watch = Clock.CreateTimer(
-            _ => _ = dispatcher.InvokeAsync(CloseIfForegroundLeft),
-            null,
-            Timings.Windowing.ActivationRecheck,
-            Timings.Windowing.ActivationRecheck
-        );
-    }
-
-    private void CloseIfForegroundLeft()
-    {
-        if (_openViolation is not null && !IsTakenByThisProcess(_foregroundWindow()))
-        {
-            CloseViolation();
-            _lastSeenOutside = true;
-        }
-    }
-
-    private void CloseViolation()
-    {
-        _openViolation = null;
-        _watch?.Dispose();
-        _watch = null;
-    }
-
-    private void ClearPending()
-    {
-        _pendingSurface = null;
-        _pendingGeneration++;
-        _recheck?.Dispose();
-        _recheck = null;
-    }
-
-    /// <summary>Counts <paramref name="violation"/> and raises <see cref="ViolationDetected"/>.</summary>
-    private void Record(ActivationViolation violation)
-    {
-        Interlocked.Increment(ref _violations);
-        ViolationDetected?.Invoke(this, new ActivationViolationEventArgs(violation));
     }
 }

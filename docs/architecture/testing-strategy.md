@@ -11,11 +11,27 @@ en [§10 del plano](blueprint.md#10-calidad).
 2. **Todo requisito verificado deja rastro.** Una prueba que verifica un requisito del catálogo lleva su
    identificador (ver [Trazabilidad](#trazabilidad-requisito--prueba)).
 3. **Determinismo.** Todo lo que depende del tiempo usa `TimeProvider` (`FakeTimeProvider` en las
-   pruebas); ninguna prueba unitaria depende del reloj, de la red ni del escritorio.
+   pruebas); ninguna prueba que bloquee un PR depende del reloj real, del azar, de la red ni del escritorio
+   (ver [Niveles de pruebas](#niveles-de-pruebas)).
 4. **La verdad física la da InputProbe.** Las pruebas de integración comprueban lo que recibe una ventana
    Win32 instrumentada, no lo que Clícalo cree que envió.
-5. **Sin reintentos en unitarias ni en UI en proceso.** Una prueba inestable se arregla o se pone en
-   cuarentena con un *issue* (ver [Pruebas inestables](#pruebas-inestables)).
+5. **Sin reintentos.** Una prueba inestable se arregla o se pone en cuarentena con un *issue* (ver
+   [Pruebas inestables](#pruebas-inestables)).
+
+## Niveles de pruebas
+
+Decisión del usuario del 2026-10-05: simplicidad primero. Los requisitos del catálogo no cambian (REG-01 y
+REG-03 se siguen verificando); cambia cuándo se ejecuta cada prueba.
+
+| Nivel | Qué ejecuta | Cuándo | Si falla |
+|---|---|---|---|
+| **PR** | `cl check` (trabajo `verify`): pruebas deterministas, sin `Requires=Desktop`, `Category=Chaos`, `Category=Perf` ni `Category=Quarantine` | Cada PR y cada *push* a `main` | Bloquea la fusión |
+| **Nocturno** | [`nightly.yml`](../../.github/workflows/nightly.yml): `cl desk` (escritorio, caos incluido), `cl perf` (presupuestos de `budgets.json`) y `cl quarantine` | Cada día, y a mano (Actions › nightly › *Run workflow*, con una rama o `refs/pull/<n>/head` para probar el escritorio de un PR) | Abre o comenta el *issue* con la etiqueta `nightly`; no bloquea |
+| **Publicación** | Todo lo anterior en verde, más el equipo táctil (`lab.yml`) y la aceptación en hardware | Antes de cualquier versión, de M5 en adelante | No se publica |
+
+Las pruebas de escritorio, de tiempos reales, de caos y los bucles estadísticos van al nivel nocturno: llevan
+`[Trait("Requires", "Desktop")]`, `Category=Chaos` o `Category=Perf`. Una prueba sin escritorio que mida
+milisegundos reales no es determinista: se reescribe con `FakeTimeProvider` o se marca para el nocturno.
 
 ## Pirámide
 
@@ -26,8 +42,8 @@ De la base (más pruebas, más rápidas) a la cima (menos pruebas, en hardware r
 | Estáticas | Analizadores `CLC*`, generadores, ArchUnit, reglas de producto, esquemas, paridad i18n, contraste | — | Cada PR |
 | Unitarias y de propiedades | Domain, Application, Presentation e Infrastructure | 3000 o más | Cada PR |
 | UI en proceso (STA) | *Peers*, medidas, disposición S/M/L × 100–150 %, pseudolocalización, gestos con trazas, **instantáneas de renderizado** por estado | ~350 | Cada PR (x64; ARM64 cuando el repositorio sea público, ver [D-04](deviations.md#d-04--repositorio-privado-al-inicio)) |
-| Integración | Platform contra InputProbe; Windowing con puntero sintético | ~220 | Alojado interactivo o equipo táctil |
-| Rendimiento | Presupuestos de [§10.3](blueprint.md#103-presupuestos-de-rendimiento) | — | Tendencia en alojado; puerta en el equipo táctil |
+| Integración | Platform contra InputProbe; Windowing con puntero sintético | ~220 | Nocturno en alojado interactivo; equipo táctil |
+| Rendimiento | Presupuestos de [§10.3](blueprint.md#103-presupuestos-de-rendimiento) | — | Nocturno en alojado (puerta de toque → `SendInput`); puerta completa en el equipo táctil |
 | E2E | FlaUI sobre la app **publicada**: reglas UIA, árbol, no activación, recorridos | ~60 | Humo en alojado; completo en el equipo táctil |
 | Aceptación | docs/09 completo en hardware táctil real y guion manual de accesibilidad | Por versión | Equipo táctil del mantenedor |
 
@@ -42,7 +58,7 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 |---|---|---|
 | `Clicalo.Architecture.Tests` | Existe | Lista blanca de referencias, ArchUnit, matriz de módulos, facetas de `ActionKind`, enrutadores sin eventos huérfanos, R4 (destructivos), R7 (deshacer), escritor único |
 | `Clicalo.Data.Tests` | Existe | Esquemas, integridad referencial (`labelKey`, iconos, `KeyId`), contenido inicial sin repetidos, `keys.json` ↔ `keys.win32.json`, coherencia de `timings.json` |
-| `Clicalo.Domain.Tests` | Existe | Invariantes de `Library` y `KeyboardLedger`, `EngineReducer` (INV-1 a INV-12), `TouchFilter`, `GestureRecognizer`, `ActivationPolicy`, `DimPolicy`, resolución de perfil, Frecuentes, repetidos, tokenizador v1 |
+| `Clicalo.Domain.Tests` | Existe | Invariantes de `Library` y `KeyboardLedger`, `EngineReducer` (INV-1, INV-3 a INV-10 e INV-12), `TouchFilter`, `GestureRecognizer`, `ActivationPolicy`, `DimPolicy`, resolución de perfil, Frecuentes, repetidos |
 | `Clicalo.Application.Tests` | Existe | `DocumentStore`, `EngineHost` con `PhysicalStateInjector`, `ForegroundOrchestrator`, `TryNowUseCase`, coordinadores, programador de guardado |
 | `Clicalo.Generators.Tests` | Existe | Generadores y analizadores de Roslyn: salida determinista y diagnósticos con ubicación exacta en el JSON |
 | `Clicalo.Platform.IntegrationTests` | Existe | Inyección en los dos modos con varias distribuciones, *hook* LL bajo GC, `PointerPositionTracker`, sesión, portapapeles, lanzador, ACL de la tarea elevada |
@@ -51,10 +67,10 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 | `Clicalo.TestKit` | Existe (biblioteca) | `RepoPaths`, instantáneas de texto (`TextSnapshot`), reloj simulado (`TestTime`) y comprobación de `[Trait("Req")]` contra el catálogo |
 | `Clicalo.TestKit.Windows` | Existe (biblioteca) | Instantáneas de renderizado WPF (`RenderSnapshot`), sesiones de `tools/InputProbe` y un inyector de pruebas con barrera de seguridad |
 | `Clicalo.Presentation.Tests` | Previsto | ViewModels contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente |
-| `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación v1, `SafeZipReader`, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
+| `Clicalo.Infrastructure.Tests` | Previsto | DTO ↔ dominio, migraciones con *fixtures*, importación y exportación del formato propio, DPAPI, IA con servidor falso (4 campos exactos), `SignedManifestSource` |
 | `Clicalo.UI.Wpf.Tests` | Previsto | *Peers*, 44 px, disposición, pseudolocalización, contraste resuelto, instantáneas de renderizado |
 | `Clicalo.Windowing.IntegrationTests` | Existe (M1) | No activación de las superficies, `ActivationGuard` (prueba negativa), concesiones por origen, bandeja, `Upstream/` |
-| `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | *Ledger* v2 y relanzamiento; verificación tras la copia y `minSafeVersion` |
+| `Clicalo.Sentinel.Tests`, `Clicalo.Launcher.Tests` | Previstos | Sentinel con un estado de teclas y un `SendInput` falsos (soltado, reintentos y relanzamiento, ADR-0023); verificación tras la copia y `minSafeVersion` |
 | `Clicalo.E2E`, `Clicalo.Performance` | Previstos | Recorridos sobre la app publicada; presupuestos (`budgets.json`) |
 
 `Core.slnf` reúne Domain, Application y Presentation, los generadores que usan, sus pruebas y
@@ -123,7 +139,7 @@ Dónde se usan:
 - el texto visible de los 669 textos con argumentos de muestra, idéntico al del paquete (condición
   vinculante de [ADR-0011](../adr/0011-formato-i18n.md));
 - la salida de los generadores y los diagnósticos de los analizadores;
-- la importación v1 y las migraciones con *fixtures* por versión;
+- las migraciones del esquema propio con *fixtures* por versión;
 - el árbol UIA por ventana y estado (un cambio de accesibilidad aparece en el *diff*);
 - el renderizado (`RenderTargetBitmap`) por forma, tamaño S/M/L, tema, escala y estado, recorrido por
   `StateMatrixFixture`. `cl states` genera todas las instantáneas y abre la carpeta.
@@ -132,12 +148,13 @@ Dónde se usan:
 
 - El motor se prueba con secuencias de hasta 200 eventos generadas con CsCheck (toques, varios contactos,
   temporizadores, cambios de app, bloqueos, suspensiones, fallos de inyección, Modo prueba, teclas fijas y
-  los dos modos de inyección). En cada paso se comprueban INV-1 a INV-12
+  los dos modos de inyección). En cada paso se comprueban INV-1, INV-3 a INV-10 e INV-12
   ([§7.5 del plano](blueprint.md#75-invariantes-de-seguridad-de-teclas)).
-- «Muerte en cada paso» y «congelar y reanudar» usan el mismo `KeyLedger` que Sentinel.
+- La muerte real del proceso la cubre la prueba de caos nocturna de S9 (`Category=Chaos`, ADR-0023).
 - Los contraejemplos reducidos se guardan como pruebas de regresión.
-- Generadores de entradas hostiles (zips con bomba de compresión, rutas con `..`, cabeceras que mienten)
-  sobre `SafeZipReader`. Stryker.NET y SharpFuzz llegan después de la 2.0 (M7).
+- Generadores de entradas hostiles (documentos y perfiles compartidos enormes, anidados o con campos que
+  mienten) sobre el lector del documento y el de importación. Stryker.NET y SharpFuzz llegan después de la 2.0
+  (M7).
 
 ## Accesibilidad
 
@@ -161,21 +178,36 @@ Dónde se usan:
 
 ## Pruebas inestables
 
-- Ningún reintento en unitarias ni en UI en proceso.
-- Un reintento en las pruebas de escritorio, que abre un *issue* `flaky` automático.
-- Cuarentena de 14 días como máximo, siempre con *issue*.
-- Volcados, registros depurados y capturas de FlaUI se guardan como artefactos durante 14 días.
+- Ningún reintento, en ningún nivel.
+- Si una prueba falla y no es un defecto real del producto, se pone en cuarentena y se registra; no se
+  persigue en el mismo trabajo. Si es un defecto del producto, se corrige.
+- **Cómo se marca:** se abre un *issue* con la etiqueta `flaky` (qué falla, con qué frecuencia y el enlace a la
+  ejecución) y la prueba lleva, en el mismo archivo:
+
+  ```csharp
+  [Trait("Category", "Quarantine")]
+  [Trait("Issue", "123")] // número del issue de GitHub
+  ```
+
+  `cl check` la deja fuera y `cl quarantine` la ejecuta cada noche. `Build.Tests` (`QuarantineTests`) falla si
+  un archivo con la cuarentena no nombra su *issue*. Una medición (`Category=Perf`) no se pone en cuarentena: se
+  discute su presupuesto en `data/catalogs/budgets.json`.
+- **Cómo se sale:** se corrige la causa, se quitan los dos rasgos en el mismo PR que la corrección y se cierra
+  el *issue*. La cuarentena se revisa a los 14 días: o se corrige, o se borra la prueba con una propuesta que
+  explique cómo queda cubierto su requisito (los requisitos no se rebajan).
+- Los informes de `cl` y los resultados TRX de los trabajos fallidos se guardan como artefactos durante 14 días.
 
 ## Cómo ejecutarlas
 
 | Qué | Con `cl` | Con `dotnet` |
 |---|---|---|
-| Todas las pruebas | `cl test` | `dotnet test --solution Clicalo.slnx` |
+| Las pruebas deterministas (nivel PR) | `cl test` | `dotnet test --solution Clicalo.slnx --filter-not-trait Requires=Desktop --filter-not-trait Category=Chaos --filter-not-trait Category=Perf --filter-not-trait Category=Quarantine` |
 | Solo el núcleo (menos de 45 s) | `cl fast` | `dotnet test --solution Core.slnf` |
 | Un proyecto | — | `dotnet test --project tests/<Proyecto>/<Proyecto>.csproj` |
 | Integración de escritorio | `cl desk` | `CLICALO_DESKTOP_TESTS=1` y `dotnet test --solution Clicalo.slnx --filter-trait Requires=Desktop` |
 | Instantáneas de todos los estados | `cl states` | — |
 | Rendimiento | `cl perf` | — |
+| Cuarentena | `cl quarantine` | `CLICALO_DESKTOP_TESTS=1` y `dotnet test --solution Clicalo.slnx --filter-trait Category=Quarantine` |
 | Aceptación en hardware | `cl accept` | — |
 
 Los verbos de `cl` están descritos en [tooling.md](tooling.md#verbos-de-cl).

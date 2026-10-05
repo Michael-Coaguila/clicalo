@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/usage.schema.json",
+  "title": "Clícalo usage 1.0",
+  "description": "usage.json (blueprint §6.5, ADR-0007): the executions per shortcut, kept out of the document so counting a use never rewrites it. Same envelope as the document. A missing or unreadable file, or one of another usageEpoch, starts empty and is never quarantined.",
+  "type": "object",
+  "required": ["format", "schema", "writtenBy", "seq", "writtenAtUtc", "payloadSha256", "payload"],
+  "properties": {
+    "format": { "const": "clicalo.usage" },
+    "schema": {
+      "type": "object",
+      "required": ["major", "minor"],
+      "properties": { "major": { "type": "integer", "minimum": 1 }, "minor": { "type": "integer", "minimum": 0 } }
+    },
+    "writtenBy": { "type": "string", "minLength": 1 },
+    "seq": { "type": "integer", "minimum": 0 },
+    "writtenAtUtc": { "type": "string", "format": "date-time" },
+    "payloadSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "payload": {
+      "type": "object",
+      "required": ["usageEpoch"],
+      "properties": {
+        "usageEpoch": { "description": "Must match frequents.usageEpoch of the document.", "type": "integer", "minimum": 0 },
+        "usage": { "$ref": "#/$defs/usage" }
+      }
+    }
+  },
+  "$defs": {
+    "usage": {
+      "description": "Executions per shortcut id in Unix milliseconds, keys in ordinal order (FRE-002).",
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "integer" } }
+    }
+  }
+}

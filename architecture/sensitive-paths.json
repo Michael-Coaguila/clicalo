@@ -28,6 +28,11 @@
       "reason": "Named pipe with DACL, integrity label and two-way verification (ADR-0010)."
     },
     {
+      "pattern": "src/Clicalo.App/SingleInstance/**",
+      "category": "trust-boundary",
+      "reason": "M2 single instance in the composition root: the show-only pipe with its DACL and FirstPipeInstance, the client's check of the server's image, the server's check of the client's session, user and integrity, and the session mutex (ADR-0010). Moves to Platform.Windows/SingleInstance with the IPC of ImportFile and OpenUri."
+    },
+    {
       "pattern": "src/Clicalo.Application/Ipc/**",
       "category": "trust-boundary",
       "reason": "D13: the IPC server only depends on IShellNavigator (ADR-0010)."
@@ -78,19 +83,19 @@
       "reason": "Command line, clicalo:// links and IPC: breaking them needs a major version."
     },
     {
-      "pattern": "src/Clicalo.Platform.Core/KeyLedger/**",
-      "category": "process-model",
-      "reason": "Ledger v2 layout shared with Sentinel: generation, mode and flags (ADR-0004)."
-    },
-    {
       "pattern": "src/Clicalo.Platform.Core/Injection/**",
       "category": "process-model",
-      "reason": "InjectionGate and the generation fence (ADR-0004)."
+      "reason": "The only SendInput and the release of what Windows reports down, shared with Sentinel (ADR-0023)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Core/Guardian/**",
+      "category": "process-model",
+      "reason": "Start-up contract between Clicalo.exe and Sentinel (protocol 3) and the relaunch policy (ADR-0023)."
     },
     {
       "pattern": "src/Clicalo.Sentinel/**",
       "category": "process-model",
-      "reason": "Guardian process: release from the ledger and relaunch policy (ADR-0004)."
+      "reason": "Guardian process: release of what Windows reports down and relaunch policy (ADR-0023)."
     },
     {
       "pattern": "src/Clicalo.UI.Wpf/Clicalo.UI.Wpf.csproj",

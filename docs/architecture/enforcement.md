@@ -100,6 +100,7 @@ whitelist with a justification (docs/architecture/enforcement.md).
 | Solo Execution y el editor del CC llaman a `SecretText.WithRevealed` (más el motor y los mappers de persistencia) | `ConfinementRulesTests` |
 | Solo el rol Surfaces escribe en `SessionStore` e `InteractionStore` | `ConfinementRulesTests` |
 | `Application.Ipc` no depende de Engine ni de Foreground, y de Application solo usa `IShellNavigator` | `ConfinementRulesTests` |
+| D13 donde vive hoy el *pipe* de instancia única (`App.SingleInstance` y `Platform.Windows.SingleInstance`): ni motor, ni primer plano, ni almacén del documento, ni entrada; una prueba exige que la regla vea `ShowPipeServer` ([D-21](deviations.md#d-21--integración-de-m2)) | `ConfinementRulesTests` |
 | Ningún módulo usa el `.Internal` de otro | `InternalNamespaceTests` |
 | Matriz de módulos de §4.3 (`domain-modules.json`) | `ModuleMatrixTests` |
 | Tabla de APIs prohibidas, comprobada en el IL | `ConfinedApiTests` |
@@ -176,8 +177,8 @@ La prueba de facetas (§4.4 punto 5) recorre los subtipos de `ShortcutAction` y 
 
 ## 6. Reglas de producto
 
-- **R4 (REG-04):** `destructive-operations.json` es la lista cerrada de comandos destructivos y de casos de uso `[Destructive]`. Desde M0, `ProductRuleTests` exige que ningún tipo implemente `IDestructiveCommand` ni lleve `[Destructive]` sin estar en la lista, y que un tipo listado que exista los lleve. Un caso de uso puede llamarse `X` o `XUseCase`. La exigencia de que **todos** existan y la comprobación con CsCheck de que ningún comando no listado elimina entidades llegan con `DocumentStore` (M4, criterio de salida del hito).
-- **R7 (REG-07):** `undo-exemptions.json` lista los comandos exentos de `UndoIntent.Record`, cada uno con su justificación (`SetSetting` solo cuando el descriptor tiene `Undoable = false`). Desde M0 se exige que cada exención nombre un comando de documento. La prueba de comportamiento (aplicar cada comando a documentos generados) llega en M4.
+- **R4 (REG-04):** `destructive-operations.json` es la lista cerrada de comandos destructivos y de casos de uso `[Destructive]`. Desde M0, `ProductRuleTests` exige que ningún tipo implemente `IDestructiveCommand` ni lleve `[Destructive]` sin estar en la lista, y que un tipo listado que exista los lleve. Un caso de uso puede llamarse `X` o `XUseCase`. Desde M2 existen **todos** los comandos listados (`Every_listed_destructive_command_exists`), y la parte de comportamiento, que aplica cada comando del dominio a 10 000 documentos generados y comprueba que ningún comando no listado elimina entidades, está en `tests/Clicalo.Domain.Tests/Commands/ProductRuleBehaviourTests.cs` y, sobre el almacén, en `tests/Clicalo.Application.Tests/Store/DocumentStorePropertyTests.cs`.
+- **R7 (REG-07):** `undo-exemptions.json` lista los comandos exentos de `UndoIntent.Record`, cada uno con su justificación (`SetSetting` solo cuando el descriptor tiene `Undoable = false`). Desde M0 se exige que cada exención nombre un comando de documento. Desde M2, la prueba de comportamiento aplica cada comando a 10 000 documentos generados y comprueba que todo cambio de una entidad del usuario deja un paso de deshacer (`ProductRuleBehaviourTests`), y el almacén deshace porción a porción en 10 000 secuencias (`DocumentStorePropertyTests`).
 - **R5 (REG-05):** es la regla UIA010 de las pruebas de accesibilidad (§10.2), no una regla de este proyecto.
 
 ## Registros de apoyo

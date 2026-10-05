@@ -40,11 +40,11 @@ public sealed class EvidenceEvaluatorTests
     [Theory]
     [InlineData(1L, 150.0, true, 0)]
     [InlineData(0L, 150.0, true, 1)]
-    [InlineData(2L, 150.0, true, 1)]
+    [InlineData(2L, 150.0, true, 0)]
     [InlineData(1L, 250.0, true, 1)]
     [InlineData(1L, null, true, 1)]
     [InlineData(1L, 150.0, false, 1)]
-    public void A_forced_activation_must_count_once_come_back_in_budget_and_keep_the_style(
+    public void A_forced_activation_must_be_counted_come_back_in_budget_and_keep_the_style(
         long violations,
         double? restoredWithin,
         bool styleKept,

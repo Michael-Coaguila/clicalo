@@ -9,7 +9,9 @@ Spanish and English are published with each release.
 
 ## [Unreleased]
 
-Milestone M0 · Foundations and harness, and milestone M1 · blocking spikes S1, S3 and S4 (in progress).
+Milestone M0 · Foundations and harness, milestone M1 · blocking spikes S1, S3 and S4 (closed by the maintainer's
+decision on real evidence, see `docs/testing/spikes/M1-closure.md`), and milestone M2 · Walking skeleton (in
+progress).
 
 ### Added
 
@@ -98,3 +100,100 @@ Milestone M0 · Foundations and harness, and milestone M1 · blocking spikes S1,
 - `DesktopSessionLock` (`Global\Clicalo.DesktopTests`): one desktop test run or SpikeLab session at a time; the helper
   processes a desktop test starts run inside its session. The final line of `cl` counts the `total` of `dotnet test`
   (skipped tests said apart), read from one `<AssemblyName>.trx` per test module.
+- Milestone M2 contracts (bodies still `NotImplementedException`, split among five packages in
+  `docs/testing/spikes/M2-ownership.md`): the Domain core (`Primitives`, `Errors` with `Result<T>`, `Privacy` with
+  `SecretText`, normalized `KeyChord` and `CanonicalChord`, the `Library` model with every action kind and the
+  `ShortcutLibrary` aggregate, `UserSettings` with the ranges of docs/02, `UserDocument` with its invariants and undo
+  slices, the `Commands` module, `KeySafety`, `Execution` with the two-lane `EngineEvent`, `EngineEffect`,
+  `EngineReducer` and `ActivationPolicy`, and `Migration.V1`); Application (`DocumentStore` with undo,
+  `PersistenceScheduler`, `EngineHost` and its mailbox, `TwoStepConfirm` and `ConfirmationToken`, and the engine and
+  persistence ports); Platform.Core (the ledger v2 layout, `InjectionGate`, `LowLevelInjector` and the Sentinel start
+  contract); Infrastructure (the `major.minor` envelope, `AtomicFile`, quarantine, repositories, backups, the v1
+  importer and `SafeZipReader`); and Sentinel's guardian loop. ADR-0018 (accepted when M2 was integrated) fixes the Sentinel start contract,
+  the ledger v2 layout and the document envelope 1.0.
+- Test projects `Clicalo.Infrastructure.Tests`, `Clicalo.Sentinel.Tests` and `Clicalo.Performance`.
+- Milestone M2 implementation, integrated from the domain, engine, persistence, migration and app packages: the
+  library invariants, settings schema, frequents, duplicates, profile resolution, the 27 document commands and
+  `DocumentStore` with undo by slices and single-use confirmation tokens; the pure engine reducer and planners,
+  `EngineHost`, the ledger section, `InjectionGate` with the only `SendInput`, Sentinel and its supervisor, the
+  emergency release and the release on lock and suspend; atomic writes, the load and recovery chain, DPAPI texts,
+  backups, autosave and the redacting log; the v1 tokenizer, converter, reader and `SafeZipReader` with anonymized
+  real fixtures and the `anonymize-v1` DevCli verb; and `Clicalo.exe` with single instance, the minimal panel with its
+  panic strip, the tray, the seed or v1 migration on a first run, and the `cl run`, `cl note` and `cl perf` verbs.
+  Spikes S5, S7, S9 and S11 are tests; the chaos and performance runs are CI-only.
+- `Clicalo.App.Tests`, headless tests of the composition root, and 35 new texts in Spanish and English pending
+  ratification (catalog §6.1, R-11).
+- Corrections from the M2 verification. Engine (D-22, ADR-0019 proposed): the heartbeat and the engine's marks go
+  through the generation fence, so a zombie engine stops on its first turn; releases refused by the secure desktop are
+  sent again by «Release all», every terminal event and the return of the input desktop (UAC, Ctrl+Alt+Del); chords,
+  texts and clicks that `SendInput` takes only in part are balanced under the fence; the internal chords are sent by the
+  engine with its generation; without a running guardian the emergency never ends the process, and the panel says
+  that the key protection is off once Sentinel is no longer restarted; a key pressed again while its release is
+  pending is freed by its holder's release; suspending flushes the document, the usage and the queued copies, and a
+  flush its limit cuts leaves them pending for the autosave and the exit. Persistence and IPC (D-21): one persistence consumer that writes the copy
+  before a destructive change ahead of the document, the startup reads off the UI thread, retried seed and migration
+  saves, verified single-instance clients (session, user SID and integrity) and invariant D13 watched. Exit criteria
+  (D-23): `data/catalogs/budgets.json` with its schema and a required `perf (x64)` job that enforces the touch to
+  `SendInput` p95 of 50 ms, the manual `lab.yml` workflow, the tray test with the real Notepad in CI, a test that
+  rejects double-encoded text in every text file, and reduced counterexamples of the engine properties kept as
+  regressions.
+- Starter kit (user decision D2, ADR-0021): `data/content/starter.json` with its schema offers «Basics» (the
+  universal shortcuts of General and Always visible) marked by default and the nine templates unmarked;
+  `StarterLibrary` and the `FirstDocument` use case build the first document from a selection (nothing marked starts
+  empty, «Skip» applies the default), and `StarterContentFiles` loads and validates the kit, the seed and the
+  templates at run time. Two new texts in Spanish and English, `kitBasics` and `kitBasicsD` (the description, R-15 in
+  §6.1 of the catalog, ratified by the user on 2026-10-03).
+- `docs/architecture/contracts.md`: the command-line contracts between `Clicalo.exe` and Sentinel (protocol 2, the
+  relaunch and Sentinel's exit codes).
+
+### Changed
+
+- A first start installs the default starter kit («Basics» only) with new ids for every shortcut, instead of the raw
+  seed with its catalog ids; the `content` folder next to `Clicalo.exe` now also holds `starter.json` and the
+  templates. `Infrastructure.Content.SeedDocument` is replaced by `Infrastructure.Catalogs`.
+- Templates bind several processes (PQ-45 decided): Browser binds Chrome, Edge, Firefox, Brave and Opera and Mail
+  binds classic Outlook and the new Outlook (`olk.exe`); templates install the variant of the programs language. After
+  checking each program's official documentation, Browser reloads with Ctrl+R, Mail creates with Ctrl+N and sends with
+  Ctrl+Enter, and «Video call» is renamed «Zoom», since its shortcuts are Zoom's.
+- Sentinel resends a key release refused by the secure desktop every heartbeat until the session is unlocked, and
+  relaunches Clícalo only afterwards; other refusals are retried for at most `Timings.Guardian.RefusedReleaseWait`
+  (30 s). A resend never separates the menu mask from its Alt or Win key. The Sentinel start-up contract moves to
+  protocol 2 with a seventh argument, `--refused-release-wait-ms` (ADR-0018, user decision D3 of 2026-10-03).
+- The simple guardian (ADR-0023, proposed) replaces the shared-memory ledger, `InjectionGate`, the generation fence,
+  the emergency release, the engine heartbeat and Sentinel's protocol 2: Sentinel waits for Clícalo to end, releases
+  whatever Windows reports down (retrying every `Timings.Guardian.ReleaseRetryInterval` while refused or locked) and
+  only then relaunches it after an abnormal exit (protocol 3). «Soltar todo» in the tray also releases without the
+  engine.
+- `ActivationGuard` asks for one restore per unleased activation, joined while it is queued, and the violation restore
+  retries once and then flashes the app (ADR-0024); `Windowing.ActivationRecheck` is removed.
+- Test tiers: `cl check`, `cl test` and `cl fast` run only deterministic tests; the desktop, chaos, performance and
+  quarantined tests (`cl quarantine`) run in `nightly.yml` and must pass before every release. The `desk (x64)` and
+  `perf (x64)` jobs leave `pr.yml`.
+
+### Removed
+
+- The import from Macro Quick Access v1, by the user's decision D1 of 2026-10-03 (ADR-0020, catalog §6.2): Clícalo
+  no longer reads `profiles.json` v1, its language backups or its `.zip`. Removed the `Clicalo.Domain.Migration.V1`
+  module, `V1Reader`, `V1Importer` and `SafeZipReader`, the `--migrate-v1` option and the `migration-v1.pending`
+  mark, the `v1-original` backup kind, the `anonymize-v1` DevCli verb, the v1 tests and anonymized fixtures, the
+  `Timings.Import.Zip*`, `Timings.Import.V1Max*` and `Timings.Backups.MigrationCardVisibility` limits, and the texts
+  `migT` and `migD` (now `retired` in `data/i18n/handoff-import.json`) with `migTProfiles`, `migTShortcuts`,
+  `migFailT`, `migFailD`, `migRetry` and `migReportT`. The import and export of Clícalo's own format and the
+  migrations between versions of its own schema are unchanged; requirements MIG-001 to MIG-009, BIE-002, COP-001 and
+  EC-MIG-01 to EC-MIG-05 are retired and REG-08 no longer covers a v1 migration.
+
+### Fixed
+
+- REG-01: a forced activation of a surface could get past `ActivationGuard` when Windows gave the foreground back
+  without deactivating the panel, and the panel kept the foreground. A violation now ends with its burst, a repeated
+  activation message or a deactivation, and the WA_INACTIVE of a leased activation reaches WPF whole (D-15).
+  `ForegroundOrchestrator` confirms an attempt at the first look that finds the window (every new
+  `Timings.Foreground.RestoreVerifyInterval`, 5 ms) or at the monitor's report, never retries over an app the user
+  switched to, and a queued violation restore does nothing once the violation is over (D-17).
+- Test harness: the `Clicalo.Application.Tests` hang (the fake clock moved before a delay was armed), the rights
+  hotkey wait measured on the timer's own clock, the high contrast tree read after the window template is applied
+  again, the panel tap latency measured with one synthetic device per kind and a checked warm-up tap (D-24), and COM
+  diagnostics in the out-of-process UIA client.
+- Build: `Clicalo.Launcher` now declares both shipped runtimes like `Clicalo.Sentinel`, so its lock file holds the
+  `win-arm64` graph too and the locked restore no longer fails with NU1004 on ARM64 (ADR-0022). `ShippedRuntimeTests`
+  checks every executable under `src/`.

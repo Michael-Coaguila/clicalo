@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Timing;
 using Clicalo.Platform.IntegrationTests.Desktop;
@@ -166,13 +167,23 @@ public sealed class ForegroundAdapterTests : IClassFixture<ForegroundDesktopFixt
     {
         _foreground.RequireRegisteredHotkey();
         var started = Stopwatch.GetTimestamp();
+        var timerStarted = TimerClockMilliseconds();
 
         var arrived = await _foreground.Hotkey.WaitForRightsAsync(Cancellation);
 
+        var timerElapsed = TimerClockMilliseconds() - timerStarted;
+        var elapsed = Stopwatch.GetElapsedTime(started);
         arrived.ShouldBeFalse();
-        Stopwatch
-            .GetElapsedTime(started)
-            .ShouldBeGreaterThanOrEqualTo(Timings.Foreground.RightsHotkeyTimeout);
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"Wait ended after {timerElapsed} ms of the timer clock, {elapsed.TotalMilliseconds:0.00} ms of Stopwatch"
+            )
+        );
+        timerElapsed.ShouldBeGreaterThanOrEqualTo(
+            (long)Timings.Foreground.RightsHotkeyTimeout.TotalMilliseconds,
+            "the wait never gives up before RightsHotkeyTimeout on the clock its timer runs on"
+        );
     }
 
     [DesktopFact]
@@ -204,6 +215,24 @@ public sealed class ForegroundAdapterTests : IClassFixture<ForegroundDesktopFixt
 
         icon.IsShown.ShouldBeTrue("Shell_NotifyIcon(NIM_ADD) accepted the 64-bit NOTIFYICONDATAW");
     }
+
+    /// <summary>
+    /// The clock that decides when a <see cref="TimeProvider.System"/> timer fires, in whole milliseconds: .NET's timer
+    /// queue reads <c>QueryUnbiasedInterruptTime</c>, truncated to the millisecond, when it arms a timer and when it
+    /// checks it, and fires once the difference reaches the due time. That clock only advances on each clock interrupt,
+    /// so against <see cref="Stopwatch"/> (QPC) a timer can fire up to one interrupt period plus one millisecond early:
+    /// the s0 runs of 2026-10-03 saw this wait end at 499.67 ms and 499.13 ms of Stopwatch.
+    /// </summary>
+    private static long TimerClockMilliseconds()
+    {
+        QueryUnbiasedInterruptTime(out var hundredNanoseconds).ShouldBeTrue();
+        return (long)(hundredNanoseconds / 10_000);
+    }
+
+    [DllImport("kernel32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryUnbiasedInterruptTime(out ulong unbiasedTime);
 
     /// <summary>Lets the out-of-context WinEvents queued so far reach the SysEvents thread.</summary>
     private async Task SettleAsync()

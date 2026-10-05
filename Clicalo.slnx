@@ -17,13 +17,17 @@
     <Project Path="generators/Clicalo.Generators/Clicalo.Generators.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Clicalo.App.Tests/Clicalo.App.Tests.csproj" />
     <Project Path="tests/Clicalo.Application.Tests/Clicalo.Application.Tests.csproj" />
     <Project Path="tests/Clicalo.Architecture.Tests/Clicalo.Architecture.Tests.csproj" />
     <Project Path="tests/Clicalo.Data.Tests/Clicalo.Data.Tests.csproj" />
     <Project Path="tests/Clicalo.DevCli.Tests/Clicalo.DevCli.Tests.csproj" />
     <Project Path="tests/Clicalo.Domain.Tests/Clicalo.Domain.Tests.csproj" />
     <Project Path="tests/Clicalo.Generators.Tests/Clicalo.Generators.Tests.csproj" />
+    <Project Path="tests/Clicalo.Infrastructure.Tests/Clicalo.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Clicalo.Performance/Clicalo.Performance.csproj" />
     <Project Path="tests/Clicalo.Platform.IntegrationTests/Clicalo.Platform.IntegrationTests.csproj" />
+    <Project Path="tests/Clicalo.Sentinel.Tests/Clicalo.Sentinel.Tests.csproj" />
     <Project Path="tests/Clicalo.TestKit/Clicalo.TestKit.csproj" />
     <Project Path="tests/Clicalo.TestKit.Windows/Clicalo.TestKit.Windows.csproj" />
     <Project Path="tests/Clicalo.Windowing.IntegrationTests/Clicalo.Windowing.IntegrationTests.csproj" />

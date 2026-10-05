@@ -44,7 +44,7 @@ public sealed class VerbCatalogTests
             .ShouldBeEmpty();
 
     [Fact]
-    public void M0_delivers_the_inner_loop_and_the_gate() =>
+    public void M0_delivers_the_inner_loop_and_the_gate_and_M2_the_app_verbs() =>
         VerbCatalog.Available.ShouldBe([
             "setup",
             "build",
@@ -57,7 +57,17 @@ public sealed class VerbCatalogTests
             "i18n-check",
             "i18n-import",
             "adr-check",
+            "run",
+            "note",
+            "perf",
+            "quarantine",
         ]);
+
+    [Fact]
+    public void No_planned_verb_belongs_to_a_milestone_already_delivered() =>
+        VerbCatalog
+            .Future.Select(verb => verb.Name)
+            .ShouldNotContain("run", StringComparer.Ordinal);
 
     [Fact]
     public void Planned_verbs_name_a_later_milestone_of_the_roadmap()

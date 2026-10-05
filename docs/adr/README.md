@@ -60,6 +60,13 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0015](0015-licencia-mit-y-dco.md) | Licencia MIT y DCO | Aceptado | 2026-09-25 |
 | [0016](0016-soporte-de-windows-10.md) | Soporte completo de Windows 10 22H2 en la 2.x con revisión en 2027 | Aceptado | 2026-09-25 |
 | [0017](0017-sin-plugins-de-codigo.md) | Sin *plugins* de código: extensibilidad solo por datos | Aceptado | 2026-09-25 |
+| [0018](0018-contratos-de-sentinel-ledger-y-envoltorio.md) | Contratos de M2: arranque de Sentinel (protocolo 2), *ledger* v2, envoltorio del documento 1.0 y reintento del soltado rechazado con la sesión bloqueada (decisión D3 del usuario) | Aceptado | 2026-09-26 |
+| [0019](0019-valla-en-las-escrituras-del-motor-y-reenvio-de-liberaciones.md) | Valla en las escrituras del motor, reenvío de liberaciones rechazadas y emergencia sin guardián | Propuesto | 2026-09-26 |
+| [0020](0020-sin-migracion-desde-macro-quick-access.md) | Sin migración desde Macro Quick Access v1 (decisión D1 del usuario; sustituye la parte v1 de ADR-0007 y de D11) | Aceptado | 2026-10-03 |
+| [0021](0021-kit-inicial-y-perfiles-con-varios-procesos.md) | Kit inicial como dato versionado y perfiles vinculados a varios procesos (decisión D2 del usuario) | Aceptado | 2026-10-03 |
+| [0022](0022-runtimes-publicados-del-launcher.md) | `Clicalo.Launcher` restaura y publica para los dos runtimes distribuidos | Aceptado | 2026-10-05 |
+| [0023](0023-guardian-simple.md) | Guardián simple: Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia (sustituye partes de ADR-0004, ADR-0018 y ADR-0019) | Aceptado | 2026-10-05 |
+| [0024](0024-vigilante-de-foco-simple.md) | Vigilante de foco simple: una restauración por activación sin concesión, coalescida mientras haya una en cola (precisa ADR-0005) | Aceptado | 2026-10-05 |
 
 El hito M0 exige expresamente los ADR 0001, 0002 y 0015
 ([§14 del plano](../architecture/blueprint.md#14-hoja-de-ruta-por-hitos)); el resto recoge las demás

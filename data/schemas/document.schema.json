@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/document.schema.json",
+  "title": "Clícalo document 1.0",
+  "description": "clicalo.json and every backup (blueprint §6.5, ADR-0007, ADR-0018): the envelope and the payload of schema 1.0. A later minor only adds optional members, which an older version keeps when rewriting; a greater major is never written by an older version. Also defines the shared profile of DAT-007 ($defs/profileShare).",
+  "type": "object",
+  "required": ["format", "schema", "writtenBy", "seq", "writtenAtUtc", "payloadSha256", "payload"],
+  "properties": {
+    "format": { "const": "clicalo.document" },
+    "schema": { "$ref": "#/$defs/schemaVersion" },
+    "writtenBy": { "description": "Version of the app that wrote the file.", "type": "string", "minLength": 1 },
+    "seq": { "description": "Raised on every write; the recovery chain prefers the greatest.", "type": "integer", "minimum": 0 },
+    "writtenAtUtc": { "type": "string", "format": "date-time" },
+    "payloadSha256": {
+      "description": "Lower-case hex SHA-256 of the compact serialization of payload; it detects damage, it is not security.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "payload": { "$ref": "#/$defs/payload" }
+  },
+  "$defs": {
+    "schemaVersion": {
+      "type": "object",
+      "required": ["major", "minor"],
+      "properties": {
+        "major": { "type": "integer", "minimum": 1 },
+        "minor": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "id": { "description": "Opaque, stable and unique in the whole document (DAT-004).", "type": "string", "minLength": 1 },
+    "localizedText": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]{2}(-[A-Z]{2})?$" },
+      "additionalProperties": { "type": "string" }
+    },
+    "keyChord": {
+      "description": "Keys in press order (EJE-003): a canonical key id, with @left or @right when the stroke names a side.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^(?:[a-z0-9]+(?:\\.[a-z0-9]+)*|char:[^\\sA-Za-z0-9])(?:@left|@right)?$" }
+    },
+    "text": {
+      "description": "A text at rest (LOG-003): DPAPI CurrentUser with the entropy Clicalo.Text.v1, or unavailable (COP-005). A plain string is read (fixtures, a profile shared in clear) and written only in a profile shared in clear.",
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["enc"],
+          "properties": {
+            "enc": { "enum": ["dpapi.v1", "unavailable", "excluded"] },
+            "blob": { "type": "string", "contentEncoding": "base64" },
+            "len": { "type": "integer", "minimum": 0 },
+            "private": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "catalogRef": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "version": { "type": "string" },
+        "item": { "type": "string" }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "settings": { "$ref": "#/$defs/settings" },
+        "always": {
+          "type": "object",
+          "properties": { "shortcuts": { "type": "array", "items": { "$ref": "#/$defs/shortcut" } } }
+        },
+        "profiles": { "type": "array", "items": { "$ref": "#/$defs/profile" } },
+        "frequents": {
+          "type": "object",
+          "properties": {
+            "pins": { "type": "array", "items": { "type": "string" } },
+            "hidden": { "type": "array", "items": { "type": "string" } },
+            "usageEpoch": { "description": "Must match usage.json; «Reset Frequents» raises it.", "type": "integer", "minimum": 0 }
+          }
+        },
+        "dupIgnored": {
+          "description": "Repeated combinations marked «It's fine», as CanonicalChord.ToStableString (ADR-0018, point 4).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "onboarding": { "type": "object", "properties": { "completed": { "type": "boolean" } } },
+        "usage": {
+          "description": "Only in backups: the usage of that moment (§6.8).",
+          "$ref": "usage.schema.json#/$defs/usage"
+        }
+      }
+    },
+    "settings": {
+      "description": "Every setting (DAT-001, docs/02 names). Each one is optional: a missing one takes its default.",
+      "type": "object",
+      "properties": {
+        "lang": { "type": "string" },
+        "theme": { "enum": ["auto", "dark", "light", "hc"] },
+        "density": { "enum": ["full", "compact", "dock"] },
+        "size": { "enum": ["S", "M", "L"] },
+        "cols": { "type": "integer" },
+        "rowsPref": { "type": "integer" },
+        "textScale": { "type": "integer" },
+        "opacity": { "type": "number" },
+        "autoDim": { "type": "boolean" },
+        "dimTo": { "type": "number" },
+        "showKeys": { "type": "boolean" },
+        "voiceNumbers": { "type": "boolean" },
+        "stickyModsRow": { "type": "boolean" },
+        "showStripRow": { "type": "boolean" },
+        "showTabsRow": { "type": "boolean" },
+        "reduceMotion": { "type": "boolean" },
+        "feedback": {
+          "type": "object",
+          "properties": { "sound": { "type": "boolean" }, "flash": { "type": "boolean" } }
+        },
+        "lockProfile": { "type": "boolean" },
+        "lastProfile": { "type": ["string", "null"] },
+        "dock": {
+          "type": "object",
+          "properties": {
+            "side": { "enum": ["right", "left", "top", "bottom"] },
+            "handlePosBySide": {
+              "type": "object",
+              "properties": {
+                "right": { "type": "integer" },
+                "left": { "type": "integer" },
+                "top": { "type": "integer" },
+                "bottom": { "type": "integer" }
+              }
+            },
+            "handleLocked": { "type": "boolean" },
+            "pinOpen": { "type": "boolean" },
+            "gutter": { "type": "boolean" },
+            "perPage": { "type": "integer" },
+            "coachDone": { "type": "boolean" }
+          }
+        },
+        "panelPositions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["monitor"],
+            "properties": { "monitor": { "type": "string" }, "x": { "type": "integer" }, "y": { "type": "integer" } }
+          }
+        },
+        "touch": {
+          "type": "object",
+          "properties": {
+            "preset": { "type": "string" },
+            "debounceMs": { "type": "number", "minimum": 0 },
+            "hitSlopPx": { "type": "integer" },
+            "cancelMovePx": { "type": "integer" },
+            "minContactMs": { "type": "number", "minimum": 0 }
+          }
+        },
+        "keySafety": {
+          "type": "object",
+          "properties": {
+            "maxHoldMs": { "description": "0 is «Never».", "type": "number", "minimum": 0 },
+            "releaseOnAppSwitch": { "type": "boolean" }
+          }
+        },
+        "autoSuggestProfiles": { "type": "boolean" },
+        "keyboard": {
+          "type": "object",
+          "properties": {
+            "layout": { "type": "string" },
+            "appsLang": { "type": "string" },
+            "detected": { "type": "boolean" }
+          }
+        },
+        "ai": {
+          "description": "The key itself lives in the Credential Manager (ADR-0008): only its reference here.",
+          "type": "object",
+          "properties": {
+            "consent": { "type": "boolean" },
+            "disabled": { "type": "boolean" },
+            "freeLeftToday": { "type": "integer" },
+            "freeResetAt": { "type": ["string", "null"], "format": "date-time" },
+            "apiKeyRef": { "type": ["string", "null"] }
+          }
+        },
+        "reliability": {
+          "type": "object",
+          "properties": {
+            "startWithWindows": { "type": "boolean" },
+            "autoBackup": { "type": "boolean" },
+            "crashRecovery": { "type": "boolean" },
+            "singleInstance": { "type": "boolean" },
+            "runAsAdmin": { "type": "boolean" }
+          }
+        },
+        "updates": {
+          "type": "object",
+          "properties": {
+            "auto": { "type": "boolean" },
+            "askBefore": { "type": "boolean" },
+            "backupBefore": { "type": "boolean" },
+            "channel": { "enum": ["stable", "beta"] }
+          }
+        },
+        "noKeyboardUser": { "type": "boolean" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "required": ["id", "shortcuts"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/localizedText" },
+        "icon": { "type": "string" },
+        "autoIcon": { "type": "boolean" },
+        "processes": {
+          "description": "Absent: a manual profile. Unique across profiles without case (I5); never on General (I4).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "compat": { "description": "Scan-code injection (the compatible mode).", "type": "boolean" },
+        "shortcuts": { "type": "array", "items": { "$ref": "#/$defs/shortcut" } },
+        "origin": { "$ref": "#/$defs/catalogRef" }
+      }
+    },
+    "shortcut": {
+      "type": "object",
+      "required": ["id", "action"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/localizedText" },
+        "icon": { "type": "string" },
+        "autoIcon": { "type": "boolean" },
+        "category": { "type": "string" },
+        "action": { "$ref": "#/$defs/action" },
+        "confirm": { "type": "boolean" },
+        "maxHold": { "enum": ["inherit", "never", "after"] },
+        "maxHoldMs": { "type": "number", "exclusiveMinimum": 0 },
+        "private": { "type": "boolean" },
+        "origin": { "$ref": "#/$defs/catalogRef" },
+        "pinnedFrom": { "type": "string" }
+      }
+    },
+    "action": {
+      "description": "The closed hierarchy of blueprint §6.2; a new action type needs a new major.",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["tap", "hold", "toggle", "text", "mouse", "macro", "url", "app", "system"] },
+        "keys": { "$ref": "#/$defs/keyChord" },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["lang", "keys"],
+            "properties": { "lang": { "type": "string" }, "keys": { "$ref": "#/$defs/keyChord" } }
+          }
+        },
+        "text": { "$ref": "#/$defs/text" },
+        "method": { "enum": ["type", "paste"] },
+        "mouse": { "$ref": "#/$defs/mouseOp" },
+        "speed": { "enum": ["slow", "normal", "fast"] },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "url": { "type": "string" },
+        "raw": { "description": "The address is kept as typed; it is not a valid http or https address.", "type": "boolean" },
+        "app": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["exe", "store", "document", "raw"] },
+            "path": { "type": "string" },
+            "args": { "type": "string" },
+            "aumid": { "type": "string" },
+            "text": { "type": "string" }
+          }
+        },
+        "command": { "type": "string" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["keys", "wait", "text", "mouse"] },
+        "keys": { "$ref": "#/$defs/keyChord" },
+        "ms": { "description": "Inside Timings.Macro.MacroWaitRange (I6); repaired when out of range.", "type": "number" },
+        "text": { "$ref": "#/$defs/text" },
+        "mouse": { "$ref": "#/$defs/mouseOp" }
+      }
+    },
+    "mouseOp": { "enum": ["rclick", "dbl", "mid", "drag", "sup", "sdn", "sleft", "sright"] },
+    "profileShare": {
+      "description": "clicalo-perfil-<id>.json (DAT-007): one profile, untrusted when read (LOG-006); every id is replaced on import.",
+      "type": "object",
+      "required": ["type", "schema", "profile"],
+      "properties": {
+        "type": { "const": "profile-share" },
+        "schema": { "$ref": "#/$defs/schemaVersion" },
+        "writtenBy": { "type": "string" },
+        "writtenAtUtc": { "type": "string", "format": "date-time" },
+        "profile": { "$ref": "#/$defs/profile" }
+      }
+    }
+  }
+}

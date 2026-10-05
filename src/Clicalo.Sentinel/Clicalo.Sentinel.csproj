@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Guardian process: releases every key recorded in the KeyLedger when Clicalo.exe dies (ADR-0004). -->
+  <!-- Guardian process: releases every key and button Windows reports down when Clicalo.exe dies (ADR-0023). -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
@@ -7,8 +7,22 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <AssemblyName>Clicalo.Sentinel</AssemblyName>
     <RootNamespace>Clicalo.Sentinel</RootNamespace>
+    <!--
+      Clicalo.App references Sentinel only to build it first (ReferenceOutputAssembly=false); it starts it as its own
+      process and never loads it. While publishing, PublishAot makes Sentinel self-contained for the machine's runtime,
+      so the check that a referenced executable matches the referencing one (NETSDK1151) would refuse every
+      framework-dependent Clicalo.exe, such as the fdd variant of S5, without guarding anything.
+    -->
+    <ShouldBeValidatedAsExecutableReference>false</ShouldBeValidatedAsExecutableReference>
+  </PropertyGroup>
+  <PropertyGroup Label="Shipped runtimes (Directory.Build.props)">
+    <RuntimeIdentifiers>$(ClicaloRuntimeIdentifiers)</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(ClicaloRuntimeIdentifier)' != ''">$(ClicaloRuntimeIdentifier)</RuntimeIdentifier>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicalo.Sentinel.Tests" />
   </ItemGroup>
 </Project>

@@ -19,7 +19,7 @@ internal static class Messages
     public const string FastDescription =
         "Compila y prueba el núcleo portátil (Core.slnf). Objetivo: menos de 45 s.";
     public const string TestDescription =
-        "Compila y ejecuta todas las pruebas salvo las de escritorio (Requires=Desktop).";
+        "Compila y ejecuta las pruebas deterministas: sin escritorio, caos, rendimiento ni cuarentena.";
     public const string DeskDescription =
         "Compila y ejecuta solo las pruebas de escritorio, con CLICALO_DESKTOP_TESTS=1.";
     public const string FixDescription = "Da formato al código C# con CSharpier.";
@@ -35,6 +35,15 @@ internal static class Messages
     public const string AdrCheckDescription =
         "Exige un ADR si el cambio toca una ruta sensible; se usa con --base y la rama de comparación.";
 
+    public const string RunDescription =
+        "Compila y abre Clícalo con datos aislados en %TEMP%\\clicalo-dev y sin envío de teclas.";
+    public const string NoteDescription =
+        "Crea la nota de novedades para usuarios de la rama, en español e inglés, en changes/unreleased.";
+    public const string QuarantineDescription =
+        "Compila y ejecuta solo las pruebas en cuarentena (Category=Quarantine), con CLICALO_DESKTOP_TESTS=1.";
+    public const string PerfDescription =
+        "Publica las variantes de S5 y mide el arranque, la memoria y, en la CI, del toque al envío.";
+
     public static string FutureDescription(string milestone) => "Disponible en " + milestone + ".";
 
     // ---- Step headers ---------------------------------------------------------------------------
@@ -47,11 +56,16 @@ internal static class Messages
     public const string RestorePurpose = "restauración bloqueada de NuGet";
     public const string BuildDebugPurpose = "compilación Debug";
     public const string BuildReleasePurpose = "compilación Release sin advertencias";
-    public const string TestPurpose = "pruebas sin las de escritorio";
+    public const string TestPurpose = "pruebas deterministas";
+    public const string QuarantinePurpose = "pruebas en cuarentena";
     public const string DeskPurpose = "pruebas de escritorio";
     public const string I18nPurpose = "comprobación de textos (i18n-check e i18n-import --check)";
     public const string CleanPurpose = "borrado de artifacts";
     public const string GitPurpose = "configuración de git, DCO y firma";
+    public const string RunPurpose = "apertura de Clícalo sin envío de teclas";
+    public const string NotePurpose = "nota de novedades para usuarios";
+    public const string PublishPurpose = "publicación de las variantes de arranque (S5)";
+    public const string PerfPurpose = "mediciones de rendimiento en el escritorio";
 
     public static string DevCliPurpose(string verb) =>
         "orden " + verb + " de la herramienta de desarrollo";
@@ -109,6 +123,19 @@ internal static class Messages
 
     public static string OverBudget(string budget) => "superó el objetivo de " + budget;
 
+    public static string RunStarted(string dataDirectory) =>
+        "Clícalo abierto sin envío de teclas, con datos en "
+        + dataDirectory
+        + "; se cierra con Salir en la bandeja";
+
+    public const string RunAlreadyOpen = "ya había un Clícalo abierto en esta sesión y se mostró";
+
+    public static string NoteCreated(string file) => "nota nueva en " + file;
+
+    public static string NoteExists(string file) => "la nota ya existía en " + file;
+
+    public static string PerfReport(string file) => "números en " + file;
+
     public static string SetupPending(string items, string file) =>
         "falta " + items + "; instrucciones en " + file;
 
@@ -161,6 +188,31 @@ internal static class Messages
         "Si añadiste o cambiaste un paquete, ejecuta cl build para actualizar packages.lock.json "
         + "y confírmalo. Si el error es NU3034, el propietario del paquete no está en trustedSigners "
         + "de nuget.config: añádelo y justifícalo en el pull request.";
+
+    public static string RunMissing(string file) => "No se encontró " + file + " tras compilar.";
+
+    public const string RunNotStarted = "Clicalo.exe no arrancó.";
+
+    public static string RunEnded(int exitCode) =>
+        exitCode switch
+        {
+            70 => "Clicalo.exe terminó al arrancar (código 70): su registro dice por qué.",
+            2 => "Clicalo.exe no pudo hablar con la instancia abierta (código 2).",
+            3 => "Otro programa ocupa el canal de Clícalo (código 3, ipc.squat_detected).",
+            _ => string.Create(
+                CultureInfo.InvariantCulture,
+                $"Clicalo.exe terminó con el código {exitCode}."
+            ),
+        };
+
+    public const string RunHint =
+        "cl run abre la compilación Debug con --no-input: nunca envía teclas en este equipo. "
+        + "Si el arranque falla por piezas aún no integradas, la integración de M2 las registra.";
+
+    public const string PublishFailed = "La publicación de una variante de Clícalo falló.";
+    public const string PublishSection = "Errores de publicación";
+    public const string PublishHint =
+        "Revisa el error; la publicación con Native AOT de Sentinel necesita las herramientas de C++ de Visual Studio.";
 
     public const string BuildFailed = "La compilación terminó con errores.";
     public const string BuildSection = "Errores de compilación";

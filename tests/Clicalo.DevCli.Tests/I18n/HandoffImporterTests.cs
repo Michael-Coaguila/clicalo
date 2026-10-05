@@ -128,4 +128,74 @@ public sealed class HandoffImporterTests
             .Throw<InvalidDataException>(() => HandoffRecipe.Parse(recipe))
             .Message.ShouldContain("Unknown property 'afer' in added.catEdit.");
     }
+
+    [Fact]
+    public void A_retired_key_is_not_imported()
+    {
+        var recipe = BaseRecipe
+            .Replace(
+                "\"added\": {",
+                "\"retired\": { \"title\": { \"notes\": \"Decision of the user.\" } }, \"added\": {",
+                StringComparison.Ordinal
+            )
+            .Replace("\"after\": \"title\"", "\"after\": \"sugLine\"", StringComparison.Ordinal);
+
+        var import = HandoffImporter.Run(HandoffRecipe.Parse(recipe), Handoff);
+
+        import.Errors.ShouldBeEmpty();
+        import.HandoffKeyCount.ShouldBe(2);
+        import
+            .Entries["es"]
+            .ShouldBe([
+                new("sugLine_one", "{app}: {count} atajo"),
+                new("sugLine_other", "{app}: {count} atajos"),
+                new("catEdit", "Edición"),
+            ]);
+    }
+
+    [Fact]
+    public void An_added_key_anchored_to_a_retired_key_is_an_error()
+    {
+        var recipe = BaseRecipe.Replace(
+            "\"added\": {",
+            "\"retired\": { \"title\": { \"notes\": \"Decision of the user.\" } }, \"added\": {",
+            StringComparison.Ordinal
+        );
+
+        var import = HandoffImporter.Run(HandoffRecipe.Parse(recipe), Handoff);
+
+        import.Errors.ShouldBe(["added.catEdit.after ('title') is not a key of the output."]);
+    }
+
+    [Theory]
+    [InlineData("missing", "retired.missing is not a key of the handoff.")]
+    [InlineData("sugLine", "keys.sugLine converts a retired key; remove the rule.")]
+    public void A_retired_key_must_exist_and_have_no_rule(string key, string error)
+    {
+        var recipe = BaseRecipe.Replace(
+            "\"added\": {",
+            "\"retired\": { \""
+                + key
+                + "\": { \"notes\": \"Decision of the user.\" } }, \"added\": {",
+            StringComparison.Ordinal
+        );
+
+        var import = HandoffImporter.Run(HandoffRecipe.Parse(recipe), Handoff);
+
+        import.Errors.ShouldContain(e => string.Equals(e, error, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_retired_key_needs_its_reason()
+    {
+        var recipe = BaseRecipe.Replace(
+            "\"added\": {",
+            "\"retired\": { \"title\": {} }, \"added\": {",
+            StringComparison.Ordinal
+        );
+
+        Should
+            .Throw<InvalidDataException>(() => HandoffRecipe.Parse(recipe))
+            .Message.ShouldContain("retired.title needs the property 'notes'.");
+    }
 }
