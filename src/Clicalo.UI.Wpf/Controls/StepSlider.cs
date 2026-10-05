@@ -54,9 +54,21 @@ public sealed class StepSlider : Slider
     public const double KnobSize = 20;
 
     private const string TrackPart = "PART_Track";
+
+    /// <summary>
+    /// How far each bar runs under the knob's touch box, to the knob's center: the track reads as one continuous line,
+    /// as the prototype's range input, instead of stopping at the 44 px hit box.
+    /// </summary>
+    private static readonly double KnobOverlap = TouchTarget.MinimumSize / 2;
     private static readonly ControlTemplate DefaultTemplate = CreateTemplate();
-    private static readonly ControlTemplate FilledBar = Bar(ColorToken.Accent);
-    private static readonly ControlTemplate EmptyBar = Bar(ColorToken.Line);
+    private static readonly ControlTemplate FilledBar = Bar(
+        ColorToken.Accent,
+        new Thickness(0, 0, -KnobOverlap, 0)
+    );
+    private static readonly ControlTemplate EmptyBar = Bar(
+        ColorToken.Line,
+        new Thickness(-KnobOverlap, 0, 0, 0)
+    );
     private static readonly ControlTemplate KnobTemplate = Knob();
 
     static StepSlider()
@@ -190,11 +202,12 @@ public sealed class StepSlider : Slider
             .With(Control.IsTabStopProperty, false)
             .With(AutomationProperties.NameProperty, Templates.Bind(nameProperty));
 
-    private static ControlTemplate Bar(ColorToken token)
+    private static ControlTemplate Bar(ColorToken token, Thickness overlap)
     {
         var bar = Templates
             .Element<Border>()
             .With(FrameworkElement.HeightProperty, TrackThickness)
+            .With(FrameworkElement.MarginProperty, overlap)
             .With(Border.CornerRadiusProperty, new CornerRadius(TrackThickness / 2))
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
             .Paint(Border.BackgroundProperty, token);
