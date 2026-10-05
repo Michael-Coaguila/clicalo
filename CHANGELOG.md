@@ -159,6 +159,16 @@ progress).
   relaunches Clícalo only afterwards; other refusals are retried for at most `Timings.Guardian.RefusedReleaseWait`
   (30 s). A resend never separates the menu mask from its Alt or Win key. The Sentinel start-up contract moves to
   protocol 2 with a seventh argument, `--refused-release-wait-ms` (ADR-0018, user decision D3 of 2026-10-03).
+- The simple guardian (ADR-0023, proposed) replaces the shared-memory ledger, `InjectionGate`, the generation fence,
+  the emergency release, the engine heartbeat and Sentinel's protocol 2: Sentinel waits for Clícalo to end, releases
+  whatever Windows reports down (retrying every `Timings.Guardian.ReleaseRetryInterval` while refused or locked) and
+  only then relaunches it after an abnormal exit (protocol 3). «Soltar todo» in the tray also releases without the
+  engine.
+- `ActivationGuard` asks for one restore per unleased activation, joined while it is queued, and the violation restore
+  retries once and then flashes the app (ADR-0024); `Windowing.ActivationRecheck` is removed.
+- Test tiers: `cl check`, `cl test` and `cl fast` run only deterministic tests; the desktop, chaos, performance and
+  quarantined tests (`cl quarantine`) run in `nightly.yml` and must pass before every release. The `desk (x64)` and
+  `perf (x64)` jobs leave `pr.yml`.
 
 ### Removed
 

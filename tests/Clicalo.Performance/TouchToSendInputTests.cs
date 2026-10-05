@@ -10,8 +10,8 @@ namespace Clicalo.Performance;
 /// <c>Clicalo.exe</c> (the seed's «Copiar», Ctrl+C: harmless in the probe) and the probe records when the first key
 /// arrives. The tap and the probe use the same performance counter. It sends real keys, so it runs only in continuous
 /// integration; the finger may only touch Clicalo.exe's windows. The p95 is judged against <c>TouchToSendInput</c> of
-/// <c>data/catalogs/budgets.json</c>, whose gate is <c>everyRun</c>: over 50 ms, every run fails (the <c>perf</c> job
-/// of <c>pr.yml</c> and <c>lab.yml</c> on the touch laboratory), and the numbers go to <c>touch-to-sendinput.json</c>
+/// <c>data/catalogs/budgets.json</c>, whose gate is <c>everyRun</c>: over 50 ms, every run fails (the nightly <c>perf</c> job
+/// of <c>nightly.yml</c>, required before every release, and <c>lab.yml</c> on the touch laboratory), and the numbers go to <c>touch-to-sendinput.json</c>
 /// and <c>touch-to-sendinput.md</c> in the artifacts.
 /// </summary>
 [Trait("Requires", "Desktop")]

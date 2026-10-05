@@ -124,7 +124,7 @@ Si usas Narrador, activa además como ajuste de usuario `"editor.accessibilitySu
 
 ```powershell
 .\cl fast    # núcleo portátil (Core.slnf), para iterar
-.\cl test    # todas las pruebas salvo las de escritorio
+.\cl test    # las pruebas deterministas (sin escritorio, caos, rendimiento ni cuarentena)
 .\cl fix     # formato C# con CSharpier
 .\cl check   # lo mismo que la CI; todo PR termina con él
 ```
