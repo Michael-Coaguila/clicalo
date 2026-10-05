@@ -42,7 +42,7 @@ ejecutable de xUnit v3 sobre Microsoft Testing Platform, con `Xunit` y `Shouldly
 |---|---|---|
 | `Clicalo.Architecture.Tests` | Existe | Lista blanca de referencias, ArchUnit, matriz de módulos, facetas de `ActionKind`, enrutadores sin eventos huérfanos, R4 (destructivos), R7 (deshacer), escritor único |
 | `Clicalo.Data.Tests` | Existe | Esquemas, integridad referencial (`labelKey`, iconos, `KeyId`), contenido inicial sin repetidos, `keys.json` ↔ `keys.win32.json`, coherencia de `timings.json` |
-| `Clicalo.Domain.Tests` | Existe | Invariantes de `Library` y `KeyboardLedger`, `EngineReducer` (INV-1 a INV-12), `TouchFilter`, `GestureRecognizer`, `ActivationPolicy`, `DimPolicy`, resolución de perfil, Frecuentes, repetidos, tokenizador v1 |
+| `Clicalo.Domain.Tests` | Existe | Invariantes de `Library` y `KeyboardLedger`, `EngineReducer` (INV-1 a INV-12), `TouchFilter`, `GestureRecognizer`, `ActivationPolicy`, `DimPolicy`, resolución de perfil, Frecuentes, repetidos |
 | `Clicalo.Application.Tests` | Existe | `DocumentStore`, `EngineHost` con `PhysicalStateInjector`, `ForegroundOrchestrator`, `TryNowUseCase`, coordinadores, programador de guardado |
 | `Clicalo.Generators.Tests` | Existe | Generadores y analizadores de Roslyn: salida determinista y diagnósticos con ubicación exacta en el JSON |
 | `Clicalo.Platform.IntegrationTests` | Existe | Inyección en los dos modos con varias distribuciones, *hook* LL bajo GC, `PointerPositionTracker`, sesión, portapapeles, lanzador, ACL de la tarea elevada |

@@ -613,9 +613,10 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** INV-10, con `LayoutPlanner` en M3. La espera de Sentinel con la sesión bloqueada quedó resuelta el
   2026-10-03 por la decisión D3 del usuario ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md),
   punto 6). Con ADR-0018 aceptado al integrar M2 (2026-10-05), §3.1 y la fila «Muerte del proceso» de §7.6 del plano
-  ya lo recogen, y esa parte deja de ser una desviación. Queda comprobar en un escritorio real bloqueado (CI o aceptación en hardware, como el regreso del
-  escritorio de entrada) que el rechazo llega como `ERROR_ACCESS_DENIED` y que la tecla sube al desbloquear; si un
-  escritorio bloqueado devolviera otro código, se amplía la lectura del rechazo con un ADR, no se rebaja D3.
+  ya lo recogen, y esa parte deja de ser una desviación. Queda comprobar en un escritorio real bloqueado (CI o
+  aceptación en hardware, como el regreso del escritorio de entrada) que el rechazo llega como `ERROR_ACCESS_DENIED`
+  y que la tecla sube al desbloquear; si un escritorio bloqueado devolviera otro código, se amplía la lectura del
+  rechazo con un ADR, no se rebaja D3.
 
 ## D-23 · Criterios de salida de M2 tras la verificación
 
