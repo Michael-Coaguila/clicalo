@@ -10,8 +10,10 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 /// <remarks>
 /// <para>
 /// The probe is back when it handles an activation message (<c>WM_ACTIVATEAPP(TRUE)</c>, <c>WM_NCACTIVATE(TRUE)</c> or
-/// a <c>WM_ACTIVATE</c> that activates it) while <c>GetForegroundWindow</c> names its window. The probe only gets one
-/// after it has lost the activation, so the first one after a cursor taken while it was in front is the restore.
+/// a <c>WM_ACTIVATE</c> that activates it) while <c>GetForegroundWindow</c> names its window, after the test asked for
+/// the forced activation. The probe only gets one after it has lost the activation, so the first one after the request
+/// is the restore; one handled before the request (a late message of the activation that put the probe in front) never
+/// counts, or the measured time could be shorter than the real one.
 /// </para>
 /// <para>
 /// Spike S1 in CI showed why neither end can be a fixed message. Windows can hand the foreground to the panel and back
@@ -28,9 +30,15 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 /// </remarks>
 public static class ProbeReactivation
 {
-    /// <summary>True when the events after the cursor hold an activation of <paramref name="probeWindow"/> in front.</summary>
-    public static bool Reactivated(IReadOnlyList<ProbeEvent> events, nint probeWindow) =>
-        events.Any(received => IsBack(received, probeWindow));
+    /// <summary>
+    /// True when the events after the cursor hold an activation of <paramref name="probeWindow"/> in front handled after
+    /// <paramref name="requestedAt"/> (<c>QueryPerformanceCounter</c> ticks).
+    /// </summary>
+    public static bool Reactivated(
+        IReadOnlyList<ProbeEvent> events,
+        nint probeWindow,
+        long requestedAt
+    ) => events.Any(received => IsBack(received, probeWindow, requestedAt));
 
     /// <summary>
     /// From <paramref name="requestedAt"/> (<c>QueryPerformanceCounter</c> ticks, taken by the test just before asking
@@ -43,12 +51,13 @@ public static class ProbeReactivation
         double frequency
     )
     {
-        var back = events.First(received => IsBack(received, probeWindow));
+        var back = events.First(received => IsBack(received, probeWindow, requestedAt));
         return TimeSpan.FromSeconds((back.Timestamp - requestedAt) / frequency);
     }
 
-    private static bool IsBack(ProbeEvent received, nint probeWindow) =>
-        received.ForegroundWindow == probeWindow
+    private static bool IsBack(ProbeEvent received, nint probeWindow, long requestedAt) =>
+        received.Timestamp > requestedAt
+        && received.ForegroundWindow == probeWindow
         && received switch
         {
             ActivateEvent activate => activate.State != ActivationState.Inactive,

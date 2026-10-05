@@ -76,7 +76,8 @@ public sealed class OrchestratedRestoreTests(OrchestratedSurfaceFixture desktop)
                 );
                 var events = await desktop.Probe.WaitForAsync(
                     cursor,
-                    received => ProbeReactivation.Reactivated(received, desktop.Probe.Window),
+                    received =>
+                        ProbeReactivation.Reactivated(received, desktop.Probe.Window, requestedAt),
                     SurfaceDesktopFixture.EventTimeout,
                     cancellationToken
                 );
