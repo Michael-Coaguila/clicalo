@@ -184,3 +184,6 @@ progress).
   hotkey wait measured on the timer's own clock, the high contrast tree read after the window template is applied
   again, the panel tap latency measured with one synthetic device per kind and a checked warm-up tap (D-24), and COM
   diagnostics in the out-of-process UIA client.
+- Build: `Clicalo.Launcher` now declares both shipped runtimes like `Clicalo.Sentinel`, so its lock file holds the
+  `win-arm64` graph too and the locked restore no longer fails with NU1004 on ARM64 (ADR-0022). `ShippedRuntimeTests`
+  checks every executable under `src/`.

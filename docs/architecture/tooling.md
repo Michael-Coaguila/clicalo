@@ -158,9 +158,9 @@ vivos que bloqueen archivos entre compilaciones.
 - NuGet los escribe con CRLF en Windows; `.gitattributes` los mantiene en CRLF para evitar *diffs* falsos.
 - **Runtimes publicados.** `Directory.Build.props` fija los dos que se distribuyen
   (`ClicaloRuntimeIdentifiers` = `win-x64;win-arm64`, [§11 del plano](blueprint.md)). Los ejecutables que se
-  publican (`Clicalo.App` y `Clicalo.Sentinel`) los declaran como `RuntimeIdentifiers`, así que sus *lock files*
-  guardan el grafo de los dos y no dependen del equipo que restauró (con `PublishAot`, el SDK añadía solo el
-  runtime del equipo y una restauración bloqueada en ARM64 fallaba con NU1004).
+  publican (`Clicalo.App`, `Clicalo.Sentinel` y `Clicalo.Launcher`) los declaran como `RuntimeIdentifiers`, así
+  que sus *lock files* guardan el grafo de los dos y no dependen del equipo que restauró (con `PublishAot`, el SDK
+  añadía solo el runtime del equipo y una restauración bloqueada en ARM64 fallaba con NU1004).
 - **Publicar con la restauración bloqueada.** El runtime se elige con
   `-p:ClicaloRuntimeIdentifier=win-x64` (o `win-arm64`), que solo los ejecutables convierten en su
   `RuntimeIdentifier`; **nunca con `-r`**. `-r` es una propiedad global que llega a la restauración de todos los
@@ -171,10 +171,11 @@ vivos que bloqueen archivos entre compilaciones.
   autocontenido por runtime): `dotnet publish src/Clicalo.App/Clicalo.App.csproj -c Release
   -p:ClicaloRuntimeIdentifier=<rid> --self-contained true -p:PublishReadyToRun=true`, con la restauración
   bloqueada, ya comprobado para `win-x64` y `win-arm64`.
-- **Pendiente para M5:** `Clicalo.Launcher` también usa `PublishAot` y su *lock file* solo tiene el grafo
-  `win-x64`; necesita las mismas dos propiedades que Sentinel antes de publicarse para `win-arm64` o de activar
-  `verify (arm64)`. `src/Clicalo.Launcher/**` es una ruta sensible (`architecture/sensitive-paths.json`), así que
-  el cambio va con su ADR.
+- **`Clicalo.Launcher`** no los declaraba desde el andamiaje: su *lock file* solo tenía el grafo `win-x64` y la
+  restauración bloqueada de ARM64 falló con NU1004 en cuanto la CI ejecutó ARM64 (s0 37325950329). Ahora los declara
+  como Sentinel ([ADR-0022](../adr/0022-runtimes-publicados-del-launcher.md), porque `src/Clicalo.Launcher/**` es una
+  ruta sensible), y `ShippedRuntimeTests` (`Clicalo.Architecture.Tests`) comprueba que todo ejecutable de `src/` declara
+  `$(ClicaloRuntimeIdentifiers)` y que su *lock file* tiene el grafo de cada runtime.
 
 ## Analizadores y reglas de compilación
 
