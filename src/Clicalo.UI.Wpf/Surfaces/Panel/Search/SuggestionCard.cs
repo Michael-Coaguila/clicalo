@@ -1,9 +1,11 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using Clicalo.Presentation.Panel.Search;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 
@@ -27,7 +29,9 @@ public sealed class SuggestionCard : Border
     private readonly SuggestionViewModel _viewModel;
     private readonly Run _app;
     private readonly Run _message;
+    private readonly TextBlock _text;
     private readonly Card _card;
+    private string _announced = string.Empty;
 
     /// <summary>Creates the card.</summary>
     /// <param name="viewModel">The suggestion.</param>
@@ -40,6 +44,7 @@ public sealed class SuggestionCard : Border
         _app = new Run { FontWeight = FontWeights.Bold };
         _message = new Run();
         var text = new TextBlock { TextWrapping = TextWrapping.Wrap, LineHeight = 19 };
+        _text = text;
         text.Inlines.Add(_app);
         text.Inlines.Add(new Run(" "));
         text.Inlines.Add(_message);
@@ -109,5 +114,43 @@ public sealed class SuggestionCard : Border
         CreateButton.Content = _viewModel.CreateText;
         NotNowButton.Content = _viewModel.NotNowText;
         AutomationProperties.SetName(_card, _viewModel.AppName + " " + _viewModel.Message);
+        Announce();
+    }
+
+    /// <summary>
+    /// Says the suggestion once when it appears for an app (ACC-001): the live setting alone raises nothing in WPF, and
+    /// readers ignore live regions of an inactive window, so it also goes as a notification (as <see cref="LiveAnnouncer"/>).
+    /// </summary>
+    private void Announce()
+    {
+        var spoken = _viewModel.IsVisible
+            ? _viewModel.AppName + " " + _viewModel.Message
+            : string.Empty;
+        if (string.Equals(spoken, _announced, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _announced = spoken;
+        if (spoken.Length == 0)
+        {
+            return;
+        }
+
+        var peer =
+            UIElementAutomationPeer.FromElement(_text)
+            ?? UIElementAutomationPeer.CreatePeerForElement(_text);
+        if (peer is null)
+        {
+            return;
+        }
+
+        peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        peer.RaiseNotificationEvent(
+            AutomationNotificationKind.Other,
+            AutomationNotificationProcessing.MostRecent,
+            LiveAnnouncer.ForUiaBstr(spoken),
+            LiveAnnouncer.ForUiaBstr(LiveAnnouncer.ActivityId)
+        );
     }
 }
