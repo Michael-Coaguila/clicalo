@@ -25,6 +25,7 @@ using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces;
+using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -300,6 +301,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             UpdateTray(viewModel);
         };
         var engine = services.GetRequiredService<IEngineInbox>();
+        var theme = services.GetRequiredService<ThemeService>();
+        var window = services.GetRequiredService<PanelWindow>();
         store.Changed += (_, change) =>
         {
             if (!ReferenceEquals(change.Before.Settings, change.After.Settings))
@@ -317,7 +320,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
             _ = _application!.Dispatcher.BeginInvoke(() =>
             {
-                viewModel.ApplyTouch(SettingsProjection.Touch(store.Current.Settings));
+                var settings = store.Current.Settings;
+                viewModel.ApplyTouch(SettingsProjection.Touch(settings));
+
+                // AJR-004: the theme, the text scale, reduce motion and the opacity apply at once, in place.
+                SettingsProjection.Theme(theme, settings);
+                window.ApplyDimSettings(SettingsProjection.Dim(settings));
                 Project(viewModel, store, session, localization);
             });
         };
@@ -335,7 +343,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         };
         // Frequents count what ran (FRE-002); the store publishes usage changes without an undo step.
         relay.UsageCounted += (_, counted) => _ = store.Dispatch(new RecordUsage(counted.Shortcut));
-        var window = services.GetRequiredService<PanelWindow>();
         relay.NoticeRaised += (_, notice) =>
             window.Announce(
                 localization.Current.Format(notice.Text),

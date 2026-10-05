@@ -5,8 +5,10 @@ using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Session;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.SysEvents;
@@ -18,6 +20,7 @@ using Clicalo.TestKit.Windows.Probe;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.Windowing.IntegrationTests.Theming;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
 
 namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
@@ -141,13 +144,15 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
             );
             viewModel.ApplySession(session.Current);
             session.Changed += (_, change) => viewModel.ApplySession(change.Current);
+            // Dark and fully opaque, without automatic dimming: the taps measure the panel, not its fade.
             var window = new PanelWindow(
                 viewModel,
                 _lab.Registry,
                 TimeProvider.System,
                 PanelSizes.M,
                 columns: 4,
-                ThemeId.Dark
+                new ThemeService(new FakeSystemTheme(), ThemeChoice.Dark),
+                new DimSettings(AutoDim: false, Opacity: 1, DimTo: 1)
             );
             var composed = FirstFrame.Watch(window);
             window.Present();

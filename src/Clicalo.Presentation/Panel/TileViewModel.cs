@@ -16,6 +16,7 @@ public sealed class TileViewModel : ObservableObject
     private TileModel _model;
     private string _accessibleState = string.Empty;
     private string _accessibleHelpText = string.Empty;
+    private string _badge = string.Empty;
     private bool _isLatched;
 
     /// <summary>Creates the tile.</summary>
@@ -37,6 +38,19 @@ public sealed class TileViewModel : ObservableObject
 
     /// <summary>What the tile runs.</summary>
     public TileBinding Binding => _model.Binding;
+
+    /// <summary>The Material Symbols name of the icon (CUA-007).</summary>
+    public string Icon => _model.Icon.Name;
+
+    /// <summary>The color category id (TEM-003), such as <c>edit</c> or <c>voice</c>.</summary>
+    public string Category => _model.Category.Value;
+
+    /// <summary>The type badge in words (CUA-007): «MANTENER», «ALTERNAR» or empty.</summary>
+    public string Badge
+    {
+        get => _badge;
+        private set => SetProperty(ref _badge, value);
+    }
 
     /// <summary>The name shown on the tile and exposed to UI Automation (REG-06).</summary>
     public string AccessibleName => _model.Name;
@@ -100,10 +114,22 @@ public sealed class TileViewModel : ObservableObject
         }
 
         var renamed = !string.Equals(model.Name, _model.Name, StringComparison.Ordinal);
+        var reiconed = model.Icon != _model.Icon;
+        var recolored = model.Category != _model.Category;
         _model = model;
         if (renamed)
         {
             OnPropertyChanged(nameof(AccessibleName));
+        }
+
+        if (reiconed)
+        {
+            OnPropertyChanged(nameof(Icon));
+        }
+
+        if (recolored)
+        {
+            OnPropertyChanged(nameof(Category));
         }
     }
 
@@ -111,10 +137,12 @@ public sealed class TileViewModel : ObservableObject
     /// <param name="latched">Whether the engine holds something for the tile.</param>
     /// <param name="state">The state in words.</param>
     /// <param name="helpText">The kind of the action in words.</param>
-    internal void ApplyState(bool latched, string state, string helpText)
+    /// <param name="badge">The type badge in words.</param>
+    internal void ApplyState(bool latched, string state, string helpText, string badge)
     {
         IsLatched = latched;
         AccessibleState = state;
         AccessibleHelpText = helpText;
+        Badge = badge;
     }
 }

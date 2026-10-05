@@ -291,6 +291,20 @@ public sealed class PanelViewModelTests
         _panel.IsVisible.ShouldBeTrue();
     }
 
+    [Fact]
+    [Trait("Req", "CUA-007")]
+    [Trait("Req", "TEM-003")]
+    public void A_tile_carries_the_icon_and_category_of_its_shortcut_and_the_badge_of_its_type()
+    {
+        var copy = Tile(PanelTestData.Copy);
+        copy.Icon.ShouldBe("keyboard");
+        copy.Category.ShouldBe("edit");
+        copy.Badge.ShouldBeEmpty();
+        Tile(PanelTestData.HoldCtrl).Badge.ShouldBe("MANTENER");
+        Tile(PanelTestData.ShiftLock).Badge.ShouldBe("ALTERNAR");
+        Tile(PanelTestData.Site).Badge.ShouldBeEmpty();
+    }
+
     private TileViewModel Tile(ShortcutId id) => _panel.Tiles.Single(tile => tile.Id == id);
 
     private static EngineSnapshot Snapshot(params PressedItem[] held) =>

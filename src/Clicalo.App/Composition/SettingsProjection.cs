@@ -1,4 +1,5 @@
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
@@ -48,17 +49,22 @@ internal static class SettingsProjection
     }
 
     /// <summary>
-    /// The palette of the theme chosen (TEM-001). «Auto» follows Windows through the theme service of M3; until then it
-    /// is the dark palette, and a Windows contrast theme always wins inside <c>ThemeScope</c>.
+    /// Gives the theme service the theme chosen, the text scale and reduce motion (TEM-001, CUA-011, TEM-006). «Auto»
+    /// follows Windows inside the service, and a Windows contrast theme always wins there.
     /// </summary>
-    public static ThemeId Theme(UserSettings settings)
+    public static void Theme(ThemeService theme, UserSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        ArgumentNullException.ThrowIfNull(settings);
+        theme.Preference = settings.Theme;
+        theme.TextScalePercent = settings.TextScalePercent;
+        theme.ReduceMotionPreference = settings.ReduceMotion;
+    }
+
+    /// <summary>The opacity and the automatic dimming of the surfaces (GEN-009).</summary>
+    public static DimSettings Dim(UserSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return settings.Theme switch
-        {
-            ThemeChoice.Light => ThemeId.Light,
-            ThemeChoice.HighContrast => ThemeId.HighContrast,
-            _ => ThemeId.Dark,
-        };
+        return new DimSettings(settings.AutoDim, settings.Opacity, settings.DimTo);
     }
 }
