@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Guardian process: releases every key recorded in the KeyLedger when Clicalo.exe dies (ADR-0004). -->
+  <!-- Guardian process: releases every key and button Windows reports down when Clicalo.exe dies (ADR-0023). -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>

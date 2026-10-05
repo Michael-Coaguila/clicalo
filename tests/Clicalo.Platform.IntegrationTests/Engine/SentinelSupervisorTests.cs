@@ -1,111 +1,109 @@
-using System.Diagnostics;
+using System.ComponentModel;
 using Clicalo.Domain.Timing;
 using Clicalo.Platform.Core.Guardian;
-using Clicalo.Platform.Core.KeyLedger;
 using Clicalo.Platform.Windows.SentinelHost;
-using Clicalo.TestKit;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
-/// The main process's side of the guardian (blueprint §3.1): Sentinel starts with exactly three inherited handles, is
-/// fed a heartbeat, is started again after <c>Timings.Guardian.RestartBackoff</c> when it dies, and leaves when the
-/// pipe closes. Safe on any machine: the ledger holds nothing and says <c>CleanShutdown | NoRelaunch</c>, and this test
-/// process stays alive, so Sentinel never releases or relaunches anything.
+/// The main process's side of the guardian (blueprint §3.1, ADR-0023): Sentinel starts with the protocol 3 contract and
+/// one inherited handle, is checked every <c>Timings.Guardian.WatchInterval</c>, is started again after
+/// <c>Timings.Guardian.RestartBackoff</c> when it died, and too many deaths stop the restarts. No guardian is started:
+/// the launcher is a fake and the clock is a fake.
 /// </summary>
 [Trait("Req", "SEG-006")]
 public sealed class SentinelSupervisorTests
 {
-    private static string SentinelPath()
-    {
-        var local = Path.Combine(AppContext.BaseDirectory, "Clicalo.Sentinel.exe");
-        if (File.Exists(local))
-        {
-            return local;
-        }
+    private readonly FakeTimeProvider _time = new(
+        new DateTimeOffset(2026, 10, 5, 10, 0, 0, TimeSpan.Zero)
+    );
 
-        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Name;
-        return RepoPaths.Combine(
-            "artifacts",
-            "bin",
-            "Clicalo.Sentinel",
-            configuration,
-            "Clicalo.Sentinel.exe"
-        );
-    }
+    private readonly List<FakeChild> _children = [];
 
     [Fact]
-    public void Sentinel_is_started_with_three_handles_fed_restarted_after_the_backoff_and_left_on_stop()
+    public void Sentinel_gets_the_contract_is_watched_and_restarted_after_the_backoff()
     {
-        using var ledger = KeyLedgerSection.CreateForEngine();
-        ledger.SetMarks(LedgerMarks.CleanShutdown | LedgerMarks.NoRelaunch);
-        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
-        using var supervisor = new SentinelSupervisor(
-            ledger,
-            SentinelPath(),
-            time,
-            NullLogger<SentinelSupervisor>.Instance
-        );
+        using var supervisor = Create();
 
         supervisor.Start();
         var first = supervisor.ProcessId.ShouldNotBeNull();
-        supervisor.LastStartInfo!.InheritedHandles.Length.ShouldBe(
-            SentinelStartInfo.InheritedHandleCount
-        );
-        supervisor.LastStartInfo.HeartbeatInterval.ShouldBe(Timings.Guardian.PipeHeartbeatInterval);
-        supervisor.LastStartInfo.RefusedReleaseWait.ShouldBe(Timings.Guardian.RefusedReleaseWait);
-        time.Advance(Timings.Guardian.PipeHeartbeatInterval);
-        supervisor.ProcessId.ShouldBe(first);
+        var info = supervisor.LastStartInfo.ShouldNotBeNull();
+        info.InheritedHandles.Length.ShouldBe(1);
+        info.ReleaseRetryInterval.ShouldBe(Timings.Guardian.ReleaseRetryInterval);
+        info.CrashLoopCount.ShouldBe(Timings.App.CrashLoop.Count);
+        info.ToArguments()[0].ShouldBe("--protocol=" + SentinelStartInfo.ProtocolVersion);
 
-        // Sentinel dies (its ledger is empty: nothing to release).
-        using (var sentinel = Process.GetProcessById(first))
-        {
-            sentinel.Kill();
-            sentinel.WaitForExit(TimeSpan.FromSeconds(10)).ShouldBeTrue();
-        }
-
-        supervisor.Beat();
+        // Sentinel dies: the next check sees it and the restart waits for the backoff.
+        _children[0].HasExited = true;
+        _time.Advance(Timings.Guardian.WatchInterval);
         supervisor.ProcessId.ShouldBeNull();
-        time.Advance(Timings.Guardian.RestartBackoff[0]);
+        _children[0].Disposed.ShouldBeTrue();
+        _time.Advance(Timings.Guardian.RestartBackoff[0]);
+
         var second = supervisor.ProcessId.ShouldNotBeNull();
         second.ShouldNotBe(first);
         supervisor.Launches.ShouldBe(2);
+    }
 
-        using var restarted = Process.GetProcessById(second);
+    [Fact]
+    public void Stopping_only_stops_supervising()
+    {
+        using var supervisor = Create();
+        supervisor.Start();
+
         supervisor.Stop();
-        restarted.WaitForExit(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        _children[0].HasExited = true;
+        _time.Advance(Timings.Guardian.WatchInterval + Timings.Guardian.RestartBackoff[^1]);
+
+        supervisor.Launches.ShouldBe(1);
+        _children[0].Disposed.ShouldBeTrue();
     }
 
     [Fact]
     public void Too_many_deaths_in_the_window_stop_the_restarts_and_say_so()
     {
-        using var ledger = KeyLedgerSection.CreateForEngine();
-        ledger.SetMarks(LedgerMarks.CleanShutdown | LedgerMarks.NoRelaunch);
-        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
-        var missing = Path.Combine(
-            Path.GetTempPath(),
-            "clicalo-no-sentinel",
-            "Clicalo.Sentinel.exe"
-        );
-        using var supervisor = new SentinelSupervisor(
-            ledger,
-            missing,
-            time,
-            NullLogger<SentinelSupervisor>.Instance
-        );
+        using var supervisor = Create(fail: true);
         var unstable = 0;
         supervisor.GuardianUnstable += (_, _) => unstable++;
 
         supervisor.Start();
         foreach (var wait in Timings.Guardian.RestartBackoff)
         {
-            time.Advance(wait);
+            _time.Advance(wait);
         }
 
         unstable.ShouldBe(1);
         supervisor.ProcessId.ShouldBeNull();
         supervisor.Launches.ShouldBe(0);
+    }
+
+    private SentinelSupervisor Create(bool fail = false) =>
+        new(
+            _ =>
+            {
+                if (fail)
+                {
+                    throw new Win32Exception(2);
+                }
+
+                var child = new FakeChild(100 + _children.Count);
+                _children.Add(child);
+                return child;
+            },
+            _time,
+            NullLogger<SentinelSupervisor>.Instance
+        );
+
+    private sealed class FakeChild(int id) : ISentinelChild
+    {
+        public int Id { get; } = id;
+
+        public bool HasExited { get; set; }
+
+        public bool Disposed { get; private set; }
+
+        public void Dispose() => Disposed = true;
     }
 }

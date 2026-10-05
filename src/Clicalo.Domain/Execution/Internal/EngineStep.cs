@@ -96,7 +96,7 @@ internal sealed class EngineStep
         }
     }
 
-    /// <summary>Sends the events of a transition that presses something, as one batch the gate records first (INV-2).</summary>
+    /// <summary>Sends the events of a transition that presses something, as one batch.</summary>
     public void Press(LedgerTransition transition, HolderId holder, ExecutionOrigin origin)
     {
         State = State with { Keys = transition.Ledger };

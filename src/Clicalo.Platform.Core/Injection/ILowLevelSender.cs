@@ -2,7 +2,7 @@ namespace Clicalo.Platform.Core.Injection;
 
 /// <summary>
 /// Sends events to the system. <see cref="LowLevelInjector"/> is the real one (the only <c>SendInput</c> of the
-/// product); the tests' physical state injector is the other, so the gate is tested with its real code (§7.10).
+/// product); the tests give their own, so every caller is tested without touching the keyboard.
 /// </summary>
 public interface ILowLevelSender
 {

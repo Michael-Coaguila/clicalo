@@ -83,19 +83,19 @@
       "reason": "Command line, clicalo:// links and IPC: breaking them needs a major version."
     },
     {
-      "pattern": "src/Clicalo.Platform.Core/KeyLedger/**",
-      "category": "process-model",
-      "reason": "Ledger v2 layout shared with Sentinel: generation, mode and flags (ADR-0004)."
-    },
-    {
       "pattern": "src/Clicalo.Platform.Core/Injection/**",
       "category": "process-model",
-      "reason": "InjectionGate and the generation fence (ADR-0004)."
+      "reason": "The only SendInput and the release of what Windows reports down, shared with Sentinel (ADR-0023)."
+    },
+    {
+      "pattern": "src/Clicalo.Platform.Core/Guardian/**",
+      "category": "process-model",
+      "reason": "Start-up contract between Clicalo.exe and Sentinel (protocol 3) and the relaunch policy (ADR-0023)."
     },
     {
       "pattern": "src/Clicalo.Sentinel/**",
       "category": "process-model",
-      "reason": "Guardian process: release from the ledger and relaunch policy (ADR-0004)."
+      "reason": "Guardian process: release of what Windows reports down and relaunch policy (ADR-0023)."
     },
     {
       "pattern": "src/Clicalo.UI.Wpf/Clicalo.UI.Wpf.csproj",

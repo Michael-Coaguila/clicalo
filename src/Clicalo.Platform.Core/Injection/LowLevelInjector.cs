@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using Clicalo.Platform.Core.KeyLedger;
 using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -9,15 +8,15 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace Clicalo.Platform.Core.Injection;
 
 /// <summary>
-/// The only <c>PInvoke.SendInput</c> of the product (blueprint §4.4, §7.7), reachable only through
-/// <see cref="InjectionGate"/>. Fills <c>INPUT</c> per mode: VK with the informative scan code and
-/// <c>KEYEVENTF_EXTENDEDKEY</c>; scan code mode with <c>wVk = 0</c> and <c>KEYEVENTF_SCANCODE</c>; Unicode for text.
+/// The only <c>PInvoke.SendInput</c> of the product (blueprint §4.4, §7.7), reachable only through the
+/// <c>IInputInjector</c> of Platform.Windows and <see cref="PressedInputRelease"/> (ADR-0023). Fills <c>INPUT</c> per
+/// mode: VK with the informative scan code and <c>KEYEVENTF_EXTENDEDKEY</c>; scan code mode with <c>wVk = 0</c> and <c>KEYEVENTF_SCANCODE</c>; Unicode for text.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
 /// <item>One <c>SendInput</c> call per batch, so the system never interleaves other input inside it.</item>
 /// <item>A Unicode unit becomes a down and an up (<c>KEYEVENTF_UNICODE</c>); the result counts whole
-/// <see cref="LowLevelInput"/> items, so the gate commits exactly what went.</item>
+/// <see cref="LowLevelInput"/> items, so the caller knows exactly what went.</item>
 /// <item>A move is absolute over the virtual desktop (<c>MOVE | ABSOLUTE | VIRTUALDESK</c>), normalized to 0‥65535.</item>
 /// <item>Every event carries <see cref="ExtraInfo"/> in <c>dwExtraInfo</c>, so Clícalo's own hooks and the tests'
 /// probe recognise Clícalo's input.</item>
@@ -40,7 +39,7 @@ public sealed class LowLevelInjector : ILowLevelSender
     [SuppressMessage(
         "ApiDesign",
         "RS0030:Do not use banned APIs",
-        Justification = "The product's single SendInput, reached only through InjectionGate (banned-api-exceptions.json: injection)."
+        Justification = "The product's single SendInput, reached only through IInputInjector and PressedInputRelease (banned-api-exceptions.json: injection)."
     )]
     public unsafe SendResult Send(ReadOnlySpan<LowLevelInput> inputs)
     {
@@ -146,14 +145,14 @@ public sealed class LowLevelInjector : ILowLevelSender
     private static INPUT Key(PhysicalKey key, bool up)
     {
         var scanMode =
-            (key.Attributes & LedgerKeyAttributes.ScanCodeMode) != LedgerKeyAttributes.None;
+            (key.Attributes & PhysicalKeyAttributes.ScanCodeMode) != PhysicalKeyAttributes.None;
         var flags = (KEYBD_EVENT_FLAGS)0;
         if (scanMode)
         {
             flags |= KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE;
         }
 
-        if ((key.Attributes & LedgerKeyAttributes.Extended) != LedgerKeyAttributes.None)
+        if ((key.Attributes & PhysicalKeyAttributes.Extended) != PhysicalKeyAttributes.None)
         {
             flags |= KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY;
         }
@@ -204,32 +203,32 @@ public sealed class LowLevelInjector : ILowLevelSender
     }
 
     private static (MOUSE_EVENT_FLAGS Flags, uint Data) Button(
-        LedgerMouseButtons button,
+        LowLevelMouseButtons button,
         bool up
     ) =>
         button switch
         {
-            LedgerMouseButtons.Left => (
+            LowLevelMouseButtons.Left => (
                 up ? MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTUP : MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTDOWN,
                 0
             ),
-            LedgerMouseButtons.Right => (
+            LowLevelMouseButtons.Right => (
                 up
                     ? MOUSE_EVENT_FLAGS.MOUSEEVENTF_RIGHTUP
                     : MOUSE_EVENT_FLAGS.MOUSEEVENTF_RIGHTDOWN,
                 0
             ),
-            LedgerMouseButtons.Middle => (
+            LowLevelMouseButtons.Middle => (
                 up
                     ? MOUSE_EVENT_FLAGS.MOUSEEVENTF_MIDDLEUP
                     : MOUSE_EVENT_FLAGS.MOUSEEVENTF_MIDDLEDOWN,
                 0
             ),
-            LedgerMouseButtons.X1 => (
+            LowLevelMouseButtons.X1 => (
                 up ? MOUSE_EVENT_FLAGS.MOUSEEVENTF_XUP : MOUSE_EVENT_FLAGS.MOUSEEVENTF_XDOWN,
                 PInvoke.XBUTTON1
             ),
-            LedgerMouseButtons.X2 => (
+            LowLevelMouseButtons.X2 => (
                 up ? MOUSE_EVENT_FLAGS.MOUSEEVENTF_XUP : MOUSE_EVENT_FLAGS.MOUSEEVENTF_XDOWN,
                 PInvoke.XBUTTON2
             ),

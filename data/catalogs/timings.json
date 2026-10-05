@@ -218,43 +218,13 @@
       }
     },
     "Engine": {
-      "description": "Engine actor, heartbeat and generation fence.",
+      "description": "Engine actor.",
       "entries": {
-        "LedgerHeartbeatInterval": {
-          "duration": "250ms",
-          "description": "The engine writes its heartbeat to the key ledger at least this often.",
-          "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6"
-        },
-        "EngineStallThreshold": {
-          "duration": "2s",
-          "description": "Without heartbeat progress for this long, SysEvents runs the emergency release.",
-          "req": ["REG-03", "SEG-007"],
-          "source": "blueprint §3.2, §7.6"
-        },
-        "EmergencyGateWait": {
-          "duration": "250ms",
-          "description": "Longest wait of the emergency releaser for the injection gate before escalating to a process restart.",
-          "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6"
-        },
         "InternalChordWait": {
           "duration": "1s",
-          "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H) under the fence; a hung or replaced engine answers «not sent».",
+          "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H); a hung engine answers «not sent».",
           "req": ["REG-03"],
           "source": "blueprint §3.6; deviations.md D-22"
-        },
-        "EmergencyGateRetryWaits": {
-          "durations": ["250ms", "500ms", "1s", "2s"],
-          "description": "Without a running guardian the emergency never ends the process (nobody would release what is down nor relaunch Clícalo): it tries to take the injection gate again on each stall check, waiting this long on each attempt (the last one repeats).",
-          "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6; deviations.md D-22"
-        },
-        "EngineHangLoop": {
-          "countWindow": { "count": 2, "window": "10min" },
-          "description": "This many engine hangs within the window escalate directly to a process restart.",
-          "req": ["REG-03"],
-          "source": "blueprint §3.2 rule 6"
         },
         "UiPingInterval": {
           "duration": "1s",
@@ -296,11 +266,11 @@
     "Guardian": {
       "description": "Clicalo.Sentinel supervision.",
       "entries": {
-        "PipeHeartbeatInterval": {
+        "WatchInterval": {
           "duration": "1s",
-          "description": "Heartbeat period on the pipe inherited by the guardian.",
+          "description": "The main process checks this often that its guardian still runs, and starts it again after the backoff when it died.",
           "req": ["SEG-006"],
-          "source": "blueprint §3.1"
+          "source": "blueprint §3.1, ADR-0023"
         },
         "RestartBackoff": {
           "durations": ["1s", "5s", "30s"],
@@ -314,11 +284,11 @@
           "req": ["SEG-006"],
           "source": "blueprint §3.1"
         },
-        "RefusedReleaseWait": {
-          "duration": "30s",
-          "description": "Sentinel resends a release the desktop refuses every heartbeat and relaunches only once it went; a refusal by the secure desktop (locked session) is retried without limit, any other refusal for at most this long before Sentinel gives up and relaunches. Passed as the seventh start-up argument.",
+        "ReleaseRetryInterval": {
+          "duration": "1s",
+          "description": "While Windows refuses the release (a locked session or the secure desktop), Sentinel reads the key state and tries again this often, without limit, and relaunches only once it went. Passed as the --retry-ms start-up argument.",
           "req": ["SEG-006", "SEG-007", "REG-03"],
-          "source": "ADR-0018, user decision D3 of 2026-10-03"
+          "source": "ADR-0023, user decision D3 of 2026-10-03"
         }
       }
     },
@@ -357,7 +327,7 @@
         },
         "ExitReleaseWait": {
           "duration": "500ms",
-          "description": "On exit the engine has this long to release everything and stop; the process ends anyway afterwards and Sentinel releases whatever the ledger still records.",
+          "description": "On exit the engine has this long to release everything and stop; the process ends anyway afterwards and Sentinel releases whatever Windows still reports down.",
           "req": ["SEG-006", "SEG-007"],
           "source": "blueprint §7.6"
         },

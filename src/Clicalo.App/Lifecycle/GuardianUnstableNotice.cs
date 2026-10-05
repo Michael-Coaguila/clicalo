@@ -7,8 +7,7 @@ namespace Clicalo.App.Lifecycle;
 
 /// <summary>
 /// Sentinel died too often and is no longer restarted (<c>Timings.Guardian.RestartLoop</c>, D-22): from then on a death
-/// of the process leaves keys down with nobody to release them, so the emergency keeps the process (it asks
-/// <see cref="IGuardian.IsRunning"/>). The state is logged for the diagnostics and the user is told at once, on the
+/// of the process leaves keys down with nobody to release them. The state is logged for the diagnostics and the user is told at once, on the
 /// panel and to screen readers, that the key protection is off until Clícalo starts again (REG-03).
 /// </summary>
 internal sealed partial class GuardianUnstableNotice : IDisposable
@@ -44,7 +43,7 @@ internal sealed partial class GuardianUnstableNotice : IDisposable
     [LoggerMessage(
         EventId = 14,
         Level = LogLevel.Critical,
-        Message = "guardian.unstable: Sentinel is no longer restarted; the emergency keeps the process"
+        Message = "guardian.unstable: Sentinel is no longer restarted"
     )]
     private static partial void LogGuardianUnstable(ILogger logger);
 }

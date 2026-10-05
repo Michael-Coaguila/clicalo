@@ -6,7 +6,7 @@ namespace Clicalo.App.Lifecycle;
 /// <summary>
 /// The dedicated engine thread (blueprint §3.2): <c>AboveNormal</c>, it runs <see cref="EngineHost.Run"/> and nothing
 /// else, so the engine accepts touches from the first frame and never shares a thread with the UI or with I/O. A
-/// background thread: a hung engine never keeps the process alive (the ledger and Sentinel cover the keys).
+/// background thread: a hung engine never keeps the process alive («Soltar todo» of the tray and Sentinel cover the keys, ADR-0023).
 /// </summary>
 internal sealed partial class EngineThread(ILogger<EngineThread> logger)
 {
@@ -47,7 +47,7 @@ internal sealed partial class EngineThread(ILogger<EngineThread> logger)
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // The host catches every message's exception itself (NFR-005); reaching here is a defect of the loop.
-            // Sentinel still releases whatever the ledger records when the process ends.
+            // Sentinel still releases whatever Windows reports down when the process ends.
             var failure = ex.GetType().Name;
             LogEngineLoopFailed(logger, failure);
         }

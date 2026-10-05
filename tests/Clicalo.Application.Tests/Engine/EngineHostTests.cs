@@ -34,13 +34,15 @@ public sealed class EngineHostTests
     }
 
     [Fact]
-    public void A_press_for_the_current_foreground_goes_to_the_injector_with_the_generation()
+    public void A_press_for_the_current_foreground_goes_to_the_injector()
     {
         using var world = new HostWorld();
 
         world.Handle(new EngineEvent.SessionResumed(), HostWorld.Press());
 
-        world.Injector.Batches.ShouldHaveSingleItem().Generation.ShouldBe(HostWorld.Generation);
+        world
+            .Injector.Batches.ShouldHaveSingleItem()
+            .Events.ShouldBe([InjectedEvent.KeyDown(HostWorld.Ctrl)]);
     }
 
     [Fact]
@@ -154,40 +156,6 @@ public sealed class EngineHostTests
     }
 
     [Fact]
-    [Trait("Req", "REG-03")]
-    public async Task A_fenced_loop_leaves_the_engine_alive_mark_to_the_engine_that_replaced_it()
-    {
-        using var world = new HostWorld();
-        world.Injector.NextStatus = InjectionStatus.Fenced;
-        world.Answers.Enqueue([HostWorld.Press()]);
-        using var stop = new CancellationTokenSource();
-        var engine = world.Host.StartOnDedicatedThread(stop.Token);
-
-        world.Host.Post(new EngineEvent.SessionResumed());
-        engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
-
-        world.Host.IsStopped.ShouldBeTrue();
-        world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive).ShouldBeTrue();
-        await stop.CancelAsync();
-    }
-
-    [Fact]
-    [Trait("Req", "REG-03")]
-    public void A_fenced_host_stops_and_sends_nothing_more()
-    {
-        using var world = new HostWorld();
-        world.Injector.NextStatus = InjectionStatus.Fenced;
-
-        world.Handle(new EngineEvent.SessionResumed(), HostWorld.Press(), HostWorld.Press());
-
-        world.Host.IsStopped.ShouldBeTrue();
-        world.Injector.Batches.Count.ShouldBe(1);
-        world.Host.Post(new EngineEvent.ReleaseAll(ReleaseReason.User));
-        world.Host.Pump();
-        world.Seen.Count.ShouldBe(1);
-    }
-
-    [Fact]
     [Trait("Req", "EJE-008")]
     public void Text_is_revealed_only_to_the_injector_and_the_clipboard()
     {
@@ -207,7 +175,7 @@ public sealed class EngineHostTests
 
     [Fact]
     [Trait("Req", "EJE-011")]
-    public void Launches_and_system_commands_go_to_the_shell_thread_with_the_generation()
+    public void Launches_and_system_commands_go_to_the_shell_thread()
     {
         using var world = new HostWorld();
 
@@ -221,7 +189,6 @@ public sealed class EngineHostTests
         );
 
         var launch = world.Shell.Launches.ShouldHaveSingleItem();
-        launch.Generation.ShouldBe(HostWorld.Generation);
         launch.ReplyTo.ShouldBeSameAs(world.Host);
         world.Shell.Commands.ShouldHaveSingleItem().Command.ShouldBe(new SystemCommandId("lock"));
     }
@@ -291,22 +258,6 @@ public sealed class EngineHostTests
     }
 
     [Fact]
-    [Trait("Req", "REG-03")]
-    public void The_heartbeat_is_written_on_every_turn_that_moved_the_clock()
-    {
-        using var world = new HostWorld();
-
-        world.Host.Pump();
-        world.Time.Advance(Timings.Engine.LedgerHeartbeatInterval);
-        world.Host.Pump();
-
-        world.Ledger.Heartbeats.Count.ShouldBe(2);
-        (world.Ledger.Heartbeats[1] - world.Ledger.Heartbeats[0]).ShouldBe(
-            Timings.Engine.LedgerHeartbeatInterval.Ticks
-        );
-    }
-
-    [Fact]
     [Trait("Req", "NFR-001")]
     public void Snapshots_reach_the_ui_at_most_once_per_frame()
     {
@@ -328,7 +279,7 @@ public sealed class EngineHostTests
 
     [Fact]
     [Trait("Req", "NFR-005")]
-    public void An_exception_releases_what_was_held_resets_the_state_and_says_so()
+    public void An_exception_releases_what_windows_reports_down_resets_the_state_and_says_so()
     {
         using var world = new HostWorld(HostWorld.HoldingShift())
         {
@@ -337,10 +288,10 @@ public sealed class EngineHostTests
 
         world.Handle(new EngineEvent.SessionResumed());
 
-        world
-            .Injector.Batches.ShouldHaveSingleItem()
-            .Events.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
+        world.Injector.PressedReleases.ShouldBe(1);
+        world.Injector.Batches.ShouldBeEmpty();
         world.Host.State.IsQuiet.ShouldBeTrue();
+        world.Host.State.BlockedReleases.Items.ShouldBeEmpty();
         world.Host.State.Foreground.ShouldBe(HostWorld.Notepad);
         world
             .Observer.Notices.ShouldHaveSingleItem()
@@ -350,25 +301,19 @@ public sealed class EngineHostTests
 
     [Fact]
     [Trait("Req", "NFR-005")]
-    public void An_exception_releases_from_the_physical_ledger_when_it_can()
+    [Trait("Req", "SEG-006")]
+    public void An_exception_whose_release_the_secure_desktop_refuses_keeps_what_was_held_to_send_again()
     {
-        var released = new List<EngineGeneration>();
-        using var world = new HostWorld(
-            HostWorld.HoldingShift(),
-            releaseRecorded: generation =>
-            {
-                released.Add(generation);
-                return true;
-            }
-        )
+        using var world = new HostWorld(HostWorld.HoldingShift())
         {
             ThrowOn = typeof(EngineEvent.SessionResumed),
         };
+        world.Injector.NextStatus = InjectionStatus.Blocked;
 
         world.Handle(new EngineEvent.SessionResumed());
 
-        released.ShouldBe([HostWorld.Generation]);
-        world.Injector.Batches.ShouldBeEmpty();
+        world.Host.State.Keys.IsEmpty.ShouldBeTrue();
+        world.Host.State.BlockedReleases.Items.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
     }
 
     [Fact]
@@ -392,41 +337,31 @@ public sealed class EngineHostTests
     }
 
     [Theory]
-    [InlineData(TerminalReason.Exit, KeyLedgerMarks.CleanShutdown)]
-    [InlineData(TerminalReason.SessionEnd, KeyLedgerMarks.CleanShutdown)]
-    [InlineData(TerminalReason.Relaunch, KeyLedgerMarks.CleanShutdown | KeyLedgerMarks.NoRelaunch)]
-    [InlineData(TerminalReason.Update, KeyLedgerMarks.CleanShutdown | KeyLedgerMarks.NoRelaunch)]
-    [InlineData(TerminalReason.Lock, KeyLedgerMarks.None)]
+    [InlineData(TerminalReason.Exit)]
+    [InlineData(TerminalReason.SessionEnd)]
+    [InlineData(TerminalReason.Relaunch)]
+    [InlineData(TerminalReason.Update)]
+    [InlineData(TerminalReason.Lock)]
     [Trait("Req", "SEG-006")]
-    public void Terminal_events_leave_the_marks_sentinel_reads(
-        TerminalReason reason,
-        KeyLedgerMarks marks
-    )
+    public void Only_an_exit_stops_the_host(TerminalReason reason)
     {
         using var world = new HostWorld();
 
         world.Handle(new EngineEvent.Terminal(reason));
 
-        world.Ledger.Marks.ShouldBe(marks);
         world.Host.IsStopped.ShouldBe(reason == TerminalReason.Exit);
     }
 
     [Fact]
     [Trait("Req", "SEG-006")]
-    public async Task The_loop_marks_the_engine_alive_and_cancelling_it_releases_everything()
+    public void Cancelling_the_loop_releases_everything_and_closes_the_mailbox()
     {
         using var world = new HostWorld(HostWorld.HoldingShift(), realReducer: true);
         using var stop = new CancellationTokenSource();
-        var engine = world.Host.StartOnDedicatedThread(stop.Token);
-        await Eventually.WaitUntilAsync(
-            () => world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive),
-            "The engine marking itself alive"
-        );
-        await stop.CancelAsync();
-        engine.Join(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        stop.Cancel();
 
-        world.Ledger.Marks.HasFlag(KeyLedgerMarks.EngineAlive).ShouldBeFalse();
-        world.Ledger.Marks.HasFlag(KeyLedgerMarks.CleanShutdown).ShouldBeTrue();
+        world.Host.Run(stop.Token);
+
         world
             .Injector.Batches.SelectMany(static b => b.Events)
             .ShouldContain(InjectedEvent.KeyUp(HostWorld.Shift));

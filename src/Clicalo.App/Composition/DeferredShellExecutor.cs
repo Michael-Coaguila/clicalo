@@ -25,24 +25,14 @@ internal sealed class DeferredShellExecutor : IShellExecutor
         );
 
     /// <inheritdoc />
-    public void Launch(
-        EngineGeneration generation,
-        EffectId effect,
-        LaunchRequest request,
-        IEngineInbox replyTo
-    )
+    public void Launch(EffectId effect, LaunchRequest request, IEngineInbox replyTo)
     {
         ArgumentNullException.ThrowIfNull(replyTo);
         _ = replyTo.Post(new EngineEvent.LaunchFailed(effect, Unavailable));
     }
 
     /// <inheritdoc />
-    public void Run(
-        EngineGeneration generation,
-        EffectId effect,
-        SystemCommandId command,
-        IEngineInbox replyTo
-    )
+    public void Run(EffectId effect, SystemCommandId command, IEngineInbox replyTo)
     {
         ArgumentNullException.ThrowIfNull(replyTo);
         _ = replyTo.Post(new EngineEvent.SystemCommandCompleted(effect, Succeeded: false));

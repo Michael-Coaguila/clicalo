@@ -21,7 +21,7 @@ código, los identificadores y los comentarios, en inglés.
 | [overview.md](overview.md) | Resumen arc42 con diagramas C4 en Mermaid | Descriptivo; si discrepa del plano, manda el plano |
 | [testing-strategy.md](testing-strategy.md) | Pirámide de pruebas, proyectos, trazabilidad `[Trait("Req", …)]` e instantáneas propias de TestKit | Reversible |
 | [tooling.md](tooling.md) | Verbos de `cl`, Central Package Management, *lock files*, analizadores, CSharpier y CI | Reversible |
-| [contracts.md](contracts.md) | Contratos de línea de órdenes entre ejecutables: arranque de Sentinel (protocolo 2), relanzamiento y códigos de salida | Contrato público: se cambia con un ADR |
+| [contracts.md](contracts.md) | Contratos de línea de órdenes entre ejecutables: arranque de Sentinel (protocolo 3), relanzamiento y códigos de salida | Contrato público: se cambia con un ADR |
 | [deviations.md](deviations.md) | Desviaciones del plano con su motivo | Registro vivo |
 | [../adr/](../adr/README.md) | ADR en formato MADR 4 | Inmutables una vez aceptados |
 

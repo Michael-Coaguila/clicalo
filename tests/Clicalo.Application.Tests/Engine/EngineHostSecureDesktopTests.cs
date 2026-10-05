@@ -6,7 +6,7 @@ namespace Clicalo.Application.Tests.Engine;
 
 /// <summary>
 /// The host's side of the releases the secure desktop refuses (blueprint §7.6, INV-3, D-22): an exception never
-/// forgets them, and the return of the input desktop asks the gate for the ones the physical ledger keeps pending.
+/// forgets them, and the return of the input desktop sends them again.
 /// </summary>
 [Trait("Req", "SEG-006")]
 [Trait("Req", "NFR-005")]
@@ -42,15 +42,5 @@ public sealed class EngineHostSecureDesktopTests
 
         world.Host.State.Keys.IsEmpty.ShouldBeTrue();
         world.Host.State.BlockedReleases.Items.ShouldBe([InjectedEvent.KeyUp(HostWorld.Shift)]);
-    }
-
-    [Fact]
-    public void The_input_desktop_coming_back_asks_the_gate_for_the_releases_the_ledger_keeps_pending()
-    {
-        using var world = new HostWorld();
-
-        world.Handle(new EngineEvent.SessionResumed(), new EngineEffect.ReleasePendingRecorded());
-
-        world.Injector.PendingReleaseRequests.ShouldBe(1);
     }
 }

@@ -1,5 +1,4 @@
 using Clicalo.Application.Coordinators;
-using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Timing;
 using Clicalo.TestKit.Time;
@@ -8,9 +7,9 @@ using Microsoft.Extensions.Time.Testing;
 namespace Clicalo.Application.Tests.Coordinators;
 
 /// <summary>
-/// How Clícalo ends (blueprint §7.6, SEG-006): the ledger says «clean shutdown» first, then the engine releases
-/// everything and stops, then the document is flushed; a step that does not finish in time never keeps the process
-/// alive, because Sentinel releases whatever the ledger still records (ADR-0004).
+/// How Clícalo ends (blueprint §7.6, SEG-006): the engine releases everything and stops, then the document is flushed;
+/// a step that does not finish in time never keeps the process alive, because Sentinel releases whatever Windows still
+/// reports down (ADR-0023).
 /// </summary>
 [Trait("Req", "SEG-006")]
 [Trait("Req", "SEG-007")]
@@ -18,20 +17,18 @@ public sealed class ExitSequenceTests
 {
     private readonly List<string> _log = [];
     private readonly RecordingEngineInbox _engine = new();
-    private readonly RecordingKeyLedger _ledger;
     private readonly FakeTimeProvider _time = TestTime.CreateProvider();
     private readonly ExitSequence _exit;
 
     public ExitSequenceTests()
     {
-        _ledger = new RecordingKeyLedger(_log);
         _engine.OnPost = engineEvent => _log.Add("post " + engineEvent.GetType().Name);
-        _exit = new ExitSequence(_engine, _ledger, _time);
+        _exit = new ExitSequence(_engine, _time);
     }
 
     [Fact]
     [Trait("Req", "REG-03")]
-    public async Task The_ledger_is_marked_clean_before_the_engine_releases_and_the_flush_comes_last()
+    public async Task The_engine_releases_first_and_the_flush_comes_last()
     {
         var report = await _exit.RunAsync(
             TerminalReason.Exit,
@@ -48,8 +45,7 @@ public sealed class ExitSequenceTests
             TestContext.Current.CancellationToken
         );
 
-        _log.ShouldBe(["marks +CleanShutdown", "post Terminal", "engine stopped", "flush"]);
-        _ledger.Marks.ShouldBe(KeyLedgerMarks.CleanShutdown);
+        _log.ShouldBe(["post Terminal", "engine stopped", "flush"]);
         var terminal = _engine.Events.ShouldHaveSingleItem().ShouldBeOfType<EngineEvent.Terminal>();
         terminal.Reason.ShouldBe(TerminalReason.Exit);
         terminal.Lane.ShouldBe(EngineLane.Priority);
@@ -139,7 +135,6 @@ public sealed class ExitSequenceTests
         );
 
         report.EngineReleased.ShouldBeFalse();
-        _ledger.Marks.ShouldBe(KeyLedgerMarks.CleanShutdown, "Sentinel must still not relaunch");
     }
 
     [Theory]

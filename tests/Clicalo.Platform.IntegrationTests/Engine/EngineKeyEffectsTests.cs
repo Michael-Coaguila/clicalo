@@ -1,9 +1,6 @@
 using Clicalo.Application.Engine;
-using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Touch;
-using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 using Clicalo.Platform.Windows.Input;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -11,8 +8,8 @@ namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
 /// Clícalo's own chords (the rights chord of the foreground ladder, Win+H; blueprint §3.6, D-14, D-22) are sent by the
-/// running engine, under the gate, with its generation: never by a thread beside it, never by an engine an emergency
-/// replaced (INV-11). The real host, gate and ledger port; nothing is injected (<see cref="PhysicalStateInjector"/>).
+/// running engine, never by a thread beside it, and balanced. The real host and injector; nothing is injected
+/// (<see cref="PhysicalStateInjector"/>).
 /// </summary>
 [Trait("Req", "REG-03")]
 [Trait("Req", "BUS-003")]
@@ -26,15 +23,12 @@ public sealed class EngineKeyEffectsTests
     );
 
     [Fact]
-    public async Task The_running_engine_sends_them_balanced_and_a_replaced_one_never_does()
+    public async Task The_running_engine_sends_them_balanced_and_only_when_the_rights_chord_is_registered()
     {
-        using var ledger = KeyLedgerSection.CreateInMemory();
         var system = new PhysicalStateInjector();
-        var gate = new InjectionGate(ledger, system);
         var replies = new InternalChordReplies();
         var ports = new EngineHostPorts(
-            new GateInputInjector(gate),
-            new KeyLedgerPort(gate),
+            new InputInjector(system, system),
             NoShell.Instance,
             NoShell.Instance,
             SilentObserver.Instance
@@ -44,7 +38,6 @@ public sealed class EngineKeyEffectsTests
         };
         using var host = new EngineHost(
             ports,
-            new EngineGeneration(ledger.Generation),
             Config,
             TimeProvider.System,
             NullLogger<EngineHost>.Instance
@@ -65,14 +58,6 @@ public sealed class EngineKeyEffectsTests
             system.Batches.Count.ShouldBe(2);
             system.Batches[0].Length.ShouldBe(8);
             system.IsEmpty.ShouldBeTrue();
-            ledger.Snapshot().Slots.ShouldBeEmpty();
-
-            // An emergency replaces this engine: nothing it is asked for goes any more.
-            gate.TryEmergencyRelease(TimeSpan.FromMilliseconds(250), out _)
-                .ShouldBe(EmergencyOutcome.Released);
-            (await effects.SendDictationChordAsync(token)).ShouldBeFalse();
-
-            system.Batches.Count.ShouldBe(2);
             replies.Pending.ShouldBe(0);
         }
         finally

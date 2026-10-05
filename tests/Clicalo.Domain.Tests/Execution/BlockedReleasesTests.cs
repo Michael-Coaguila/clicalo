@@ -63,7 +63,7 @@ public sealed class BlockedReleasesTests
     }
 
     [Fact]
-    public void The_input_desktop_coming_back_lets_go_of_what_it_refused_and_of_what_the_ledger_keeps_pending()
+    public void The_input_desktop_coming_back_lets_go_of_what_it_refused()
     {
         var engine = CtrlLeftDownByUac();
 
@@ -71,7 +71,7 @@ public sealed class BlockedReleasesTests
 
         engine.Receiver.IsEmpty.ShouldBeTrue();
         engine.State.BlockedReleases.IsEmpty.ShouldBeTrue();
-        effects.OfType<EngineEffect.ReleasePendingRecorded>().ShouldHaveSingleItem();
+        effects.OfType<EngineEffect.Inject>().ShouldAllBe(static inject => inject.IsRelease);
     }
 
     [Fact]

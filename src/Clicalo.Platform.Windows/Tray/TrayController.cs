@@ -15,7 +15,9 @@ namespace Clicalo.Platform.Windows.Tray;
 /// todo» reach that app (SEG-003) and nothing stays in Clícalo (REG-01).
 /// </summary>
 /// <remarks>
-/// «Soltar todo» posts <see cref="EngineEvent.ReleaseAll"/> itself; showing, hiding and exiting belong to the Surfaces
+/// «Soltar todo» posts <see cref="EngineEvent.ReleaseAll"/> itself and, so it works with a hung engine too, raises
+/// <see cref="ReleasePressedRequested"/>, which the composition answers by releasing whatever Windows reports down
+/// (ADR-0023); showing, hiding and exiting belong to the Surfaces
 /// role and the lifetime of the app, so they are raised as events, on the thread that ran the menu (never the UI
 /// thread): the composition marshals them. Texts come from <c>data/i18n</c> in the current language.
 /// </remarks>
@@ -59,6 +61,12 @@ public sealed class TrayController : IDisposable
 
     /// <summary>A click on the icon, or «Mostrar u ocultar» in the menu (BUR-003).</summary>
     public event EventHandler? ShowHideRequested;
+
+    /// <summary>
+    /// «Soltar todo» in the menu, after <see cref="EngineEvent.ReleaseAll"/> was posted: the release that does not need
+    /// the engine (ADR-0023).
+    /// </summary>
+    public event EventHandler? ReleasePressedRequested;
 
     /// <summary>«Salir» in the menu.</summary>
     public event EventHandler? ExitRequested;
@@ -194,6 +202,7 @@ public sealed class TrayController : IDisposable
                 break;
             case TrayCommand.ReleaseAll:
                 _ = _engine.Post(new EngineEvent.ReleaseAll(ReleaseReason.User));
+                ReleasePressedRequested?.Invoke(this, EventArgs.Empty);
                 break;
             case TrayCommand.Exit:
                 ExitRequested?.Invoke(this, EventArgs.Empty);

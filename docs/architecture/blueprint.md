@@ -28,10 +28,9 @@ La arquitectura se apoya en seis ideas:
    - Los pocos flujos que sí necesitan cambiar el primer plano (escribir en la búsqueda, abrir y cerrar el Centro de control, «Probar ahora», el menú de la bandeja) pasan por un único `ForegroundOrchestrator`. Este usa concesiones tipadas y siempre verifica la restauración.
 2. **Nunca queda una tecla pulsada.**
    - El motor es una función pura `(estado, evento) → (estado, efectos)` que ejecuta un actor en su propio hilo.
-   - Cada pulsación se anota en un **registro de escritura adelantada en memoria compartida** (el *ledger*) antes de enviarse.
-   - Una **valla de generación** impide que un hilo del motor que estuvo colgado inyecte nada después de una liberación de emergencia.
-   - Un proceso guardián diminuto (`Clicalo.Sentinel`, Native AOT) suelta lo que quede registrado si el proceso principal muere.
-   - Las invariantes se verifican con pruebas de propiedades, incluidas la «muerte en cada paso» y el «hilo congelado y reanudado».
+   - Cada evento terminal (cambio de app, bloqueo, suspensión, cierre, excepción, tiempo máximo) y «Soltar todo» sueltan lo pulsado.
+   - Un proceso guardián diminuto (`Clicalo.Sentinel`, Native AOT) espera a que muera el proceso principal, pregunta a Windows qué teclas y botones siguen pulsados y los suelta todos; «Soltar todo» de la bandeja hace lo mismo aunque el motor esté colgado ([ADR-0023](../adr/0023-guardian-simple.md)).
+   - Las invariantes del motor se verifican con pruebas de propiedades sobre la función pura; la muerte real del proceso, con la prueba de caos nocturna de S9.
 3. **El estado tiene cuatro dueños inmutables.**
    - El *Documento*: es persistente y admite deshacer.
    - La *Sesión*: el estado transitorio del panel.
@@ -55,8 +54,8 @@ La arquitectura se apoya en seis ideas:
 | D1 | WPF sobre .NET 10 LTS y C# 14, con capa propia de ventanas y punteros sobre Win32 | Avalonia 12, Qt 6.12, WinUI 3, Tauri, Electron, nativo en Rust, Flutter, PySide6 | Es la única opción que hoy cumple con tecnología madura tres cosas: no activar la ventana, un UIA completo y TSF (teclado táctil y Win+H) en todos los campos. Detalle en ADR-0001. |
 | D2 | Monolito modular hexagonal: **8 ensamblados** en el proceso principal y módulos por capacidad como espacios de nombres | Un ensamblado por módulo; procesos separados para motor y UI | Cada ensamblado añade tiempo al arranque en frío, y separar motor y UI mete IPC en el camino de menos de 50 ms. Las fronteras entre módulos se imponen igual con pruebas. |
 | D3 | **Dos procesos por sesión:** `Clicalo.exe` y `Clicalo.Sentinel.exe` (Native AOT, 5 MB o menos). Opcionalmente, `Clicalo.Launcher.exe` (AOT) del componente de sistema, que solo vive durante el arranque | Un solo proceso; o un modo `--guardian` del mismo exe | Si el proceso que se cae es el mismo que tendría que soltar las teclas, no puede hacerlo. AOT arranca en milisegundos y no depende del runtime de WPF. |
-| D4 | Motor = `EngineReducer` puro (en Domain) ejecutado por un actor de un solo hilo (`EngineHost`), con una **valla de generación** en cada efecto externo | Servicios con estado mutable y bloqueos | Las invariantes de seguridad de teclas se pueden probar como propiedades sobre una función pura. La valla cubre el único caso que el modelo puro no cubre: un hilo colgado que vuelve. |
-| D5 | *Ledger* de teclas con **escritura adelantada** en memoria compartida sin nombre, heredada por el guardián, con la generación del motor y el modo de inyección por ranura | Preguntar el estado por IPC; soltar «todos los modificadores» a ciegas | Un proceso muerto no responde. Soltar a ciegas deja teclas pegadas y abre menús. |
+| D4 | Motor = `EngineReducer` puro (en Domain) ejecutado por un actor de un solo hilo (`EngineHost`) | Servicios con estado mutable y bloqueos | Las invariantes de seguridad de teclas se pueden probar como propiedades sobre una función pura. La valla de generación de la 1.1 se retiró en [ADR-0023](../adr/0023-guardian-simple.md): un motor colgado no se sustituye; «Soltar todo» de la bandeja suelta sin él. |
+| D5 | El guardián **pregunta a Windows** qué está pulsado (`GetAsyncKeyState` de `0x01` a `0xFE`) y lo suelta todo, con la máscara de menú antes de Alt o Win ([ADR-0023](../adr/0023-guardian-simple.md); sustituye al *ledger* de escritura adelantada de la 1.1) | *Ledger* en memoria compartida; preguntar por IPC; soltar solo los modificadores | Un proceso muerto no responde. El usuario no usa teclado físico, así que lo pulsado lo pulsó Clícalo; soltar todas las teclas, no solo los modificadores, y con máscara, no deja teclas pegadas ni abre menús. |
 | D6 | **Cuatro dueños de estado** (Documento, Sesión, Interacción y Motor), proyecciones puras y flujo unidireccional | Un único store tipo Redux; entidades mutables con `INotifyPropertyChanged` | Cada estado tiene su propio ciclo de vida, su hilo y sus reglas de persistencia. El estado transversal entre superficies necesita un dueño explícito. |
 | D7 | Deshacer con **instantáneas por porciones** y compartición estructural: 20 entradas y agrupación por clave | *Event sourcing*; comandos con operación inversa | Es barato, correcto por construcción y no exige escribir a mano la inversa de cada comando. |
 | D8 | **Un único dispatcher de UI por defecto**, con dos *roles* lógicos (Surfaces y Workspace). Se separa en dos dispatchers solo si S2 mide que el Centro de control degrada el panel | Dos dispatchers desde el día 1 | No se diseña la concurrencia antes de medir. Los *roles* y la publicación inmutable permiten separar sin reescribir. |
@@ -87,11 +86,11 @@ La arquitectura se apoya en seis ideas:
 | Reconocedor de gestos | Decisión tecnológica: en UI.Wpf. Dominio: puro en Domain | **`Clicalo.Domain.Touch` (puro).** UI.Wpf solo traduce `WM_POINTER` a `PointerFrame`. Así TAC-002 es una única función en todas las superficies y se reutiliza si se migra a Avalonia. |
 | Forma del motor | Dominio: actor con `ActivationPolicy` y ejecutores con puertos. Fiabilidad: reductor puro con efectos | **Síntesis.** `EngineReducer` puro que incorpora `ActivationPolicy` y los planificadores por tipo de acción. `EngineHost` solo interpreta efectos. Los efectos que pueden bloquear (`Launch`, `SystemCommand`) se ejecutan fuera del hilo del motor. |
 | Hook de primer plano (WinEvent) | Dominio: en el hilo del motor. Fiabilidad: en el hilo SysEvents | **SysEvents**, solo para el primer plano **externo**. La activación de las ventanas propias se detecta con sus propios mensajes (v1.1). |
-| Soltado de emergencia si el motor se cuelga | Dominio: desde el hilo de UI. Fiabilidad: desde SysEvents | **SysEvents**, leyendo el *ledger* **bajo la valla de generación**. Si no puede tomar la valla, escala a reinicio del proceso (v1.1). |
+| Soltado de emergencia si el motor se cuelga | Dominio: desde el hilo de UI. Fiabilidad: desde SysEvents | **«Soltar todo» de la bandeja**, que suelta lo que Windows dice que está pulsado sin pasar por el motor ([ADR-0023](../adr/0023-guardian-simple.md); sustituye al soltado bajo la valla de la 1.1). |
 | `KeyId` | Dominio: cadena canónica. Fiabilidad: `ushort`. Equipo: generado | **Cadena canónica persistida** (`"ctrl"`, `"a"`, `"char:ñ"`) con constantes generadas desde `keys.json`. La tecla física (`InjectedKey`: vk, scan, ext y modo) solo existe en los efectos y en el *ledger*. |
 | Versión del esquema | Dominio y Equipo: entero. Fiabilidad: `major.minor` más campos desconocidos | **`major.minor`.** Es lo único que permite volver a N−1 (ACT-005) sin perder datos. |
 | Autoguardado | 750 ms / 3 s frente a 500 ms / 2 s | **500 ms de *debounce* y 2 s de latencia máxima** para el documento. El uso va aparte, con 30 s y 5 min. |
-| Número de ensamblados | 7, 11 o 10 | **8 en el proceso principal**, más Sentinel, Launcher y los proyectos de compilación. Localización y catálogos son espacios de nombres. IPC, *ledger*, inyección de bajo nivel y verificación de confianza se agrupan en `Clicalo.Platform.Core`, compatible con AOT y compartido con Sentinel y Launcher. |
+| Número de ensamblados | 7, 11 o 10 | **8 en el proceso principal**, más Sentinel, Launcher y los proyectos de compilación. Localización y catálogos son espacios de nombres. IPC, inyección de bajo nivel, contrato del guardián y verificación de confianza se agrupan en `Clicalo.Platform.Core`, compatible con AOT y compartido con Sentinel y Launcher. |
 | Catálogos | Dominio: datos. Equipo: generados | **Híbrido** (D17). |
 | Marcadores de i18n | Decisión tecnológica: `{a}`, `{p}`… Equipo: con nombre y plurales | **Con nombre y plurales.** Condición: el texto visible resultante debe ser idéntico al del paquete. Una prueba de instantánea compara ambos para los argumentos de muestra. |
 | Inicio elevado | Decisión tecnológica: tarea `Highest` en la edición por usuario. Fiabilidad y Equipo: solo en la edición por máquina (después de la 2.0) | **Componente de sistema opcional en la 2.0** (v1.1). SIS-002 es MUST, y una tarea elevada que apunta a una ruta escribible por el usuario sería una escalada de privilegios. La tarea apunta a un lanzador en `%ProgramFiles%` que solo ejecuta una copia protegida y verificada. |
@@ -187,27 +186,27 @@ Las versiones marcadas «x» se fijan de forma exacta al crear el repositorio. D
 │  │              Workspace: Centro de control y bienvenida                       │
 │  │              (se separan en dos dispatchers solo si S2 lo exige)             │
 │  ├ Engine       buzón de 2 carriles + temporizadores: EngineHost, SendInput     │
-│  │              tras InjectionGate, escritura del ledger                        │
+│  │              a través de IInputInjector                                      │
 │  ├ SysEvents    STA + ventana solo de mensajes + TrayMenuHost (nivel superior   │
 │  │              oculta): WinEvent de primer plano externo y del cursor, WTS,    │
 │  │              energía, WM_SETTINGCHANGE/DISPLAYCHANGE, bandeja,               │
 │  │              RegisterHotKey, portapapeles, ForegroundOrchestrator,           │
-│  │              PointerPositionTracker, EmergencyReleaser                       │
+│  │              PointerPositionTracker                                          │
 │  ├ Shell        STA, prioridad baja: ShellExecute/IShellDispatch2, WMI,         │
 │  │              comandos de sistema (nunca bloquea al motor)                    │
 │  ├ Hook         bajo demanda: WH_KEYBOARD_LL (grabar) y WH_MOUSE_LL (temporal)  │
 │  ├ Persistence  consumidor único: documento, uso, copias, restauración          │
-│  └ ThreadPool   IA, actualizaciones, catálogo de apps, importación              │
-│   KeyLedger: sección de memoria sin nombre, 4 KiB  ◄── escritura adelantada    │
+│  └ ThreadPool   IA, actualizaciones, catálogo de apps, importación,             │
+│                 «Soltar todo» de la bandeja sin el motor                        │
 └──────┬───────────────────────────────────────▲──────────────────────────────────┘
-       │ handles heredados (PROC_THREAD_ATTRIBUTE_HANDLE_LIST, solo estos 3):
-       │  proceso padre (SYNCHRONIZE | QUERY_LIMITED) · ledger (solo lectura)
-       │  · extremo de un pipe anónimo (latido cada 1 s)
-       ▼                                       │
+       │ un solo handle heredado (PROC_THREAD_ATTRIBUTE_HANDLE_LIST):
+       │  proceso padre (SYNCHRONIZE | QUERY_LIMITED); protocolo 3 (ADR-0023)
+       ▼                                       │ el principal comprueba cada 1 s
 ┌──────────────── Clicalo.Sentinel.exe (Native AOT, misma integridad, ≤5 MB) ─────┐
-│ WaitForMultipleObjects(padre, pipe) → al morir el padre: leer ledger →          │
-│ SendInput(key-ups en el modo registrado, con máscara) → crash-journal →         │
-│ relanzar solo si ¬CleanShutdown ∧ ¬NoRelaunch ∧ no hay bucle de fallos          │
+│ WaitForSingleObject(padre) → GetAsyncKeyState(0x01‥0xFE) → SendInput(key-ups    │
+│ en modo VK con EXTENDEDKEY y máscara antes de Alt o Win, botones arriba) →      │
+│ reintento cada 1 s mientras Windows lo rechace → relanzar solo si el código de  │
+│ salida ≠ 0, con el bucle de fallos (modo seguro)                                │
 └─────────────────────────────────────────────────────────────────────────────────┘
 Segunda ejecución ─► Mutex Local\Clicalo.{sidHash}.Instance ─► pipe \\.\pipe\Clicalo.{sidHash}.{sessionId}
 Update.exe (Velopack): solo lo lanza Clicalo.exe en integridad MEDIA tras verificar el paquete (§9.3)
@@ -221,7 +220,7 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 | Proceso | Tecnología | Vida | Responsabilidad | Presupuesto |
 |---|---|---|---|---|
 | `Clicalo.exe` | WPF sobre .NET 10, autocontenido, R2R | Toda la sesión | UI, motor, persistencia, actualizaciones, IA | ≤120 MB de *working set* con 4 superficies; CPU media <0,5 % en reposo |
-| `Clicalo.Sentinel.exe` | .NET 10 Native AOT, sin WPF ni reflexión | Mientras viva el principal y, si muere con la sesión bloqueada, hasta que el escritorio acepte su soltado ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md), punto 6) | Soltar lo que registra el *ledger*; relanzar el principal cuando procede; registrar el fallo | ≤5 MB; 0 % de CPU (bloqueado en espera) |
+| `Clicalo.Sentinel.exe` | .NET 10 Native AOT, sin WPF ni reflexión | Mientras viva el principal y, si muere con la sesión bloqueada, hasta que Windows acepte su soltado ([ADR-0023](../adr/0023-guardian-simple.md)) | Soltar lo que Windows dice que está pulsado; relanzar el principal tras una salida anómala; pasarle la hora del fallo | ≤5 MB; 0 % de CPU (bloqueado en espera) |
 | `Clicalo.Launcher.exe` | .NET 10 Native AOT (solo con el componente de sistema) | Segundos, al iniciar sesión o tras actualizar | Sincronizar y verificar la copia protegida y lanzarla elevada | ≤5 MB; ≤300 ms sin sincronización |
 | `Update.exe` | Velopack | Puntual, siempre en integridad media | Aplicar un paquete ya verificado | — |
 
@@ -229,17 +228,18 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 - Se lanza **desde un hilo de fondo al principio del arranque**, en paralelo al primer frame y sin bloquear el hilo de UI. Si S5 mide que retrasa el primer frame, se lanza justo después.
 - **El motor acepta toques desde el primer frame; no espera al guardián.**
 - El breve intervalo sin guardián (menos de 200 ms, medido en S9) está cubierto por dos cosas:
-  - Dentro del proceso, por `EngineHost` y `EmergencyReleaser`.
-  - Si el proceso muere en ese intervalo, por el soltado preventivo del siguiente arranque: los modificadores que `GetAsyncKeyState` marque como pulsados, con máscara (SEG-006).
+  - Dentro del proceso, por `EngineHost` (eventos terminales, «Soltar todo») y por «Soltar todo» de la bandeja.
+  - Si el proceso muere en ese intervalo, por el soltado preventivo del siguiente arranque: todo lo que `GetAsyncKeyState` marque como pulsado, teclas y botones, con máscara (SEG-006).
 - Es un riesgo residual aceptado y registrado en §15.2.
 
 **Si muere el guardián:**
-- El principal lo detecta porque se rompe el pipe y lo relanza con esperas de 1, 5 y 30 s.
+- El principal comprueba cada `Guardian.WatchInterval` (1 s) que su proceso sigue vivo y lo relanza con esperas de 1, 5 y 30 s.
 - El umbral de bucle de fallos está en `timings.json` → `Guardian.RestartLoop = {count: 3, window: 10 min}`. Si se supera, se avisa en Sistema › Inicio y estabilidad.
 
-**Si muere el principal:**
-- Sentinel lo relanza, salvo si el *ledger* tiene `CleanShutdown` o `NoRelaunch`.
-- `timings.json` → `App.CrashLoop = {count: 3, window: 10 min}`. Al superarlo, el siguiente arranque entra en **modo seguro**. Es el mismo umbral que se prueba en S9.
+**Si termina el principal** ([ADR-0023](../adr/0023-guardian-simple.md)):
+- Sentinel suelta todo lo que Windows dice que está pulsado. Mientras la sesión está bloqueada o el escritorio seguro tiene la entrada, Windows no deja leer ni enviar: Sentinel lo intenta otra vez cada `Guardian.ReleaseRetryInterval` (1 s), sin límite, y solo relanza después (decisión D3 del usuario).
+- Relanza solo si el código de salida no es 0: un cierre normal, el fin de la sesión, una actualización o el relevo elevado salen con 0.
+- `timings.json` → `App.CrashLoop = {count: 3, window: 10 min}`. Al alcanzarlo, el relanzamiento entra en **modo seguro**; si también ese falla dentro de la ventana, Sentinel deja de relanzar (ADR-0023). Es el mismo umbral que se prueba en S9.
 
 **Limitación aceptada.** «Finalizar árbol de procesos» mata a los dos. Lo cubre el soltado preventivo del siguiente arranque. No se usan trucos de *re-parenting*, porque son frágiles y los antivirus los tratan como sospechosos.
 
@@ -248,9 +248,9 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 | Hilo | Dueño de | Prioridad | Nunca hace |
 |---|---|---|---|
 | UI (roles Surfaces y Workspace) | Todas las `NonActivatingWindow`, `PointerInputSource`, `GestureRecognizer`, `SessionStore`, `InteractionStore` (rol Surfaces); Centro de control, bienvenida, `WorkspaceSession` (rol Workspace) | Normal (AboveNormal mientras hay contacto) | E/S, esperas, `SendInput`, `SetForegroundWindow` |
-| Engine | `EngineHost` (y dentro de él `EngineState`), escritura del *ledger*, `SendInput` a través de `InjectionGate` | AboveNormal | E/S de disco o red, llamadas a la UI, esperas bloqueantes, `ShellExecute`, WMI |
-| SysEvents | *Hooks* de WinEvent, WTS, energía, bandeja y su menú, portapapeles (OLE STA), `ForegroundOrchestrator`, `PointerPositionTracker`, `EmergencyReleaser` | AboveNormal | Lógica de negocio (solo traduce, encola y orquesta el primer plano) y llamadas que puedan bloquear |
-| Shell | `ShellExecutor`: `IShellDispatch2::ShellExecute`, WMI (brillo), `LockWorkStation` y el resto de `SystemCommand` | BelowNormal | Tocar el *ledger* o la UI |
+| Engine | `EngineHost` (y dentro de él `EngineState`), `SendInput` a través de `IInputInjector` | AboveNormal | E/S de disco o red, llamadas a la UI, esperas bloqueantes, `ShellExecute`, WMI |
+| SysEvents | *Hooks* de WinEvent, WTS, energía, bandeja y su menú, portapapeles (OLE STA), `ForegroundOrchestrator`, `PointerPositionTracker` | AboveNormal | Lógica de negocio (solo traduce, encola y orquesta el primer plano) y llamadas que puedan bloquear |
+| Shell | `ShellExecutor`: `IShellDispatch2::ShellExecute`, WMI (brillo), `LockWorkStation` y el resto de `SystemCommand` | BelowNormal | Enviar entrada o tocar la UI |
 | Hook | `WH_KEYBOARD_LL` y `WH_MOUSE_LL`, siempre temporales | Highest | Cualquier cosa distinta de `TryWrite` en un anillo prealocado |
 | Persistence | Serializar, validar, escribir el documento y el uso, hacer copias | BelowNormal | Tocar la UI |
 
@@ -272,21 +272,10 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 
 5. **Las instantáneas del motor hacia la UI se agrupan:** como máximo una por frame (unos 16 ms).
 
-6. **Vigilancia y valla de generación (REG-03):**
+6. **Vigilancia y motor colgado (REG-03, [ADR-0023](../adr/0023-guardian-simple.md)):**
    - El motor hace *ping* al dispatcher cada segundo. Tras 5 s sin respuesta registra `ui.hang`. A los 30 s ofrece reiniciar desde la bandeja.
-   - `EngineHost` escribe `LastHeartbeatTicks` en el *ledger* en cada vuelta del buzón y con un temporizador de 250 ms.
-   - **Valla de generación.** El *ledger* guarda `EngineGeneration` (uint64). Cada `EngineHost` nace con la generación vigente `g`. Todo efecto con consecuencias externas se ejecuta a través de `InjectionGate.TryRun(g, …)`: `Inject`, escritura del *ledger*, `ClipboardPaste` y el envío de `Launch` o `SystemCommand` al hilo Shell. `TryRun`:
-     ```
-     lock (gate) {
-       if (Volatile.Read(ledger.EngineGeneration) != g) return Fenced;   // el hilo zombi no inyecta
-       ledger.BeginDown(...); SendInput(...); ledger.Commit(...);
-     }
-     ```
-   - **Emergencia.** SysEvents detecta 2 s sin avance del latido y ejecuta `EmergencyReleaser`:
-     1. `Monitor.TryEnter(gate, 250 ms)`.
-     2. **Si lo consigue:** hace `Interlocked.Increment(ref EngineGeneration)`, suelta todo lo del *ledger* dentro del *lock* (en el modo registrado y con máscara), libera la valla, crea un `EngineHost` nuevo con la generación `g+1` y `EngineState.Empty`, y avisa «Algo falló; se soltaron las teclas». El hilo viejo se abandona como hilo de fondo, se registra `engine.zombie` y todo lo que intente después devuelve `Fenced`, que se descarta.
-     3. **Si no lo consigue** (el hilo colgado tiene la valla, por ejemplo dentro de `SendInput` retenido por *hooks* de terceros), no se puede garantizar el orden. Se escala: el *ledger* recibe `EmergencyRestart` sin `CleanShutdown`, se escribe el `crash-journal` y se hace `TerminateProcess(self)`. Sentinel suelta desde el *ledger* (INV-2 garantiza que lo que estaba en envío está registrado) y relanza.
-     4. **Un segundo cuelgue del motor en 10 minutos** escala directamente a reinicio del proceso.
+   - **Motor colgado.** No hay latido, valla de generación ni motor de reemplazo. «Soltar todo» de la bandeja publica `ReleaseAll` en el motor y, además, suelta en el *ThreadPool* lo que Windows dice que está pulsado (`PressedInputRelease`, el mismo camino que Sentinel), así que funciona aunque el hilo del motor no responda. Después, «Salir» o cerrar el proceso hace que Sentinel suelte otra vez y, si la salida es anómala, relance.
+   - **Una excepción en el motor** (NFR-005) suelta lo que Windows dice que está pulsado, no lo que guarda su estado, que puede ser la parte rota; si el escritorio seguro lo rechaza, guarda lo que tenía el último estado bueno para reenviarlo al volver.
 
 7. **GC y asincronía:**
    - GC de estación de trabajo concurrente. Con un *hook* LL instalado se usa `GCSettings.LatencyMode = SustainedLowLatency`.
@@ -341,9 +330,9 @@ Hay **una sola instalación por usuario** (Velopack, sin UAC) y un **componente 
 **Por qué no hay bróker elevado.** Un bróker que acepta «inyecta estas teclas» de un cliente de integridad media convertiría a cualquier código del mismo usuario en controlador de las ventanas de administrador. Un proceso completo elevado sí está protegido por UIPI. `IInputInjector` es la costura donde encajaría un bróker en el futuro si se decidiera por ADR, pero hoy está prohibido.
 
 **Relanzamiento elevado (traspaso):**
-1. Motor: `Terminal(Relaunch)`. El *ledger* recibe `CleanShutdown | NoRelaunch`, así que Sentinel no compite con el traspaso.
+1. Motor: `Terminal(Relaunch)`. El proceso sale con código 0, así que Sentinel no relanza ni compite con el traspaso (ADR-0023).
 2. `Store.FlushAsync` (máximo 2 s).
-3. Con componente: `ITaskService` ejecuta `ElevatedStart` bajo demanda. Sin componente: `ShellExecuteEx(runas, "--handover")`. Si devuelve `ERROR_CANCELLED` (1223), el interruptor vuelve a apagado, se muestra un aviso, se limpia `NoRelaunch` y termina el flujo.
+3. Con componente: `ITaskService` ejecuta `ElevatedStart` bajo demanda. Sin componente: `ShellExecuteEx(runas, "--handover")`. Si devuelve `ERROR_CANCELLED` (1223), el interruptor vuelve a apagado, se muestra un aviso y termina el flujo.
 4. Se cierran las superficies, se libera el mutex y el proceso sale limpio.
 5. La instancia elevada espera el mutex hasta 15 s, carga el documento (la posición del panel está en él) y avisa con `[adminOn]`.
 
@@ -351,7 +340,7 @@ No se transfiere estado por IPC, así que no hay superficie de ataque.
 
 ### 3.4 Instancia única e IPC
 
-**La instancia única es obligatoria** (propuesta P2 sobre la fila [rSingle]). Dos procesos serían dos motores y dos *ledgers* sobre el mismo teclado.
+**La instancia única es obligatoria** (propuesta P2 sobre la fila [rSingle]). Dos procesos serían dos motores sobre el mismo teclado.
 
 **Nombres:**
 - `sidHash` son los 16 primeros caracteres hexadecimales de `SHA-256(UserSid)`.
@@ -491,7 +480,7 @@ public interface ISurfaceActivationStyle { void AllowActivation(SurfaceId s); vo
 | Origen | Paso 1 | Paso 2 (si el 1 falla) | Paso 3 |
 |---|---|---|---|
 | `Touch`, `Tray`, `GlobalHotkey` | `TrySetForeground`, que funciona porque Clícalo recibió la entrada o el `WM_HOTKEY`; un reintento | — | `Denied` + aviso *live* |
-| `UiaInvoke` (Acceso por voz, Narrador, Reconocimiento de voz de Windows, conmutadores) | `TrySetForeground` | **Atajo interno de derechos.** El motor inyecta, mediante el *ledger* y como efecto interno, una combinación reservada y registrada con `RegisterHotKey` (Ctrl+Alt+Shift+F24; ninguna app la recibe porque la consume el sistema). Al llegar `WM_HOTKEY`, Clícalo tiene derecho de primer plano y se reintenta | `Denied` + aviso *live* con la alternativa (atajo global configurable) |
+| `UiaInvoke` (Acceso por voz, Narrador, Reconocimiento de voz de Windows, conmutadores) | `TrySetForeground` | **Atajo interno de derechos.** El motor inyecta, como efecto interno, una combinación reservada y registrada con `RegisterHotKey` (Ctrl+Alt+Shift+F24; ninguna app la recibe porque la consume el sistema). Al llegar `WM_HOTKEY`, Clícalo tiene derecho de primer plano y se reintenta | `Denied` + aviso *live* con la alternativa (atajo global configurable) |
 | `Internal` (temporizadores de «Probar ahora») | `TrySetForeground` | — | Según el tipo: `Flashed` o `Failed` |
 
 Quedan prohibidos `AttachThreadInput` con el hilo del primer plano, el truco de enviar Alt y `LockSetForegroundWindow`: son frágiles, pueden bloquear o abren menús en la app destino.
@@ -567,7 +556,7 @@ Todo esto se valida en S2 y S4.
           │ modelo, invariantes, comandos, EngineReducer,      │
           │ DimPolicy, reglas puras · net10.0, solo BCL        │
           └────────────────────────────────────────────────────┘
-   Clicalo.Platform.Core (AOT-safe): KeyLedger, InjectionGate, LowLevelInjector, contratos IPC,
+   Clicalo.Platform.Core (AOT-safe): LowLevelInjector, PressedInputRelease, contrato del guardián, contratos IPC,
    TrustVerifier ─ lo usan Platform.Windows, Infrastructure, Clicalo.Sentinel y Clicalo.Launcher
 ```
 
@@ -658,7 +647,7 @@ Hay seis mecanismos. Todos se ejecutan en la CI y todos bloquean.
 | `SetForegroundWindow`, `AllowSetForegroundWindow`, `AttachThreadInput`, `LockSetForegroundWindow` | Todo salvo `Platform.Windows/Foreground/ForegroundControl.cs` (y `AttachThreadInput`/`LockSetForegroundWindow` en ningún sitio) | `IForegroundOrchestrator` |
 | `Window.Activate`, `Window.Focus` sobre ventanas | Todo `src` | Concesión `ControlCenter` |
 | `TrackPopupMenu`, `TrackPopupMenuEx` | Todo salvo `Platform.Windows/Tray/TrayMenuHost.cs` | Concesión `TrayMenu` |
-| `PInvoke.SendInput` | Todo salvo `Platform.Core/Injection` (detrás de `InjectionGate`) | `IInputInjector` |
+| `PInvoke.SendInput` | Todo salvo `Platform.Core/Injection` (`LowLevelInjector`, el único envío) | `IInputInjector` |
 | `ShellExecute*`, `IShellDispatch2`, WMI (`System.Management`) | Todo salvo `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` (hilo Shell) | `ILauncher`, `ISystemCommandRunner` |
 
 4. **Analizadores propios** (`generators/Clicalo.Analyzers`, prefijo `CLC`). Cada uno tiene su página en `docs/guides/analyzers.md` y una corrección automática cuando es viable.
@@ -743,7 +732,7 @@ clicalo/
 │  │   Panel/ Dock/ Bubble/ SideWindows/ ControlCenter/<Sección>/ Welcome/ Common/
 │  ├─ Clicalo.UI.Wpf/
 │  │   Windowing/ Pointer/ Surfaces/ Workspace/ Controls/ Automation/ Theming/ Localization/
-│  ├─ Clicalo.Platform.Core/         KeyLedger/ Injection/ Ipc/ Trust/
+│  ├─ Clicalo.Platform.Core/         Guardian/ Injection/ Ipc/ Trust/
 │  ├─ Clicalo.Platform.Windows/
 │  │   SysEvents/ Input/ Foreground/ PointerTracking/ Session/ Clipboard/ Launch/
 │  │   SystemCommands/ Apps/ Startup/ Elevation/ SystemComponent/ SingleInstance/ Secrets/
@@ -937,7 +926,7 @@ Los comandos son clases pequeñas y puras que no usan puertos. Lo que necesita E
 | `PanelSession` | `SessionStore` (rol Surfaces) | No, salvo lo que es ajuste (`lastProfile`, posiciones) | No |
 | `InteractionState` | `InteractionStore` (rol Surfaces; publica `InteractionSnapshot` hacia Workspace) | No | No |
 | `WorkspaceSession` (editor, borradores, sección del CC) | Rol Workspace | No | No (el borrador vive aquí) |
-| `EngineState` → `EngineSnapshot` | `EngineHost` (solo Engine) | No; lo que debe sobrevivir a un fallo va al *ledger* | No |
+| `EngineState` → `EngineSnapshot` | `EngineHost` (solo Engine) | No; tras un fallo, Sentinel suelta lo que Windows dice que está pulsado | No |
 
 **La sesión no admite estados inválidos (PAN-001 y PAN-008):**
 
@@ -1159,8 +1148,8 @@ esquema.
                                Inject · Schedule · CancelTimer · Announce · RecordUsage
                                SetLastAction · ClipboardPaste · Launch · SystemCommand
                                                              ▼
-                               EngineHost interpreta, siempre a través de InjectionGate(g):
-                               KeyLedger.BeginDown → SendInput → Commit
+                               EngineHost interpreta a través de IInputInjector:
+                               Inject → SendInput (el único, LowLevelInjector)
                                Launch/SystemCommand → hilo Shell → LaunchCompleted/Failed al buzón
                                → EngineOutput: Snapshot, Notice, UsageRecorded, DockCollapse(900 ms)
 ```
@@ -1218,12 +1207,12 @@ public static class EngineReducer
   - `MousePlanner`: actúa en `LastExternalPointer` (§7.11); repetición de rueda con aceleración (60/40/25 ms); `drag` como Alternar.
   - `MacroPlanner`: `MacroRun` reanudable (`Step i/n`, `Waiting until t`).
   - `WebPlanner`, `AppPlanner` y `SystemPlanner`.
-- **`EngineHost`** (Application) es el actor. Interpreta los efectos contra `IInputInjector` (siempre a través de `InjectionGate` con su generación), `IKeyLedger`, `ITimerScheduler` (sobre `TimeProvider`), `IEngineOutput`, `IClipboard` y `IShellExecutor`.
-  - `Launch` y `SystemCommand` **no se ejecutan en el hilo Engine**. Se encolan en el hilo Shell, con la generación, y el resultado vuelve al buzón como `LaunchCompleted`/`LaunchFailed`/`SystemCommandCompleted`. Un `ShellExecute` lento o una llamada WMI (#9752) nunca retrasan el carril Priority.
-  - Cada mensaje va en un `try/catch`. Ante una excepción: liberación de emergencia desde el *ledger* (bajo la valla), `EngineState.Empty` y aviso «Algo falló; se soltaron las teclas» (NFR-005).
+- **`EngineHost`** (Application) es el actor. Interpreta los efectos contra `IInputInjector`, `ITimerScheduler` (sobre `TimeProvider`), `IEngineOutput`, `IClipboard` y `IShellExecutor`.
+  - `Launch` y `SystemCommand` **no se ejecutan en el hilo Engine**. Se encolan en el hilo Shell y el resultado vuelve al buzón como `LaunchCompleted`/`LaunchFailed`/`SystemCommandCompleted`. Un `ShellExecute` lento o una llamada WMI (#9752) nunca retrasan el carril Priority.
+  - Cada mensaje va en un `try/catch`. Ante una excepción: se suelta lo que Windows dice que está pulsado (`IInputInjector.ReleasePressed`, [ADR-0023](../adr/0023-guardian-simple.md)), `EngineState.Empty` y aviso «Algo falló; se soltaron las teclas» (NFR-005).
 - **Teclas fijas (FIJ-006):** `StickyModifiers.Compose` aplica las reglas (a)–(d), elimina duplicados y ordena Ctrl, Alt, Shift, Win (EC-EJE-06). Se aplica también a los clics de mouse.
 
-### 7.4 Registro de pulsadas: el lógico y el físico
+### 7.4 Registro de pulsadas
 
 **Lógico (Domain.KeySafety).** Dos titulares pueden compartir una tecla física; por ejemplo, un Mantener con Shift y Shift fijado. Soltar uno de ellos no debe soltar Shift.
 
@@ -1243,44 +1232,28 @@ public sealed record KeyboardLedger(ImmutableDictionary<InjectedKey, ImmutableHa
 
 Como `InjectedKey` incluye el modo, la misma tecla pulsada en VK y en scancode son titularidades distintas. Cada una se suelta en su modo.
 
-**Físico (`Clicalo.Platform.Core.KeyLedger`).** Es una sección de 4 KiB sin nombre, creada con `CreateFileMapping(INVALID_HANDLE_VALUE)` y heredable solo por el guardián:
-
-```
-0x000 uint32 Magic 'CLKL' · 0x004 uint16 LayoutVersion=2
-0x006 uint16 Flags (CleanShutdown, NoRelaunch, EngineAlive, EmergencyRestart)
-0x008 uint64 Sequence (Interlocked++) · 0x010 int64 LastHeartbeatTicks
-0x018 uint64 EngineGeneration (Interlocked; solo sube)
-0x020 Slot[128] { uint16 Vk; uint16 Scan; uint8 KeyFlags (Extended | ScanCodeMode); uint8 State; uint16 RefCount }
-      State: 0 Free · 1 DownPending · 2 Down · 3 ReleasePending
-0x420 uint8 MouseButtonsDown (L/R/M/X1/X2)
-```
-
-**Protocolo** (siempre dentro de `InjectionGate.TryRun(g, …)`): `BeginDown` (DownPending) → `SendInput(down)` → Down … `SendInput(up)` → `CommitUp` (Free).
-- Si el proceso muere entre `BeginDown` y el envío, se manda una liberación de más, que es inocua gracias a la máscara de menú en Alt y Win.
-- **No existe ningún instante en que una tecla esté pulsada sin estar registrada, y ningún hilo con generación vieja puede pulsar nada.**
+**Sin registro físico** ([ADR-0023](../adr/0023-guardian-simple.md), que retira el *ledger* v2 en memoria compartida de la 1.1). Lo que está pulsado de verdad lo sabe Windows: `PressedInputRelease` (Platform.Core) lee `GetAsyncKeyState` de `0x01` a `0xFE` y suelta todas las teclas y botones pulsados, en modo VK con el código de exploración de `MapVirtualKey` y `KEYEVENTF_EXTENDEDKEY` si es extendido, los modificadores al final y la máscara de menú antes de Alt o Win. Lo usan Sentinel tras la muerte del principal, el motor tras una excepción, «Soltar todo» de la bandeja y el soltado preventivo del arranque. El usuario no usa teclado físico, así que todo lo pulsado lo pulsó Clícalo.
 
 ### 7.5 Invariantes de seguridad de teclas
 
 Notación:
 - `D` = teclas y botones pulsados por Clícalo según el receptor (el estado que modela `PhysicalStateInjector`);
 - `R` = los titulares;
-- `T` = la transacción de Pulsar en curso;
-- `L` = las entradas del *ledger* físico que no están en Free;
-- `G` = la generación vigente.
+- `T` = la transacción de Pulsar en curso.
+
+INV-2 (cobertura por el *ledger*) e INV-11 (valla) se retiraron con [ADR-0023](../adr/0023-guardian-simple.md): sin *ledger* ni generaciones no hay nada que comprobar. La muerte del proceso la cubre Sentinel, que suelta lo que Windows dice que está pulsado (prueba de caos nocturna de S9: nada pulsado 1 s después de la muerte).
 
 | ID | Invariante | Verificación |
 |---|---|---|
 | INV-1 Solidez | `D = ⋃ Keys(R) ∪ keys(T)` y el recuento de referencias coincide | Propiedad CsCheck en cada paso |
-| INV-2 Cobertura | `D ⊆ L` en todo instante observable desde fuera | «Muerte en cada paso» (§7.10) |
-| INV-3 Terminales | Tras `Terminal` o `ReleaseAll`: `R = ∅`, `T = ∅`, macro cancelada, `D = ∅` (o `D ⊆ ReleasePending` si el escritorio seguro bloqueó; se reintenta al desbloquear o reanudar) | Propiedad y arnés |
+| INV-3 Terminales | Tras `Terminal` o `ReleaseAll`: `R = ∅`, `T = ∅`, macro cancelada, `D = ∅` (o lo rechazado queda en `BlockedReleases` si el escritorio seguro bloqueó; se reintenta al volver el escritorio de entrada) | Propiedad y arnés |
 | INV-4 Vida acotada | Todo titular tiene un plazo ≤ `Since + maxHold` (salvo Nunca, que sigue sujeto a INV-3) | Propiedad con `FakeTimeProvider` |
 | INV-5 Transacción | Al terminar `T` por cualquier camino, `keys(T) ∩ D ⊆ keys(R)` | Fallo inyectado en el evento n |
 | INV-6 Destino válido | Todo `Inject` que no es liberación ni interno lleva `Epoch` y `RequiredForeground?`; el host lo descarta si no coinciden o si el destino está elevado y Clícalo no | Unitaria y propiedad |
 | INV-7 Sin envío en prueba o pausa | Con `Test` o `Paused`: ningún `Inject` que no sea liberación o interno (§3.6), ningún `Launch`, `SystemCommand` ni `ClipboardPaste` | Propiedad |
-| INV-8 Soltar nunca se filtra | Las liberaciones ignoran época, destino, elevación, prueba y pausa (pero **no** la valla de generación: tras la emergencia, soltar corresponde al `EmergencyReleaser`) | Propiedad |
+| INV-8 Soltar nunca se filtra | Las liberaciones ignoran época, destino, elevación, prueba y pausa | Propiedad |
 | INV-9 Contacto dueño | Un titular con `Contact = c` solo se elimina por `ContactEnded(c)`, vencimiento, evento terminal o `ReleaseAll` (EJE-006) | Propiedad con varios contactos |
 | INV-10 Estabilidad | Con contactos activos, la composición no mueve ningún objetivo que tenga un contacto (PAN-009) | Propiedad de `LayoutPlanner` |
-| INV-11 Valla | Ningún efecto externo con generación `< G` llega al sistema; tras una emergencia, `D = ∅` aunque el hilo viejo se reanude con efectos pendientes | Modelo «congelar y reanudar» (§7.10) |
 | INV-12 Modo coherente | Toda liberación usa el mismo `InjectionMode`, vk y scan que la pulsación registrada | Propiedad + InputProbe en los dos modos |
 
 ### 7.6 Eventos terminales (SEG-007)
@@ -1291,20 +1264,20 @@ Notación:
 | Salir del área extra | `GestureRecognizer` | `ContactEnded(cancelled)` |
 | Cambio real de app (`safeSwitch`) | WinEvent (excluye las superficies propias, el shell, el teclado táctil y Acceso por voz) | `ReleaseAll(Switch)` y cancelar la macro |
 | Vencimiento del plazo | Temporizador | Soltar ese titular |
-| Bloqueo de sesión | `WTS_SESSION_LOCK` | `Terminal(Lock)`; lo que falle pasa a ReleasePending y se reintenta en `UNLOCK` |
+| Bloqueo de sesión | `WTS_SESSION_LOCK` | `Terminal(Lock)`; lo que falle queda en `BlockedReleases` y se reintenta en `UNLOCK` |
 | Suspensión | `PBT_APMSUSPEND`, respondido **de forma síncrona** con espera de hasta 500 ms a que confirme el motor | `Terminal(Suspend)` y vaciar la persistencia |
-| Cierre de sesión o apagado | `WM_QUERYENDSESSION`/`WM_ENDSESSION` | Terminal, vaciar y `CleanShutdown` |
-| Salir, ocultar desde la bandeja, pausar, cambiar de vista | Bandeja, CC o UI | `Terminal`/`ReleaseAll` con aviso `[releasedAll]`; al salir, `CleanShutdown` |
-| Relanzar elevado | CC | `Terminal(Relaunch)` + `CleanShutdown \| NoRelaunch` |
-| Instalar una actualización | Updater | Solo si `R = ∅`; si no, se aplaza. `Terminal(Update)` + `CleanShutdown \| NoRelaunch` |
-| Excepción en el motor | `EngineHost` | Liberación de emergencia, estado vacío y aviso |
-| Motor sin latido durante 2 s | SysEvents | `EmergencyReleaser` con valla de generación, o reinicio del proceso (§3.2, regla 6) |
-| Muerte del proceso | Guardián | Liberaciones del *ledger*, reintentadas en cada latido hasta que el escritorio las acepte; relanzar después según las marcas ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md), punto 6) |
-| Arranque | App | Soltado preventivo con máscara |
+| Cierre de sesión o apagado | `WM_QUERYENDSESSION`/`WM_ENDSESSION` | Terminal y vaciar |
+| Salir, ocultar desde la bandeja, pausar, cambiar de vista | Bandeja, CC o UI | `Terminal`/`ReleaseAll` con aviso `[releasedAll]`; al salir, código de salida 0 |
+| Relanzar elevado | CC | `Terminal(Relaunch)` y salida con código 0 |
+| Instalar una actualización | Updater | Solo si `R = ∅`; si no, se aplaza. `Terminal(Update)` y salida con código 0 |
+| Excepción en el motor | `EngineHost` | Soltar lo que Windows dice que está pulsado, estado vacío y aviso |
+| Motor colgado | Usuario | «Soltar todo» de la bandeja suelta sin el motor (§3.2, regla 6) |
+| Muerte del proceso | Guardián | Soltar lo que Windows dice que está pulsado, reintentado cada segundo hasta que se acepte; relanzar después solo si el código de salida no es 0 ([ADR-0023](../adr/0023-guardian-simple.md)) |
+| Arranque | App | Soltado preventivo de todo lo pulsado, con máscara |
 
 ### 7.7 Detalles del envío (NFR-004)
 
-**Ruta única:** `SendInputInjector` (Platform.Core), detrás de `InjectionGate`.
+**Ruta única:** `LowLevelInjector` (Platform.Core), detrás de `IInputInjector` y de `PressedInputRelease`.
 
 **Modos de inyección (D24, EJE-003, ATJ-004):**
 
@@ -1325,7 +1298,7 @@ Notación:
 - **Pegar (EJE-008), en SysEvents (OLE STA):**
   1. Capturar todos los formatos del portapapeles (hasta 64 MiB; los diferidos se informan como no restaurables).
   2. Colocar el texto con los formatos `ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory=0` y `CanUploadToCloudClipboard=0`.
-  3. `ClipboardReady` → Ctrl+V (bajo la valla).
+  3. `ClipboardReady` → Ctrl+V.
   4. A los 500 ms, restaurar el contenido original **solo si** el número de secuencia del portapapeles sigue siendo el nuestro.
 - **Pruebas:** InputProbe y S7 cubren los dos modos con es-ES, en-US, es-419 y AltGr. En modo compatible, InputProbe comprueba que `lParam` lleva el scancode y la marca extendida, y que el VK que ve la app es el que traduce su propia distribución. `[Trait("Req", "EJE-003")]`, `[Trait("Req", "ATJ-004")]`.
 
@@ -1381,7 +1354,7 @@ SysEvents: EVENT_SYSTEM_FOREGROUND (fuera de contexto, WINEVENT_SKIPOWNPROCESS: 
 - El Centro de control muestra el indicador permanente «Escuchando el teclado». `InteractionState.Capture` refleja el estado en todas las superficies.
 - Se desinstala sola a los 30 s, al pulsar Esc o al cancelar desde el panel.
 - El callback copia `KBDLLHOOKSTRUCT` a un anillo prealocado y devuelve `CallNextHookEx`. Nunca bloquea ni registra teclas.
-- **Plan B si falla S7:** el *hook* se traslada a Sentinel y emite eventos por el pipe heredado. `IKeyboardRecorder` no cambia.
+- **Plan B si falla S7:** el *hook* se traslada a Sentinel y emite eventos por un pipe heredado. `IKeyboardRecorder` no cambia.
 
 **Verificación del motor:**
 1. **Pruebas basadas en modelo (CsCheck).** Secuencias de hasta 200 eventos:
@@ -1389,18 +1362,12 @@ SysEvents: EVENT_SYSTEM_FOREGROUND (fuera de contexto, WINEVENT_SKIPOWNPROCESS: 
    - fallos de inyección, Modo prueba y teclas fijas;
    - los dos modos de inyección y resultados de `Launch`/`SystemCommand` fuera de orden.
 
-   Se comprueban INV-1 a INV-12 en cada paso. Al final se añade `Terminal(Exit)` y se exige `D = ∅`. Los contraejemplos reducidos se guardan como regresiones.
-2. **Muerte en cada paso.** Para cada prefijo se aplica la lógica del guardián (la misma biblioteca `KeyLedger`) y se exige `D = ∅`.
-3. **Congelar y reanudar (INV-11).** Para cada prefijo y cada punto de congelación del hilo del motor, incluido dentro de `TryRun`:
-   - el modelo ejecuta `EmergencyReleaser`;
-   - si toma la valla, reanuda el hilo viejo con todos sus efectos pendientes y exige `D = ∅` y ningún efecto externo con generación vieja;
-   - si no la toma, exige la escalada a reinicio y aplica la lógica del guardián.
-
-   El modelo usa un `InjectionGate` real sobre un `PhysicalStateInjector` que permite bloquear un `SendInput` concreto.
-4. **Arnés Win32 con `InputProbe`:** es-ES, en-US, es-419 y AltGr; lados; teclas extendidas; Unicode; los dos modos.
-5. **Caos en el equipo de laboratorio:**
-   - un Mantener de Ctrl+Shift seguido de `TerminateProcess(Clicalo)` debe producir las liberaciones en ≤200 ms en 50 de 50 intentos;
-   - lo mismo con bloquear y desbloquear, con suspensión en una VM y con el motor congelado mediante un punto de ruptura de prueba (compilación `Chaos`).
+   Se comprueban INV-1, INV-3 a INV-10 e INV-12 en cada paso. Al final se añade `Terminal(Exit)` y se exige `D = ∅`. Los contraejemplos reducidos se guardan como regresiones.
+2. **El guardián, determinista** ([ADR-0023](../adr/0023-guardian-simple.md)). Con un estado de teclas y un `SendInput` falsos, Sentinel suelta exactamente lo pulsado, pone la máscara antes de Alt o Win, suelta en modo VK con la marca extendida, reintenta mientras Windows rechaza, relanza solo tras una salida anómala y respeta el bucle de fallos. Bloquea los PR (`cl check`).
+3. **Arnés Win32 con `InputProbe`:** es-ES, en-US, es-419 y AltGr; lados; teclas extendidas; Unicode; los dos modos.
+4. **Caos en el equipo de laboratorio** (nocturno, `Category=Chaos`; obligatorio antes de publicar una versión):
+   - un Mantener de Ctrl+Shift, un arrastre o una macro seguidos de `TerminateProcess(Clicalo)`: nada pulsado 1 s después de la muerte, en 50 de 50 intentos;
+   - lo mismo con bloquear y desbloquear y con suspensión en una VM.
 
 ### 7.11 Posición del puntero para acciones de mouse (EJE-009)
 
@@ -1595,7 +1562,7 @@ UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
    + hashes == release-files.json firmado
  6 "Nueva versión" (ACT-001) → condiciones: R=∅, 5 min sin contacto (o petición del usuario), sin edición
    abierta en el CC, sin Modo prueba, sin concesión de primer plano activa
- 7 copia pre-update → Flush (documento y uso) → Engine Terminal(Update) → ledger CleanShutdown|NoRelaunch
+ 7 copia pre-update → Flush (documento y uso) → Engine Terminal(Update) → salida con código 0
    → ApplyUpdatesAndRestart
  8 arranque nuevo con marca "pending-health": panel mostrado + documento cargado + motor vivo en ≤60 s
    → confirmar. Dos arranques sin confirmar → MODO SEGURO + ofrecer volver a la versión anterior
@@ -1627,7 +1594,7 @@ UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
 **Instancias elevadas (NFR-010, SIS-004):**
 - Una instancia elevada **nunca** descarga ni aplica actualizaciones, porque los archivos quedarían con propietario Administradores.
 - Muestra «Nueva versión» y, al aplicar:
-  1. hace el traspaso con `Terminal(Update)`, `CleanShutdown | NoRelaunch` y *flush*;
+  1. hace el traspaso con `Terminal(Update)` y *flush*, y sale con código 0 para que Sentinel no relance;
   2. lanza `%LocalAppData%\Clicalo.App\current\Clicalo.exe --apply-update` en **integridad media**, mediante `IShellDispatch2::ShellExecute` del escritorio del shell;
   3. sale.
 - La instancia media verifica, aplica y, en el paso 9, vuelve a modo elevado. Sin componente, ofrece el relanzamiento elevado con UAC (EJE-013).
@@ -1655,7 +1622,7 @@ UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
   - una política de desestructuración de Serilog y un enriquecedor eliminan rutas con `%USERNAME%`;
   - nunca se registra el texto inyectado, lo que captura el *hook*, los títulos de ventana, las claves ni las posiciones del puntero.
 - **Prueba canario (CI):** 5 valores `CANARY-<guid>` como texto de atajo, proceso, título de ventana, búsqueda y clave. Se recorren los flujos E2E, se exporta el diagnóstico y se buscan en logs, ETW y en el paquete. Cualquier coincidencia hace fallar la CI.
-- **Métricas locales** (`System.Diagnostics.Metrics`, sin exportador): `touch_to_inject.ms`, `fg_to_profile.ms`, `startup.first_frame.ms`, `persist.write.ms`, `reg01.violations`, `engine.emergency_releases`, `engine.zombie`, `engine.fenced_effects`, `foreground.lease_denied`, `ledger.pending_release`, `ui.hang.count`, `gc.pause.ms`. Se ven en Sistema › Inicio y estabilidad › Diagnóstico.
+- **Métricas locales** (`System.Diagnostics.Metrics`, sin exportador): `touch_to_inject.ms`, `fg_to_profile.ms`, `startup.first_frame.ms`, `persist.write.ms`, `reg01.violations`, `foreground.lease_denied`, `ui.hang.count`, `gc.pause.ms`. Se ven en Sistema › Inicio y estabilidad › Diagnóstico.
 - **ETW `Clicalo-Perf`:** `ProcessStart`, `StartupPhase`, `FirstFramePresented`, `PointerDown`, `InputInjected`, `ForegroundChanged`, `ProfileSwitched`, `PersistWrite`. Solo llevan identificadores, nunca contenido.
 - **Paquete de diagnóstico (a petición):**
   - contenido: registros, entorno (build de Windows, versión, componente de sistema sí o no, DPI y monitores, digitalizador, distribución), ajustes **sin** perfiles ni textos, métricas, las últimas 200 transiciones del motor (tipos y códigos, sin teclas de Texto) y `crash-journal`;
@@ -1685,20 +1652,20 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 |---|---|---|
 | Architecture.Tests | Lista blanca, ArchUnit, matriz de módulos, facetas de `ActionKind`, enrutadores sin eventos huérfanos, R4 (destructivos), R7 (`Record` salvo exenciones), escritor único | Cada PR |
 | Data.Tests | Esquemas, integridad referencial (`labelKey`, iconos en la fuente, `KeyId`), CAT-004, contenido inicial sin repetidos (CAT-003), `keys.json` ↔ `keys.win32.json`, coherencia de `timings.json` (umbrales únicos) | Cada PR |
-| Domain.Tests | Invariantes de `Library`, `KeyboardLedger`, `EngineReducer` (INV-1 a 12, incluido «congelar y reanudar»), `TouchFilter` y `GestureRecognizer`, `ActivationPolicy` por `Source`, `DimPolicy` (tabla de excepciones), `InteractionReducer`, resolución de perfil, Frecuentes, repetidos, capas, métricas, numeración, tabla de formas | Cada PR |
-| Application.Tests | `DocumentStore` (porciones, agrupación, 20 entradas, borrador sin rastro, `ConfirmationToken`), `EngineHost` con `PhysicalStateInjector` e `InjectionGate`, `ForegroundOrchestrator` con `FakeForegroundControl` (escalera por origen, concesiones y prioridades), `TryNowUseCase` con `FakeTimeProvider`, coordinadores, programador de guardado (uso intensivo) | Cada PR |
+| Domain.Tests | Invariantes de `Library`, `KeyboardLedger`, `EngineReducer` (INV-1, INV-3 a INV-10 e INV-12), `TouchFilter` y `GestureRecognizer`, `ActivationPolicy` por `Source`, `DimPolicy` (tabla de excepciones), `InteractionReducer`, resolución de perfil, Frecuentes, repetidos, capas, métricas, numeración, tabla de formas | Cada PR |
+| Application.Tests | `DocumentStore` (porciones, agrupación, 20 entradas, borrador sin rastro, `ConfirmationToken`), `EngineHost` con un `IInputInjector` falso, `ForegroundOrchestrator` con `FakeForegroundControl` (escalera por origen, concesiones y prioridades), `TryNowUseCase` con `FakeTimeProvider`, coordinadores, programador de guardado (uso intensivo) | Cada PR |
 | Presentation.Tests | VM contra proyecciones, equivalentes sin gesto, `TwoStepConfirm`, idioma en caliente | Cada PR |
 | Infrastructure.Tests | DTO ↔ dominio, migraciones con fixtures, importación y exportación del formato propio, `usage.json` y `usageEpoch`, `CrashingFileSystem`, cuarentena, DPAPI, cliente de IA con servidor falso y los 4 campos exactos, `SignedManifestSource` (firma incorrecta, `seq` menor, bajada legítima o atacante, revocada, `minSafeVersion`), `FixedNameRollingFileSink` | Cada PR |
 | UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con `RenderSnapshot` de TestKit y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos; hoy la tolerancia es por canal y el modo ΔE llega antes de las primeras referencias de la UI) | Cada PR (x64 y ARM64) |
 | Platform.IntegrationTests | Inyección en los dos modos con varias distribuciones, *hook* LL bajo presión de GC, `PointerPositionTracker` con toque sintético, sesión y suspensión, portapapeles, lanzador sin intérprete en el hilo Shell, ACL de la tarea elevada, escritura elevada y luego media | Alojado interactivo o equipo táctil |
 | Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847 y la de S3: `RaiseNotificationEvent` pasa una cadena ancha donde UI Automation lee un `BSTR`, que `LiveAnnouncer.ForUiaBstr` compensa, `wpf-notification-bstr`), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
-| Sentinel.Tests | Lectura del *ledger* v2 (modos y generación), liberación con máscara, relanzamiento según las marcas, bucle de fallos (`timings.json`) | Equipo táctil |
+| Sentinel.Tests | Soltado de lo que Windows dice que está pulsado, con un estado de teclas y un `SendInput` falsos: máscara, modo VK y extendidas, reintentos mientras se rechaza, relanzamiento solo tras una salida anómala, bucle de fallos (`timings.json`); contrato de arranque (protocolo 3) | Cada PR |
 | Launcher.Tests | Verificación tras la copia, rechazo de un archivo alterado, `minSafeVersion` monótono, camino rápido, sin argumentos | Alojado (con elevación de runner) y equipo táctil |
 | E2E | Reglas UIA, instantánea del árbol, Axe.Windows, recorridos (bienvenida sin teclado, crear cada tipo, vincular y Probar ahora, cerrar el CC devuelve el foco) | Alojado (humo) y equipo táctil (completo) |
 | Performance | §10.3 | Tendencia y puerta |
 
 **`Clicalo.TestKit`:**
-- `PhysicalStateInjector`, con `PressedKeys`, `Log`, `FailAfter(n)`, `BlockAt(n)` (congelar), y las aserciones `ShouldBeFullyReleased()` y `ShouldHaveSentInOrder()`;
+- `PhysicalStateInjector`, el modelo de lo pulsado que hace de `SendInput` y de estado de teclas, con envíos parciales y el escritorio seguro;
 - `FakeForegroundMonitor`, con `SwitchTo(…, elevated)`, `Lock()` y `Suspend()`; `FakeForegroundControl`, con la política de derechos configurable;
 - `FakeClipboard`, `FakeAppCatalog`, `CannedTemplateGenerator`, `InMemoryFileSystem` y `CrashingFileSystem`;
 - constructores y generadores CsCheck (`KeyChord`, `TouchTrace`, `Document`);
@@ -1860,7 +1827,7 @@ en el equipo del mantenedor:  cl sign-manifest vX.Y.Z
 release-publish.yml
  ├ verifica los .sig con las claves públicas FIJADAS (actual + siguiente); si falla, se detiene
  ├ vpk upload github (se conserva N−1 completo) · estable: wingetcreate
- └ promoción a estable: ≥7 días en beta sin regresiones en reg01.violations, emergency_releases ni informes
+ └ promoción a estable: ≥7 días en beta sin regresiones en reg01.violations ni informes
 ```
 
 - **Accesibilidad de la llave de hardware.** Se elige un modelo *nano* que queda conectado de forma permanente, con PIN obligatorio (política `always`) y toque obligatorio (`cached`, 15 s). El sensor es capacitivo, así que se activa con el lápiz capacitivo o con cualquier contacto de piel.
@@ -1916,7 +1883,7 @@ release-publish.yml
 | T12 | Cadena de suministro | Paquete o acción comprometidos | *Lockfiles* en modo bloqueado, `packageSourceMapping`, `trustedSigners`, NuGetAudit, SHA fijados, Renovate con revisión y sin fusión automática en dependencias de runtime, Scorecard, SBOM, atestación, commits firmados | Dependencias con un solo mantenedor (planes de salida en `docs/architecture/dependencies.md`) |
 | T13 | Abuso del proxy de IA | Cuota gratis como LLM genérico | **No aplica en la 2.0** (proxy diferido). Cuando exista: prompt en el servidor, entrada enumerada, límites, presupuesto con corte, interruptor firmado | — |
 | T14 | PR malicioso en la CI | *Fork* | Sin secretos, sin `pull_request_target`, laboratorio solo con etiqueta y aprobación, CodeQL | — |
-| T15 | Hilo del motor zombi | Cuelgue y reanudación tras la emergencia | Valla de generación bajo *lock*; escalada a reinicio del proceso si no se toma la valla | — |
+| T15 | Motor colgado con teclas pulsadas | Cuelgue del hilo del motor | «Soltar todo» de la bandeja suelta lo que Windows dice que está pulsado sin el motor; al terminar el proceso, Sentinel hace lo mismo ([ADR-0023](../adr/0023-guardian-simple.md)) | — |
 
 `docs/security/threat-model.md` es el documento vivo. Se revisa en cada ADR que toque un límite de confianza.
 
@@ -2011,7 +1978,7 @@ Este plan sustituye al plan de fases del paquete. Las duraciones son estimacione
 |---|---|---|
 | **M0 · Cimientos y arnés** (≈2 semanas) | Esqueleto (§5); `cl`; `Directory.*`; `nuget.config`; ADR 0001, 0002 y 0015; `pr.yml` (x64 + ARM64); `Clicalo.Analyzers` (CLC0001, 0003, 0004, 0006 y 0010); `LocalizationGenerator` más `cl i18n-import`; `TokenGenerator` con contraste; `CatalogGenerator` (incluido `timings.json`); InputProbe; TestKit con `RenderSnapshot`; **S0** | CI en verde en un PR vacío; `cl check` idéntico en local y en CI; ArchUnit falla ante una referencia prohibida (prueba negativa); las 669 claves importadas con paridad y la instantánea de «texto visible idéntico» en verde; tokens generados sin CLCT002 (con los casos de TEM-004 corregidos); S0 resuelto |
 | **M1 · Spikes de riesgo** (≈5–6 semanas) | Bloqueantes primero: S1, S3, S4 y S2; después S5, S7, S15, S9, S6, S14, S8, S10, S11 y S12. **Cada spike se escribe como prueba** en `Windowing/Platform.IntegrationTests` y deja su informe en `docs/testing/spikes/` | Todos los criterios de §15 superados, o una decisión registrada (y, si afecta a un requisito, una propuesta al usuario). **Punto de decisión:** si S1, S3 o S4 fallan en WPF, ADR-0001 se reabre antes de escribir funcionalidad. Decisiones de dispatchers (S2), publicación (S5) y desenfoque (S6) documentadas con datos |
-| **M2 · Esqueleto andante** (≈6–8 semanas) | Domain núcleo (Keys, Library, Settings, Execution, KeySafety, Touch); `DocumentStore` con deshacer; persistencia completa (documento y uso) con cuarentena; `EngineHost` más *ledger* v2, `InjectionGate` y Sentinel; `PointerInputSource`; panel mínimo con un perfil; Tap, Hold y Toggle en los dos modos; bandeja propia con `TrayMenuHost`; `ForegroundOrchestrator` (concesiones `TrayMenu` y `ControlCenter`); `ActivationGuard` por mensajes | Tocar → `SendInput` en InputProbe con p95 ≤50 ms en el equipo táctil; propiedades INV-1 a 12, «muerte en cada paso» y «congelar y reanudar» en verde con 10 000 casos; caos de Sentinel 50 de 50; `CrashingFileSystem` sin ningún documento perdido; `reg01.violations = 0` en la suite de no activación y la prueba negativa en verde; prueba de bandeja con el Bloc de notas en verde |
+| **M2 · Esqueleto andante** (≈6–8 semanas) | Domain núcleo (Keys, Library, Settings, Execution, KeySafety, Touch); `DocumentStore` con deshacer; persistencia completa (documento y uso) con cuarentena; `EngineHost` y Sentinel ([ADR-0023](../adr/0023-guardian-simple.md)); `PointerInputSource`; panel mínimo con un perfil; Tap, Hold y Toggle en los dos modos; bandeja propia con `TrayMenuHost`; `ForegroundOrchestrator` (concesiones `TrayMenu` y `ControlCenter`); `ActivationGuard` por mensajes | Tocar → `SendInput` en InputProbe con p95 ≤50 ms en el equipo táctil; propiedades INV-1, INV-3 a INV-10 e INV-12 en verde con 10 000 casos; caos de Sentinel 50 de 50 (nocturno); `CrashingFileSystem` sin ningún documento perdido; `reg01.violations = 0` en la suite de no activación y la prueba negativa en verde; prueba de bandeja con el Bloc de notas en verde |
 | **M3 · Panel completo** (≈8–10 semanas) | Todas las formas y superficies (Pestaña, laterales, burbuja, menú); perfiles automáticos y Auto/Fijo; Frecuentes; repetidos; búsqueda con la concesión `TextInput` y la escalera por origen; `InteractionStore` (avisos, captura, Modo prueba, atenuado con `DimPolicy`); teclas fijas; Texto, Mouse (con `PointerPositionTracker`), Macro, Web, App y Sistema (en el hilo Shell); números de voz; los 4 temas; idioma en caliente | Reglas UIA001–010 en verde en la matriz de estados; instantáneas de renderizado aprobadas contra el prototipo; guion manual con Narrador y voz superado en Windows 10 y 11; presupuestos de §10.3 en el equipo táctil; tabla de transiciones de PAN-001 al 100 %; tabla de `DimPolicy` al 100 %; todos los MUST de los módulos panel, motor, táctil y seguridad con `[Req]` |
 | **M4 · Centro de control y bienvenida** (≈8–10 semanas) | Editor de las 3 columnas y de todos los tipos (con 🎤 en cada campo libre); grabación con el *hook*; biblioteca y plantillas locales; vincular y «Probar ahora» (caso de uso); copias, importación y exportación; ajustes guiados por descriptores; bienvenida; modo teclado y voz | Recorridos E2E (bienvenida sin teclado físico, crear cada tipo, vincular y probar, cerrar el CC devuelve el foco) en verde; S4 repetido sobre formularios reales con solo teclado en pantalla y dictado, 20 de 20 por origen; prueba de facetas de `ActionKind` y reglas R4 y R7 en verde; el *hook* sobrevive a GC forzados en S7 |
 | **M5 · Servicios y distribución** (≈4–6 semanas) | Velopack con `SignedManifestSource`, canales, reversión con `rollbackAllowed` y desinstalación propia; firma de código; `cl sign-manifest` con llave de hardware y `release-publish.yml`; **componente de sistema y Launcher** (SIS-002); actualización delegada desde una instancia elevada; IA con clave propia; paquete de diagnóstico; `patch-tuesday.yml`; winget | Primera **beta firmada** publicada con el manifiesto firmado fuera de GitHub; actualización delta, reversión legítima a N−1 y rechazo de las bajadas atacantes y de un paquete sin la firma esperada verificados; inicio elevado sin UAC en 20 de 20 inicios de sesión y dentro de NFR-001; actualización desde una instancia elevada sin archivos de propietario Administradores; prueba canario en verde; prueba de «4 datos exactos» de la IA en verde |
@@ -2035,7 +2002,7 @@ Este plan sustituye al plan de fases del paquete. Las duraciones son estimacione
 | **S6 · Capacidad visual** (2 días) | Opacidad del 30 al 100 % (`AllowsTransparency` frente a DWM con `LWA_ALPHA`); **desenfoque con `DWMWA_SYSTEMBACKDROP_TYPE` en Windows 11 combinado con la opacidad**, y la ausencia justificada en Windows 10; sombras con margen que deja pasar clics; fuentes incrustadas; Material Symbols FILL 0 y 1; temas generados; ARM64 con canales R y B (#11847) en el runner alojado | 60 fps en las animaciones; el margen no captura clics; los colores coinciden con OKLCH (ΔEOK <0,02); decisión documentada sobre el desenfoque | Renderizado por software solo en las ventanas afectadas; sin desenfoque (PAN-003 es SHOULD) con la justificación en el catálogo |
 | **S7 · Inyección y hook** (2 días) | es-ES, en-US, es-419 y AltGr; lados; **modo VK y modo scancode**; Unicode; relanzar elevado e inyectar en una app elevada; *hook* LL con GC completos forzados y carga de UI; soltar al bloquear, suspender y cambiar de app | 100 % de eventos correctos en InputProbe en ambos modos; el *hook* no se retira en 30 minutos de estrés | *Hook* trasladado al Sentinel |
 | **S8 · Distribución y firma** (2 días) | `vpk pack` con canales, delta, reversión con `rollbackAllowed`, desinstalación propia y desde Configuración, `SignedManifestSource`, `cl sign-manifest` con la llave de hardware (incluida la validación de que el mantenedor puede tocarla), firma con SignPath o un OV en la nube, nueva firma de las DLL R2R, SmartScreen con un binario nuevo; actualización desde una instancia elevada | Todo el flujo automatizado salvo la firma del manifiesto (un verbo); ninguna DLL sin firma; se rechaza un paquete sin la firma esperada; propietario de los archivos correcto tras una actualización desde una instancia elevada; los datos se conservan al desinstalar desde Configuración | Proveedor alternativo (ADR-0013); política de toque `never` con equipo de firma dedicado; si no hay firma, no se publica en estable |
-| **S9 · Guardián, ledger y valla** (3 días) | Sentinel AOT con *handles* heredados; `TerminateProcess` durante un Mantener de Ctrl+Shift, un arrastre y una macro; relanzamiento según `CleanShutdown`/`NoRelaunch` (no relanza en actualización ni en traspaso); bucle de fallos; **motor congelado dentro y fuera de `SendInput`** | Liberaciones en ≤200 ms en 50 de 50; modo seguro tras 3 fallos en 10 minutos (`timings.json`); ninguna tecla pegada al reanudar un hilo congelado; escalada a reinicio cuando no se toma la valla | Replantear ADR-0004 |
+| **S9 · Guardián** (3 días) | Sentinel AOT con un *handle* heredado ([ADR-0023](../adr/0023-guardian-simple.md)); `TerminateProcess` durante un Mantener de Ctrl+Shift, un arrastre y una macro; relanzamiento solo tras una salida anómala (no relanza en actualización ni en traspaso); bucle de fallos | Nada pulsado 1 s después de la muerte en 50 de 50 (prueba nocturna); modo seguro tras 3 fallos en 10 minutos (`timings.json`) | Replantear ADR-0023 |
 | **S10 · IPC y etiquetas** (1 día) | Servidor elevado con SACL Media frente a cliente medio; ocupación del pipe | Detección 10 de 10; el cliente medio solo puede pedir `Show` | — |
 | **S11 · Persistencia hostil** (2 días) | Defender, indexador, un monitor que bloquea el archivo y sincronización simulada; enumeración de los puntos de fallo; documento y uso | Ningún documento perdido o de fábrica; error visible si el bloqueo dura más de 3 s | — |
 | **S12 · Bloqueo y suspensión** (1 día) | Win+L y suspensión con un Mantener activo; `SendInput` en el escritorio seguro y reintento | Estado vacío al desbloquear o reanudar en 20 de 20 | — |
@@ -2094,6 +2061,7 @@ Solo decisiones difíciles de revertir. Cada entrada sigue el formato **Contexto
   - efectos bloqueantes en el hilo Shell;
   - `InjectionMode` por plan.
 - Alternativas: estado mutable con bloqueos; guardián `--guardian` en el mismo exe; soltar a ciegas; un servicio de Windows (sesión 0); reiniciar siempre el proceso ante un cuelgue.
+- **Sustituido en parte por [ADR-0023](../adr/0023-guardian-simple.md)** (2026-10-05): se retiran el *ledger*, la valla de generación y la emergencia; Sentinel pregunta a Windows qué está pulsado y lo suelta.
 
 **ADR-0005 · Superficies no activables y `ForegroundOrchestrator`.**
 - Contexto: REG-01 frente a la necesidad de escribir (BUS-002), abrir y cerrar el CC (CCM-004), «Probar ahora» (PRB-004/007) y el menú de la bandeja.

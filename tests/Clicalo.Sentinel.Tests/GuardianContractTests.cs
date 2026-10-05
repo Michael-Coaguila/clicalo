@@ -1,11 +1,10 @@
 using Clicalo.Platform.Core.Guardian;
-using Clicalo.Platform.Core.KeyLedger;
 
 namespace Clicalo.Sentinel.Tests;
 
 /// <summary>
-/// The start-up contract of Sentinel (ADR-0018), the relaunch policy (blueprint §3.1, S9) and the crash journal it
-/// reads.
+/// The start-up contract of Sentinel (ADR-0023, protocol 3), the relaunch policy (blueprint §3.1, S9) and the crash
+/// journal it reads.
 /// </summary>
 [Trait("Req", "SEG-006")]
 public sealed class GuardianContractTests
@@ -14,12 +13,9 @@ public sealed class GuardianContractTests
 
     private static readonly SentinelStartInfo Info = new(
         0x1A4,
-        0x2B8,
-        0x3CC,
         TimeSpan.FromSeconds(1),
         3,
-        TimeSpan.FromMinutes(10),
-        TimeSpan.FromSeconds(30)
+        TimeSpan.FromMinutes(10)
     );
 
     [Fact]
@@ -27,16 +23,13 @@ public sealed class GuardianContractTests
     {
         Info.ToArguments()
             .ShouldBe([
-                "--protocol=2",
+                "--protocol=3",
                 "--parent=0x1A4",
-                "--ledger=0x2B8",
-                "--pipe=0x3CC",
-                "--heartbeat-ms=1000",
+                "--retry-ms=1000",
                 "--crash-loop=3/600000",
-                "--refused-release-wait-ms=30000",
             ]);
-        SentinelStartInfo.ProtocolVersion.ShouldBe(2);
-        Info.InheritedHandles.Length.ShouldBe(SentinelStartInfo.InheritedHandleCount);
+        SentinelStartInfo.ProtocolVersion.ShouldBe(3);
+        Info.InheritedHandles.ShouldBe([(nint)0x1A4]);
     }
 
     [Fact]
@@ -49,7 +42,7 @@ public sealed class GuardianContractTests
 
     [Theory]
     [InlineData("--protocol=1")]
-    [InlineData("--protocol=3")]
+    [InlineData("--protocol=2")]
     [InlineData("--protocol=x")]
     [InlineData("--protocol=")]
     public void Another_protocol_version_is_refused(string protocol)
@@ -61,17 +54,17 @@ public sealed class GuardianContractTests
 
     [Theory]
     [InlineData(1, "--parent=0x0")]
-    [InlineData(2, "--ledger=12")]
-    [InlineData(3, "--pipe=0xZZ")]
-    [InlineData(4, "--heartbeat-ms=0")]
-    [InlineData(5, "--crash-loop=3")]
-    [InlineData(5, "--crash-loop=0/1000")]
-    [InlineData(6, "--refused-release-wait-ms=0")]
-    [InlineData(6, "--refused-release-wait-ms=-5")]
-    [InlineData(6, "--refused-release-wait-ms=")]
-    [InlineData(6, "--crash-loop=3/600000")]
+    [InlineData(1, "--parent=12")]
+    [InlineData(1, "--parent=0xZZ")]
+    [InlineData(2, "--retry-ms=0")]
+    [InlineData(2, "--retry-ms=-5")]
+    [InlineData(2, "--retry-ms=")]
+    [InlineData(3, "--crash-loop=3")]
+    [InlineData(3, "--crash-loop=0/1000")]
+    [InlineData(3, "--crash-loop=3/0")]
+    [InlineData(3, "--retry-ms=1000")]
     [InlineData(0, "--parent=0x1A4")]
-    public void A_malformed_or_misplaced_argument_is_refused(int index, string argument)
+    public void A_malformed_argument_is_refused(int index, string argument)
     {
         var arguments = Info.ToArguments().SetItem(index, argument);
 
@@ -81,20 +74,16 @@ public sealed class GuardianContractTests
     [Fact]
     public void Missing_or_extra_arguments_are_refused()
     {
-        SentinelStartInfo.TryParse(Info.ToArguments().RemoveAt(5).AsSpan(), out _).ShouldBeFalse();
-        SentinelStartInfo.TryParse(Info.ToArguments().RemoveAt(6).AsSpan(), out _).ShouldBeFalse();
+        SentinelStartInfo.TryParse(Info.ToArguments().RemoveAt(3).AsSpan(), out _).ShouldBeFalse();
         SentinelStartInfo.TryParse(Info.ToArguments().Add("--x").AsSpan(), out _).ShouldBeFalse();
         SentinelStartInfo.TryParse([], out _).ShouldBeFalse();
     }
 
-    [Theory]
-    [InlineData(LedgerMarks.CleanShutdown)]
-    [InlineData(LedgerMarks.NoRelaunch)]
-    [InlineData(LedgerMarks.CleanShutdown | LedgerMarks.NoRelaunch)]
+    [Fact]
     [Trait("Req", "SIS-004")]
-    public void A_clean_exit_an_update_or_a_handover_is_never_relaunched(LedgerMarks marks) =>
+    public void An_exit_code_of_zero_is_never_relaunched() =>
         RelaunchPolicy
-            .Decide(marks, [], Now, 3, TimeSpan.FromMinutes(10))
+            .Decide(0, [Now.AddMinutes(-1), Now.AddMinutes(-2)], Now, 3, TimeSpan.FromMinutes(10))
             .ShouldBe(RelaunchDecision.None);
 
     [Fact]
@@ -103,19 +92,30 @@ public sealed class GuardianContractTests
     {
         var window = TimeSpan.FromMinutes(10);
 
+        RelaunchPolicy.Decide(1, [], Now, 3, window).ShouldBe(RelaunchDecision.Relaunch);
         RelaunchPolicy
-            .Decide(LedgerMarks.EngineAlive, [], Now, 3, window)
+            .Decide(-1, [Now.AddMinutes(-9)], Now, 3, window)
             .ShouldBe(RelaunchDecision.Relaunch);
         RelaunchPolicy
-            .Decide(LedgerMarks.None, [Now.AddMinutes(-9)], Now, 3, window)
-            .ShouldBe(RelaunchDecision.Relaunch);
-        RelaunchPolicy
-            .Decide(LedgerMarks.None, [Now.AddMinutes(-9), Now.AddMinutes(-1)], Now, 3, window)
+            .Decide(-1, [Now.AddMinutes(-9), Now.AddMinutes(-1)], Now, 3, window)
             .ShouldBe(RelaunchDecision.RelaunchInSafeMode);
         RelaunchPolicy
-            .Decide(LedgerMarks.None, [Now.AddMinutes(-11), Now.AddMinutes(-1)], Now, 3, window)
+            .Decide(-1, [Now.AddMinutes(-11), Now.AddMinutes(-1)], Now, 3, window)
             .ShouldBe(RelaunchDecision.Relaunch);
     }
+
+    [Fact]
+    [Trait("Req", "SIS-004")]
+    public void A_crash_after_the_safe_mode_relaunch_inside_the_window_stops_the_loop() =>
+        RelaunchPolicy
+            .Decide(
+                -1,
+                [Now.AddMinutes(-9), Now.AddMinutes(-5), Now.AddMinutes(-1)],
+                Now,
+                3,
+                TimeSpan.FromMinutes(10)
+            )
+            .ShouldBe(RelaunchDecision.None);
 
     [Fact]
     public void The_crash_journal_round_trips_and_keeps_the_newest_entries()

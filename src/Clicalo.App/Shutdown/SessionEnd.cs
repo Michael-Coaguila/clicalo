@@ -11,7 +11,7 @@ namespace Clicalo.App.Shutdown;
 /// </summary>
 internal static class SessionEnd
 {
-    /// <summary>Releases everything held, marks the ledger «clean shutdown» and flushes the document and the usage.</summary>
+    /// <summary>Releases everything held and flushes the document and the usage.</summary>
     /// <param name="host">The running instance.</param>
     [SuppressMessage(
         "ApiDesign",

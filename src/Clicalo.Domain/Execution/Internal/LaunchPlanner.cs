@@ -5,7 +5,7 @@ namespace Clicalo.Domain.Execution.Internal;
 
 /// <summary>
 /// Web, App and System actions (EJE-011, EJE-016): they never run on the engine thread. The effect goes to the Shell
-/// thread with the generation, and the result comes back to the mailbox, possibly out of order; a result without a
+/// thread, and the result comes back to the mailbox, possibly out of order; a result without a
 /// pending effect (another engine's, or after a restart) is ignored.
 /// </summary>
 internal static class LaunchPlanner

@@ -157,7 +157,7 @@ public abstract record EngineEvent
     /// <summary>
     /// The secure desktop refused a release (locked session, UAC, Ctrl+Alt+Del: <c>InjectionStatus.Blocked</c>), or
     /// <c>SendInput</c> took it only in part: the engine keeps it and sends it again on <see cref="SessionResumed"/> and
-    /// with the next «release everything» (INV-3). The physical ledger marks it pending meanwhile.
+    /// with the next «release everything» (INV-3).
     /// </summary>
     /// <param name="Events">The release events that did not go.</param>
     public sealed record ReleasesBlocked(ImmutableArray<InjectedEvent> Events) : EngineEvent
@@ -179,7 +179,7 @@ public abstract record EngineEvent
 
     /// <summary>
     /// Clícalo needs one of its own chords (the rights chord of the foreground ladder, Win+H for dictation; blueprint
-    /// §3.6): the engine sends it under the fence with its generation, even in test mode or pause (INV-7), and the
+    /// §3.6): the engine sends it itself, even in test mode or pause (INV-7), and the
     /// result goes back to the requester by <paramref name="Request"/>.
     /// </summary>
     /// <param name="Chord">Which chord.</param>

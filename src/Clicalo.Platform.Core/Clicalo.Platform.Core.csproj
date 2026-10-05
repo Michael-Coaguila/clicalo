@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- AOT-safe core shared with Sentinel and Launcher: KeyLedger, InjectionGate, IPC contracts, Trust. -->
+  <!-- AOT-safe core shared with Sentinel and Launcher: injection, guardian contract, IPC contracts, Trust. -->
   <PropertyGroup>
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
     <IsAotCompatible>true</IsAotCompatible>

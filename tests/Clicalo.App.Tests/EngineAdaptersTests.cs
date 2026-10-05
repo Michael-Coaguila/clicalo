@@ -5,9 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Clicalo.App.Tests;
 
 /// <summary>
-/// A start with <c>--no-input</c> can never reach the keyboard (ADR-0004; M2 safety on the maintainer's machine): the
-/// injector only counts, the ledger is detached, internal chords never inject, nothing is released at start, no
-/// guardian starts and there is no injection gate at all.
+/// A start with <c>--no-input</c> can never reach the keyboard (ADR-0023; M2 safety on the maintainer's machine): the
+/// injector only counts, internal chords never inject, nothing is released at start or from the tray and no guardian
+/// starts.
 /// </summary>
 public sealed class EngineAdaptersTests
 {
@@ -22,12 +22,10 @@ public sealed class EngineAdaptersTests
         var set = EngineAdapters.Create(services);
 
         set.Injector.ShouldBeOfType<DryRunInputInjector>();
-        set.Ledger.ShouldBeOfType<DetachedKeyLedger>();
         set.KeyEffects.ShouldBeOfType<DryRunKeyEffects>();
         set.Guardian.ShouldBeOfType<NoGuardian>();
-        set.StartupRelease.ShouldBeOfType<NoGuardian>();
-        set.Gate.ShouldBeNull();
-        set.StartupRelease.ReleaseStuckModifiers().ShouldBe(0);
+        set.PressedRelease.ShouldBeOfType<NoGuardian>();
+        set.PressedRelease.ReleasePressed().ShouldBe(0);
     }
 
     [Fact]

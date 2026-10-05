@@ -14,7 +14,6 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
 using Clicalo.Infrastructure.Persistence;
-using Clicalo.Platform.Core.Injection;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
@@ -146,7 +145,6 @@ internal static class AppServices
     private static void AddEngine(ServiceCollection services)
     {
         services.AddSingleton(EngineAdapters.Create);
-        services.AddSingleton(sp => sp.Get<EngineAdapterSet>().Ledger);
         services.AddSingleton(sp =>
         {
             var ui = sp.Get<Dispatcher>();
@@ -159,18 +157,12 @@ internal static class AppServices
             var adapters = sp.Get<EngineAdapterSet>();
             return new EngineHostPorts(
                 adapters.Injector,
-                adapters.Ledger,
                 new DeferredShellExecutor(),
                 new DeferredClipboardPaster(),
                 sp.Get<EngineObserverRelay>()
             )
             {
-                // NFR-005: an engine that throws releases what the physical ledger records, not its own state.
-                ReleaseRecorded = adapters.Gate is { } gate
-                    ? generation => gate.TryReleaseEverything(generation.Value) == GateResult.Ran
-                    : null,
-
-                // The internal chords go through the engine, under the fence (§3.6, D-22).
+                // The internal chords go through the engine (§3.6, D-22).
                 ChordReplies = sp.Get<InternalChordReplies>(),
             };
         });
@@ -178,7 +170,6 @@ internal static class AppServices
         {
             var host = new EngineHost(
                 sp.Get<EngineHostPorts>(),
-                sp.Get<EngineAdapterSet>().Ledger.CurrentGeneration,
                 SettingsProjection.Engine(sp.Slot().Load.Document.Settings),
                 sp.Time(),
                 sp.Log<EngineHost>()
@@ -190,7 +181,6 @@ internal static class AppServices
         services.AddSingleton<EngineThread>();
         services.AddSingleton(sp => new ExitSequence(
             sp.Get<IEngineInbox>(),
-            sp.Get<IKeyLedger>(),
             sp.Time(),
             sp.Log<ExitSequence>()
         ));

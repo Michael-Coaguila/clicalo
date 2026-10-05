@@ -1,12 +1,11 @@
 using Clicalo.Platform.Core.Guardian;
 using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 
 namespace Clicalo.Sentinel;
 
 /// <summary>
-/// Sentinel's start-up: parses <see cref="SentinelStartInfo"/>, maps the inherited ledger and runs
-/// <see cref="GuardianLoop"/>. <c>Program.Main</c> calls it.
+/// Sentinel's start-up: parses <see cref="SentinelStartInfo"/> and runs <see cref="GuardianLoop"/> over the real
+/// machine. <c>Program.Main</c> calls it.
 /// </summary>
 internal static class SentinelEntryPoint
 {
@@ -19,20 +18,13 @@ internal static class SentinelEntryPoint
             return (int)SentinelExitCode.InvalidArguments;
         }
 
-        if (!KeyLedgerSection.TryOpenInherited(startInfo.Ledger, out var ledger))
-        {
-            return (int)SentinelExitCode.LedgerUnreadable;
-        }
-
-        using (ledger)
-        {
-            var loop = new GuardianLoop(
-                startInfo,
-                ledger!,
-                new LowLevelInjector(),
-                TimeProvider.System
-            );
-            return (int)loop.Run();
-        }
+        var loop = new GuardianLoop(
+            startInfo,
+            SystemKeyState.Instance,
+            new LowLevelInjector(),
+            TimeProvider.System,
+            new SystemGuardianEnvironment(startInfo, TimeProvider.System)
+        );
+        return (int)loop.Run();
     }
 }

@@ -1,8 +1,8 @@
-namespace Clicalo.Platform.Core.KeyLedger;
+namespace Clicalo.Platform.Core.Injection;
 
-/// <summary>Mouse buttons down, as stored at <see cref="KeyLedgerLayout.MouseButtonsOffset"/>.</summary>
+/// <summary>Mouse buttons, as one flag each.</summary>
 [Flags]
-public enum LedgerMouseButtons : byte
+public enum LowLevelMouseButtons : byte
 {
     /// <summary>None.</summary>
     None = 0,
