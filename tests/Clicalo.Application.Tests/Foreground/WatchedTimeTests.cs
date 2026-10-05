@@ -35,6 +35,23 @@ public sealed class WatchedTimeTests
     }
 
     [Fact]
+    public void A_periodic_look_counts_as_armed_only_until_its_first_firing()
+    {
+        var fired = 0;
+        using var look = _time.CreateTimer(_ => fired++, null, Delay, Delay);
+        _time.IsArmedAndNotYetFired(Delay).ShouldBeTrue();
+
+        _time.Advance(Delay);
+
+        fired.ShouldBe(1);
+        _time.IsWaiting(Delay).ShouldBeTrue("a periodic timer waits for its next period");
+        _time.IsArmedAndNotYetFired(Delay).ShouldBeFalse("that look is not the next verification");
+
+        _ = look.Change(Delay, Delay);
+        _time.IsArmedAndNotYetFired(Delay).ShouldBeTrue("armed again");
+    }
+
+    [Fact]
     public async Task Waiting_for_a_delay_returns_once_another_thread_arms_it_however_late()
     {
         using var release = new SemaphoreSlim(0);

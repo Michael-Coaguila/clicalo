@@ -20,7 +20,7 @@ public sealed class ActivationGuardTests
 
     [Fact]
     [Trait("Req", "REG-01")]
-    public void An_activation_without_a_lease_is_one_violation_until_the_surface_is_deactivated()
+    public void An_activation_without_a_lease_is_one_violation()
     {
         using var failures = DebugFailures.Capture();
         using var lab = SurfaceLab.Create();
@@ -32,14 +32,27 @@ public sealed class ActivationGuardTests
             NativeSurface.ExStyle(window) & ~NativeSurface.ExNoActivate
         );
 
-        Send(window, NativeSurface.WmActivate, NativeSurface.Active)
-            .ShouldBe(
-                0,
-                "The violating WM_ACTIVATE is kept from WPF and DefWindowProc (no focus moves in)."
-            );
+        // One activation is one retrieval of the UI thread: its messages are sent inside one dispatcher operation.
+        WpfThread.Invoke(() =>
+        {
+            Send(window, NativeSurface.WmActivate, NativeSurface.Active)
+                .ShouldBe(
+                    0,
+                    "The violating WM_ACTIVATE is kept from WPF and DefWindowProc (no focus moves in)."
+                );
+            lab.Guard.Violations.ShouldBe(1);
 
-        lab.Guard.Violations.ShouldBe(1);
-        var violation = lab.Arbiter.Violations.ShouldHaveSingleItem();
+            // The rest of the same activation does not count again.
+            Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(1);
+
+            // Windows sends each message once per activation: the same one again is the next activation, even
+            // before the UI thread is back in its dispatcher.
+            Send(window, NativeSurface.WmActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(2);
+        });
+
+        var violation = lab.Arbiter.Violations[0];
         violation.Surface.ShouldBe(surface.Id);
         violation.Window.ShouldBe(surface.SurfaceWindow);
         violation.Message.ShouldBe(ActivationMessage.Activate);
@@ -48,23 +61,23 @@ public sealed class ActivationGuardTests
             .HasExStyle(window, NativeSurface.ExNoActivate)
             .ShouldBeTrue("The guard applies WS_EX_NOACTIVATE again.");
 
-        // The rest of the same activation does not count again.
-        Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
-        Send(window, NativeSurface.WmActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(1);
+        WpfThread.Invoke(() =>
+        {
+            // Once deactivated, even inside the same retrieval, a new activation is a new violation.
+            Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(3, "another retrieval, another activation");
+            Send(window, NativeSurface.WmActivate, NativeSurface.Inactive);
+            Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(4);
+            lab.Arbiter.Violations[^1].Message.ShouldBe(ActivationMessage.NcActivate);
 
-        // Once deactivated, a new activation is a new violation.
-        Send(window, NativeSurface.WmActivate, NativeSurface.Inactive);
-        Send(window, NativeSurface.WmNcActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(2);
-        lab.Arbiter.Violations[^1].Message.ShouldBe(ActivationMessage.NcActivate);
+            // Losing the application activation also ends it.
+            Send(window, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+            Send(window, NativeSurface.WmActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(5);
+        });
 
-        // Losing the application activation also ends it.
-        Send(window, NativeSurface.WmActivateApp, NativeSurface.Inactive);
-        Send(window, NativeSurface.WmActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(3);
-
-        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 3 : 0);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 5 : 0);
         if (DebugFailures.AreLive)
         {
             failures.Messages.ShouldAllBe(message =>
@@ -188,21 +201,30 @@ public sealed class ActivationGuardTests
 
         // One forced activation: WM_ACTIVATEAPP(TRUE) to every window of the thread, then the activation of the panel.
         lab.SimulatedForeground = panel;
-        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
-        Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        WpfThread.Invoke(() =>
+        {
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        });
         lab.Guard.Violations.ShouldBe(1, "one activation is one violation");
 
         // The restore gives the foreground back from the thread pool and the application is deactivated; a message of
         // the activation that is only delivered now finds the foreground in another application.
         lab.SimulatedForeground = AnotherApp;
-        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
-        Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Inactive);
-        NativeSurface.SetExStyle(panel, NativeSurface.ExStyle(panel) & ~NativeSurface.ExNoActivate);
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        Send(panel, NativeSurface.WmActivate, NativeSurface.Active)
-            .ShouldBe(0, "the late WM_ACTIVATE is still kept from WPF and DefWindowProc");
+        WpfThread.Invoke(() =>
+        {
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+            Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Inactive);
+            NativeSurface.SetExStyle(
+                panel,
+                NativeSurface.ExStyle(panel) & ~NativeSurface.ExNoActivate
+            );
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active)
+                .ShouldBe(0, "the late WM_ACTIVATE is still kept from WPF and DefWindowProc");
+        });
         NativeSurface
             .HasExStyle(panel, NativeSurface.ExNoActivate)
             .ShouldBeTrue("the guard applies WS_EX_NOACTIVATE again");
@@ -215,10 +237,13 @@ public sealed class ActivationGuardTests
 
         // The next forced activation is judged on its own, once.
         lab.SimulatedForeground = panel;
-        Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
-        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        WpfThread.Invoke(() =>
+        {
+            Send(bubble, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        });
         LetTheGuardJudge(clock);
 
         lab.Guard.Violations.ShouldBe(2);
@@ -258,9 +283,7 @@ public sealed class ActivationGuardTests
             "the foreground was in another application when it arrived"
         );
 
-        // The rest of that activation does not count again; the end of the application activation closes it.
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(1);
+        // The end of the application activation.
         Send(panel, NativeSurface.WmActivateApp, NativeSurface.Inactive);
 
         // Confirmed only by the recheck: the foreground reaches the owner anchor of the surfaces, not the panel.
@@ -278,44 +301,39 @@ public sealed class ActivationGuardTests
 
     [Fact]
     [Trait("Req", "REG-01")]
-    public void A_violation_ends_when_the_foreground_is_seen_outside_the_process()
+    public void A_violation_ends_when_a_deactivation_finds_the_foreground_outside_the_process()
     {
-        // Spike S1, cycle 7 of a Debug run: the deactivation of cycle 6 never arrived, and the lone WM_NCACTIVATE(TRUE)
-        // of the next forced activation, with the panel in front, was swallowed as part of the open violation.
+        // Spike S1: when the restore wins the race, the deactivation of the panel arrives with the foreground already
+        // in the app, and the next forced activation can follow within the same retrieval of the UI thread.
         using var failures = DebugFailures.Capture();
-        var clock = new FakeTimeProvider();
-        using var lab = SurfaceLab.Create(timeProvider: clock);
+        using var lab = SurfaceLab.Create();
         var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
 
         lab.SimulatedForeground = panel;
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(1);
+        WpfThread.Invoke(() =>
+        {
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(1);
 
-        // A stale deactivation delivered while the panel is still in front does not end it.
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Inactive);
-        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(1, "the same activation");
+            // A stale deactivation delivered while the panel is still in front does not end it.
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Inactive);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(1, "the same activation");
 
-        // The restore worked, but no deactivation message arrives: the watch sees the foreground outside.
-        lab.SimulatedForeground = AnotherApp;
-        LetTheGuardJudge(clock);
-        lab.SimulatedForeground = panel;
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        lab.Guard.Violations.ShouldBe(2, "the next forced activation is not swallowed");
+            // A deactivation seen with the foreground outside ends it at once.
+            lab.SimulatedForeground = AnotherApp;
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Inactive);
+            lab.SimulatedForeground = panel;
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(2, "the next forced activation is not swallowed");
+        });
+
         lab.Arbiter.Violations[^1]
             .ProbableCause.ShouldBe(
                 ActivationCause.External,
                 "the foreground was last seen in another application"
             );
-
-        // A deactivation message seen with the foreground outside ends it at once.
-        lab.SimulatedForeground = AnotherApp;
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Inactive);
-        lab.SimulatedForeground = panel;
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-
-        lab.Guard.Violations.ShouldBe(3);
-        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 3 : 0);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
     }
 
     [Fact]
@@ -359,14 +377,127 @@ public sealed class ActivationGuardTests
         lab.Guard.Violations.ShouldBe(1);
 
         // The next activation of the application is judged on its own instead of being swallowed as part of it.
-        Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
-        Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
-        Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        WpfThread.Invoke(() =>
+        {
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        });
 
         lab.Guard.Violations.ShouldBe(2);
         lab.Arbiter.Violations.Select(violation => violation.Message)
             .ShouldBe([ActivationMessage.NcActivate, ActivationMessage.ActivateApp]);
         failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    public void An_activation_after_a_restore_that_never_deactivated_the_panel_is_a_new_violation()
+    {
+        // Spike S1 in CI (s0 37164843497, run 7, iteration 2, cycles 3 and 4): the restore gave the foreground back to
+        // InputProbe without the panel ever receiving WM_NCACTIVATE(FALSE), WA_INACTIVE or WM_ACTIVATEAPP(FALSE); the
+        // probe kept it for 31 ms, which no look of the guard caught, and forced the panel again. That activation
+        // reached the panel as a lone WM_NCACTIVATE(TRUE) in front, without WM_ACTIVATEAPP(TRUE). The violation of
+        // cycle 3 was still open and swallowed it: not counted, not reported, and the panel kept the foreground.
+        using var failures = DebugFailures.Capture();
+        var clock = new FakeTimeProvider();
+        using var lab = SurfaceLab.Create(timeProvider: clock);
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+
+        // Cycle 3: one forced activation, delivered in one burst.
+        lab.SimulatedForeground = panel;
+        WpfThread.Invoke(() =>
+        {
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+        });
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+        lab.Guard.Violations.ShouldBe(1);
+
+        // The restore worked and nothing told the panel; before any look at the foreground, the panel is in front
+        // again and gets only WM_NCACTIVATE(TRUE).
+        lab.SimulatedForeground = AnotherApp;
+        lab.SimulatedForeground = panel;
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active));
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+
+        lab.Guard.Violations.ShouldBe(2, "the second forced activation is detected");
+        lab.Arbiter.Violations.Count.ShouldBe(2, "and reported, so the orchestrator reverts it");
+        lab.Arbiter.Violations[^1].Message.ShouldBe(ActivationMessage.NcActivate);
+        lab.Arbiter.Violations[^1]
+            .ProbableCause.ShouldBe(
+                ActivationCause.External,
+                "nothing the surfaces did explains it, and the last violation came from outside"
+            );
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    public void An_activation_before_the_UI_thread_is_back_in_its_dispatcher_is_a_new_violation()
+    {
+        // Spike S1 in CI (s0 37166997828, 41 of 600 iterations of OrchestratedRestoreTests): the UI thread did not get
+        // back to its dispatcher for 25 ms after a violation (no WinEvent and no posted message reached it), the restore
+        // never deactivated the panel, and the next forced activation, a lone WM_NCACTIVATE(TRUE), arrived first. The
+        // violation was still open and swallowed it; the panel kept the foreground.
+        using var failures = DebugFailures.Capture();
+        using var lab = SurfaceLab.Create();
+        var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100)).Handle;
+
+        WpfThread.Invoke(() =>
+        {
+            lab.SimulatedForeground = panel;
+            Send(panel, NativeSurface.WmActivateApp, NativeSurface.Active);
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            Send(panel, NativeSurface.WmActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(1);
+
+            // The restore and the next forced activation happen while this thread is still away from its dispatcher.
+            lab.SimulatedForeground = AnotherApp;
+            lab.SimulatedForeground = panel;
+            Send(panel, NativeSurface.WmNcActivate, NativeSurface.Active);
+            lab.Guard.Violations.ShouldBe(2, "the second forced activation is detected");
+        });
+
+        lab.Arbiter.Violations.Count.ShouldBe(2, "and reported, so the orchestrator reverts it");
+        lab.Arbiter.Violations[^1].ProbableCause.ShouldBe(ActivationCause.External);
+        failures.Messages.Count.ShouldBe(DebugFailures.AreLive ? 2 : 0);
+    }
+
+    [Fact]
+    [Trait("Req", "REG-01")]
+    [Trait("Req", "BUS-002")]
+    public void A_leased_activation_after_a_violation_that_was_never_deactivated_reaches_WPF_whole()
+    {
+        // Spike S1 in CI: the restore of a violation may never deactivate the panel, so the WA_INACTIVE that would match
+        // its kept WM_ACTIVATE never comes. A later activation under a lease (text input) is WPF's to see: so is its end,
+        // or WPF keeps the panel active after the lease.
+        using var failures = DebugFailures.Capture();
+        using var lab = SurfaceLab.Create();
+        var surface = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100));
+        var panel = surface.Handle;
+
+        lab.SimulatedForeground = panel;
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmActivate, NativeSurface.Active));
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+        lab.Guard.Violations.ShouldBe(1);
+        WpfThread
+            .Invoke(() => surface.IsActive)
+            .ShouldBeFalse("the violating WM_ACTIVATE is kept from WPF");
+
+        lab.Arbiter.Lease(surface.SurfaceWindow);
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmActivate, NativeSurface.Active));
+        WpfThread.Invoke(() => surface.IsActive).ShouldBeTrue("the leased activation reaches WPF");
+
+        lab.Arbiter.EndLease(surface.SurfaceWindow);
+        lab.SimulatedForeground = AnotherApp;
+        WpfThread.Invoke(() => Send(panel, NativeSurface.WmActivate, NativeSurface.Inactive));
+
+        WpfThread
+            .Invoke(() => surface.IsActive)
+            .ShouldBeFalse("WPF sees the end of the activation it saw begin");
+        lab.Guard.Violations.ShouldBe(1);
     }
 
     /// <summary>

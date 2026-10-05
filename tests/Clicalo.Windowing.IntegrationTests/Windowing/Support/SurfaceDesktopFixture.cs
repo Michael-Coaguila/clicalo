@@ -43,6 +43,9 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
     /// <summary>The windowing under test.</summary>
     public SurfaceLab Lab => _lab ?? throw NotStarted();
 
+    /// <summary>What the forced activations did: the notes of the tests, the restore and the guard.</summary>
+    public ActivationTimeline Timeline { get; } = new();
+
     public TestSurface Panel => _panel ?? throw NotStarted();
 
     public TestSurface Dock => _dock ?? throw NotStarted();
@@ -68,12 +71,36 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
             )
         );
         var probe = _probe;
+        var timeline = Timeline;
         var arbiter = new RecordingArbiter
         {
-            Restore = _ => probe.TryBringToForegroundAsync(ForegroundTimeout),
+            Trace = timeline.Note,
+            Restore = async _ =>
+            {
+                timeline.Note(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"restore starts, foreground 0x{ForegroundWindows.Current:X}"
+                    )
+                );
+                var restored = await probe.TryBringToForegroundAsync(ForegroundTimeout);
+                timeline.Note(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"restore ends: {restored}, foreground 0x{ForegroundWindows.Current:X}"
+                    )
+                );
+            },
         };
         var lab = SurfaceLab.Create(arbiter);
         _lab = lab;
+        lab.Guard.ViolationDetected += (_, e) =>
+            timeline.Note(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"ActivationGuard counted a violation of {e.Violation.Surface} ({e.Violation.Message}, {e.Violation.ProbableCause})"
+                )
+            );
         _panel = lab.CreateSurface(SurfaceKind.Panel, 0, 360, 240);
         _dock = lab.CreateSurface(SurfaceKind.Dock, 0, 48, 240);
         _side = lab.CreateSurface(SurfaceKind.SideWindow, 0, 240, 240);
@@ -170,6 +197,19 @@ public sealed class SurfaceDesktopFixture : IAsyncLifetime
             + "Top-level windows under the point, from the top: "
             + string.Join(" > ", WindowsAt.Describe(x, y));
     }
+
+    /// <summary>
+    /// The <see cref="Timeline"/> since <paramref name="since"/> (<see cref="Stopwatch"/> ticks), with the activation
+    /// messages of every surface, the foreground changes and the probe's events after <paramref name="probeCursor"/>.
+    /// </summary>
+    public string DescribeActivations(long since, int probeCursor) =>
+        Timeline.Render(
+            since,
+            Probe,
+            probeCursor,
+            _foreground,
+            new[] { _panel, _dock, _side, _bubble }.OfType<TestSurface>()
+        );
 
     /// <summary>Notes a step of the fixture or of a test for <see cref="Diagnose"/>.</summary>
     public void Note(string line) => _timeline.Enqueue((Stopwatch.GetTimestamp(), line));

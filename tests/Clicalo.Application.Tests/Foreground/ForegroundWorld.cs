@@ -121,9 +121,10 @@ internal sealed class ForegroundWorld : IDisposable
     }
 
     /// <summary>
-    /// Runs <paramref name="pending"/> to the end, advancing the fake clock by <c>RestoreRetryDelay</c> each time it
-    /// waits on that delay (each attempt is verified again after it), at most <paramref name="maxWaits"/> times. The
-    /// clock moves only once the delay exists: the orchestrator arms it on the thread pool, in real time.
+    /// Runs <paramref name="pending"/> to the end, advancing the fake clock by <c>RestoreRetryDelay</c> each time an
+    /// attempt waits to be verified (its looks every <c>RestoreVerifyInterval</c>, for up to <c>RestoreRetryDelay</c>),
+    /// at most <paramref name="maxWaits"/> times. The clock moves only once those looks are armed: the orchestrator arms
+    /// them on the thread pool, in real time.
     /// </summary>
     /// <remarks>
     /// It used to move the clock whenever the operation had not ended 20 ms after the last look. Under load that moved
@@ -136,14 +137,14 @@ internal sealed class ForegroundWorld : IDisposable
     {
         for (var waits = 0; ; waits++)
         {
-            if (!await WaitsOnRetryDelayAsync(pending))
+            if (!await WaitsToVerifyAsync(pending))
             {
                 break;
             }
 
             waits.ShouldBeLessThan(
                 maxWaits,
-                "the operation kept waiting on the retry delay after " + maxWaits + " of them"
+                "the operation kept verifying attempts after " + maxWaits + " of them"
             );
             Time.Advance(Timings.Foreground.RestoreRetryDelay);
         }
@@ -152,14 +153,14 @@ internal sealed class ForegroundWorld : IDisposable
     }
 
     /// <summary>
-    /// Waits until <paramref name="operation"/> ends (false) or waits on a <c>RestoreRetryDelay</c> it has armed
-    /// (true); fails after <see cref="WatchedTime.Liveness"/> of real time without either.
+    /// Waits until <paramref name="operation"/> ends (false) or verifies a refused attempt with looks it has armed and
+    /// that have not fired yet (true); fails after <see cref="WatchedTime.Liveness"/> of real time without either.
     /// </summary>
-    public Task<bool> WaitsOnRetryDelayAsync(Task operation) =>
+    public Task<bool> WaitsToVerifyAsync(Task operation) =>
         Time.WaitUntilAsync(
-            () => Time.IsWaiting(Timings.Foreground.RestoreRetryDelay),
+            () => Time.IsArmedAndNotYetFired(Timings.Foreground.RestoreVerifyInterval),
             operation,
-            "armed the retry delay"
+            "armed the verification of an attempt"
         );
 
     /// <summary>
@@ -177,16 +178,16 @@ internal sealed class ForegroundWorld : IDisposable
         );
 
     /// <summary>
-    /// Starts <paramref name="operation"/> and returns it once it waits on the verification delay after a refused
-    /// attempt (<c>RestoreRetryDelay</c>), or once it has ended: the orchestrator continues on the thread pool, so the
-    /// test must not move the clock before the delay exists. Fails, instead of returning, when neither happens within
+    /// Starts <paramref name="operation"/> and returns it once it verifies a refused attempt (looks every
+    /// <c>RestoreVerifyInterval</c> for up to <c>RestoreRetryDelay</c>), or once it has ended: the orchestrator continues
+    /// on the thread pool, so the test must not move the clock before those looks exist. Fails, instead of returning, when neither happens within
     /// <see cref="WatchedTime.Liveness"/>.
     /// </summary>
     public async Task<TTask> StartUntilItWaitsAsync<TTask>(Func<TTask> operation)
         where TTask : Task
     {
         var pending = operation();
-        _ = await WaitsOnRetryDelayAsync(pending);
+        _ = await WaitsToVerifyAsync(pending);
         return pending;
     }
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Clicalo.Application.Foreground;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
@@ -21,6 +22,7 @@ namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
 public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
 {
     private InputProbeSession? _probe;
+    private ForegroundLog? _foreground;
     private SysEventsThread? _thread;
     private ForegroundMonitor? _monitor;
     private InternalRightsHotkey? _hotkey;
@@ -40,6 +42,9 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
     /// <summary>The real orchestrator, the arbiter behind the guard.</summary>
     public ForegroundOrchestrator Orchestrator => Require(_orchestrator);
 
+    /// <summary>What the forced activations did: the notes of the tests, the orchestrator's calls and the guard.</summary>
+    public ActivationTimeline Timeline { get; } = new();
+
     public async ValueTask InitializeAsync()
     {
         if (!DesktopTestEnvironment.IsEnabled)
@@ -47,6 +52,7 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
             return;
         }
 
+        _foreground = ForegroundLog.Start();
         _probe = await InputProbeSession.StartAsync(TestContext.Current.CancellationToken);
         _thread = SysEventsThread.Start();
         _monitor = new ForegroundMonitor(_thread, TimeProvider.System);
@@ -54,13 +60,13 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
 
         // Never registered: a violation is restored by step 1 alone, and no lease here climbs the ladder.
         _hotkey = new InternalRightsHotkey(_thread, TimeProvider.System);
-        var arbiter = new RecordingArbiter();
+        var arbiter = new RecordingArbiter { Trace = Timeline.Note };
         var lab = SurfaceLab.Create(arbiter);
         _lab = lab;
         _orchestrator = new ForegroundOrchestrator(
             new ForegroundPorts
             {
-                Control = new ForegroundControl(),
+                Control = new TracedForegroundControl(new ForegroundControl(), Timeline),
                 Monitor = _monitor,
                 SurfaceStyle = lab.Registry,
                 Surfaces = lab.Registry,
@@ -70,6 +76,14 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
             TimeProvider.System
         );
         arbiter.Forward = _orchestrator;
+        var timeline = Timeline;
+        lab.Guard.ViolationDetected += (_, e) =>
+            timeline.Note(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"ActivationGuard counted a violation of {e.Violation.Surface} ({e.Violation.Message}, {e.Violation.ProbableCause})"
+                )
+            );
 
         var panel = lab.CreateSurface(SurfaceKind.Panel, 0, 360, 240);
         _panel = panel;
@@ -120,8 +134,16 @@ public sealed class OrchestratedSurfaceFixture : IAsyncLifetime
         return Probe.Cursor;
     }
 
+    /// <summary>
+    /// The <see cref="Timeline"/> since <paramref name="since"/> (<see cref="Stopwatch"/> ticks), with the panel's
+    /// activation messages, the foreground changes and the probe's events after <paramref name="probeCursor"/>.
+    /// </summary>
+    public string DescribeActivations(long since, int probeCursor) =>
+        Timeline.Render(since, Probe, probeCursor, _foreground, [Panel]);
+
     public async ValueTask DisposeAsync()
     {
+        _foreground?.Dispose();
         _orchestrator?.Dispose();
         _lab?.Dispose();
         _hotkey?.Dispose();

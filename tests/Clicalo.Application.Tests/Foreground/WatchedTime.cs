@@ -55,6 +55,22 @@ internal sealed class WatchedTime(DateTimeOffset start) : FakeTimeProvider(start
         }
     }
 
+    /// <summary>
+    /// True while a timer due <paramref name="dueTime"/> after it was (re)armed waits for its first firing since then:
+    /// a periodic timer that already fired once counts no more. The orchestrator verifies each attempt with a periodic
+    /// look (<c>RestoreVerifyInterval</c>), so a test that moves the clock past one verification must not take that
+    /// same look, fired and not yet disposed by its continuation on the thread pool, for the next one.
+    /// </summary>
+    public bool IsArmedAndNotYetFired(TimeSpan dueTime)
+    {
+        lock (_gate)
+        {
+            return _armed.Exists(armed =>
+                armed.IsWaiting && !armed.HasFired && armed.DueTime == dueTime
+            );
+        }
+    }
+
     /// <inheritdoc />
     public override ITimer CreateTimer(
         TimerCallback callback,
@@ -158,9 +174,13 @@ internal sealed class WatchedTime(DateTimeOffset start) : FakeTimeProvider(start
 
         public bool IsWaiting { get; private set; }
 
+        /// <summary>True once the timer fired after it was last (re)armed.</summary>
+        public bool HasFired { get; private set; }
+
         /// <summary>Called under the owner's gate.</summary>
         public void Arm(TimeSpan dueTime, TimeSpan period)
         {
+            HasFired = false;
             DueTime = dueTime;
             _period = period;
             IsWaiting = !_disposed && dueTime != Timeout.InfiniteTimeSpan;
@@ -183,6 +203,7 @@ internal sealed class WatchedTime(DateTimeOffset start) : FakeTimeProvider(start
                 // A periodic timer is armed again for its period; a one-shot timer is done.
                 IsWaiting =
                     !_disposed && _period != Timeout.InfiniteTimeSpan && _period != TimeSpan.Zero;
+                HasFired = true;
                 DueTime = _period;
             }
 

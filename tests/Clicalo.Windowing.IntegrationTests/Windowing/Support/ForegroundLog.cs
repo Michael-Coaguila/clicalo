@@ -65,6 +65,22 @@ public sealed class ForegroundLog : IDisposable
             ),
         ];
 
+    /// <summary>The changes since <paramref name="since"/>, each with its <see cref="Stopwatch"/> timestamp.</summary>
+    public IReadOnlyList<(long Timestamp, string Line)> Since(long since) =>
+        [
+            .. _entries
+                .Where(entry => entry.Timestamp >= since)
+                .Select(entry =>
+                    (
+                        entry.Timestamp,
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"foreground 0x{entry.Window:X} of {ProcessName(entry.ProcessId)} (pid {entry.ProcessId})"
+                        )
+                    )
+                ),
+        ];
+
     public void Dispose()
     {
         var hook = Interlocked.Exchange(ref _hook, 0);

@@ -49,6 +49,7 @@ public sealed partial class ForegroundOrchestrator
     private ForegroundLease? _active;
     private int _disposed;
     private Task _violationRestore = Task.CompletedTask;
+    private Arrival? _arrival;
     private Task _foregroundChange = Task.CompletedTask;
 
     /// <summary>Creates the orchestrator and starts following <see cref="ForegroundPorts.Monitor"/>.</summary>
@@ -160,7 +161,11 @@ public sealed partial class ForegroundOrchestrator
         // ActivationGuard calls this inside the surface's window procedure on the UI thread: return at once and give
         // the foreground back from the thread pool. Awaiting the free gate here would complete synchronously and call
         // SetForegroundWindow inside that window procedure, on a thread that never changes the foreground (§3.2, §3.5).
-        Volatile.Write(ref _violationRestore, Task.Run(RestoreAfterViolationInBackgroundAsync));
+        var reportedIn = Current.Epoch;
+        Volatile.Write(
+            ref _violationRestore,
+            Task.Run(() => RestoreAfterViolationInBackgroundAsync(violation.Window, reportedIn))
+        );
     }
 
     /// <summary>The latest restoration started by <see cref="ReportViolation"/>; tests await it.</summary>
@@ -468,7 +473,8 @@ public sealed partial class ForegroundOrchestrator
     /// <summary>
     /// Gives the foreground to <paramref name="window"/>, verified with <c>GetForegroundWindow</c> (see
     /// <see cref="TakeAsync"/>), with one retry: <see cref="RestoreOutcome.Restored"/> when the first attempt worked,
-    /// <see cref="RestoreOutcome.RestoredAfterRetry"/> when the retry did.
+    /// <see cref="RestoreOutcome.RestoredAfterRetry"/> when the retry did. There is no retry when the user switched to
+    /// another app while the first attempt was being verified: the foreground is never taken from their choice.
     /// </summary>
     private async ValueTask<RestoreOutcome> GiveBackAsync(
         WindowToken window,
@@ -481,9 +487,15 @@ public sealed partial class ForegroundOrchestrator
             return RestoreOutcome.Failed;
         }
 
+        var start = Current;
         if (await TakeAsync(window, cancellationToken).ConfigureAwait(false))
         {
             return RestoreOutcome.Restored;
+        }
+
+        if (Changed(start, window))
+        {
+            return RestoreOutcome.Failed;
         }
 
         if (await TakeAsync(window, cancellationToken).ConfigureAwait(false))
@@ -502,21 +514,73 @@ public sealed partial class ForegroundOrchestrator
 
     /// <summary>
     /// One verified attempt: <c>SetForegroundWindow</c> and, when <c>GetForegroundWindow</c> does not show
-    /// <paramref name="window"/> yet, the same check once more after <c>Timings.Foreground.RestoreRetryDelay</c> without
-    /// calling again. The thread that owns a window activates it asynchronously when the call comes from another thread
-    /// (a surface on the UI thread, another app), so the first check often comes too early (measured in spike S4).
+    /// <paramref name="window"/> yet, the same check every <c>Timings.Foreground.RestoreVerifyInterval</c> for up to
+    /// <c>Timings.Foreground.RestoreRetryDelay</c>, without calling again. The thread that owns a window activates it
+    /// asynchronously when the call comes from another thread (a surface on the UI thread, another app), so the first
+    /// check often comes too early (measured in spike S4).
     /// </summary>
+    /// <remarks>
+    /// The first look that finds the window confirms the attempt, and so does a report of the monitor that verified it
+    /// in front after the call. A single look at the end of the wait judged a restore
+    /// that had worked as refused whenever the foreground moved on within the wait, and the retry that followed took
+    /// the foreground back from whatever had it then (spike S1 in CI: the next forced activation of the panel, reverted
+    /// by that stale retry before <c>ActivationGuard</c> saw the panel in front, so it was never counted).
+    /// </remarks>
     private async ValueTask<bool> TakeAsync(WindowToken window, CancellationToken cancellationToken)
     {
         var control = _ports.Control;
+        var before = Current.Epoch;
         if (control.TrySetForeground(window))
         {
             return true;
         }
 
-        await Task.Delay(Timings.Foreground.RestoreRetryDelay, _time, cancellationToken)
-            .ConfigureAwait(false);
-        return control.GetForeground() == window;
+        var started = _time.GetTimestamp();
+        var confirmed = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        // The monitor's report of the window is a confirmation too, and it is not a sample: it holds even when the
+        // foreground has moved on before the next look (the looks are 15.6 ms apart on Windows timers).
+        var arrival = new Arrival(window, confirmed);
+        Volatile.Write(ref _arrival, arrival);
+        if (Current is var now && now.Window == window && now.Epoch.Value > before.Value)
+        {
+            _ = confirmed.TrySetResult(true);
+        }
+
+        using var timer = _time.CreateTimer(
+            _ =>
+            {
+                if (confirmed.Task.IsCompleted)
+                {
+                    return;
+                }
+
+                if (control.GetForeground() == window)
+                {
+                    _ = confirmed.TrySetResult(true);
+                }
+                else if (_time.GetElapsedTime(started) >= Timings.Foreground.RestoreRetryDelay)
+                {
+                    _ = confirmed.TrySetResult(false);
+                }
+            },
+            null,
+            Timings.Foreground.RestoreVerifyInterval,
+            Timings.Foreground.RestoreVerifyInterval
+        );
+        await using var cancelled = cancellationToken.Register(() =>
+            confirmed.TrySetCanceled(cancellationToken)
+        );
+        try
+        {
+            return await confirmed.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = Interlocked.CompareExchange(ref _arrival, null, arrival);
+        }
     }
 
     /// <summary>
@@ -613,6 +677,12 @@ public sealed partial class ForegroundOrchestrator
             _current = snapshot;
         }
 
+        // An attempt waiting for its window to come to the front is confirmed by the report (it never blocks).
+        if (Volatile.Read(ref _arrival) is { } arrival && arrival.Window == snapshot.Window)
+        {
+            _ = arrival.Confirmed.TrySetResult(true);
+        }
+
         var lease = Volatile.Read(ref _active);
         if (lease is not null && lease.Target != snapshot.Window)
         {
@@ -678,14 +748,37 @@ public sealed partial class ForegroundOrchestrator
     /// the user back to the app, which the monitor would then report as an app switch), and otherwise to the last
     /// verified external window (blueprint §3.5).
     /// </summary>
-    private async Task RestoreAfterViolationInBackgroundAsync()
+    /// <remarks>
+    /// Nothing is done when the monitor verified an external foreground after <paramref name="reportedIn"/> and no
+    /// surface is in front any more: the violation is over (an earlier restore, the user or another app took the
+    /// foreground out of the process while this one waited for the gate), and taking the foreground now would act on
+    /// whatever is in front now: the app the user switched to, or the next forced activation of a surface before
+    /// <c>ActivationGuard</c> sees it (spike S1 in CI: the restore of cycle 19, queued behind the retry of cycle 18,
+    /// reverted cycle 20 and hid it from the guard). With <paramref name="surface"/> or another surface in front, it
+    /// restores as usual.
+    /// </remarks>
+    private async Task RestoreAfterViolationInBackgroundAsync(
+        WindowToken surface,
+        ForegroundEpoch reportedIn
+    )
     {
         try
         {
             await _gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
             try
             {
-                var expected = Volatile.Read(ref _active)?.Target ?? Current.Window;
+                var now = Current;
+                if (now.Epoch.Value > reportedIn.Value)
+                {
+                    var inFront = _ports.Control.GetForeground();
+                    if (inFront != surface && !_ports.Surfaces.TryGetSurface(inFront, out _))
+                    {
+                        LogViolationEndedMeanwhile(_logger, now.Window);
+                        return;
+                    }
+                }
+
+                var expected = Volatile.Read(ref _active)?.Target ?? now.Window;
                 if (!expected.IsNone)
                 {
                     var outcome = await GiveBackAsync(
@@ -772,6 +865,13 @@ public sealed partial class ForegroundOrchestrator
     );
 
     [LoggerMessage(
+        EventId = 7,
+        Level = LogLevel.Information,
+        Message = "A REG-01 violation ended before its restore ran: {Window} was verified in front meanwhile"
+    )]
+    private static partial void LogViolationEndedMeanwhile(ILogger logger, WindowToken window);
+
+    [LoggerMessage(
         EventId = 6,
         Level = LogLevel.Error,
         Message = "Foreground orchestrator background work failed"
@@ -785,6 +885,9 @@ public sealed partial class ForegroundOrchestrator
 
         public bool Contains(WindowToken window) => Active == window || Pending == window;
     }
+
+    /// <summary>An attempt of <see cref="TakeAsync"/> waiting for <see cref="Window"/> to come to the front.</summary>
+    private sealed record Arrival(WindowToken Window, TaskCompletionSource<bool> Confirmed);
 
     /// <summary>The result of climbing the rights ladder: the step that worked, or why none did.</summary>
     [StructLayout(LayoutKind.Auto)]

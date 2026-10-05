@@ -396,6 +396,12 @@
           "req": ["BUS-002", "CCM-004"],
           "source": "blueprint §3.6"
         },
+        "RestoreVerifyInterval": {
+          "duration": "5ms",
+          "description": "During RestoreRetryDelay, GetForegroundWindow is read this often, and the first time it names the window the attempt is confirmed. One look at the end of the wait missed a restore that had worked when the foreground had moved on since (spike S1 in CI: a forced activation 50 ms after a restore, which the stale retry then reverted before ActivationGuard saw it).",
+          "req": ["REG-01", "BUS-002", "CCM-004"],
+          "source": "blueprint §3.6"
+        },
         "RightsHotkeyTimeout": {
           "duration": "500ms",
           "description": "Longest wait for WM_HOTKEY after injecting the internal rights chord (step 2 of the ladder for UI Automation origins). Provisional until spike S4 measures it.",

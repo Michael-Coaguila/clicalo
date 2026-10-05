@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Globalization;
 using Clicalo.Application.Ports;
 
 namespace Clicalo.Windowing.IntegrationTests.Windowing.Support;
@@ -22,6 +24,12 @@ public sealed class RecordingArbiter : IActivationArbiter
     /// </summary>
     public IActivationArbiter? Forward { get; set; }
 
+    /// <summary>
+    /// Notes each report with the state of the thread pool, and again when an item queued with it runs: the
+    /// diagnostic of the desktop tests whose restore comes from the thread pool.
+    /// </summary>
+    public Action<string>? Trace { get; set; }
+
     /// <summary>Every violation reported so far, in order.</summary>
     public IReadOnlyList<ActivationViolation> Violations => [.. _violations];
 
@@ -39,6 +47,25 @@ public sealed class RecordingArbiter : IActivationArbiter
     public void ReportViolation(ActivationViolation violation)
     {
         _violations.Enqueue(violation);
+        if (Trace is { } trace)
+        {
+            var reported = Stopwatch.GetTimestamp();
+            trace(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"arbiter: violation reported; thread pool {ThreadPool.ThreadCount} threads, {ThreadPool.PendingWorkItemCount} items queued"
+                )
+            );
+            _ = Task.Run(() =>
+                trace(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"arbiter: a thread pool item queued with the report ran after {Stopwatch.GetElapsedTime(reported).TotalMilliseconds:0.00} ms"
+                    )
+                )
+            );
+        }
+
         Forward?.ReportViolation(violation);
         if (Restore is { } restore)
         {
