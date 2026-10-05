@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 
@@ -9,7 +10,11 @@ namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 /// </summary>
 internal sealed class PanelEngineInbox : IEngineInbox
 {
-    private readonly List<(EngineEvent Event, DateTimeOffset PostedAt)> _posted = [];
+    private readonly List<(
+        EngineEvent Event,
+        DateTimeOffset PostedAt,
+        long PostedTimestamp
+    )> _posted = [];
     private readonly Lock _gate = new();
 
     /// <summary>Every event posted, in order.</summary>
@@ -24,8 +29,11 @@ internal sealed class PanelEngineInbox : IEngineInbox
         }
     }
 
-    /// <summary>Every event with the time it was posted (<see cref="TimeProvider.System"/>).</summary>
-    public IReadOnlyList<(EngineEvent Event, DateTimeOffset PostedAt)> Posted
+    /// <summary>
+    /// Every event with the time it was posted, on <see cref="TimeProvider.System"/> and on the performance counter
+    /// (<see cref="Stopwatch"/>).
+    /// </summary>
+    public IReadOnlyList<(EngineEvent Event, DateTimeOffset PostedAt, long PostedTimestamp)> Posted
     {
         get
         {
@@ -51,7 +59,7 @@ internal sealed class PanelEngineInbox : IEngineInbox
     {
         lock (_gate)
         {
-            _posted.Add((engineEvent, TimeProvider.System.GetUtcNow()));
+            _posted.Add((engineEvent, TimeProvider.System.GetUtcNow(), Stopwatch.GetTimestamp()));
             return true;
         }
     }

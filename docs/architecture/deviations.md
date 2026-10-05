@@ -33,6 +33,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, semilla y migración del primer arranque, `Clicalo.App.Tests` | M2 |
 | D-22 | Correcciones del motor tras verificar M2 | Reintento de lo que rechaza el escritorio seguro solo al desbloquear o reanudar; escalada de la emergencia a `TerminateProcess` sin condiciones; INV-10 como propiedad de `LayoutPlanner` | Reenvío también con «Soltar todo», los eventos terminales y el regreso del escritorio de entrada (UAC, Ctrl+Alt+Supr); latido y marcas del motor bajo la valla; acordes internos desde el motor; sin guardián la emergencia nunca termina el proceso; INV-10 aplazada a M3 | M2 |
 | D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados y `perf (x64)` obligatorio; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck | M2 |
+| D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -620,6 +621,32 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Revisión.** Cuando el equipo táctil sea *runner*: volver a la puerta en `lab.yml` según §10.5 y decidir si
   `perf (x64)` sigue siendo obligatorio. Si se permite CsCheck en `Clicalo.Platform.IntegrationTests`, pasar las dos
   pruebas a `Gen.Sample` sin cambiar sus regresiones.
+
+## D-24 · Latencia del panel medida en la CI
+
+- **Plano.** [§7.1](blueprint.md#71-del-toque-a-la-acción) y [§10.3](blueprint.md#103-presupuestos-de-rendimiento):
+  toque → `SendInput` con p95 ≤ 50 ms (NFR-001), medido con puntero sintético; la fila M2 de §14 lo exige en el equipo
+  táctil sobre 20 toques.
+- **Repositorio.** `PanelDesktopTests` juzga la parte del panel (Windows registra el levantamiento → la activación está
+  en el buzón del motor) con los números de `TouchToSendInput` de `data/catalogs/budgets.json` (p95 ≤ 50 ms, al menos
+  20 muestras), leídos del catálogo, sobre **21 toques medidos** (dedo, lápiz y ratón). Usa **un dispositivo sintético
+  por tipo** durante todo el ciclo y hace antes **un toque de calentamiento por dispositivo** sobre el mismo mosaico, que
+  tiene que llegar al motor sin quitar el primer plano ni el foco, y cuya latencia se informa pero no entra en el p95.
+  Cada toque se parte en tramos (espera en la cola del hilo de UI y trabajo del panel) con la línea de tiempo del hilo
+  de UI de los toques lentos ([panel-latency.md](../testing/panel-latency.md)).
+- **Motivo.** La prueba fallaba de forma intermitente en los *runners* alojados (6 de 50 ejecuciones de `s0`) con el
+  hilo de UI del panel sin trabajo del panel: creaba un dispositivo nuevo en cada toque, y Windows retiene el primer
+  contacto de un dispositivo sintético hasta anunciarlo (`WM_TABLET_ADDED`, 15–200 ms), algo que una pantalla táctil,
+  un único dispositivo, no añade a un toque. Quedan además dos retrasos de un solo toque antes de que el panel reciba el
+  contacto: el primer contacto sobre la ventana del panel recién creada (12–38 ms, una vez por ventana) y, sobre todo
+  con la suite, el primer contacto del lápiz (hasta 615 ms, causa no identificada). Con el criterio nuevo: 0 fallos en
+  70 ejecuciones (30 con la suite del módulo, 30 solas y 10 de `cl desk`), p95 por ejecución de 14,5 ms como máximo.
+- **Coste.** El primer contacto de cada dispositivo sobre el panel queda fuera del p95 de la CI (sigue en la salida y en
+  `panel-tap-latency-*.json`), y con él el JIT del primer toque en Debug (3–8 ms medidos). El presupuesto no cambia y no
+  hay un umbral propio de la CI.
+- **Revisión.** En la aceptación en hardware (equipo táctil) del requisito, incluido si el primer toque tras mostrar
+  de nuevo el panel paga otra vez el retraso del primer contacto, y en S2 para el retraso del primer contacto del lápiz
+  con un lápiz real.
 
 ## Puntos del plano pendientes de resolver
 
