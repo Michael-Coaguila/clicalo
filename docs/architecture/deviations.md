@@ -32,7 +32,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-20 | Contratos de M2 | Nombres y módulos de §6 y §7 (`Library`, `Settings`, `Error`, `SecretText` en Library, `WebAction`…) | `ShortcutLibrary`, `UserSettings`, `Failure` y `Results`, `SecretText` en Privacy, módulo `Commands`, `UrlAction`, puertos del motor y de la persistencia en `Application.Ports`, umbrales de Sentinel por línea de órdenes (ADR-0018) | M2 |
 | D-21 | Integración de M2 | Nombres y reparto de §6 y §7; el guardián escribe su diario; `EmergencyReleaser` en el hilo SysEvents; el panel mínimo sin interoperabilidad propia | Miembros y tipos públicos nuevos de los cinco paquetes, comandos `DiscardDraft` y `SetSetting(ruta, valor)`, entrega ordenada de `Changed`, tokens de un solo uso, Sentinel sin escritura, `EmergencyReleaser` con su propio temporizador, instancia única en `Clicalo.App`, kit inicial del primer arranque (la migración v1, retirada por ADR-0020), `Clicalo.App.Tests` | M2 |
 | D-22 | Correcciones del motor tras verificar M2 | Reintento de lo que rechaza el escritorio seguro solo al desbloquear o reanudar; escalada de la emergencia a `TerminateProcess` sin condiciones; INV-10 como propiedad de `LayoutPlanner` | Reenvío también con «Soltar todo», los eventos terminales y el regreso del escritorio de entrada (UAC, Ctrl+Alt+Supr); latido y marcas del motor bajo la valla; acordes internos desde el motor; sin guardián la emergencia nunca termina el proceso; INV-10 aplazada a M3; Sentinel reintenta lo rechazado hasta el desbloqueo y solo entonces relanza (decisión D3 del usuario, protocolo 2; el plano lo recoge desde que se aceptó ADR-0018) | M2 |
-| D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados y `perf (x64)` obligatorio; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck | M2 |
+| D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados, con `perf (x64)` cada noche y obligatorio antes de cada versión; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck | M2 |
 | D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
@@ -641,7 +641,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - **Presupuestos en `data/catalogs/budgets.json`**, con su esquema en `data/schemas/budgets.schema.json` validado por
     `Clicalo.Data.Tests`: son datos versionados como el resto de catálogos. Solo están los que hace cumplir una medición.
   - **La puerta de toque → `SendInput` (p95 ≤ 50 ms) también en los *runners* alojados** (`gate: everyRun`), y el
-    trabajo `perf (x64)` de `pr.yml` es obligatorio. Es más estricto que el plano: mientras no exista el equipo táctil,
+    trabajo `perf (x64)` la hace cumplir cada noche (`nightly.yml`) y debe estar en verde antes de cada versión; desde
+    el 2026-10-05 ya no bloquea cada PR, porque solo lo determinista lo hace
+    ([niveles de pruebas](testing-strategy.md#niveles-de-pruebas)). Es más estricto que el plano: mientras no exista el equipo táctil,
     es la única forma de que una ejecución haga cumplir el criterio de M2. Los presupuestos de S5 siguen siendo
     tendencia en los alojados. Si un alojado supera 50 ms, el criterio no se rebaja: se mide en el equipo táctil o se
     abre una propuesta en §6.1 del catálogo.
@@ -657,7 +659,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 - **Motivo.** La verificación encontró que ninguna ejecución hacía cumplir el p95 de 50 ms, que la prueba de bandeja no
   usaba el Bloc de notas y que los contraejemplos no se guardaban. En un *runner* alojado el icono nuevo queda en el
   desbordamiento del área de notificación y hacer clic ahí inyectaría en el Explorador.
-- **Coste.** Un PR puede fallar por el rendimiento de un alojado ruidoso; el camino real del icono (`TrayIcon`,
+- **Coste.** Una noche puede fallar por el rendimiento de un alojado ruidoso; el camino real del icono (`TrayIcon`,
   `NIN_SELECT`, `WM_CONTEXTMENU`) queda para la aceptación en hardware de §10.2.
 - **Revisión.** Cuando el equipo táctil sea *runner*: volver a la puerta en `lab.yml` según §10.5 y decidir si
   `perf (x64)` sigue siendo obligatorio. Si se permite CsCheck en `Clicalo.Platform.IntegrationTests`, pasar las dos
