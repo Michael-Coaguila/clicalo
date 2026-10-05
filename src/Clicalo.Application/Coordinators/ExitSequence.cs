@@ -10,13 +10,13 @@ namespace Clicalo.Application.Coordinators;
 /// The order in which Clícalo ends (blueprint §3.1, §6.4, §7.6; SEG-006, SEG-007, REG-08), behind
 /// <c>IAppLifetime.ExitAsync</c>:
 /// <list type="number">
-/// <item>the ledger gets <see cref="KeyLedgerMarks.CleanShutdown"/>, so Sentinel releases but never relaunches;</item>
 /// <item>the engine gets <see cref="EngineEvent.Terminal"/> in its priority lane: it releases everything, cancels the
 /// macro and stops (INV-3); the sequence waits at most <c>Timings.App.ExitReleaseWait</c> for it;</item>
 /// <item>the document and the usage are flushed, at most <c>Timings.App.ExitFlushTimeout</c>.</item>
 /// </list>
 /// Nothing here can keep the process alive: a step that does not finish in time is reported and skipped. What the
-/// engine could not release stays in the ledger, and Sentinel releases it when the process is gone (ADR-0004).
+/// engine could not release stays down until Sentinel, seeing the process exit with code 0, releases it and does not
+/// relaunch (ADR-0022).
 /// </summary>
 /// <remarks>
 /// Continuations never return to the caller's thread, so the synchronous session-end path (App/Shutdown) may block the
@@ -25,27 +25,22 @@ namespace Clicalo.Application.Coordinators;
 public sealed partial class ExitSequence
 {
     private readonly IEngineInbox _engine;
-    private readonly IKeyLedger _ledger;
     private readonly TimeProvider _time;
     private readonly ILogger _logger;
 
     /// <summary>Creates the sequence.</summary>
     /// <param name="engine">The engine mailbox.</param>
-    /// <param name="ledger">The physical ledger Sentinel reads.</param>
     /// <param name="time">Clock of the time limits.</param>
     /// <param name="logger">Logs the outcome (codes only).</param>
     public ExitSequence(
         IEngineInbox engine,
-        IKeyLedger ledger,
         TimeProvider time,
         ILogger<ExitSequence>? logger = null
     )
     {
         ArgumentNullException.ThrowIfNull(engine);
-        ArgumentNullException.ThrowIfNull(ledger);
         ArgumentNullException.ThrowIfNull(time);
         _engine = engine;
-        _ledger = ledger;
         _time = time;
         _logger = logger ?? NullLogger<ExitSequence>.Instance;
     }
@@ -78,7 +73,6 @@ public sealed partial class ExitSequence
         }
 
         var started = _time.GetTimestamp();
-        _ledger.SetMarks(KeyLedgerMarks.CleanShutdown);
         var posted = _engine.Post(new EngineEvent.Terminal(reason));
         var released =
             await WithinAsync(engineReleased, Timings.App.ExitReleaseWait, cancellationToken)

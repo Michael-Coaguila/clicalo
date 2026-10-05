@@ -7,8 +7,8 @@ namespace Clicalo.Domain.KeySafety;
 /// <summary>
 /// The logical ledger of everything Clícalo holds (SEG-001, blueprint §7.4), with reference counts per physical key:
 /// a key goes down when its first holder acquires it and up when its last holder releases it. Pure and immutable; the
-/// engine keeps it in <c>EngineState</c> and the physical ledger (<c>Clicalo.Platform.Core.KeyLedger</c>) mirrors
-/// what is actually down.
+/// engine keeps it in <c>EngineState</c>. What is actually down is what Windows reports, which Sentinel and «Release
+/// all» of the tray release without this ledger (ADR-0022).
 /// </summary>
 /// <remarks>
 /// Every transition returns the events that make the system match the new ledger, so «what is down» (<c>D</c> of

@@ -6,9 +6,9 @@ namespace Clicalo.Domain.Tests.Execution.Support;
 
 /// <summary>
 /// The key safety invariants of blueprint §7.5 that the pure engine must keep after every step (INV-1, INV-3, INV-4,
-/// INV-6 to INV-9, INV-12, and FIJ-006 for the sticky keys); INV-2, INV-5 and INV-11 are checked with the real gate in
-/// Platform.IntegrationTests. Checked after every step of 10 000 scenarios, so the checks build their message only when
-/// they fail.
+/// INV-6 to INV-9, INV-12, and FIJ-006 for the sticky keys); INV-5 is checked with the engine host in Application.Tests
+/// (INV-2 and INV-11 were retired with the ledger and the fence, ADR-0022). Checked after every step of 10 000
+/// scenarios, so the checks build their message only when they fail.
 /// </summary>
 internal static class EngineInvariants
 {

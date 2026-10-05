@@ -5,9 +5,9 @@ using Clicalo.Platform.Core.Guardian;
 namespace Clicalo.Sentinel;
 
 /// <summary>
-/// The machine as Sentinel sees it: the inherited parent handle and pipe, the crash journal under
-/// <c>%LocalAppData%\Clicalo</c> (read only: the relaunched main process records the crash it was started after) and
-/// <c>Clicalo.exe</c> next to Sentinel (they are published together and never mixed, ADR-0018).
+/// The machine as Sentinel sees it: the inherited parent handle, the crash journal under <c>%LocalAppData%\Clicalo</c>
+/// (read only: the relaunched main process records the crash it was started after) and <c>Clicalo.exe</c> next to
+/// Sentinel (they are published together and never mixed).
 /// </summary>
 /// <param name="startInfo">The start-up contract.</param>
 /// <param name="time">Schedules the pause between two attempts of a refused release.</param>
@@ -18,12 +18,16 @@ internal sealed class SystemGuardianEnvironment(SentinelStartInfo startInfo, Tim
     public const string MainExecutable = "Clicalo.exe";
 
     /// <inheritdoc />
-    public GuardianWake WaitForParentOrPipe() =>
-        GuardianHandles.WaitForExitOrBrokenPipe(startInfo.ParentProcess, startInfo.HeartbeatPipe);
+    public int? WaitForParentExit()
+    {
+        if (!GuardianHandles.WaitForExit(startInfo.ParentProcess, Timeout.InfiniteTimeSpan))
+        {
+            return null;
+        }
 
-    /// <inheritdoc />
-    public bool WaitForParentExit(TimeSpan timeout) =>
-        GuardianHandles.WaitForExit(startInfo.ParentProcess, timeout);
+        // An exit code that cannot be read counts as abnormal: releasing and relaunching is the safe side.
+        return GuardianHandles.ExitCode(startInfo.ParentProcess) ?? -1;
+    }
 
     /// <inheritdoc />
     public void WaitBeforeRetry(TimeSpan interval)

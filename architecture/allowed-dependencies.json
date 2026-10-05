@@ -41,7 +41,7 @@
     },
     "Clicalo.Platform.Core": {
       "area": "src",
-      "rule": "AOT-safe core shared with Sentinel and Launcher (KeyLedger, InjectionGate, LowLevelInjector, IPC contracts, Trust). BCL and CsWin32 only (blueprint §4.2).",
+      "rule": "AOT-safe core shared with Sentinel and Launcher (LowLevelInjector, PressedInputRelease, guardian contract, IPC contracts, Trust). BCL and CsWin32 only (blueprint §4.2).",
       "platform": "windows",
       "projectReferences": [],
       "packageReferences": ["Microsoft.Windows.CsWin32"]
@@ -202,7 +202,7 @@
     },
     "Clicalo.Sentinel.Tests": {
       "area": "tests",
-      "rule": "Tests Sentinel and the ledger v2 it reads (blueprint §10.1, S9): layout, release with the menu mask, relaunch policy and crash loop. Tests that kill processes or freeze threads are CI-only (Category=Chaos).",
+      "rule": "Tests Sentinel with a fake key state and SendInput (ADR-0022): release with the menu mask, retries, relaunch policy and crash loop. Tests that kill processes are nightly (Category=Chaos).",
       "platform": "windows",
       "projectReferences": ["Clicalo.Sentinel", "Clicalo.Platform.Core", "Clicalo.TestKit"],
       "packageReferences": ["xunit.v3", "Shouldly", "Microsoft.Extensions.TimeProvider.Testing"]

@@ -1,17 +1,8 @@
-// Win32 for Clicalo.Platform.Core (blueprint §3.1, §7.4, §7.7). Generated internal and without marshalling, so the
-// project stays AOT-compatible for Sentinel. One section per M2 package, headed by // <package>.
+// Win32 for Clicalo.Platform.Core (blueprint §3.1, §7.7, ADR-0022). Generated internal and without marshalling, so
+// the project stays AOT-compatible for Sentinel. One section per M2 package, headed by // <package>.
 
 // engine
-// ---- KeyLedger: unnamed 4 KiB section, read-only duplicate for Sentinel ----
-CreateFileMapping
-MapViewOfFile
-UnmapViewOfFile
-CloseHandle
-DuplicateHandle
-GetCurrentProcess
-INVALID_HANDLE_VALUE
-
-// ---- Injection: the only SendInput of the product, behind InjectionGate ----
+// ---- Injection: the only SendInput of the product, and the key state the releases read ----
 SendInput
 INPUT
 KEYBDINPUT
@@ -20,11 +11,15 @@ GetSystemMetrics
 XBUTTON1
 XBUTTON2
 WHEEL_DELTA
+GetAsyncKeyState
+MapVirtualKey
+OpenInputDesktop
+CloseDesktop
 
-// ---- Guardian: Sentinel start-up with an explicit handle list, waits and relaunch ----
-CreatePipe
-ReadFile
-WriteFile
+// ---- Guardian: Sentinel start-up with an explicit handle list, the wait on the parent and the relaunch ----
+CloseHandle
+DuplicateHandle
+GetCurrentProcess
 CreateProcess
 InitializeProcThreadAttributeList
 UpdateProcThreadAttribute
@@ -32,12 +27,7 @@ DeleteProcThreadAttributeList
 STARTUPINFOEXW
 PROC_THREAD_ATTRIBUTE_HANDLE_LIST
 WaitForSingleObject
-WaitForMultipleObjects
 GetExitCodeProcess
 TerminateProcess
-GetCurrentProcessId
-SetHandleInformation
-CreateEvent
-SetEvent
 WAIT_EVENT
 INFINITE

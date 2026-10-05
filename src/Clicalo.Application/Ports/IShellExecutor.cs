@@ -11,27 +11,15 @@ namespace Clicalo.Application.Ports;
 /// </summary>
 public interface IShellExecutor
 {
-    /// <summary>Queues a launch; it is dropped if the generation is old when it runs.</summary>
-    /// <param name="generation">The caller's generation.</param>
+    /// <summary>Queues a launch; it runs on the Shell thread.</summary>
     /// <param name="effect">The effect id.</param>
     /// <param name="request">What to start.</param>
     /// <param name="replyTo">Where the result goes.</param>
-    void Launch(
-        EngineGeneration generation,
-        EffectId effect,
-        LaunchRequest request,
-        IEngineInbox replyTo
-    );
+    void Launch(EffectId effect, LaunchRequest request, IEngineInbox replyTo);
 
     /// <summary>Queues a system command.</summary>
-    /// <param name="generation">The caller's generation.</param>
     /// <param name="effect">The effect id.</param>
     /// <param name="command">The command.</param>
     /// <param name="replyTo">Where the result goes.</param>
-    void Run(
-        EngineGeneration generation,
-        EffectId effect,
-        SystemCommandId command,
-        IEngineInbox replyTo
-    );
+    void Run(EffectId effect, SystemCommandId command, IEngineInbox replyTo);
 }

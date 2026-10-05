@@ -2,7 +2,7 @@ namespace Clicalo.Application.Ports;
 
 /// <summary>
 /// Fixed chords that Clícalo itself must inject as internal effects, outside any shortcut (blueprint §3.6). In M2
-/// the engine implements it through the ledger and <c>InjectionGate</c> (ADR-0004); in M1 the spikes use a guarded
+/// the engine implements it, sending the chords itself (ADR-0022); in M1 the spikes use a guarded
 /// test implementation (SpikeLab, Windowing.IntegrationTests). Every call sends a balanced batch (downs and ups
 /// together) and never AltGr or right Ctrl.
 /// </summary>

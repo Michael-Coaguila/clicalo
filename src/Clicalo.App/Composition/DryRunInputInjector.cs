@@ -19,25 +19,19 @@ internal sealed class DryRunInputInjector : IInputInjector
     public long Events => Interlocked.Read(ref _events);
 
     /// <inheritdoc />
-    public InjectionResult Send(EngineGeneration generation, ReadOnlySpan<InjectedEvent> events) =>
-        Accept(events.Length);
+    public InjectionResult Send(ReadOnlySpan<InjectedEvent> events) => Accept(events.Length);
 
     /// <inheritdoc />
-    public InjectionResult TypeText(EngineGeneration generation, ReadOnlySpan<char> text) =>
-        Accept(text.Length * 2);
+    public InjectionResult TypeText(ReadOnlySpan<char> text) => Accept(text.Length * 2);
 
     /// <inheritdoc />
-    public InjectionResult Mouse(
-        EngineGeneration generation,
-        MouseOp operation,
-        PhysicalPoint? target
-    ) => Accept(1);
+    public InjectionResult Mouse(MouseOp operation, PhysicalPoint? target) => Accept(1);
 
     /// <inheritdoc />
-    public InjectionResult SendChord(EngineGeneration generation, InternalChord chord) => Accept(0);
+    public InjectionResult SendChord(InternalChord chord) => Accept(0);
 
     /// <inheritdoc />
-    public InjectionResult ReleasePending(EngineGeneration generation) => Accept(0);
+    public InjectionResult ReleasePressed() => Accept(0);
 
     private InjectionResult Accept(int count)
     {

@@ -1,149 +1,92 @@
 using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 
 namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
-/// The model of what the system has down (<c>D</c> of blueprint §7.5), behind the real <see cref="InjectionGate"/>
-/// (§7.10: «el modelo usa un InjectionGate real sobre un PhysicalStateInjector»). It never injects: it applies each
-/// batch to its own state. It can answer like a partial or refused <c>SendInput</c>, run a probe before and after each
-/// batch («death at every step»), and block inside one call to freeze the engine thread inside the gate (INV-11).
+/// The model of what the system has down (<c>D</c> of blueprint §7.5), as both the <c>SendInput</c> and the key state
+/// of the real <c>InputInjector</c> (ADR-0022). It never injects: it applies each batch to its own state. It can answer
+/// like a partial <c>SendInput</c> or like the secure desktop.
 /// </summary>
-internal sealed class PhysicalStateInjector : ILowLevelSender
+internal sealed class PhysicalStateInjector : ILowLevelSender, IKeyStateReader
 {
-    private readonly Lock _sync = new();
     private readonly HashSet<PhysicalKey> _keys = [];
-    private int _calls;
 
-    public LedgerMouseButtons Buttons { get; private set; }
+    public LowLevelMouseButtons Buttons { get; private set; }
 
-    public IReadOnlySet<PhysicalKey> Keys
-    {
-        get
-        {
-            lock (_sync)
-            {
-                return _keys.ToHashSet();
-            }
-        }
-    }
+    public IReadOnlySet<PhysicalKey> Keys => _keys;
 
-    public bool IsEmpty
-    {
-        get
-        {
-            lock (_sync)
-            {
-                return _keys.Count == 0 && Buttons == LedgerMouseButtons.None;
-            }
-        }
-    }
+    public bool IsEmpty => _keys.Count == 0 && Buttons == LowLevelMouseButtons.None;
 
     public List<LowLevelInput[]> Batches { get; } = [];
 
     /// <summary>How many events the next call takes (then back to all); <see langword="null"/> for all.</summary>
     public int? TakeNext { get; set; }
 
-    /// <summary>The error the next partial call reports.</summary>
-    public int NextError { get; set; } = 87;
+    /// <summary>Whether the secure desktop has the input: every call is refused and the state unreadable.</summary>
+    public bool SecureDesktop { get; set; }
 
-    /// <summary>Runs inside each call, before the batch is applied (the ledger already recorded its downs).</summary>
-    public Action<PhysicalStateInjector, ReadOnlyMemory<LowLevelInput>>? BeforeApply { get; set; }
+    /// <inheritdoc />
+    public bool CanRead => !SecureDesktop;
 
-    /// <summary>Runs inside each call, after the batch is applied.</summary>
-    public Action<PhysicalStateInjector, ReadOnlyMemory<LowLevelInput>>? AfterApply { get; set; }
+    /// <summary>Presses a key outside Clícalo's batches (another holder, or what a dead process left down).</summary>
+    public void Press(PhysicalKey key) => _keys.Add(key);
 
-    /// <summary>When set, the call with this number (1-based) blocks until <see cref="Resume"/>.</summary>
-    public int? FreezeOnCall { get; set; }
+    /// <inheritdoc />
+    public bool IsDown(byte virtualKey) =>
+        CanRead
+        && virtualKey switch
+        {
+            0x01 => Buttons.HasFlag(LowLevelMouseButtons.Left),
+            0x02 => Buttons.HasFlag(LowLevelMouseButtons.Right),
+            0x04 => Buttons.HasFlag(LowLevelMouseButtons.Middle),
+            0x05 => Buttons.HasFlag(LowLevelMouseButtons.X1),
+            0x06 => Buttons.HasFlag(LowLevelMouseButtons.X2),
+            _ => _keys.Any(key => key.Vk == virtualKey),
+        };
 
-    /// <summary>Whether the frozen call blocks after applying its batch (else before).</summary>
-    public bool FreezeAfterApply { get; set; }
+    /// <inheritdoc />
+    public ushort ScanCode(byte virtualKey) =>
+        _keys.FirstOrDefault(key => key.Vk == virtualKey) is { Vk: not 0 } key
+            ? (ushort)(
+                (
+                    (key.Attributes & PhysicalKeyAttributes.Extended) != PhysicalKeyAttributes.None
+                        ? 0xE000
+                        : 0
+                ) | key.Scan
+            )
+            : (ushort)0;
 
-    public ManualResetEventSlim Frozen { get; } = new();
-
-    public ManualResetEventSlim Resume { get; } = new();
-
+    /// <inheritdoc />
     public SendResult Send(ReadOnlySpan<LowLevelInput> inputs)
     {
         var batch = inputs.ToArray();
-        var call = Interlocked.Increment(ref _calls);
+        Batches.Add(batch);
+        if (SecureDesktop)
+        {
+            return new SendResult(0, SendResult.AccessDenied);
+        }
+
         var take = TakeNext is { } limit ? Math.Clamp(limit, 0, batch.Length) : batch.Length;
         TakeNext = null;
-        lock (_sync)
-        {
-            Batches.Add(batch);
-        }
-
-        BeforeApply?.Invoke(this, batch);
-        var freezes = FreezeOnCall == call;
-        if (freezes && !FreezeAfterApply)
-        {
-            Freeze();
-        }
-
-        Apply(batch.AsSpan(0, take));
-        AfterApply?.Invoke(this, batch);
-        if (freezes && FreezeAfterApply)
-        {
-            Freeze();
-        }
-
-        return take == batch.Length ? new SendResult(take, 0) : new SendResult(take, NextError);
-    }
-
-    /// <summary>What the system would have down after <paramref name="batch"/> (the guardian's release, for example).</summary>
-    public (HashSet<PhysicalKey> Keys, LedgerMouseButtons Buttons) After(
-        ReadOnlySpan<LowLevelInput> batch
-    )
-    {
-        lock (_sync)
-        {
-            var keys = _keys.ToHashSet();
-            var buttons = Buttons;
-            Apply(batch, keys, ref buttons);
-            return (keys, buttons);
-        }
-    }
-
-    private void Freeze()
-    {
-        Frozen.Set();
-        Resume.Wait();
-    }
-
-    private void Apply(ReadOnlySpan<LowLevelInput> batch)
-    {
-        lock (_sync)
-        {
-            var buttons = Buttons;
-            Apply(batch, _keys, ref buttons);
-            Buttons = buttons;
-        }
-    }
-
-    private static void Apply(
-        ReadOnlySpan<LowLevelInput> batch,
-        HashSet<PhysicalKey> keys,
-        ref LedgerMouseButtons buttons
-    )
-    {
-        foreach (var input in batch)
+        foreach (var input in batch.AsSpan(0, take))
         {
             switch (input.Kind)
             {
                 case LowLevelInputKind.KeyDown:
-                    keys.Add(input.Key);
+                    _keys.Add(input.Key);
                     break;
                 case LowLevelInputKind.KeyUp:
-                    keys.Remove(input.Key);
+                    _keys.RemoveWhere(key => key.Vk == input.Key.Vk && key.Scan == input.Key.Scan);
                     break;
                 case LowLevelInputKind.MouseButtonDown:
-                    buttons |= input.Button;
+                    Buttons |= input.Button;
                     break;
                 case LowLevelInputKind.MouseButtonUp:
-                    buttons &= ~input.Button;
+                    Buttons &= ~input.Button;
                     break;
             }
         }
+
+        return take == batch.Length ? new SendResult(take, 0) : new SendResult(take, 87);
     }
 }

@@ -51,7 +51,7 @@ internal static class ConfinedApis
                 Calls(pinvoke, "SendInput"),
                 Uses(),
                 Allowed("Clicalo.Platform.Core.Injection"),
-                "every injection is fenced by InjectionGate (ADR-0004, SEG-007)"
+                "every injection goes through the single SendInput of Platform.Core (ADR-0022, SEG-007)"
             ),
             new(
                 "ShellExecute",

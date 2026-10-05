@@ -6,9 +6,8 @@ namespace Clicalo.Application.Engine;
 
 /// <summary>
 /// The internal key effects of a sending start (blueprint §3.6, D-14, D-22): the rights chord of the foreground ladder
-/// and Win+H are requests to the engine, which sends them under the gate with its own generation (INV-11), so a fenced
-/// engine never sends them and no other thread injects beside the engine's. The answer is awaited for at most
-/// <c>Timings.Engine.InternalChordWait</c>: a hung or replaced engine answers «not sent».
+/// and Win+H are requests to the engine, which sends them itself, so no other thread injects beside the engine's. The
+/// answer is awaited for at most <c>Timings.Engine.InternalChordWait</c>: a hung engine answers «not sent».
 /// </summary>
 public sealed class EngineKeyEffects : IInternalKeyEffects
 {

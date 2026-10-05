@@ -68,7 +68,7 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 | `AttachThreadInput`, `LockSetForegroundWindow` | En ningún sitio | — |
 | `Window.Activate`, `Window.Focus` sobre ventanas | En ningún sitio | Concesión `ControlCenter` |
 | `TrackPopupMenu`, `TrackPopupMenuEx` | `Platform.Windows/Tray/TrayMenuHost.cs` | Concesión `TrayMenu` |
-| `PInvoke.SendInput` | `Platform.Core/Injection`, detrás de `InjectionGate` | `IInputInjector` |
+| `PInvoke.SendInput` | `Platform.Core/Injection` (`LowLevelInjector`, el único envío) | `IInputInjector` |
 | `Process.Start`, `ProcessStartInfo` | `Platform.Windows/Launch` | `ILauncher` (sin intérprete) |
 | `Assembly.Load*`, `AssemblyLoadContext.LoadFrom*` | En ningún sitio (ADR-0017) | Datos validados |
 | `ShellExecute*`, `IShellDispatch2`, WMI (`System.Management`) | `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` (hilo Shell) | `ILauncher`, `ISystemCommandRunner` |
@@ -116,9 +116,9 @@ Su API pública son los tipos `public` de la raíz del módulo; los detalles son
 | Hilo | Dueño de | Nunca hace |
 |---|---|---|
 | UI (roles Surfaces y Workspace) | Ventanas no activables, `PointerInputSource`, `SessionStore` e `InteractionStore` (Surfaces); Centro de control y bienvenida (Workspace) | E/S, esperas, `SendInput`, `SetForegroundWindow` |
-| Engine | `EngineHost`, escritura del *ledger*, `SendInput` a través de `InjectionGate` | E/S de disco o red, llamadas a la UI, esperas bloqueantes, `ShellExecute`, WMI |
+| Engine | `EngineHost`, `SendInput` a través de `IInputInjector` | E/S de disco o red, llamadas a la UI, esperas bloqueantes, `ShellExecute`, WMI |
 | SysEvents | *Hooks* de WinEvent, sesión, energía, bandeja, portapapeles, `ForegroundOrchestrator`, `PointerPositionTracker`, `EmergencyReleaser` | Lógica de negocio y llamadas que puedan bloquear |
-| Shell | Lanzar apps y webs, comandos de sistema | Tocar el *ledger* o la UI |
+| Shell | Lanzar apps y webs, comandos de sistema | Enviar entrada o tocar la UI |
 | Hook (bajo demanda) | `WH_KEYBOARD_LL` y `WH_MOUSE_LL` temporales | Cualquier cosa distinta de escribir en un anillo prealocado |
 | Persistence | Serializar, validar y escribir el documento y el uso; copias | Tocar la UI |
 

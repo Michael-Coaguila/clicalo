@@ -16,21 +16,18 @@ namespace Clicalo.Application.Engine;
 /// <summary>
 /// The engine actor (blueprint §7.3, ADR-0004): owns <see cref="EngineState"/> on the engine thread, runs
 /// <see cref="EngineReducer"/> for each event of its <see cref="EngineMailbox"/> and interprets the effects against the
-/// ports, every external one through the injection gate with its <see cref="Generation"/>. Each message runs in a
-/// try/catch: an exception releases from the ledger under the gate, resets to <see cref="EngineState.Empty"/> and warns
-/// «Something failed; the keys were released» (NFR-005). Writes the ledger heartbeat on every turn and every
-/// <c>Timings.Engine.LedgerHeartbeatInterval</c>; timers run on <see cref="TimeProvider"/>.
+/// ports. Each message runs in a try/catch: an exception releases everything Windows reports down, resets to
+/// <see cref="EngineState.Empty"/> and warns «Something failed; the keys were released» (NFR-005). Timers run on
+/// <see cref="TimeProvider"/>.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
-/// <item>One <see cref="TimeProvider"/> timer wakes the loop for the earliest of the engine's timers, the next
-/// heartbeat and a coalesced snapshot, so the loop's only wait is the mailbox's.</item>
+/// <item>One <see cref="TimeProvider"/> timer wakes the loop for the earliest of the engine's timers and a coalesced
+/// snapshot, so the loop's only wait is the mailbox's.</item>
 /// <item>Before a press goes out, the host checks it again against the foreground it knows (INV-6), test mode and
 /// pause (INV-7); a press it drops, or one <c>SendInput</c> takes only in part, comes back as
 /// <see cref="EngineEvent.InjectFailed"/> in the priority lane, so the reducer releases what it may have left down
 /// (INV-5). A release the secure desktop refuses comes back as <see cref="EngineEvent.ReleasesBlocked"/>.</item>
-/// <item>A <see cref="InjectionStatus.Fenced"/> result means another engine replaced this one after an emergency
-/// (INV-11): this host stops at once and sends nothing more.</item>
 /// <item>Text is revealed only to be sent, into a rented buffer wiped afterwards (§6.7).</item>
 /// <item>Snapshots reach the observer at most once per <c>Timings.Engine.SnapshotCoalescing</c> (§3.2, rule 5).</item>
 /// </list>
@@ -44,37 +41,31 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     private readonly EngineMailbox _mailbox = new();
     private readonly Dictionary<TimerKey, long> _timers = [];
     private readonly ITimer _wake;
-    private readonly long _heartbeatTicks;
     private readonly long _coalescingTicks;
     private EngineConfig _config;
     private EngineState _state;
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
     private long _publishedVersion = -1;
     private long? _lastPublishTicks;
-    private long? _lastHeartbeatTicks;
     private bool _stopped;
-    private bool _fenced;
     private int _disposed;
 
     /// <summary>Creates a host; <see cref="Run"/> starts it on the engine thread.</summary>
     /// <param name="ports">The ports.</param>
-    /// <param name="generation">The ledger's current generation; a host never changes it.</param>
     /// <param name="config">The initial settings.</param>
     /// <param name="time">Clock and timers.</param>
     /// <param name="logger">Logs codes, never keys or text (LOG-001).</param>
     public EngineHost(
         EngineHostPorts ports,
-        EngineGeneration generation,
         EngineConfig config,
         TimeProvider time,
         ILogger<EngineHost> logger
     )
-        : this(ports, generation, config, time, logger, EngineReducer.Reduce, EngineState.Empty) { }
+        : this(ports, config, time, logger, EngineReducer.Reduce, EngineState.Empty) { }
 
     /// <summary>Creates a host with another reducer or a starting state (tests).</summary>
     internal EngineHost(
         EngineHostPorts ports,
-        EngineGeneration generation,
         EngineConfig config,
         TimeProvider time,
         ILogger<EngineHost> logger,
@@ -89,13 +80,11 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         ArgumentNullException.ThrowIfNull(reducer);
         ArgumentNullException.ThrowIfNull(initial);
         _ports = ports;
-        Generation = generation;
         _time = time;
         _logger = logger;
         _reducer = reducer;
         _state = initial;
         _config = config with { TimestampFrequency = time.TimestampFrequency };
-        _heartbeatTicks = ToTicks(Timings.Engine.LedgerHeartbeatInterval);
         _coalescingTicks = ToTicks(Timings.Engine.SnapshotCoalescing);
         _wake = time.CreateTimer(
             static host => ((EngineHost)host!)._mailbox.Wake(),
@@ -105,14 +94,11 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         );
     }
 
-    /// <summary>The generation every effect of this host carries.</summary>
-    public EngineGeneration Generation { get; }
-
     /// <summary>The latest published snapshot; safe to read from any thread.</summary>
     public EngineSnapshot Snapshot => Volatile.Read(ref _snapshot);
 
-    /// <summary>Whether this host stopped (exit, cancellation, or fenced by a newer engine).</summary>
-    public bool IsStopped => _stopped || _fenced;
+    /// <summary>Whether this host stopped (exit or cancellation).</summary>
+    public bool IsStopped => _stopped;
 
     /// <summary>The state, for the tests of the engine thread.</summary>
     internal EngineState State => _state;
@@ -131,18 +117,6 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     /// <param name="cancellationToken">Stops the loop after releasing everything.</param>
     public void Run(CancellationToken cancellationToken)
     {
-        if (
-            !_ports.Ledger.TryUpdateMarks(
-                Generation,
-                KeyLedgerMarks.EngineAlive,
-                KeyLedgerMarks.None
-            )
-        )
-        {
-            // An emergency raised the generation before this host even ran: it is a zombie from the start (INV-11).
-            Fence();
-        }
-
         try
         {
             while (!IsStopped && !cancellationToken.IsCancellationRequested)
@@ -165,18 +139,6 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             if (!IsStopped)
             {
                 Handle(new EngineEvent.Terminal(TerminalReason.Exit));
-            }
-
-            // A fenced host is a zombie: the ledger's EngineAlive mark belongs to the engine that replaced it, and
-            // clearing it would switch off the emergency releaser's watch over that engine (§3.2, rule 6). The gate
-            // checks the generation again, so a host fenced in the meantime clears nothing either.
-            if (!_fenced)
-            {
-                _ = _ports.Ledger.TryUpdateMarks(
-                    Generation,
-                    KeyLedgerMarks.None,
-                    KeyLedgerMarks.EngineAlive
-                );
             }
 
             _mailbox.Complete();
@@ -202,23 +164,12 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     }
 
     /// <summary>
-    /// One turn of the loop: the heartbeat, the timers that fell due, every queued event (priority lane first) and a
-    /// coalesced snapshot; then arms the wake-up timer. The tests call it directly on their thread.
+    /// One turn of the loop: the timers that fell due, every queued event (priority lane first) and a coalesced
+    /// snapshot; then arms the wake-up timer. The tests call it directly on their thread.
     /// </summary>
-    /// <remarks>
-    /// The heartbeat goes through the generation fence: a host an emergency replaced (a zombie that resumed) learns it
-    /// here, on its first turn, even when it has nothing to send, and stops without writing the heartbeat, running a
-    /// timer or publishing a snapshot to the observer it shares with the engine that replaced it (INV-11).
-    /// </remarks>
     internal void Pump()
     {
         var now = _time.GetTimestamp();
-        Heartbeat(now);
-        if (IsStopped)
-        {
-            return;
-        }
-
         foreach (
             var (key, _) in _timers.Where(t => t.Value <= now).OrderBy(static t => t.Value).ToList()
         )
@@ -235,12 +186,6 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         while (!IsStopped && _mailbox.TryTake(out var engineEvent))
         {
             Handle(engineEvent);
-            Heartbeat(_time.GetTimestamp());
-        }
-
-        if (_fenced)
-        {
-            return;
         }
 
         now = _time.GetTimestamp();
@@ -285,39 +230,14 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                 Interpret(effect);
             }
 
-            if (engineEvent is EngineEvent.Terminal terminal)
+            if (engineEvent is EngineEvent.Terminal { Reason: TerminalReason.Exit })
             {
-                AfterTerminal(terminal.Reason);
+                _stopped = true;
             }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             Fault(before, ex);
-        }
-    }
-
-    private void AfterTerminal(TerminalReason reason)
-    {
-        var marks = reason switch
-        {
-            TerminalReason.Exit or TerminalReason.SessionEnd => KeyLedgerMarks.CleanShutdown,
-            TerminalReason.Relaunch or TerminalReason.Update => KeyLedgerMarks.CleanShutdown
-                | KeyLedgerMarks.NoRelaunch,
-            _ => KeyLedgerMarks.None,
-        };
-        if (
-            marks != KeyLedgerMarks.None
-            && !_ports.Ledger.TryUpdateMarks(Generation, marks, KeyLedgerMarks.None)
-        )
-        {
-            // A zombie never marks a clean shutdown: the engine that replaced it may still hold keys.
-            Fence();
-            return;
-        }
-
-        if (reason == TerminalReason.Exit)
-        {
-            _stopped = true;
         }
     }
 
@@ -334,8 +254,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                     Settle(
                         Reveal(
                             typed.Text,
-                            static (host, text) =>
-                                host._ports.Injector.TypeText(host.Generation, text)
+                            static (host, text) => host._ports.Injector.TypeText(text)
                         )
                     );
                 }
@@ -348,12 +267,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                         paste.Text,
                         (host, text) =>
                         {
-                            host._ports.Clipboard.Prepare(
-                                host.Generation,
-                                paste.Effect,
-                                text,
-                                host
-                            );
+                            host._ports.Clipboard.Prepare(paste.Effect, text, host);
                             return default;
                         }
                     );
@@ -363,15 +277,15 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             case EngineEffect.MouseAction mouse:
                 if (PressAllowed(mouse.Epoch, requiredForeground: null))
                 {
-                    Settle(_ports.Injector.Mouse(Generation, mouse.Op, mouse.Target));
+                    Settle(_ports.Injector.Mouse(mouse.Op, mouse.Target));
                 }
 
                 break;
             case EngineEffect.Launch launch:
-                _ports.Shell.Launch(Generation, launch.Effect, launch.Request, this);
+                _ports.Shell.Launch(launch.Effect, launch.Request, this);
                 break;
             case EngineEffect.SystemCommand command:
-                _ports.Shell.Run(Generation, command.Effect, command.Command, this);
+                _ports.Shell.Run(command.Effect, command.Command, this);
                 break;
             case EngineEffect.Schedule schedule:
                 _timers[schedule.Key] = schedule.DueTicks;
@@ -387,9 +301,6 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                 break;
             case EngineEffect.SetLastAction last:
                 _ports.Observer.OnLastAction(last.Shortcut);
-                break;
-            case EngineEffect.ReleasePendingRecorded:
-                Settle(_ports.Injector.ReleasePending(Generation));
                 break;
             case EngineEffect.SendInternalChord chord:
                 SendChord(chord);
@@ -412,12 +323,9 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             return;
         }
 
-        var result = _ports.Injector.Send(Generation, inject.Events.AsSpan());
+        var result = _ports.Injector.Send(inject.Events.AsSpan());
         switch (result.Status)
         {
-            case InjectionStatus.Fenced:
-                Fence();
-                break;
             case InjectionStatus.Blocked when inject.IsRelease:
                 _mailbox.Post(new EngineEvent.ReleasesBlocked(inject.Events));
                 break;
@@ -438,7 +346,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
     private void SendChord(EngineEffect.SendInternalChord chord)
     {
-        var result = _ports.Injector.SendChord(Generation, chord.Chord);
+        var result = _ports.Injector.SendChord(chord.Chord);
         Settle(result);
         _ports.ChordReplies?.Complete(
             chord.Request,
@@ -456,26 +364,10 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
     private void Settle(InjectionResult result)
     {
-        if (result.Status == InjectionStatus.Fenced)
-        {
-            Fence();
-        }
-        else if (result.Status is InjectionStatus.Failed or InjectionStatus.Blocked)
+        if (result.Status is InjectionStatus.Failed or InjectionStatus.Blocked)
         {
             LogSendFailed(_logger, result.Status, result.EventsSent, result.Win32Error);
         }
-    }
-
-    private void Fence()
-    {
-        if (_fenced)
-        {
-            return;
-        }
-
-        // INV-11: an emergency raised the generation and a new engine owns the keyboard; this one is a zombie.
-        _fenced = true;
-        LogFenced(_logger, Generation.Value);
     }
 
     private InjectionResult Reveal(
@@ -512,27 +404,12 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         var refused = ImmutableArray<InjectedEvent>.Empty;
         try
         {
-            if (_ports.ReleaseRecorded is { } releaseRecorded)
+            // What Windows reports down, not this state: the state may be the broken part (ADR-0022). A refused
+            // release keeps what the last good state held, to be sent again when the input desktop is back (INV-3).
+            var result = _ports.Injector.ReleasePressed();
+            if (result.Status is InjectionStatus.Blocked or InjectionStatus.Failed)
             {
-                // A release the secure desktop refuses stays ReleasePending in the physical ledger, which
-                // SessionResumed sends again (Injector.ReleasePending).
-                releaseRecorded(Generation);
-            }
-            else
-            {
-                var release = before.Keys.ReleaseAll().Events;
-                if (!release.IsEmpty)
-                {
-                    var result = _ports.Injector.Send(Generation, release.AsSpan());
-                    if (result.Status == InjectionStatus.Fenced)
-                    {
-                        Fence();
-                    }
-                    else if (result.Status is InjectionStatus.Blocked or InjectionStatus.Failed)
-                    {
-                        refused = release;
-                    }
-                }
+                refused = before.Keys.ReleaseAll().Events;
             }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -551,24 +428,6 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         };
         _timers.Clear();
         _ports.Observer.OnNotice(L.EngineFault, NoticeUrgency.Assertive);
-    }
-
-    private void Heartbeat(long now)
-    {
-        if (_fenced || (_lastHeartbeatTicks is { } last && now == last))
-        {
-            return;
-        }
-
-        if (!_ports.Ledger.TryWriteHeartbeat(Generation, now))
-        {
-            // §3.2, rule 6: an emergency replaced this host while it was hung outside the gate. Renewing the heartbeat
-            // now would hide a hang of the engine that replaced it from the emergency releaser.
-            Fence();
-            return;
-        }
-
-        _lastHeartbeatTicks = now;
     }
 
     private void Publish(long now)
@@ -612,7 +471,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             return;
         }
 
-        var next = (_lastHeartbeatTicks ?? now) + _heartbeatTicks;
+        var next = long.MaxValue;
         foreach (var due in _timers.Values)
         {
             next = Math.Min(next, due);
@@ -623,7 +482,10 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             next = Math.Min(next, last + _coalescingTicks);
         }
 
-        var delay = next <= now ? TimeSpan.Zero : FromTicks(next - now);
+        var delay =
+            next == long.MaxValue ? Timeout.InfiniteTimeSpan
+            : next <= now ? TimeSpan.Zero
+            : FromTicks(next - now);
         _wake.Change(delay, Timeout.InfiniteTimeSpan);
     }
 
@@ -641,13 +503,6 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         Message = "engine.fault: {ExceptionType}; everything was released and the engine state reset"
     )]
     private static partial void LogFault(ILogger logger, string exceptionType);
-
-    [LoggerMessage(
-        EventId = 2,
-        Level = LogLevel.Warning,
-        Message = "engine.zombie: generation {Generation} was fenced; this engine stops"
-    )]
-    private static partial void LogFenced(ILogger logger, ulong generation);
 
     [LoggerMessage(
         EventId = 3,

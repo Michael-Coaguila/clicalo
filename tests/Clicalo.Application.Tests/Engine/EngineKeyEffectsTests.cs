@@ -7,9 +7,9 @@ using Microsoft.Extensions.Time.Testing;
 namespace Clicalo.Application.Tests.Engine;
 
 /// <summary>
-/// Clícalo's own chords go through the engine (blueprint §3.6, D-14, D-22): a request to the mailbox, sent by the host
-/// with its generation under the gate (INV-11), in test mode and pause too (INV-7), and answered to the requester; a
-/// hung or replaced engine answers «not sent» after <c>Timings.Engine.InternalChordWait</c>.
+/// Clícalo's own chords go through the engine (blueprint §3.6, D-14, D-22): a request to the mailbox, sent by the host,
+/// in test mode and pause too (INV-7), and answered to the requester; a failed send answers «not sent», and a hung
+/// engine answers «not sent» after <c>Timings.Engine.InternalChordWait</c>.
 /// </summary>
 [Trait("Req", "REG-03")]
 [Trait("Req", "BUS-003")]
@@ -56,7 +56,7 @@ public sealed class EngineKeyEffectsTests
     }
 
     [Fact]
-    public async Task The_engine_sends_the_chord_with_its_generation_and_answers()
+    public async Task The_engine_sends_the_chord_and_answers()
     {
         using var world = new HostWorld(realReducer: true);
         var replies = new InternalChordReplies();
@@ -65,7 +65,6 @@ public sealed class EngineKeyEffectsTests
             {
                 ChordReplies = replies,
             },
-            HostWorld.Generation,
             HostWorld.Config,
             world.Time,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<EngineHost>.Instance
@@ -84,10 +83,7 @@ public sealed class EngineKeyEffectsTests
 
         (await rights).ShouldBeTrue();
         (await dictation).ShouldBeTrue();
-        world.Injector.Chords.ShouldBe([
-            (HostWorld.Generation, InternalChord.Rights),
-            (HostWorld.Generation, InternalChord.Dictation),
-        ]);
+        world.Injector.Chords.ShouldBe([InternalChord.Rights, InternalChord.Dictation]);
         replies.Pending.ShouldBe(0);
     }
 
@@ -111,7 +107,7 @@ public sealed class EngineKeyEffectsTests
     }
 
     [Fact]
-    public async Task A_fenced_engine_answers_that_the_chord_did_not_go()
+    public async Task A_chord_that_does_not_go_is_answered_as_not_sent()
     {
         using var world = new HostWorld(realReducer: true);
         var replies = new InternalChordReplies();
@@ -120,12 +116,11 @@ public sealed class EngineKeyEffectsTests
             {
                 ChordReplies = replies,
             },
-            HostWorld.Generation,
             HostWorld.Config,
             world.Time,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<EngineHost>.Instance
         );
-        world.Injector.NextStatus = InjectionStatus.Fenced;
+        world.Injector.NextStatus = InjectionStatus.Failed;
         var effects = new EngineKeyEffects(
             new Inbox(e => host.Post(e)),
             replies,
@@ -137,7 +132,7 @@ public sealed class EngineKeyEffectsTests
         host.Pump();
 
         (await sent).ShouldBeFalse();
-        host.IsStopped.ShouldBeTrue();
+        host.IsStopped.ShouldBeFalse();
     }
 
     [Fact]

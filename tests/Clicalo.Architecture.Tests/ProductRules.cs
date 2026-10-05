@@ -168,7 +168,7 @@ internal static class ProductRules
                 scope.Namespace("Clicalo.Application.Ports")
             ),
             scope.Universe,
-            "only the engine injects input, through InjectionGate (§4.4, ADR-0004)"
+            "only the engine injects input, through IInputInjector (§4.4, ADR-0022)"
         );
 
     /// <summary>

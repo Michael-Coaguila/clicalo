@@ -2,8 +2,7 @@ namespace Clicalo.Domain.Execution;
 
 /// <summary>
 /// The fixed chords Clícalo injects for itself, outside any shortcut (blueprint §3.6, D-14): balanced (every key
-/// pressed is released in the same batch), never AltGr or right Ctrl, and sent by the engine under the fence with its
-/// generation (INV-11, D-22).
+/// pressed is released in the same batch), never AltGr or right Ctrl, and sent by the engine itself (D-22).
 /// </summary>
 public enum InternalChord
 {

@@ -1,12 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using Clicalo.Application.Ports;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
-using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 using Clicalo.Platform.Windows.Input;
 using Clicalo.Platform.Windows.SentinelHost;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,9 +12,10 @@ namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
 /// The stand-in main process of the chaos tests of S9: this test executable started again with
-/// <see cref="Flag"/>. It creates the real ledger, starts the real Sentinel with its three handles through the real
-/// supervisor, presses keys into the probe through the real gate (Ctrl+Shift held, a drag, a macro in the middle of a
-/// step), says «ready» and waits to be killed. It refuses to run outside continuous integration.
+/// <see cref="Flag"/>. It starts the real Sentinel with its one handle through the real supervisor, presses keys into
+/// the probe through the real injector (Ctrl+Shift held, a drag, a macro in the middle of a step), says «ready» and
+/// waits to be killed. Sentinel then releases and tries to relaunch <c>Clicalo.exe</c>, which is not next to it in the
+/// build output, so nothing is relaunched. It refuses to run outside the nightly run on a CI runner.
 /// </summary>
 internal static class ChaosMain
 {
@@ -51,15 +49,9 @@ internal static class ChaosMain
         var sentinel = arguments[0];
         var scenario = arguments[1];
         var probe = (nint)long.Parse(arguments[2], CultureInfo.InvariantCulture);
-        var ledger = KeyLedgerSection.CreateForEngine();
-
-        // NoRelaunch: the stand-in must not be replaced by Clicalo.exe when it dies.
-        ledger.SetMarks(LedgerMarks.EngineAlive | LedgerMarks.NoRelaunch);
-        var injector = new GateInputInjector(
-            new InjectionGate(ledger, new GuardedProbeSender(probe, allowUnbalanced: true))
-        );
+        var sender = new GuardedProbeSender(probe, allowUnbalanced: true);
+        var injector = new InputInjector(sender, Platform.Core.Injection.SystemKeyState.Instance);
         var supervisor = new SentinelSupervisor(
-            ledger,
             sentinel,
             TimeProvider.System,
             NullLogger<SentinelSupervisor>.Instance
@@ -70,24 +62,20 @@ internal static class ChaosMain
             return 3;
         }
 
-        var generation = new EngineGeneration(ledger.Generation);
         var ctrl = new InjectedKey(0xA2, 0x1D, false, InjectionMode.VirtualKey);
         var shift = new InjectedKey(0xA0, 0x2A, false, InjectionMode.VirtualKey);
         var c = new InjectedKey(0x43, 0x2E, false, InjectionMode.VirtualKey);
         switch (scenario)
         {
             case "hold":
-                injector.Send(
-                    generation,
-                    [InjectedEvent.KeyDown(ctrl), InjectedEvent.KeyDown(shift)]
-                );
+                injector.Send([InjectedEvent.KeyDown(ctrl), InjectedEvent.KeyDown(shift)]);
                 break;
             case "drag":
-                injector.Mouse(generation, MouseOp.Drag, target: null);
-                injector.Send(generation, [InjectedEvent.MouseDown(MouseButtons.Left)]);
+                injector.Mouse(MouseOp.Drag, target: null);
+                injector.Send([InjectedEvent.MouseDown(MouseButtons.Left)]);
                 break;
             case "macro":
-                injector.Send(generation, [InjectedEvent.KeyDown(ctrl), InjectedEvent.KeyDown(c)]);
+                injector.Send([InjectedEvent.KeyDown(ctrl), InjectedEvent.KeyDown(c)]);
                 break;
             default:
                 return 4;

@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Sentinel and the ledger v2 it reads (blueprint §10.1). Tests that kill processes are CI-only (Category=Chaos). -->
+  <!-- Sentinel and the release of what Windows reports down (ADR-0022), with fakes. Tests that kill processes are nightly (Category=Chaos). -->
   <PropertyGroup>
     <TargetFramework>$(ClicaloWindowsTfm)</TargetFramework>
     <RootNamespace>Clicalo.Sentinel.Tests</RootNamespace>

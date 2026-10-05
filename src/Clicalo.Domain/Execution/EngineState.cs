@@ -7,8 +7,8 @@ using Clicalo.Domain.Touch;
 namespace Clicalo.Domain.Execution;
 
 /// <summary>
-/// The whole state of the engine (blueprint §7.3), owned by the engine thread only. What must survive a crash goes
-/// to the physical ledger, not here.
+/// The whole state of the engine (blueprint §7.3), owned by the engine thread only. What is down when the process dies is
+/// released by Sentinel from what Windows reports (ADR-0022).
 /// </summary>
 /// <param name="Keys">The logical ledger.</param>
 /// <param name="Armed">The shortcut waiting for its confirmation tap.</param>
@@ -31,7 +31,7 @@ public sealed record EngineState(
     long Version
 )
 {
-    /// <summary>The state of a new engine, and after an emergency release.</summary>
+    /// <summary>The state of a new engine, and after an exception (NFR-005).</summary>
     public static EngineState Empty { get; } =
         new(
             KeyboardLedger.Empty,

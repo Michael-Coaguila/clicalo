@@ -1,8 +1,8 @@
-namespace Clicalo.Platform.Core.KeyLedger;
+namespace Clicalo.Platform.Core.Injection;
 
 /// <summary>How a key was pressed, so it is released the same way (INV-12).</summary>
 [Flags]
-public enum LedgerKeyAttributes : byte
+public enum PhysicalKeyAttributes : byte
 {
     /// <summary>A normal virtual-key press.</summary>
     None = 0,

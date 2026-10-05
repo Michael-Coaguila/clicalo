@@ -1,13 +1,12 @@
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 
 namespace Clicalo.Platform.Windows.Input;
 
 /// <summary>
 /// The Domain's keys and events as Platform.Core's (which depends on the BCL only): the same key, the same mode, so
-/// the release recorded by the ledger is the one of the press (INV-12).
+/// the release the engine plans is the one of the press (INV-12).
 /// </summary>
 public static class InputMapping
 {
@@ -15,7 +14,8 @@ public static class InputMapping
     private const ushort ScanReturn = 0x1C;
 
     /// <summary>Enter, as a line break of a text is sent (EJE-008).</summary>
-    public static PhysicalKey Enter { get; } = new(VkReturn, ScanReturn, LedgerKeyAttributes.None);
+    public static PhysicalKey Enter { get; } =
+        new(VkReturn, ScanReturn, PhysicalKeyAttributes.None);
 
     /// <summary>The physical key of a Domain key.</summary>
     /// <param name="key">The key as the engine resolved it.</param>
@@ -23,11 +23,11 @@ public static class InputMapping
         new(
             key.Vk,
             key.Scan,
-            (key.Extended ? LedgerKeyAttributes.Extended : LedgerKeyAttributes.None)
+            (key.Extended ? PhysicalKeyAttributes.Extended : PhysicalKeyAttributes.None)
                 | (
                     key.Mode == InjectionMode.ScanCode
-                        ? LedgerKeyAttributes.ScanCodeMode
-                        : LedgerKeyAttributes.None
+                        ? PhysicalKeyAttributes.ScanCodeMode
+                        : PhysicalKeyAttributes.None
                 )
         );
 
@@ -37,16 +37,16 @@ public static class InputMapping
         new(
             key.Vk,
             key.Scan,
-            (key.Attributes & LedgerKeyAttributes.Extended) != LedgerKeyAttributes.None,
-            (key.Attributes & LedgerKeyAttributes.ScanCodeMode) != LedgerKeyAttributes.None
+            (key.Attributes & PhysicalKeyAttributes.Extended) != PhysicalKeyAttributes.None,
+            (key.Attributes & PhysicalKeyAttributes.ScanCodeMode) != PhysicalKeyAttributes.None
                 ? InjectionMode.ScanCode
                 : InjectionMode.VirtualKey
         );
 
-    /// <summary>One mouse button as the ledger stores it.</summary>
+    /// <summary>One mouse button as Platform.Core sends it.</summary>
     /// <param name="button">One button.</param>
-    public static LedgerMouseButtons ToLedger(MouseButtons button) =>
-        (LedgerMouseButtons)(byte)button;
+    public static LowLevelMouseButtons ToLowLevel(MouseButtons button) =>
+        (LowLevelMouseButtons)(byte)button;
 
     /// <summary>How many low-level inputs <paramref name="events"/> become.</summary>
     /// <param name="events">The engine's events.</param>
@@ -81,14 +81,14 @@ public static class InputMapping
                     target[at++] = LowLevelInput.KeyUp(ToPhysical(e.Key));
                     break;
                 case InjectedEventKind.MenuMask:
-                    target[at++] = LowLevelInput.KeyDown(LedgerRelease.MenuMask);
-                    target[at++] = LowLevelInput.KeyUp(LedgerRelease.MenuMask);
+                    target[at++] = LowLevelInput.KeyDown(PressedInputRelease.MenuMask);
+                    target[at++] = LowLevelInput.KeyUp(PressedInputRelease.MenuMask);
                     break;
                 case InjectedEventKind.MouseDown:
-                    target[at++] = LowLevelInput.ButtonDown(ToLedger(e.Button));
+                    target[at++] = LowLevelInput.ButtonDown(ToLowLevel(e.Button));
                     break;
                 case InjectedEventKind.MouseUp:
-                    target[at++] = LowLevelInput.ButtonUp(ToLedger(e.Button));
+                    target[at++] = LowLevelInput.ButtonUp(ToLowLevel(e.Button));
                     break;
             }
         }

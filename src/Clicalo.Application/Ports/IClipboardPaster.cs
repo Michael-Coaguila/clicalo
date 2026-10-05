@@ -11,14 +11,8 @@ namespace Clicalo.Application.Ports;
 public interface IClipboardPaster
 {
     /// <summary>Queues the paste; the adapter copies <paramref name="text"/> before returning.</summary>
-    /// <param name="generation">The caller's generation.</param>
     /// <param name="effect">The effect id.</param>
     /// <param name="text">The text, in a buffer the caller wipes afterwards.</param>
     /// <param name="replyTo">Where <see cref="EngineEvent.ClipboardReady"/> goes.</param>
-    void Prepare(
-        EngineGeneration generation,
-        EffectId effect,
-        ReadOnlySpan<char> text,
-        IEngineInbox replyTo
-    );
+    void Prepare(EffectId effect, ReadOnlySpan<char> text, IEngineInbox replyTo);
 }

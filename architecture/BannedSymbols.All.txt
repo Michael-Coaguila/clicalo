@@ -192,9 +192,9 @@ M:Windows.Win32.PInvoke.TrackPopupMenu(Windows.Win32.UI.WindowsAndMessaging.HMEN
 M:Windows.Win32.PInvoke.TrackPopupMenuEx(System.Runtime.InteropServices.SafeHandle,System.UInt32,System.Int32,System.Int32,Windows.Win32.Foundation.HWND,System.Nullable{Windows.Win32.UI.WindowsAndMessaging.TPMPARAMS});Open menus through TrayMenuHost and the TrayMenu lease
 M:Windows.Win32.PInvoke.TrackPopupMenuEx(Windows.Win32.UI.WindowsAndMessaging.HMENU,System.UInt32,System.Int32,System.Int32,Windows.Win32.Foundation.HWND,Windows.Win32.UI.WindowsAndMessaging.TPMPARAMS*);Open menus through TrayMenuHost and the TrayMenu lease
 
-// ---- Input injection: IInputInjector behind InjectionGate (only Platform.Core/Injection) ----------------------
-M:Windows.Win32.PInvoke.SendInput(System.ReadOnlySpan{Windows.Win32.UI.Input.KeyboardAndMouse.INPUT},System.Int32);Inject through IInputInjector (InjectionGate fences every SendInput, ADR-0004)
-M:Windows.Win32.PInvoke.SendInput(System.UInt32,Windows.Win32.UI.Input.KeyboardAndMouse.INPUT*,System.Int32);Inject through IInputInjector (InjectionGate fences every SendInput, ADR-0004)
+// ---- Input injection: the single SendInput behind IInputInjector (only Platform.Core/Injection) ----------------
+M:Windows.Win32.PInvoke.SendInput(System.ReadOnlySpan{Windows.Win32.UI.Input.KeyboardAndMouse.INPUT},System.Int32);Inject through IInputInjector (the single SendInput of Platform.Core/Injection, ADR-0022)
+M:Windows.Win32.PInvoke.SendInput(System.UInt32,Windows.Win32.UI.Input.KeyboardAndMouse.INPUT*,System.Int32);Inject through IInputInjector (the single SendInput of Platform.Core/Injection, ADR-0022)
 
 // ---- Shell execution and WMI: ILauncher, ISystemCommandRunner (only Platform.Windows/Launch, SystemCommands) ----
 M:Windows.Win32.PInvoke.ShellExecute(Windows.Win32.Foundation.HWND,System.String,System.String,System.String,System.String,Windows.Win32.UI.WindowsAndMessaging.SHOW_WINDOW_CMD);Launch through ILauncher on the Shell thread

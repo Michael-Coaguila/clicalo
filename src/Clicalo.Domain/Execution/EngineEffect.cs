@@ -10,8 +10,7 @@ using Clicalo.Domain.Privacy;
 namespace Clicalo.Domain.Execution;
 
 /// <summary>
-/// An output of the engine that the host interprets (blueprint §7.3). Every effect with external consequences runs
-/// through the injection gate with the host's generation (INV-11); releases ignore epoch, target, elevation, test
+/// An output of the engine that the host interprets (blueprint §7.3). Releases ignore epoch, target, elevation, test
 /// mode and pause (INV-8), and nothing else is sent in test mode or pause (INV-7).
 /// </summary>
 public abstract record EngineEffect
@@ -106,14 +105,7 @@ public abstract record EngineEffect
     public sealed record CountUsage(ShortcutId Shortcut, DateTimeOffset At) : EngineEffect;
 
     /// <summary>
-    /// Send again, under the fence, every release the <b>physical</b> ledger keeps pending: the ones the secure desktop
-    /// refused before this state knew them (an emergency release, the release of an engine that caught an exception,
-    /// a batch of an engine that was replaced). Emitted when the input desktop is back (INV-3, blueprint §7.6).
-    /// </summary>
-    public sealed record ReleasePendingRecorded : EngineEffect;
-
-    /// <summary>
-    /// Send one of Clícalo's own balanced chords under the fence (blueprint §3.6, INV-11) and answer
+    /// Send one of Clícalo's own balanced chords (blueprint §3.6) and answer
     /// <paramref name="Request"/> with whether it went.
     /// </summary>
     /// <param name="Chord">Which chord.</param>

@@ -13,7 +13,7 @@ T:System.IO.DirectoryInfo;Reach directories through a port
 T:System.IO.DriveInfo;Reach drives through a port
 T:System.IO.RandomAccess;Reach files through a port
 N:System.IO.Pipes;IPC belongs to Platform (Application.Ipc only interprets requests)
-N:System.IO.MemoryMappedFiles;Shared memory belongs to Platform.Core (KeyLedger)
+N:System.IO.MemoryMappedFiles;Application uses no shared memory (blueprint §4.2)
 N:System.Net.Http;The network belongs to Infrastructure behind ports
 N:System.Net.Sockets;The network belongs to Infrastructure behind ports
 N:Microsoft.Win32;The registry and OS handles belong to Platform.Windows behind ports

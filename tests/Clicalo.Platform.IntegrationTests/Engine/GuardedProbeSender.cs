@@ -1,5 +1,4 @@
 using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 using Clicalo.TestKit.Windows;
 using Clicalo.TestKit.Windows.Input;
 
@@ -49,7 +48,7 @@ internal sealed class GuardedProbeSender(nint probeWindow, bool allowUnbalanced 
     private static void EnsureBalanced(ReadOnlySpan<LowLevelInput> inputs)
     {
         var down = new HashSet<PhysicalKey>();
-        var buttons = LedgerMouseButtons.None;
+        var buttons = LowLevelMouseButtons.None;
         foreach (var input in inputs)
         {
             switch (input.Kind)
@@ -69,7 +68,7 @@ internal sealed class GuardedProbeSender(nint probeWindow, bool allowUnbalanced 
             }
         }
 
-        if (down.Count > 0 || buttons != LedgerMouseButtons.None)
+        if (down.Count > 0 || buttons != LowLevelMouseButtons.None)
         {
             throw new InjectionRefusedException(
                 "The batch would leave something down; desktop tests only send balanced batches. Nothing was injected."
@@ -93,7 +92,7 @@ internal sealed class GuardedProbeSender(nint probeWindow, bool allowUnbalanced 
 
             var key = input.Key;
             var extended =
-                (key.Attributes & LedgerKeyAttributes.Extended) != LedgerKeyAttributes.None;
+                (key.Attributes & PhysicalKeyAttributes.Extended) != PhysicalKeyAttributes.None;
             if (key.Vk is 0xA3 or 0xA5 || (extended && key.Scan is 0x1D or 0x38))
             {
                 throw new InjectionRefusedException(

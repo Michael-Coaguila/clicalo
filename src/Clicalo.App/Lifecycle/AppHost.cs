@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Threading;
 using Clicalo.App.Composition;
 using Clicalo.App.Localization;
@@ -38,8 +37,8 @@ namespace Clicalo.App.Lifecycle;
 /// <item>off the UI thread (<see cref="StartupReader"/>): a crash Sentinel reported goes to its journal; the document
 /// is read (persistence; on a new installation the seed) and the language files loaded;</item>
 /// <item>the preventive release of the start (SEG-006), before the engine accepts anything;</item>
-/// <item>autosave, and the engine thread: it accepts touches from the first frame, it does not wait for the guardian;
-/// with key sending, the emergency release watches its heartbeat (§3.2 rule 6);</item>
+/// <item>autosave, and the engine thread: it accepts touches from the first frame, it does not wait for the
+/// guardian;</item>
 /// <item>SysEvents follows the external foreground and the engine hears it (§7.9);</item>
 /// <item>the panel is built and shown passively; Sentinel is launched from a background thread in parallel to the
 /// first frame (or right after it with <c>--guardian after-first-frame</c>, spike S5);</item>
@@ -124,7 +123,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     /// </summary>
     internal Task EndSessionAsync()
     {
-        // Not the start of the exit: another app may still cancel the end of the session (OnPanelMessage).
+        // Not the start of the exit: another app may still cancel the end of the session.
         return _exit is not null
             ? Task.CompletedTask
             : RunExitSequenceAsync(TerminalReason.SessionEnd);
@@ -181,7 +180,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         // 2. Nothing may be left down by a previous process that died before its guardian (SEG-006).
         var adapters = services.GetRequiredService<EngineAdapterSet>();
         Track(adapters.Resources.Dispose);
-        var released = adapters.StartupRelease.ReleaseStuckModifiers();
+        var released = adapters.PressedRelease.ReleasePressed();
         if (released > 0)
         {
             LogPreventiveRelease(_logger, released);
@@ -214,27 +213,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _persistence = Task.Run(() => scheduler.RunAsync(_stop.Token));
         _engine = services.GetRequiredService<EngineThread>();
         _engine.Start(services.GetRequiredService<EngineHost>(), _stop.Token);
-        if (adapters.Gate is { } gate)
-        {
-            // A hung engine is fenced and replaced, or the process ends so Sentinel releases (REG-03); without a
-            // running Sentinel the process is never ended: nobody would release nor relaunch (D-22).
-            var guardian = adapters.Guardian;
-            var emergency = new EmergencyReleaser(
-                gate,
-                _time,
-                RestartEngine,
-                EmergencyReleaser.TerminateSelf,
-                () => guardian.IsRunning
-            );
-            Track(emergency.Dispose);
-            emergency.Start();
-            var unstable = new GuardianUnstableNotice(
-                guardian,
-                services.GetRequiredService<EngineObserverRelay>(),
-                _logger
-            );
-            Track(unstable.Dispose);
-        }
+        var unstable = new GuardianUnstableNotice(
+            adapters.Guardian,
+            services.GetRequiredService<EngineObserverRelay>(),
+            _logger
+        );
+        Track(unstable.Dispose);
 
         // 4. SysEvents: the external foreground reaches the engine before the first touch can.
         var sysEvents = services.GetRequiredService<SysEventsThread>();
@@ -274,11 +258,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         window.ContentRendered += (_, _) => OnFirstFrame(adapters.Guardian);
         window.Present();
-        if (PresentationSource.FromVisual(window) is HwndSource source)
-        {
-            source.AddHook(OnPanelMessage);
-            Track(() => source.RemoveHook(OnPanelMessage));
-        }
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);
@@ -422,23 +401,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         }
     }
 
-    /// <summary>
-    /// <c>WM_ENDSESSION</c> with <c>wParam</c> false: another app cancelled the end of the session after the exit sequence
-    /// marked the ledger «clean shutdown». The mark goes away again, so Sentinel still relaunches Clícalo after a later
-    /// crash (§3.1).
-    /// </summary>
-    private nint OnPanelMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
-    {
-        const int EndSession = 0x0016;
-        if (message == EndSession && wParam == 0 && _exit is null && _services is { } services)
-        {
-            services.GetRequiredService<IKeyLedger>().ClearMarks(KeyLedgerMarks.CleanShutdown);
-            LogSessionEndCancelled(_logger);
-        }
-
-        return 0;
-    }
-
     /// <summary><c>--exit-after</c>: the whole exit sequence, unattended, once the start is complete.</summary>
     private async Task ExitAfterAsync(TimeSpan delay)
     {
@@ -451,42 +413,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         {
             // Already exiting.
         }
-    }
-
-    /// <summary>
-    /// The emergency's new engine (blueprint §3.2 rule 6), on the releaser's timer thread: everything recorded was
-    /// released under the gate and the generation went up, so the hung host is fenced (INV-11). The new host gets the
-    /// mailbox every piece holds and the current foreground, and the user hears that the keys were released.
-    /// </summary>
-    private void RestartEngine(EngineGeneration generation)
-    {
-        var services = _services;
-        if (services is null || _exit is not null)
-        {
-            return;
-        }
-
-        var store = services.GetRequiredService<DocumentStore>();
-        var host = new EngineHost(
-            services.GetRequiredService<EngineHostPorts>(),
-            generation,
-            SettingsProjection.Engine(store.Current.Settings),
-            _time,
-            services.GetRequiredService<ILogger<EngineHost>>()
-        );
-        var thread = new EngineThread(services.GetRequiredService<ILogger<EngineThread>>());
-        thread.Start(host, _stop.Token);
-        services.GetRequiredService<EngineInboxRelay>().Target = host;
-        Volatile.Write(ref _engine, thread);
-        services.GetRequiredService<ForegroundChangeCoordinator>().Republish();
-        LogEngineRestarted(_logger, generation.Value);
-        var localization = services.GetRequiredService<ILocalizationContext>();
-        _ = _application?.Dispatcher.BeginInvoke(() =>
-            _window?.Announce(
-                localization.Current.Format(L.ReleasedAll),
-                AnnouncementUrgency.Assertive
-            )
-        );
     }
 
     private Task StartGuardian(IGuardian guardian) =>
@@ -527,6 +453,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var ui = _application!.Dispatcher;
         tray.ShowHideRequested += (_, _) => _ = ui.BeginInvoke(visibility.Toggle);
         tray.ExitRequested += (_, _) => _ = ui.BeginInvoke(() => _ = ExitAsync());
+        // «Soltar todo» works with a hung engine too: what Windows reports down goes up without the engine (ADR-0022).
+        var release = services.GetRequiredService<EngineAdapterSet>().PressedRelease;
+        tray.ReleasePressedRequested += (_, _) => _ = Task.Run(release.ReleasePressed);
         Track(tray.Dispose);
         await tray.StartAsync().ConfigureAwait(true);
         _tray = tray;
@@ -701,20 +630,10 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     [LoggerMessage(EventId = 9, Level = LogLevel.Warning, Message = "startup.safe_mode")]
     private static partial void LogSafeMode(ILogger logger);
 
-    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "session.end_cancelled")]
-    private static partial void LogSessionEndCancelled(ILogger logger);
-
     [LoggerMessage(
         EventId = 15,
         Level = LogLevel.Warning,
         Message = "suspend.flush_late: the flush did not finish before the computer suspended"
     )]
     private static partial void LogSuspendFlushLate(ILogger logger);
-
-    [LoggerMessage(
-        EventId = 12,
-        Level = LogLevel.Critical,
-        Message = "engine.restarted generation {Generation}"
-    )]
-    private static partial void LogEngineRestarted(ILogger logger, ulong generation);
 }

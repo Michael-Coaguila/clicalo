@@ -6,7 +6,6 @@ using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Platform.Core.Injection;
-using Clicalo.Platform.Core.KeyLedger;
 using Clicalo.Platform.IntegrationTests.Desktop;
 using Clicalo.Platform.Windows.Input;
 using Clicalo.TestKit.Windows;
@@ -18,7 +17,7 @@ namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
 /// Spike S7 as tests (blueprint §15.1, §7.7): what a real Win32 application receives from the product's path, the
-/// Domain's resolution, the adapter, the gate with its ledger and the only <c>SendInput</c>, in virtual-key and scan
+/// Domain's resolution, the injector and the only <c>SendInput</c>, in virtual-key and scan
 /// code mode, Unicode, the probe's own layout (es-ES on the maintainer's machine, en-US on the CI runner), sides and
 /// extended keys. Every batch is balanced and goes only to the probe (<see cref="GuardedProbeSender"/>); right Ctrl
 /// and AltGr only in continuous integration.
@@ -30,22 +29,15 @@ namespace Clicalo.Platform.IntegrationTests.Engine;
 [Trait("Req", "NFR-004")]
 public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
 {
-    private static readonly EngineGeneration Generation = new(1);
-
     private sealed class ProductPath : IDisposable
     {
         public ProductPath(nint probe)
         {
-            Ledger = KeyLedgerSection.CreateInMemory();
-            Injector = new GateInputInjector(
-                new InjectionGate(Ledger, new GuardedProbeSender(probe))
-            );
+            Injector = new InputInjector(new GuardedProbeSender(probe), SystemKeyState.Instance);
             Layout = KeyboardLayoutCapture.ForWindow(probe);
         }
 
-        public KeyLedgerSection Ledger { get; }
-
-        public GateInputInjector Injector { get; }
+        public InputInjector Injector { get; }
 
         public KeyboardLayoutSnapshot Layout { get; }
 
@@ -58,8 +50,7 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
                 .. keys.Select(InjectedEvent.KeyDown),
                 .. keys.Reverse().Select(InjectedEvent.KeyUp),
             ];
-            Injector.Send(Generation, events.AsSpan()).Status.ShouldBe(InjectionStatus.Sent);
-            Ledger.Snapshot().Slots.ShouldBeEmpty();
+            Injector.Send(events.AsSpan()).Status.ShouldBe(InjectionStatus.Sent);
         }
 
         public InjectedKey Resolve(KeyStroke stroke, InjectionMode mode)
@@ -68,7 +59,7 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
             return key;
         }
 
-        public void Dispose() => Ledger.Dispose();
+        public void Dispose() { }
     }
 
     [DesktopTheory]
@@ -132,7 +123,7 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
         var cursor = await desktop.PrepareAsync();
         using var path = new ProductPath(desktop.Probe.Window);
 
-        path.Injector.TypeText(Generation, "ñÁ€😀\n").Status.ShouldBe(InjectionStatus.Sent);
+        path.Injector.TypeText("ñÁ€😀\n").Status.ShouldBe(InjectionStatus.Sent);
         var events = await desktop.CollectAsync(cursor, e => ProbeEvents.TypedChars(e).Count >= 6);
 
         ProbeEvents
@@ -144,7 +135,6 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
             .Where(static key => key.VirtualKey == VirtualKeyCode.Return)
             .Select(static key => key.IsPress)
             .ShouldBe([true, false]);
-        path.Ledger.Snapshot().Slots.ShouldBeEmpty();
     }
 
     [DesktopFact]
@@ -201,7 +191,7 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
 
         // Press and safety release in one balanced batch, as release all right after a Hold.
         ImmutableArray<InjectedEvent> events = [.. held.Events, .. held.Ledger.ReleaseAll().Events];
-        path.Injector.Send(Generation, events.AsSpan()).Status.ShouldBe(InjectionStatus.Sent);
+        path.Injector.Send(events.AsSpan()).Status.ShouldBe(InjectionStatus.Sent);
         var received = await desktop.CollectAsync(
             cursor,
             e => ProductProbeEvents.Keys(e).Count >= 4
@@ -216,7 +206,6 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
                 (LowLevelInjector.MenuMaskVirtualKey, false),
                 (0xA4, false),
             ]);
-        path.Ledger.Snapshot().Slots.ShouldBeEmpty();
     }
 
     [DesktopFact]
@@ -226,8 +215,7 @@ public sealed class S7ProductInjectionTests(DesktopProbeFixture desktop)
         var cursor = await desktop.PrepareAsync();
         using var path = new ProductPath(desktop.Probe.Window);
 
-        path.Injector.Mouse(Generation, MouseOp.RightClick, target: null)
-            .Status.ShouldBe(InjectionStatus.Sent);
+        path.Injector.Mouse(MouseOp.RightClick, target: null).Status.ShouldBe(InjectionStatus.Sent);
         var events = await desktop.CollectAsync(
             cursor,
             e => ProductProbeEvents.Buttons(e).Count >= 2

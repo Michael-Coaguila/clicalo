@@ -1,9 +1,9 @@
 namespace Clicalo.Platform.Core.Guardian;
 
-/// <summary>What happens after the main process dies (blueprint §3.1).</summary>
+/// <summary>What happens after the main process ends (blueprint §3.1).</summary>
 public enum RelaunchDecision
 {
-    /// <summary>Do not relaunch (<c>CleanShutdown</c> or <c>NoRelaunch</c>).</summary>
+    /// <summary>Do not relaunch: the main process exited with code 0, or the crash loop was passed.</summary>
     None,
 
     /// <summary>Relaunch normally.</summary>

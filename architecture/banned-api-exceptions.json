@@ -20,7 +20,7 @@
       "id": "injection",
       "paths": ["src/Clicalo.Platform.Core/Injection/**"],
       "apis": ["SendInput"],
-      "justification": "LowLevelInjector sends input only inside InjectionGate.TryRun, fenced by the engine generation (ADR-0004).",
+      "justification": "LowLevelInjector is the product's only SendInput, behind IInputInjector and PressedInputRelease (ADR-0022).",
       "blueprint": "§3.2, §4.4, §7.7"
     },
     {

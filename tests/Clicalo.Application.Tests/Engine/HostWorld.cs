@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Clicalo.Application.Engine;
-using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
@@ -28,19 +27,11 @@ internal sealed class HostWorld : IDisposable
         new TouchSettings(TimeSpan.FromMilliseconds(250), 8, 24, TimeSpan.Zero)
     );
 
-    public HostWorld(
-        EngineState? initial = null,
-        bool realReducer = false,
-        Func<EngineGeneration, bool>? releaseRecorded = null
-    )
+    public HostWorld(EngineState? initial = null, bool realReducer = false)
     {
-        Ports = new EngineHostPorts(Injector, Ledger, Shell, Shell, Observer)
-        {
-            ReleaseRecorded = releaseRecorded,
-        };
+        Ports = new EngineHostPorts(Injector, Shell, Shell, Observer);
         Host = new EngineHost(
             Ports,
-            Generation,
             Config,
             Time,
             NullLogger<EngineHost>.Instance,
@@ -49,14 +40,10 @@ internal sealed class HostWorld : IDisposable
         );
     }
 
-    public static EngineGeneration Generation { get; } = new(7);
-
     public FakeTimeProvider Time { get; } =
         new(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
 
     public FakeInjector Injector { get; } = new();
-
-    public FakeLedger Ledger { get; } = new();
 
     public FakeShell Shell { get; } = new();
 

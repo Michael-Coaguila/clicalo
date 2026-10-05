@@ -1,4 +1,4 @@
-namespace Clicalo.Platform.Core.KeyLedger;
+namespace Clicalo.Platform.Core.Injection;
 
 /// <summary>
 /// Which physical keys open a menu when released alone (Alt, Win), whatever mode they were pressed in: their
@@ -18,10 +18,10 @@ public static class PhysicalKeyKinds
     /// <summary>Whether releasing <paramref name="key"/> alone could open the Start menu or a menu bar.</summary>
     /// <param name="key">The key as it was pressed.</param>
     public static bool IsAltOrWin(PhysicalKey key) =>
-        (key.Attributes & LedgerKeyAttributes.ScanCodeMode) != LedgerKeyAttributes.None
+        (key.Attributes & PhysicalKeyAttributes.ScanCodeMode) != PhysicalKeyAttributes.None
             ? key.Scan == ScanAlt
                 || (
-                    (key.Attributes & LedgerKeyAttributes.Extended) != LedgerKeyAttributes.None
+                    (key.Attributes & PhysicalKeyAttributes.Extended) != PhysicalKeyAttributes.None
                     && key.Scan is ScanLeftWin or ScanRightWin
                 )
             : key.Vk is VkMenu or VkLeftMenu or VkRightMenu or VkLeftWin or VkRightWin;

@@ -8,10 +8,10 @@ using Clicalo.TestKit.Windows.Probe;
 namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
-/// Spike S9 as tests (blueprint §15.1, §7.10 item 5, ADR-0004): <c>TerminateProcess</c> of a main process that holds
-/// Ctrl+Shift, a drag or a macro step, with the real ledger, the real Sentinel and the real injector; the releases must
-/// reach the application within 200 ms, 50 times out of 50. CI only (<see cref="ChaosEnvironment"/>): it kills a process
-/// with keys held.
+/// Spike S9 as tests (blueprint §15.1, §7.10 item 5, ADR-0022): <c>TerminateProcess</c> of a main process that holds
+/// Ctrl+Shift, a drag or a macro step, with the real Sentinel and the real injector; nothing may be down 1 s after the
+/// death, 50 times out of 50. Nightly only (<c>Category=Chaos</c>, <see cref="ChaosEnvironment"/>): it kills a process
+/// with keys held. Required before every release.
 /// </summary>
 [Collection(DesktopCollectionDefinition.Name)]
 [Trait("Requires", "Desktop")]
@@ -24,13 +24,13 @@ public sealed class S9ChaosTests(DesktopProbeFixture desktop)
     /// <summary>The S9 criterion: 50 of 50.</summary>
     public const int Attempts = 50;
 
-    /// <summary>The S9 criterion: releases within 200 ms of the death.</summary>
-    public static readonly TimeSpan Budget = TimeSpan.FromMilliseconds(200);
+    /// <summary>The criterion of ADR-0022: nothing down 1 s after the death.</summary>
+    public static readonly TimeSpan Budget = TimeSpan.FromSeconds(1);
 
     private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(15);
 
     [ChaosFact]
-    public async Task Killing_a_main_process_that_holds_ctrl_shift_releases_both_within_200_ms_50_of_50()
+    public async Task Killing_a_main_process_that_holds_ctrl_shift_leaves_nothing_down_within_1_s_50_of_50()
     {
         var late = new List<long>();
         for (var attempt = 0; attempt < Attempts; attempt++)

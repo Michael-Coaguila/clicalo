@@ -11,10 +11,5 @@ namespace Clicalo.App.Composition;
 internal sealed class DeferredClipboardPaster : IClipboardPaster
 {
     /// <inheritdoc />
-    public void Prepare(
-        EngineGeneration generation,
-        EffectId effect,
-        ReadOnlySpan<char> text,
-        IEngineInbox replyTo
-    ) { }
+    public void Prepare(EffectId effect, ReadOnlySpan<char> text, IEngineInbox replyTo) { }
 }
