@@ -404,7 +404,7 @@
         },
         "RestoreVerifyInterval": {
           "duration": "5ms",
-          "description": "During RestoreRetryDelay, GetForegroundWindow is read this often, and the first time it names the window the attempt is confirmed. One look at the end of the wait missed a restore that had worked when the foreground had moved on since (spike S1 in CI: a forced activation 50 ms after a restore, which the stale retry then reverted before ActivationGuard saw it).",
+          "description": "During RestoreRetryDelay, GetForegroundWindow is read this often, and the first time it names the window the attempt is confirmed. One look at the end of the wait missed a restore that had worked when the foreground had moved on since (spike S1 in CI).",
           "req": ["REG-01", "BUS-002", "CCM-004"],
           "source": "blueprint §3.6"
         },
@@ -434,12 +434,6 @@
         "ViolationRestoreBudget": {
           "duration": "200ms",
           "description": "After an activation without a lease, the previous external foreground must be back within this time (ActivationGuardNegativeTests, spike S1).",
-          "req": ["REG-01"],
-          "source": "blueprint §3.5"
-        },
-        "ActivationRecheck": {
-          "duration": "50ms",
-          "description": "An activation message that reaches a surface while the foreground is outside the process is judged again once the UI thread has delivered what it had queued and, if the foreground is still outside, once more after this wait: a window of the process in front without a lease is one violation, anything else was a late message. It is spent inside ViolationRestoreBudget (spike S1: a real forced activation arrived as a WM_ACTIVATE that GetForegroundWindow did not confirm yet).",
           "req": ["REG-01"],
           "source": "blueprint §3.5"
         }
