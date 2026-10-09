@@ -110,3 +110,54 @@ GetNamedPipeServerProcessId
 GetNamedPipeClientProcessId
 GetNamedPipeClientSessionId
 TOKEN_USER
+
+// actions
+// ---- Launch: apps and webs on the Shell thread, unelevated through the desktop shell when Clicalo is elevated ----
+ShellExecute
+IShellWindows
+ShellWindows
+IShellFolderViewDual
+IShellDispatch2
+IServiceProvider
+IDispatch
+SysAllocString
+SysFreeString
+VariantClear
+
+// ---- SystemCommands: lock and brightness (WMI root\WMI) ----
+LockWorkStation
+IWbemLocator
+WbemLocator
+IWbemServices
+IWbemClassObject
+IEnumWbemClassObject
+CoSetProxyBlanket
+RPC_C_AUTHN_LEVEL
+RPC_C_IMP_LEVEL
+EOLE_AUTHENTICATION_CAPABILITIES
+
+// ---- Clipboard: the paste of a Text action on the SysEvents thread (EJE-008) ----
+OpenClipboard
+CloseClipboard
+EmptyClipboard
+EnumClipboardFormats
+GetClipboardData
+SetClipboardData
+GetClipboardSequenceNumber
+RegisterClipboardFormat
+GlobalAlloc
+GlobalLock
+GlobalUnlock
+GlobalSize
+GlobalFree
+CLIPBOARD_FORMAT
+
+// ---- PointerTracking: the last pointer position outside Clicalo (EJE-009) ----
+EVENT_OBJECT_LOCATIONCHANGE
+GetCursorPos
+WindowFromPoint
+GetAncestor
+MonitorFromPoint
+
+// ---- Feedback: the soft sound after an action (EJE-012) ----
+PlaySound
