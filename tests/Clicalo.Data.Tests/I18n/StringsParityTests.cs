@@ -45,17 +45,17 @@ public sealed class StringsParityTests
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+                // Key-group and category labels of data/catalogs (keys.json, categories.json).
                 // Texts of the M3 actions: what each action did and why a launch did not start (catalog §6.1, R-21).
+                "aboutVersion",
                 "actionFailed",
-                // Texts of the M2 walking skeleton: the tray, the app name and the actions of M3 (catalog §6.1).
                 "actionUnavailable",
-                // Texts of the M4 Control Center: «Atajos» and its editor (catalog §6.1, R-22).
                 "addedToProf",
                 "adminActive",
                 "adminCancelled",
                 "adminFailed",
                 "adminNotInstalled",
-                // Texts of the M4 Templates section and of sharing a profile (catalog §6.1, R-25).
+                // Texts of the M4 Templates section and of sharing a profile (catalog §6.1, R-26).
                 "aiPrivacy4",
                 "alreadyAdded",
                 "alwaysOn",
@@ -72,7 +72,6 @@ public sealed class StringsParityTests
                 "bakPreChange",
                 "bakPreMigrate",
                 "bakPreUpdate",
-                // Key-group and category labels of data/catalogs (keys.json, categories.json).
                 "catEdit",
                 "catFile",
                 "catFmt",
@@ -84,15 +83,17 @@ public sealed class StringsParityTests
                 "catWeb",
                 "catWin",
                 "ccSoon",
-                // Texts of the M3 Tab view (prototype formats and scroll tools without a key, catalog §6.1).
                 "coachStep",
                 "confirmRun",
                 "confirmRunD",
                 "consentD4",
+                "contactPending",
                 "crashRecoveryD",
+                "creatorInitials",
+                "creatorName",
+                "creatorRole",
                 "dangerMark",
                 "dataUnreadable",
-                // Texts of the M3 Quick settings, edit mode, context menu and test mode (catalog §6.1).
                 "delA",
                 "dockPageOf",
                 "dockScrollDown",
@@ -110,9 +111,16 @@ public sealed class StringsParityTests
                 "exitApp",
                 "exportDone",
                 "exportFailed",
+                "fbBodyLog",
+                "fbBodySys",
+                "fbLogFile",
+                "fbMailCopied",
+                "fbSendLogD",
+                "fbSubject",
                 "generalFixed",
+                "gitHub",
                 "guardianUnstable",
-                // Texts of the M4 Control Center: «General y panel» and «Precisión táctil» (catalog §6.1, R-25).
+                // Texts of the M4 Control Center: «General y panel» and «Precisión táctil» (catalog §6.1, R-27).
                 "handleDown",
                 "handleLeft",
                 "handleLock",
@@ -130,7 +138,6 @@ public sealed class StringsParityTests
                 "importInvalid",
                 "importTooLarge",
                 "incompleteTap",
-                // Texts of the M3 search and profile suggestion (catalog §6.1).
                 "installedApp",
                 "itemGone",
                 "kbAppsEn",
@@ -160,16 +167,19 @@ public sealed class StringsParityTests
                 "launchUnsafe",
                 "lessOf",
                 "linkedToApp",
+                "logPvEmpty",
+                "logPvFailed",
                 "macroCancelled",
                 "macroRanName",
                 "macroRunning",
-                // Texts of the M3 and M4 integration: what a release let go and the step of a running macro (catalog §6.1, R-23).
                 "macroStep",
                 "moreOf",
                 "mouseRan",
                 "msValue",
                 "noOpenApps",
                 "notCheckedYet",
+                "obKbLine",
+                "obStep",
                 "opLess",
                 "opMore",
                 "openedName",
@@ -239,6 +249,7 @@ public sealed class StringsParityTests
                 "voiceSay",
                 "waitLonger",
                 "waitShorter",
+                "welcomeTitle",
                 "whenDate",
                 "whenToday",
                 "whenYesterday",

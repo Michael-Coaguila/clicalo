@@ -344,6 +344,91 @@
       "after": "kitBasics",
       "text": { "es": "Copiar, pegar, deshacer, dictar y más, en cualquier app", "en": "Copy, paste, undo, dictate and more, in any app" }
     },
+    "creatorName": {
+      "notes": "Nombre de la firma de la historia (ACE-001, BIE-004): «Michael Coaguila», que el prototipo escribe en el código (IDI-002). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "creator",
+      "text": { "es": "Michael Coaguila", "en": "Michael Coaguila" }
+    },
+    "creatorInitials": {
+      "notes": "Iniciales del círculo de la firma (ACE-001, BIE-004), escritas en el código del prototipo (IDI-002). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "creatorName",
+      "text": { "es": "MC", "en": "MC" }
+    },
+    "creatorRole": {
+      "notes": "Corrección de [creator] del catálogo §9 (ACE-001): «Creador de Clícalo». Clave propia para no reescribir el texto del paquete; [creator] queda en allow-unused.txt. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "creatorInitials",
+      "text": { "es": "Creador de Clícalo", "en": "Creator of Clícalo" }
+    },
+    "aboutVersion": {
+      "notes": "Línea de la tarjeta de la app (ACE-001), «v{version} · MIT · [openSource]» sin concatenar (IDI-004); {name} recibe [openSource]. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "openSource",
+      "text": { "es": "v{version} · MIT · {name}", "en": "v{version} · MIT · {name}" }
+    },
+    "gitHub": {
+      "notes": "Botón de la tarjeta de la app (ACE-001), escrito en el código del prototipo (IDI-002). LinkedIn se omite mientras no haya una URL real. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "aboutVersion",
+      "text": { "es": "GitHub", "en": "GitHub" }
+    },
+    "fbLogFile": {
+      "notes": "Corrección de [fbLogD] del catálogo §9 (ACE-003): el registro se llama clicalo.log. Clave propia para no reescribir el texto del paquete; [fbLogD] queda en allow-unused.txt. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbLogD",
+      "text": { "es": "Incluye clicalo.log para encontrar el fallo.", "en": "Includes clicalo.log to find the bug." }
+    },
+    "fbSendLogD": {
+      "notes": "Nota bajo [Enviar por correo] cuando se adjunta el registro (ACE-004): un enlace de correo no adjunta archivos, así que se abre la carpeta con el registro depurado para añadirlo. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSendD",
+      "text": { "es": "Se abrirá tu app de correo y la carpeta del registro: adjunta el archivo clicalo-registro.log.", "en": "Your email app and the log folder open: attach the file clicalo-registro.log." }
+    },
+    "fbSubject": {
+      "notes": "Asunto del correo de opinión (ACE-004): «[Clícalo] {tipo}», con {name} = el tipo elegido. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSendLogD",
+      "text": { "es": "[Clícalo] {name}", "en": "[Clícalo] {name}" }
+    },
+    "fbBodySys": {
+      "notes": "Línea del cuerpo del correo con «Incluir versión y sistema» (ACE-004): versión real de la app y de Windows ({name}). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSubject",
+      "text": { "es": "Clícalo v{version} · {name}", "en": "Clícalo v{version} · {name}" }
+    },
+    "fbBodyLog": {
+      "notes": "Línea del cuerpo del correo con «Adjuntar registro técnico» (ACE-004): {name} es el archivo que hay que adjuntar. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbBodySys",
+      "text": { "es": "Registro para adjuntar: {name}", "en": "Log to attach: {name}" }
+    },
+    "fbMailCopied": {
+      "notes": "Aviso cuando no hay app de correo (ACE-004): el mensaje se copia al portapapeles. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbBodyLog",
+      "text": { "es": "No se abrió ninguna app de correo: copié el mensaje para que lo pegues.", "en": "No email app opened: the message was copied so you can paste it." }
+    },
+    "logPvEmpty": {
+      "notes": "Vista previa del registro cuando aún no hay nada escrito (ACE-003). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "logPvT",
+      "text": { "es": "El registro está vacío.", "en": "The log is empty." }
+    },
+    "logPvFailed": {
+      "notes": "No se pudo leer o guardar el registro depurado (ACE-003, ACE-004). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "logPvEmpty",
+      "text": { "es": "No se pudo preparar el registro.", "en": "Couldn’t prepare the log." }
+    },
+    "contactPending": {
+      "notes": "Marcador visible del correo de contacto mientras no exista (ACE-005; el prototipo usaba un correo personal, PQ-38). Se sustituye por el correo real antes de publicar. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbDirect",
+      "text": { "es": "Correo de contacto pendiente", "en": "Contact email pending" }
+    },
+    "welcomeTitle": {
+      "notes": "Título y nombre accesible de la ventana de la bienvenida (BIE-001). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "seeWelcomeD",
+      "text": { "es": "Bienvenida a Clícalo", "en": "Welcome to Clícalo" }
+    },
+    "obStep": {
+      "notes": "Nombre accesible de las 5 barras de progreso de la bienvenida (BIE-001). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "welcomeTitle",
+      "text": { "es": "Paso {index} de {total}", "en": "Step {index} of {total}" }
+    },
+    "obKbLine": {
+      "notes": "Línea del teclado del paso «¿Qué apps usas más?» (BIE-006): el idioma de los programas, que elige la variante de las plantillas (PLA-009, PLA-013). Sin concatenar [kbFor] (IDI-004). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "kbFor",
+      "text": { "es": "Para {app}", "en": "For {app}" }
+    },
     "hidePanel": {
       "notes": "Menú de la bandeja con el panel visible: la otra mitad de «Mostrar/Ocultar» (BUR-003; la mitad «Mostrar» es restore). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
       "after": "restore",
@@ -410,107 +495,107 @@
       "text": { "es": "Bloquear posición", "en": "Lock position" }
     },
     "langBoth": {
-      "notes": "Título de la tarjeta de idioma de «General y panel» (GEN-002: «Idioma · Language»), con el nombre en los dos idiomas para encontrarla sin entender el actual. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Título de la tarjeta de idioma de «General y panel» (GEN-002: «Idioma · Language»), con el nombre en los dos idiomas para encontrarla sin entender el actual. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "lang",
       "text": { "es": "Idioma · Language", "en": "Language · Idioma" }
     },
     "keysWith": {
-      "notes": "Tarjeta «Con teclas» de Mostrar teclas (GEN-008: los textos pasan a los archivos de idioma). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Tarjeta «Con teclas» de Mostrar teclas (GEN-008: los textos pasan a los archivos de idioma). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "showKeys",
       "text": { "es": "Con teclas", "en": "With keys" }
     },
     "keysNameOnly": {
-      "notes": "Tarjeta «Solo nombre» de Mostrar teclas (GEN-008). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Tarjeta «Solo nombre» de Mostrar teclas (GEN-008). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "keysWith",
       "text": { "es": "Solo nombre", "en": "Name only" }
     },
     "showTabsNote": {
-      "notes": "Nota bajo el interruptor del selector de perfil: cómo llegar a Frecuentes sin la fila (GEN-007, SEL-006). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nota bajo el interruptor del selector de perfil: cómo llegar a Frecuentes sin la fila (GEN-007, SEL-006). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "showTabsD",
       "text": { "es": "Sin esta fila, toca el nombre del perfil en la cabecera para ver ★ Frecuentes y tus perfiles.", "en": "Without this row, tap the profile name in the header to see ★ Frequent and your profiles." }
     },
     "textSmaller": {
-      "notes": "Nombre accesible del botón − del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible del botón − del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "textSize",
       "text": { "es": "Texto más pequeño", "en": "Smaller text" }
     },
     "textBigger": {
-      "notes": "Nombre accesible del botón + del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible del botón + del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "textSmaller",
       "text": { "es": "Texto más grande", "en": "Larger text" }
     },
     "lessOf": {
-      "notes": "Nombre accesible del botón − de un deslizador (GEN-009, TAC-005); {name} es el nombre del deslizador. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible del botón − de un deslizador (GEN-009, TAC-005); {name} es el nombre del deslizador. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "dimLevel",
       "text": { "es": "Menos: {name}", "en": "Less: {name}" }
     },
     "moreOf": {
-      "notes": "Nombre accesible del botón + de un deslizador (GEN-009, TAC-005); {name} es el nombre del deslizador. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible del botón + de un deslizador (GEN-009, TAC-005); {name} es el nombre del deslizador. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "lessOf",
       "text": { "es": "Más: {name}", "en": "More: {name}" }
     },
     "handleUp": {
-      "notes": "Nombre accesible de ↑ de la posición de la pestaña en los lados izquierdo y derecho (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible de ↑ de la posición de la pestaña en los lados izquierdo y derecho (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "handlePosD",
       "text": { "es": "Subir la pestaña", "en": "Move the tab up" }
     },
     "handleDown": {
-      "notes": "Nombre accesible de ↓ de la posición de la pestaña (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible de ↓ de la posición de la pestaña (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "handleUp",
       "text": { "es": "Bajar la pestaña", "en": "Move the tab down" }
     },
     "handleLeft": {
-      "notes": "Nombre accesible de ← de la posición de la pestaña en los lados de arriba y abajo (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible de ← de la posición de la pestaña en los lados de arriba y abajo (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "handleDown",
       "text": { "es": "Mover la pestaña a la izquierda", "en": "Move the tab left" }
     },
     "handleRight": {
-      "notes": "Nombre accesible de → de la posición de la pestaña (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Nombre accesible de → de la posición de la pestaña (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "handleLeft",
       "text": { "es": "Mover la pestaña a la derecha", "en": "Move the tab right" }
     },
     "handleLockD": {
-      "notes": "Descripción del ajuste dock.handleLocked (PES-003): bloquea el arrastre, no el toque. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Descripción del ajuste dock.handleLocked (PES-003): bloquea el arrastre, no el toque. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "handleLock",
       "text": { "es": "Arrastrar la pestaña ya no la mueve; tocarla sigue abriendo la barra.", "en": "Dragging the tab no longer moves it; tapping it still opens the bar." }
     },
     "secA11yData": {
-      "notes": "Título de la tarjeta «Accesibilidad y datos» con Reducir movimiento y Reiniciar Frecuentes (decisión de GEN-013). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Título de la tarjeta «Accesibilidad y datos» con Reducir movimiento y Reiniciar Frecuentes (decisión de GEN-013). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "secSafety",
       "text": { "es": "Accesibilidad y datos", "en": "Accessibility and data" }
     },
     "seeCoach": {
-      "notes": "Fila de Primeros pasos que vuelve a mostrar la guía de la pestaña (GEN-014, PES-015). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Fila de Primeros pasos que vuelve a mostrar la guía de la pestaña (GEN-014, PES-015). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "seeWelcomeD",
       "text": { "es": "Ver la guía de la pestaña", "en": "See the tab guide" }
     },
     "seeCoachD": {
-      "notes": "Descripción de «Ver la guía de la pestaña» y aviso al tocarla (PES-015). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Descripción de «Ver la guía de la pestaña» y aviso al tocarla (PES-015). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "seeCoach",
       "text": { "es": "Se mostrará la próxima vez que abras la barra de la pestaña.", "en": "It shows the next time you open the tab bar." }
     },
     "uNokbD": {
-      "notes": "Descripción del ajuste «No puedo usar el teclado» en Primeros pasos (GEN-014, BIE-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Descripción del ajuste «No puedo usar el teclado» en Primeros pasos (GEN-014, BIE-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "uNokb",
       "text": { "es": "Da prioridad a la biblioteca, la IA y el dictado, y oculta Grabar con teclado.", "en": "Puts the library, AI and dictation first, and hides Record with keyboard." }
     },
     "tMoved": {
-      "notes": "Mensaje de la zona de prueba para un toque que se movió más que «cancelar si deslizas» (TAC-002, TAC-006; catálogo §9). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Mensaje de la zona de prueba para un toque que se movió más que «cancelar si deslizas» (TAC-002, TAC-006; catálogo §9). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "tDouble",
       "text": { "es": "Ignorado: deslizaste", "en": "Ignored: you slid" }
     },
     "testReset": {
-      "notes": "Botón que pone a cero los contadores de la zona de prueba (TAC-006; catálogo §9). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Botón que pone a cero los contadores de la zona de prueba (TAC-006; catálogo §9). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "ignored",
       "text": { "es": "Reiniciar contadores", "en": "Reset counters" }
     },
     "msValue": {
-      "notes": "Valor de un deslizador de Precisión táctil en milisegundos (TAC-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Valor de un deslizador de Precisión táctil en milisegundos (TAC-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "sMinD",
       "text": { "es": "{count} ms", "en": "{count} ms" }
     },
     "pxValue": {
-      "notes": "Valor de un deslizador de Precisión táctil en píxeles (TAC-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "notes": "Valor de un deslizador de Precisión táctil en píxeles (TAC-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "msValue",
       "text": { "es": "{count} px", "en": "{count} px" }
     },
@@ -887,137 +972,137 @@
       "text": { "es": "Esperar más", "en": "Wait longer" }
     },
     "aiPrivacy4": {
-      "notes": "Línea de privacidad de «Crear con IA» corregida para listar los 4 datos que se envían (PLA-002, PLA-008, catálogo §9). Sustituye a [aiPrivacy]. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Línea de privacidad de «Crear con IA» corregida para listar los 4 datos que se envían (PLA-002, PLA-008, catálogo §9). Sustituye a [aiPrivacy]. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "waitLonger",
       "text": { "es": "Solo se envían el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. Nada de tus documentos.", "en": "Only the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent. Nothing from your documents." }
     },
     "consentD4": {
-      "notes": "Consentimiento de la IA corregido para listar los 4 datos y la clave propia (PLA-004, PLA-008, catálogo §9, decisión D5). Sustituye a [consentD] en Plantillas. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Consentimiento de la IA corregido para listar los 4 datos y la clave propia (PLA-004, PLA-008, catálogo §9, decisión D5). Sustituye a [consentD] en Plantillas. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "aiPrivacy4",
       "text": { "es": "Para crear atajos se envían a un servicio externo de IA, con tu propia clave, el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. No se envía nada más. Puedes desactivarlo cuando quieras.", "en": "To create shortcuts, the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent to an external AI service with your own key. Nothing else. You can turn it off anytime." }
     },
     "keyNone": {
-      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "consentD4",
       "text": { "es": "Sin clave: la IA usa tu propia clave de API de Anthropic", "en": "No key: AI uses your own Anthropic API key" }
     },
     "keyPaste": {
-      "notes": "Botón que pega la clave del portapapeles en el campo oculto (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Botón que pega la clave del portapapeles en el campo oculto (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "keyNone",
       "text": { "es": "Pegar", "en": "Paste" }
     },
     "keyDelete": {
-      "notes": "Botón que borra la clave guardada del Administrador de credenciales (ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Botón que borra la clave guardada del Administrador de credenciales (ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "keyPaste",
       "text": { "es": "Borrar clave", "en": "Delete key" }
     },
     "keySaved": {
-      "notes": "Aviso al guardar la clave (PLA-003, ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Aviso al guardar la clave (PLA-003, ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "keyDelete",
       "text": { "es": "Clave guardada en el Administrador de credenciales", "en": "Key saved in Credential Manager" }
     },
     "keyNotSaved": {
-      "notes": "Aviso cuando Windows no guarda la clave (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Aviso cuando Windows no guarda la clave (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "keySaved",
       "text": { "es": "No se pudo guardar la clave", "en": "Couldn’t save the key" }
     },
     "keyDeleted": {
-      "notes": "Aviso al borrar la clave (ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Aviso al borrar la clave (ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "keyNotSaved",
       "text": { "es": "Clave borrada", "en": "Key deleted" }
     },
     "errNoKeyT": {
-      "notes": "Error de la IA sin clave guardada (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Error de la IA sin clave guardada (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "keyDeleted",
       "text": { "es": "Falta tu clave", "en": "Your key is missing" }
     },
     "errNoKeyD": {
-      "notes": "Descripción del error sin clave (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Descripción del error sin clave (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errNoKeyT",
       "text": { "es": "La IA de Clícalo usa tu propia clave de API de Anthropic. Pégala para generar, o sigue con plantillas y perfiles vacíos.", "en": "Clícalo’s AI uses your own Anthropic API key. Paste it to generate, or continue with templates and empty profiles." }
     },
     "errKeyT": {
-      "notes": "Error «badkey»: clave rechazada o límite del proveedor (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Error «badkey»: clave rechazada o límite del proveedor (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errNoKeyD",
       "text": { "es": "Clave no válida o límite del proveedor", "en": "Invalid key or provider limit" }
     },
     "errKeyD": {
-      "notes": "Descripción del error «badkey» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Descripción del error «badkey» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errKeyT",
       "text": { "es": "El proveedor rechazó tu clave o alcanzaste su límite de uso. Cambia la clave o inténtalo más tarde.", "en": "The provider refused your key or you reached its usage limit. Change the key or try again later." }
     },
     "errUnavT": {
-      "notes": "Error «unavailable» (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Error «unavailable» (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errKeyD",
       "text": { "es": "Servicio no disponible", "en": "Service unavailable" }
     },
     "errUnavD": {
-      "notes": "Descripción del error «unavailable» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Descripción del error «unavailable» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errUnavT",
       "text": { "es": "El servicio de IA falló. Inténtalo de nuevo en un momento.", "en": "The AI service failed. Try again in a moment." }
     },
     "errInvT": {
-      "notes": "Error «invalid» (PLA-006, PLA-008, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Error «invalid» (PLA-006, PLA-008, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errUnavD",
       "text": { "es": "Respuesta no válida", "en": "Invalid answer" }
     },
     "errInvD": {
-      "notes": "Descripción del error «invalid» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Descripción del error «invalid» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errInvT",
       "text": { "es": "La IA respondió algo que no son atajos válidos. Reinténtalo o elige otra opción.", "en": "The AI answered something that isn’t valid shortcuts. Retry or choose another option." }
     },
     "kbForLine": {
-      "notes": "Línea del teclado «[kbFor] {distribución} · {programas}» sin concatenar fragmentos (PLA-009, IDI-004). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Línea del teclado «[kbFor] {distribución} · {programas}» sin concatenar fragmentos (PLA-009, IDI-004). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "errInvD",
       "text": { "es": "Para {name} · {app}", "en": "For {name} · {app}" }
     },
     "kbEsLa": {
-      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbForLine",
       "text": { "es": "Español (Latinoamérica)", "en": "Spanish (Latin America)" }
     },
     "kbEsEs": {
-      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbEsLa",
       "text": { "es": "Español (España)", "en": "Spanish (Spain)" }
     },
     "kbEnUs": {
-      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbEsEs",
       "text": { "es": "Inglés (EE. UU.)", "en": "English (US)" }
     },
     "kbEnInt": {
-      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbEnUs",
       "text": { "es": "Inglés internacional", "en": "US International" }
     },
     "kbAppsEs": {
-      "notes": "Idioma de los programas (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Idioma de los programas (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbEnInt",
       "text": { "es": "Office y apps en español", "en": "Office & apps in Spanish" }
     },
     "kbAppsEn": {
-      "notes": "Idioma de los programas (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Idioma de los programas (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbAppsEs",
       "text": { "es": "Office y apps en inglés", "en": "Office & apps in English" }
     },
     "riskyMark": {
-      "notes": "Aviso de una acción de riesgo de un perfil importado, desmarcada por defecto (PLA-015, LOG-008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Aviso de una acción de riesgo de un perfil importado, desmarcada por defecto (PLA-015, LOG-008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "kbAppsEn",
       "text": { "es": "Abre, escribe o ejecuta algo: revísalo", "en": "Opens, types or runs something: check it" }
     },
     "dangerMark": {
-      "notes": "Aviso de una combinación peligrosa de la IA (Alt+F4, Ctrl+W, Supr; blueprint §9.2). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Aviso de una combinación peligrosa de la IA (Alt+F4, Ctrl+W, Supr; blueprint §9.2). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "riskyMark",
       "text": { "es": "Cierra o borra al instante", "en": "Closes or deletes at once" }
     },
     "shareWithTexts": {
-      "notes": "Compartir un perfil con sus textos en claro (DAT-007, PQ-37). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Compartir un perfil con sus textos en claro (DAT-007, PQ-37). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "dangerMark",
       "text": { "es": "Compartir con textos en claro", "en": "Share with texts in clear" }
     },
     "profShared": {
-      "notes": "Aviso al guardar el archivo de un perfil compartido, que sustituye al enlace del prototipo (DAT-007, PQ-26). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "notes": "Aviso al guardar el archivo de un perfil compartido, que sustituye al enlace del prototipo (DAT-007, PQ-26). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "shareWithTexts",
       "text": { "es": "Perfil guardado para compartir: {name}", "en": "Profile saved to share: {name}" }
     }

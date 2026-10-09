@@ -59,6 +59,13 @@
       "blueprint": "§4.4, §9.4"
     },
     {
+      "id": "log-preview",
+      "paths": ["src/Clicalo.App/Composition/AboutServicesFactory.cs"],
+      "apis": ["FileStream (read)"],
+      "justification": "«Ver qué se envía en el registro» reads the tail of clicalo.log while the log sink holds it open, which needs FileShare.ReadWrite; it only reads (FileAccess.Read), and the copy to attach goes through IAtomicFileWriter (ACE-003, ACE-004).",
+      "blueprint": "§4.4, §9.4"
+    },
+    {
       "id": "app-lifecycle",
       "paths": ["src/Clicalo.App/Lifecycle/**"],
       "apis": ["Environment.Exit", "Application.Shutdown"],

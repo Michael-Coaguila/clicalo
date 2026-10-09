@@ -101,7 +101,7 @@ estado de la clave en lugar de la cuota. Al aplicarlo se fijó, por delegación 
   proxy pueda compartirlo sin Domain. `AiResponseReader` aplica las mismas reglas en código y
   `TemplateSchema` (Domain.Templates) la validación semántica.
 - **Errores:** «offline» (sin red o 15 s sin respuesta), «nokey», «badkey» (401, 403 y 429), «unavailable» e
-  «invalid» (R-25 del catálogo).
+  «invalid» (R-26 del catálogo).
 
 La confirmación prevista se cumple con `ByoKeyTemplateGeneratorTests`, que intercepta la petición HTTP del cliente
 real de Anthropic con un manejador falso y comprueba que el cuerpo lleva solo la instrucción fija y los 4 valores, y

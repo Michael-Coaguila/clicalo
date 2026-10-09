@@ -40,8 +40,10 @@ public sealed class AllowUnusedTests
         // M4 shows dupTitle (the state of a repeated tile) and dupChangeT (REP-006), so they left the list.
         listed.Contains("dupTitle").ShouldBeFalse();
         // Decision D5 of the user (2026-10-09): no free quota, so its texts are not shown; aiPrivacy and sharedProf
-        // give way to aiPrivacy4 and to sharing a file (catalog §6.1, R-25).
+        // give way to aiPrivacy4 and to sharing a file (catalog §6.1, R-26).
         listed.Contains("quotaFree").ShouldBeTrue();
-        listed.Count.ShouldBe(63);
+        // About and the welcome show creatorRole and fbLogFile, the catalog §9 corrections of creator and fbLogD.
+        listed.Contains("creator").ShouldBeTrue();
+        listed.Count.ShouldBe(65);
     }
 }
