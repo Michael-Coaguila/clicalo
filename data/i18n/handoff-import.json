@@ -409,6 +409,111 @@
       "after": "backupDamaged",
       "text": { "es": "Bloquear posición", "en": "Lock position" }
     },
+    "langBoth": {
+      "notes": "Título de la tarjeta de idioma de «General y panel» (GEN-002: «Idioma · Language»), con el nombre en los dos idiomas para encontrarla sin entender el actual. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "lang",
+      "text": { "es": "Idioma · Language", "en": "Language · Idioma" }
+    },
+    "keysWith": {
+      "notes": "Tarjeta «Con teclas» de Mostrar teclas (GEN-008: los textos pasan a los archivos de idioma). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "showKeys",
+      "text": { "es": "Con teclas", "en": "With keys" }
+    },
+    "keysNameOnly": {
+      "notes": "Tarjeta «Solo nombre» de Mostrar teclas (GEN-008). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "keysWith",
+      "text": { "es": "Solo nombre", "en": "Name only" }
+    },
+    "showTabsNote": {
+      "notes": "Nota bajo el interruptor del selector de perfil: cómo llegar a Frecuentes sin la fila (GEN-007, SEL-006). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "showTabsD",
+      "text": { "es": "Sin esta fila, toca el nombre del perfil en la cabecera para ver ★ Frecuentes y tus perfiles.", "en": "Without this row, tap the profile name in the header to see ★ Frequent and your profiles." }
+    },
+    "textSmaller": {
+      "notes": "Nombre accesible del botón − del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "textSize",
+      "text": { "es": "Texto más pequeño", "en": "Smaller text" }
+    },
+    "textBigger": {
+      "notes": "Nombre accesible del botón + del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "textSmaller",
+      "text": { "es": "Texto más grande", "en": "Larger text" }
+    },
+    "lessOf": {
+      "notes": "Nombre accesible del botón − de un deslizador (GEN-009, TAC-005); {name} es el nombre del deslizador. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "dimLevel",
+      "text": { "es": "Menos: {name}", "en": "Less: {name}" }
+    },
+    "moreOf": {
+      "notes": "Nombre accesible del botón + de un deslizador (GEN-009, TAC-005); {name} es el nombre del deslizador. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "lessOf",
+      "text": { "es": "Más: {name}", "en": "More: {name}" }
+    },
+    "handleUp": {
+      "notes": "Nombre accesible de ↑ de la posición de la pestaña en los lados izquierdo y derecho (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "handlePosD",
+      "text": { "es": "Subir la pestaña", "en": "Move the tab up" }
+    },
+    "handleDown": {
+      "notes": "Nombre accesible de ↓ de la posición de la pestaña (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "handleUp",
+      "text": { "es": "Bajar la pestaña", "en": "Move the tab down" }
+    },
+    "handleLeft": {
+      "notes": "Nombre accesible de ← de la posición de la pestaña en los lados de arriba y abajo (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "handleDown",
+      "text": { "es": "Mover la pestaña a la izquierda", "en": "Move the tab left" }
+    },
+    "handleRight": {
+      "notes": "Nombre accesible de → de la posición de la pestaña (GEN-010). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "handleLeft",
+      "text": { "es": "Mover la pestaña a la derecha", "en": "Move the tab right" }
+    },
+    "handleLockD": {
+      "notes": "Descripción del ajuste dock.handleLocked (PES-003): bloquea el arrastre, no el toque. Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "handleLock",
+      "text": { "es": "Arrastrar la pestaña ya no la mueve; tocarla sigue abriendo la barra.", "en": "Dragging the tab no longer moves it; tapping it still opens the bar." }
+    },
+    "secA11yData": {
+      "notes": "Título de la tarjeta «Accesibilidad y datos» con Reducir movimiento y Reiniciar Frecuentes (decisión de GEN-013). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "secSafety",
+      "text": { "es": "Accesibilidad y datos", "en": "Accessibility and data" }
+    },
+    "seeCoach": {
+      "notes": "Fila de Primeros pasos que vuelve a mostrar la guía de la pestaña (GEN-014, PES-015). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "seeWelcomeD",
+      "text": { "es": "Ver la guía de la pestaña", "en": "See the tab guide" }
+    },
+    "seeCoachD": {
+      "notes": "Descripción de «Ver la guía de la pestaña» y aviso al tocarla (PES-015). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "seeCoach",
+      "text": { "es": "Se mostrará la próxima vez que abras la barra de la pestaña.", "en": "It shows the next time you open the tab bar." }
+    },
+    "uNokbD": {
+      "notes": "Descripción del ajuste «No puedo usar el teclado» en Primeros pasos (GEN-014, BIE-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "uNokb",
+      "text": { "es": "Da prioridad a la biblioteca, la IA y el dictado, y oculta Grabar con teclado.", "en": "Puts the library, AI and dictation first, and hides Record with keyboard." }
+    },
+    "tMoved": {
+      "notes": "Mensaje de la zona de prueba para un toque que se movió más que «cancelar si deslizas» (TAC-002, TAC-006; catálogo §9). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "tDouble",
+      "text": { "es": "Ignorado: deslizaste", "en": "Ignored: you slid" }
+    },
+    "testReset": {
+      "notes": "Botón que pone a cero los contadores de la zona de prueba (TAC-006; catálogo §9). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "ignored",
+      "text": { "es": "Reiniciar contadores", "en": "Reset counters" }
+    },
+    "msValue": {
+      "notes": "Valor de un deslizador de Precisión táctil en milisegundos (TAC-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "sMinD",
+      "text": { "es": "{count} ms", "en": "{count} ms" }
+    },
+    "pxValue": {
+      "notes": "Valor de un deslizador de Precisión táctil en píxeles (TAC-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-25 en §6.1 del catálogo.",
+      "after": "msValue",
+      "text": { "es": "{count} px", "en": "{count} px" }
+    },
     "engineFault": {
       "notes": "El motor falló y soltó todo (NFR-005). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
       "after": "handleLock",
