@@ -332,6 +332,109 @@
       "notes": "Aviso al crear el perfil desde la sugerencia, «[installedT]: {app}» sin concatenar fragmentos (PER-009, IDI-004). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
       "after": "installedT",
       "text": { "es": "Perfil instalado: {app}", "en": "Profile installed: {app}" }
+    },
+    "ccSoon": {
+      "notes": "Marcador de las secciones del centro de control que llegan en la siguiente parte (Plantillas, General y panel, Precisión táctil, Sistema, Acerca de). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "installedApp",
+      "text": { "es": "Esta sección llega en la siguiente parte.", "en": "This section arrives in the next part." }
+    },
+    "orderHintDrag": {
+      "notes": "Nota bajo la cuadrícula de Atajos con el texto corregido de ATJ-009: se reordena arrastrando o con los botones de posición. Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "ccSoon",
+      "text": { "es": "Así se ven en el panel. Toca uno para editarlo; cámbialo de sitio arrastrándolo o con los botones de «Más opciones».", "en": "This is how they look on the panel. Tap one to edit it; move it by dragging it or with the buttons in “More options”." }
+    },
+    "holdAsGeneral": {
+      "notes": "Opción por defecto de «Soltar sola tras» de un atajo Mantener o Alternar: usa el tiempo de General (EDI-016). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "orderHintDrag",
+      "text": { "es": "Como en General", "en": "As in General" }
+    },
+    "holdSeconds": {
+      "notes": "Opción de «Soltar sola tras» en segundos (EDI-016). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "holdAsGeneral",
+      "text": { "es": "{count} s", "en": "{count} s" }
+    },
+    "holdMinutes": {
+      "notes": "Opción de «Soltar sola tras» en minutos (EDI-016). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "holdSeconds",
+      "text": { "es": "{count} min", "en": "{count} min" }
+    },
+    "confirmRun": {
+      "notes": "Interruptor de «Más opciones»: el primer toque arma y el segundo ejecuta (EDI-017, EJE-002). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "holdMinutes",
+      "text": { "es": "Pedir confirmación antes de ejecutar", "en": "Ask for confirmation before running" }
+    },
+    "confirmRunD": {
+      "notes": "Descripción del interruptor «Pedir confirmación antes de ejecutar» (EDI-017). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "confirmRun",
+      "text": { "es": "El primer toque lo prepara y el segundo lo ejecuta.", "en": "The first tap arms it and the second one runs it." }
+    },
+    "noOpenApps": {
+      "notes": "«Probar en» sin apps abiertas (PRB-003). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "confirmRunD",
+      "text": { "es": "Abre la app donde quieras probarlo", "en": "Open the app where you want to try it" }
+    },
+    "appGone": {
+      "notes": "«Probar ahora» con la app de destino cerrada (PRB-007). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "noOpenApps",
+      "text": { "es": "{app} ya no está abierta", "en": "{app} is no longer open" }
+    },
+    "stepPress": {
+      "notes": "Descripción de un paso de teclas de una macro (EDI-013). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "appGone",
+      "text": { "es": "Pulsar {keys}", "en": "Press {keys}" }
+    },
+    "stepWait": {
+      "notes": "Descripción de un paso de espera de una macro, con coma decimal en español (EDI-013). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "stepPress",
+      "text": { "es": "Esperar {seconds} s", "en": "Wait {seconds} s" }
+    },
+    "stepType": {
+      "notes": "Descripción de un paso de texto de una macro (EDI-013). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "stepWait",
+      "text": { "es": "Escribir «{name}»", "en": "Type “{name}”" }
+    },
+    "stepsN": {
+      "notes": "Pie de una ficha de macro en la cuadrícula de Atajos: número de pasos (ATJ-009). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "stepType",
+      "plural": {
+        "es": { "one": "{count} paso", "other": "{count} pasos" },
+        "en": { "one": "{count} step", "other": "{count} steps" }
+      }
+    },
+    "linkedToApp": {
+      "notes": "Aviso al vincular una app a un perfil, «[linkedTo] {proceso}» sin concatenar fragmentos (ATJ-006, ATJ-008, IDI-004). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "stepsN",
+      "text": { "es": "Vinculado a {process}", "en": "Linked to {process}" }
+    },
+    "addedToProf": {
+      "notes": "Aviso al añadir una acción de la biblioteca, «[addedTo] {perfil}: {nombre}» sin concatenar fragmentos (ATJ-010, IDI-004). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "linkedToApp",
+      "text": { "es": "Añadido a {profile}: {name}", "en": "Added to {profile}: {name}" }
+    },
+    "takeOverYes": {
+      "notes": "Respuesta afirmativa a [processTaken]: el proceso pasa a este perfil (ATJ-007). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "addedToProf",
+      "text": { "es": "Pasarlo a este perfil", "en": "Move it to this profile" }
+    },
+    "removeKeyN": {
+      "notes": "Nombre accesible de la × de una tecla de la combinación (EDI-007). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "takeOverYes",
+      "text": { "es": "Quitar {key}", "en": "Remove {key}" }
+    },
+    "alreadyAdded": {
+      "notes": "Estado accesible de una fila de la biblioteca que ya está en el perfil (✓, ATJ-010). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "removeKeyN",
+      "text": { "es": "Ya está añadido", "en": "Already added" }
+    },
+    "voiceSay": {
+      "notes": "Línea del número de voz en «Más opciones», «[voiceLine1] «clic n» [voiceLine2] «clic {nombre}»» sin concatenar fragmentos (EDI-016, IDI-004). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "alreadyAdded",
+      "text": { "es": "Con «Números para voz» activado, di «clic {index}» o el nombre: «clic {name}».", "en": "With “Numbers for voice” on, say “click {index}” or the name: “click {name}”." }
+    },
+    "positionOf": {
+      "notes": "Posición del atajo en su lista en «Más opciones» (EDI-016). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "voiceSay",
+      "text": { "es": "Posición {index}/{total}", "en": "Position {index}/{total}" }
     }
   },
   "retired": {
