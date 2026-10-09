@@ -66,6 +66,24 @@
       CopyToPublishDirectory="PreserveNewest"
     />
   </ItemGroup>
+  <ItemGroup>
+    <!--
+      Data of the shortcut editor of the Control Center (docs/05 §1, D17): the icon library and the icons of
+      combinations (EDI-004, EDI-005), the mouse actions (EDI-012) and the «Añadir atajo» library (ATJ-010).
+    -->
+    <Content
+      Include="..\..\data\catalogs\icons.json;..\..\data\catalogs\combo-icons.*.json;..\..\data\catalogs\mouse.json"
+      LinkBase="catalogs"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+    <Content
+      Include="..\..\data\content\library.json"
+      LinkBase="content"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
+  </ItemGroup>
   <!--
     SentinelSupervisor starts Clicalo.Sentinel.exe from the folder of Clicalo.exe (ADR-0004). A build copies Sentinel's
     framework-dependent build output there; cl perf and the release publish Sentinel with Native AOT into the same folder.

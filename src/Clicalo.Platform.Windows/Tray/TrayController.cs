@@ -71,6 +71,9 @@ public sealed class TrayController : IDisposable
     /// <summary>«Salir» in the menu.</summary>
     public event EventHandler? ExitRequested;
 
+    /// <summary>«Centro de control» in the menu, once the foreground is back (blueprint §8.1).</summary>
+    public event EventHandler? ControlCenterRequested;
+
     /// <summary>A menu lease was denied; the composition announces it.</summary>
     public event EventHandler? MenuDenied;
 
@@ -117,6 +120,7 @@ public sealed class TrayController : IDisposable
                 (int)TrayCommand.ShowHide,
                 localizer.Format(_panelVisible ? L.HidePanel : L.Restore)
             ),
+            new((int)TrayCommand.ControlCenter, localizer.Format(L.Cc)),
             new(
                 (int)TrayCommand.ReleaseAll,
                 localizer.Format(L.ReleaseAll),
@@ -206,6 +210,9 @@ public sealed class TrayController : IDisposable
                 break;
             case TrayCommand.Exit:
                 ExitRequested?.Invoke(this, EventArgs.Empty);
+                break;
+            case TrayCommand.ControlCenter:
+                ControlCenterRequested?.Invoke(this, EventArgs.Empty);
                 break;
         }
     }

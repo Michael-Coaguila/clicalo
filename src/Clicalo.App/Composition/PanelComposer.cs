@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows.Threading;
 using Clicalo.Application.Coordinators;
+using Clicalo.Application.Foreground;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Profiles;
@@ -160,6 +161,9 @@ internal sealed class PanelComposer : IPanelBodyIntents
     /// <summary>The profile suggestion.</summary>
     public SuggestionViewModel Suggestion { get; }
 
+    /// <summary>The Control Center, once built: «+ Añadir» and «Plantillas» of the panel open it (docs/05).</summary>
+    public ControlCenterComposer? ControlCenter { get; set; }
+
     /// <summary>The window the view models are drawn in; the projection waits for its fingers (PAN-009).</summary>
     /// <param name="window">The panel window.</param>
     public void AttachWindow(PanelWindow window)
@@ -314,8 +318,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     }
 
     /// <inheritdoc />
-    /// <remarks>The Control Center arrives in M4; until then the tile does nothing.</remarks>
-    public void OpenTemplates() { }
+    public void OpenTemplates() => _ = ControlCenter?.OpenTemplatesAsync(LeaseOrigin.Touch);
 
     /// <inheritdoc />
     public void AdvanceSticky(ModifierKind modifier) =>
@@ -340,8 +343,8 @@ internal sealed class PanelComposer : IPanelBodyIntents
     }
 
     /// <inheritdoc />
-    /// <remarks>The editor arrives with the Control Center in M4; until then the button does nothing.</remarks>
-    public void AddShortcut(ProfileId profile) { }
+    public void AddShortcut(ProfileId profile) =>
+        _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
 
     /// <inheritdoc />
     /// <remarks>The verified elevated relaunch (D-11) is not built yet; the notice still explains why nothing is sent.</remarks>
