@@ -187,6 +187,8 @@
   "alreadyAdded": "Already added",
   "voiceSay": "With “Numbers for voice” on, say “click {index}” or the name: “click {name}”.",
   "positionOf": "Position {index}/{total}",
+  "waitShorter": "Wait less",
+  "waitLonger": "Wait longer",
   "moved": "Duplicate resolved",
   "restoredT": "Backup restored",
   "backupT": "Backup created",

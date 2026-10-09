@@ -540,6 +540,24 @@ public sealed class ShortcutsWorkspace
     public void SetConfirm(bool on) =>
         Edit(shortcut => shortcut with { Options = shortcut.Options with { Confirm = on } });
 
+    /// <summary>«Fijado en Frecuentes» (EDI-018): pins or unpins the shortcut in Frequents.</summary>
+    /// <param name="on">The switch.</param>
+    public void SetPinnedInFrequents(bool on)
+    {
+        if (Pane is not EditorPane.Editing editing)
+        {
+            return;
+        }
+
+        IDocumentCommand command = on
+            ? new PinToFrequents(editing.Id)
+            : new UnpinFromFrequents(editing.Id);
+        if (Dispatch(command))
+        {
+            Notify(on ? L.CtxPinT : L.Saved, "keep", undo: true);
+        }
+    }
+
     /// <summary>A «+» button under the steps (EDI-013): the new step opens.</summary>
     /// <param name="kind">The kind of step.</param>
     public void AddStep(MacroStepKind kind)
@@ -982,9 +1000,21 @@ public sealed class ShortcutsWorkspace
                 when _store.Current.Library.TryGetShortcut(editing.Id, out var current):
             {
                 var next = change(current);
-                if (!next.Equals(current))
+                if (!next.Equals(current) && Dispatch(new EditShortcut(next)))
                 {
-                    _ = Dispatch(new EditShortcut(next));
+                    // EDI-021: the edits of this shortcut are one step, «Deshacer cambios en {nombre}».
+                    Noticed?.Invoke(
+                        this,
+                        new WorkspaceNoticeEventArgs(
+                            new WorkspaceNotice(
+                                L.Saved,
+                                "check",
+                                CanUndo: true,
+                                IsWarning: false,
+                                L.UndoEditsIn(name: Display(next.Name))
+                            )
+                        )
+                    );
                 }
 
                 return;

@@ -110,7 +110,7 @@ public sealed class LocalizationGeneratorTests
         output.Diagnostics.Select(GeneratorOutput.Describe).ShouldBeEmpty();
         output.CompilationErrors.ShouldBeEmpty();
         var messages = output.Source(".L.g.cs");
-        CountOccurrences(messages, "    public static Message ").ShouldBe(718);
+        CountOccurrences(messages, "    public static Message ").ShouldBe(740);
         messages.ShouldContain(
             "public static Message ProcessTaken(MessageText profile, MessageText process) =>"
         );

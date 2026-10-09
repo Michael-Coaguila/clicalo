@@ -435,6 +435,16 @@
       "notes": "Posición del atajo en su lista en «Más opciones» (EDI-016). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
       "after": "voiceSay",
       "text": { "es": "Posición {index}/{total}", "en": "Position {index}/{total}" }
+    },
+    "waitShorter": {
+      "notes": "Nombre accesible del botón − de un paso de espera de una macro (EDI-013). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "positionOf",
+      "text": { "es": "Esperar menos", "en": "Wait less" }
+    },
+    "waitLonger": {
+      "notes": "Nombre accesible del botón + de un paso de espera de una macro (EDI-013). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "waitShorter",
+      "text": { "es": "Esperar más", "en": "Wait longer" }
     }
   },
   "retired": {

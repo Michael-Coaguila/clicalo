@@ -187,6 +187,8 @@
   "alreadyAdded": "Ya está añadido",
   "voiceSay": "Con «Números para voz» activado, di «clic {index}» o el nombre: «clic {name}».",
   "positionOf": "Posición {index}/{total}",
+  "waitShorter": "Esperar menos",
+  "waitLonger": "Esperar más",
   "moved": "Duplicado resuelto",
   "restoredT": "Copia restaurada",
   "backupT": "Copia creada",

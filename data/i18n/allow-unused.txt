@@ -23,12 +23,10 @@ aiTitle
 aiSub
 aiShort
 aiPh2
-dupTitle
 dupBody
 dupHint
 dupIn
 dupKeep
-dupChangeT
 itsFine
 changeCombo
 pinAll

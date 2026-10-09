@@ -10,4 +10,11 @@ namespace Clicalo.Application.UseCases.Editor;
 /// <param name="Icon">Its Material Symbols icon.</param>
 /// <param name="CanUndo">Whether the change it reports can be undone.</param>
 /// <param name="IsWarning">Whether it is a warning (assertive) rather than a notice (polite).</param>
-public sealed record WorkspaceNotice(Message Text, string Icon, bool CanUndo, bool IsWarning);
+/// <param name="UndoName">What [undo] says it undoes («Deshacer cambios en {nombre}», EDI-021); null for [undo].</param>
+public sealed record WorkspaceNotice(
+    Message Text,
+    string Icon,
+    bool CanUndo,
+    bool IsWarning,
+    Message? UndoName = null
+);

@@ -10,4 +10,11 @@ namespace Clicalo.Application.Ports;
 /// <param name="Name">The name to show, for example «Word»: the file description, or the executable without «.exe».</param>
 /// <param name="Window">Its main top-level window.</param>
 /// <param name="Elevated">Whether it runs as administrator (or could not be inspected, which counts as elevated).</param>
-public sealed record OpenApp(ProcessName Process, string Name, WindowToken Window, bool Elevated);
+/// <param name="ExecutablePath">The full path of its executable, when it could be read; null otherwise.</param>
+public sealed record OpenApp(
+    ProcessName Process,
+    string Name,
+    WindowToken Window,
+    bool Elevated,
+    string? ExecutablePath
+);

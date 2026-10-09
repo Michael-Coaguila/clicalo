@@ -8,7 +8,7 @@ namespace Clicalo.Application.Ports;
 /// </summary>
 public interface IOpenApps
 {
-    /// <summary>The open apps, in z-order (the one in front first).</summary>
+    /// <summary>The open apps, ordered by name.</summary>
     /// <param name="cancellationToken">Cancels the read.</param>
     ValueTask<ImmutableArray<OpenApp>> ListAsync(CancellationToken cancellationToken);
 }
