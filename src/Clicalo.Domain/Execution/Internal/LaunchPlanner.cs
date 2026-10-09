@@ -1,5 +1,6 @@
 using Clicalo.Domain.Errors;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 
 namespace Clicalo.Domain.Execution.Internal;
 
@@ -10,25 +11,47 @@ namespace Clicalo.Domain.Execution.Internal;
 /// </summary>
 internal static class LaunchPlanner
 {
-    public static void Plan(EngineStep step, ExecutionOrigin origin, ShortcutAction action)
+    /// <summary>
+    /// Plans <paramref name="action"/> (the shortcut's own, or the system action that replaces a blocked combination):
+    /// a web or an app that is not safe to start never leaves the engine (LOG-008).
+    /// </summary>
+    public static void Plan(
+        EngineStep step,
+        ExecutionOrigin origin,
+        Shortcut shortcut,
+        ShortcutAction action
+    )
     {
-        var effect = new EffectId(step.NextSequence());
+        var name = step.NameOf(shortcut);
         switch (action)
         {
             case UrlAction { Target: UrlTarget.Valid valid }:
-                Pending(step, effect, origin, PendingKind.Url);
-                step.Emit(
-                    new EngineEffect.Launch(effect, new LaunchRequest.OpenUrl(valid.Address))
+                Launch(
+                    step,
+                    origin,
+                    shortcut,
+                    new LaunchRequest.OpenUrl(valid.Address),
+                    PendingKind.Url,
+                    valid.Address.OriginalString
                 );
-                break;
+                return;
             case AppAction app:
-                Pending(step, effect, origin, PendingKind.App);
-                step.Emit(new EngineEffect.Launch(effect, new LaunchRequest.StartApp(app.Target)));
-                break;
+                Launch(
+                    step,
+                    origin,
+                    shortcut,
+                    new LaunchRequest.StartApp(app.Target),
+                    PendingKind.App,
+                    name
+                );
+                return;
             case SystemAction system:
-                Pending(step, effect, origin, PendingKind.System);
+            {
+                var effect = new EffectId(step.NextSequence());
+                Pending(step, effect, origin, PendingKind.System, name);
                 step.Emit(new EngineEffect.SystemCommand(effect, system.Command));
                 break;
+            }
             default:
                 return;
         }
@@ -36,11 +59,32 @@ internal static class LaunchPlanner
         step.CountUsage(origin);
     }
 
+    private static void Launch(
+        EngineStep step,
+        ExecutionOrigin origin,
+        Shortcut shortcut,
+        LaunchRequest request,
+        PendingKind kind,
+        string name
+    )
+    {
+        if (LaunchSafety.Check(request, shortcut.Options.Confirm) != LaunchVerdict.Allowed)
+        {
+            step.Notice(L.LaunchUnsafe(name: name), NoticeUrgency.Assertive);
+            return;
+        }
+
+        var effect = new EffectId(step.NextSequence());
+        Pending(step, effect, origin, kind, name);
+        step.Emit(new EngineEffect.Launch(effect, request));
+        step.CountUsage(origin);
+    }
+
     public static void Completed(EngineStep step, EffectId effect)
     {
-        if (Take(step, effect) is { Kind: PendingKind.Url })
+        if (Take(step, effect) is { Kind: PendingKind.Url or PendingKind.App } pending)
         {
-            step.Notice(EngineNotices.Opened);
+            step.Notice(L.OpenedName(name: pending.Name));
         }
     }
 
@@ -52,13 +96,20 @@ internal static class LaunchPlanner
         }
     }
 
-    public static void SystemCompleted(EngineStep step, EffectId effect) => Take(step, effect);
+    public static void SystemCompleted(EngineStep step, EffectId effect, bool succeeded)
+    {
+        if (Take(step, effect) is { } pending && !succeeded)
+        {
+            step.Notice(L.ActionFailed(name: pending.Name), NoticeUrgency.Assertive);
+        }
+    }
 
     private static void Pending(
         EngineStep step,
         EffectId effect,
         ExecutionOrigin origin,
-        PendingKind kind
+        PendingKind kind,
+        string name
     ) =>
         step.State = step.State with
         {
@@ -68,6 +119,7 @@ internal static class LaunchPlanner
                 {
                     Kind = kind,
                     Origin = origin,
+                    Name = name,
                 }
             ),
         };

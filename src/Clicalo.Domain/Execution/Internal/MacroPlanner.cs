@@ -1,5 +1,6 @@
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 
 namespace Clicalo.Domain.Execution.Internal;
 
@@ -12,7 +13,12 @@ namespace Clicalo.Domain.Execution.Internal;
 internal static class MacroPlanner
 {
     /// <summary>Starts a macro, cancelling any other one that runs.</summary>
-    public static void Start(EngineStep step, ExecutionOrigin origin, MacroAction macro)
+    public static void Start(
+        EngineStep step,
+        ExecutionOrigin origin,
+        Shortcut shortcut,
+        MacroAction macro
+    )
     {
         if (step.State.Macro is { } running)
         {
@@ -29,14 +35,23 @@ internal static class MacroPlanner
         {
             Steps = macro.Steps,
             Origin = origin,
+            Name = step.NameOf(shortcut),
         };
         step.State = step.State with { Macro = run };
+        step.Notice(L.MacroRunning(name: run.Name, index: 1, total: run.StepCount));
         step.AdvanceMacro();
     }
 
-    /// <summary>A second tap on the running macro: cancel it and release what it holds (EJE-010).</summary>
-    public static void Cancel(EngineStep step, MacroRun run) =>
+    /// <summary>
+    /// A second tap on the running macro, a real app switch or a target it can no longer send to: cancel it and
+    /// release what it holds (EJE-010).
+    /// </summary>
+    public static void Cancel(EngineStep step, MacroRun run)
+    {
         step.CancelHolder(EngineStep.MacroHolder(run));
+        step.State = step.State with { Macro = null };
+        step.Notice(L.MacroCancelled(name: run.Name));
+    }
 
     /// <summary>The wait timer fired.</summary>
     public static void WaitTimer(EngineStep step)
@@ -202,7 +217,7 @@ internal static class MacroPlanner
     {
         step.Release(step.State.Keys.Release(holder), holder);
         step.State = step.State with { Macro = null };
-        step.Notice(EngineNotices.MacroRan);
+        step.Notice(L.MacroRanName(name: run.Name, total: run.StepCount));
         if (run.Origin is { } origin)
         {
             step.CountUsage(origin);

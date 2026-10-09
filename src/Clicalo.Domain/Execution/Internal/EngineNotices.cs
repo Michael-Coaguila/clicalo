@@ -58,12 +58,6 @@ internal static class EngineNotices
     /// <summary>A Toggle was released (EJE-007).</summary>
     public static Message Unlatched => L.Unlatched;
 
-    /// <summary>A macro ran to the end (EJE-010).</summary>
-    public static Message MacroRan => L.RanMacro;
-
-    /// <summary>A web address is opening (EJE-011).</summary>
-    public static Message Opened => L.Opened;
-
     /// <summary>A sticky modifier joins the next tap or click (FIJ-005).</summary>
     public static Message StickyOnce => L.ModOnce;
 

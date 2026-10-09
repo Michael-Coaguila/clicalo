@@ -250,6 +250,41 @@
       "after": "macroCancelled",
       "text": { "es": "{keys} enviado a {app}", "en": "{keys} sent to {app}" }
     },
+    "textTyped": {
+      "notes": "Un Texto escrito o pegado (EJE-008): sus 16 primeros caracteres y «…» si sigue, sin concatenar [typed] y el texto (IDI-004). Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "tapSent",
+      "text": { "es": "Escrito: «{name}»", "en": "Typed: “{name}”" }
+    },
+    "textTypedPrivate": {
+      "notes": "Un Texto privado escrito o pegado (EJE-008): no se muestra el texto. Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "textTyped",
+      "text": { "es": "Texto escrito", "en": "Text typed" }
+    },
+    "mouseRan": {
+      "notes": "Una acción del mouse hecha (EJE-009); nombra el atajo. Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "textTypedPrivate",
+      "text": { "es": "Mouse: {name}", "en": "Mouse: {name}" }
+    },
+    "macroRanName": {
+      "notes": "Una macro terminada (EJE-010), sin concatenar [ranMacro], el nombre y el número de pasos (IDI-004). Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "mouseRan",
+      "text": { "es": "Macro ejecutada: {name} ({total})", "en": "Macro ran: {name} ({total})" }
+    },
+    "openedName": {
+      "notes": "Una web o una app que se abre (EJE-011), sin concatenar [opened] y la dirección o el nombre (IDI-004). Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "macroRanName",
+      "text": { "es": "Abriendo {name}", "en": "Opening {name}" }
+    },
+    "actionFailed": {
+      "notes": "Una app, una web o una acción de sistema que Windows no pudo hacer (EJE-011, EJE-016). Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "openedName",
+      "text": { "es": "No se pudo completar: {name}", "en": "Couldn’t complete: {name}" }
+    },
+    "launchUnsafe": {
+      "notes": "Una app que pasaría por un intérprete de comandos o por una ruta de red y no se abre (EJE-011, LOG-008). Texto nuevo de M3 (acciones), pendiente de ratificar en §6.1 del catálogo (R-19).",
+      "after": "actionFailed",
+      "text": { "es": "Por seguridad, Clícalo no abre esto: {name}", "en": "For safety, Clícalo doesn’t open this: {name}" }
+    },
     "guardianUnstable": {
       "notes": "Sentinel murió demasiadas veces y ya no se relanza: si Clícalo se cierra de golpe, nadie suelta las teclas (REG-03, D-22). Texto nuevo de la verificación de M2, pendiente de ratificar en §6.1 del catálogo.",
       "after": "tapSent",

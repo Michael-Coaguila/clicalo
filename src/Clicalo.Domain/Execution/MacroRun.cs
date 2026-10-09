@@ -22,4 +22,7 @@ public sealed record MacroRun(
 
     /// <summary>Where and how it was started: every step sends with this epoch, target and mode.</summary>
     public ExecutionOrigin? Origin { get; init; }
+
+    /// <summary>The macro's name in the interface language, for its notices (EJE-010).</summary>
+    public string Name { get; init; } = string.Empty;
 }

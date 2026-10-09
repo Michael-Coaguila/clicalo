@@ -62,7 +62,15 @@ internal static class KeyPlanner
                 .Append(
                     new QueuedStep.Finish(
                         holder,
-                        new StepCompletion(origin, Notice: null, countsUsage, ContinueMacro: null)
+                        new StepCompletion(
+                            origin,
+                            // EJE-003: «Ctrl + S enviado a Word», once the keys went.
+                            countsUsage
+                                ? L.TapSent(app: step.AppName(), keys: step.KeysText(strokes))
+                                : null,
+                            countsUsage,
+                            ContinueMacro: null
+                        )
                     )
                 )
         );
@@ -198,6 +206,10 @@ internal static class KeyPlanner
                     new QueuedStep.Finish(
                         holder,
                         new StepCompletion(origin, notice, CountsUsage: true, ContinueMacro: null)
+                        {
+                            // AVI-004: Hold and Toggle count for Frequents but are never repeated.
+                            Repeatable = false,
+                        }
                     )
                 )
         );

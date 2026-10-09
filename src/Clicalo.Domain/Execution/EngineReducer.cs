@@ -135,7 +135,7 @@ public static class EngineReducer
                 LaunchPlanner.Failed(step, failed.Effect, failed.Failure);
                 break;
             case EngineEvent.SystemCommandCompleted completed:
-                LaunchPlanner.SystemCompleted(step, completed.Effect);
+                LaunchPlanner.SystemCompleted(step, completed.Effect, completed.Succeeded);
                 break;
         }
 
@@ -270,7 +270,8 @@ public static class EngineReducer
     {
         var contact = activation.Request.ContactId;
         var invoked = activation.Request.Phase == ActivationPhase.Invoke || contact is null;
-        switch (shortcut.Action)
+        var action = ActivationPolicy.Effective(shortcut.Action);
+        switch (action)
         {
             case TapAction tap:
                 KeyPlanner.Tap(step, origin, ChordFor(shortcut, tap, step));
@@ -285,19 +286,19 @@ public static class EngineReducer
                 KeyPlanner.Toggle(step, origin, shortcut, toggle.Chord, HoldOrigin.Toggle);
                 break;
             case TextAction text:
-                TextPlanner.Plan(step, origin, text);
+                TextPlanner.Plan(step, origin, shortcut, text);
                 break;
             case MouseAction mouse when MousePlanner.IsScroll(mouse.Op) && !invoked:
-                MousePlanner.StartScroll(step, origin, mouse, contact!.Value);
+                MousePlanner.StartScroll(step, origin, shortcut, mouse, contact!.Value);
                 break;
             case MouseAction mouse:
                 MousePlanner.Plan(step, origin, shortcut, mouse);
                 break;
             case MacroAction macro:
-                MacroPlanner.Start(step, origin, macro);
+                MacroPlanner.Start(step, origin, shortcut, macro);
                 break;
             default:
-                LaunchPlanner.Plan(step, origin, shortcut.Action);
+                LaunchPlanner.Plan(step, origin, shortcut, action);
                 break;
         }
     }
