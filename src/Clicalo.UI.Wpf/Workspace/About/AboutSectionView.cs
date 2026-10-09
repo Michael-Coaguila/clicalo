@@ -81,6 +81,9 @@ public sealed class AboutSectionView : Border
             parent.Children.Remove(_messageBox);
         }
 
+        // The column adds its gap to the margin of each child: the field is reused, so it starts from zero.
+        _messageBox.Margin = new Thickness(0);
+
         AutomationProperties.SetName(_message.Box, screen.MessageName);
         var content = Ui.Column(
             24,

@@ -563,6 +563,7 @@ public sealed class WelcomeWindow : Window
             FontWeight = FontWeights.Bold,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        block.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.UiFont);
         Ui.Ink(block, TextBlock.ForegroundProperty, ColorToken.Text);
         return block;
     }
