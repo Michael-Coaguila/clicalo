@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
+using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
@@ -20,7 +22,9 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
 /// <remarks>
 /// The panel registers <see cref="TapTargets"/> with its pointer layer (a tap calls the view model); UI Automation
 /// Invoke, SelectionItem, RangeValue and Toggle reach the same view model through the controls. Every target is at
-/// least 44 × 44 (REG-02).
+/// least 44 × 44 (REG-02). The panel's pointer layer consumes the finger, so the sheet follows it itself
+/// (<see cref="Track"/>): a finger on the opacity track slides the value (AJR-002) and a vertical drag elsewhere scrolls
+/// the sheet (AJR-001). The panel also limits the sheet to the free space of the work area (<see cref="FitHeight"/>).
 /// </remarks>
 public sealed class QuickSettingsSheet : Border
 {
@@ -34,6 +38,9 @@ public sealed class QuickSettingsSheet : Border
     private const double ViewOptionHeight = 52;
     private const double OptionHeight = 40;
     private const double HeadingPx = 12;
+
+    /// <summary>The sheet never gets lower than this to fit the work area: the rest scrolls inside.</summary>
+    private const double MinimumFitHeight = 120;
 
     private readonly QuickSettingsViewModel _viewModel;
     private readonly TouchButton _controlCenter;
@@ -56,6 +63,13 @@ public sealed class QuickSettingsSheet : Border
         QuickOptionViewModel Option
     )> _options = [];
     private readonly List<(ToggleSwitch Row, QuickSwitchViewModel Switch)> _switches = [];
+    private readonly ScrollViewer _scroller;
+    private double _screenLimit = double.PositiveInfinity;
+    private uint? _contact;
+    private bool _sliding;
+    private bool _scrolling;
+    private Point _origin;
+    private double _startOffset;
     private bool _applying;
 
     /// <summary>Creates the sheet of <paramref name="viewModel"/>.</summary>
@@ -114,13 +128,14 @@ public sealed class QuickSettingsSheet : Border
         layout.Children.Add(Section(_themeHeading, Group(viewModel.Themes, 2, OptionHeight)));
         layout.Children.Add(Switches(viewModel.Switches));
 
-        Child = new ScrollViewer
+        _scroller = new ScrollViewer
         {
             Content = layout,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Focusable = false,
         };
+        Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
         foreach (var (_, _, option) in _options)
@@ -171,8 +186,89 @@ public sealed class QuickSettingsSheet : Border
 
     /// <summary>Limits the sheet to 62 % of the screen it is on (AJR-001); the rest scrolls inside.</summary>
     /// <param name="screenHeight">The height of the monitor's work area, in device-independent pixels.</param>
-    public void ApplyScreenHeight(double screenHeight) =>
-        MaxHeight = screenHeight > 0 ? screenHeight * ScreenShare : double.PositiveInfinity;
+    public void ApplyScreenHeight(double screenHeight)
+    {
+        _screenLimit = screenHeight > 0 ? screenHeight * ScreenShare : double.PositiveInfinity;
+        MaxHeight = _screenLimit;
+    }
+
+    /// <summary>
+    /// Limits the sheet to <paramref name="room"/>, the height left for it down to the bottom of the work area, and never
+    /// above 62 % of the screen: the panel never leaves the screen, and what does not fit scrolls inside (AJR-001).
+    /// </summary>
+    /// <param name="room">The free height for the sheet, in device-independent pixels.</param>
+    public void FitHeight(double room)
+    {
+        var height = Math.Min(_screenLimit, Math.Max(MinimumFitHeight, room));
+        if (Math.Abs(MaxHeight - height) > 0.5)
+        {
+            MaxHeight = height;
+        }
+    }
+
+    /// <summary>
+    /// Follows a finger, pen or mouse contact of the panel (AJR-001, AJR-002): one that goes down on the opacity track
+    /// sets the value under it and slides it while it moves; one that goes down elsewhere on the sheet scrolls it once
+    /// it moves vertically past <paramref name="thresholdPx"/>.
+    /// </summary>
+    /// <param name="sample">The pointer sample, in physical screen pixels.</param>
+    /// <param name="thresholdPx">The drag threshold, in physical pixels.</param>
+    /// <returns>Whether the contact slid or scrolled: it is not a tap.</returns>
+    public bool Track(in PointerSample sample, double thresholdPx)
+    {
+        var at = new Point(sample.Position.X, sample.Position.Y);
+        switch (sample.Phase)
+        {
+            case PointerPhase.Down when _contact is null && _viewModel.IsOpen:
+                if (
+                    _opacity.TrackElement is { } track
+                    && TouchBounds.Of(track, inflate: true).Contains(sample.Position)
+                )
+                {
+                    _contact = sample.PointerId;
+                    _sliding = true;
+                    Slide(at);
+                    return true;
+                }
+
+                if (TouchBounds.Of(_scroller, inflate: false).Contains(sample.Position))
+                {
+                    _contact = sample.PointerId;
+                    _origin = at;
+                    _startOffset = _scroller.VerticalOffset;
+                }
+
+                return false;
+
+            case PointerPhase.Move when _contact == sample.PointerId:
+                if (_sliding)
+                {
+                    Slide(at);
+                    return true;
+                }
+
+                var dy = at.Y - _origin.Y;
+                _scrolling |= Math.Abs(dy) > thresholdPx;
+                if (_scrolling)
+                {
+                    var scale = VisualTreeHelper.GetDpi(this).DpiScaleY;
+                    _scroller.ScrollToVerticalOffset(_startOffset - (dy / scale));
+                }
+
+                return _scrolling;
+
+            case PointerPhase.Up
+            or PointerPhase.Cancel when _contact == sample.PointerId:
+                var used = _sliding || _scrolling;
+                _contact = null;
+                _sliding = false;
+                _scrolling = false;
+                return used;
+
+            default:
+                return false;
+        }
+    }
 
     /// <summary>Stops following the view model when the panel closes.</summary>
     public void Detach()
@@ -186,6 +282,17 @@ public sealed class QuickSettingsSheet : Border
         foreach (var (_, item) in _switches)
         {
             item.PropertyChanged -= OnChanged;
+        }
+    }
+
+    private void Slide(Point screen)
+    {
+        if (
+            _opacity.ValueAt(screen) is { } value
+            && Math.Abs(value - _viewModel.OpacityPercent) > 0.5
+        )
+        {
+            _viewModel.SetOpacityPercent(value);
         }
     }
 

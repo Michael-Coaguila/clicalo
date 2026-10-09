@@ -349,6 +349,11 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         {
             _contacts.Observe(sample);
             TrackDrag(sample);
+            if (_quickSheet?.Track(sample, _drag?.ThresholdPx ?? 0) == true)
+            {
+                // AJR-001, AJR-002: a finger that slid the opacity or scrolled the sheet is not a tap.
+                _ = _dragged.Add(sample.PointerId);
+            }
         }
 
         TrackTouching();
@@ -715,12 +720,40 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
                     this,
                     WorkAreaBottom ?? SystemParameters.WorkArea.Bottom
                 );
+                FitQuickSheet();
             }
         }
         finally
         {
             _measuring = false;
         }
+    }
+
+    /// <summary>
+    /// AJR-001: Quick settings never push the panel off the screen. The sheet gets the height left down to the bottom
+    /// of the work area with the grid on one row; what does not fit scrolls inside the sheet. The grid then measures
+    /// the rows that fit under it (CUA-001), so the two never chase each other.
+    /// </summary>
+    private void FitQuickSheet()
+    {
+        if (
+            _quickSheet is not { IsVisible: true } sheet
+            || PresentationSource.FromVisual(sheet) is null
+        )
+        {
+            return;
+        }
+
+        var top = sheet.TranslatePoint(new Point(0, 0), this).Y;
+        var below = ActualHeight - top - sheet.ActualHeight;
+        var room =
+            (WorkAreaBottom ?? SystemParameters.WorkArea.Bottom)
+            - PanelSizes.Layout.PanelBottomMarginPx
+            - Top
+            - top
+            - below
+            + _body.GridSlack;
+        sheet.FitHeight(room);
     }
 
     /// <summary>
@@ -890,9 +923,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
 
         gestures.Recognizer.SetTargets(targets.ToImmutable());
 
+        // REG-02: every target answers on at least 44 × 44 with an invisible touch margin around its drawing.
         void Add(FrameworkElement element, int id, TouchTargetKind kind, Target target)
         {
-            var bounds = PhysicalBounds(element);
+            var bounds = TouchBounds.Of(element, inflate: true);
             if (bounds.IsEmpty)
             {
                 return;

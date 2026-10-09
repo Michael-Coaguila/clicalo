@@ -53,6 +53,24 @@ public sealed class InteractionViewsTests
 
     [Fact]
     [Trait("Req", "AJR-001")]
+    public void The_sheet_fits_the_free_space_but_never_passes_62_percent_of_the_screen() =>
+        WpfThread.Invoke(() =>
+        {
+            var world = new InteractionsWorld();
+            var sheet = new QuickSettingsSheet(world.QuickSettings);
+            sheet.ApplyScreenHeight(1000);
+            sheet.MaxHeight.ShouldBe(620);
+
+            sheet.FitHeight(300);
+            sheet.MaxHeight.ShouldBe(300);
+            sheet.FitHeight(2000);
+            sheet.MaxHeight.ShouldBe(620);
+            sheet.FitHeight(10);
+            sheet.MaxHeight.ShouldBe(120);
+        });
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
     [Trait("Req", "AJR-004")]
     public void A_tap_on_a_theme_option_saves_it_and_the_option_shows_selected() =>
         WpfThread.Invoke(() =>

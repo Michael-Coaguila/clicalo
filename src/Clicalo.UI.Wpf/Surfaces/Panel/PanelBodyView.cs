@@ -137,6 +137,21 @@ public sealed class PanelBodyView : StackPanel
             .Concat(Notices.TapTargets);
 
     /// <summary>
+    /// How much higher the grid is than one row of tiles, in device-independent pixels: the room it would give back to a
+    /// sheet above it (AJR-001). Zero while it shows one row or something else.
+    /// </summary>
+    public double GridSlack
+    {
+        get
+        {
+            var shape = _viewModel.Shape;
+            return ShortcutGrid.IsVisible && shape.Rows > 1
+                ? shape.HeightPx - GridMetrics.HeightOf(1, shape.TileHeightPx, shape.GapPx)
+                : 0;
+        }
+    }
+
+    /// <summary>
     /// Measures the space left for the grid and hands it to the view model (CUA-001: the rows that fit are
     /// <b>measured</b>, never estimated; CUA-003 decides from the same measure): from the top of the grid area down to
     /// 16 px above the bottom of the work area, less everything the window shows below the grid area. Call it after

@@ -9,7 +9,6 @@ using Clicalo.UI.Wpf.Pointer;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
 using GestureTarget = Clicalo.Domain.Touch.TouchTarget;
-using TouchTargetSize = Clicalo.UI.Wpf.Controls.TouchTarget;
 
 namespace Clicalo.UI.Wpf.Surfaces;
 
@@ -302,40 +301,8 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     /// The bounds of <paramref name="element"/> on screen, in physical pixels; with <paramref name="inflate"/>, grown
     /// around its center to at least 44 × 44 logical pixels (REG-02): where targets overlap, the nearest center wins.
     /// </summary>
-    protected static PhysicalRect PhysicalBounds(FrameworkElement element, bool inflate)
-    {
-        ArgumentNullException.ThrowIfNull(element);
-        if (!element.IsVisible || PresentationSource.FromVisual(element) is null)
-        {
-            return PhysicalRect.Empty;
-        }
-
-        var topLeft = element.PointToScreen(new Point(0, 0));
-        var bottomRight = element.PointToScreen(
-            new Point(element.ActualWidth, element.ActualHeight)
-        );
-        var rect = PhysicalRect.FromEdges(
-            (int)Math.Round(topLeft.X),
-            (int)Math.Round(topLeft.Y),
-            (int)Math.Round(bottomRight.X),
-            (int)Math.Round(bottomRight.Y)
-        );
-        if (!inflate || rect.IsEmpty)
-        {
-            return rect;
-        }
-
-        var scale = VisualTreeHelper.GetDpi(element).DpiScaleX;
-        var minimum = (int)Math.Ceiling(TouchTargetSize.MinimumSize * scale);
-        var width = Math.Max(rect.Width, minimum);
-        var height = Math.Max(rect.Height, minimum);
-        return new PhysicalRect(
-            rect.Left - ((width - rect.Width) / 2),
-            rect.Top - ((height - rect.Height) / 2),
-            width,
-            height
-        );
-    }
+    protected static PhysicalRect PhysicalBounds(FrameworkElement element, bool inflate) =>
+        TouchBounds.Of(element, inflate);
 
     private int IdOf(object key)
     {
