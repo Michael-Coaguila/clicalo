@@ -182,6 +182,41 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
         Invalidate();
     }
 
+    /// <summary>
+    /// [Compartir] of the profile card (DAT-007): saves <c>clicalo-perfil-&lt;id&gt;.json</c> where the person chooses.
+    /// The texts are left out, with a notice, unless the person chose [shareWithTexts] (PQ-37).
+    /// </summary>
+    /// <param name="withTexts">Whether to include the texts in clear.</param>
+    public async Task ShareAsync(bool withTexts)
+    {
+        if (_s.Templates is not { } templates || Profiles.Current is not { } profile)
+        {
+            return;
+        }
+
+        var file = templates.Sharing.Export(profile, withTexts);
+        var saved = await templates
+            .SaveShare(file.FileName, file.Content, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (saved is null)
+        {
+            return;
+        }
+
+        templates.Notify(
+            saved.Value
+                ? new WorkspaceNotice(
+                    file.ExcludedTexts > 0
+                        ? L.SharedTextsExcluded(file.ExcludedTexts)
+                        : L.ProfShared(name: file.FileName),
+                    "share",
+                    false,
+                    file.ExcludedTexts > 0
+                )
+                : new WorkspaceNotice(L.SaveFailT, "warning", false, true)
+        );
+    }
+
     /// <summary>🎤 of a field of the section (ACC-011).</summary>
     public void Dictate() => Editor.Dictate();
 
@@ -277,6 +312,12 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             : process.Value;
 
     private string T(Message message) => _s.Localization.Current.Format(message);
+
+    private static bool HasTexts(Profile profile) =>
+        profile.Shortcuts.Items.Any(s =>
+            s.Action is TextAction
+            || (s.Action is MacroAction macro && macro.Steps.Items.Any(step => step is TextStep))
+        );
 
     private async Task LoadAppsAsync()
     {
@@ -436,7 +477,9 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             T(L.ShareProf),
             T(L.Done),
             profile.Id == ProfileId.General ? null : T(armed ? L.DelConfirm : L.DelProf),
-            armed
+            armed,
+            _s.Templates is not null,
+            _s.Templates is not null && HasTexts(profile) ? T(L.ShareWithTexts) : null
         );
     }
 

@@ -80,6 +80,33 @@ PLA-008 al pie de la letra y no añade coste de operación mientras ningún requ
   solo esos 4 valores más la plantilla fija del *prompt* (criterio de M5).
 - Pruebas con `CannedTemplateGenerator` para los 6 tipos de fallo y el orden de estados de PLA-005.
 
+### Actualización del 2026-10-09: decisión D5 del usuario y proveedor
+
+El usuario decidió (D5, [catálogo §6.2](../requirements/catalog.md#62-decisiones-del-usuario)) que la IA funciona
+**solo con su propia clave**, sin servidor propio ni cuota gratuita. Esto resuelve la propuesta P3 en el sentido de
+este ADR: el proxy diferido no se construye mientras el usuario no lo pida con un ADR nuevo, y PLA-003 muestra el
+estado de la clave en lugar de la cuota. Al aplicarlo se fijó, por delegación del usuario:
+
+- **Proveedor:** Claude Haiku 5.5 (`claude-haiku-5-5`) de Anthropic, rápido y económico para una respuesta corta y
+  estructurada, con el SDK oficial para .NET (paquete `Anthropic` 12.50.0, propietario verificado «Anthropic» en
+  nuget.org y añadido a `trustedSigners` de `nuget.config`) detrás de `IChatClient` de Microsoft.Extensions.AI
+  (`AsIChatClient`). La dirección y la clave se fijan siempre en código, así que ninguna variable de entorno redirige
+  la petición ni añade una credencial; sin reintentos, porque el usuario reintenta desde la tarjeta de error.
+- **Cambio de proveedor:** `IAiProvider` (interno de `Infrastructure.Ai`) aísla el cliente, el modelo y la
+  clasificación de errores; `ByoKeyTemplateGenerator` y la interfaz no cambian.
+- **Clave:** `CredentialKeyStore` (`Platform.Windows/Secrets`) guarda la clave en el destino `Clicalo/ai/anthropic`
+  como credencial genérica del usuario, persistida solo en este equipo; con datos aislados (`--data`) la clave vive
+  solo en memoria.
+- **Contrato:** `data/schemas/ai-template.v1.schema.json`, autónomo (sin `$ref` a otros esquemas) para que un futuro
+  proxy pueda compartirlo sin Domain. `AiResponseReader` aplica las mismas reglas en código y
+  `TemplateSchema` (Domain.Templates) la validación semántica.
+- **Errores:** «offline» (sin red o 15 s sin respuesta), «nokey», «badkey» (401, 403 y 429), «unavailable» e
+  «invalid» (R-25 del catálogo).
+
+La confirmación prevista se cumple con `ByoKeyTemplateGeneratorTests`, que intercepta la petición HTTP del cliente
+real de Anthropic con un manejador falso y comprueba que el cuerpo lleva solo la instrucción fija y los 4 valores, y
+con `AiAssistantTests`, que recorre el orden de PLA-005 con un generador de respuestas fijas.
+
 ## Pros y contras de las opciones
 
 ### Clave propia y proxy diferido

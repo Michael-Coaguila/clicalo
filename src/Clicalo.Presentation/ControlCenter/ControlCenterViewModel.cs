@@ -1,11 +1,13 @@
 using System.Globalization;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.Presentation.ControlCenter.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter;
@@ -79,8 +81,14 @@ public sealed class ControlCenterViewModel : ObservableObject
             };
         }
 
+        Templates = services.Templates is { } templates
+            ? new TemplatesSectionViewModel(services, templates, OpenProfile)
+            : null;
         Refresh();
     }
+
+    /// <summary>The «Plantillas» section; null without its services.</summary>
+    public TemplatesSectionViewModel? Templates { get; }
 
     /// <summary>The «Atajos» section.</summary>
     public ShortcutsSectionViewModel Shortcuts { get; }
@@ -175,6 +183,12 @@ public sealed class ControlCenterViewModel : ObservableObject
             System?.OnShown();
         }
 
+        if (section == ControlCenterSection.Templates)
+        {
+            // The open apps and the key are read again each time the section shows (PLA-011, PLA-003).
+            Templates?.OnOpened();
+        }
+
         Refresh();
     }
 
@@ -213,6 +227,11 @@ public sealed class ControlCenterViewModel : ObservableObject
             return;
         }
 
+        if (Section == ControlCenterSection.Templates && Templates?.CloseMenu() == true)
+        {
+            return;
+        }
+
         _close();
     }
 
@@ -237,6 +256,7 @@ public sealed class ControlCenterViewModel : ObservableObject
     /// <summary>Projects the frame again (language, counts, undo).</summary>
     public void Refresh()
     {
+        Templates?.Invalidate();
         var localizer = _s.Localization.Current;
         AppName = T(L.AppName);
         Title = T(L.Cc);
@@ -285,6 +305,14 @@ public sealed class ControlCenterViewModel : ObservableObject
     }
 
     private string T(Message message) => _s.Localization.Current.Format(message);
+
+    // A profile created or chosen in Plantillas: «Atajos» on it, with the library when it is new (PLA-010, PLA-014).
+    private void OpenProfile(ProfileId profile, bool library)
+    {
+        _s.Shortcuts.Open(new ListRef.InProfile(profile), null, library);
+        Shortcuts.OnOpened();
+        Select(ControlCenterSection.Shortcuts);
+    }
 
     private NavItem Item(
         ControlCenterSection section,

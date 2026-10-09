@@ -51,6 +51,7 @@ internal static class CommandFactory
         typeof(MergeOnImport),
         typeof(RestoreBackup),
         typeof(FinishOnboarding),
+        typeof(AddShortcuts),
     ];
 
     /// <summary>Any seed.</summary>
@@ -142,6 +143,11 @@ internal static class CommandFactory
             nameof(ReplaceOnImport) => new ReplaceOnImport(Imported(library, b)),
             nameof(MergeOnImport) => new MergeOnImport(Imported(library, b)),
             nameof(RestoreBackup) => new RestoreBackup(Backup(document, b, c % 5 == 0)),
+            nameof(AddShortcuts) => new AddShortcuts(
+                PickProfile(library, a),
+                [TemplateAt(b), TemplateAt(c)],
+                "Perfil"
+            ),
             _ => new FinishOnboarding(),
         };
     }

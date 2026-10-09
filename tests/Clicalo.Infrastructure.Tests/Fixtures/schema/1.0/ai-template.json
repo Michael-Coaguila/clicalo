@@ -1,0 +1,29 @@
+{
+  "known": true,
+  "app": "WhatsApp",
+  "process": "WhatsApp.exe",
+  "icon": "chat",
+  "buttons": [
+    {
+      "name": { "es": "Nuevo chat", "en": "New chat" },
+      "icon": "add",
+      "keys": ["ctrl", "n"],
+      "cat": "file",
+      "confidence": 0.9
+    },
+    {
+      "name": { "es": "Buscar", "en": "Search" },
+      "icon": "search",
+      "keys": ["ctrl", "f"],
+      "cat": "sel",
+      "confidence": 0.8
+    },
+    {
+      "name": { "es": "Cerrar chat", "en": "Close chat" },
+      "icon": "close",
+      "keys": ["ctrl", "w"],
+      "cat": "win",
+      "confidence": 0.6
+    }
+  ]
+}

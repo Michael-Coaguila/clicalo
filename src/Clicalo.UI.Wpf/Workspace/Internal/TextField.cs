@@ -116,6 +116,10 @@ internal sealed class TextField : Border
         }
     }
 
+    /// <summary>Changes the placeholder (the language changed).</summary>
+    /// <param name="placeholder">The placeholder; empty for none.</param>
+    public void SetPlaceholder(string placeholder) => _placeholder.Text = placeholder;
+
     /// <summary>Paints the outline warn (an invalid address, EDI-014) or as usual.</summary>
     /// <param name="warn">Whether to warn.</param>
     public void Warn(bool warn)

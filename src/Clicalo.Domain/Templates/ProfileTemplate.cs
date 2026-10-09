@@ -20,4 +20,16 @@ public sealed record ProfileTemplate(
     IconRef Icon,
     ValueList<ProcessName> Processes,
     ValueList<TemplateShortcut> Shortcuts
-);
+)
+{
+    /// <summary>
+    /// The programs languages whose shortcuts were reviewed (<c>appsLanguages</c>); empty means every language. The
+    /// preview warns [onlyEs] when the programs language is not one of them (PLA-015).
+    /// </summary>
+    public ValueList<LangCode> AppsLanguages { get; init; } = [];
+
+    /// <summary>Whether the shortcuts were reviewed for <paramref name="appsLanguage"/>.</summary>
+    /// <param name="appsLanguage">The programs language of the keyboard settings (PLA-009).</param>
+    public bool IsReviewedFor(LangCode appsLanguage) =>
+        AppsLanguages.IsEmpty || AppsLanguages.Items.Contains(appsLanguage);
+}
