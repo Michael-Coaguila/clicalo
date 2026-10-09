@@ -5,6 +5,7 @@ using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
+using Clicalo.Presentation.ControlCenter.SystemSection;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter;
@@ -60,11 +61,32 @@ public sealed class ControlCenterViewModel : ObservableObject
                 Refresh();
             }
         };
+        if (services.System is { } system)
+        {
+            System = new SystemSectionViewModel(services, system);
+            System.PropertyChanged += (_, e) =>
+            {
+                if (
+                    string.Equals(
+                        e.PropertyName,
+                        nameof(SystemSectionViewModel.UpdateCount),
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    Refresh();
+                }
+            };
+        }
+
         Refresh();
     }
 
     /// <summary>The «Atajos» section.</summary>
     public ShortcutsSectionViewModel Shortcuts { get; }
+
+    /// <summary>The «Sistema» section (docs/05 §5); null while its services are not composed.</summary>
+    public SystemSectionViewModel? System { get; }
 
     /// <summary>The section in view.</summary>
     public ControlCenterSection Section
@@ -148,6 +170,11 @@ public sealed class ControlCenterViewModel : ObservableObject
     public void Select(ControlCenterSection section)
     {
         Section = section;
+        if (section == ControlCenterSection.System)
+        {
+            System?.OnShown();
+        }
+
         Refresh();
     }
 
@@ -177,6 +204,11 @@ public sealed class ControlCenterViewModel : ObservableObject
     public void Escape()
     {
         if (Section == ControlCenterSection.Shortcuts && Shortcuts.CloseMenu())
+        {
+            return;
+        }
+
+        if (Section == ControlCenterSection.System && (System?.CloseMenu() ?? false))
         {
             return;
         }
@@ -219,7 +251,14 @@ public sealed class ControlCenterViewModel : ObservableObject
             Item(ControlCenterSection.Templates, "auto_awesome", L.NavTpl, 0, false),
             Item(ControlCenterSection.Panel, "display_settings", L.NavPanel, 0, false),
             Item(ControlCenterSection.Touch, "touch_app", L.NavTouch, 0, false),
-            Item(ControlCenterSection.System, "verified_user", L.NavSys, 0, true),
+            Item(
+                ControlCenterSection.System,
+                "verified_user",
+                L.NavSys,
+                System?.UpdateCount ?? 0,
+                true,
+                L.UpdAvail
+            ),
             Item(ControlCenterSection.About, "favorite", L.NavAbout2, 0, false),
         ];
         SectionTitle = Nav.Items.First(n => n.Section == Section).Label;
@@ -252,7 +291,8 @@ public sealed class ControlCenterViewModel : ObservableObject
         string icon,
         Message label,
         int count,
-        bool separator
+        bool separator,
+        Message? countName = null
     ) =>
         new(
             section,
@@ -260,7 +300,9 @@ public sealed class ControlCenterViewModel : ObservableObject
             T(label),
             count,
             count > 0
-                ? count.ToString(CultureInfo.InvariantCulture) + " " + T(L.DupSummary)
+                ? countName is { } name
+                    ? T(name)
+                    : count.ToString(CultureInfo.InvariantCulture) + " " + T(L.DupSummary)
                 : string.Empty,
             section == Section,
             separator
