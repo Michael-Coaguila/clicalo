@@ -8,6 +8,7 @@ using System.Windows.Media;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Templates;
 using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -187,6 +188,17 @@ public sealed class TemplatesSectionView : Grid
         return row;
     }
 
+    private static DockPanel Leading(double gap, FrameworkElement lead, UIElement fill)
+    {
+        var dock = new DockPanel { LastChildFill = true };
+        lead.Margin = new Thickness(0, 0, gap, 0);
+        lead.VerticalAlignment = VerticalAlignment.Top;
+        DockPanel.SetDock(lead, Dock.Left);
+        dock.Children.Add(lead);
+        dock.Children.Add(fill);
+        return dock;
+    }
+
     private static TextBlock SectionTitle(string text)
     {
         var title = Ui.Text(text.ToUpperInvariant(), 13, bold: true, ink: ColorToken.Muted);
@@ -269,7 +281,7 @@ public sealed class TemplatesSectionView : Grid
     {
         var heading = Ui.Text(model.Title, 18, bold: true, wrap: true);
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level3);
-        var top = Ui.Row(
+        var top = Leading(
             12,
             IconTile("auto_awesome", 44, ColorToken.Accent, ColorToken.OnAccent),
             Ui.Column(2, heading, Ui.Text(model.Description, 13, ink: ColorToken.Muted, wrap: true))
@@ -542,7 +554,7 @@ public sealed class TemplatesSectionView : Grid
             var content = new DockPanel { LastChildFill = true };
             if (option.Detected)
             {
-                var tag = Ui.Text(detected, 10, bold: true, ink: ColorToken.Accent);
+                var tag = Ui.Text(detected, 11, bold: true, ink: ColorToken.Accent);
                 DockPanel.SetDock(tag, Dock.Right);
                 content.Children.Add(tag);
             }
@@ -705,15 +717,24 @@ public sealed class TemplatesSectionView : Grid
             CornerRadius = new CornerRadius(4),
         };
         Ui.Ink(dot, Border.BackgroundProperty, ColorToken.Warn);
-        var detect = Ui.SwitchRow(
-            null,
+        var knob = new ToggleSwitch
+        {
+            IsChecked = model.DetectOn,
+            IsHitTestVisible = false,
+            Focusable = false,
+            Margin = new Thickness(10, 0, 0, 0),
+        };
+        var detect = Ui.Choice(
+            Ui.Row(0, Ui.Text(model.DetectText, 13, ink: ColorToken.Muted), knob),
             model.DetectText,
-            string.Empty,
             model.DetectOn,
-            _viewModel.ToggleDetect
+            _viewModel.ToggleDetect,
+            radius: 22,
+            offFill: null
         );
-        detect.MinHeight = 44;
-        detect.Padding = new Thickness(10, 0, 10, 0);
+        detect.BorderThickness = new Thickness(0);
+        detect.Padding = new Thickness(10, 0, 4, 0);
+        CcChrome.Paint(detect, null, ColorToken.Text, null);
         var header = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(detect, Dock.Right);
         header.Children.Add(detect);
@@ -731,7 +752,7 @@ public sealed class TemplatesSectionView : Grid
                 model.InstallText,
                 () => _viewModel.InstallTemplate(card.Id)
             );
-            var info = Ui.Row(
+            var info = Leading(
                 14,
                 IconTile(card.Icon, 48, ColorToken.Side, ColorToken.Accent),
                 Ui.Column(
@@ -794,7 +815,7 @@ public sealed class TemplatesSectionView : Grid
                 () => _viewModel.InstallTemplate(card.Id)
             );
             AutomationProperties.SetName(install, screen.InstallText + " " + card.Name);
-            var top = Ui.Row(
+            var top = Leading(
                 10,
                 IconTile(card.Icon, 44, ColorToken.Side, ColorToken.Accent),
                 Ui.Column(
@@ -813,14 +834,18 @@ public sealed class TemplatesSectionView : Grid
             );
             open.Padding = new Thickness(14, 14, 14, 8);
             open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            var cardColumn = new Grid();
-            cardColumn.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            cardColumn.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            install.Margin = new Thickness(14, 0, 14, 14);
-            SetRow(install, 1);
-            cardColumn.Children.Add(open);
-            cardColumn.Children.Add(install);
-            grid.Children.Add(cardColumn);
+            open.BorderThickness = new Thickness(card.Selected ? 2 : 0);
+            install.Margin = new Thickness(14, 4, 14, 14);
+            grid.Children.Add(
+                Ui.Card(
+                    Ui.Column(0, open, install),
+                    card.Selected ? ColorToken.CardHi : ColorToken.Card,
+                    card.Selected ? ColorToken.Accent : ColorToken.Border,
+                    14,
+                    new Thickness(0),
+                    card.Selected ? 2 : 1
+                )
+            );
         }
 
         column.Children.Add(grid);
@@ -892,7 +917,7 @@ public sealed class TemplatesSectionView : Grid
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level3);
         var column = Ui.Column(
             12,
-            Ui.Row(
+            Leading(
                 10,
                 IconTile(model.Icon, 44, ColorToken.Card, ColorToken.Accent),
                 Ui.Column(
