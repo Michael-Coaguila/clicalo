@@ -64,6 +64,8 @@ public sealed class StringsParityTests
                 // Texts of the M3 Tab view (prototype formats and scroll tools without a key, catalog §6.1).
                 "coachStep",
                 "dataUnreadable",
+                // Texts of the M3 Quick settings, edit mode, context menu and test mode (catalog §6.1).
+                "delA",
                 "dockPageOf",
                 "dockScrollDown",
                 "dockScrollUp",
@@ -73,6 +75,7 @@ public sealed class StringsParityTests
                 "generalFixed",
                 "guardianUnstable",
                 "handleLock",
+                "hideA",
                 "hidePanel",
                 "importInvalid",
                 "importTooLarge",
@@ -87,6 +90,9 @@ public sealed class StringsParityTests
                 "kitBasicsD",
                 "macroCancelled",
                 "macroRunning",
+                "opLess",
+                "opMore",
+                "pinLimit",
                 "processTaken",
                 "profAutoOn",
                 "profLockedOn",
@@ -101,8 +107,12 @@ public sealed class StringsParityTests
                 "settingInvalid",
                 "sharedTextsExcluded",
                 "stepDeleted",
+                "szL",
+                "szM",
+                "szS",
                 "tapSent",
                 "textUnavailable",
+                "tmLeft",
                 "trayHidden",
                 "undoEditsIn",
             ]);
@@ -116,8 +126,10 @@ public sealed class StringsParityTests
                 "comboN",
                 "dupHead",
                 "instNoteSome",
+                "pinLimit",
                 "sharedTextsExcluded",
                 "sugLine",
+                "tmLeft",
                 "twMacro",
             ]);
     }
