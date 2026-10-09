@@ -626,6 +626,26 @@
           "description": "Longest shortcut name accepted from an AI proposal.",
           "req": ["PLA-008"],
           "source": "blueprint §9.2"
+        },
+        "AiAppNameMaxLength": {
+          "count": 60,
+          "description": "Longest program name the AI field sends (PLA-008); longer text is cut.",
+          "req": ["PLA-008", "LOG-006"]
+        },
+        "AiMaxShortcuts": {
+          "count": 24,
+          "description": "Most shortcuts accepted from an AI proposal; more makes the answer invalid.",
+          "req": ["PLA-008", "LOG-006"]
+        },
+        "AiResponseMaxBytes": {
+          "bytes": "64KiB",
+          "description": "Largest AI answer read; a larger one is invalid.",
+          "req": ["LOG-006"]
+        },
+        "AiMaxOutputTokens": {
+          "count": 4000,
+          "description": "Output token ceiling of a template generation; a proposal of 24 shortcuts fits well below it.",
+          "req": ["PLA-008"]
         }
       }
     },
