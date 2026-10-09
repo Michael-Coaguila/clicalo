@@ -26,13 +26,15 @@ public sealed class ShellExecutor : IShellExecutor, IDisposable
 
     private readonly ShellThread _thread;
     private readonly bool _selfElevated;
+    private readonly Action<Exception>? _onFailure;
 
     /// <summary>Starts the Shell thread.</summary>
     /// <param name="selfElevated">Clícalo runs elevated: launches go through the desktop shell, unelevated.</param>
-    /// <param name="onFailure">Hears an unexpected failure of a work item (the caller logs its type).</param>
+    /// <param name="onFailure">Hears an unexpected failure (the caller logs its type); the engine still gets an answer.</param>
     public ShellExecutor(bool selfElevated, Action<Exception>? onFailure = null)
     {
         _selfElevated = selfElevated;
+        _onFailure = onFailure;
         _thread = new ShellThread(onFailure);
     }
 
@@ -41,7 +43,24 @@ public sealed class ShellExecutor : IShellExecutor, IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(replyTo);
-        _thread.Post(() => replyTo.Post(Start(effect, request)));
+        _thread.Post(() =>
+        {
+            EngineEvent result;
+            try
+            {
+                result = Start(effect, request);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _onFailure?.Invoke(ex);
+                result = new EngineEvent.LaunchFailed(
+                    effect,
+                    Failed("launch.failed", L.ActionFailed(DisplayName(request)))
+                );
+            }
+
+            _ = replyTo.Post(result);
+        });
     }
 
     /// <inheritdoc />
@@ -49,10 +68,19 @@ public sealed class ShellExecutor : IShellExecutor, IDisposable
     {
         ArgumentNullException.ThrowIfNull(replyTo);
         _thread.Post(() =>
-            replyTo.Post(
-                new EngineEvent.SystemCommandCompleted(effect, SystemCommandRunner.Run(command))
-            )
-        );
+        {
+            var succeeded = false;
+            try
+            {
+                succeeded = SystemCommandRunner.Run(command);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _onFailure?.Invoke(ex);
+            }
+
+            _ = replyTo.Post(new EngineEvent.SystemCommandCompleted(effect, succeeded));
+        });
     }
 
     /// <inheritdoc />
