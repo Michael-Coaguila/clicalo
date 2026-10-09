@@ -8,6 +8,7 @@ using Clicalo.App.SingleInstance;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Foreground;
+using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
@@ -313,11 +314,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                         )
                     )
                 );
-                if (change.Before.Settings.Language != change.After.Settings.Language)
-                {
-                    // IDI-001: the language switches in place; LanguageChanged repaints below.
-                    _ = localization.TrySetLanguage(change.After.Settings.Language.Value);
-                }
             }
 
             _ = _application!.Dispatcher.BeginInvoke(() =>
@@ -331,12 +327,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 composer.OnDocumentChanged(change);
             });
         };
-        localization.LanguageChanged += (_, _) =>
-            _ = _application!.Dispatcher.BeginInvoke(() =>
-            {
-                composer.Relocalize();
-                _ = _tray?.RelocalizeAsync();
-            });
+        // IDI-001: the lang setting is the single source; every window repaints its texts in place on its own thread.
+        var language = new LanguageFollower(localization, store);
+        Track(language.Dispose);
+        void OnUiThread(Action work) => _ = _application!.Dispatcher.BeginInvoke(work);
+        _ = language.Register(composer.Relocalize, OnUiThread);
+        _ = language.Register(() => _ = _tray?.RelocalizeAsync(), OnUiThread);
         relay.SnapshotChanged += (_, change) =>
         {
             viewModel.ApplyEngine(change.Snapshot);
@@ -346,6 +342,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         relay.UsageCounted += (_, counted) =>
         {
             _ = store.Dispatch(new RecordUsage(counted.Shortcut));
+            composer.FlashTile(counted.Shortcut);
             composer.OnActionRan();
         };
         relay.NoticeRaised += (_, notice) => composer.OnEngineNotice(notice);
@@ -443,7 +440,20 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var tray = services.GetRequiredService<TrayController>();
         var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
         var ui = _application!.Dispatcher;
-        tray.ShowHideRequested += (_, _) => _ = ui.BeginInvoke(visibility.Toggle);
+        var interaction = services.GetRequiredService<InteractionStore>();
+        tray.ShowHideRequested += (_, _) =>
+            _ = ui.BeginInvoke(() =>
+            {
+                // BUR-003: a click on the tray with the bubble on screen brings the panel back.
+                if (visibility.IsVisible && interaction.Current.Minimized)
+                {
+                    _ = interaction.Dispatch(new InteractionAction.Restore());
+                }
+                else
+                {
+                    visibility.Toggle();
+                }
+            });
         tray.ExitRequested += (_, _) => _ = ui.BeginInvoke(() => _ = ExitAsync());
         // «Soltar todo» works with a hung engine too: what Windows reports down goes up without the engine (ADR-0023).
         var release = services.GetRequiredService<EngineAdapterSet>().PressedRelease;

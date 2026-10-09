@@ -130,6 +130,8 @@ public static class PanelProjector
         action switch
         {
             HoldAction => TileBehavior.Hold,
+            // The engine repeats a scroll while the finger rests on it, as a Hold (EJE-009).
+            MouseAction mouse when MouseOps.RepeatsWhileHeld(mouse.Op) => TileBehavior.Hold,
             ToggleAction => TileBehavior.Toggle,
             _ => TileBehavior.Tap,
         };

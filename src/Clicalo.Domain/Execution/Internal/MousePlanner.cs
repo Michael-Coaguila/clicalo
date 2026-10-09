@@ -16,8 +16,7 @@ namespace Clicalo.Domain.Execution.Internal;
 internal static class MousePlanner
 {
     /// <summary>Whether <paramref name="op"/> repeats while held (the four scroll directions).</summary>
-    public static bool IsScroll(MouseOp op) =>
-        op is MouseOp.ScrollUp or MouseOp.ScrollDown or MouseOp.ScrollLeft or MouseOp.ScrollRight;
+    public static bool IsScroll(MouseOp op) => MouseOps.RepeatsWhileHeld(op);
 
     /// <summary>A click, a drag toggle or one scroll step started by a tap or an invocation.</summary>
     public static void Plan(
