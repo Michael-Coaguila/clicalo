@@ -446,7 +446,9 @@ public sealed class CommandTests
 
         change.Next.Library.ShouldBeSameAs(merged);
         change.Next.Settings.ShouldBe(Document.Settings);
-        change.Undo.ShouldBeOfType<UndoIntent.Record>().Label.ShouldBe(Clicalo.Domain.Messages.L.ImpMerged.Key);
+        change
+            .Undo.ShouldBeOfType<UndoIntent.Record>()
+            .Label.ShouldBe(Clicalo.Domain.Messages.L.ImpMerged.Key);
         change.Backup.ShouldBe(new BackupRequirement.BeforeApply(BackupKind.PreImportReplace));
         change.Events.ShouldBe([new LibraryReplaced()]);
     }

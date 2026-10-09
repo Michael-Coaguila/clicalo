@@ -5,9 +5,4 @@ namespace Clicalo.Presentation.ControlCenter.SystemSection;
 /// <param name="Description">[reopenAdminD], or [adminActive] when Clícalo already runs elevated.</param>
 /// <param name="Button">[reopenBtn].</param>
 /// <param name="CanReopen">Whether the button shows: not when already elevated nor while asking Windows.</param>
-public sealed record AdminRowModel(
-    string Title,
-    string Description,
-    string Button,
-    bool CanReopen
-);
+public sealed record AdminRowModel(string Title, string Description, string Button, bool CanReopen);

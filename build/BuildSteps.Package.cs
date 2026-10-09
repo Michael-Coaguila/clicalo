@@ -52,8 +52,16 @@ internal sealed partial class BuildSteps
                 Directory.CreateDirectory(output);
 
                 // Sentinel first: Clícalo's own copies of the shared files are the ones that stay.
-                await PublishProjectAsync(SentinelProject, publish, PackageProperties(options, aot: false));
-                await PublishProjectAsync(AppProject, publish, PackageProperties(options, aot: null));
+                await PublishProjectAsync(
+                    SentinelProject,
+                    publish,
+                    PackageProperties(options, aot: false)
+                );
+                await PublishProjectAsync(
+                    AppProject,
+                    publish,
+                    PackageProperties(options, aot: null)
+                );
             }
         );
         await context.Steps.RunAsync(
@@ -67,7 +75,12 @@ internal sealed partial class BuildSteps
                     ReleaseNotesWriter.Write(options.Version, await CommitDateAsync(), Fragments()),
                     new UTF8Encoding(false)
                 );
-                List<string> pack = PackArguments(options, layout.Relative(publish!), layout.Relative(output), layout.Relative(notes));
+                List<string> pack = PackArguments(
+                    options,
+                    layout.Relative(publish!),
+                    layout.Relative(output),
+                    layout.Relative(notes)
+                );
                 var result = await ReadAsync(pack);
                 if (result.ExitCode != 0)
                 {
@@ -91,8 +104,15 @@ internal sealed partial class BuildSteps
 
                 var setup = Directory
                     .EnumerateFiles(output, "*Setup.exe")
-                    .Where(file => file.Contains("-" + options.Channel + "-", StringComparison.OrdinalIgnoreCase))
-                    .DefaultIfEmpty(Path.Combine(output, PackId + "-" + options.Channel + "-Setup.exe"))
+                    .Where(file =>
+                        file.Contains(
+                            "-" + options.Channel + "-",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    .DefaultIfEmpty(
+                        Path.Combine(output, PackId + "-" + options.Channel + "-Setup.exe")
+                    )
                     .First();
                 context.AddNote(Messages.PackageDone(layout.Relative(setup)));
             }

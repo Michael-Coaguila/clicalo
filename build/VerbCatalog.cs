@@ -40,7 +40,22 @@ internal static class VerbCatalog
     /// to people.
     /// </summary>
     public static IReadOnlyList<string> Available { get; } =
-    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli, Run, Note, Perf, Quarantine, Package];
+    [
+        Setup,
+        Build,
+        Fast,
+        Test,
+        Desk,
+        Fix,
+        Check,
+        Clean,
+        .. DevCli,
+        Run,
+        Note,
+        Perf,
+        Quarantine,
+        Package,
+    ];
 
     /// <summary>Verbs of later milestones (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =

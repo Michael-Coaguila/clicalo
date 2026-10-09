@@ -51,7 +51,10 @@ public sealed class UpdateFormatsTests
         var markdown = new StringBuilder("## es\n");
         for (var i = 0; i < ReleaseNotesParser.MaxItems + 5; i++)
         {
-            markdown.Append("- ").Append(new string('x', ReleaseNotesParser.MaxItemLength + 10)).Append('\n');
+            markdown
+                .Append("- ")
+                .Append(new string('x', ReleaseNotesParser.MaxItemLength + 10))
+                .Append('\n');
         }
 
         var notes = ReleaseNotesParser.Parse("2.0.0", markdown.ToString(), isNew: false);
@@ -59,17 +62,24 @@ public sealed class UpdateFormatsTests
         notes.In("es").Length.ShouldBe(ReleaseNotesParser.MaxItems);
         notes.In("es")[0].Length.ShouldBe(ReleaseNotesParser.MaxItemLength);
         ReleaseNotesParser.Parse("2.0.0", null, isNew: false).Items.ShouldBeEmpty();
-        ReleaseNotesParser.Parse("2.0.0", "<!-- date: mañana -->", isNew: false).Date.ShouldBeNull();
+        ReleaseNotesParser
+            .Parse("2.0.0", "<!-- date: mañana -->", isNew: false)
+            .Date.ShouldBeNull();
     }
 
     [Fact]
     [Trait("Req", "ACT-005")]
     public void The_update_state_round_trips_and_rejects_anything_else()
     {
-        var state = new UpdateState("2.1.0", "2.0.0", new DateTimeOffset(2026, 10, 9, 10, 0, 0, TimeSpan.Zero));
+        var state = new UpdateState(
+            "2.1.0",
+            "2.0.0",
+            new DateTimeOffset(2026, 10, 9, 10, 0, 0, TimeSpan.Zero)
+        );
 
         UpdateStateFile.Parse(UpdateStateFile.Write(state)).ShouldBe(state);
-        UpdateStateFile.Parse(UpdateStateFile.Write(new UpdateState("2.0.0", null, null)))
+        UpdateStateFile
+            .Parse(UpdateStateFile.Write(new UpdateState("2.0.0", null, null)))
             .ShouldBe(new UpdateState("2.0.0", null, null));
         UpdateStateFile.Parse("not json"u8).ShouldBeNull();
         UpdateStateFile.Parse("[1,2]"u8).ShouldBeNull();

@@ -23,8 +23,7 @@ internal sealed class VelopackUpdateClient(string repository, bool enabled) : IU
     public bool IsInstalled => _installed?.IsInstalled ?? false;
 
     /// <inheritdoc />
-    public string CurrentVersion =>
-        _installed?.CurrentVersion?.ToString() ?? ThisAssembly();
+    public string CurrentVersion => _installed?.CurrentVersion?.ToString() ?? ThisAssembly();
 
     /// <inheritdoc />
     public string? CurrentNotes
@@ -37,7 +36,8 @@ internal sealed class VelopackUpdateClient(string repository, bool enabled) : IU
                     ? VelopackLocator.Current.GetLatestLocalFullPackage()?.NotesMarkdown
                     : null;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            catch (Exception ex)
+                when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
             {
                 return null;
             }
@@ -55,9 +55,13 @@ internal sealed class VelopackUpdateClient(string repository, bool enabled) : IU
         UpdateInfo? info;
         try
         {
-            info = await manager.CheckForUpdatesAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+            info = await manager
+                .CheckForUpdatesAsync()
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not OperationCanceledException)
+        catch (Exception ex)
+            when (ex is not OutOfMemoryException and not OperationCanceledException)
         {
             throw new UpdateFailedException(UpdateError.Offline, ex);
         }
@@ -143,7 +147,9 @@ internal sealed class VelopackUpdateClient(string repository, bool enabled) : IU
     {
         try
         {
-            return new UpdateManager(new GithubSource(repository, accessToken: null, prerelease: false));
+            return new UpdateManager(
+                new GithubSource(repository, accessToken: null, prerelease: false)
+            );
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {

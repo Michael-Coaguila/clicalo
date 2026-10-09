@@ -68,7 +68,8 @@ internal static class Messages
     public const string NotePurpose = "nota de novedades para usuarios";
     public const string PublishPurpose = "publicación de las variantes de arranque (S5)";
     public const string PerfPurpose = "mediciones de rendimiento en el escritorio";
-    public const string PackagePublishPurpose = "publicación autocontenida de Clícalo y Sentinel para el paquete";
+    public const string PackagePublishPurpose =
+        "publicación autocontenida de Clícalo y Sentinel para el paquete";
     public const string PackagePurpose = "empaquetado con Velopack";
 
     public static string DevCliPurpose(string verb) =>

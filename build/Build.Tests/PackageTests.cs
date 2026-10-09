@@ -22,7 +22,9 @@ public sealed class PackageTests
     [InlineData("--sign", "yes")]
     public void Wrong_options_are_refused_with_the_usage(string option, string value)
     {
-        PackageOptions.TryParse([option, value], "2.0.0", out var options, out var error).ShouldBeFalse();
+        PackageOptions
+            .TryParse([option, value], "2.0.0", out var options, out var error)
+            .ShouldBeFalse();
         options.ShouldBeNull();
         error.ShouldContain("cl package");
     }
@@ -36,7 +38,9 @@ public sealed class PackageTests
     [Fact]
     public void The_version_prefix_comes_from_Directory_Build_props() =>
         PackageOptions
-            .VersionPrefixOf("<Project><PropertyGroup><VersionPrefix>2.1.0</VersionPrefix></PropertyGroup></Project>")
+            .VersionPrefixOf(
+                "<Project><PropertyGroup><VersionPrefix>2.1.0</VersionPrefix></PropertyGroup></Project>"
+            )
             .ShouldBe("2.1.0");
 
     [Fact]
@@ -44,16 +48,27 @@ public sealed class PackageTests
     {
         var options = new PackageOptions("beta", "2.0.0-beta.1");
 
-        BuildSteps.PackageProperties(options, aot: null)
-            .ShouldBe(["--self-contained", "true", "-p:PublishReadyToRun=true", "-p:Version=2.0.0-beta.1"]);
-        BuildSteps.PackageProperties(options, aot: false).ShouldContain("-p:PublishAot=false", StringComparer.Ordinal);
+        BuildSteps
+            .PackageProperties(options, aot: null)
+            .ShouldBe([
+                "--self-contained",
+                "true",
+                "-p:PublishReadyToRun=true",
+                "-p:Version=2.0.0-beta.1",
+            ]);
+        BuildSteps
+            .PackageProperties(options, aot: false)
+            .ShouldContain("-p:PublishAot=false", StringComparer.Ordinal);
         var publish = BuildSteps.PublishArguments(
             BuildSteps.SentinelProject,
             "out",
             BuildSteps.PackageProperties(options, aot: false)
         );
         publish.ShouldNotContain("-r", StringComparer.Ordinal);
-        publish.ShouldContain("-p:ClicaloRuntimeIdentifier=" + BuildSteps.RuntimeIdentifier, StringComparer.Ordinal);
+        publish.ShouldContain(
+            "-p:ClicaloRuntimeIdentifier=" + BuildSteps.RuntimeIdentifier,
+            StringComparer.Ordinal
+        );
     }
 
     [Fact]

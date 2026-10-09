@@ -11,7 +11,8 @@ internal sealed class FakeUpdateClient : IUpdateClient
 
     public string CurrentVersion { get; set; } = "2.0.0";
 
-    public string? CurrentNotes { get; set; } = "## es\n- Versión instalada\n## en\n- Installed version\n";
+    public string? CurrentNotes { get; set; } =
+        "## es\n- Versión instalada\n## en\n- Installed version\n";
 
     /// <summary>The versions per channel, as the release feed lists them.</summary>
     public Dictionary<UpdateChannel, List<string>> Feed { get; } =
@@ -41,21 +42,33 @@ internal sealed class FakeUpdateClient : IUpdateClient
 
         var versions = Feed[channel];
         var version = exactVersion is null
-            ? versions.OrderBy(v => v, Comparer<string>.Create(VersionOrder.Compare)).LastOrDefault()
-            : versions.FirstOrDefault(v => string.Equals(v, exactVersion, StringComparison.Ordinal));
+            ? versions
+                .OrderBy(v => v, Comparer<string>.Create(VersionOrder.Compare))
+                .LastOrDefault()
+            : versions.FirstOrDefault(v =>
+                string.Equals(v, exactVersion, StringComparison.Ordinal)
+            );
         return Task.FromResult(
             version is null
                 ? null
                 : new UpdateOffer(
                     version,
                     VersionOrder.Compare(version, CurrentVersion) < 0,
-                    "<!-- date: 2026-10-01 -->\n## es\n- Novedad de " + version + "\n## en\n- News of " + version + "\n",
+                    "<!-- date: 2026-10-01 -->\n## es\n- Novedad de "
+                        + version
+                        + "\n## en\n- News of "
+                        + version
+                        + "\n",
                     null
                 )
         );
     }
 
-    public Task DownloadAsync(UpdateOffer offer, Action<int> progress, CancellationToken cancellationToken)
+    public Task DownloadAsync(
+        UpdateOffer offer,
+        Action<int> progress,
+        CancellationToken cancellationToken
+    )
     {
         if (DownloadFails is { } error)
         {

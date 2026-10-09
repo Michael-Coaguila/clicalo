@@ -35,7 +35,9 @@ internal static class ReleaseNotesParser
             var line = raw.Trim();
             if (line.StartsWith(DateMarker, StringComparison.OrdinalIgnoreCase))
             {
-                var value = line[DateMarker.Length..].Replace("-->", string.Empty, StringComparison.Ordinal).Trim();
+                var value = line[DateMarker.Length..]
+                    .Replace("-->", string.Empty, StringComparison.Ordinal)
+                    .Trim();
                 if (
                     DateOnly.TryParseExact(
                         value,

@@ -36,7 +36,11 @@ internal interface IUpdateClient
     /// <param name="progress">Percent, 0 to 100.</param>
     /// <param name="cancellationToken">Cancels the download.</param>
     /// <exception cref="UpdateFailedException">The download failed or the package is damaged.</exception>
-    Task DownloadAsync(UpdateOffer offer, Action<int> progress, CancellationToken cancellationToken);
+    Task DownloadAsync(
+        UpdateOffer offer,
+        Action<int> progress,
+        CancellationToken cancellationToken
+    );
 
     /// <summary>Starts the updater, which waits for this process to end, installs and starts the new version.</summary>
     /// <param name="offer">The downloaded package.</param>

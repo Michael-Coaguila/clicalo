@@ -165,7 +165,12 @@ public sealed class SystemSectionViewModel : ObservableObject
         }
 
         _ = _s.Store.Dispatch(new SetSetting(SettingPaths.UpdatesChannel, channel));
-        if (_sys.Updates.Status.Phase is UpdatePhase.UpToDate or UpdatePhase.Found or UpdatePhase.Failed)
+        if (
+            _sys.Updates.Status.Phase
+            is UpdatePhase.UpToDate
+                or UpdatePhase.Found
+                or UpdatePhase.Failed
+        )
         {
             _ = Guard(() => _sys.Updates.CheckAsync(CancellationToken.None));
         }
@@ -184,7 +189,9 @@ public sealed class SystemSectionViewModel : ObservableObject
         switch (_s.Confirm.Tap(new ConfirmationSubject(UpdateStatus.RollbackOperation, version)))
         {
             case TwoStepResult.Confirmed confirmed:
-                _ = Guard(() => _sys.Updates.RollbackAsync(confirmed.Token, CancellationToken.None));
+                _ = Guard(() =>
+                    _sys.Updates.RollbackAsync(confirmed.Token, CancellationToken.None)
+                );
                 break;
             case TwoStepResult.Armed armed:
                 Rearm(armed);
@@ -553,7 +560,8 @@ public sealed class SystemSectionViewModel : ObservableObject
                 .. status.Notes.Select(notes => new NotesModel(
                     notes.Version,
                     notes.Date is { } date
-                        ? date.ToString("MMM yyyy", Culture).Replace(".", string.Empty, StringComparison.Ordinal)
+                        ? date.ToString("MMM yyyy", Culture)
+                            .Replace(".", string.Empty, StringComparison.Ordinal)
                         : string.Empty,
                     notes.IsNew ? T(L.NewBadge) : string.Empty,
                     [.. notes.In(language)]
@@ -682,13 +690,21 @@ public sealed class SystemSectionViewModel : ObservableObject
             _pick is { } pick
                 ? new ImportCardModel(
                     T(L.ImpT),
-                    T(L.ImpSummary(version: pick.Version, count: pick.Profiles, total: pick.Shortcuts)),
+                    T(
+                        L.ImpSummary(
+                            version: pick.Version,
+                            count: pick.Profiles,
+                            total: pick.Shortcuts
+                        )
+                    ),
                     pick.UnavailableTexts > 0
                         ? T(L.ImpTextsLost(count: pick.UnavailableTexts))
                         : string.Empty,
                     T(L.ImpMerge),
                     T(L.ImpMergeD),
-                    IsArmed(nameof(ReplaceOnImport), pick.Version) ? T(L.ConfirmB) : T(L.ImpReplace),
+                    IsArmed(nameof(ReplaceOnImport), pick.Version)
+                        ? T(L.ConfirmB)
+                        : T(L.ImpReplace),
                     T(L.ImpReplaceD),
                     IsArmed(nameof(ReplaceOnImport), pick.Version)
                 )
@@ -751,13 +767,18 @@ public sealed class SystemSectionViewModel : ObservableObject
             return L.WhenToday(time: time);
         }
 
-        if (DateOnly.FromDateTime(today).DayNumber - DateOnly.FromDateTime(local.Date).DayNumber == 1)
+        if (
+            DateOnly.FromDateTime(today).DayNumber - DateOnly.FromDateTime(local.Date).DayNumber
+            == 1
+        )
         {
             return L.WhenYesterday(time: time);
         }
 
         return L.WhenDate(
-            date: local.ToString("d MMM", Culture).Replace(".", string.Empty, StringComparison.Ordinal),
+            date: local
+                .ToString("d MMM", Culture)
+                .Replace(".", string.Empty, StringComparison.Ordinal),
             time: time
         );
     }

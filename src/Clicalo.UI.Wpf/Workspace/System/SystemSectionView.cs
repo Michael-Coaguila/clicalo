@@ -35,7 +35,13 @@ public sealed class SystemSectionView : Border
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (string.Equals(e.PropertyName, nameof(SystemSectionViewModel.Screen), StringComparison.Ordinal))
+        if (
+            string.Equals(
+                e.PropertyName,
+                nameof(SystemSectionViewModel.Screen),
+                StringComparison.Ordinal
+            )
+        )
         {
             Render();
         }
@@ -57,7 +63,13 @@ public sealed class SystemSectionView : Border
         };
         var inner = new Border { Child = body, Padding = new Thickness(20) };
         Ui.Ink(inner, BackgroundProperty, ColorToken.Win);
-        var card = Ui.Card(Ui.Column(0, Tabs(screen), inner), null, ColorToken.Border, 16, new Thickness(0));
+        var card = Ui.Card(
+            Ui.Column(0, Tabs(screen), inner),
+            null,
+            ColorToken.Border,
+            16,
+            new Thickness(0)
+        );
         card.ClipToBounds = true;
         _content.Content = Ui.Column(20, heading, card);
     }
@@ -67,21 +79,38 @@ public sealed class SystemSectionView : Border
         var tabs = new List<UIElement>();
         foreach (var tab in screen.Tabs)
         {
-            var iconFill = tab.Warn ? ColorToken.WarnWash
+            var iconFill =
+                tab.Warn ? ColorToken.WarnWash
                 : tab.Selected ? ColorToken.Accent
                 : ColorToken.Card;
-            var iconInk = tab.Warn ? ColorToken.Warn
+            var iconInk =
+                tab.Warn ? ColorToken.Warn
                 : tab.Selected ? ColorToken.OnAccent
                 : ColorToken.Muted;
-            var icon = Ui.Card(Ui.Icon(tab.Icon, 22, iconInk), iconFill, null, 11, new Thickness(0));
+            var icon = Ui.Card(
+                Ui.Icon(tab.Icon, 22, iconInk),
+                iconFill,
+                null,
+                11,
+                new Thickness(0)
+            );
             icon.Width = 40;
             icon.Height = 40;
             var texts = Ui.Column(
                 2,
-                Ui.Text(tab.Label, 15, bold: true, ink: tab.Selected ? ColorToken.Text : ColorToken.Muted),
+                Ui.Text(
+                    tab.Label,
+                    15,
+                    bold: true,
+                    ink: tab.Selected ? ColorToken.Text : ColorToken.Muted
+                ),
                 Ui.Text(tab.Status, 13, ink: tab.Warn ? ColorToken.Warn : ColorToken.Muted)
             );
-            var chevron = Ui.Icon(tab.Selected ? "expand_less" : "expand_more", 20, ColorToken.Muted);
+            var chevron = Ui.Icon(
+                tab.Selected ? "expand_less" : "expand_more",
+                20,
+                ColorToken.Muted
+            );
             var row = new DockPanel { LastChildFill = true };
             DockPanel.SetDock(icon, Dock.Left);
             row.Children.Add(icon);
@@ -116,7 +145,12 @@ public sealed class SystemSectionView : Border
                 VerticalContentAlignment = VerticalAlignment.Stretch,
                 MinHeight = 72,
             };
-            CcChrome.Paint(button, tab.Selected ? ColorToken.Win : ColorToken.Side, ColorToken.Text, ColorToken.Border);
+            CcChrome.Paint(
+                button,
+                tab.Selected ? ColorToken.Win : ColorToken.Side,
+                ColorToken.Text,
+                ColorToken.Border
+            );
             button.SetValue(CcChrome.RadiusProperty, new CornerRadius(0));
             AutomationProperties.SetName(button, tab.Label);
             AutomationProperties.SetItemStatus(button, tab.Status);
@@ -133,10 +167,12 @@ public sealed class SystemSectionView : Border
     private StackPanel Updates(UpdatesModel model)
     {
         var card = model.Card;
-        var iconFill = card.Warning ? ColorToken.DangerWash
+        var iconFill =
+            card.Warning ? ColorToken.DangerWash
             : card.Hot ? ColorToken.WarnWash
             : ColorToken.AccentWash;
-        var iconInk = card.Warning ? ColorToken.DangerText
+        var iconInk =
+            card.Warning ? ColorToken.DangerText
             : card.Hot ? ColorToken.Warn
             : ColorToken.Accent;
         var icon = Ui.Card(Ui.Icon(card.Icon, 26, iconInk), iconFill, null, 12, new Thickness(0));
@@ -144,9 +180,18 @@ public sealed class SystemSectionView : Border
         icon.Height = 48;
         var title = Ui.Text(card.Title, 18, bold: true, wrap: true);
         AutomationProperties.SetLiveSetting(title, AutomationLiveSetting.Polite);
-        var head = Ui.Row(12, icon, Ui.Column(2, title, Ui.Text(card.Subtitle, 13, ink: ColorToken.Muted, wrap: true)));
+        var head = Ui.Row(
+            12,
+            icon,
+            Ui.Column(2, title, Ui.Text(card.Subtitle, 13, ink: ColorToken.Muted, wrap: true))
+        );
         var button = Ui.Button(
-            Ui.Text(card.Button, 15, bold: true, ink: card.Hot ? ColorToken.OnAccent : ColorToken.Text),
+            Ui.Text(
+                card.Button,
+                15,
+                bold: true,
+                ink: card.Hot ? ColorToken.OnAccent : ColorToken.Text
+            ),
             card.Button,
             _viewModel.UpdateAction,
             card.Hot ? ColorToken.Accent : ColorToken.CardHi,
@@ -156,13 +201,24 @@ public sealed class SystemSectionView : Border
         button.BorderThickness = new Thickness(0);
         button.IsEnabled = card.ButtonEnabled;
         var cardColumn = Ui.Column(14, head, card.ShowBar ? Progress(card.Percent) : null, button);
-        var column = Ui.Column(10, Ui.Card(cardColumn, ColorToken.Card, null, 14, new Thickness(18)));
+        var column = Ui.Column(
+            10,
+            Ui.Card(cardColumn, ColorToken.Card, null, 14, new Thickness(18))
+        );
         for (var i = 0; i < model.Switches.Count; i++)
         {
             var index = i;
             var item = model.Switches[i];
             column.Children.Add(
-                Spaced(Ui.SwitchRow(item.Icon, item.Label, item.Description, item.On, () => _viewModel.ToggleUpdateSwitch(index)))
+                Spaced(
+                    Ui.SwitchRow(
+                        item.Icon,
+                        item.Label,
+                        item.Description,
+                        item.On,
+                        () => _viewModel.ToggleUpdateSwitch(index)
+                    )
+                )
             );
         }
 
@@ -183,12 +239,25 @@ public sealed class SystemSectionView : Border
 
     private static Border Progress(int percent)
     {
-        var fill = new Border { HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(4) };
+        var fill = new Border
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            CornerRadius = new CornerRadius(4),
+        };
         Ui.Ink(fill, BackgroundProperty, ColorToken.Accent);
-        var track = new Border { Height = 8, CornerRadius = new CornerRadius(4), Child = fill };
+        var track = new Border
+        {
+            Height = 8,
+            CornerRadius = new CornerRadius(4),
+            Child = fill,
+        };
         Ui.Ink(track, BackgroundProperty, ColorToken.CardHi);
-        track.SizeChanged += (_, e) => fill.Width = e.NewSize.Width * Math.Clamp(percent, 0, 100) / 100.0;
-        AutomationProperties.SetName(track, percent.ToString(System.Globalization.CultureInfo.CurrentCulture) + " %");
+        track.SizeChanged += (_, e) =>
+            fill.Width = e.NewSize.Width * Math.Clamp(percent, 0, 100) / 100.0;
+        AutomationProperties.SetName(
+            track,
+            percent.ToString(System.Globalization.CultureInfo.CurrentCulture) + " %"
+        );
         return track;
     }
 
@@ -198,7 +267,12 @@ public sealed class SystemSectionView : Border
         foreach (var option in model.Channels)
         {
             var button = Ui.Choice(
-                Ui.Text(option.Label, 14, bold: true, ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text),
+                Ui.Text(
+                    option.Label,
+                    14,
+                    bold: true,
+                    ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
+                ),
                 model.Channel + ": " + option.Label,
                 option.Selected,
                 () => _viewModel.SetChannel(option.Channel),
@@ -244,7 +318,13 @@ public sealed class SystemSectionView : Border
             notes.Date.Length == 0 ? null : Ui.Text(notes.Date, 12, ink: ColorToken.Muted),
             notes.NewBadge.Length == 0
                 ? null
-                : Ui.Card(Ui.Text(notes.NewBadge, 11, bold: true, ink: ColorToken.Warn), ColorToken.WarnWash, null, 5, new Thickness(6, 2, 6, 2))
+                : Ui.Card(
+                    Ui.Text(notes.NewBadge, 11, bold: true, ink: ColorToken.Warn),
+                    ColorToken.WarnWash,
+                    null,
+                    5,
+                    new Thickness(6, 2, 6, 2)
+                )
         );
         var column = Ui.Column(8, top);
         foreach (var item in notes.Items)
@@ -261,7 +341,12 @@ public sealed class SystemSectionView : Border
     private Border Rollback(RollbackModel rollback)
     {
         var button = Ui.Button(
-            Ui.Text(rollback.Button, 13, bold: true, ink: rollback.Armed ? ColorToken.OnWarn : ColorToken.Text),
+            Ui.Text(
+                rollback.Button,
+                13,
+                bold: true,
+                ink: rollback.Armed ? ColorToken.OnWarn : ColorToken.Text
+            ),
             rollback.Title,
             _viewModel.Rollback,
             rollback.Armed ? ColorToken.Warn : ColorToken.Card,
@@ -286,7 +371,14 @@ public sealed class SystemSectionView : Border
         }
 
         var now = Ui.Button(
-            Ui.IconLabel("backup", model.BackupNow, 20, 14, ink: ColorToken.OnAccent, iconInk: ColorToken.OnAccent),
+            Ui.IconLabel(
+                "backup",
+                model.BackupNow,
+                20,
+                14,
+                ink: ColorToken.OnAccent,
+                iconInk: ColorToken.OnAccent
+            ),
             model.BackupNow,
             _viewModel.BackupNow,
             ColorToken.Accent,
@@ -316,7 +408,9 @@ public sealed class SystemSectionView : Border
         }
 
         var actions = new Grid();
-        actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        actions.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
         actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         export.Margin = new Thickness(8, 0, 0, 0);
@@ -328,11 +422,31 @@ public sealed class SystemSectionView : Border
         actions.Children.Add(importButton);
         column.Children.Add(Spaced(actions));
         var auto = model.Auto;
-        column.Children.Add(Spaced(Ui.SwitchRow(auto.Icon, auto.Label, auto.Description, auto.On, _viewModel.ToggleAutoBackup)));
+        column.Children.Add(
+            Spaced(
+                Ui.SwitchRow(
+                    auto.Icon,
+                    auto.Label,
+                    auto.Description,
+                    auto.On,
+                    _viewModel.ToggleAutoBackup
+                )
+            )
+        );
         column.Children.Add(Spaced(Caption(model.History)));
         if (model.Rows.IsEmpty)
         {
-            column.Children.Add(Spaced(Ui.Card(Ui.Text(model.Empty, 14, ink: ColorToken.Muted), null, ColorToken.Border, 12, new Thickness(14))));
+            column.Children.Add(
+                Spaced(
+                    Ui.Card(
+                        Ui.Text(model.Empty, 14, ink: ColorToken.Muted),
+                        null,
+                        ColorToken.Border,
+                        12,
+                        new Thickness(14)
+                    )
+                )
+            );
             return column;
         }
 
@@ -342,7 +456,9 @@ public sealed class SystemSectionView : Border
             history.Children.Add(History(model.Rows[i], last: i == model.Rows.Count - 1));
         }
 
-        column.Children.Add(Spaced(Ui.Card(history, null, ColorToken.Border, 12, new Thickness(0))));
+        column.Children.Add(
+            Spaced(Ui.Card(history, null, ColorToken.Border, 12, new Thickness(0)))
+        );
         return column;
     }
 
@@ -365,8 +481,21 @@ public sealed class SystemSectionView : Border
         var replace = Ui.Button(
             Ui.Column(
                 2,
-                Centered(Ui.Text(import.Replace, 14, bold: true, ink: import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Text)),
-                Centered(Ui.Text(import.ReplaceDescription, 11, ink: import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Muted))
+                Centered(
+                    Ui.Text(
+                        import.Replace,
+                        14,
+                        bold: true,
+                        ink: import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Text
+                    )
+                ),
+                Centered(
+                    Ui.Text(
+                        import.ReplaceDescription,
+                        11,
+                        ink: import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Muted
+                    )
+                )
             ),
             import.Replace,
             _viewModel.ImportReplace,
@@ -381,7 +510,13 @@ public sealed class SystemSectionView : Border
             8,
             Ui.Text(import.Title, 14, bold: true),
             Ui.Text(import.Summary, 13, ink: ColorToken.Muted, wrap: true),
-            import.Warning.Length == 0 ? null : Ui.Row(6, Ui.Icon("warning", 16, ColorToken.Warn), Ui.Text(import.Warning, 13, wrap: true)),
+            import.Warning.Length == 0
+                ? null
+                : Ui.Row(
+                    6,
+                    Ui.Icon("warning", 16, ColorToken.Warn),
+                    Ui.Text(import.Warning, 13, wrap: true)
+                ),
             choices
         );
         return Ui.Card(column, ColorToken.Card, ColorToken.Accent, 12, new Thickness(12));
@@ -390,7 +525,12 @@ public sealed class SystemSectionView : Border
     private Border History(BackupRowModel row, bool last)
     {
         var button = Ui.Button(
-            Ui.Text(row.Button, 13, bold: true, ink: row.Armed ? ColorToken.OnWarn : ColorToken.Text),
+            Ui.Text(
+                row.Button,
+                13,
+                bold: true,
+                ink: row.Armed ? ColorToken.OnWarn : ColorToken.Text
+            ),
             row.Button + " " + row.Date,
             () => _viewModel.Restore(row.Id),
             row.Armed ? ColorToken.Warn : null,
@@ -399,7 +539,11 @@ public sealed class SystemSectionView : Border
             radius: 8
         );
         var icon = Ui.Icon("history", 20, ColorToken.Muted);
-        var texts = Ui.Column(2, Ui.Text(row.Date, 14, bold: true), Ui.Text(row.Meta, 12, ink: ColorToken.Muted));
+        var texts = Ui.Column(
+            2,
+            Ui.Text(row.Date, 14, bold: true),
+            Ui.Text(row.Meta, 12, ink: ColorToken.Muted)
+        );
         var line = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(icon, Dock.Left);
         line.Children.Add(icon);
@@ -423,7 +567,13 @@ public sealed class SystemSectionView : Border
         var start = model.StartWithWindows;
         var column = Ui.Column(
             10,
-            Ui.SwitchRow(start.Icon, start.Label, start.Description, start.On, _viewModel.ToggleStartWithWindows)
+            Ui.SwitchRow(
+                start.Icon,
+                start.Label,
+                start.Description,
+                start.On,
+                _viewModel.ToggleStartWithWindows
+            )
         );
         var admin = model.Admin;
         UIElement trailing;
@@ -443,13 +593,23 @@ public sealed class SystemSectionView : Border
             trailing = Ui.Icon("check_circle", 22, ColorToken.Accent);
         }
 
-        column.Children.Add(Spaced(Row("admin_panel_settings", admin.Title, admin.Description, trailing, null)));
+        column.Children.Add(
+            Spaced(Row("admin_panel_settings", admin.Title, admin.Description, trailing, null))
+        );
         var status = Ui.Text(model.CrashStatus, 13, bold: true, ink: ColorToken.Accent);
-        column.Children.Add(Spaced(Row("healing", model.Crash, model.CrashDescription, status, null)));
+        column.Children.Add(
+            Spaced(Row("healing", model.Crash, model.CrashDescription, status, null))
+        );
         return column;
     }
 
-    private static Border Row(string icon, string title, string description, UIElement trailing, ColorToken? stroke)
+    private static Border Row(
+        string icon,
+        string title,
+        string description,
+        UIElement trailing,
+        ColorToken? stroke
+    )
     {
         var symbol = Ui.Icon(icon, 22, ColorToken.Accent);
         var texts = Ui.Column(
@@ -471,14 +631,25 @@ public sealed class SystemSectionView : Border
         texts.Margin = new Thickness(12, 0, 0, 0);
         texts.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(texts);
-        var card = Ui.Card(row, stroke is null ? ColorToken.Card : null, stroke, 12, new Thickness(14));
+        var card = Ui.Card(
+            row,
+            stroke is null ? ColorToken.Card : null,
+            stroke,
+            12,
+            new Thickness(14)
+        );
         AutomationProperties.SetName(card, title);
         return card;
     }
 
     private static TextBlock Caption(string text)
     {
-        var caption = Ui.Text(text.ToUpper(System.Globalization.CultureInfo.CurrentCulture), 13, bold: true, ink: ColorToken.Muted);
+        var caption = Ui.Text(
+            text.ToUpper(System.Globalization.CultureInfo.CurrentCulture),
+            13,
+            bold: true,
+            ink: ColorToken.Muted
+        );
         caption.Margin = new Thickness(0, 10, 0, 0);
         return caption;
     }

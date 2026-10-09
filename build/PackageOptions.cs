@@ -42,7 +42,10 @@ internal sealed partial record PackageOptions(string Channel, string Version)
             {
                 channel = args[++i].ToLowerInvariant();
             }
-            else if (string.Equals(option, "--version", StringComparison.Ordinal) && i + 1 < args.Count)
+            else if (
+                string.Equals(option, "--version", StringComparison.Ordinal)
+                && i + 1 < args.Count
+            )
             {
                 version = args[++i];
             }

@@ -116,7 +116,9 @@ internal sealed class SystemTestWorld
         public Task<bool> CreateAsync(UserDocument document, CancellationToken cancellationToken)
         {
             Created++;
-            var id = new BackupId("manual/" + Created.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var id = new BackupId(
+                "manual/" + Created.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            );
             List.Insert(
                 0,
                 new BackupInfo(
@@ -131,11 +133,15 @@ internal sealed class SystemTestWorld
             return Task.FromResult(true);
         }
 
-        public Task<Result<UserDocument>> ReadAsync(BackupId id, CancellationToken cancellationToken) =>
-            Task.FromResult(Results.Ok(Files[id]));
+        public Task<Result<UserDocument>> ReadAsync(
+            BackupId id,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(Results.Ok(Files[id]));
 
-        public Task<ExportOutcome> ExportAsync(UserDocument document, CancellationToken cancellationToken) =>
-            Task.FromResult(Export);
+        public Task<ExportOutcome> ExportAsync(
+            UserDocument document,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(Export);
 
         public Task<Result<ImportPick>?> PickImportAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Pick);

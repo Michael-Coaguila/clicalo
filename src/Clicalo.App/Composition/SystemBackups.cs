@@ -37,7 +37,8 @@ internal sealed class SystemBackups(
             // The user's folder never shows on screen (screen sharing, LOG-001): %APPDATA% stands for it.
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var folder = locations.Backups;
-            return appData.Length > 0 && folder.StartsWith(appData, StringComparison.OrdinalIgnoreCase)
+            return
+                appData.Length > 0 && folder.StartsWith(appData, StringComparison.OrdinalIgnoreCase)
                 ? "%APPDATA%" + folder[appData.Length..]
                 : folder;
         }
@@ -108,8 +109,11 @@ internal sealed class SystemBackups(
 
         try
         {
-            var bytes = await File.ReadAllBytesAsync(source, cancellationToken).ConfigureAwait(true);
-            var written = await writer.WriteAsync(target, bytes, cancellationToken).ConfigureAwait(true);
+            var bytes = await File.ReadAllBytesAsync(source, cancellationToken)
+                .ConfigureAwait(true);
+            var written = await writer
+                .WriteAsync(target, bytes, cancellationToken)
+                .ConfigureAwait(true);
             return written.IsSuccess ? ExportOutcome.Done : ExportOutcome.Failed;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -172,7 +176,9 @@ internal sealed class SystemBackups(
     )
     {
         var list = await ListAsync(cancellationToken).ConfigureAwait(true);
-        return list.FirstOrDefault(b => b.Kind == BackupKind.Manual && b.CreatedAt >= since.AddTicks(-TimeSpan.TicksPerSecond));
+        return list.FirstOrDefault(b =>
+            b.Kind == BackupKind.Manual && b.CreatedAt >= since.AddTicks(-TimeSpan.TicksPerSecond)
+        );
     }
 
     /// <summary>The file of a backup id this app produced (<c>kind/clicalo.….json</c>), never another path.</summary>

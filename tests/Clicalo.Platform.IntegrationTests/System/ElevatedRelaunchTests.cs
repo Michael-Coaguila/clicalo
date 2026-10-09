@@ -15,7 +15,9 @@ public sealed class ElevatedRelaunchTests
     private const string Installed = @"C:\Users\Ana\AppData\Local\Clicalo.App\current\Clicalo.exe";
 
     private readonly FakeLauncher _launcher = new();
-    private readonly Dictionary<string, FileAttributes> _disk = new(StringComparer.OrdinalIgnoreCase)
+    private readonly Dictionary<string, FileAttributes> _disk = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         [@"C:\"] = FileAttributes.Directory,
         [@"C:\Users"] = FileAttributes.Directory,
@@ -51,11 +53,19 @@ public sealed class ElevatedRelaunchTests
     {
         _disk[@"C:\Temp\Clicalo.exe"] = FileAttributes.Archive;
 
-        (await Relaunch(@"C:\Temp\Clicalo.exe").RelaunchAsync(CancellationToken.None))
-            .ShouldBe(ElevationOutcome.NotInstalled);
-        (await new ElevatedRelaunch(null, Installed, 4242, false, _launcher, Attributes)
-            .RelaunchAsync(CancellationToken.None))
-            .ShouldBe(ElevationOutcome.NotInstalled);
+        (await Relaunch(@"C:\Temp\Clicalo.exe").RelaunchAsync(CancellationToken.None)).ShouldBe(
+            ElevationOutcome.NotInstalled
+        );
+        (
+            await new ElevatedRelaunch(
+                null,
+                Installed,
+                4242,
+                false,
+                _launcher,
+                Attributes
+            ).RelaunchAsync(CancellationToken.None)
+        ).ShouldBe(ElevationOutcome.NotInstalled);
         _launcher.Calls.ShouldBeEmpty();
     }
 
@@ -65,8 +75,9 @@ public sealed class ElevatedRelaunchTests
         _disk[@"C:\Users\Ana\AppData\Local\Clicalo.App\current"] =
             FileAttributes.Directory | FileAttributes.ReparsePoint;
 
-        (await Relaunch(Installed).RelaunchAsync(CancellationToken.None))
-            .ShouldBe(ElevationOutcome.NotInstalled);
+        (await Relaunch(Installed).RelaunchAsync(CancellationToken.None)).ShouldBe(
+            ElevationOutcome.NotInstalled
+        );
         _launcher.Calls.ShouldBeEmpty();
     }
 
@@ -75,18 +86,28 @@ public sealed class ElevatedRelaunchTests
     {
         _ = _disk.Remove(Installed);
 
-        (await Relaunch(Installed).RelaunchAsync(CancellationToken.None))
-            .ShouldBe(ElevationOutcome.NotInstalled);
+        (await Relaunch(Installed).RelaunchAsync(CancellationToken.None)).ShouldBe(
+            ElevationOutcome.NotInstalled
+        );
         _launcher.Calls.ShouldBeEmpty();
     }
 
     [Fact]
     public async Task An_elevated_instance_does_not_reopen()
     {
-        var relaunch = new ElevatedRelaunch(Installed, Installed, 4242, true, _launcher, Attributes);
+        var relaunch = new ElevatedRelaunch(
+            Installed,
+            Installed,
+            4242,
+            true,
+            _launcher,
+            Attributes
+        );
 
         relaunch.IsElevated.ShouldBeTrue();
-        (await relaunch.RelaunchAsync(CancellationToken.None)).ShouldBe(ElevationOutcome.NotInstalled);
+        (await relaunch.RelaunchAsync(CancellationToken.None)).ShouldBe(
+            ElevationOutcome.NotInstalled
+        );
         _launcher.Calls.ShouldBeEmpty();
     }
 

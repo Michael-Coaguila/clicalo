@@ -180,7 +180,10 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
     /// <inheritdoc />
     public async Task CheckAsync(CancellationToken cancellationToken)
     {
-        if (!_client.IsInstalled || !await _busy.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+        if (
+            !_client.IsInstalled
+            || !await _busy.WaitAsync(0, cancellationToken).ConfigureAwait(false)
+        )
         {
             return;
         }
@@ -242,13 +245,15 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
 
         try
         {
-            Publish(s => s with
-            {
-                Phase = UpdatePhase.Installing,
-                NewVersion = previous,
-                Percent = 0,
-                Error = UpdateError.None,
-            });
+            Publish(s =>
+                s with
+                {
+                    Phase = UpdatePhase.Installing,
+                    NewVersion = previous,
+                    Percent = 0,
+                    Error = UpdateError.None,
+                }
+            );
             UpdateOffer? offer;
             try
             {
@@ -281,9 +286,7 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
 
     /// <inheritdoc />
     public void Acknowledge() =>
-        Publish(s =>
-            s.Phase == UpdatePhase.Updated ? s with { Phase = UpdatePhase.UpToDate } : s
-        );
+        Publish(s => s.Phase == UpdatePhase.Updated ? s with { Phase = UpdatePhase.UpToDate } : s);
 
     /// <inheritdoc />
     public void Dispose()
@@ -342,14 +345,19 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
                 _offer = null;
             }
 
-            Publish(s => s with
-            {
-                Phase = previous == UpdatePhase.Updated ? UpdatePhase.Updated : UpdatePhase.UpToDate,
-                NewVersion = null,
-                LastChecked = now,
-                RollbackVersion = RollbackOf(_state),
-                Notes = _currentNotes,
-            });
+            Publish(s =>
+                s with
+                {
+                    Phase =
+                        previous == UpdatePhase.Updated
+                            ? UpdatePhase.Updated
+                            : UpdatePhase.UpToDate,
+                    NewVersion = null,
+                    LastChecked = now,
+                    RollbackVersion = RollbackOf(_state),
+                    Notes = _currentNotes,
+                }
+            );
             return;
         }
 
@@ -360,25 +368,29 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
 
         LogFound(_logger, offer.Version);
         var notes = ReleaseNotesParser.Parse(offer.Version, offer.Notes, isNew: true);
-        Publish(s => s with
-        {
-            Phase = UpdatePhase.Found,
-            NewVersion = offer.Version,
-            Percent = 0,
-            LastChecked = now,
-            Notes = notes.Items.IsEmpty ? _currentNotes : [notes, .. _currentNotes],
-        });
+        Publish(s =>
+            s with
+            {
+                Phase = UpdatePhase.Found,
+                NewVersion = offer.Version,
+                Percent = 0,
+                LastChecked = now,
+                Notes = notes.Items.IsEmpty ? _currentNotes : [notes, .. _currentNotes],
+            }
+        );
     }
 
     private async Task InstallCoreAsync(UpdateOffer offer, CancellationToken cancellationToken)
     {
-        Publish(s => s with
-        {
-            Phase = UpdatePhase.Installing,
-            NewVersion = offer.Version,
-            Percent = 0,
-            Error = UpdateError.None,
-        });
+        Publish(s =>
+            s with
+            {
+                Phase = UpdatePhase.Installing,
+                NewVersion = offer.Version,
+                Percent = 0,
+                Error = UpdateError.None,
+            }
+        );
         try
         {
             await _client
@@ -514,7 +526,11 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
     [LoggerMessage(EventId = 5, Level = LogLevel.Information, Message = "update.updated {Version}")]
     private static partial void LogUpdated(ILogger logger, string version);
 
-    [LoggerMessage(EventId = 6, Level = LogLevel.Information, Message = "update.rollback {Version}")]
+    [LoggerMessage(
+        EventId = 6,
+        Level = LogLevel.Information,
+        Message = "update.rollback {Version}"
+    )]
     private static partial void LogRollback(ILogger logger, string version);
 
     [LoggerMessage(

@@ -8,4 +8,10 @@ namespace Clicalo.Presentation.ControlCenter.SystemSection;
 /// <param name="Meta">«Automática · 3 perfiles · 12 atajos».</param>
 /// <param name="Button">[restoreB], or [confirmB] while armed.</param>
 /// <param name="Armed">Whether the first tap armed it.</param>
-public sealed record BackupRowModel(BackupId Id, string Date, string Meta, string Button, bool Armed);
+public sealed record BackupRowModel(
+    BackupId Id,
+    string Date,
+    string Meta,
+    string Button,
+    bool Armed
+);

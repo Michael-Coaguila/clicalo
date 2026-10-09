@@ -31,7 +31,8 @@ internal static class InstalledExecutable
             expected = Path.GetFullPath(installed);
             actual = Path.GetFullPath(running);
         }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        catch (Exception ex)
+            when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             return false;
         }

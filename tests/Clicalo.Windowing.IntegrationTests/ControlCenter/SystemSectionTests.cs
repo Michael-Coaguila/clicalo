@@ -36,10 +36,16 @@ public sealed class SystemSectionTests
 
             system.Screen.Title.ShouldBe("Sistema");
             system.Screen.Tab.ShouldBe(SystemTab.Updates);
-            system.Screen.Tabs.Select(t => t.Status).ShouldBe(["v2.0.0 · al día", "Sin copias aún", "Inicio manual"]);
+            system
+                .Screen.Tabs.Select(t => t.Status)
+                .ShouldBe(["v2.0.0 · al día", "Sin copias aún", "Inicio manual"]);
             cc.Nav.Single(n => n.Section == ControlCenterSection.System).Count.ShouldBe(0);
 
-            world.Updates.Status = world.Updates.Status with { Phase = UpdatePhase.Found, NewVersion = "2.1.0" };
+            world.Updates.Status = world.Updates.Status with
+            {
+                Phase = UpdatePhase.Found,
+                NewVersion = "2.1.0",
+            };
             WpfThread.DrainPendingWork();
 
             system.Screen.Tabs[0].Warn.ShouldBeTrue();
@@ -61,7 +67,11 @@ public sealed class SystemSectionTests
         {
             var system = new SystemSectionViewModel(world.Services, world.Services.System!);
             system.UpdateAction();
-            world.Updates.Status = world.Updates.Status with { Phase = UpdatePhase.Found, NewVersion = "2.1.0" };
+            world.Updates.Status = world.Updates.Status with
+            {
+                Phase = UpdatePhase.Found,
+                NewVersion = "2.1.0",
+            };
             system.UpdateAction();
             world.Updates.Status = world.Updates.Status with { Phase = UpdatePhase.Updated };
             system.UpdateAction();
@@ -71,10 +81,16 @@ public sealed class SystemSectionTests
                 Error = UpdateError.Offline,
             };
             WpfThread.DrainPendingWork();
-            system.Screen.Updates.Card.Subtitle.ShouldBe("Sin conexión. Comprueba internet y vuelve a intentarlo.");
+            system.Screen.Updates.Card.Subtitle.ShouldBe(
+                "Sin conexión. Comprueba internet y vuelve a intentarlo."
+            );
             system.Screen.Updates.Card.Button.ShouldBe("Reintentar");
             system.UpdateAction();
-            world.Updates.Status = world.Updates.Status with { Phase = UpdatePhase.Installing, Percent = 40 };
+            world.Updates.Status = world.Updates.Status with
+            {
+                Phase = UpdatePhase.Installing,
+                Percent = 40,
+            };
             WpfThread.DrainPendingWork();
             system.Screen.Updates.Card.ShowBar.ShouldBeTrue();
             system.Screen.Updates.Card.ButtonEnabled.ShouldBeFalse();
@@ -116,7 +132,9 @@ public sealed class SystemSectionTests
         {
             world.Updates.Status = world.Updates.Status with { RollbackVersion = "1.9.3" };
             var system = new SystemSectionViewModel(world.Services, world.Services.System!);
-            system.Screen.Updates.Rollback.ShouldNotBeNull().Title.ShouldBe("Volver a la versión 1.9.3");
+            system
+                .Screen.Updates.Rollback.ShouldNotBeNull()
+                .Title.ShouldBe("Volver a la versión 1.9.3");
 
             system.Rollback();
             WpfThread.DrainPendingWork();
@@ -163,7 +181,9 @@ public sealed class SystemSectionTests
 
             notices[^1].Icon.ShouldBe("restore");
             notices[^1].CanUndo.ShouldBeTrue();
-            world.Base.Store.Current.Settings.Updates.Automatic.ShouldBeTrue("the backup came back");
+            world.Base.Store.Current.Settings.Updates.Automatic.ShouldBeTrue(
+                "the backup came back"
+            );
         });
     }
 
@@ -191,7 +211,9 @@ public sealed class SystemSectionTests
             card.Warning.ShouldStartWith("2 textos cifrados");
             cc.Escape();
             WpfThread.DrainPendingWork();
-            system.Screen.Backups.ImportCard.ShouldBeNull("Esc closes the question, not the window");
+            system.Screen.Backups.ImportCard.ShouldBeNull(
+                "Esc closes the question, not the window"
+            );
 
             system.Import();
             system.ImportMerge();
@@ -229,7 +251,9 @@ public sealed class SystemSectionTests
 
             world.Startup.IsAvailable = false;
             system.ToggleStartWithWindows();
-            notices.ShouldHaveSingleItem().Text.ShouldBe(Clicalo.Domain.Messages.L.StartNotInstalled);
+            notices
+                .ShouldHaveSingleItem()
+                .Text.ShouldBe(Clicalo.Domain.Messages.L.StartNotInstalled);
         });
     }
 
@@ -260,7 +284,9 @@ public sealed class SystemSectionTests
             world.Elevation.Asked.ShouldBe(1);
             world.Ended.ShouldBe(ended);
             notices.Count.ShouldBe(explained ? 1 : 0);
-            system.Screen.Start.Admin.CanReopen.ShouldBeTrue("the button comes back after the answer");
+            system.Screen.Start.Admin.CanReopen.ShouldBeTrue(
+                "the button comes back after the answer"
+            );
         });
     }
 
@@ -275,7 +301,9 @@ public sealed class SystemSectionTests
             var system = new SystemSectionViewModel(world.Services, world.Services.System!);
 
             system.Screen.Start.Admin.CanReopen.ShouldBeFalse();
-            system.Screen.Start.Admin.Description.ShouldBe("Clícalo ya funciona como administrador");
+            system.Screen.Start.Admin.Description.ShouldBe(
+                "Clícalo ya funciona como administrador"
+            );
             system.ReopenAsAdmin();
             world.Elevation.Asked.ShouldBe(0);
             system.Screen.Start.CrashStatus.ShouldBe("Siempre activa");
@@ -299,13 +327,21 @@ public sealed class SystemSectionTests
                     "2.1.0",
                     new DateOnly(2026, 10, 1),
                     true,
-                    System.Collections.Immutable.ImmutableDictionary<string, System.Collections.Immutable.ImmutableArray<string>>.Empty.Add("es", ["Pestaña lateral"])
+                    System.Collections.Immutable.ImmutableDictionary<
+                        string,
+                        System.Collections.Immutable.ImmutableArray<string>
+                    >.Empty.Add("es", ["Pestaña lateral"])
                 ),
             ],
         };
         var (window, theme, viewModel) = WpfThread.Invoke(() =>
         {
-            var theme = new ThemeService(new FakeSystemTheme(), ThemeChoice.Dark, 100, reduceMotion: true);
+            var theme = new ThemeService(
+                new FakeSystemTheme(),
+                ThemeChoice.Dark,
+                100,
+                reduceMotion: true
+            );
             var viewModel = new ControlCenterViewModel(world.Services, () => { });
             var window = new ControlCenterWindow(viewModel, theme);
             viewModel.Select(ControlCenterSection.System);

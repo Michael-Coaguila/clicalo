@@ -54,7 +54,9 @@ public sealed class UpdateServiceTests
         status.HasNewVersion.ShouldBeTrue("the counter of Sistema");
         status.NewVersion.ShouldBe("2.1.0");
         status.LastChecked.ShouldBe(Now);
-        status.Notes.Select(n => (n.Version, n.IsNew)).ShouldBe([("2.1.0", true), ("2.0.0", false)]);
+        status
+            .Notes.Select(n => (n.Version, n.IsNew))
+            .ShouldBe([("2.1.0", true), ("2.0.0", false)]);
         status.Notes[0].In("en").ShouldBe(["News of 2.1.0"]);
         status.Notes[0].Date.ShouldBe(new DateOnly(2026, 10, 1));
         _state.State.ShouldBe(new UpdateState("2.0.0", null, null));
@@ -260,7 +262,9 @@ public sealed class UpdateServiceTests
         var confirm = new TwoStepConfirm(_time);
 
         var other = confirm.Tap(new ConfirmationSubject("DeleteShortcut", "2.0.0"));
-        confirm.Tap(new ConfirmationSubject("DeleteShortcut", "2.0.0")).ShouldBeOfType<TwoStepResult.Confirmed>();
+        confirm
+            .Tap(new ConfirmationSubject("DeleteShortcut", "2.0.0"))
+            .ShouldBeOfType<TwoStepResult.Confirmed>();
         other.ShouldBeOfType<TwoStepResult.Armed>();
         var subject = new ConfirmationSubject(UpdateStatus.RollbackOperation, "2.0.0");
         confirm.Tap(subject).ShouldBeOfType<TwoStepResult.Armed>();
