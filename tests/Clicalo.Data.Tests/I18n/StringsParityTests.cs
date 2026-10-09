@@ -61,7 +61,12 @@ public sealed class StringsParityTests
                 "catVoice",
                 "catWeb",
                 "catWin",
+                // Texts of the M3 Tab view (prototype formats and scroll tools without a key, catalog §6.1).
+                "coachStep",
                 "dataUnreadable",
+                "dockPageOf",
+                "dockScrollDown",
+                "dockScrollUp",
                 "elevatedRefused",
                 "engineFault",
                 "exitApp",

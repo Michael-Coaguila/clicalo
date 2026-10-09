@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows.Threading;
 using Clicalo.Application.Coordinators;
+using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Profiles;
@@ -44,6 +45,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
 
     private readonly DocumentStore _store;
     private readonly SessionStore _session;
+    private readonly InteractionStore _interaction;
     private readonly ProfileViewCoordinator _profiles;
     private readonly PanelInteractionController _controller;
     private readonly EngineObserverRelay _relay;
@@ -63,6 +65,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     /// <summary>Creates the view models of the panel on the UI thread.</summary>
     /// <param name="store">The document.</param>
     /// <param name="session">The session of the Surfaces role.</param>
+    /// <param name="interaction">The interaction state of the Surfaces role: «−» minimizes to the bubble there.</param>
     /// <param name="profiles">Which profile is in view.</param>
     /// <param name="controller">Where the tiles' intentions go.</param>
     /// <param name="relay">The engine's snapshots, notices and last action.</param>
@@ -77,6 +80,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     public PanelComposer(
         DocumentStore store,
         SessionStore session,
+        InteractionStore interaction,
         ProfileViewCoordinator profiles,
         PanelInteractionController controller,
         EngineObserverRelay relay,
@@ -92,6 +96,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     {
         _store = store;
         _session = session;
+        _interaction = interaction;
         _profiles = profiles;
         _controller = controller;
         _relay = relay;
@@ -135,7 +140,8 @@ internal sealed class PanelComposer : IPanelBodyIntents
                 Search: () => _ = Search.ToggleAsync(SearchTrigger.Touch),
                 Edit: null,
                 QuickSettings: null,
-                Minimize: null
+                // PAN-001 a: «−» turns the panel into the bubble.
+                Minimize: () => _ = _interaction.Dispatch(new InteractionAction.Minimize())
             )
         );
 
@@ -159,6 +165,15 @@ internal sealed class PanelComposer : IPanelBodyIntents
 
     /// <summary>The profile suggestion.</summary>
     public SuggestionViewModel Suggestion { get; }
+
+    /// <summary>Raised after every projection, on the UI thread: the Tab view follows the same shortcuts.</summary>
+    public event EventHandler? Refreshed;
+
+    /// <summary>The last projection of the view in front: the shortcuts of the grid and of Always visible.</summary>
+    public PanelModel LastModel { get; private set; } = PanelModel.Empty;
+
+    /// <summary>Whether ↻ Repeat has a last action (AVI-004).</summary>
+    public bool CanRepeat => RepeatBinding() is not null;
 
     /// <summary>The window the view models are drawn in; the projection waits for its fingers (PAN-009).</summary>
     /// <param name="window">The panel window.</param>
@@ -467,7 +482,8 @@ internal sealed class PanelComposer : IPanelBodyIntents
         var document = _store.Current;
         var library = document.Library;
         var language = Language();
-        Panel.Apply(ProjectView(document, language));
+        LastModel = ProjectView(document, language);
+        Panel.Apply(LastModel);
         if (_resultsChanged)
         {
             _resultsChanged = false;
@@ -498,6 +514,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
                 EditMode: false
             )
         );
+        Refreshed?.Invoke(this, EventArgs.Empty);
     }
 
     private PanelModel ProjectView(Clicalo.Domain.Document.UserDocument document, LangCode language)

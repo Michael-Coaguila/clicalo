@@ -52,7 +52,7 @@ namespace Clicalo.UI.Wpf.Surfaces;
     "CA1001:Types that own disposable fields should be disposable",
     Justification = "A WPF window's lifetime ends with Close: OnClosed disposes the pointer layer, the gestures and the timers and detaches the theme."
 )]
-public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
+public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPointerPresence
 {
     /// <summary>The target identifier of «Release all»; tiles and buttons take the ones after it.</summary>
     private const int ReleaseAllTargetId = 0;
@@ -77,15 +77,18 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     private readonly Dictionary<ShortcutId, int> _tileIds = [];
     private readonly Dictionary<FrameworkElement, int> _elementIds = [];
     private readonly ContactTracker _contacts = new();
+    private readonly HashSet<uint> _dragged = [];
     private PanelHeader? _header;
     private SizeMetrics? _headerSize;
     private int _nextTargetId = ReleaseAllTargetId + 1;
     private DimSettings _dim;
-    private DateTimeOffset? _lastLeave;
     private bool _hovered;
     private bool _touching;
+    private bool _formVisible = true;
+    private bool _presented;
+    private bool _rendered;
     private int? _gridAnchor;
-    private ITimer? _dimTimer;
+    private DragTracker? _drag;
     private GestureHost? _gestures;
     private PointerInputSource? _pointer;
     private LiveAnnouncer? _panicAnnouncer;
@@ -161,17 +164,79 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
 
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Panic.PropertyChanged += OnPanicChanged;
-        _theme.Changed += OnThemeChanged;
         LayoutUpdated += (_, _) => OnLayoutUpdated();
         LocationChanged += (_, _) => RefreshTargets();
         ApplyPanic();
     }
 
+    /// <summary>Raised once the app asked to show the panel for the first time (<see cref="Present"/>).</summary>
+    public event EventHandler? Presented;
+
     /// <summary>Raised when the last finger or pen leaves the panel: what waited for it may now move (PAN-009).</summary>
     public event EventHandler? ContactsEnded;
 
+    /// <summary>A finger, the pen or the pointer came onto the panel or left it (<see cref="IsPointerInside"/>, GEN-009).</summary>
+    public event EventHandler? PresenceChanged;
+
+    /// <summary>The panel appeared on screen: it is awake and dims a while later (GEN-009).</summary>
+    public event EventHandler? Shown;
+
+    /// <summary>New opacity and dimming settings arrived (GEN-009, AJR-004): <see cref="DimSettings"/>.</summary>
+    public event EventHandler? DimSettingsChanged;
+
+    /// <summary>A drag of the grip or the title passed the threshold (PAN-004).</summary>
+    public event EventHandler? DragStarted;
+
+    /// <summary>The panel is dragged: the offset from where the finger went down, in physical pixels (PAN-004).</summary>
+    public event EventHandler<SurfaceDragEventArgs>? Dragged;
+
+    /// <summary>The drag of the panel ended: its position is saved for its monitor (PAN-004, PAN-006).</summary>
+    public event EventHandler? DragEnded;
+
     /// <summary>Whether a finger or the pen rests on the panel.</summary>
     public bool IsTouching => _touching;
+
+    /// <summary>Whether a finger, the pen or the pointer is on the panel.</summary>
+    public bool IsPointerInside => _hovered || _touching;
+
+    /// <summary>The opacity and dimming settings last applied (GEN-009).</summary>
+    public DimSettings DimSettings => _dim;
+
+    /// <summary>
+    /// Whether the panel is the form in front (PAN-001): false while it is the bubble or the Tab view. The panel shows
+    /// when the session shows it and this is true.
+    /// </summary>
+    public bool FormVisible
+    {
+        get => _formVisible;
+        set
+        {
+            VerifyAccess();
+            if (_formVisible == value)
+            {
+                return;
+            }
+
+            _formVisible = value;
+            ApplyVisibility();
+        }
+    }
+
+    /// <summary>
+    /// Where the panel goes each time it appears (PAN-006): the surface set places it on its monitor; without one,
+    /// the first time it goes to the initial position of the primary monitor.
+    /// </summary>
+    public Action? Placer { get; set; }
+
+    /// <summary>
+    /// The bottom edge of the work area of the panel's monitor, in the window's device-independent pixels: the grid
+    /// is measured down to it (CUA-001). Without it, the primary monitor's.
+    /// </summary>
+    public double? WorkAreaBottom { get; set; }
+
+    /// <summary>The panel on screen, in physical pixels; empty before it has a handle.</summary>
+    public PhysicalRect ScreenBounds =>
+        PresentationSource.FromVisual(this) is null ? PhysicalRect.Empty : PhysicalBounds(this);
 
     /// <summary>The shortcut tiles on screen, in display order: the page of the grid, then the Always visible row.</summary>
     public IReadOnlyList<ShortcutTile> TileControls =>
@@ -193,15 +258,62 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     /// Shows or hides the panel as the view model says; the first time, it is placed at its initial position in the
     /// work area of the primary monitor (<c>sizes.json</c>: offsets and margin).
     /// </summary>
-    public void Present() => ApplyVisibility();
+    public void Present()
+    {
+        _presented = true;
+        ApplyVisibility();
+        Presented?.Invoke(this, EventArgs.Empty);
+    }
 
-    /// <summary>Takes new opacity and dimming settings and applies them at once (GEN-009, AJR-004).</summary>
+    /// <summary>
+    /// Another surface of the panel drew its first frame while the panel itself is not the form in front (the Tab view
+    /// at start): the start of the app counts it as the first frame (NFR-001).
+    /// </summary>
+    public void ReportFirstFrame()
+    {
+        if (!_rendered)
+        {
+            OnContentRendered(EventArgs.Empty);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnContentRendered(EventArgs e)
+    {
+        _rendered = true;
+        base.OnContentRendered(e);
+    }
+
+    /// <summary>Takes new opacity and dimming settings; the surface set applies them at once (GEN-009, AJR-004).</summary>
     /// <param name="dim">The settings.</param>
     public void ApplyDimSettings(DimSettings dim)
     {
         VerifyAccess();
         _dim = dim;
-        EvaluateDim();
+        DimSettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The size the panel asks for at its content, in physical pixels at <paramref name="scale"/>.</summary>
+    /// <param name="scale">Physical pixels per logical pixel of the monitor it goes to.</param>
+    public (int Width, int Height) MeasurePhysical(double scale)
+    {
+        if (Content is not UIElement content)
+        {
+            return (1, 1);
+        }
+
+        content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var border = BorderThickness;
+        return (
+            Math.Max(
+                1,
+                (int)Math.Ceiling((content.DesiredSize.Width + border.Left + border.Right) * scale)
+            ),
+            Math.Max(
+                1,
+                (int)Math.Ceiling((content.DesiredSize.Height + border.Top + border.Bottom) * scale)
+            )
+        );
     }
 
     /// <inheritdoc />
@@ -210,6 +322,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         foreach (var sample in frame.Samples)
         {
             _contacts.Observe(sample);
+            TrackDrag(sample);
         }
 
         TrackTouching();
@@ -225,6 +338,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             foreach (var sample in frame.Samples)
             {
                 _contacts.Forget(sample);
+                if (sample.Phase is PointerPhase.Up or PointerPhase.Cancel)
+                {
+                    _dragged.Remove(sample.PointerId);
+                }
             }
 
             TrackTouching();
@@ -239,13 +356,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             return;
         }
 
+        var before = IsPointerInside;
         _hovered = inside;
-        if (!inside && !_touching)
+        if (before != IsPointerInside)
         {
-            _lastLeave = _time.GetUtcNow();
+            PresenceChanged?.Invoke(this, EventArgs.Empty);
         }
-
-        EvaluateDim();
     }
 
     /// <inheritdoc />
@@ -253,6 +369,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     {
         base.OnSurfaceInitialized();
         _panicAnnouncer = new LiveAnnouncer(_panicText);
+        _drag = new DragTracker(_viewModel.Touch, DpiScale());
         var recognizer = new GestureRecognizer(_viewModel.Touch, DpiScale());
         _gestures = new GestureHost(recognizer, Dispatcher, _time, OnGesture);
         _pointer = new PointerInputSource(this, this, _time);
@@ -265,6 +382,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     {
         base.OnDpiChanged(oldDpi, newDpi);
         _gestures?.Recognizer.Configure(_viewModel.Touch, newDpi.DpiScaleX);
+        _drag?.Configure(_viewModel.Touch, newDpi.DpiScaleX);
         RefreshTargets();
     }
 
@@ -274,7 +392,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         _closed = true;
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _viewModel.Panic.PropertyChanged -= OnPanicChanged;
-        _theme.Changed -= OnThemeChanged;
         if (_search is not null)
         {
             _search.PropertyChanged -= OnSearchChanged;
@@ -282,7 +399,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
 
         _body.Detach();
         _suggestionCard?.Detach();
-        _dimTimer?.Dispose();
         _pointer?.Detach();
         _pointer?.Dispose();
 
@@ -361,12 +477,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 break;
             case nameof(PanelViewModel.Touch):
                 _gestures?.Recognizer.Configure(_viewModel.Touch, DpiScale());
+                _drag?.Configure(_viewModel.Touch, DpiScale());
                 break;
             case nameof(PanelViewModel.Layout):
                 ApplyLayout();
-                break;
-            case nameof(PanelViewModel.Layers):
-                EvaluateDim();
                 break;
         }
     }
@@ -376,25 +490,26 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         if (
             string.Equals(
                 change.PropertyName,
-                nameof(SearchViewModel.IsOpen),
+                nameof(SearchViewModel.IsSearching),
                 StringComparison.Ordinal
             )
         )
         {
-            EvaluateDim();
+            ApplyCompactRow();
         }
     }
 
     private void OnPanicChanged(object? sender, PropertyChangedEventArgs change) => ApplyPanic();
 
     /// <summary>
-    /// Width from the layout (PAN-002) and, in the Full view, the header with the header buttons of the size
-    /// (<c>sizes.json</c>). The Compact view keeps the same header; the Tab view is not composed here.
+    /// Width from the layout (PAN-002) and, in the Full and Compact views, the header with the header buttons of the
+    /// size (<c>sizes.json</c>); the bottom row of the Compact view (VCO-002). The Tab view has its own surfaces.
     /// </summary>
     private void ApplyLayout()
     {
         var layout = _viewModel.Layout;
         _root.Width = GridMetrics.PanelWidth(layout);
+        ApplyCompactRow();
         if (_headerViewModel is null || ReferenceEquals(_headerSize, layout.Metrics))
         {
             return;
@@ -410,39 +525,53 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         _root.Children.Insert(0, _header);
     }
 
+    /// <summary>VCO-002: the bottom row of the Compact view, hidden while the search has text.</summary>
+    private void ApplyCompactRow() =>
+        _body.ApplyCompactRow(
+            CompactRowRules.Visible(_viewModel.Layout, _search?.IsSearching == true)
+        );
+
     private void ApplyVisibility()
     {
-        if (_closed)
+        if (_closed || !_presented)
         {
             return;
         }
 
-        if (_viewModel.IsVisible)
+        if (_viewModel.IsVisible && _formVisible)
         {
-            if (!_placed)
+            if (Placer is { } placer)
+            {
+                placer();
+            }
+            else if (!_placed)
             {
                 PlaceInitially();
             }
 
-            // It appears awake and dims a while later unless the finger or the pointer is on it (GEN-009).
-            _lastLeave = _time.GetUtcNow();
-            EvaluateDim();
+            _placed = true;
             ShowPassive();
             RefreshTargets();
+
+            // It appears awake and dims a while later unless the finger or the pointer is on it (GEN-009).
+            Shown?.Invoke(this, EventArgs.Empty);
             return;
         }
 
         // A hidden surface receives no pointer-up: end its holds now (REG-03) and forget its contacts.
         _gestures?.Reset();
         _contacts.Clear();
+        _drag?.Reset();
+        _dragged.Clear();
         SetTouching(false);
-        _hovered = false;
-        _dimTimer?.Dispose();
-        _dimTimer = null;
+        if (_hovered)
+        {
+            _hovered = false;
+            PresenceChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         HidePassive();
     }
-
-    private void OnThemeChanged(object? sender, EventArgs e) => EvaluateDim();
 
     /// <summary>Follows whether a finger or the pen is on the panel; lifting the last one counts as leaving it.</summary>
     private void TrackTouching() => SetTouching(_contacts.Count > 0);
@@ -454,17 +583,76 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             return;
         }
 
+        var before = IsPointerInside;
         _touching = touching;
         _gridAnchor = touching ? GridTop() : null;
-        if (!touching && !_hovered)
+        if (before != IsPointerInside)
         {
-            _lastLeave = _time.GetUtcNow();
+            PresenceChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        EvaluateDim();
         if (!touching)
         {
             ContactsEnded?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// PAN-004: a contact that went down on the grip or the title and moved past max(6, cancelMovePx) drags the panel;
+    /// it is no longer a tap. The surface set moves the panel and saves where it ends.
+    /// </summary>
+    private void TrackDrag(in PointerSample sample)
+    {
+        if (_drag is not { } drag || _header is not { } header)
+        {
+            return;
+        }
+
+        switch (sample.Phase)
+        {
+            case PointerPhase.Down when !drag.IsTracking:
+                foreach (var zone in header.DragZones)
+                {
+                    if (PhysicalBounds(zone).Contains(sample.Position))
+                    {
+                        _ = drag.Down(sample.PointerId, sample.Position);
+                        break;
+                    }
+                }
+
+                break;
+
+            case PointerPhase.Move:
+                var wasDragging = drag.IsDragging;
+                if (drag.Move(sample.PointerId, sample.Position) is { } offset)
+                {
+                    if (!wasDragging)
+                    {
+                        DragStarted?.Invoke(this, EventArgs.Empty);
+                    }
+
+                    Dragged?.Invoke(this, new SurfaceDragEventArgs(offset));
+                }
+
+                break;
+
+            case PointerPhase.Up
+            or PointerPhase.Cancel:
+                if (
+                    sample.Phase == PointerPhase.Up
+                    && drag.Move(sample.PointerId, sample.Position) is { } last
+                )
+                {
+                    Dragged?.Invoke(this, new SurfaceDragEventArgs(last));
+                }
+
+                if (drag.Up(sample.PointerId) == DragEnd.Dragged)
+                {
+                    _ = _dragged.Add(sample.PointerId);
+                    DragEnded?.Invoke(this, EventArgs.Empty);
+                }
+
+                break;
         }
     }
 
@@ -486,7 +674,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             RefreshTargets();
             if (!_touching && IsVisible)
             {
-                _ = _body.MeasureGridSpace(this, SystemParameters.WorkArea.Bottom);
+                _ = _body.MeasureGridSpace(
+                    this,
+                    WorkAreaBottom ?? SystemParameters.WorkArea.Bottom
+                );
             }
         }
         finally
@@ -531,65 +722,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             ? (int)Math.Round(_body.GridArea.PointToScreen(new Point(0, 0)).Y)
             : null;
 
-    /// <summary>
-    /// Applies the opacity <see cref="DimPolicy"/> decides (GEN-009) and, when the panel will dim later, evaluates
-    /// again then. Dimming is only visual: the first touch on a dimmed panel wakes it and acts (EJE-017).
-    /// </summary>
-    private void EvaluateDim()
-    {
-        if (_closed)
-        {
-            return;
-        }
-
-        _dimTimer?.Dispose();
-        _dimTimer = null;
-        var now = _time.GetUtcNow();
-        var decision = DimPolicy.Evaluate(
-            new DimInputs(
-                _dim.AutoDim,
-                _dim.Opacity,
-                _dim.DimTo,
-                DimSurface.Panel,
-                _hovered || _touching,
-                _lastLeave,
-                ActiveExceptions(),
-                _theme.ReduceMotion,
-                _theme.Effective is ThemeId.HighContrast or ThemeId.SystemHighContrast,
-                now
-            )
-        );
-        ApplyDim(decision);
-        if (decision.NextEvaluationAt is { } at)
-        {
-            _dimTimer = _time.CreateTimer(
-                static state => ((PanelWindow)state!).QueueEvaluateDim(),
-                this,
-                at > now ? at - now : TimeSpan.Zero,
-                Timeout.InfiniteTimeSpan
-            );
-        }
-    }
-
-    /// <summary>What keeps the panel from dimming (docs/04, blueprint §6.4): panic, the profile grid and the search.</summary>
-    private DimExceptions ActiveExceptions()
-    {
-        var active = _viewModel.Panic.IsVisible ? DimExceptions.Panic : DimExceptions.None;
-        if (_viewModel.Layers.PickerGrid)
-        {
-            active |= DimExceptions.ProfileGrid;
-        }
-
-        if (_search?.IsOpen == true)
-        {
-            active |= DimExceptions.Search;
-        }
-
-        return active;
-    }
-
-    private void QueueEvaluateDim() => _ = Dispatcher.BeginInvoke(EvaluateDim);
-
     private void ApplyPanic()
     {
         var panic = _viewModel.Panic;
@@ -615,17 +747,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             }
         }
 
-        // Nothing dims while something is held: «Release all» stays fully visible (SEG-002). Once released, the panel
-        // waits the whole delay again before dimming.
-        if (panic.IsVisible != wasVisible)
-        {
-            if (!panic.IsVisible && _lastLeave is not null)
-            {
-                _lastLeave = _time.GetUtcNow();
-            }
-
-            EvaluateDim();
-        }
+        // Nothing dims while something is held (SEG-002): the composition reports the panic to the interaction store.
     }
 
     /// <summary>Every tappable element on screen besides the tiles: header, body, search and suggestion.</summary>
@@ -770,7 +892,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     {
         switch (gesture.Kind)
         {
-            case GestureKind.Tap when TargetOf(gesture) is { } target:
+            case GestureKind.Tap
+                when !_dragged.Contains(gesture.PointerId) && TargetOf(gesture) is { } target:
                 if (target.Tile is { } tapped)
                 {
                     tapped.Tapped(
@@ -805,7 +928,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 );
                 break;
 
-            case GestureKind.Swipe when gesture.Swipe != SwipeDirection.None:
+            case GestureKind.Swipe
+                when gesture.Swipe != SwipeDirection.None && !_dragged.Contains(gesture.PointerId):
                 // CUA-005: more than 60 px sideways turns the page; the recognizer then ignores taps for a moment.
                 _body.Swiped(towardLeft: gesture.Swipe == SwipeDirection.Left);
                 break;

@@ -726,6 +726,31 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   instante también se suelta.
 - **Revisión.** Con la primera ejecución nocturna de S9 en la CI y en la aceptación en hardware (sesión bloqueada real).
 
+## D-26 · Formas del panel, Pestaña, burbuja y atenuado (M3)
+
+- **Plano.** [§6.4](blueprint.md#64-estado-cuatro-dueños-deshacer-y-autoguardado) pone la burbuja
+  (`Presence = Bubble(restoreTo)`) y la Pestaña (`DockSession`) en `PanelSession`, y `InteractionState` en
+  `Domain.Interaction`; [§3.7](blueprint.md#37-colocación-y-orden-z) identifica el monitor por
+  `monitorDevicePath`.
+- **Implementado.**
+  - `InteractionState` vive en `Application.Interaction` (`InteractionStore`, escritor único en el rol Surfaces) y
+    guarda, además del atenuado y sus excepciones, la burbuja (`Minimized`), la barra abierta, su ventana al costado y
+    el paso de la guía. `PanelSession` solo sigue con Visible/Oculto; la forma visible la decide
+    `PanelForms.Of(visible, density, minimized, dockOpen)` (Domain, pura). La cuadrícula de perfiles al costado de la
+    barra es la misma de la sesión (`PickerOpen`).
+  - Las reglas puras están en `Domain.PanelLayout` (`PanelGeometry`, `DockGeometry`, `DockRules`, `PanelForms`,
+    `CompactRowRules`) y `Domain.Touch` (`DragTracker`). UI.Wpf no ve Application: `SurfaceSet` coloca las
+    superficies y `SurfaceDimmer` aplica la opacidad que decide `Presentation.Dock.SurfaceDimming` con el
+    `InteractionStore`.
+  - El monitor se identifica por su nombre de dispositivo (`\\.\DISPLAY1`, el `MonitorPosition` de M2), leído con
+    `EnumDisplayMonitors`/`GetMonitorInfo` en `UI.Wpf.Windowing.DisplayMonitors`.
+  - La posición del asa se guarda por lado, no por monitor y lado (PES-016 queda a medias: el formato de
+    `handlePosBySide` no cambia).
+  - Al arrancar, el panel va al monitor principal si tiene posición guardada; si no, al primero conectado que la tenga.
+- **Motivo.** Sin cambiar el formato del documento ni el contrato de `PanelSession`, que otros paquetes de M3 usan en
+  paralelo; la regla sigue siendo pura y con tabla de transiciones.
+- **Revisión.** Al cerrar M3, si se quiere mover la burbuja y la Pestaña a `PanelSession` como dice el plano.
+
 ## Puntos del plano pendientes de resolver
 
 No son desviaciones del repositorio, sino contradicciones o huecos detectados al redactar la documentación.
