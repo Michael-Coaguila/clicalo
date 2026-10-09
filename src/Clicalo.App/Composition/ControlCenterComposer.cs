@@ -42,6 +42,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     private readonly Func<Rect> _panel;
     private readonly ShortcutsWorkspace _shortcuts;
     private readonly ProfileWorkspace _profiles;
+    private readonly TemplatesComposition? _templates;
     private EditorCatalogs _catalogs = EditorCatalogs.Empty;
     private Task? _catalogsLoad;
     private ControlCenterViewModel? _viewModel;
@@ -68,6 +69,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     /// <param name="openApps">The open apps.</param>
     /// <param name="panel">The rectangle of the panel, which the window does not cover (CCM-004).</param>
     /// <param name="selfElevated">Whether Clícalo runs elevated.</param>
+    /// <param name="templates">The pieces of Plantillas and of sharing a profile; null leaves the section a marker.</param>
     public ControlCenterComposer(
         DocumentStore store,
         ILocalizationContext localization,
@@ -82,9 +84,11 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         ITouchKeyboard? keyboard,
         IOpenApps openApps,
         Func<Rect> panel,
-        bool selfElevated
+        bool selfElevated,
+        TemplatesComposition? templates = null
     )
     {
+        _templates = templates;
         _store = store;
         _localization = localization;
         _foreground = foreground;
@@ -320,7 +324,8 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             () => _lastApp,
             DictateAsync,
             TryNowAsync,
-            () => _viewModel?.Select(ControlCenterSection.Templates)
+            () => _viewModel?.Select(ControlCenterSection.Templates),
+            _templates?.Services(Notify, () => _window)
         );
         _viewModel = new ControlCenterViewModel(services, () => _ = CloseAsync());
         _window = new ControlCenterWindow(_viewModel, _theme);

@@ -498,11 +498,11 @@ public sealed class ShortcutsSectionView : Grid
         var share = Ui.Button(
             Ui.IconLabel("share", model.ShareText),
             model.ShareText,
-            () => { },
+            () => _ = _viewModel.ShareAsync(withTexts: false),
             ColorToken.Card,
             stroke: ColorToken.Border
         );
-        share.IsEnabled = false;
+        share.IsEnabled = model.CanShare;
         var done = Ui.Button(
             Ui.Text(model.DoneText, 14, bold: true, ink: ColorToken.OnAccent),
             model.DoneText,
@@ -530,6 +530,20 @@ public sealed class ShortcutsSectionView : Grid
 
         share.Padding = new Thickness(6, 0, 6, 0);
         var buttons = Ui.Column(6, done, Ui.Columns(actions.Count, 6, actions));
+        if (model.ShareTextsText is { } shareTexts)
+        {
+            // DAT-007, PQ-37: the texts travel in clear only when the person chooses so.
+            buttons.Children.Add(
+                Ui.Button(
+                    Ui.IconLabel("lock_open", shareTexts),
+                    shareTexts,
+                    () => _ = _viewModel.ShareAsync(withTexts: true),
+                    ColorToken.Card,
+                    stroke: ColorToken.Border
+                )
+            );
+        }
+
         return Ui.Card(
             Ui.Column(
                 10,

@@ -18,6 +18,7 @@ using Clicalo.Domain.Commands;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.Input;
@@ -387,7 +388,15 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             services.GetRequiredService<ITouchKeyboard>(),
             new ControlCenterOpenApps(),
             () => new Rect(window.Left, window.Top, window.ActualWidth, window.ActualHeight),
-            Environment.IsPrivilegedProcess
+            Environment.IsPrivilegedProcess,
+            new TemplatesComposition(
+                store,
+                slot.Localization,
+                _time,
+                services.GetRequiredService<IIdGenerator>(),
+                services.GetRequiredService<IAtomicFileWriter>(),
+                _options.IsolatedData
+            )
         );
         var describer = services.GetRequiredService<ForegroundDescriber>();
         monitor.ExternalForegroundChanged += (_, change) =>
