@@ -30,6 +30,10 @@
     {
       "name": "DeleteMacroStep",
       "description": "Removes a step from a macro."
+    },
+    {
+      "name": "KeepOnlyInAlwaysVisible",
+      "description": "Keeps a repeated combination only in Always visible and removes its same-name appearances from the profiles (REP-005)."
     }
   ],
   "useCases": [
