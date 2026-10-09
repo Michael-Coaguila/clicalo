@@ -26,11 +26,17 @@ public sealed record AddShortcuts(
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(context);
+        var shortcuts = Shortcuts.IsDefault ? ImmutableArray<Shortcut>.Empty : Shortcuts;
+        if (shortcuts.Any(ShortcutCompleteness.IsBlankDraft))
+        {
+            return Changes.Fail(CommandFailures.BlankDraft());
+        }
+
         var library = document.Library;
         var list = new ListRef.InProfile(Profile);
         var taken = new HashSet<string>(StringComparer.Ordinal);
         var events = ImmutableArray.CreateBuilder<DomainEvent>();
-        foreach (var shortcut in Shortcuts.IsDefault ? [] : Shortcuts)
+        foreach (var shortcut in shortcuts)
         {
             var id = NewIds.Shortcut(library, context.Ids, taken);
             if (!id.TryGetValue(out var newId))

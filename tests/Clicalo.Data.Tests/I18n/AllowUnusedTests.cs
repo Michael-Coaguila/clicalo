@@ -39,6 +39,9 @@ public sealed class AllowUnusedTests
         listed.Contains("useOther").ShouldBeFalse();
         // M4 shows dupTitle (the state of a repeated tile) and dupChangeT (REP-006), so they left the list.
         listed.Contains("dupTitle").ShouldBeFalse();
-        listed.Count.ShouldBe(58);
+        // Decision D5 of the user (2026-10-09): no free quota, so its texts are not shown; aiPrivacy and sharedProf
+        // give way to aiPrivacy4 and to sharing a file (catalog §6.1, R-25).
+        listed.Contains("quotaFree").ShouldBeTrue();
+        listed.Count.ShouldBe(63);
     }
 }
