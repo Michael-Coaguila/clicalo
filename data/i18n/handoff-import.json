@@ -408,6 +408,11 @@
       "after": "dockScrollDown",
       "text": { "es": "{index}/{total}", "en": "{index}/{total}" }
     },
+    "pinFolds": {
+      "notes": "Rótulo del candado de plegado de la barra de la Pestaña cuando se pliega sola (DIS-44: «Se pliega» / «Abierta», para no confundirlo con Auto/Fijo). Sustituye en pantalla a [pinOff] «Auto» del paquete, que queda en allow-unused. Decidido por delegación del usuario (2026-10-09, R-19).",
+      "after": "coachStep",
+      "text": { "es": "Se pliega", "en": "Folds" }
+    },
     "coachStep": {
       "notes": "Paso de la guía de primera vez de la Pestaña, «1 / 3» (PES-015). Formato del prototipo sin clave en el paquete.",
       "after": "dockPageOf",

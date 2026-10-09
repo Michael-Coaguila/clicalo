@@ -446,7 +446,7 @@ public sealed class DockBarViewModel : ObservableObject
         AutoFixedLabel = l.Format(isFixed ? L.LockOn2 : L.Auto2);
         AutoFixedName = l.Format(isFixed ? L.LockA : L.AutoA);
         var pinOpen = state?.Dock.PinOpen == true;
-        PinLabel = l.Format(pinOpen ? L.PinOn : L.PinOff);
+        PinLabel = l.Format(pinOpen ? L.PinOn : L.PinFolds);
         PinName = l.Format(pinOpen ? L.PinOnA : L.PinOffA);
         var step = Math.Clamp(state?.CoachStep ?? 0, 0, DockRules.CoachSteps - 1);
         CoachStepLabel = l.Format(L.CoachStep(index: step + 1, total: DockRules.CoachSteps));

@@ -3,6 +3,10 @@
 # `cl i18n-check` falla si una clave de esta lista no existe, está repetida o ya se usa: entonces se quita de aquí.
 # Ver docs/guides/i18n.md.
 
+# DIS-44 (decidido por delegación del usuario, 2026-10-09): el candado de plegado dice [pinFolds] «Se pliega» en
+# lugar de [pinOff] «Auto», que se conserva por paridad con el paquete.
+pinOff
+
 # Catálogo §10 e IDI-005: claves del código muerto del prototipo. Se conservan (paridad con el paquete, hito M0)
 # hasta que el usuario decida si se eliminan o se implementan.
 dStrip

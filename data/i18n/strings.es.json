@@ -521,6 +521,7 @@
   "dockScrollDown": "Bajar",
   "dockPageOf": "{index}/{total}",
   "coachStep": "{index} / {total}",
+  "pinFolds": "Se pliega",
   "asTitle": "Detectar apps nuevas",
   "asDesc": "Cuando abras un programa sin perfil, el panel te ofrecerá crearlo con un toque.",
   "sugLine_one": "Tienes {app} abierto · {count} atajo listo",

@@ -766,8 +766,13 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - El estado de cada capa vive en su propio ViewModel (`QuickSettings.IsOpen`, `EditMode.IsOn`, `Menu.IsOpen`,
     `TestMode.IsOn`). `PanelComposer` mantiene una sola capa primaria abierta (PAN-008) y avisa al `InteractionStore`
     para que no se atenúe nada mientras están abiertas.
-  - Las intenciones hacia el Centro de control (`OpenEditor`, `OpenLibrary`, `OpenControlCenter`) se emiten por
-    `PanelComposer.ControlCenter`; hasta que el Centro de control se conecte, no hacen nada.
+  - Las intenciones hacia el Centro de control (`OpenEditor`, `OpenLibrary`, `OpenControlCenter`) llegan a
+    `ControlCenterComposer` por `PanelComposer.ControlCenter`; mientras está abierto, `DimExceptions.ControlCenterOpen`
+    evita el atenuado y el modo captura muestra en el panel el aviso fijo [waitingApp] con Cancelar.
+  - Todo objetivo del panel responde en 44 × 44 con un margen táctil invisible alrededor de su dibujo (`TouchBounds`).
+    La hoja de Ajustes rápidos se limita al espacio libre del área de trabajo y se desplaza con el dedo; el deslizador
+    de opacidad sigue al dedo. El menú de la ficha se abre también con el clic derecho, la tecla Menú, Mayús+F10 o
+    «clic derecho {nombre}» (WPF no ofrece `ShowContextMenu` de UI Automation).
   - El asa de la Pestaña es una ventana de 44 de fondo (REG-02, ACC-002) que dibuja el asa de 32 contra el borde y
     pinta el resto con un pincel de alfa 1 para recibir el toque. Pierde la sombra, porque la ventana de sombra
     seguiría a toda la ventana.

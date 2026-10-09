@@ -521,6 +521,7 @@
   "dockScrollDown": "Scroll down",
   "dockPageOf": "{index}/{total}",
   "coachStep": "{index} / {total}",
+  "pinFolds": "Folds",
   "asTitle": "Detect new apps",
   "asDesc": "When you open a program without a profile, the panel offers to create one in a tap.",
   "sugLine_one": "{app} is open · {count} shortcut ready",

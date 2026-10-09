@@ -115,6 +115,7 @@ public sealed class StringsParityTests
                 "opMore",
                 "openedName",
                 "orderHintDrag",
+                "pinFolds",
                 "pinLimit",
                 "positionOf",
                 "processTaken",
