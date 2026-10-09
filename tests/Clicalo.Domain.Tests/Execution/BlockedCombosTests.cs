@@ -44,6 +44,41 @@ public sealed class BlockedCombosTests
             .ShouldBe(blocked);
     }
 
+    [Fact]
+    [Trait("Req", "EJE-016")]
+    public void The_system_alternatives_are_the_ones_of_the_catalog()
+    {
+        using var document = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(RepoPaths.Data, "catalogs", "blocked-combos.json"))
+        );
+        var alternatives = document
+            .RootElement.GetProperty("combos")
+            .EnumerateArray()
+            .Where(static c => c.TryGetProperty("alternative", out _))
+            .Select(static c =>
+                string.Join(
+                    '+',
+                    c.GetProperty("keys")
+                        .EnumerateArray()
+                        .Select(static k => k.GetString())
+                        .Order(StringComparer.Ordinal)
+                )
+                + "="
+                + c.GetProperty("alternative").GetProperty("systemCommand").GetString()
+            )
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        BlockedCombos
+            .Alternatives.Select(static a =>
+                string.Join('+', a.Keys.Order(StringComparer.Ordinal)) + "=" + a.Command.Value
+            )
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(alternatives);
+        BlockedCombos.AlternativeFor(Chords.Of("rwin", "l"))?.Value.ShouldBe("lock");
+        BlockedCombos.AlternativeFor(Chords.Of("ctrl", "alt", "delete")).ShouldBeNull();
+    }
+
     [Theory]
     [InlineData("ctrl", "alt", "delete")]
     [InlineData("delete", "alt", "ctrl")]

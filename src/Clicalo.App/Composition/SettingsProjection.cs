@@ -2,6 +2,7 @@ using Clicalo.Domain.Catalog;
 using Clicalo.Domain.CommonActions;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
 using Clicalo.Domain.Touch;
@@ -26,10 +27,15 @@ internal static class SettingsProjection
     }
 
     /// <summary>
-    /// What the engine obeys (SEG-004, SEG-005, NFR-004), with the programs language that picks variants (CAT-005)
-    /// and the common actions it adapts to the app in front (decision D4, EJE-018).
+    /// What the engine obeys (SEG-004, SEG-005, NFR-004), with the programs language that picks variants (CAT-005),
+    /// the common actions it adapts to the app in front (decision D4, EJE-018), the key labels and the interface language
+    /// of its notices (EJE-003) and the soft sound (EJE-012).
     /// </summary>
-    public static EngineConfig Engine(UserSettings settings, CommonActionTable commonActions)
+    public static EngineConfig Engine(
+        UserSettings settings,
+        CommonActionTable commonActions,
+        KeyLabelCatalog? keyLabels = null
+    )
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(commonActions);
@@ -42,6 +48,9 @@ internal static class SettingsProjection
         {
             AppsLanguage = settings.Keyboard.AppsLanguage,
             CommonActions = commonActions,
+            KeyLabels = keyLabels ?? KeyLabelCatalog.Empty,
+            InterfaceLanguage = settings.Language,
+            FeedbackSound = settings.Feedback.Sound,
         };
     }
 

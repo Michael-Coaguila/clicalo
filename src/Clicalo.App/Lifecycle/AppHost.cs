@@ -306,7 +306,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 // The engine obeys the settings it was built with until told otherwise (SEG-004, SEG-005, TAC-002).
                 _ = engine.Post(
                     new EngineEvent.ConfigChanged(
-                        SettingsProjection.Engine(change.After.Settings, catalogs.CommonActions)
+                        SettingsProjection.Engine(
+                            change.After.Settings,
+                            catalogs.CommonActions,
+                            catalogs.KeyLabels
+                        )
                     )
                 );
                 if (change.Before.Settings.Language != change.After.Settings.Language)

@@ -84,7 +84,8 @@ public static class ActivationPolicy
             );
         }
 
-        if (context.Elevation == ElevationState.TargetElevated && Injects(shortcut.Action))
+        var action = Effective(shortcut.Action);
+        if (context.Elevation == ElevationState.TargetElevated && Injects(action))
         {
             return new ActivationOutcome(new ActivationDecision.BlockedElevated(), filter);
         }
@@ -97,7 +98,7 @@ public static class ActivationPolicy
             );
         }
 
-        if (HasBlockedCombo(shortcut.Action))
+        if (HasBlockedCombo(action))
         {
             return new ActivationOutcome(
                 new ActivationDecision.Refused(RefusalReason.BlockedCombo),
@@ -121,6 +122,16 @@ public static class ActivationPolicy
             filter
         );
     }
+
+    /// <summary>
+    /// What <paramref name="action"/> does when it runs: a Tap of a blocked combination with a system alternative (Win+L)
+    /// is that system action (EJE-014, EJE-016); any other action is itself.
+    /// </summary>
+    /// <param name="action">The saved action.</param>
+    internal static ShortcutAction Effective(ShortcutAction action) =>
+        action is TapAction tap && BlockedCombos.AlternativeFor(tap.Chord) is { } command
+            ? new SystemAction(command)
+            : action;
 
     /// <summary>Whether the action injects input into the foreground app.</summary>
     /// <param name="action">The action.</param>

@@ -62,7 +62,15 @@ internal static class KeyPlanner
                 .Append(
                     new QueuedStep.Finish(
                         holder,
-                        new StepCompletion(origin, Notice: null, countsUsage, ContinueMacro: null)
+                        new StepCompletion(
+                            origin,
+                            // EJE-003: «Ctrl + S enviado a Word», once the keys went.
+                            countsUsage
+                                ? L.TapSent(app: step.AppName(), keys: step.KeysText(strokes))
+                                : null,
+                            countsUsage,
+                            ContinueMacro: null
+                        )
                     )
                 )
         );
@@ -84,16 +92,7 @@ internal static class KeyPlanner
             return;
         }
 
-        Latch(
-            step,
-            origin,
-            shortcut,
-            chord,
-            holder,
-            HoldOrigin.Contact,
-            contactId,
-            EngineNotices.Holding
-        );
+        Latch(step, origin, shortcut, chord, holder, HoldOrigin.Contact, contactId);
     }
 
     /// <summary>
@@ -115,7 +114,7 @@ internal static class KeyPlanner
             return;
         }
 
-        Latch(step, origin, shortcut, chord, holder, kind, contact: null, EngineNotices.Latched);
+        Latch(step, origin, shortcut, chord, holder, kind, contact: null);
     }
 
     /// <summary>Releases a latched Toggle (EJE-007), with the menu mask.</summary>
@@ -172,8 +171,7 @@ internal static class KeyPlanner
         KeyChord chord,
         HolderId holder,
         HoldOrigin kind,
-        int? contact,
-        Message notice
+        int? contact
     )
     {
         // FIJ-006 (c): the active sticky modifiers are added while the button is held.
@@ -190,6 +188,10 @@ internal static class KeyPlanner
         }
 
         StickyPlanner.Consume(step);
+        // EJE-004: «Manteniendo {keys} — suelta para terminar» under a finger; EJE-007: «{name} · activado …» otherwise.
+        var notice = contact is not null
+            ? L.HoldingKeys(keys: step.KeysText(strokes))
+            : L.LatchedName(name: step.NameOf(shortcut));
         var (deadline, inherits) = step.Deadline(shortcut.Options.MaxHold);
         var template = Template(step, holder, kind, origin, contact, deadline, inherits);
         step.Enqueue(
@@ -198,6 +200,10 @@ internal static class KeyPlanner
                     new QueuedStep.Finish(
                         holder,
                         new StepCompletion(origin, notice, CountsUsage: true, ContinueMacro: null)
+                        {
+                            // AVI-004: Hold and Toggle count for Frequents but are never repeated.
+                            Repeatable = false,
+                        }
                     )
                 )
         );

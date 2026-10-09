@@ -46,23 +46,11 @@ internal static class EngineNotices
     /// <summary>The first tap armed a shortcut that asks for confirmation (EJE-002).</summary>
     public static Message ConfirmArmed => L.ConfirmClose;
 
-    /// <summary>A Hold pressed its keys (EJE-004).</summary>
-    public static Message Holding => L.Holding;
-
     /// <summary>A Hold was released (EJE-004).</summary>
     public static Message Released => L.Released;
 
-    /// <summary>A Toggle latched (EJE-007).</summary>
-    public static Message Latched => L.Latched;
-
     /// <summary>A Toggle was released (EJE-007).</summary>
     public static Message Unlatched => L.Unlatched;
-
-    /// <summary>A macro ran to the end (EJE-010).</summary>
-    public static Message MacroRan => L.RanMacro;
-
-    /// <summary>A web address is opening (EJE-011).</summary>
-    public static Message Opened => L.Opened;
 
     /// <summary>A sticky modifier joins the next tap or click (FIJ-005).</summary>
     public static Message StickyOnce => L.ModOnce;

@@ -17,7 +17,11 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
 using Clicalo.Infrastructure.Persistence;
+using Clicalo.Platform.Windows.Clipboard;
+using Clicalo.Platform.Windows.Feedback;
 using Clicalo.Platform.Windows.Foreground;
+using Clicalo.Platform.Windows.Launch;
+using Clicalo.Platform.Windows.PointerTracking;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.UI.Wpf.Surfaces;
@@ -155,18 +159,27 @@ internal static class AppServices
         });
         services.AddSingleton<EngineInboxRelay>();
         services.AddSingleton<InternalChordReplies>();
+        // The Shell thread and the paste reach outside Clícalo; with --no-input nothing does (EJE-011, EJE-008).
+        services.AddSingleton(_ => new ShellExecutor(Environment.IsPrivilegedProcess));
+        services.AddSingleton(sp => new ClipboardPaster(sp.Get<SysEventsThread>(), sp.Time()));
+        services.AddSingleton(sp => new PointerPositionTracker(sp.Get<SysEventsThread>()));
         services.AddSingleton(sp =>
         {
             var adapters = sp.Get<EngineAdapterSet>();
+            var sends = sp.Get<AppOptions>().SendInput;
             return new EngineHostPorts(
                 adapters.Injector,
-                new DeferredShellExecutor(),
-                new DeferredClipboardPaster(),
+                sends ? sp.Get<ShellExecutor>() : new DeferredShellExecutor(),
+                sends ? sp.Get<ClipboardPaster>() : new DeferredClipboardPaster(),
                 sp.Get<EngineObserverRelay>()
             )
             {
                 // The internal chords go through the engine (§3.6, D-22).
                 ChordReplies = sp.Get<InternalChordReplies>(),
+                // EJE-009: the mouse actions act at the last pointer position outside Clícalo.
+                PointerPosition = sp.Get<PointerPositionTracker>(),
+                // EJE-012: the soft sound, when the settings turn it on.
+                Sound = new FeedbackSound(),
             };
         });
         services.AddSingleton(sp =>
@@ -175,7 +188,8 @@ internal static class AppServices
                 sp.Get<EngineHostPorts>(),
                 SettingsProjection.Engine(
                     sp.Slot().Load.Document.Settings,
-                    sp.Slot().Catalogs.CommonActions
+                    sp.Slot().Catalogs.CommonActions,
+                    sp.Slot().Catalogs.KeyLabels
                 ),
                 sp.Time(),
                 sp.Log<EngineHost>()

@@ -45,6 +45,8 @@ public sealed class StringsParityTests
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+                // Texts of the M3 actions: what each action did and why a launch did not start (catalog §6.1, R-21).
+                "actionFailed",
                 // Texts of the M2 walking skeleton: the tray, the app name and the actions of M3 (catalog §6.1).
                 "actionUnavailable",
                 "appName",
@@ -77,6 +79,7 @@ public sealed class StringsParityTests
                 "handleLock",
                 "hideA",
                 "hidePanel",
+                "holdingKeys",
                 "importInvalid",
                 "importTooLarge",
                 "incompleteTap",
@@ -88,8 +91,13 @@ public sealed class StringsParityTests
                 "kgMods",
                 "kitBasics",
                 "kitBasicsD",
+                "latchedName",
+                "launchUnsafe",
                 "macroCancelled",
+                "macroRanName",
                 "macroRunning",
+                "mouseRan",
+                "openedName",
                 "opLess",
                 "opMore",
                 "pinLimit",
@@ -111,6 +119,8 @@ public sealed class StringsParityTests
                 "szM",
                 "szS",
                 "tapSent",
+                "textTyped",
+                "textTypedPrivate",
                 "textUnavailable",
                 "tmLeft",
                 "trayHidden",

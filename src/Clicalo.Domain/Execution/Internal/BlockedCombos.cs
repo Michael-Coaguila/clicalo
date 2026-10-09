@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Keys;
 
 namespace Clicalo.Domain.Execution.Internal;
@@ -11,12 +12,22 @@ namespace Clicalo.Domain.Execution.Internal;
 /// </summary>
 internal static class BlockedCombos
 {
+    private static readonly FrozenSet<string> Lock = new[] { "win", "l" }.ToFrozenSet(
+        StringComparer.Ordinal
+    );
+
     /// <summary>The blocked combinations, as sets of base key ids.</summary>
     public static IReadOnlyList<FrozenSet<string>> All { get; } =
-    [
-        new[] { "ctrl", "alt", "delete" }.ToFrozenSet(StringComparer.Ordinal),
-        new[] { "win", "l" }.ToFrozenSet(StringComparer.Ordinal),
-    ];
+    [new[] { "ctrl", "alt", "delete" }.ToFrozenSet(StringComparer.Ordinal), Lock];
+
+    /// <summary>
+    /// The blocked combinations that have a system alternative (the <c>alternative</c> of the catalog): a Tap of Win+L
+    /// locks the computer with the system action instead of doing nothing (EJE-014, EJE-016).
+    /// </summary>
+    public static IReadOnlyList<(
+        FrozenSet<string> Keys,
+        SystemCommandId Command
+    )> Alternatives { get; } = [(Lock, new SystemCommandId("lock"))];
 
     private static readonly FrozenDictionary<string, string> BaseOf = KeyDefinitions
         .All.Where(static d => d.BaseKey is not null)
@@ -36,6 +47,34 @@ internal static class BlockedCombos
             return false;
         }
 
+        var keys = BaseKeys(chord);
+        return All.Any(blocked => blocked.SetEquals(keys));
+    }
+
+    /// <summary>The system command that replaces <paramref name="chord"/>, when it is blocked and has one.</summary>
+    /// <param name="chord">The combination.</param>
+    public static SystemCommandId? AlternativeFor(KeyChord chord)
+    {
+        ArgumentNullException.ThrowIfNull(chord);
+        if (chord.IsEmpty)
+        {
+            return null;
+        }
+
+        var keys = BaseKeys(chord);
+        foreach (var (combo, command) in Alternatives)
+        {
+            if (combo.SetEquals(keys))
+            {
+                return command;
+            }
+        }
+
+        return null;
+    }
+
+    private static HashSet<string> BaseKeys(KeyChord chord)
+    {
         var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var stroke in chord.Strokes)
         {
@@ -43,6 +82,6 @@ internal static class BlockedCombos
             keys.Add(BaseOf.TryGetValue(id, out var baseKey) ? baseKey : id);
         }
 
-        return All.Any(blocked => blocked.SetEquals(keys));
+        return keys;
     }
 }

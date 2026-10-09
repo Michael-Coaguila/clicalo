@@ -27,9 +27,14 @@ internal sealed class HostWorld : IDisposable
         new TouchSettings(TimeSpan.FromMilliseconds(250), 8, 24, TimeSpan.Zero)
     );
 
-    public HostWorld(EngineState? initial = null, bool realReducer = false)
+    public HostWorld(
+        EngineState? initial = null,
+        bool realReducer = false,
+        Func<EngineHostPorts, EngineHostPorts>? ports = null
+    )
     {
         Ports = new EngineHostPorts(Injector, Shell, Shell, Observer);
+        Ports = ports?.Invoke(Ports) ?? Ports;
         Host = new EngineHost(
             Ports,
             Config,

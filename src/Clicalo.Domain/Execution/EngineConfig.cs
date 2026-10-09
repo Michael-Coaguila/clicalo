@@ -1,4 +1,5 @@
 using Clicalo.Domain.CommonActions;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 
@@ -33,4 +34,16 @@ public sealed record EngineConfig(
     /// and <see cref="AppsLanguage"/>. Empty by default: every tap is sent as saved.
     /// </summary>
     public CommonActionTable CommonActions { get; init; } = CommonActionTable.Empty;
+
+    /// <summary>
+    /// The key labels the notices name a combination with («Ctrl + S enviado a Word», EJE-003). Empty by default: keys
+    /// are named by their id.
+    /// </summary>
+    public KeyLabelCatalog KeyLabels { get; init; } = KeyLabelCatalog.Empty;
+
+    /// <summary>The interface language of the notices: key labels and shortcut names (IDI-001).</summary>
+    public LangCode InterfaceLanguage { get; init; } = LangCode.Es;
+
+    /// <summary>Play the soft sound after an action runs (EJE-012, GEN-011).</summary>
+    public bool FeedbackSound { get; init; }
 }

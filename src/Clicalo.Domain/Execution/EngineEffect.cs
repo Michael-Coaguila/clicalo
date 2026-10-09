@@ -115,4 +115,10 @@ public abstract record EngineEffect
     /// <summary>Remember the last action for Repeat (AVI-004).</summary>
     /// <param name="Shortcut">The shortcut.</param>
     public sealed record SetLastAction(ShortcutId Shortcut) : EngineEffect;
+
+    /// <summary>
+    /// Play the soft sound that confirms an action ran (EJE-012), without delaying anything: the host hands it to a
+    /// thread that is not the engine's.
+    /// </summary>
+    public sealed record PlayFeedbackSound : EngineEffect;
 }
