@@ -241,6 +241,11 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     /// <summary>The zones whose drag moves the surface; none by default.</summary>
     protected virtual IEnumerable<FrameworkElement> DragZones => [];
 
+    /// <summary>Whether a contact that went down at <paramref name="position"/> in <paramref name="zone"/> may drag it.</summary>
+    /// <param name="zone">The zone.</param>
+    /// <param name="position">Where the contact went down, in physical pixels.</param>
+    protected virtual bool DragStartsAt(FrameworkElement zone, PhysicalPoint position) => true;
+
     /// <summary>A drag of <paramref name="zone"/> passed the threshold (PAN-004).</summary>
     /// <param name="zone">The zone.</param>
     protected virtual void OnDragStarted(FrameworkElement zone) { }
@@ -350,7 +355,10 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
             case PointerPhase.Down when !_drag.IsTracking:
                 foreach (var zone in DragZones)
                 {
-                    if (PhysicalBounds(zone, inflate: true).Contains(sample.Position))
+                    if (
+                        PhysicalBounds(zone, inflate: true).Contains(sample.Position)
+                        && DragStartsAt(zone, sample.Position)
+                    )
                     {
                         _dragZone = zone;
                         _ = _drag.Down(sample.PointerId, sample.Position);

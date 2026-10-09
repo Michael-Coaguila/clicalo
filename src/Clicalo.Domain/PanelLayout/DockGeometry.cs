@@ -80,6 +80,27 @@ public static class DockGeometry
         return new PhysicalRect(x, y, width, thickness);
     }
 
+    /// <summary>
+    /// Whether a contact that went down at <paramref name="point"/> may start dragging the handle (PES-002,
+    /// EC-PES-03): not on the pixel of the handle that touches its screen edge, where Windows starts its own edge
+    /// gestures (notifications, widgets). A tap there still opens the bar.
+    /// </summary>
+    /// <param name="side">The edge of the handle.</param>
+    /// <param name="handle">The handle on screen.</param>
+    /// <param name="point">Where the contact went down.</param>
+    public static bool HandleDragStartsAt(
+        DockSide side,
+        PhysicalRect handle,
+        PhysicalPoint point
+    ) =>
+        side switch
+        {
+            DockSide.Left => point.X > handle.Left,
+            DockSide.Top => point.Y > handle.Top,
+            DockSide.Bottom => point.Y < handle.Bottom - 1,
+            _ => point.X < handle.Right - 1,
+        };
+
     /// <summary>The handle position kept inside 8–92 % (<c>sizes.json</c>).</summary>
     /// <param name="percent">A position along the edge, in percent.</param>
     public static int ClampPercent(int percent) =>

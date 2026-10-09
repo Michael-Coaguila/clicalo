@@ -143,6 +143,10 @@ public sealed class DockHandleWindow : TouchSurface
     protected override IEnumerable<FrameworkElement> DragZones => IsLocked ? [] : [_button];
 
     /// <inheritdoc />
+    protected override bool DragStartsAt(FrameworkElement zone, PhysicalPoint position) =>
+        DockGeometry.HandleDragStartsAt(Side, PhysicalBounds(_button, inflate: false), position);
+
+    /// <inheritdoc />
     protected override IEnumerable<SurfaceTarget> CollectTargets() =>
         [SurfaceTarget.Button(_button, _viewModel.OpenBar)];
 

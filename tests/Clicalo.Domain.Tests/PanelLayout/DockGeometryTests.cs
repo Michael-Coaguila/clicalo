@@ -49,6 +49,30 @@ public sealed class DockGeometryTests
     }
 
     [Theory]
+    [InlineData(DockSide.Right, 1919, 500, false)]
+    [InlineData(DockSide.Right, 1918, 500, true)]
+    [InlineData(DockSide.Left, 0, 500, false)]
+    [InlineData(DockSide.Left, 1, 500, true)]
+    [InlineData(DockSide.Top, 960, 0, false)]
+    [InlineData(DockSide.Top, 960, 1, true)]
+    [InlineData(DockSide.Bottom, 960, 1039, false)]
+    [InlineData(DockSide.Bottom, 960, 1038, true)]
+    [Trait("Req", "PES-002")]
+    public void A_drag_of_the_handle_never_starts_on_the_pixel_of_the_screen_edge(
+        DockSide side,
+        int x,
+        int y,
+        bool starts
+    ) =>
+        DockGeometry
+            .HandleDragStartsAt(
+                side,
+                DockGeometry.Handle(side, 50, Monitor, gutter: false),
+                new PhysicalPoint(x, y)
+            )
+            .ShouldBe(starts);
+
+    [Theory]
     [InlineData(0, 8)]
     [InlineData(8, 8)]
     [InlineData(50, 50)]
