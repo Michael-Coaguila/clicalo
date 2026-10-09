@@ -751,6 +751,27 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   paralelo; la regla sigue siendo pura y con tabla de transiciones.
 - **Revisión.** Al cerrar M3, si se quiere mover la burbuja y la Pestaña a `PanelSession` como dice el plano.
 
+## D-27 · Capas del panel e integración de M3
+
+- **Plano.** [§8.1](blueprint.md#81-superficies-y-ventanas) lista el menú de toque largo y Ajustes rápidos como ventanas hijas
+  `NonActivatingWindow`; [§6.4](blueprint.md#64-estado-cuatro-dueños-deshacer-y-autoguardado) pone la capa primaria,
+  el menú y el Modo prueba en los almacenes de sesión e interacción.
+- **Implementado.**
+  - El menú de toque largo y Ajustes rápidos se dibujan dentro del panel, como piden CUA-014, AJR-001 y el prototipo:
+    el menú encima de la cuadrícula y la hoja debajo de la búsqueda. Mientras el menú está abierto, sus filas actúan
+    y cualquier otro toque solo lo cierra.
+  - El estado de cada capa vive en su propio ViewModel (`QuickSettings.IsOpen`, `EditMode.IsOn`, `Menu.IsOpen`,
+    `TestMode.IsOn`). `PanelComposer` mantiene una sola capa primaria abierta (PAN-008) y avisa al `InteractionStore`
+    para que no se atenúe nada mientras están abiertas.
+  - Las intenciones hacia el Centro de control (`OpenEditor`, `OpenLibrary`, `OpenControlCenter`) se emiten por
+    `PanelComposer.ControlCenter`; hasta que el Centro de control se conecte, no hacen nada.
+  - El asa de la Pestaña es una ventana de 44 de fondo (REG-02, ACC-002) que dibuja el asa de 32 contra el borde y
+    pinta el resto con un pincel de alfa 1 para recibir el toque. Pierde la sombra, porque la ventana de sombra
+    seguiría a toda la ventana.
+- **Motivo.** Lo más simple que cumple el comportamiento del prototipo y REG-02 sin cambiar la capa de ventanas ni el
+  formato del documento.
+- **Revisión.** Si se quiere la sombra del asa, la capa de ventanas puede aprender un margen táctil invisible.
+
 ## Puntos del plano pendientes de resolver
 
 No son desviaciones del repositorio, sino contradicciones o huecos detectados al redactar la documentación.
