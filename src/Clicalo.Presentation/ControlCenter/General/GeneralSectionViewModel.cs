@@ -28,7 +28,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
     private const string SampleKeys = "Ctrl + C";
 
     private static readonly ConfirmationSubject ResetSubject = new(
-        nameof(ResetFrequentsCommand),
+        nameof(Domain.Commands.ResetFrequents),
         "frequents"
     );
 
