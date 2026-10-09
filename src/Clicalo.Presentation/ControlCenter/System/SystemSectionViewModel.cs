@@ -589,7 +589,7 @@ public sealed class SystemSectionViewModel : ObservableObject
             UpdatePhase.Unavailable => new UpdateCardModel(
                 "info",
                 T(L.UpdUnavailT),
-                T(L.UpdUnavailD),
+                _sys.Elevation.IsElevated ? T(L.AdminActive) : T(L.UpdUnavailD),
                 false,
                 0,
                 T(L.CheckNow),

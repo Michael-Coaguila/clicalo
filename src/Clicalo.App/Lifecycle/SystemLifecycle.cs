@@ -85,7 +85,9 @@ internal sealed class SystemLifecycle : IDisposable
                 ExitAsync
             ),
             services.GetRequiredService<ILogger<UpdateService>>(),
-            enabled: !options.IsolatedData
+            // An elevated instance never downloads nor applies: the files of the installation would belong to the
+            // Administrators (blueprint §9.3). Updates wait for the next normal start.
+            enabled: !options.IsolatedData && !Environment.IsPrivilegedProcess
         );
         _ = Task.Run(() => updates.StartAsync(CancellationToken.None));
         var system = new SystemServices(
