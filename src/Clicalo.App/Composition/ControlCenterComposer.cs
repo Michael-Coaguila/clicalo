@@ -14,6 +14,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 using Clicalo.Infrastructure.Catalogs;
 using Clicalo.Presentation.ControlCenter;
+using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Workspace;
 
@@ -115,6 +116,9 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         store.Changed += (_, _) => _ = _ui.BeginInvoke(OnDocumentChanged);
         localization.LanguageChanged += (_, _) => _ = _ui.BeginInvoke(Relocalize);
     }
+
+    /// <summary>The services of «Sistema» (docs/05 §5), set before the window is first opened.</summary>
+    public SystemServices? System { get; set; }
 
     /// <summary>Whether «Probar ahora» is running: its app switches are not the user's (PRB-006). Any thread.</summary>
     public bool IsTrying => _tryNow.IsRunning;
@@ -320,9 +324,15 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             () => _lastApp,
             DictateAsync,
             TryNowAsync,
-            () => _viewModel?.Select(ControlCenterSection.Templates)
+            () => _viewModel?.Select(ControlCenterSection.Templates),
+            System
         );
         _viewModel = new ControlCenterViewModel(services, () => _ = CloseAsync());
+        if (_viewModel.System is { } system)
+        {
+            system.Noticed += (_, e) => Notify(e.Notice);
+        }
+
         _window = new ControlCenterWindow(_viewModel, _theme);
         _window.CloseRequested += (_, _) => _ = CloseAsync();
         return _window;

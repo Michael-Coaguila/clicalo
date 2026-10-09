@@ -97,17 +97,19 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
     /// <param name="time">The clock of the checks and the idle wait.</param>
     /// <param name="hooks">Settings, idle time, backup and exit.</param>
     /// <param name="logger">Logs codes, never content.</param>
+    /// <param name="enabled">False for a run with isolated data (<c>cl run</c>): no updates at all.</param>
     public static UpdateService Create(
         DataLocations locations,
         IAtomicFileWriter writer,
         TimeProvider time,
         UpdateHooks hooks,
-        ILogger<UpdateService> logger
+        ILogger<UpdateService> logger,
+        bool enabled
     )
     {
         ArgumentNullException.ThrowIfNull(locations);
         return new UpdateService(
-            new VelopackUpdateClient(UpdateChannels.Repository),
+            new VelopackUpdateClient(UpdateChannels.Repository, enabled),
             new UpdateStateFile(
                 Path.Combine(locations.LocalRoot ?? locations.Root, "update.json"),
                 writer

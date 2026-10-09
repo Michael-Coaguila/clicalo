@@ -14,9 +14,10 @@ namespace Clicalo.Infrastructure.Updates;
 /// this process to end. There is no code signature nor signed manifest in 2.0 (user decision D6).
 /// </summary>
 /// <param name="repository">The repository URL.</param>
-internal sealed class VelopackUpdateClient(string repository) : IUpdateClient
+/// <param name="enabled">False never looks for the installation: the copy behaves as not installed.</param>
+internal sealed class VelopackUpdateClient(string repository, bool enabled) : IUpdateClient
 {
-    private readonly UpdateManager? _installed = Probe(repository);
+    private readonly UpdateManager? _installed = enabled ? Probe(repository) : null;
 
     /// <inheritdoc />
     public bool IsInstalled => _installed?.IsInstalled ?? false;
