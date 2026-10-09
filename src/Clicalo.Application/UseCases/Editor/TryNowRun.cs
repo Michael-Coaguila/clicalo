@@ -115,45 +115,68 @@ public sealed class TryNowRun
     )
     {
         var started = _time.GetTimestamp();
+        var pressed = false;
         controlCenter.Hide();
-        var switched = await _foreground
-            .AcquireAsync(
-                new LeaseRequest(
-                    LeaseKind.TryNowTarget,
-                    attempt.Target.Window,
-                    LeaseOrigin.Touch,
-                    null
-                ),
-                cancellationToken
-            )
-            .ConfigureAwait(true);
-        if (switched is not LeaseResult.Granted)
+        try
         {
-            var back = await ComeBackAsync(controlCenter, cancellationToken).ConfigureAwait(true);
-            return (TryNowOutcome.NotActivated, back);
-        }
-
-        await Task.Delay(Timings.TryNow.TryNowSendDelay, _time, cancellationToken)
-            .ConfigureAwait(true);
-        var sent = Send(attempt);
-        if (sent && attempt.Shortcut.Action is HoldAction or ToggleAction)
-        {
-            await Task.Delay(Timings.TryNow.TryNowHoldDuration, _time, cancellationToken)
+            var switched = await _foreground
+                .AcquireAsync(
+                    new LeaseRequest(
+                        LeaseKind.TryNowTarget,
+                        attempt.Target.Window,
+                        LeaseOrigin.Touch,
+                        null
+                    ),
+                    cancellationToken
+                )
                 .ConfigureAwait(true);
-            sent = Send(attempt);
-        }
+            if (switched is not LeaseResult.Granted)
+            {
+                var back = await ComeBackAsync(controlCenter, cancellationToken)
+                    .ConfigureAwait(true);
+                return (TryNowOutcome.NotActivated, back);
+            }
 
-        var waited = _time.GetElapsedTime(started);
-        if (waited < Timings.TryNow.TryNowReturnDelay)
-        {
-            await Task.Delay(Timings.TryNow.TryNowReturnDelay - waited, _time, cancellationToken)
+            await Task.Delay(Timings.TryNow.TryNowSendDelay, _time, cancellationToken)
                 .ConfigureAwait(true);
-        }
+            var sent = Send(attempt);
+            if (sent && attempt.Shortcut.Action is HoldAction or ToggleAction)
+            {
+                pressed = true;
+                await Task.Delay(Timings.TryNow.TryNowHoldDuration, _time, cancellationToken)
+                    .ConfigureAwait(true);
+                sent = Send(attempt);
+                pressed = false;
+            }
 
-        var lease = await ComeBackAsync(controlCenter, cancellationToken).ConfigureAwait(true);
-        return !sent ? (TryNowOutcome.EngineStopped, lease)
-            : lease is null ? (TryNowOutcome.AskedFlashed, null)
-            : (TryNowOutcome.Asked, lease);
+            var waited = _time.GetElapsedTime(started);
+            if (waited < Timings.TryNow.TryNowReturnDelay)
+            {
+                await Task.Delay(
+                        Timings.TryNow.TryNowReturnDelay - waited,
+                        _time,
+                        cancellationToken
+                    )
+                    .ConfigureAwait(true);
+            }
+
+            var lease = await ComeBackAsync(controlCenter, cancellationToken).ConfigureAwait(true);
+            return !sent ? (TryNowOutcome.EngineStopped, lease)
+                : lease is null ? (TryNowOutcome.AskedFlashed, null)
+                : (TryNowOutcome.Asked, lease);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // REG-03: a key held or latched by the try is never left down, and the Control Center never stays hidden.
+            if (pressed)
+            {
+                _ = _engine.Post(new EngineEvent.ReleaseAll(ReleaseReason.User));
+            }
+
+            var back = await ComeBackAsync(controlCenter, CancellationToken.None)
+                .ConfigureAwait(true);
+            return (TryNowOutcome.Cancelled, back);
+        }
     }
 
     private bool Send(Attempt attempt) =>

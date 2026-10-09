@@ -26,4 +26,10 @@ public enum TryNowOutcome
 
     /// <summary>The engine is stopping.</summary>
     EngineStopped,
+
+    /// <summary>
+    /// The try was cancelled before it ended: a key it held or latched was released (REG-03) and the Control Center came
+    /// back; nothing is asked.
+    /// </summary>
+    Cancelled,
 }
