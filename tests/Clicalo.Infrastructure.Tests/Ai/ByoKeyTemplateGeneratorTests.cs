@@ -118,6 +118,11 @@ public sealed class ByoKeyTemplateGeneratorTests
         UserValues(ContentText(message.GetProperty("content")))
             .Keys.Order(StringComparer.Ordinal)
             .ShouldBe(["app", "layout", "programsLang", "uiLang"]);
+
+        (await generator.GenerateAsync(Request, CancellationToken.None)).Failure.ShouldBe(
+            AiFailure.None,
+            "disposing the client of one generation never breaks the shared HTTP client of the next"
+        );
     }
 
     [Theory]

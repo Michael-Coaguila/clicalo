@@ -71,7 +71,7 @@ internal sealed class TemplatesComposition
             _sharing,
             () => KeyboardLayouts.Detect(InputLanguageManager.Current?.CurrentInputLanguage?.Name),
             () => KeyboardLayouts.DetectAppsLanguage(CultureInfo.InstalledUICulture.Name),
-            _ => PickImport(owner()),
+            cancellationToken => PickImport(owner(), Filter(), cancellationToken),
             (name, content, cancellationToken) =>
                 SaveShareAsync(owner(), name, content, cancellationToken),
             notify
@@ -79,36 +79,44 @@ internal sealed class TemplatesComposition
 
     private string Filter() => _localization.Current.Format(L.AppName) + " (*.json)|*.json";
 
-    private ValueTask<ReadOnlyMemory<byte>?> PickImport(Window? owner)
+    private static async ValueTask<ReadOnlyMemory<byte>?> PickImport(
+        Window? owner,
+        string filter,
+        CancellationToken cancellationToken
+    )
     {
         var dialog = new OpenFileDialog
         {
-            Filter = Filter(),
+            Filter = filter,
             CheckFileExists = true,
             Multiselect = false,
         };
         if (dialog.ShowDialog(owner) != true)
         {
-            return ValueTask.FromResult<ReadOnlyMemory<byte>?>(null);
+            return null;
         }
 
+        // The UI thread never reads files (blueprint §3.2): the dialog runs here, the read on the pool.
+        var path = dialog.FileName;
+        return await Task.Run(() => Read(path), cancellationToken).ConfigureAwait(true);
+    }
+
+    private static ReadOnlyMemory<byte> Read(string path)
+    {
         try
         {
-            var length = new FileInfo(dialog.FileName).Length;
             // A file over the limit is rejected by the codec as too large (LOG-006) without reading it all.
-            ReadOnlyMemory<byte> content =
-                length > Timings.Import.ShareMaxBytes
-                    ? new byte[Timings.Import.ShareMaxBytes + 1]
-                    : File.ReadAllBytes(dialog.FileName);
-            return ValueTask.FromResult<ReadOnlyMemory<byte>?>(content);
+            return new FileInfo(path).Length > Timings.Import.ShareMaxBytes
+                ? new byte[Timings.Import.ShareMaxBytes + 1]
+                : File.ReadAllBytes(path);
         }
         catch (IOException)
         {
-            return ValueTask.FromResult<ReadOnlyMemory<byte>?>(ReadOnlyMemory<byte>.Empty);
+            return ReadOnlyMemory<byte>.Empty;
         }
         catch (UnauthorizedAccessException)
         {
-            return ValueTask.FromResult<ReadOnlyMemory<byte>?>(ReadOnlyMemory<byte>.Empty);
+            return ReadOnlyMemory<byte>.Empty;
         }
     }
 

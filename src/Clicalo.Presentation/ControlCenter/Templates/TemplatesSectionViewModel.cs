@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using Clicalo.Application.Confirmation;
 using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases.Ai;
 using Clicalo.Application.UseCases.Editor;
@@ -29,6 +30,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
 {
     private const string Detect = "detect";
     private const string NoLink = "none";
+    private const string AiKeySubject = "ai-key";
 
     private readonly ControlCenterServices _s;
     private readonly TemplatesServices _t;
@@ -177,15 +179,37 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         Invalidate();
     }
 
-    /// <summary>[keyDelete]: the saved key goes away (ADR-0008).</summary>
+    /// <summary>
+    /// [keyDelete]: two taps (REG-04, [delConfirm] while armed), then the saved key goes away (ADR-0008). It cannot be
+    /// undone because Clícalo never keeps a copy of the key; pasting it again restores it.
+    /// </summary>
     public void DeleteKey()
     {
-        _t.Ai.DeleteKey();
-        _hasKey = _t.Ai.HasKey;
-        _keyOpen = false;
-        Notify(L.KeyDeleted, "key_off", false);
+        switch (_s.Confirm.Tap(new ConfirmationSubject(nameof(DeleteKey), AiKeySubject)))
+        {
+            case TwoStepResult.Confirmed:
+                _t.Ai.DeleteKey();
+                _hasKey = _t.Ai.HasKey;
+                _keyOpen = false;
+                Notify(L.KeyDeleted, "key_off", false);
+                break;
+            case TwoStepResult.Armed armed:
+                _ = _s.Time.CreateTimer(
+                    _ => _s.Post(Invalidate),
+                    null,
+                    armed.Until - _s.Time.GetUtcNow(),
+                    Timeout.InfiniteTimeSpan
+                );
+                break;
+        }
+
         Invalidate();
     }
+
+    private bool DeleteKeyArmed =>
+        _s.Confirm.ArmedSubject is { } subject
+        && string.Equals(subject.Operation, nameof(DeleteKey), StringComparison.Ordinal)
+        && string.Equals(subject.Target, AiKeySubject, StringComparison.Ordinal);
 
     /// <summary>[Aceptar y generar] (PLA-004).</summary>
     public Task AcceptConsentAsync()
@@ -673,7 +697,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             T(L.KeyPh),
             T(L.KeyPaste),
             T(L.Done),
-            _hasKey ? T(L.KeyDelete) : null,
+            _hasKey ? T(DeleteKeyArmed ? L.DelConfirm : L.KeyDelete) : null,
             ai.AskingConsent
                 ? new ConsentModel(T(L.ConsentT), T(L.ConsentD4), T(L.ConsentOk), T(L.ConsentNo))
                 : null,

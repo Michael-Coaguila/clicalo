@@ -170,6 +170,47 @@ public sealed class TemplatesSectionTests
     }
 
     [Fact]
+    [Trait("Req", "REG-04")]
+    [Trait("Req", "PLA-003")]
+    public void Deleting_the_key_takes_two_taps()
+    {
+        var setup = new Setup(consent: true);
+        var (window, theme, viewModel) = setup.Build();
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                var templates = viewModel.Templates!;
+                templates.SaveKey("sk-test");
+                templates.ToggleKey();
+                WpfThread.DrainPendingWork();
+                templates.Screen.Ai.DeleteKeyText.ShouldBe("Borrar clave");
+
+                templates.DeleteKey();
+                WpfThread.DrainPendingWork();
+                templates.Screen.Ai.DeleteKeyText.ShouldBe("Confirmar");
+                string.Equals(
+                        templates.Screen.Ai.KeyStatus,
+                        "Sin clave: la IA usa tu propia clave de API de Anthropic",
+                        StringComparison.Ordinal
+                    )
+                    .ShouldBeFalse("one tap only arms the button");
+
+                templates.DeleteKey();
+                WpfThread.DrainPendingWork();
+                templates.Screen.Ai.KeyStatus.ShouldBe(
+                    "Sin clave: la IA usa tu propia clave de API de Anthropic"
+                );
+                templates.Screen.Ai.DeleteKeyText.ShouldBeNull();
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
     [Trait("Req", "PLA-013")]
     [Trait("Req", "PLA-015")]
     public void A_template_card_opens_its_preview_and_installs_the_checked_shortcuts()
