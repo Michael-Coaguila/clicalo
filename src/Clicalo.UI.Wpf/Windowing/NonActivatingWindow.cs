@@ -1,9 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Geometry;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Pointer;
+using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing.Internal;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -31,8 +37,13 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// surface; <c>WM_ACTIVATE</c> (not <c>WA_INACTIVE</c>), <c>WM_NCACTIVATE(TRUE)</c> and <c>WM_ACTIVATEAPP(TRUE)</c>
 /// → <see cref="ActivationGuard.OnActivated"/>; <c>WM_DPICHANGED</c> is handled: WPF rescales inside an activation
 /// veto and the rectangle is applied with <c>SWP_NOZORDER | SWP_NOACTIVATE</c> (#7561); <c>WM_GETDPISCALEDSIZE</c>
-/// returns the surface's own size; <c>WM_NCHITTEST</c> answers <c>HTNOWHERE</c> inside <see cref="ShadowMargin"/>
-/// (letting the click through to the window below is decided in spike S6).
+/// returns the surface's own size; <c>WM_WINDOWPOSCHANGED</c> moves the shadow window along.
+/// </para>
+/// <para>
+/// Look (spike S6, <c>docs/testing/spikes/S6.md</c>): a surface with a <see cref="Look"/> is a per-pixel transparent
+/// window (<c>AllowsTransparency</c>) whose template rounds and clips it, so the transparent corners let touches through;
+/// its shadow lives in a separate click-through window (<c>WS_EX_LAYERED | WS_EX_TRANSPARENT</c>) right below it.
+/// <see cref="FadeTo"/> and <see cref="ApplyDim"/> change the opacity of both (GEN-009).
 /// </para>
 /// <para>
 /// Showing is only <see cref="ShowPassive"/>: <c>Show()</c>, <c>ShowDialog()</c>, <c>Activate()</c>, <c>Focus()</c>
@@ -44,9 +55,24 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// </para>
 /// <para>CLC0001 binds to this type by its metadata name: renaming or moving it switches the rule off silently.</para>
 /// </remarks>
+[SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A window's lifetime ends with its handle: WM_NCDESTROY disposes the shadow window (OnHandleDestroyed)."
+)]
 public abstract class NonActivatingWindow : Window
 {
+    /// <summary>The theme's <c>shadow</c> brush, as a resource reference, for the shadow window.</summary>
+    internal static readonly DependencyProperty ShadowBrushProperty = DependencyProperty.Register(
+        "ShadowBrush",
+        typeof(Brush),
+        typeof(NonActivatingWindow),
+        new PropertyMetadata(null, (d, _) => ((NonActivatingWindow)d).OnWindowPositionChanged())
+    );
+
     private nint _handle;
+    private SurfaceLook? _look;
+    private SurfaceShadow? _shadow;
 
     /// <summary>
     /// Creates the surface <paramref name="id"/>. <paramref name="registry"/> provides the owner anchor and the
@@ -80,10 +106,71 @@ public abstract class NonActivatingWindow : Window
     protected SurfaceRegistry Registry { get; }
 
     /// <summary>
-    /// The band around the content, in logical units, where the precomputed shadow is drawn (blueprint §8.1). It never
-    /// acts as the surface: <c>WM_NCHITTEST</c> answers <c>HTNOWHERE</c> there. Zero by default.
+    /// The shape and the shadow of the surface (PAN-003, spike S6); null, the default, is a plain opaque rectangle.
+    /// Set it in the constructor: it decides <c>AllowsTransparency</c>, which cannot change once the handle exists. The
+    /// window's <c>Background</c>, <c>BorderBrush</c> and <c>BorderThickness</c> paint the rounded shape.
     /// </summary>
-    protected internal Thickness ShadowMargin { get; set; }
+    /// <exception cref="InvalidOperationException">The handle already exists.</exception>
+    public SurfaceLook? Look
+    {
+        get => _look;
+        protected set
+        {
+            VerifyAccess();
+            if (new WindowInteropHelper(this).Handle != 0)
+            {
+                throw new InvalidOperationException(
+                    "The look of a surface is set before its handle exists."
+                );
+            }
+
+            _look = value;
+            if (value is null)
+            {
+                ClearValue(AllowsTransparencyProperty);
+                ClearValue(TemplateProperty);
+                ClearValue(ShadowBrushProperty);
+                return;
+            }
+
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Template = SurfaceFrame.Template(value);
+            SetResourceReference(ShadowBrushProperty, ThemeBrushKey.For(ColorToken.Shadow));
+        }
+    }
+
+    /// <summary>The shadow window once the handle exists; <see cref="WindowToken.None"/> without a shadow.</summary>
+    public WindowToken ShadowWindow =>
+        _shadow is { } shadow ? new(shadow.Handle) : WindowToken.None;
+
+    /// <summary>The shadow in use, in physical pixels; null without a shadow, or while it has nothing to draw.</summary>
+    public ShadowImage? Shadow => _shadow?.Image;
+
+    /// <summary>
+    /// The shadow color with the elevation opacity: the theme's <c>shadow</c> (the dark theme's when the surface has no
+    /// theme), transparent with a Windows contrast theme (PAN-003, TEM-004).
+    /// </summary>
+    internal Color ShadowColor
+    {
+        get
+        {
+            if (_look?.Shadow is not { } shadow || SystemParameters.HighContrast)
+            {
+                return default;
+            }
+
+            var color = GetValue(ShadowBrushProperty) is SolidColorBrush brush
+                ? brush.Color
+                : ThemeCatalog.GetPalette(ThemeId.Dark).Shadow;
+            return Color.FromArgb(
+                (byte)Math.Round(color.A * shadow.Opacity, MidpointRounding.AwayFromZero),
+                color.R,
+                color.G,
+                color.B
+            );
+        }
+    }
 
     /// <summary>The bounds <see cref="MovePassive"/> is applying, which win over a <c>WM_DPICHANGED</c> suggestion.</summary>
     internal PhysicalRect? PendingMove { get; private set; }
@@ -189,6 +276,41 @@ public abstract class NonActivatingWindow : Window
     }
 
     /// <summary>
+    /// Changes the opacity of the surface and its shadow to <paramref name="opacity"/> over <paramref name="transition"/>
+    /// (at once when it is zero), from wherever a running change has got to. Only a surface with a <see cref="Look"/>
+    /// is translucent.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="opacity"/> is outside 0 to 1.</exception>
+    public void FadeTo(double opacity, TimeSpan transition)
+    {
+        VerifyAccess();
+        if (opacity is not (>= 0 and <= 1))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(opacity),
+                opacity,
+                "The opacity goes from 0 to 1."
+            );
+        }
+
+        if (transition <= TimeSpan.Zero)
+        {
+            BeginAnimation(OpacityProperty, null);
+            Opacity = opacity;
+            return;
+        }
+
+        var fade = new DoubleAnimation(opacity, new Duration(transition));
+        fade.Freeze();
+        BeginAnimation(OpacityProperty, fade, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    /// <summary>Applies what <see cref="DimPolicy"/> decided: its opacity over its transition (GEN-009, TEM-006).</summary>
+    /// <param name="decision">The decision for this surface.</param>
+    public void ApplyDim(DimDecision decision) =>
+        FadeTo(decision.TargetOpacity, decision.Transition);
+
+    /// <summary>
     /// The logical size WPF lays the surface out at (its actual size, or <c>Width</c> and <c>Height</c> before the
     /// first layout); false when neither is known.
     /// </summary>
@@ -209,11 +331,19 @@ public abstract class NonActivatingWindow : Window
         }
     }
 
-    /// <summary>The handle is gone (<c>WM_NCDESTROY</c>): the surface leaves the registry.</summary>
+    /// <summary>
+    /// The surface moved, changed size or z-order, appeared or disappeared (<c>WM_WINDOWPOSCHANGED</c>), or its theme
+    /// changed: the shadow follows. <paramref name="visible"/> is the visibility a show or a hide is giving it.
+    /// </summary>
+    internal void OnWindowPositionChanged(bool? visible = null) => _shadow?.Follow(visible);
+
+    /// <summary>The handle is gone (<c>WM_NCDESTROY</c>): the surface leaves the registry and its shadow goes.</summary>
     internal void OnHandleDestroyed()
     {
         Registry.Unregister(this);
         Volatile.Write(ref _handle, 0);
+        _shadow?.Dispose();
+        _shadow = null;
     }
 
     /// <summary>Applies the non-activation contract before the first show; sealed so no surface can skip it.</summary>
@@ -241,6 +371,12 @@ public abstract class NonActivatingWindow : Window
             // Not a live surface: another one has its id (a defect of the caller).
             Volatile.Write(ref _handle, 0);
             throw;
+        }
+
+        if (_look?.Shadow is not null)
+        {
+            _shadow = new SurfaceShadow(this, _look, anchor);
+            _shadow.Follow();
         }
 
         OnSurfaceInitialized();

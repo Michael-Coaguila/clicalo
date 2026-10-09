@@ -19,6 +19,7 @@ using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Surfaces;
+using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -266,6 +267,19 @@ internal static class AppServices
                 id => NameOf(store.Current, id, localization)
             );
         });
+        // One theme service for the UI thread (blueprint §8.4): every surface of the thread attaches to it. The
+        // container disposes both at the end, after the surfaces are closed.
+        services.AddSingleton<WindowsSystemThemeSource>();
+        services.AddSingleton(sp =>
+        {
+            var settings = sp.Get<DocumentStore>().Current.Settings;
+            return new ThemeService(
+                sp.Get<WindowsSystemThemeSource>(),
+                settings.Theme,
+                settings.TextScalePercent,
+                settings.ReduceMotion
+            );
+        });
         services.AddSingleton(sp =>
         {
             var settings = sp.Get<DocumentStore>().Current.Settings;
@@ -275,7 +289,8 @@ internal static class AppServices
                 sp.Time(),
                 SettingsProjection.Size(settings),
                 settings.Columns,
-                SettingsProjection.Theme(settings)
+                sp.Get<ThemeService>(),
+                SettingsProjection.Dim(settings)
             );
         });
     }

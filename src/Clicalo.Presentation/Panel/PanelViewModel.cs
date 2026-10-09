@@ -175,7 +175,8 @@ public sealed class PanelViewModel : ObservableObject
             tile.ApplyState(
                 isHeld,
                 isHeld ? localizer.Format(StateOf(item!)) : string.Empty,
-                localizer.Format(HelpOf(tile.Behavior))
+                localizer.Format(HelpOf(tile.Behavior)),
+                BadgeOf(tile.Behavior) is { } badge ? localizer.Format(badge) : string.Empty
             );
         }
 
@@ -223,6 +224,14 @@ public sealed class PanelViewModel : ObservableObject
             TileBehavior.Hold => L.THold,
             TileBehavior.Toggle => L.TToggle,
             _ => L.TTap,
+        };
+
+    private static Message? BadgeOf(TileBehavior behavior) =>
+        behavior switch
+        {
+            TileBehavior.Hold => L.BHold,
+            TileBehavior.Toggle => L.BToggle,
+            _ => null,
         };
 
     private string? NameOf(ShortcutId shortcut) =>

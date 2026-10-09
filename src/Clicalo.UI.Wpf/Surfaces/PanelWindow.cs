@@ -9,6 +9,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
@@ -42,7 +43,7 @@ namespace Clicalo.UI.Wpf.Surfaces;
 [SuppressMessage(
     "Design",
     "CA1001:Types that own disposable fields should be disposable",
-    Justification = "A WPF window's lifetime ends with Close: OnClosed disposes the pointer layer, the gestures, the theme and the notice timer."
+    Justification = "A WPF window's lifetime ends with Close: OnClosed disposes the pointer layer, the gestures and the timers and detaches the theme."
 )]
 public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
 {
@@ -52,7 +53,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     private readonly PanelViewModel _viewModel;
     private readonly TimeProvider _time;
     private readonly SizeMetrics _size;
-    private readonly ThemeId _theme;
+    private readonly ThemeService _theme;
     private readonly UniformGrid _grid;
     private readonly Border _panicStrip;
     private readonly TextBlock _panicText;
@@ -62,7 +63,11 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     private readonly Dictionary<int, Target> _targets = [];
     private readonly Dictionary<ShortcutId, int> _targetIds = [];
     private readonly ContactTracker _contacts = new();
-    private ThemeScope? _themeScope;
+    private DimSettings _dim;
+    private DateTimeOffset? _lastLeave;
+    private bool _hovered;
+    private bool _touching;
+    private ITimer? _dimTimer;
     private GestureHost? _gestures;
     private PointerInputSource? _pointer;
     private LiveAnnouncer? _notices;
@@ -77,33 +82,42 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
     /// <param name="time">The clock of the pointer frames and the gesture deadlines.</param>
     /// <param name="size">Tile and gap sizes of the panel size in use (<c>data/catalogs/sizes.json</c>).</param>
     /// <param name="columns">Tiles per row (<c>Settings.Columns</c>, 2 to 4).</param>
-    /// <param name="theme">The theme the person chose (TEM-001; a Windows contrast theme always wins).</param>
+    /// <param name="theme">
+    /// The theme service of the UI thread (TEM-001, CUA-011, TEM-006): colors, fonts, text scale and reduce motion.
+    /// </param>
+    /// <param name="dim">The opacity and the automatic dimming (GEN-009).</param>
     public PanelWindow(
         PanelViewModel viewModel,
         SurfaceRegistry registry,
         TimeProvider time,
         SizeMetrics size,
         int columns,
-        ThemeId theme
+        ThemeService theme,
+        DimSettings dim
     )
         : base(PanelSurfaceIds.Panel, registry)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(size);
+        ArgumentNullException.ThrowIfNull(theme);
         ArgumentOutOfRangeException.ThrowIfLessThan(columns, 1);
         _viewModel = viewModel;
         _time = time;
         _size = size;
         _theme = theme;
+        _dim = dim;
 
-        WindowStyle = WindowStyle.None;
+        // Rounded with its shadow in a window that never takes a touch (PAN-003, S6); set before the handle exists.
+        Look = SurfaceLook.Panel;
         ResizeMode = ResizeMode.NoResize;
         SizeToContent = SizeToContent.WidthAndHeight;
         Title = viewModel.AccessibleName;
+        theme.Attach(this);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        var labelSize = ThemeKeys.ScaledTextSize(size.TileLabelPx);
 
         _grid = new UniformGrid { Columns = columns, Margin = new Thickness(size.GapPx / 2.0) };
         _panicText = new TextBlock
@@ -111,8 +125,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(size.GapPx, 0, size.GapPx, 0),
-            FontSize = size.TileLabelPx,
         };
+        _panicText.SetResourceReference(TextBlock.FontSizeProperty, labelSize);
         _panicText.SetResourceReference(
             TextBlock.ForegroundProperty,
             ThemeBrushKey.For(ColorToken.OnDanger)
@@ -127,8 +141,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             Padding = new Thickness(size.GapPx, 0, size.GapPx, 0),
             Focusable = false,
             IsTabStop = false,
-            FontSize = size.TileLabelPx,
         };
+        _releaseAll.SetResourceReference(FontSizeProperty, labelSize);
         _releaseAll.Invoked += (_, _) => _viewModel.Panic.ReleaseAll();
         var strip = new DockPanel { Margin = new Thickness(size.GapPx / 2.0) };
         DockPanel.SetDock(_releaseAll, Dock.Right);
@@ -150,9 +164,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         {
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(size.GapPx, 0, size.GapPx, size.GapPx / 2.0),
-            FontSize = size.TileLabelPx,
             Visibility = Visibility.Collapsed,
         };
+        _noticeText.SetResourceReference(TextBlock.FontSizeProperty, labelSize);
         _noticeText.SetResourceReference(
             TextBlock.ForegroundProperty,
             ThemeBrushKey.For(ColorToken.Text)
@@ -170,6 +184,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Panic.PropertyChanged += OnPanicChanged;
         _viewModel.Tiles.CollectionChanged += OnTilesChanged;
+        _theme.Changed += OnThemeChanged;
         LayoutUpdated += (_, _) => RefreshTargets();
         LocationChanged += (_, _) => RefreshTargets();
         RebuildTiles();
@@ -221,6 +236,15 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         );
     }
 
+    /// <summary>Takes new opacity and dimming settings and applies them at once (GEN-009, AJR-004).</summary>
+    /// <param name="dim">The settings.</param>
+    public void ApplyDimSettings(DimSettings dim)
+    {
+        VerifyAccess();
+        _dim = dim;
+        EvaluateDim();
+    }
+
     /// <inheritdoc />
     public void OnFrame(in PointerFrame frame)
     {
@@ -228,6 +252,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         {
             _contacts.Observe(sample);
         }
+
+        TrackTouching();
 
         // The gestures of this frame are delivered before the contacts that ended in it are forgotten, so a tap still
         // has its device and summary. A gesture handler that throws never leaves an ended contact behind.
@@ -241,17 +267,32 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
             {
                 _contacts.Forget(sample);
             }
+
+            TrackTouching();
         }
     }
 
     /// <inheritdoc />
-    public void OnHover(bool inside) { }
+    public void OnHover(bool inside)
+    {
+        if (_hovered == inside)
+        {
+            return;
+        }
+
+        _hovered = inside;
+        if (!inside && !_touching)
+        {
+            _lastLeave = _time.GetUtcNow();
+        }
+
+        EvaluateDim();
+    }
 
     /// <inheritdoc />
     protected override void OnSurfaceInitialized()
     {
         base.OnSurfaceInitialized();
-        _themeScope = new ThemeScope(this, _theme);
         _notices = new LiveAnnouncer(_noticeText);
         _panicAnnouncer = new LiveAnnouncer(_panicText);
         var recognizer = new GestureRecognizer(_viewModel.Touch, DpiScale());
@@ -276,14 +317,16 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _viewModel.Panic.PropertyChanged -= OnPanicChanged;
         _viewModel.Tiles.CollectionChanged -= OnTilesChanged;
+        _theme.Changed -= OnThemeChanged;
         DetachTiles();
         _noticeTimer?.Dispose();
+        _dimTimer?.Dispose();
         _pointer?.Detach();
         _pointer?.Dispose();
 
         // On the UI thread: a hold that is still active ends with HoldEndReason.Reset and the engine releases it.
         _gestures?.Dispose();
-        _themeScope?.Dispose();
+        _theme.Detach(this);
         base.OnClosed(e);
     }
 
@@ -324,6 +367,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 PlaceInitially();
             }
 
+            // It appears awake and dims a while later unless the finger or the pointer is on it (GEN-009).
+            _lastLeave = _time.GetUtcNow();
+            EvaluateDim();
             ShowPassive();
             RefreshTargets();
             return;
@@ -332,8 +378,84 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         // A hidden surface receives no pointer-up: end its holds now (REG-03) and forget its contacts.
         _gestures?.Reset();
         _contacts.Clear();
+        _touching = false;
+        _hovered = false;
+        _dimTimer?.Dispose();
+        _dimTimer = null;
         HidePassive();
     }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        foreach (var tile in _tiles)
+        {
+            tile.Control.KeysFontSize = KeysFontSize();
+        }
+
+        EvaluateDim();
+    }
+
+    private double KeysFontSize() => TypeScale.Scale(_size.TileKeysPx, _theme.TextScalePercent);
+
+    /// <summary>Follows whether a finger or the pen is on the panel; lifting the last one counts as leaving it.</summary>
+    private void TrackTouching()
+    {
+        var touching = _contacts.Count > 0;
+        if (touching == _touching)
+        {
+            return;
+        }
+
+        _touching = touching;
+        if (!touching && !_hovered)
+        {
+            _lastLeave = _time.GetUtcNow();
+        }
+
+        EvaluateDim();
+    }
+
+    /// <summary>
+    /// Applies the opacity <see cref="DimPolicy"/> decides (GEN-009) and, when the panel will dim later, evaluates
+    /// again then. Dimming is only visual: the first touch on a dimmed panel wakes it and acts (EJE-017).
+    /// </summary>
+    private void EvaluateDim()
+    {
+        if (_closed)
+        {
+            return;
+        }
+
+        _dimTimer?.Dispose();
+        _dimTimer = null;
+        var now = _time.GetUtcNow();
+        var decision = DimPolicy.Evaluate(
+            new DimInputs(
+                _dim.AutoDim,
+                _dim.Opacity,
+                _dim.DimTo,
+                DimSurface.Panel,
+                _hovered || _touching,
+                _lastLeave,
+                _viewModel.Panic.IsVisible ? DimExceptions.Panic : DimExceptions.None,
+                _theme.ReduceMotion,
+                _theme.Effective is ThemeId.HighContrast or ThemeId.SystemHighContrast,
+                now
+            )
+        );
+        ApplyDim(decision);
+        if (decision.NextEvaluationAt is { } at)
+        {
+            _dimTimer = _time.CreateTimer(
+                static state => ((PanelWindow)state!).QueueEvaluateDim(),
+                this,
+                at > now ? at - now : TimeSpan.Zero,
+                Timeout.InfiniteTimeSpan
+            );
+        }
+    }
+
+    private void QueueEvaluateDim() => _ = Dispatcher.BeginInvoke(EvaluateDim);
 
     private void ApplyPanic()
     {
@@ -359,6 +481,18 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 _panicText.Text = panic.HeldMessage;
             }
         }
+
+        // Nothing dims while something is held: «Release all» stays fully visible (SEG-002). Once released, the panel
+        // waits the whole delay again before dimming.
+        if (panic.IsVisible != wasVisible)
+        {
+            if (!panic.IsVisible && _lastLeave is not null)
+            {
+                _lastLeave = _time.GetUtcNow();
+            }
+
+            EvaluateDim();
+        }
     }
 
     private void RebuildTiles()
@@ -374,7 +508,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                 Height = _size.TileHeightPx,
                 Margin = new Thickness(_size.GapPx / 2.0),
                 Padding = new Thickness(_size.GapPx / 2.0),
-                FontSize = _size.TileLabelPx,
+                IconSize = _size.TileIconPx,
+                KeysFontSize = KeysFontSize(),
                 Focusable = false,
                 IsTabStop = false,
                 Pattern =
@@ -382,6 +517,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
                         ? ShortcutTilePattern.Invoke
                         : ShortcutTilePattern.Toggle,
             };
+            control.SetResourceReference(
+                FontSizeProperty,
+                ThemeKeys.ScaledTextSize(_size.TileLabelPx)
+            );
             control.Invoked += (_, _) => viewModel.Invoke();
             control.Toggled += (_, _) => viewModel.Invoke();
             PropertyChangedEventHandler handler = (_, _) => Paint(control, viewModel);
@@ -410,7 +549,20 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink
         control.AccessibleState = viewModel.AccessibleState;
         control.AccessibleHelpText = viewModel.AccessibleHelpText;
         control.ToggleState = viewModel.IsLatched ? ToggleState.On : ToggleState.Off;
+        control.Symbol = viewModel.Icon.Length == 0 ? null : viewModel.Icon;
+        control.Category = CategoryOf(viewModel.Category);
+        control.Badge = viewModel.Badge;
+
+        // CUA-009: a Mantener tile held down shrinks with its outline; a latched toggle shows ACTIVO and its wash.
+        control.IsHeld = viewModel.IsLatched && viewModel.Behavior == TileBehavior.Hold;
     }
+
+    /// <summary>The color category of a persisted category id (TEM-003); an unknown one falls back to Edit.</summary>
+    private static CategoryToken CategoryOf(string category) =>
+        Enum.TryParse<CategoryToken>(category, ignoreCase: true, out var token)
+        && Enum.IsDefined(token)
+            ? token
+            : CategoryToken.Edit;
 
     private void RefreshTargets()
     {

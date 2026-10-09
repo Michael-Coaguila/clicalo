@@ -1,6 +1,6 @@
 # Tokens de diseño
 
-Guía de los colores, formas y tiempos de movimiento de Clícalo: de dónde salen, cómo se convierten, cómo se garantiza el contraste y cómo se consumen desde WPF.
+Guía de los colores, formas, tiempos de movimiento y fuentes de Clícalo: de dónde salen, cómo se convierten, cómo se garantiza el contraste y cómo se consumen desde WPF (servicio de temas y controles base, §14 a §16).
 
 - **Fuente de verdad:** `data/tokens/` (cinco archivos JSON).
 - **Código generado:** espacio de nombres `Clicalo.UI.Wpf.Theming.Generated`, producido por `TokenGenerator` (perfil `UiWpf`). Nunca se edita a mano.
@@ -26,6 +26,11 @@ Clicalo.UI.Wpf.Theming.Generated
       │
       ▼  pegamento escrito a mano (Clicalo.UI.Wpf.Theming)
   ThemeId · ThemeCatalog.GetPalette(ThemeId)
+      │
+      ▼  ThemeService (uno por hilo de UI) o ThemeScope (una ventana)
+  ResourceDictionary con pinceles congelados, categorías, fuentes y escala tipográfica
+      │
+      ▼  controles base (Clicalo.UI.Wpf.Controls) y ShortcutTile, con referencias dinámicas
 ```
 
 Un error en los datos es un error de compilación con el archivo, la línea y la columna exactos. El contraste insuficiente también: no se puede compilar Clícalo con un par ilegible.
@@ -181,12 +186,12 @@ TEM-004 citaba los fallos del tema claro (warn, accent sobre cardHi, peligro y l
 
 - **Paleta propia (`hc`):** negro, blanco y #FFE600, bordes de 2 px, sin transparencias ni desenfoque. Peligro #FF6B6B con texto negro (DIS-26), éxito blanco con icono negro, velo opaco y sombra transparente (sin sombra).
 - **Sin sombras:** en todo tema de alto contraste (`IsHighContrast`, también el del sistema, donde `shadow` se asigna a `window`), `ShadowSpec.ColorIn` devuelve un color totalmente transparente.
-- **Colores del sistema:** `SystemHighContrastPalette` lee `SystemColors` al llamarse y `Capture()` congela una instantánea como `ThemePalette` (clave `system`). Tras `WM_SYSCOLORCHANGE` hay que tomar otra. Los pares garantizados `windowText`/`window` y `highlightText`/`highlight` los define todo tema de contraste de Windows; `highlight` sobre `window` es como Windows dibuja la selección y el foco. El `ThemeService` de M3 verificará el contraste con los colores reales del sistema.
+- **Colores del sistema:** `SystemHighContrastPalette` lee `SystemColors` al llamarse y `Capture()` congela una instantánea como `ThemePalette` (clave `system`). Tras `WM_SYSCOLORCHANGE` hay que tomar otra. Los pares garantizados `windowText`/`window` y `highlightText`/`highlight` los define todo tema de contraste de Windows; `highlight` sobre `window` es como Windows dibuja la selección y el foco. Queda pendiente verificar en ejecución el contraste con los colores reales del sistema.
 
 ## 8. Formas y foco
 
 - **Radios** (`Radii`): `Compact` 6, `Control` 8, `Button` 10, `Tile` 12, `LargeCard` 14, `Window` 16, `Panel` 18, `Modal` 20.
-- **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema; en alto contraste devuelve transparente.
+- **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %, `Bubble` 0 10 30 al 40 % y `Handle` (asa de la barra) 0 6 20 al 35 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema; en alto contraste devuelve transparente.
 - **Anillo de foco** (`FocusRing`): 3 px separados 2 px del control, en `focusRing`.
 
 ## 9. Código generado
@@ -213,9 +218,9 @@ TimeSpan fade = Motion.Get(MotionToken.PanelOpacity, reduceMotion: true); // Tim
 | `Radii`, `FocusRing`, `ShadowSpec`, `Shadows` | Formas. |
 | `MotionToken`, `Motion` | Duraciones con y sin reducir movimiento. |
 
-**Hilos (plano §3.2 regla 8).** Las paletas son inmutables y los pinceles salen congelados (`Freeze`): un `Freezable` congelado se puede compartir entre dispatchers. Crear pinceles es barato; el `ThemeService` de M3 los creará una vez por tema y dispatcher.
+**Hilos (plano §3.2 regla 8).** Las paletas son inmutables y los pinceles salen congelados (`Freeze`): un `Freezable` congelado se puede compartir entre dispatchers. Crear pinceles es barato; `ThemeService` los crea una vez por cambio y dispatcher (§15).
 
-**Pegamento escrito a mano** (`src/Clicalo.UI.Wpf/Theming`): `ThemeId` (`Dark`, `Light`, `HighContrast`, `SystemHighContrast`) y `ThemeCatalog.GetPalette(ThemeId)`. «Auto» es una preferencia que el `ThemeService` resuelve (M3), no una paleta. La detección del tema de Windows llega en M3.
+**Pegamento escrito a mano** (`src/Clicalo.UI.Wpf/Theming`): `ThemeId` (`Dark`, `Light`, `HighContrast`, `SystemHighContrast`) y `ThemeCatalog.GetPalette(ThemeId)`. «Auto» es una preferencia que `ThemeService` resuelve (§15), no una paleta.
 
 ## 10. Diagnósticos
 
@@ -273,3 +278,50 @@ La compilación de `Clicalo.UI.Wpf` compila además el código generado contra W
 - **Numeración de diagnósticos.** El plano (§8.4) numeraba CLCT001 «fuera de gamut sin regla» y CLCT003 «token ausente». Aquí CLCT001 es el color no válido, CLCT003 la pérdida por mapeo de gama y el token ausente pasa a CLCT005, con CLCT004, CLCT006 y CLCT007 para los demás errores de datos.
 - **Atenuado.** El plano menciona medir «con dimTo»; el catálogo (TEM-004, PQ-42) exime el estado atenuado. Se sigue el catálogo.
 - **Escritorio.** «Escritorio claro y oscuro» se concreta en los 8 vértices del cubo sRGB: el negro y el blanco acotan la luminancia del fondo, y los vértices de color cubren el caso de un primer plano translúcido (§4).
+
+## 14. Fuentes
+
+TEM-005: todo va empaquetado, sin red, con la versión fijada y las licencias incluidas. WPF no dibuja bien las fuentes variables, así que todas son estáticas.
+
+| Familia | Archivo en `assets/fonts` | Origen | Tratamiento |
+|---|---|---|---|
+| Atkinson Hyperlegible 400 y 700 | `AtkinsonHyperlegible-Regular.ttf`, `-Bold.ttf` | `google/fonts` | Sin cambios |
+| JetBrains Mono 500 | `JetBrainsMono-Medium.ttf` | `JetBrains/JetBrainsMono` v2.304 | Sin cambios (estática oficial) |
+| Material Symbols Rounded | `MaterialSymbolsRounded-Regular.ttf` (FILL 0), `MaterialSymbolsRoundedFilled-Regular.ttf` (FILL 1) | `google/material-design-icons` | Instancias de la variable con wght 400, GRAD 0 y opsz 24, recortadas a los iconos que se usan y sin ligaduras |
+
+- **Origen exacto:** `tools/fonts/sources.json` guarda, por archivo, el repositorio, el *commit* y el SHA-256. Las licencias (`*-OFL.txt`, `MaterialSymbols-LICENSE.txt`) se copian junto a las fuentes.
+- **Regenerar** (a mano, cuando cambia una versión): crear un entorno virtual **fuera del repositorio**, instalar `tools/fonts/requirements.txt` (fontTools fijado) y ejecutar `python tools/fonts/build_fonts.py`. El script descarga a una caché temporal, rechaza un archivo con otro hash y escribe `assets/fonts`; la salida es determinista y se versiona.
+- **Recorte de iconos:** entran los nombres que aparecen en `data/catalogs`, `data/content`, la semilla del paquete y el Prototipo v4 (sobra algún icono, nunca falta). Hoy son 339 y cada fuente pesa unos 70 KB en lugar de 15 MB.
+- **`assets/fonts/codepoints.json`:** nombre → punto de código de cada icono incluido. Los iconos se dibujan **por punto de código**, nunca escribiendo su nombre: las fuentes no tienen ligaduras y un nombre nunca llega a la pantalla ni a UI Automation (UIA008). Un nombre desconocido dibuja el icono de respaldo `bolt` (el icono por defecto de un atajo).
+- **En código** (`Clicalo.UI.Wpf.Resources`): `AppFonts` (familias como recursos `pack://` del ensamblado), `MaterialSymbols` (la tabla, con `CodePointOrFallback`) y el control `SymbolIcon` (`Controls`), que dibuja el glifo con un `GlyphRun` en un cuadrado del tamaño del icono, como `line-height: 1` en el prototipo.
+- **Detalle de WPF:** las fuentes `pack://` se leen a través del paquete de recursos que WPF registra en el inicializador de tipo de `Application`. `AppFonts` lo provoca antes de crear las familias; si no, sin un `Application` (pruebas, primeros instantes del arranque) la búsqueda falla y el fallo queda en caché.
+
+## 15. Servicio de temas
+
+`ThemeService` (`Clicalo.UI.Wpf.Theming`), uno por hilo de UI:
+
+- **Resolución** (`ThemeService.Resolve`, TEM-001): con un tema de contraste de Windows activo, siempre `SystemHighContrast`; si no, Auto sigue el modo claro u oscuro de las apps de Windows y las demás opciones son ellas mismas.
+- **Sistema:** `ISystemThemeSource`. `WindowsSystemThemeSource` lee `AppsUseLightTheme` (HKCU), `SystemParameters.HighContrast` y `SystemParameters.ClientAreaAnimation`, y avisa con `SystemEvents.UserPreferenceChanged` (`WM_SETTINGCHANGE`, `WM_SYSCOLORCHANGE`) y con los cambios de esos `SystemParameters`. El servicio vuelve a leer en su dispatcher, con prioridad `Background`.
+- **Recursos:** un `ResourceDictionary` que cada ventana fusiona con `Attach` (que además hace heredar la fuente de interfaz y el color `text`). Un cambio sustituye las entradas y todo lo que las referencia de forma dinámica se repinta sin reconstruir el árbol (AJR-004, REG-06). Claves: `ThemeBrushKey` (tokens), `CategoryBrushKey` (tinte y fondo de cada categoría), `ThemeScope.BorderThicknessKey` y `ThemeKeys` (fuentes, `TextSize(px)` y `ScaledTextSize(px)` de la escala, `TextScalePercent`, `ReduceMotion`). Todo es inmutable o un `Freezable` congelado.
+- **Escala tipográfica** (`TypeScale`): 11 · 12 · 13 · 14 · 15 · 16 · 18 · 20 · 24 · 28 · 30 · 40. La escala de texto del usuario (100–150 %) da `round(base × escala)` con un mínimo de 11 (CUA-011, TEM-007).
+- **Reducir movimiento** (TEM-006): el ajuste propio o las animaciones de Windows desactivadas.
+- `ThemeScope` (una ventana, sin Auto) publica las mismas claves y sigue sirviendo al panel de M2. Una ventana usa uno u otro, no los dos.
+
+## 16. Controles base
+
+En `Clicalo.UI.Wpf.Controls`, con plantillas selladas construidas en código (una instancia sirve a todos los hilos) y colores siempre por recurso:
+
+| Control | Aspecto (prototipo v4) | UI Automation | Objetivo |
+|---|---|---|---|
+| `TouchButton` | Radio 10, texto 14 en negrita, icono opcional; `Appearance`: Accent, Neutral, Outline, Ghost, Danger, Warn | Button + Invoke, nombre = texto | ≥ 44 × 44; dibujo más pequeño centrado |
+| `IconButton` | Solo icono de 22, Ghost por defecto | Button + Invoke, nombre = `AutomationProperties.Name` | Ídem |
+| `ToggleSwitch` | Fila con icono `muted`, etiqueta y pista de 48 × 28 con botón de 20 que se desliza 20 px en 150 ms | Button + Toggle | La fila entera, alto ≥ 44 |
+| `StepSlider` | − y + `cardHi` de 40, pista `accent`/`line`, botón de 20 | Slider + RangeValue; hijos: − y + con nombre | ≥ 44 |
+| `SegmentedControl` / `SegmentedItem` | Celdas iguales, radio 8, `cardHi` o `accent` | List + Selection; ListItem + SelectionItem | Cada celda ≥ 44 |
+| `Chip` | Radio 10, `card` con borde; activo `accentWash` + `accent` y marca ✓; `IsMonospace` para teclas | Button + Toggle | ≥ 44 (dibujo de 40) |
+| `Card` | Radio 12, `Tone`: Neutral, Accent, Warn, Danger | Group con nombre opcional | No es interactiva |
+
+- **Foco:** anillo de 3 px en `focusRing` (amarillo en alto contraste), TEM-009.
+- **Foco por UI Automation:** como en las fichas, solo con la ventana ya activa; si no, `SetFocus` falla sin tocar el foco (REG-01).
+- **`ShortcutTile`** toma el aspecto del prototipo (CUA-007, CUA-009): icono en el tinte de su `Category`, nombre en negrita, línea de teclas en JetBrains Mono y `muted`, insignia con el tipo (`Badge`) o, si lo hay, el estado (`AccessibleState`), número de voz en `warn`, y los estados Alternar activo, mantener (escala 0,95), armado (borde `warn`) y destello.
+- **Pruebas:** las deterministas están en `tests/Clicalo.Windowing.IntegrationTests/Theming` y `Controls` (sin escritorio); las capturas de los tres temas (`BaseControlRenderTests`, a 168 ppp como la pantalla de 175 %) llevan `Requires=Desktop` y van a la ejecución nocturna.

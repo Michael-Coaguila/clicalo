@@ -397,7 +397,7 @@ public abstract class NonActivatingWindow : Window
 | `WM_ACTIVATE` (≠ `WA_INACTIVE`), `WM_NCACTIVATE(TRUE)`, `WM_ACTIVATEAPP(TRUE)` | `ActivationGuard.OnActivated(surface, msg)` |
 | `WM_DPICHANGED` | Aplica el rectángulo con `SWP_NOZORDER | SWP_NOACTIVATE` y lo marca como manejado (#7561). Antes lo reenvía a `HwndTarget` dentro de `ActivationVeto` para que WPF reescale (ACC-008), porque su `SetWindowPos` no lleva `SWP_NOACTIVATE` || SWP_NOACTIVATE` y lo marca como manejado (#7561) |
 | `WM_GETDPISCALEDSIZE` | Tamaño propio |
-| `WM_NCHITTEST` | Margen de sombra no clicable; el mecanismo se decide en S6 (`SetWindowRgn` ajustado al contorno o alfa 0 en ventana *layered*). `HTTRANSPARENT` no sirve: solo pasa el clic a ventanas del mismo hilo |
+| `WM_WINDOWPOSCHANGED` | La ventana de sombra (`WS_EX_LAYERED`, `WS_EX_TRANSPARENT` y `WS_EX_NOACTIVATE`) sigue a la superficie justo debajo en el orden Z; la superficie ya no tiene margen de sombra ni responde a `WM_NCHITTEST` (decidido en [S6](../testing/spikes/S6.md)) |
 
 **Prohibido en las superficies:** `Popup`, `ContextMenu`, `ToolTip` interactivo y `ComboBox`. Lo impiden `CLC0002` en XAML y `BannedSymbols.Surfaces.txt`. Los menús y desplegables son `NonActivatingWindow` hijas.
 
@@ -1405,11 +1405,8 @@ Al tocar el panel, Windows lleva el cursor al punto del toque. Por eso `GetCurso
 
 **Opacidad, atenuado y desenfoque:**
 - Opacidad del 30 al 100 % y atenuado según `DimPolicy` (§6.4), con animación de 350 ms (0 ms con reducir movimiento).
-- **Desenfoque del fondo (PAN-003, SHOULD):**
-  - En Windows 11 22H2 o posterior, fondo de sistema de DWM (`DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_TRANSIENTWINDOW`) sobre una ventana no *layered*, con la opacidad de ventana aplicada con `LWA_ALPHA`, si S6 confirma que ambos se combinan.
-  - En Windows 10, y cuando el usuario desactiva los efectos de transparencia (`UISettings.AdvancedEffectsEnabled = false`), **no hay desenfoque**: fondo sólido con la opacidad elegida. Es una ausencia justificada, porque la única vía en Windows 10 es la API no documentada `SetWindowCompositionAttribute`, que está prohibida.
-  - S6 decide entre esta vía y `AllowsTransparency` (alfa por píxel sin desenfoque) y deja el resultado en `docs/testing/spikes/S6.md`.
-- Sombras precalculadas, nunca `DropShadowEffect`, con un margen de sombra que no captura clics.
+- **Forma y desenfoque (PAN-003; decidido en [S6](../testing/spikes/S6.md)):** cada superficie con `SurfaceLook` es una ventana WPF con `AllowsTransparency` (alfa por píxel) y radio suavizado, igual en Windows 10 y 11. **No hay desenfoque del fondo** (PAN-003 es SHOULD): `DWMSBT_TRANSIENTWINDOW` necesita una ventana no *layered*, y en WPF esa ventana no admite opacidad (WPF quita `WS_EX_LAYERED` y `LWA_ALPHA` falla, medido en S6). La ausencia se propone al usuario en la §6.1 del catálogo.
+- Sombras precalculadas (`ShadowRaster`), nunca `DropShadowEffect`, en una ventana aparte que deja pasar los toques (`WS_EX_TRANSPARENT`) y sigue a la superficie; en alto contraste no hay sombra.
 
 ### 8.2 Flujo MVVM
 

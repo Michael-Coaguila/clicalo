@@ -28,7 +28,9 @@ public static class PanelProjector
                     shortcut.Id,
                     shortcut.Name.Get(language, fallback),
                     BehaviorOf(shortcut.Action),
-                    new TileBinding(shortcut, profile.Id, profile.Injection)
+                    new TileBinding(shortcut, profile.Id, profile.Injection),
+                    shortcut.Icon,
+                    shortcut.Category
                 )
             );
         }

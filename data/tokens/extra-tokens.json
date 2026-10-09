@@ -152,7 +152,9 @@
     "$comment": "Sombras precalculadas (nunca DropShadowEffect, blueprint §8.1). Color: el token shadow del tema con esta opacidad.",
     "panel": { "offsetX": 0, "offsetY": 18, "blur": 50, "opacity": 0.45 },
     "modal": { "offsetX": 0, "offsetY": 30, "blur": 80, "opacity": 0.5 },
-    "menu": { "offsetX": 0, "offsetY": 14, "blur": 40, "opacity": 0.45 }
+    "menu": { "offsetX": 0, "offsetY": 14, "blur": 40, "opacity": 0.45 },
+    "bubble": { "offsetX": 0, "offsetY": 10, "blur": 30, "opacity": 0.4 },
+    "handle": { "offsetX": 0, "offsetY": 6, "blur": 20, "opacity": 0.35 }
   },
   "focusRing": {
     "$comment": "TEM-009: anillo de 3 px separado 2 px en el color focusRing (accent; amarillo en alto contraste).",

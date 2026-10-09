@@ -18,4 +18,11 @@
     <AdditionalFiles Include="$(RepoRoot)data\tokens\*.json" />
     <CompilerVisibleProperty Include="ClicaloGeneratorProfile" />
   </ItemGroup>
+  <ItemGroup Label="Bundled fonts (TEM-005), built by tools/fonts/build_fonts.py">
+    <Resource Include="$(RepoRoot)assets\fonts\*.ttf" Link="Resources\Fonts\%(Filename)%(Extension)" />
+    <EmbeddedResource
+      Include="$(RepoRoot)assets\fonts\codepoints.json"
+      LogicalName="Clicalo.UI.Wpf.Resources.codepoints.json"
+    />
+  </ItemGroup>
 </Project>

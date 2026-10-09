@@ -32,9 +32,9 @@ namespace Clicalo.UI.Wpf.Windowing.Internal;
 /// handled.</description></item>
 /// <item><term><c>WM_GETDPISCALEDSIZE</c></term><description>The surface's own logical size at the new DPI, so it
 /// keeps its size in logical units across monitors.</description></item>
-/// <item><term><c>WM_NCHITTEST</c></term><description><c>HTNOWHERE</c> inside
-/// <see cref="NonActivatingWindow.ShadowMargin"/>: the shadow never acts as the surface. Letting the click through to
-/// the window below is decided in spike S6 (<c>SetWindowRgn</c> or a layered window).</description></item>
+/// <item><term><c>WM_WINDOWPOSCHANGED</c></term><description>The shadow window of a surface with a
+/// <see cref="NonActivatingWindow.Look"/> follows it (spike S6). The surface has no shadow margin: its shadow is a
+/// separate click-through window, so <c>WM_NCHITTEST</c> is left to WPF.</description></item>
 /// <item><term><c>WM_DISPLAYCHANGE</c>, theme changes</term><description>Ask for an integrity check
 /// (<see cref="SurfaceIntegrityCheck"/>); so does <c>WM_DPICHANGED</c>.</description></item>
 /// </list>
@@ -91,9 +91,9 @@ internal sealed unsafe class SurfaceHook(NonActivatingWindow surface, SurfaceReg
                 handled = OnGetDpiScaledSize(wParam, (SIZE*)lParam);
                 return handled ? 1 : 0;
 
-            case PInvoke.WM_NCHITTEST:
-                handled = IsInShadowMargin(hwnd, lParam);
-                return handled ? (nint)PInvoke.HTNOWHERE : 0;
+            case PInvoke.WM_WINDOWPOSCHANGED:
+                OnWindowPosChanged((WINDOWPOS*)lParam);
+                break;
 
             case PInvoke.WM_DISPLAYCHANGE
             or PInvoke.WM_THEMECHANGED
@@ -119,6 +119,16 @@ internal sealed unsafe class SurfaceHook(NonActivatingWindow surface, SurfaceReg
         {
             position->flags |= SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE;
         }
+    }
+
+    private void OnWindowPosChanged(WINDOWPOS* position)
+    {
+        var flags = position->flags;
+        bool? visible =
+            flags.HasFlag(SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW) ? true
+            : flags.HasFlag(SET_WINDOW_POS_FLAGS.SWP_HIDEWINDOW) ? false
+            : null;
+        surface.OnWindowPositionChanged(visible);
     }
 
     private bool OnActivate(nint wParam)
@@ -208,34 +218,5 @@ internal sealed unsafe class SurfaceHook(NonActivatingWindow surface, SurfaceReg
         size->cx = Scale(width, dpi);
         size->cy = Scale(height, dpi);
         return true;
-    }
-
-    private bool IsInShadowMargin(nint hwnd, nint lParam)
-    {
-        var margin = surface.ShadowMargin;
-        if (margin is { Left: 0, Top: 0, Right: 0, Bottom: 0 })
-        {
-            return false;
-        }
-
-        if (!PInvoke.GetWindowRect((HWND)hwnd, out var bounds))
-        {
-            return false;
-        }
-
-        var x = (short)((long)lParam & 0xFFFF);
-        var y = (short)(((long)lParam >> 16) & 0xFFFF);
-        if (x < bounds.left || x >= bounds.right || y < bounds.top || y >= bounds.bottom)
-        {
-            return false;
-        }
-
-        var dpi = (double)PInvoke.GetDpiForWindow((HWND)hwnd);
-        var inside =
-            x >= bounds.left + Scale(margin.Left, dpi)
-            && x < bounds.right - Scale(margin.Right, dpi)
-            && y >= bounds.top + Scale(margin.Top, dpi)
-            && y < bounds.bottom - Scale(margin.Bottom, dpi);
-        return !inside;
     }
 }
