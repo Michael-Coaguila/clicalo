@@ -212,6 +212,25 @@ public sealed class PanelViewModelTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-010")]
+    public void The_tile_of_a_running_macro_shows_its_step()
+    {
+        _panel.ApplyEngine(
+            EngineSnapshot.Empty with
+            {
+                Macro = new MacroRun(new MacroRunId(1), PanelTestData.Copy, 2, 5, null),
+                Version = 1,
+            }
+        );
+
+        Tile(PanelTestData.Copy).AccessibleState.ShouldBe("Paso 2/5");
+        Tile(PanelTestData.Copy).Badge.ShouldBe("Paso 2/5");
+
+        _panel.ApplyEngine(EngineSnapshot.Empty);
+        Tile(PanelTestData.Copy).AccessibleState.ShouldBeEmpty();
+    }
+
+    [Fact]
     [Trait("Req", "SEG-002")]
     public void What_is_held_without_a_shortcut_is_still_said()
     {

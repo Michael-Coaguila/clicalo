@@ -87,6 +87,24 @@ public sealed class TileInteractionModes
     }
 
     /// <summary>
+    /// A long press of 600 ms on the tile (CUA-014). In test mode it is marked ✓ like a tap and opens nothing
+    /// (decision delegated by the user, 2026-10-09); otherwise it opens the menu (<see cref="OpenMenu"/>).
+    /// </summary>
+    /// <param name="tile">The tile.</param>
+    /// <param name="inFrequents">Whether the tile is in the Frequents view.</param>
+    /// <returns>Whether the menu opened.</returns>
+    public bool LongPressed(TileViewModel tile, bool inFrequents)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        if (!_edit.IsOn && _test.OnCounted(tile.Id))
+        {
+            return false;
+        }
+
+        return OpenMenu(tile, inFrequents);
+    }
+
+    /// <summary>
     /// A long press of 600 ms (the recognizer only reports it on a <see cref="TouchTargetKind.TapOrLongPress"/> tile), a
     /// right click, the Menu key, Shift+F10 or the accessible secondary action (CUA-014, CUA-015: a Hold tile too). Not
     /// in edit mode, where a tap edits.

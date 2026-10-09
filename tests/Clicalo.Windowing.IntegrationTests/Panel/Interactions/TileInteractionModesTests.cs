@@ -73,4 +73,21 @@ public sealed class TileInteractionModesTests
         _world.Modes.OpenMenu(hold, inFrequents: false).ShouldBeFalse();
         _world.Menu.IsOpen.ShouldBeFalse();
     }
+
+    [Fact]
+    [Trait("Req", "CUA-014")]
+    [Trait("Req", "TAC-008")]
+    public void In_test_mode_a_long_press_is_marked_like_a_tap_and_opens_no_menu()
+    {
+        var tile = _world.Tile(InteractionsWorld.Bold);
+
+        _world.Modes.LongPressed(tile, inFrequents: false).ShouldBeTrue();
+        _world.Menu.IsOpen.ShouldBeTrue();
+        _world.Menu.Close();
+
+        _world.TestMode.Start();
+        _world.Modes.LongPressed(tile, inFrequents: false).ShouldBeFalse();
+        _world.Menu.IsOpen.ShouldBeFalse();
+        _world.TestMode.MarkOf(tile.Id).ShouldBe(TestModeMark.Counted);
+    }
 }

@@ -379,6 +379,13 @@ public sealed class ShortcutTile : Control
     public event EventHandler? CollapseRequested;
 
     /// <summary>
+    /// The secondary action of the tile (CUA-014, CUA-015): a right click, the Menu key, Shift+F10 or «clic derecho
+    /// {nombre}» of Voice access, which WPF all deliver as <c>ContextMenuOpening</c>. The panel opens the tile menu; no
+    /// WPF <c>ContextMenu</c> is ever shown on the panel's surfaces.
+    /// </summary>
+    public event EventHandler? SecondaryRequested;
+
+    /// <summary>
     /// The name UI Automation reads: <see cref="AccessibleName"/>, preceded by «{n} » when
     /// <see cref="VoiceNumber"/> is set (UIA001).
     /// </summary>
@@ -397,6 +404,17 @@ public sealed class ShortcutTile : Control
     /// <inheritdoc />
     protected override AutomationPeer OnCreateAutomationPeer() =>
         new ShortcutTileAutomationPeer(this);
+
+    /// <inheritdoc />
+    protected override void OnContextMenuOpening(ContextMenuEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        e.Handled = true;
+        if (IsEnabled)
+        {
+            SecondaryRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     private static string ComposeName(int? voiceNumber, string? accessibleName) =>
         voiceNumber is { } number

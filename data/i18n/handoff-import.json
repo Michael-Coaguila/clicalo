@@ -295,6 +295,21 @@
       "after": "holdingKeys",
       "text": { "es": "{name} · activado · toca otra vez para soltar", "en": "{name} · on · tap again to release" }
     },
+    "releasedKeys": {
+      "notes": "Un Mantener que se suelta (EJE-004: «{teclas} [released]»), sin concatenar las teclas y [released] (IDI-004). Texto nuevo de la integración de M3 y M4, decidido por delegación del usuario (2026-10-09, R-23).",
+      "after": "latchedName",
+      "text": { "es": "{keys} soltado", "en": "{keys} released" }
+    },
+    "unlatchedName": {
+      "notes": "Un Alternar que se suelta (EJE-007: «{nombre} · [unlatched]»), sin concatenar (IDI-004). Texto nuevo de la integración de M3 y M4, decidido por delegación del usuario (2026-10-09, R-23).",
+      "after": "releasedKeys",
+      "text": { "es": "{name} · soltado", "en": "{name} · released" }
+    },
+    "macroStep": {
+      "notes": "Estado «ejecutando» en la ficha de una macro, «paso i/n» (EJE-010). Texto nuevo de la integración de M3 y M4, decidido por delegación del usuario (2026-10-09, R-23).",
+      "after": "unlatchedName",
+      "text": { "es": "Paso {index}/{total}", "en": "Step {index}/{total}" }
+    },
     "guardianUnstable": {
       "notes": "Sentinel murió demasiadas veces y ya no se relanza: si Clícalo se cierra de golpe, nadie suelta las teclas (REG-03, D-22). Texto nuevo de la verificación de M2, pendiente de ratificar en §6.1 del catálogo.",
       "after": "tapSent",

@@ -3,6 +3,7 @@ using Clicalo.Domain.Execution.Internal;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Execution;
@@ -326,9 +327,12 @@ public static class EngineReducer
 
     private static void ContactEnded(EngineStep step, int contactId)
     {
-        if (step.CancelHolder(HolderId.ForContact(contactId)))
+        var holder = HolderId.ForContact(contactId);
+        var label = step.LabelOf(holder);
+        if (step.CancelHolder(holder))
         {
-            step.Notice(EngineNotices.Released);
+            // EJE-004: «{keys} soltado» says what was released.
+            step.Notice(label is null ? EngineNotices.Released : L.ReleasedKeys(keys: label));
         }
 
         if (step.State.Scroll?.ContactId == contactId)

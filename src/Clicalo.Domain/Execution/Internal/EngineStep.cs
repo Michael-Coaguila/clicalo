@@ -475,6 +475,15 @@ internal sealed class EngineStep
         }
     }
 
+    /// <summary>What the release notice of <paramref name="holder"/> names (EJE-004, EJE-007), held or still queued.</summary>
+    public string? LabelOf(HolderId holder) =>
+        State.Keys.Items.TryGetValue(holder, out var item) && item.Label is { } label
+            ? label
+            : State
+                .Outbox.Items.OfType<QueuedStep.Press>()
+                .FirstOrDefault(press => press.Holder == holder)
+                ?.Template.Label;
+
     /// <summary>The name of <paramref name="shortcut"/> in the interface language, for the notices.</summary>
     public string NameOf(Shortcut shortcut) =>
         shortcut.Name.Get(

@@ -1028,7 +1028,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             case GestureKind.LongPress
                 when _layers is { } layers && TargetOf(gesture)?.Tile is { } pressed:
                 // CUA-014: 600 ms without moving opens the tile menu instead of running the tile.
-                _ = layers.Modes.OpenMenu(pressed, layers.InFrequents());
+                _ = layers.Modes.LongPressed(pressed, layers.InFrequents());
                 break;
 
             case GestureKind.Ignored

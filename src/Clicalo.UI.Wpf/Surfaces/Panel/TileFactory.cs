@@ -22,10 +22,12 @@ internal static class TileFactory
     /// Asked first on a UI Automation Invoke or Toggle (edit mode and test mode take it, EJE-001); when it returns
     /// <see langword="true"/> the tile does not run.
     /// </param>
+    /// <param name="secondary">The secondary action of the tile (right click, CUA-014): opens its menu.</param>
     /// <returns>The control and the handler to detach with <see cref="Detach"/>.</returns>
     public static (ShortcutTile Control, PropertyChangedEventHandler Handler) Create(
         TileViewModel viewModel,
-        Func<TileViewModel, bool>? intercept = null
+        Func<TileViewModel, bool>? intercept = null,
+        Action<TileViewModel>? secondary = null
     )
     {
         var control = new ShortcutTile
@@ -40,6 +42,7 @@ internal static class TileFactory
         };
         control.Invoked += (_, _) => Invoke(viewModel, intercept);
         control.Toggled += (_, _) => Invoke(viewModel, intercept);
+        control.SecondaryRequested += (_, _) => secondary?.Invoke(viewModel);
         PropertyChangedEventHandler handler = (_, _) => Paint(control, viewModel);
         viewModel.PropertyChanged += handler;
         Paint(control, viewModel);

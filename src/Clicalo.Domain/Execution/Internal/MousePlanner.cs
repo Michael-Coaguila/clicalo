@@ -227,6 +227,7 @@ internal static class MousePlanner
         {
             Keys = new ValueList<InjectedKey>(StickyKeys(step, origin)),
             Buttons = MouseButtons.Left,
+            Label = step.NameOf(shortcut),
         };
         step.Press(step.State.Keys.Acquire(item), holder, origin);
         StickyPlanner.Consume(step);

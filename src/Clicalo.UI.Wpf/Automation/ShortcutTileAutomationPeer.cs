@@ -35,6 +35,12 @@ namespace Clicalo.UI.Wpf.Automation;
 /// instead of focusing, because focusing an element activates its window (REG-01).
 /// </description></item>
 /// <item><description>
+/// The secondary action (CUA-014, CUA-015) is the tile's right click: WPF has no UI Automation <c>ShowContextMenu</c>,
+/// so «clic derecho {nombre}» of Voice access, a right click, the Menu key and Shift+F10 reach
+/// <see cref="ShortcutTile.SecondaryRequested"/> through <c>ContextMenuOpening</c>, and the panel opens the same menu
+/// as the long press.
+/// </description></item>
+/// <item><description>
 /// Changes of the name, the states, the help text, the item status and the pattern raise the matching property
 /// changed events, so a client that cached them (Voice access numbers) stays in sync.
 /// </description></item>

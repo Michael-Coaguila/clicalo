@@ -120,9 +120,11 @@ internal static class KeyPlanner
     /// <summary>Releases a latched Toggle (EJE-007), with the menu mask.</summary>
     public static void Unlatch(EngineStep step, HolderId holder)
     {
+        var label = step.LabelOf(holder);
         if (step.CancelHolder(holder))
         {
-            step.Notice(EngineNotices.Unlatched);
+            // EJE-007: «{name} · soltado» says what was released.
+            step.Notice(label is null ? EngineNotices.Unlatched : L.UnlatchedName(name: label));
         }
     }
 
@@ -193,7 +195,10 @@ internal static class KeyPlanner
             ? L.HoldingKeys(keys: step.KeysText(strokes))
             : L.LatchedName(name: step.NameOf(shortcut));
         var (deadline, inherits) = step.Deadline(shortcut.Options.MaxHold);
-        var template = Template(step, holder, kind, origin, contact, deadline, inherits);
+        var template = Template(step, holder, kind, origin, contact, deadline, inherits) with
+        {
+            Label = contact is not null ? step.KeysText(strokes) : step.NameOf(shortcut),
+        };
         step.Enqueue(
             keys.Select(key => (QueuedStep)new QueuedStep.Press(template, key, origin))
                 .Append(

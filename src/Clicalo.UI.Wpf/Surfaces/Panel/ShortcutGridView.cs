@@ -108,7 +108,10 @@ public sealed class ShortcutGridView : Border
         {
             var (control, handler) = TileFactory.Create(
                 viewModel,
-                _layers is { } attached ? attached.Modes.Tapped : null
+                _layers is { } attached ? attached.Modes.Tapped : null,
+                _layers is { } menu
+                    ? tile => _ = menu.Modes.OpenMenu(tile, menu.InFrequents())
+                    : null
             );
             TileFactory.Size(
                 control,
