@@ -21,6 +21,7 @@ public sealed class TileViewModel : ObservableObject
     private string _accessibleHelpText = string.Empty;
     private string _badge = string.Empty;
     private bool _isLatched;
+    private bool _isFlashing;
     private int? _voiceNumber;
 
     /// <summary>Creates the tile.</summary>
@@ -104,6 +105,17 @@ public sealed class TileViewModel : ObservableObject
         get => _isLatched;
         private set => SetProperty(ref _isLatched, value);
     }
+
+    /// <summary>Whether the tile flashes its color because its action just ran (EJE-012, CUA-009).</summary>
+    public bool IsFlashing
+    {
+        get => _isFlashing;
+        private set => SetProperty(ref _isFlashing, value);
+    }
+
+    /// <summary>Starts or ends the flash of the tile (the composition times it, EJE-012).</summary>
+    /// <param name="flashing">Whether it flashes.</param>
+    public void Flash(bool flashing) => IsFlashing = flashing;
 
     /// <summary>
     /// Its voice number while «Numbers for voice» is on (ACC-009, ACC-010), shown in yellow at the top left; the UI

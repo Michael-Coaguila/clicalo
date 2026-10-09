@@ -33,7 +33,7 @@ namespace Clicalo.Presentation.Panel.QuickSettings;
 public sealed class QuickSettingsViewModel : ObservableObject
 {
     /// <summary>AJR-002: the − and + buttons move the opacity by 10 %.</summary>
-    private const double OpacityButtonStep = 0.10;
+    private static double OpacityButtonStep => SettingsSchema.OpacityButtonStep;
 
     private const string PercentSign = "%";
     private const string TestModeIcon = "science";

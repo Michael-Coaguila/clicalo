@@ -492,6 +492,17 @@ internal sealed class SurfacesComposer : IDockIntents
             new InteractionAction.SetOpen(DimExceptions.ProfileGrid, _session.Current.PickerOpen)
         );
 
+        // docs/04: Quick settings, the tile menu and edit mode keep the surfaces awake too.
+        _ = _interaction.Dispatch(
+            new InteractionAction.SetOpen(DimExceptions.QuickSettings, _panel.QuickSettings.IsOpen)
+        );
+        _ = _interaction.Dispatch(
+            new InteractionAction.SetOpen(DimExceptions.ContextMenu, _panel.Menu.IsOpen)
+        );
+        _ = _interaction.Dispatch(
+            new InteractionAction.SetOpen(DimExceptions.EditMode, _panel.EditMode.IsOn)
+        );
+
         var interaction = _interaction.Current;
         var form = CurrentForm();
         var model = _panel.LastModel;

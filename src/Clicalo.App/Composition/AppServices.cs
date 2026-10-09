@@ -347,7 +347,8 @@ internal static class AppServices
                 SettingsProjection.Dim(settings),
                 composer.Header,
                 composer.Search,
-                composer.Suggestion
+                composer.Suggestion,
+                composer.Layers
             );
             composer.AttachWindow(window);
             sp.Get<SurfacesComposer>()

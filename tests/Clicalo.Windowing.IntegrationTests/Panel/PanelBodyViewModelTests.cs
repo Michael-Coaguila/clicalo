@@ -417,6 +417,35 @@ public sealed class PanelBodyViewModelTests
         panel.Selector.FrequentsName.ShouldBe("Frequent");
     }
 
+    [Fact]
+    [Trait("Req", "CUA-012")]
+    public void The_add_tile_takes_the_slot_after_the_last_tile_and_pages_like_one()
+    {
+        var panel = Panel(9);
+        panel.ShowsAddTile.ShouldBeFalse();
+
+        panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
+
+        // Nine tiles fill page 1; «+ Añadir» goes alone to page 2.
+        panel.Pager.PageCount.ShouldBe(2);
+        Ids(panel).ShouldBe(Range(0, 9));
+        panel.ShowsAddTile.ShouldBeFalse();
+        panel.Pager.Next();
+        Ids(panel).ShouldBe([]);
+        panel.ShowsAddTile.ShouldBeTrue();
+
+        // Searching hides it (CUA-012: no «+ Añadir» in the search).
+        panel.ApplyContext(
+            PanelBodyContext.Idle with
+            {
+                EditMode = true,
+                AddTile = true,
+                SearchingWithText = true,
+            }
+        );
+        panel.ShowsAddTile.ShouldBeFalse();
+    }
+
     private static string[] Range(int start, int count) =>
         [
             .. Enumerable

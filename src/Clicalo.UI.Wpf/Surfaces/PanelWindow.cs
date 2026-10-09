@@ -20,6 +20,7 @@ using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Pointer;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.Panel.Header;
+using Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
 using Clicalo.UI.Wpf.Surfaces.Panel.Search;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -40,7 +41,10 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// end of a hold and a page swipe reach the view models with the contact's device and summary;</item>
 /// <item>UI Automation Invoke, Toggle and ExpandCollapse reach the same actions through the controls themselves (EJE-005,
 /// S3);</item>
-/// <item>the panic strip and the notice bar are live regions (assertive and polite, ACC-001).</item>
+/// <item>the panic strip and the notice bar are live regions (assertive and polite, ACC-001);</item>
+/// <item>with the layers of the panel, Quick settings open under the search, the tile menu above the grid and the test
+/// mode indicator above the notice bar; every gesture on a tile asks <see cref="PanelLayerModels.Modes"/> first (edit
+/// mode, test mode, the long press of the menu), and while the menu is open any other tap only closes it (CUA-014).</item>
 /// </list>
 /// It never takes the foreground (REG-01): it is shown and moved only passively, and hiding it resets the gestures, so
 /// a hold under the finger ends with <see cref="HoldEndReason.Reset"/> and the engine releases it (REG-03). While a
@@ -64,6 +68,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private readonly PanelHeaderViewModel? _headerViewModel;
     private readonly SearchViewModel? _search;
     private readonly SuggestionViewModel? _suggestion;
+    private readonly PanelLayerModels? _layers;
+    private readonly QuickSettingsSheet? _quickSheet;
     private readonly TimeProvider _time;
     private readonly ThemeService _theme;
     private readonly StackPanel _root;
@@ -107,6 +113,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     /// <param name="header">The header (CAB-001); <see langword="null"/> leaves it out.</param>
     /// <param name="search">The search (BUS-001); <see langword="null"/> leaves it out.</param>
     /// <param name="suggestion">The profile suggestion (PER-009); <see langword="null"/> leaves it out.</param>
+    /// <param name="layers">
+    /// Quick settings, edit mode, the tile menu and test mode (AJR-001, CUA-012, CUA-014, TAC-008); <see langword="null"/>
+    /// leaves them out.
+    /// </param>
     public PanelWindow(
         PanelViewModel viewModel,
         SurfaceRegistry registry,
@@ -115,7 +125,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         DimSettings dim,
         PanelHeaderViewModel? header = null,
         SearchViewModel? search = null,
-        SuggestionViewModel? suggestion = null
+        SuggestionViewModel? suggestion = null,
+        PanelLayerModels? layers = null
     )
         : base(PanelSurfaceIds.Panel, registry)
     {
@@ -126,6 +137,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         _headerViewModel = header;
         _search = search;
         _suggestion = suggestion;
+        _layers = layers;
         _time = time;
         _theme = theme;
         _dim = dim;
@@ -150,6 +162,17 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             _searchBar = new SearchBar(search);
             _root.Children.Add(_searchBar);
             search.PropertyChanged += OnSearchChanged;
+        }
+
+        if (layers is not null)
+        {
+            // AJR-001: the sheet opens under the search bar, at most 62 % of the screen high.
+            _quickSheet = new QuickSettingsSheet(layers.QuickSettings);
+            _quickSheet.ApplyScreenHeight(SystemParameters.WorkArea.Height);
+            _root.Children.Add(_quickSheet);
+            _body.AttachLayers(layers);
+            layers.EditMode.PropertyChanged += OnLayerChanged;
+            layers.Menu.PropertyChanged += OnLayerChanged;
         }
 
         if (suggestion is not null)
@@ -244,6 +267,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
 
     /// <summary>The header, when the panel has one.</summary>
     public PanelHeader? Header => _header;
+
+    /// <summary>Quick settings, when the panel has its layers.</summary>
+    public QuickSettingsSheet? QuickSettingsSheet => _quickSheet;
 
     /// <summary>The body: the rows, the grid, the pager and the notice bar.</summary>
     public PanelBodyView Body => _body;
@@ -397,7 +423,14 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             _search.PropertyChanged -= OnSearchChanged;
         }
 
+        if (_layers is not null)
+        {
+            _layers.EditMode.PropertyChanged -= OnLayerChanged;
+            _layers.Menu.PropertyChanged -= OnLayerChanged;
+        }
+
         _body.Detach();
+        _quickSheet?.Detach();
         _suggestionCard?.Detach();
         _pointer?.Detach();
         _pointer?.Dispose();
@@ -500,6 +533,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     }
 
     private void OnPanicChanged(object? sender, PropertyChangedEventArgs change) => ApplyPanic();
+
+    /// <summary>Edit mode changes what a tile does (CUA-012) and the menu what a tap does (CUA-014).</summary>
+    private void OnLayerChanged(object? sender, PropertyChangedEventArgs change) =>
+        RefreshTargets();
 
     /// <summary>
     /// Width from the layout (PAN-002) and, in the Full and Compact views, the header with the header buttons of the
@@ -773,6 +810,14 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             );
         }
 
+        if (_quickSheet is not null)
+        {
+            foreach (var target in _quickSheet.TapTargets)
+            {
+                yield return target;
+            }
+        }
+
         if (_suggestionCard is not null && _suggestion is not null)
         {
             yield return new PanelTapTarget(_suggestionCard.CreateButton, _suggestion.Create);
@@ -794,15 +839,19 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
 
         _targets.Clear();
         var targets = ImmutableArray.CreateBuilder<GestureTarget>();
+
+        // CUA-014: while the tile menu is open, its rows act and any other tap only closes it.
+        Action? closeMenu = _layers is { Menu.IsOpen: true } open ? open.Menu.Close : null;
         foreach (var tile in _body.TileControls)
         {
             Add(
                 tile.Control,
                 TileIdOf(tile.ViewModel.Id),
-                tile.ViewModel.Behavior == TileBehavior.Hold
-                    ? TouchTargetKind.Hold
+                closeMenu is not null ? TouchTargetKind.Tap
+                    : _layers is { } layers ? layers.Modes.KindOf(tile.ViewModel)
+                    : tile.ViewModel.Behavior == TileBehavior.Hold ? TouchTargetKind.Hold
                     : TouchTargetKind.Tap,
-                new Target(tile.ViewModel, null)
+                closeMenu is null ? new Target(tile.ViewModel, null) : new Target(null, closeMenu)
             );
         }
 
@@ -812,8 +861,21 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
                 target.Element,
                 ElementIdOf(target.Element),
                 TouchTargetKind.Tap,
-                new Target(null, target.Tap)
+                new Target(null, closeMenu ?? target.Tap)
             );
+        }
+
+        if (closeMenu is not null && _body.TileMenu is { } menu)
+        {
+            foreach (var target in menu.TapTargets)
+            {
+                Add(
+                    target.Element,
+                    ElementIdOf(target.Element),
+                    TouchTargetKind.Tap,
+                    new Target(null, target.Tap)
+                );
+            }
         }
 
         if (_panicStrip.Visibility == Visibility.Visible)
@@ -896,6 +958,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
                 when !_dragged.Contains(gesture.PointerId) && TargetOf(gesture) is { } target:
                 if (target.Tile is { } tapped)
                 {
+                    // EJE-001: edit mode and test mode take the tap before the engine.
+                    if (_layers?.Modes.Tapped(tapped) == true)
+                    {
+                        break;
+                    }
+
                     tapped.Tapped(
                         gesture.PointerId,
                         _contacts.DeviceOf(gesture.PointerId),
@@ -911,11 +979,28 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
                 break;
 
             case GestureKind.HoldStart when TargetOf(gesture)?.Tile is { } held:
+                if (_layers?.Modes.HoldStarted(held) == true)
+                {
+                    break;
+                }
+
                 held.HoldStarted(
                     gesture.PointerId,
                     _contacts.DeviceOf(gesture.PointerId),
                     gesture.Timestamp
                 );
+                break;
+
+            case GestureKind.LongPress
+                when _layers is { } layers && TargetOf(gesture)?.Tile is { } pressed:
+                // CUA-014: 600 ms without moving opens the tile menu instead of running the tile.
+                _ = layers.Modes.OpenMenu(pressed, layers.InFrequents());
+                break;
+
+            case GestureKind.Ignored
+                when _layers is { } layers && TargetOf(gesture)?.Tile is { } ignored:
+                // TAC-008: test mode marks an ignored touch with its reason.
+                layers.Modes.Ignored(ignored, gesture.Ignored);
                 break;
 
             case GestureKind.HoldEnd:

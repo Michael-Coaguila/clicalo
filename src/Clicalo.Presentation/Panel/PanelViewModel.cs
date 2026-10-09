@@ -47,6 +47,7 @@ public sealed class PanelViewModel : ObservableObject
     private List<TileViewModel> _results = [];
     private string _noResultsText = string.Empty;
     private bool _showsNoResults;
+    private bool _showsAddTile;
     private PanelModel _model = PanelModel.Empty;
     private EngineSnapshot _engine = EngineSnapshot.Empty;
     private PanelLayoutSettings _layout = PanelLayoutSettings.Default;
@@ -194,6 +195,16 @@ public sealed class PanelViewModel : ObservableObject
     {
         get => _showsNoResults;
         private set => SetProperty(ref _showsNoResults, value);
+    }
+
+    /// <summary>
+    /// Whether the dashed «+ [add]» tile follows the tiles of the page in view (edit mode, CUA-012): it takes the slot
+    /// after the last tile, so it shows on the last page only.
+    /// </summary>
+    public bool ShowsAddTile
+    {
+        get => _showsAddTile;
+        private set => SetProperty(ref _showsAddTile, value);
     }
 
     /// <summary>The layout settings in use.</summary>
@@ -512,15 +523,19 @@ public sealed class PanelViewModel : ObservableObject
         var list = _context.SearchingWithText ? _results : _list;
         ShowsNoResults = _context.SearchingWithText && _results.Count == 0;
         var count = list.Count;
+
+        // CUA-012: the dashed «+ [add]» tile is one more slot after the list, so it pages like a tile.
+        var slots = count + (_context.AddTile && !_context.SearchingWithText && count > 0 ? 1 : 0);
         var pageContext = new PageContext(ViewKey(), shape.Columns, shape.Rows, _layout.Compact);
         _page = Paging.Reconcile(
             _page,
             _pageContext,
             pageContext,
-            Paging.PageCount(count, shape.PerPage)
+            Paging.PageCount(slots, shape.PerPage)
         );
         _pageContext = pageContext;
-        var window = Paging.Window(count, shape.PerPage, _page);
+        var window = Paging.Window(slots, shape.PerPage, _page);
+        var shown = Math.Max(0, Math.Min(window.Count, count - window.Start));
         _stripWindow = StripLayout.Window(
             _strip.Count,
             StripLayout.Capacity(_layout),
@@ -555,7 +570,8 @@ public sealed class PanelViewModel : ObservableObject
                 .ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForStrip(count, i) : null);
         }
 
-        Sync(Tiles, list.GetRange(window.Start, window.Count));
+        Sync(Tiles, list.GetRange(window.Start, shown));
+        ShowsAddTile = shown < window.Count;
         ApplyParts(window, layers);
     }
 
