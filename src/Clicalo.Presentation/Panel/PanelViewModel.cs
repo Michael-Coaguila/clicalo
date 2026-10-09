@@ -635,7 +635,9 @@ public sealed class PanelViewModel : ObservableObject
             notice?.CanUndo ?? false,
             layers.Repeat,
             l.Format(L.Undo),
-            l.Format(L.Repeat)
+            l.Format(L.Repeat),
+            notice?.CanCancel ?? false,
+            l.Format(L.Cancel)
         );
         Admin.Apply(
             layers.AdminNotice,
@@ -677,5 +679,7 @@ public sealed class PanelViewModel : ObservableObject
         public void AddShortcut(ProfileId profile) { }
 
         public void RelaunchElevated() { }
+
+        public void CancelNotice() { }
     }
 }

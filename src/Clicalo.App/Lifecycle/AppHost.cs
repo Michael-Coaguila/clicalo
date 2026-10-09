@@ -15,6 +15,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Timing;
@@ -391,7 +392,17 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var describer = services.GetRequiredService<ForegroundDescriber>();
         monitor.ExternalForegroundChanged += (_, change) =>
             controlCenter.OnExternalForeground(describer.Describe(change.Foreground).Process);
-        services.GetRequiredService<PanelComposer>().ControlCenter = controlCenter;
+        var panel = services.GetRequiredService<PanelComposer>();
+        panel.ControlCenter = controlCenter;
+        var interaction = services.GetRequiredService<InteractionStore>();
+        // CCM-004: nothing dims while the control center is open; ATJ-008: the capture notice shows in the panel.
+        controlCenter.StateChanged += (_, _) =>
+        {
+            _ = interaction.Dispatch(
+                new InteractionAction.SetOpen(DimExceptions.ControlCenterOpen, controlCenter.IsOpen)
+            );
+            panel.ShowCapture(controlCenter.IsCapturing);
+        };
         // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
         foreground.IsTrying = () => controlCenter.IsTrying;
         return controlCenter;

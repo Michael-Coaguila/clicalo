@@ -51,6 +51,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     private ProcessName? _lastApp;
     private Size? _size;
     private bool _open;
+    private bool _capturing;
 
     /// <summary>Creates the composer; nothing is shown until <see cref="OpenAsync(LeaseOrigin)"/>.</summary>
     /// <param name="store">The document.</param>
@@ -102,7 +103,15 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         _shortcuts.Noticed += (_, e) => Notify(e.Notice);
         _profiles.Noticed += (_, e) => Notify(e.Notice);
         _shortcuts.Changed += (_, _) => Invalidate();
-        _profiles.Changed += (_, _) => Invalidate();
+        _profiles.Changed += (_, _) =>
+        {
+            Invalidate();
+            if (_capturing != (_profiles.Capturing is not null))
+            {
+                _capturing = !_capturing;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+            }
+        };
         store.Changed += (_, _) => _ = _ui.BeginInvoke(OnDocumentChanged);
         localization.LanguageChanged += (_, _) => _ = _ui.BeginInvoke(Relocalize);
     }
@@ -112,6 +121,18 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 
     /// <summary>Whether the window is open.</summary>
     public bool IsOpen => _open;
+
+    /// <summary>Whether the capture mode of a binding waits for the next app (ATJ-008).</summary>
+    public bool IsCapturing => _capturing;
+
+    /// <summary>
+    /// Raised on the UI thread when <see cref="IsOpen"/> or <see cref="IsCapturing"/> changes: the panel does not dim
+    /// while the window is open (CCM-004) and shows the capture notice with Cancelar (ATJ-008).
+    /// </summary>
+    public event EventHandler? StateChanged;
+
+    /// <summary>Cancelar of the capture notice in the panel (ATJ-008).</summary>
+    public void CancelCapture() => _profiles.CancelCapture();
 
     /// <inheritdoc />
     WindowToken ITryNowWindow.Window => _window?.Token ?? WindowToken.None;
@@ -142,7 +163,13 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     /// <param name="profile">The profile to show.</param>
     /// <param name="origin">What asked for it.</param>
     public Task OpenProfileAsync(ProfileId profile, LeaseOrigin origin) =>
-        OpenAsync(ControlCenterSection.Shortcuts, new ListRef.InProfile(profile), null, false, origin);
+        OpenAsync(
+            ControlCenterSection.Shortcuts,
+            new ListRef.InProfile(profile),
+            null,
+            false,
+            origin
+        );
 
     /// <summary>The panel's edit mode: the editor with <paramref name="shortcut"/> (docs/04, docs/05 §1).</summary>
     /// <param name="shortcut">The shortcut touched.</param>
@@ -179,6 +206,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         }
 
         _open = false;
+        StateChanged?.Invoke(this, EventArgs.Empty);
         _shortcuts.Close();
         _profiles.CancelCapture();
         _size = new Size(_window.ActualWidth, _window.ActualHeight);
@@ -235,6 +263,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             _open = true;
             window.Place(SystemParameters.WorkArea, _panel(), _size);
             window.Show();
+            StateChanged?.Invoke(this, EventArgs.Empty);
         }
 
         if (_lease is not { IsActive: true })

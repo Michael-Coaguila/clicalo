@@ -66,6 +66,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private PanelWindow? _window;
     private PanelNotice? _notice;
     private object? _stickyOwner;
+    private readonly object _captureOwner = new();
     private ITimer? _noticeTimer;
 
     // Kept referenced until they fire, so the collector cannot drop a flash before it ends.
@@ -397,6 +398,40 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         _stickyOwner = null;
         _notice = null;
         Invalidate();
+    }
+
+    /// <summary>
+    /// The capture mode of a binding started or ended in the control center (ATJ-008): the panel shows the fixed notice
+    /// [waitingApp] with [cancel] while it waits.
+    /// </summary>
+    /// <param name="capturing">Whether it waits for the next app.</param>
+    public void ShowCapture(bool capturing)
+    {
+        if (capturing)
+        {
+            ShowSticky(
+                _captureOwner,
+                new PanelNotice(
+                    L.WaitingApp,
+                    new IconRef("radar"),
+                    NoticeTone.Notice,
+                    CanCancel: true
+                )
+            );
+        }
+        else
+        {
+            ClearSticky(_captureOwner);
+        }
+    }
+
+    /// <inheritdoc />
+    public void CancelNotice()
+    {
+        if (ReferenceEquals(_stickyOwner, _captureOwner))
+        {
+            ControlCenter?.CancelCapture();
+        }
     }
 
     /// <inheritdoc />

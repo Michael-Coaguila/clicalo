@@ -5,7 +5,7 @@ namespace Clicalo.Presentation.Panel;
 /// <summary>
 /// The notice bar (AVI-001, AVI-003, AVI-004): 40 px at the foot, a polite live region with an icon and the message;
 /// [ready] at rest; [undo] when the notice can be undone; ↻ when there is a last action and the panel is not in edit
-/// mode.
+/// mode; [cancel] when the notice offers it (ATJ-008).
 /// </summary>
 public sealed class NoticeBarViewModel : ObservableObject
 {
@@ -18,6 +18,8 @@ public sealed class NoticeBarViewModel : ObservableObject
     private string _undoName = string.Empty;
     private bool _canRepeat;
     private string _repeatName = string.Empty;
+    private bool _canCancel;
+    private string _cancelName = string.Empty;
 
     internal NoticeBarViewModel(IPanelBodyIntents intents) => _intents = intents;
 
@@ -77,6 +79,23 @@ public sealed class NoticeBarViewModel : ObservableObject
         private set => SetProperty(ref _repeatName, value);
     }
 
+    /// <summary>Whether [cancel] shows.</summary>
+    public bool CanCancel
+    {
+        get => _canCancel;
+        private set => SetProperty(ref _canCancel, value);
+    }
+
+    /// <summary>[cancel].</summary>
+    public string CancelName
+    {
+        get => _cancelName;
+        private set => SetProperty(ref _cancelName, value);
+    }
+
+    /// <summary>[cancel] (a tap or UI Automation Invoke).</summary>
+    public void Cancel() => _intents.CancelNotice();
+
     /// <summary>[undo] (a tap or UI Automation Invoke).</summary>
     public void Undo() => _intents.Undo();
 
@@ -91,9 +110,13 @@ public sealed class NoticeBarViewModel : ObservableObject
         bool canUndo,
         bool canRepeat,
         string undoName,
-        string repeatName
+        string repeatName,
+        bool canCancel = false,
+        string cancelName = ""
     )
     {
+        CanCancel = canCancel;
+        CancelName = cancelName;
         Icon = icon;
         Tone = tone;
         CanUndo = canUndo;

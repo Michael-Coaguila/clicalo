@@ -12,4 +12,11 @@ namespace Clicalo.Presentation.Panel;
 /// <param name="Icon">Its Material Symbols icon.</param>
 /// <param name="Tone">Notice or warning.</param>
 /// <param name="CanUndo">The notice belongs to an operation that can be undone and the stack is not empty (AVI-003).</param>
-public sealed record PanelNotice(Message Text, IconRef Icon, NoticeTone Tone, bool CanUndo = false);
+/// <param name="CanCancel">The notice offers [cancel] (the capture mode of a binding, ATJ-008).</param>
+public sealed record PanelNotice(
+    Message Text,
+    IconRef Icon,
+    NoticeTone Tone,
+    bool CanUndo = false,
+    bool CanCancel = false
+);
