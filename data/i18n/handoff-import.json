@@ -332,6 +332,26 @@
       "notes": "Aviso al crear el perfil desde la sugerencia, «[installedT]: {app}» sin concatenar fragmentos (PER-009, IDI-004). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
       "after": "installedT",
       "text": { "es": "Perfil instalado: {app}", "en": "Profile installed: {app}" }
+    },
+    "dockScrollUp": {
+      "notes": "Herramienta ⏶ de la barra de la Pestaña: desplazamiento de tipo Mantener (PES-008). Texto del prototipo (SCROLL, «Subir»/«Scroll up»), que no estaba en los archivos de idioma.",
+      "after": "pinOffA",
+      "text": { "es": "Subir", "en": "Scroll up" }
+    },
+    "dockScrollDown": {
+      "notes": "Herramienta ⏷ de la barra de la Pestaña: desplazamiento de tipo Mantener (PES-008). Texto del prototipo (SCROLL, «Bajar»/«Scroll down»), que no estaba en los archivos de idioma.",
+      "after": "dockScrollUp",
+      "text": { "es": "Bajar", "en": "Scroll down" }
+    },
+    "dockPageOf": {
+      "notes": "Paginador vertical de la barra de la Pestaña, «▲ 1/3 ▼» (PES-007). Formato del prototipo sin clave en el paquete.",
+      "after": "dockScrollDown",
+      "text": { "es": "{index}/{total}", "en": "{index}/{total}" }
+    },
+    "coachStep": {
+      "notes": "Paso de la guía de primera vez de la Pestaña, «1 / 3» (PES-015). Formato del prototipo sin clave en el paquete.",
+      "after": "dockPageOf",
+      "text": { "es": "{index} / {total}", "en": "{index} / {total}" }
     }
   },
   "retired": {
