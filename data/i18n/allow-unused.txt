@@ -69,3 +69,8 @@ sidesA
 # Blueprint §1.4, propuesta P2: la fila «Una sola ventana» de Sistema no se construye mientras el usuario no
 # ratifique la propuesta; la instancia única es obligatoria por seguridad.
 rSingle
+
+# Catálogo §9 (correcciones de ACE-001 y ACE-003): Acerca de y la bienvenida muestran [creatorRole] «Creador de
+# Clícalo» y [fbLogFile] «… clicalo.log …» en lugar de [creator] y [fbLogD], que se conservan por paridad con el paquete.
+creator
+fbLogD

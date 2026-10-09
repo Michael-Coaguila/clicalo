@@ -145,6 +145,101 @@
       "after": "kitBasics",
       "text": { "es": "Copiar, pegar, deshacer, dictar y más, en cualquier app", "en": "Copy, paste, undo, dictate and more, in any app" }
     },
+    "creatorName": {
+      "notes": "Nombre de la firma de la historia (ACE-001, BIE-004): «Michael Coaguila», que el prototipo escribe en el código (IDI-002). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "creator",
+      "text": { "es": "Michael Coaguila", "en": "Michael Coaguila" }
+    },
+    "creatorInitials": {
+      "notes": "Iniciales del círculo de la firma (ACE-001, BIE-004), escritas en el código del prototipo (IDI-002). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "creatorName",
+      "text": { "es": "MC", "en": "MC" }
+    },
+    "creatorRole": {
+      "notes": "Corrección de [creator] del catálogo §9 (ACE-001): «Creador de Clícalo». Clave propia para no reescribir el texto del paquete; [creator] queda en allow-unused.txt. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "creatorInitials",
+      "text": { "es": "Creador de Clícalo", "en": "Creator of Clícalo" }
+    },
+    "aboutVersion": {
+      "notes": "Línea de la tarjeta de la app (ACE-001), «v{version} · MIT · [openSource]» sin concatenar (IDI-004); {name} recibe [openSource]. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "openSource",
+      "text": { "es": "v{version} · MIT · {name}", "en": "v{version} · MIT · {name}" }
+    },
+    "gitHub": {
+      "notes": "Botón de la tarjeta de la app (ACE-001), escrito en el código del prototipo (IDI-002). LinkedIn se omite mientras no haya una URL real. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "aboutVersion",
+      "text": { "es": "GitHub", "en": "GitHub" }
+    },
+    "fbLogFile": {
+      "notes": "Corrección de [fbLogD] del catálogo §9 (ACE-003): el registro se llama clicalo.log. Clave propia para no reescribir el texto del paquete; [fbLogD] queda en allow-unused.txt. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbLogD",
+      "text": { "es": "Incluye clicalo.log para encontrar el fallo.", "en": "Includes clicalo.log to find the bug." }
+    },
+    "fbSendLogD": {
+      "notes": "Nota bajo [Enviar por correo] cuando se adjunta el registro (ACE-004): un enlace de correo no adjunta archivos, así que se abre la carpeta con el registro depurado para añadirlo. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSendD",
+      "text": { "es": "Se abrirá tu app de correo y la carpeta del registro: adjunta el archivo clicalo-registro.log.", "en": "Your email app and the log folder open: attach the file clicalo-registro.log." }
+    },
+    "fbSubject": {
+      "notes": "Asunto del correo de opinión (ACE-004): «[Clícalo] {tipo}», con {name} = el tipo elegido. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSendLogD",
+      "text": { "es": "[Clícalo] {name}", "en": "[Clícalo] {name}" }
+    },
+    "fbBodySys": {
+      "notes": "Línea del cuerpo del correo con «Incluir versión y sistema» (ACE-004): versión real de la app y de Windows ({name}). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSubject",
+      "text": { "es": "Clícalo v{version} · {name}", "en": "Clícalo v{version} · {name}" }
+    },
+    "fbBodyLog": {
+      "notes": "Línea del cuerpo del correo con «Adjuntar registro técnico» (ACE-004): {name} es el archivo que hay que adjuntar. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbBodySys",
+      "text": { "es": "Registro para adjuntar: {name}", "en": "Log to attach: {name}" }
+    },
+    "fbMailCopied": {
+      "notes": "Aviso cuando no hay app de correo (ACE-004): el mensaje se copia al portapapeles. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbBodyLog",
+      "text": { "es": "No se abrió ninguna app de correo: copié el mensaje para que lo pegues.", "en": "No email app opened: the message was copied so you can paste it." }
+    },
+    "logPvEmpty": {
+      "notes": "Vista previa del registro cuando aún no hay nada escrito (ACE-003). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "logPvT",
+      "text": { "es": "El registro está vacío.", "en": "The log is empty." }
+    },
+    "logPvFailed": {
+      "notes": "No se pudo leer o guardar el registro depurado (ACE-003, ACE-004). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "logPvEmpty",
+      "text": { "es": "No se pudo preparar el registro.", "en": "Couldn’t prepare the log." }
+    },
+    "contactPending": {
+      "notes": "Marcador visible del correo de contacto mientras no exista (ACE-005; el prototipo usaba un correo personal, PQ-38). Se sustituye por el correo real antes de publicar. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbDirect",
+      "text": { "es": "Correo de contacto pendiente", "en": "Contact email pending" }
+    },
+    "welcomeTitle": {
+      "notes": "Título y nombre accesible de la ventana de la bienvenida (BIE-001). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "seeWelcomeD",
+      "text": { "es": "Bienvenida a Clícalo", "en": "Welcome to Clícalo" }
+    },
+    "obStep": {
+      "notes": "Nombre accesible de las 5 barras de progreso de la bienvenida (BIE-001). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "welcomeTitle",
+      "text": { "es": "Paso {index} de {total}", "en": "Step {index} of {total}" }
+    },
+    "obKbLine": {
+      "notes": "Línea del teclado del paso «¿Qué apps usas más?» (BIE-006): el idioma de los programas, que elige la variante de las plantillas (PLA-009, PLA-013). Sin concatenar [kbFor] (IDI-004). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "kbFor",
+      "text": { "es": "Para {app}", "en": "For {app}" }
+    },
+    "kbAppsEs": {
+      "notes": "Idioma de los programas «es» (PLA-009), escrito en el código del prototipo (IDI-002). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obKbLine",
+      "text": { "es": "Office y apps en español", "en": "Office & apps in Spanish" }
+    },
+    "kbAppsEn": {
+      "notes": "Idioma de los programas «en» (PLA-009), escrito en el código del prototipo (IDI-002). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "kbAppsEs",
+      "text": { "es": "Office y apps en inglés", "en": "Office & apps in English" }
+    },
     "hidePanel": {
       "notes": "Menú de la bandeja con el panel visible: la otra mitad de «Mostrar/Ocultar» (BUR-003; la mitad «Mostrar» es restore). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
       "after": "restore",
