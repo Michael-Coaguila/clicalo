@@ -231,7 +231,8 @@ internal static class MousePlanner
         };
         step.Press(step.State.Keys.Acquire(item), holder, origin);
         StickyPlanner.Consume(step);
-        step.Notice(EngineNotices.Latched);
+        // EJE-007: «{name} · activado · toca otra vez para soltar».
+        step.Notice(L.LatchedName(name: step.NameOf(shortcut)));
         step.CountUsage(origin, repeatable: false);
     }
 }

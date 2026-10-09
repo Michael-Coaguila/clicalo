@@ -286,6 +286,8 @@
   "openedName": "Abriendo {name}",
   "actionFailed": "No se pudo completar: {name}",
   "launchUnsafe": "Por seguridad, Clícalo no abre esto: {name}",
+  "holdingKeys": "Manteniendo {keys} — suelta para terminar",
+  "latchedName": "{name} · activado · toca otra vez para soltar",
   "guardianUnstable": "La protección de teclas está desactivada · Reinicia Clícalo para recuperarla",
   "saveFailT": "No se guardaron los cambios",
   "saveFailD": "Se reintentará cada 30 s. Tus cambios siguen aquí.",

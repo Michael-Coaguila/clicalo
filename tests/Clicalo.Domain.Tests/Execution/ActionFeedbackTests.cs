@@ -48,6 +48,27 @@ public sealed class ActionFeedbackTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-004")]
+    [Trait("Req", "EJE-007")]
+    public void A_hold_names_its_keys_and_a_toggle_or_a_drag_its_name()
+    {
+        var engine = Engine();
+
+        var hold = Notices(engine.Press(Shortcuts.Hold("alt", "alt"), contact: 1))
+            .ShouldHaveSingleItem();
+        engine.Lift(contact: 1);
+        var toggle = Notices(engine.Tap(Shortcuts.Toggle("shift", "shift"), contact: 2))
+            .ShouldHaveSingleItem();
+        var drag = Notices(engine.Tap(Shortcuts.Mouse("drag", MouseOp.Drag), contact: 3))
+            .ShouldHaveSingleItem();
+
+        hold.Key.Value.ShouldBe("holdingKeys");
+        Text(hold, "keys").ShouldNotBeNullOrWhiteSpace();
+        toggle.Key.Value.ShouldBe("latchedName");
+        drag.Key.Value.ShouldBe("latchedName");
+    }
+
+    [Fact]
     [Trait("Req", "AVI-004")]
     [Trait("Req", "FRE-002")]
     public void Hold_and_toggle_count_for_frequents_but_never_become_the_action_to_repeat()

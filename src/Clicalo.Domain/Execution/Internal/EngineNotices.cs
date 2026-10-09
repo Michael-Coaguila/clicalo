@@ -46,14 +46,8 @@ internal static class EngineNotices
     /// <summary>The first tap armed a shortcut that asks for confirmation (EJE-002).</summary>
     public static Message ConfirmArmed => L.ConfirmClose;
 
-    /// <summary>A Hold pressed its keys (EJE-004).</summary>
-    public static Message Holding => L.Holding;
-
     /// <summary>A Hold was released (EJE-004).</summary>
     public static Message Released => L.Released;
-
-    /// <summary>A Toggle latched (EJE-007).</summary>
-    public static Message Latched => L.Latched;
 
     /// <summary>A Toggle was released (EJE-007).</summary>
     public static Message Unlatched => L.Unlatched;

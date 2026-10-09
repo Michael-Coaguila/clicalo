@@ -286,6 +286,8 @@
   "openedName": "Opening {name}",
   "actionFailed": "Couldn’t complete: {name}",
   "launchUnsafe": "For safety, Clícalo doesn’t open this: {name}",
+  "holdingKeys": "Holding {keys} — release to finish",
+  "latchedName": "{name} · on · tap again to release",
   "guardianUnstable": "Key protection is off · Restart Clícalo to bring it back",
   "saveFailT": "Changes not saved",
   "saveFailD": "Retrying every 30 s. Your changes are still here.",
