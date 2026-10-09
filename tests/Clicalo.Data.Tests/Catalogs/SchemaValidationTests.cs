@@ -21,6 +21,7 @@ public sealed class SchemaValidationTests
         {
             { "document.json", "document.schema.json" },
             { "usage.json", "usage.schema.json" },
+            { "ai-template.json", "ai-template.v1.schema.json" },
         };
 
     [Theory]
