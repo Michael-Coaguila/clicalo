@@ -430,6 +430,28 @@ public sealed class CommandTests
     }
 
     [Fact]
+    [Trait("Req", "COP-002")]
+    [Trait("Req", "DAT-006")]
+    public void Merging_an_import_takes_the_planned_library_with_undo_and_a_backup_before()
+    {
+        var merged = Document.Library;
+
+        var change = new MergeOnImport(merged).Apply(Document, Contexts.Fresh()).Value;
+        var removing = new MergeOnImport(CommandFactory.MinimalLibrary()).Apply(
+            Document,
+            Contexts.Fresh()
+        );
+
+        removing.IsFailure.ShouldBeTrue("a merge never removes what the user has");
+
+        change.Next.Library.ShouldBeSameAs(merged);
+        change.Next.Settings.ShouldBe(Document.Settings);
+        change.Undo.ShouldBeOfType<UndoIntent.Record>().Label.ShouldBe(Clicalo.Domain.Messages.L.ImpMerged.Key);
+        change.Backup.ShouldBe(new BackupRequirement.BeforeApply(BackupKind.PreImportReplace));
+        change.Events.ShouldBe([new LibraryReplaced()]);
+    }
+
+    [Fact]
     [Trait("Req", "COP-004")]
     [Trait("Req", "REG-08")]
     public void Restoring_a_backup_replaces_everything_but_the_revision_and_refuses_a_broken_one()

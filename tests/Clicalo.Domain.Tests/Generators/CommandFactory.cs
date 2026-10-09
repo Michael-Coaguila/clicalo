@@ -48,6 +48,7 @@ internal static class CommandFactory
         typeof(KeepOnlyInAlwaysVisible),
         typeof(DeleteMacroStep),
         typeof(ReplaceOnImport),
+        typeof(MergeOnImport),
         typeof(RestoreBackup),
         typeof(FinishOnboarding),
     ];
@@ -139,6 +140,7 @@ internal static class CommandFactory
             nameof(KeepOnlyInAlwaysVisible) => new KeepOnlyInAlwaysVisible(target),
             nameof(DeleteMacroStep) => new DeleteMacroStep(target, (c % 4) - 1),
             nameof(ReplaceOnImport) => new ReplaceOnImport(Imported(library, b)),
+            nameof(MergeOnImport) => new MergeOnImport(Imported(library, b)),
             nameof(RestoreBackup) => new RestoreBackup(Backup(document, b, c % 5 == 0)),
             _ => new FinishOnboarding(),
         };

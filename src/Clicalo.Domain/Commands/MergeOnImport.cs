@@ -8,7 +8,8 @@ namespace Clicalo.Domain.Commands;
 /// <summary>
 /// «Combinar» when importing (COP-002): the library becomes the merge the import planned (what was missing is added;
 /// on a matching id the existing one wins; a repeated id gets a new one), after a backup of the current document, and
-/// the step can be undone. It adds and never removes, so one tap is enough.
+/// the step can be undone. It adds and never removes, so one tap is enough: a library that lacks a profile or a shortcut
+/// of the current one is not a merge and is refused.
 /// </summary>
 /// <param name="Library">The merged library, already validated.</param>
 public sealed record MergeOnImport(ShortcutLibrary Library) : IDocumentCommand
@@ -17,6 +18,15 @@ public sealed record MergeOnImport(ShortcutLibrary Library) : IDocumentCommand
     public Result<DocumentChange> Apply(UserDocument document, DomainContext context)
     {
         ArgumentNullException.ThrowIfNull(document);
+        var shortcuts = Library.EnumerateShortcuts().Select(s => s.Shortcut.Id).ToHashSet();
+        if (
+            document.Library.Profiles.Any(p => !Library.TryGetProfile(p.Id, out _))
+            || document.Library.EnumerateShortcuts().Any(s => !shortcuts.Contains(s.Shortcut.Id))
+        )
+        {
+            return Changes.Fail(CommandFailures.NotAMerge());
+        }
+
         return Changes.RecordedAfterBackup(
             document with
             {
