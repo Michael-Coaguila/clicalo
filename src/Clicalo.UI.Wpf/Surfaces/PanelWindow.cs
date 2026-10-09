@@ -965,24 +965,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         return id;
     }
 
-    private static PhysicalRect PhysicalBounds(FrameworkElement element)
-    {
-        if (!element.IsVisible || PresentationSource.FromVisual(element) is null)
-        {
-            return PhysicalRect.Empty;
-        }
-
-        var topLeft = element.PointToScreen(new Point(0, 0));
-        var bottomRight = element.PointToScreen(
-            new Point(element.ActualWidth, element.ActualHeight)
-        );
-        return PhysicalRect.FromEdges(
-            (int)Math.Round(topLeft.X),
-            (int)Math.Round(topLeft.Y),
-            (int)Math.Round(bottomRight.X),
-            (int)Math.Round(bottomRight.Y)
-        );
-    }
+    private static PhysicalRect PhysicalBounds(FrameworkElement element) =>
+        TouchBounds.Of(element, inflate: false);
 
     private void OnGesture(GestureEvent gesture)
     {

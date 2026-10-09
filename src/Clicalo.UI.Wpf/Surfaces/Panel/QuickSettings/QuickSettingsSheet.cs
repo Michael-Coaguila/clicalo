@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.UI.Wpf.Controls;
@@ -151,36 +152,45 @@ public sealed class QuickSettingsSheet : Border
         Refresh();
     }
 
-    /// <summary>The card, every option, − and + of the opacity and the switch rows, while the sheet shows.</summary>
+    /// <summary>
+    /// The card, every option, − and + of the opacity and the switch rows, while the sheet shows. A control scrolled
+    /// out of sight is no target: its touch margin would otherwise take touches from the header or the grid (REG-02).
+    /// </summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
         get
         {
             if (!_viewModel.IsOpen)
             {
-                yield break;
+                return [];
             }
 
-            yield return new PanelTapTarget(_controlCenter, _viewModel.OpenControlCenter);
+            var targets = new List<PanelTapTarget>
+            {
+                new(_controlCenter, _viewModel.OpenControlCenter),
+            };
             foreach (var (_, item, option) in _options)
             {
-                yield return new PanelTapTarget(item, option.Select);
+                targets.Add(new PanelTapTarget(item, option.Select));
             }
 
             if (_opacity.DecreaseButton is { } decrease)
             {
-                yield return new PanelTapTarget(decrease, _viewModel.DecreaseOpacity);
+                targets.Add(new PanelTapTarget(decrease, _viewModel.DecreaseOpacity));
             }
 
             if (_opacity.IncreaseButton is { } increase)
             {
-                yield return new PanelTapTarget(increase, _viewModel.IncreaseOpacity);
+                targets.Add(new PanelTapTarget(increase, _viewModel.IncreaseOpacity));
             }
 
             foreach (var (row, item) in _switches)
             {
-                yield return new PanelTapTarget(row, item.Toggle);
+                targets.Add(new PanelTapTarget(row, item.Toggle));
             }
+
+            var view = TouchBounds.Of(_scroller, inflate: false);
+            return targets.FindAll(target => InView(view, target.Element));
         }
     }
 
@@ -222,6 +232,7 @@ public sealed class QuickSettingsSheet : Border
             case PointerPhase.Down when _contact is null && _viewModel.IsOpen:
                 if (
                     _opacity.TrackElement is { } track
+                    && InView(TouchBounds.Of(_scroller, inflate: false), track)
                     && TouchBounds.Of(track, inflate: true).Contains(sample.Position)
                 )
                 {
@@ -284,6 +295,17 @@ public sealed class QuickSettingsSheet : Border
             item.PropertyChanged -= OnChanged;
         }
     }
+
+    /// <summary>
+    /// Whether the center of <paramref name="element"/> shows inside <paramref name="view"/>, the scroller on screen;
+    /// off screen (no window yet) nothing is filtered, and the panel finds no bounds for it anyway.
+    /// </summary>
+    private static bool InView(PhysicalRect view, FrameworkElement element) =>
+        view.IsEmpty
+        || (
+            TouchBounds.Of(element, inflate: false) is { IsEmpty: false } bounds
+            && view.Contains(bounds.Center)
+        );
 
     private void Slide(Point screen)
     {
