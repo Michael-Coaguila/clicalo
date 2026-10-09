@@ -1,0 +1,408 @@
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using Clicalo.Presentation.Panel.QuickSettings;
+using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
+
+namespace Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
+
+/// <summary>
+/// The Quick settings sheet of the panel (AJR-001, docs/04 §5, prototype lines 77–126): a <c>card</c> sheet of radius
+/// 12 under the search, margin 0 12 10 12, padding 10, sections 14 apart, at most 62 % of the screen high with its own
+/// scroll. In order: the «Centro de control» card (56 high, accent outline on accentWash, a 36 px accent tile with the
+/// <c>settings</c> icon, [openCC] in 14 bold, [ccSub] in 11 muted and a chevron); Vista (three 52 px options with
+/// icons); Opacidad with its value in accent (− · slider · +); Tamaño (S, M, L); Lado de la pestaña (four icons, only
+/// in the Tab view); Tema (2 × 2); and the four switch rows. It only projects <see cref="QuickSettingsViewModel"/>.
+/// </summary>
+/// <remarks>
+/// The panel registers <see cref="TapTargets"/> with its pointer layer (a tap calls the view model); UI Automation
+/// Invoke, SelectionItem, RangeValue and Toggle reach the same view model through the controls. Every target is at
+/// least 44 × 44 (REG-02).
+/// </remarks>
+public sealed class QuickSettingsSheet : Border
+{
+    /// <summary>AJR-001: the sheet is at most 62 % of the screen high.</summary>
+    public const double ScreenShare = 0.62;
+
+    private const double SectionGap = 14;
+    private const double HeadingGap = 6;
+    private const double CardHeight = 56;
+    private const double CardIconTile = 36;
+    private const double ViewOptionHeight = 52;
+    private const double OptionHeight = 40;
+    private const double HeadingPx = 12;
+
+    private readonly QuickSettingsViewModel _viewModel;
+    private readonly TouchButton _controlCenter;
+    private readonly TextBlock _ccTitle = new() { FontWeight = FontWeights.Bold };
+    private readonly TextBlock _ccSubtitle = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _viewHeading = Heading();
+    private readonly TextBlock _opacityHeading = Heading();
+    private readonly TextBlock _opacityValue = new()
+    {
+        VerticalAlignment = VerticalAlignment.Bottom,
+    };
+    private readonly TextBlock _sizeHeading = Heading();
+    private readonly TextBlock _sideHeading = Heading();
+    private readonly TextBlock _themeHeading = Heading();
+    private readonly StackPanel _sideSection;
+    private readonly StepSlider _opacity;
+    private readonly List<(
+        SegmentedControl Group,
+        SegmentedItem Item,
+        QuickOptionViewModel Option
+    )> _options = [];
+    private readonly List<(ToggleSwitch Row, QuickSwitchViewModel Switch)> _switches = [];
+    private bool _applying;
+
+    /// <summary>Creates the sheet of <paramref name="viewModel"/>.</summary>
+    /// <param name="viewModel">Quick settings.</param>
+    public QuickSettingsSheet(QuickSettingsViewModel viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        _viewModel = viewModel;
+        Margin = new Thickness(12, 0, 12, 10);
+        Padding = new Thickness(10);
+        CornerRadius = new CornerRadius(Radii.Tile);
+        BorderThickness = new Thickness(1);
+        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
+        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+
+        _controlCenter = ControlCenterCard();
+        _controlCenter.Click += (_, _) => _viewModel.OpenControlCenter();
+
+        _opacity = new StepSlider
+        {
+            Minimum = QuickSettingsViewModel.OpacityMinimumPercent,
+            Maximum = QuickSettingsViewModel.OpacityMaximumPercent,
+            SmallChange = 2 * QuickSettingsViewModel.OpacityStepPercent,
+            LargeChange = QuickSettingsViewModel.OpacityStepPercent,
+            TickFrequency = QuickSettingsViewModel.OpacityStepPercent,
+            IsSnapToTickEnabled = true,
+            Focusable = false,
+            IsTabStop = false,
+        };
+        _opacity.ValueChanged += (_, change) =>
+        {
+            if (!_applying)
+            {
+                _viewModel.SetOpacityPercent(change.NewValue);
+            }
+        };
+
+        var opacityTitle = new DockPanel();
+        DockPanel.SetDock(_opacityValue, Dock.Right);
+        opacityTitle.Children.Add(_opacityValue);
+        opacityTitle.Children.Add(_opacityHeading);
+        _opacityValue.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.MonoFont);
+        _opacityValue.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(13));
+        _opacityValue.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Accent)
+        );
+
+        _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionHeight));
+        var layout = new StackPanel();
+        layout.Children.Add(_controlCenter);
+        layout.Children.Add(Section(_viewHeading, Group(viewModel.Views, 3, ViewOptionHeight)));
+        layout.Children.Add(Section(opacityTitle, _opacity));
+        layout.Children.Add(Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionHeight)));
+        layout.Children.Add(_sideSection);
+        layout.Children.Add(Section(_themeHeading, Group(viewModel.Themes, 2, OptionHeight)));
+        layout.Children.Add(Switches(viewModel.Switches));
+
+        Child = new ScrollViewer
+        {
+            Content = layout,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Focusable = false,
+        };
+
+        viewModel.PropertyChanged += OnChanged;
+        foreach (var (_, _, option) in _options)
+        {
+            option.PropertyChanged += OnChanged;
+        }
+
+        foreach (var (_, item) in _switches)
+        {
+            item.PropertyChanged += OnChanged;
+        }
+
+        Refresh();
+    }
+
+    /// <summary>The card, every option, − and + of the opacity and the switch rows, while the sheet shows.</summary>
+    public IEnumerable<PanelTapTarget> TapTargets
+    {
+        get
+        {
+            if (!_viewModel.IsOpen)
+            {
+                yield break;
+            }
+
+            yield return new PanelTapTarget(_controlCenter, _viewModel.OpenControlCenter);
+            foreach (var (_, item, option) in _options)
+            {
+                yield return new PanelTapTarget(item, option.Select);
+            }
+
+            if (_opacity.DecreaseButton is { } decrease)
+            {
+                yield return new PanelTapTarget(decrease, _viewModel.DecreaseOpacity);
+            }
+
+            if (_opacity.IncreaseButton is { } increase)
+            {
+                yield return new PanelTapTarget(increase, _viewModel.IncreaseOpacity);
+            }
+
+            foreach (var (row, item) in _switches)
+            {
+                yield return new PanelTapTarget(row, item.Toggle);
+            }
+        }
+    }
+
+    /// <summary>Limits the sheet to 62 % of the screen it is on (AJR-001); the rest scrolls inside.</summary>
+    /// <param name="screenHeight">The height of the monitor's work area, in device-independent pixels.</param>
+    public void ApplyScreenHeight(double screenHeight) =>
+        MaxHeight = screenHeight > 0 ? screenHeight * ScreenShare : double.PositiveInfinity;
+
+    /// <summary>Stops following the view model when the panel closes.</summary>
+    public void Detach()
+    {
+        _viewModel.PropertyChanged -= OnChanged;
+        foreach (var (_, _, option) in _options)
+        {
+            option.PropertyChanged -= OnChanged;
+        }
+
+        foreach (var (_, item) in _switches)
+        {
+            item.PropertyChanged -= OnChanged;
+        }
+    }
+
+    private static TextBlock Heading()
+    {
+        var heading = new TextBlock { FontWeight = FontWeights.Bold };
+        heading.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(HeadingPx));
+        heading.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
+        return heading;
+    }
+
+    private static StackPanel Section(UIElement heading, UIElement content)
+    {
+        var section = new StackPanel { Margin = new Thickness(0, SectionGap, 0, 0) };
+        section.Children.Add(heading);
+        if (content is FrameworkElement element)
+        {
+            element.Margin = new Thickness(0, HeadingGap, 0, 0);
+        }
+
+        section.Children.Add(content);
+        return section;
+    }
+
+    private TouchButton ControlCenterCard()
+    {
+        var tile = new Border
+        {
+            Width = CardIconTile,
+            Height = CardIconTile,
+            CornerRadius = new CornerRadius(Radii.Control),
+            Child = new SymbolIcon
+            {
+                Symbol = "settings",
+                Size = 20,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        tile.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Accent));
+        ((SymbolIcon)tile.Child).SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.OnAccent)
+        );
+
+        _ccTitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(14));
+        _ccSubtitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(11));
+        _ccSubtitle.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
+        var texts = new StackPanel
+        {
+            Margin = new Thickness(10, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        texts.Children.Add(_ccTitle);
+        texts.Children.Add(_ccSubtitle);
+
+        var chevron = new SymbolIcon
+        {
+            Symbol = "chevron_right",
+            Size = 22,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        chevron.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Accent)
+        );
+
+        var row = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(tile, Dock.Left);
+        DockPanel.SetDock(chevron, Dock.Right);
+        row.Children.Add(tile);
+        row.Children.Add(chevron);
+        row.Children.Add(texts);
+
+        var card = new TouchButton
+        {
+            Appearance = ButtonAppearance.Outline,
+            MinHeight = CardHeight,
+            Padding = new Thickness(8, 8, 10, 8),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            FontWeight = FontWeights.Normal,
+            Focusable = false,
+            IsTabStop = false,
+            Content = row,
+        };
+        card.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.AccentWash));
+        card.SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Accent));
+        return card;
+    }
+
+    private SegmentedControl Group(
+        IReadOnlyList<QuickOptionViewModel> options,
+        int columns,
+        double height
+    )
+    {
+        var group = new SegmentedControl { Columns = columns };
+        foreach (var option in options)
+        {
+            var item = new SegmentedItem
+            {
+                Height = height,
+                Focusable = false,
+                IsTabStop = false,
+            };
+            if (option.Icon.Length > 0)
+            {
+                item.Symbol = option.Icon;
+            }
+
+            group.Items.Add(item);
+            _options.Add((group, item, option));
+        }
+
+        group.SelectionChanged += (_, _) =>
+        {
+            if (_applying)
+            {
+                return;
+            }
+
+            // UI Automation SelectionItem.Select or the keyboard: the view model decides, then Refresh shows it.
+            foreach (var (owner, item, option) in _options)
+            {
+                if (ReferenceEquals(owner, group) && item.IsSelected && !option.IsSelected)
+                {
+                    option.Select();
+                    break;
+                }
+            }
+
+            Refresh();
+        };
+        return group;
+    }
+
+    private StackPanel Switches(IReadOnlyList<QuickSwitchViewModel> switches)
+    {
+        var rows = new StackPanel { Margin = new Thickness(0, SectionGap, 0, 0) };
+        foreach (var item in switches)
+        {
+            var row = new ToggleSwitch
+            {
+                Symbol = item.Icon,
+                Focusable = false,
+                IsTabStop = false,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            row.Checked += (_, _) => Toggled(item, on: true);
+            row.Unchecked += (_, _) => Toggled(item, on: false);
+            rows.Children.Add(row);
+            _switches.Add((row, item));
+        }
+
+        return rows;
+    }
+
+    private void Toggled(QuickSwitchViewModel item, bool on)
+    {
+        // UI Automation Toggle or the keyboard flipped the row: the view model decides, then Refresh shows it.
+        if (!_applying && item.IsOn != on)
+        {
+            item.Toggle();
+            Refresh();
+        }
+    }
+
+    private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
+
+    private void Refresh()
+    {
+        _applying = true;
+        try
+        {
+            Visibility = _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
+            AutomationProperties.SetName(this, _viewModel.Name);
+            _ccTitle.Text = _viewModel.ControlCenterTitle;
+            _ccSubtitle.Text = _viewModel.ControlCenterSubtitle;
+            AutomationProperties.SetName(_controlCenter, _viewModel.ControlCenterTitle);
+            AutomationProperties.SetHelpText(_controlCenter, _viewModel.ControlCenterSubtitle);
+            _viewHeading.Text = _viewModel.ViewHeading;
+            _opacityHeading.Text = _viewModel.OpacityHeading;
+            _opacityValue.Text = _viewModel.OpacityText;
+            _sizeHeading.Text = _viewModel.SizeHeading;
+            _sideHeading.Text = _viewModel.SideHeading;
+            _themeHeading.Text = _viewModel.ThemeHeading;
+            _sideSection.Visibility = _viewModel.ShowsSides
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            _opacity.Value = _viewModel.OpacityPercent;
+            _opacity.DecreaseName = _viewModel.OpacityLessName;
+            _opacity.IncreaseName = _viewModel.OpacityMoreName;
+            AutomationProperties.SetName(_opacity, _viewModel.OpacityHeading);
+
+            foreach (var (_, item, option) in _options)
+            {
+                item.Content = option.Label.Length > 0 ? option.Label : null;
+                item.IsSelected = option.IsSelected;
+                AutomationProperties.SetName(item, option.AccessibleName);
+            }
+
+            foreach (var (row, item) in _switches)
+            {
+                row.Content = item.Label;
+                row.IsChecked = item.IsOn;
+            }
+        }
+        finally
+        {
+            _applying = false;
+        }
+    }
+}
