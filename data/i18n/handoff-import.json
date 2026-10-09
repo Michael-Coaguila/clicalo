@@ -332,6 +332,57 @@
       "notes": "Aviso al crear el perfil desde la sugerencia, «[installedT]: {app}» sin concatenar fragmentos (PER-009, IDI-004). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
       "after": "installedT",
       "text": { "es": "Perfil instalado: {app}", "en": "Profile installed: {app}" }
+    },
+    "tmLeft": {
+      "notes": "Marca permanente del Modo prueba con los segundos que quedan (TAC-008: «Modo prueba · {s} s»). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "tmOk",
+      "plural": {
+        "es": { "one": "Modo prueba · {count} s", "other": "Modo prueba · {count} s" },
+        "en": { "one": "Test mode · {count} s", "other": "Test mode · {count} s" }
+      }
+    },
+    "pinLimit": {
+      "notes": "Aviso al fijar en Frecuentes cuando ya hay tantos fijados como fichas (FRE-001: «el menú de fijar avisa del límite (texto nuevo)»). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "ctxHideT",
+      "plural": {
+        "es": { "one": "Fijado. Frecuentes solo muestra {count} fijado", "other": "Fijado. Frecuentes solo muestra los {count} primeros fijados" },
+        "en": { "one": "Pinned. Frequent only shows {count} pin", "other": "Pinned. Frequent only shows the first {count} pins" }
+      }
+    },
+    "delA": {
+      "notes": "Nombre accesible de la × de borrado de una ficha en modo edición (CUA-012, REG-06): cada × se distingue por el nombre de su atajo. Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "pinLimit",
+      "text": { "es": "Eliminar {name}", "en": "Delete {name}" }
+    },
+    "hideA": {
+      "notes": "Nombre accesible de la × de una ficha de Frecuentes en modo edición, que la quita de Frecuentes (CUA-013, REG-06). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "delA",
+      "text": { "es": "Quitar {name} de Frecuentes", "en": "Remove {name} from Frequent" }
+    },
+    "szS": {
+      "notes": "Letra del tamaño S en Ajustes rápidos (AJR-001; el nombre accesible es [sizeS]). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "sizeL",
+      "text": { "es": "S", "en": "S" }
+    },
+    "szM": {
+      "notes": "Letra del tamaño M en Ajustes rápidos (AJR-001; el nombre accesible es [sizeM]). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "szS",
+      "text": { "es": "M", "en": "M" }
+    },
+    "szL": {
+      "notes": "Letra del tamaño L en Ajustes rápidos (AJR-001; el nombre accesible es [sizeL]). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "szM",
+      "text": { "es": "L", "en": "L" }
+    },
+    "opLess": {
+      "notes": "Nombre accesible del botón − de la opacidad (AJR-002, UIA008: un glifo no es un nombre). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "opacity",
+      "text": { "es": "Menos opacidad", "en": "Less opacity" }
+    },
+    "opMore": {
+      "notes": "Nombre accesible del botón + de la opacidad (AJR-002, UIA008). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "opLess",
+      "text": { "es": "Más opacidad", "en": "More opacity" }
     }
   },
   "retired": {
