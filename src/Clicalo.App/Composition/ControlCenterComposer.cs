@@ -107,6 +107,9 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         localization.LanguageChanged += (_, _) => _ = _ui.BeginInvoke(Relocalize);
     }
 
+    /// <summary>Whether «Probar ahora» is running: its app switches are not the user's (PRB-006). Any thread.</summary>
+    public bool IsTrying => _tryNow.IsRunning;
+
     /// <summary>Whether the window is open.</summary>
     public bool IsOpen => _open;
 

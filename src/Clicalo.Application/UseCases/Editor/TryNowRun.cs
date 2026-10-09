@@ -28,6 +28,7 @@ public sealed class TryNowRun
     private readonly Func<long> _foregroundEpoch;
     private readonly TimeProvider _time;
     private readonly bool _selfElevated;
+    private volatile bool _running;
 
     /// <summary>Creates the use case.</summary>
     /// <param name="foreground">The single owner of foreground changes.</param>
@@ -54,8 +55,10 @@ public sealed class TryNowRun
         _selfElevated = selfElevated;
     }
 
-    /// <summary>Whether a try is running: its app switches are not the user's (PRB-006).</summary>
-    public bool IsRunning { get; private set; }
+    /// <summary>
+    /// Whether a try is running: its app switches are not the user's (PRB-006). Read from any thread.
+    /// </summary>
+    public bool IsRunning => _running;
 
     /// <summary>Runs a try.</summary>
     /// <param name="shortcut">The shortcut, as saved.</param>
@@ -92,7 +95,7 @@ public sealed class TryNowRun
             return (TryNowOutcome.Elevated, null);
         }
 
-        IsRunning = true;
+        _running = true;
         try
         {
             return await TryAsync(
@@ -104,7 +107,7 @@ public sealed class TryNowRun
         }
         finally
         {
-            IsRunning = false;
+            _running = false;
         }
     }
 
@@ -184,7 +187,7 @@ public sealed class TryNowRun
             new EngineEvent.Activation(
                 new ActivationRequest(
                     ActivationPhase.Invoke,
-                    ActivationOrigin.UiaInvoke,
+                    ActivationOrigin.TryNow,
                     null,
                     null,
                     _time.GetUtcNow()

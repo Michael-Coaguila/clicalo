@@ -35,6 +35,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados, con `perf (x64)` cada noche y obligatorio antes de cada versión; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck (retirados por ADR-0023) | M2 |
 | D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
 | D-25 | Guardián simple | Hasta el 2026-10-05, *ledger* en memoria compartida, valla de generación, emergencia y protocolo 2 de Sentinel; desde entonces el plano recoge [ADR-0023](../adr/0023-guardian-simple.md) | Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia; las partes de D-21, D-22 y D-23 sobre ellos quedan retiradas | M2 |
+| D-26 | Efectos laterales de «Probar ahora» | `SuppressSwitchHandling(3 s, token)` en el motor y `ForegroundClassifier` (§3.6, §7.9) | `ActivationOrigin.TryNow` en la activación y `ForegroundChangeCoordinator.IsTrying` mientras dura la prueba | M4 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -725,6 +726,21 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   (el usuario usa «Soltar todo» de la bandeja y, si hace falta, sale); una tecla del teclado físico pulsada en ese
   instante también se suelta.
 - **Revisión.** Con la primera ejecución nocturna de S9 en la CI y en la aceptación en hardware (sesión bloqueada real).
+
+## D-26 · Efectos laterales de «Probar ahora» sin ventana de supresión
+
+- **Plano.** [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano) pide `SuppressSwitchHandling(3 s, token)` en el motor durante
+  «Probar ahora», y §7.9 deja a `ForegroundClassifier` decidir que un cambio dentro de esa ventana no es real (PRB-006).
+- **Repositorio.** La activación de la prueba llega con `ActivationOrigin.TryNow`: el motor la ejecuta como un
+  `Invoke`, pero `ExecutionOrigin.Trial` hace que no cuente para Frecuentes ni cambie Repetir. Mientras
+  `TryNowRun.IsRunning`, `ForegroundChangeCoordinator.IsTrying` publica los cambios de app con época nueva y sin
+  `isUserSwitch` (no hay soltado de SEG-005) y conserva la app del usuario como referencia, así que la vuelta a ella al
+  cerrar el CC tampoco es un cambio; el panel no sigue esos cambios (no cambia de perfil) y el modo captura ya los
+  ignoraba.
+- **Motivo.** Un indicador mientras dura la prueba es más simple que una ventana de tiempo con *token* en el motor y no
+  depende de que la prueba quepa en 3 s.
+- **Coste.** Ninguno conocido; el estado vive en Application y no en el motor.
+- **Revisión.** Con la verificación de escritorio de «Probar ahora» (M4).
 
 ## Puntos del plano pendientes de resolver
 

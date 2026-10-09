@@ -199,6 +199,12 @@ internal sealed class PanelComposer : IPanelBodyIntents
 
         void Report(ExternalForeground foreground)
         {
+            // PRB-006: the app «Probar ahora» brings to the front does not change the panel's profile.
+            if (ControlCenter?.IsTrying == true)
+            {
+                return;
+            }
+
             var process = describe(foreground).Process;
             var elevated =
                 ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)

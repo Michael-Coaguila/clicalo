@@ -391,6 +391,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         monitor.ExternalForegroundChanged += (_, change) =>
             controlCenter.OnExternalForeground(describer.Describe(change.Foreground).Process);
         services.GetRequiredService<PanelComposer>().ControlCenter = controlCenter;
+        // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
+        foreground.IsTrying = () => controlCenter.IsTrying;
         return controlCenter;
     }
 

@@ -453,6 +453,12 @@ internal sealed class EngineStep
 
     public void CountUsage(ExecutionOrigin origin)
     {
+        // PRB-006: a try in the editor is not the user's use.
+        if (origin.Trial)
+        {
+            return;
+        }
+
         Emit(new EngineEffect.CountUsage(origin.Shortcut, origin.At));
         Emit(new EngineEffect.SetLastAction(origin.Shortcut));
     }
