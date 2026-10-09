@@ -15,6 +15,8 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <param name="DoneText">[done].</param>
 /// <param name="DeleteText">[delProf], or [delConfirm] when armed; null for General.</param>
 /// <param name="DeleteArmed">Whether the first tap armed it.</param>
+/// <param name="CanShare">Whether [Compartir] saves the profile as a file (DAT-007).</param>
+/// <param name="ShareTextsText">[shareWithTexts] when the profile has texts to include in clear (PQ-37); else null.</param>
 public sealed record ProfileEditModel(
     string NameLabel,
     string Name,
@@ -27,5 +29,7 @@ public sealed record ProfileEditModel(
     string ShareText,
     string DoneText,
     string? DeleteText,
-    bool DeleteArmed
+    bool DeleteArmed,
+    bool CanShare = false,
+    string? ShareTextsText = null
 );

@@ -581,6 +581,141 @@
       "notes": "Nombre accesible del botón + de un paso de espera de una macro (EDI-013). Texto nuevo del centro de control (M4), pendiente de ratificar en §6.1 del catálogo.",
       "after": "waitShorter",
       "text": { "es": "Esperar más", "en": "Wait longer" }
+    },
+    "aiPrivacy4": {
+      "notes": "Línea de privacidad de «Crear con IA» corregida para listar los 4 datos que se envían (PLA-002, PLA-008, catálogo §9). Sustituye a [aiPrivacy]. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "waitLonger",
+      "text": { "es": "Solo se envían el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. Nada de tus documentos.", "en": "Only the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent. Nothing from your documents." }
+    },
+    "consentD4": {
+      "notes": "Consentimiento de la IA corregido para listar los 4 datos y la clave propia (PLA-004, PLA-008, catálogo §9, decisión D5). Sustituye a [consentD] en Plantillas. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "aiPrivacy4",
+      "text": { "es": "Para crear atajos se envían a un servicio externo de IA, con tu propia clave, el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. No se envía nada más. Puedes desactivarlo cuando quieras.", "en": "To create shortcuts, the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent to an external AI service with your own key. Nothing else. You can turn it off anytime." }
+    },
+    "keyNone": {
+      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "consentD4",
+      "text": { "es": "Sin clave: la IA usa tu propia clave de API de Anthropic", "en": "No key: AI uses your own Anthropic API key" }
+    },
+    "keyPaste": {
+      "notes": "Botón que pega la clave del portapapeles en el campo oculto (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "keyNone",
+      "text": { "es": "Pegar", "en": "Paste" }
+    },
+    "keyDelete": {
+      "notes": "Botón que borra la clave guardada del Administrador de credenciales (ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "keyPaste",
+      "text": { "es": "Borrar clave", "en": "Delete key" }
+    },
+    "keySaved": {
+      "notes": "Aviso al guardar la clave (PLA-003, ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "keyDelete",
+      "text": { "es": "Clave guardada en el Administrador de credenciales", "en": "Key saved in Credential Manager" }
+    },
+    "keyNotSaved": {
+      "notes": "Aviso cuando Windows no guarda la clave (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "keySaved",
+      "text": { "es": "No se pudo guardar la clave", "en": "Couldn’t save the key" }
+    },
+    "keyDeleted": {
+      "notes": "Aviso al borrar la clave (ADR-0008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "keyNotSaved",
+      "text": { "es": "Clave borrada", "en": "Key deleted" }
+    },
+    "errNoKeyT": {
+      "notes": "Error de la IA sin clave guardada (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "keyDeleted",
+      "text": { "es": "Falta tu clave", "en": "Your key is missing" }
+    },
+    "errNoKeyD": {
+      "notes": "Descripción del error sin clave (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errNoKeyT",
+      "text": { "es": "La IA de Clícalo usa tu propia clave de API de Anthropic. Pégala para generar, o sigue con plantillas y perfiles vacíos.", "en": "Clícalo’s AI uses your own Anthropic API key. Paste it to generate, or continue with templates and empty profiles." }
+    },
+    "errKeyT": {
+      "notes": "Error «badkey»: clave rechazada o límite del proveedor (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errNoKeyD",
+      "text": { "es": "Clave no válida o límite del proveedor", "en": "Invalid key or provider limit" }
+    },
+    "errKeyD": {
+      "notes": "Descripción del error «badkey» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errKeyT",
+      "text": { "es": "El proveedor rechazó tu clave o alcanzaste su límite de uso. Cambia la clave o inténtalo más tarde.", "en": "The provider refused your key or you reached its usage limit. Change the key or try again later." }
+    },
+    "errUnavT": {
+      "notes": "Error «unavailable» (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errKeyD",
+      "text": { "es": "Servicio no disponible", "en": "Service unavailable" }
+    },
+    "errUnavD": {
+      "notes": "Descripción del error «unavailable» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errUnavT",
+      "text": { "es": "El servicio de IA falló. Inténtalo de nuevo en un momento.", "en": "The AI service failed. Try again in a moment." }
+    },
+    "errInvT": {
+      "notes": "Error «invalid» (PLA-006, PLA-008, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errUnavD",
+      "text": { "es": "Respuesta no válida", "en": "Invalid answer" }
+    },
+    "errInvD": {
+      "notes": "Descripción del error «invalid» (PLA-006). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errInvT",
+      "text": { "es": "La IA respondió algo que no son atajos válidos. Reinténtalo o elige otra opción.", "en": "The AI answered something that isn’t valid shortcuts. Retry or choose another option." }
+    },
+    "kbForLine": {
+      "notes": "Línea del teclado «[kbFor] {distribución} · {programas}» sin concatenar fragmentos (PLA-009, IDI-004). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "errInvD",
+      "text": { "es": "Para {name} · {app}", "en": "For {name} · {app}" }
+    },
+    "kbEsLa": {
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbForLine",
+      "text": { "es": "Español (Latinoamérica)", "en": "Spanish (Latin America)" }
+    },
+    "kbEsEs": {
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbEsLa",
+      "text": { "es": "Español (España)", "en": "Spanish (Spain)" }
+    },
+    "kbEnUs": {
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbEsEs",
+      "text": { "es": "Inglés (EE. UU.)", "en": "English (US)" }
+    },
+    "kbEnInt": {
+      "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbEnUs",
+      "text": { "es": "Inglés internacional", "en": "US International" }
+    },
+    "kbAppsEs": {
+      "notes": "Idioma de los programas (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbEnInt",
+      "text": { "es": "Office y apps en español", "en": "Office & apps in Spanish" }
+    },
+    "kbAppsEn": {
+      "notes": "Idioma de los programas (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbAppsEs",
+      "text": { "es": "Office y apps en inglés", "en": "Office & apps in English" }
+    },
+    "riskyMark": {
+      "notes": "Aviso de una acción de riesgo de un perfil importado, desmarcada por defecto (PLA-015, LOG-008). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "kbAppsEn",
+      "text": { "es": "Abre, escribe o ejecuta algo: revísalo", "en": "Opens, types or runs something: check it" }
+    },
+    "dangerMark": {
+      "notes": "Aviso de una combinación peligrosa de la IA (Alt+F4, Ctrl+W, Supr; blueprint §9.2). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "riskyMark",
+      "text": { "es": "Cierra o borra al instante", "en": "Closes or deletes at once" }
+    },
+    "shareWithTexts": {
+      "notes": "Compartir un perfil con sus textos en claro (DAT-007, PQ-37). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "dangerMark",
+      "text": { "es": "Compartir con textos en claro", "en": "Share with texts in clear" }
+    },
+    "profShared": {
+      "notes": "Aviso al guardar el archivo de un perfil compartido, que sustituye al enlace del prototipo (DAT-007, PQ-26). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-25).",
+      "after": "shareWithTexts",
+      "text": { "es": "Perfil guardado para compartir: {name}", "en": "Profile saved to share: {name}" }
     }
   },
   "retired": {
