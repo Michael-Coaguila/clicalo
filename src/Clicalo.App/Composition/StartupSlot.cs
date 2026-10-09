@@ -22,6 +22,9 @@ internal sealed class StartupSlot
                 : throw new InvalidOperationException("The document was already loaded.");
     }
 
+    /// <summary>The key labels, the common actions and the starter content; empty until the start reads them.</summary>
+    public RuntimeCatalogs Catalogs { get; set; } = RuntimeCatalogs.Empty;
+
     /// <summary>The interface language; set right after the document.</summary>
     public LocalizationContext Localization
     {

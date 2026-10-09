@@ -52,6 +52,13 @@
       CopyToOutputDirectory="PreserveNewest"
       CopyToPublishDirectory="PreserveNewest"
     />
+    <!-- Key labels of the tiles (R-04) and the adaptive common actions (D4), read by the panel at run time. -->
+    <Content
+      Include="..\..\data\catalogs\keys.json;..\..\data\catalogs\common-actions.json"
+      LinkBase="catalogs"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+    />
     <Content
       Include="..\..\data\content\templates\*.json"
       LinkBase="content\templates"

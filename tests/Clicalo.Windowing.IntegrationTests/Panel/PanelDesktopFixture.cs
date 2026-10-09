@@ -7,6 +7,7 @@ using Clicalo.Application.Session;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
@@ -145,12 +146,11 @@ public sealed class PanelDesktopFixture : IAsyncLifetime
             viewModel.ApplySession(session.Current);
             session.Changed += (_, change) => viewModel.ApplySession(change.Current);
             // Dark and fully opaque, without automatic dimming: the taps measure the panel, not its fade.
+            viewModel.ApplyLayout(PanelLayoutSettings.Default with { Columns = 4 });
             var window = new PanelWindow(
                 viewModel,
                 _lab.Registry,
                 TimeProvider.System,
-                PanelSizes.M,
-                columns: 4,
                 new ThemeService(new FakeSystemTheme(), ThemeChoice.Dark),
                 new DimSettings(AutoDim: false, Opacity: 1, DimTo: 1)
             );

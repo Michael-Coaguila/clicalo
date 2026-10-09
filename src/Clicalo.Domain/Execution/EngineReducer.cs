@@ -273,7 +273,7 @@ public static class EngineReducer
         switch (shortcut.Action)
         {
             case TapAction tap:
-                KeyPlanner.Tap(step, origin, ChordFor(tap, step.Config));
+                KeyPlanner.Tap(step, origin, ChordFor(shortcut, tap, step));
                 break;
             case HoldAction hold when invoked:
                 KeyPlanner.Toggle(step, origin, shortcut, hold.Chord, HoldOrigin.Invoke);
@@ -302,11 +302,14 @@ public static class EngineReducer
         }
     }
 
-    private static KeyChord ChordFor(TapAction tap, EngineConfig config) =>
-        config.AppsLanguage is { } language
-        && tap.Variants.Items.FirstOrDefault(v => v.AppsLanguage == language) is { } variant
-            ? variant.Chord
-            : tap.Chord;
+    // Decision D4: a common action sends the combination of the app in front; otherwise the programs language variant.
+    private static KeyChord ChordFor(Shortcut shortcut, TapAction tap, EngineStep step) =>
+        step.Config.CommonActions.ChordToSend(
+            shortcut,
+            tap,
+            step.State.Foreground?.Process,
+            step.Config.AppsLanguage
+        );
 
     private static bool IsHoldLike(ShortcutAction action) =>
         action is HoldAction || (action is MouseAction mouse && MousePlanner.IsScroll(mouse.Op));

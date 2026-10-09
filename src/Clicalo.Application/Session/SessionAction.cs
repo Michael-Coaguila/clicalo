@@ -22,4 +22,10 @@ public abstract record SessionAction
     /// <summary>Put another profile in view.</summary>
     /// <param name="Profile">The profile.</param>
     public sealed record ShowProfile(ProfileId Profile) : SessionAction;
+
+    /// <summary>The profile button outside Frequents: open the profile grid, or close it when open (SEL-002).</summary>
+    public sealed record TogglePicker : SessionAction;
+
+    /// <summary>Close the profile grid (a profile chosen, the search opened, the app changed: PAN-008, SEL-004).</summary>
+    public sealed record ClosePicker : SessionAction;
 }

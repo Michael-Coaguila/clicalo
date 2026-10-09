@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/common-actions.schema.json",
+  "title": "Clícalo adaptive common actions",
+  "description": "Decision D4 of the user (2026-10-05): the standard combination of the most used common actions of the library and the seed (Save, Find, Select all, Bold…), plus its exceptions per family of apps and programs language. When a tap shortcut installed from one of these actions still has a combination of this table, the engine sends the combination of the app in front; any app outside the table gets the standard one. Every exception cites an official source.",
+  "type": "object",
+  "required": ["catalogVersion", "origins", "sources", "families", "actions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
+    "origins": {
+      "description": "Sources of the catalog reference (DAT-004) whose shortcuts are common actions: the seed «Basics» and the «Add shortcut» library. Template shortcuts are never common actions.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/itemId" }
+    },
+    "sources": {
+      "description": "Official documentation the exceptions come from.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "url", "documents"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/itemId" },
+          "url": { "type": "string", "pattern": "^https://" },
+          "documents": {
+            "description": "What the page documents, in Spanish, for whoever reviews the table.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "families": {
+      "description": "Families of apps that share exceptions, by executable.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "processes"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/itemId" },
+          "processes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "common.schema.json#/$defs/processName" }
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "keys", "exceptions"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Item id of the action in the seed and the library (save, find, selall…).",
+            "$ref": "common.schema.json#/$defs/itemId"
+          },
+          "keys": {
+            "description": "The standard combination, sent to every app outside the exceptions.",
+            "$ref": "common.schema.json#/$defs/keyChord"
+          },
+          "exceptions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["families", "appsLanguage", "keys", "sources"],
+              "additionalProperties": false,
+              "properties": {
+                "families": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "$ref": "common.schema.json#/$defs/itemId" }
+                },
+                "appsLanguage": { "$ref": "common.schema.json#/$defs/langCode" },
+                "keys": { "$ref": "common.schema.json#/$defs/keyChord" },
+                "sources": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "$ref": "common.schema.json#/$defs/itemId" }
+                },
+                "note": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

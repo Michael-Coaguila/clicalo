@@ -11,11 +11,20 @@ namespace Clicalo.Presentation.Panel;
 /// <param name="Binding">What it runs.</param>
 /// <param name="Icon">The Material Symbols icon of the shortcut (CUA-007).</param>
 /// <param name="Category">The color category of the shortcut (TEM-003).</param>
+/// <param name="Keys">
+/// The line under the name (CUA-007): the combination the tile sends, abbreviated in size S (CUA-008), or the origin
+/// of a Frequents tile or of a search result; empty hides it.
+/// </param>
+/// <param name="SpokenKeys">
+/// The combination with full key names for screen readers (CUA-008), or the origin; empty when there is none.
+/// </param>
 public sealed record TileModel(
     ShortcutId Id,
     string Name,
     TileBehavior Behavior,
     TileBinding Binding,
     IconRef Icon,
-    CategoryId Category
+    CategoryId Category,
+    string Keys = "",
+    string SpokenKeys = ""
 );

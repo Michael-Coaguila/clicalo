@@ -16,14 +16,12 @@ using Clicalo.Application.Store;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
-using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.Input;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
-using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
@@ -63,7 +61,6 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private System.Windows.Application? _application;
     private ServiceProvider? _services;
     private EngineThread? _engine;
-    private PanelWindow? _window;
     private PersistenceScheduler? _scheduler;
     private TrayController? _tray;
     private ShowPipeServer? _pipe;
@@ -175,6 +172,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             .ConfigureAwait(true);
         slot.Load = read.Documents.Load;
         slot.Localization = read.Localization;
+        slot.Catalogs = read.Catalogs;
         var loadTime = _time.GetElapsedTime(started);
         LogDocumentLoaded(_logger, slot.Load.Outcome, loadTime);
 
@@ -204,10 +202,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             if (scheduler.Status == SaveStatus.Failing)
             {
                 _ = ui.BeginInvoke(() =>
-                    _window?.Announce(
-                        slot.Localization.Current.Format(L.SaveFailT),
-                        AnnouncementUrgency.Assertive
-                    )
+                    services
+                        .GetRequiredService<PanelComposer>()
+                        .Notify(L.SaveFailT, NoticeTone.Warning, "warning")
                 );
             }
         };
@@ -247,8 +244,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         // 5. The panel, the orchestrator that answers its ActivationGuard (REG-01), and Sentinel in parallel.
         // The owner goes last: destroying it first would destroy its surfaces behind their backs.
         Track(services.GetRequiredService<OwnerAnchor>().Dispose);
-        var window = BuildPanel(services, store, slot.Localization);
-        _window = window;
+        var window = BuildPanel(services, store, slot.Localization, slot.Catalogs);
         Track(window.Close);
         var orchestrator = services.GetRequiredService<ForegroundOrchestrator>();
         Track(orchestrator.Dispose);
@@ -286,18 +282,18 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private PanelWindow BuildPanel(
         IServiceProvider services,
         DocumentStore store,
-        LocalizationContext localization
+        LocalizationContext localization,
+        RuntimeCatalogs catalogs
     )
     {
         var session = services.GetRequiredService<SessionStore>();
-        var viewModel = services.GetRequiredService<PanelViewModel>();
+        var composer = services.GetRequiredService<PanelComposer>();
+        var viewModel = composer.Panel;
         var relay = services.GetRequiredService<EngineObserverRelay>();
-        Project(viewModel, store, session, localization);
         viewModel.ApplySession(session.Current);
         session.Changed += (_, change) =>
         {
             viewModel.ApplySession(change.Current);
-            Project(viewModel, store, session, localization);
             UpdateTray(viewModel);
         };
         var engine = services.GetRequiredService<IEngineInbox>();
@@ -309,7 +305,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             {
                 // The engine obeys the settings it was built with until told otherwise (SEG-004, SEG-005, TAC-002).
                 _ = engine.Post(
-                    new EngineEvent.ConfigChanged(SettingsProjection.Engine(change.After.Settings))
+                    new EngineEvent.ConfigChanged(
+                        SettingsProjection.Engine(change.After.Settings, catalogs.CommonActions)
+                    )
                 );
                 if (change.Before.Settings.Language != change.After.Settings.Language)
                 {
@@ -326,14 +324,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 // AJR-004: the theme, the text scale, reduce motion and the opacity apply at once, in place.
                 SettingsProjection.Theme(theme, settings);
                 window.ApplyDimSettings(SettingsProjection.Dim(settings));
-                Project(viewModel, store, session, localization);
+                composer.OnDocumentChanged(change);
             });
         };
         localization.LanguageChanged += (_, _) =>
             _ = _application!.Dispatcher.BeginInvoke(() =>
             {
-                viewModel.Relocalize();
-                Project(viewModel, store, session, localization);
+                composer.Relocalize();
                 _ = _tray?.RelocalizeAsync();
             });
         relay.SnapshotChanged += (_, change) =>
@@ -342,35 +339,19 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             UpdateTray(viewModel);
         };
         // Frequents count what ran (FRE-002); the store publishes usage changes without an undo step.
-        relay.UsageCounted += (_, counted) => _ = store.Dispatch(new RecordUsage(counted.Shortcut));
-        relay.NoticeRaised += (_, notice) =>
-            window.Announce(
-                localization.Current.Format(notice.Text),
-                notice.Urgency == NoticeUrgency.Polite
-                    ? AnnouncementUrgency.Polite
-                    : AnnouncementUrgency.Assertive
-            );
-        return window;
-    }
+        relay.UsageCounted += (_, counted) =>
+        {
+            _ = store.Dispatch(new RecordUsage(counted.Shortcut));
+            composer.OnActionRan();
+        };
+        relay.NoticeRaised += (_, notice) => composer.OnEngineNotice(notice);
 
-    private static void Project(
-        PanelViewModel viewModel,
-        DocumentStore store,
-        SessionStore session,
-        LocalizationContext localization
-    )
-    {
-        var document = store.Current;
-        var profile = document.Library.TryGetProfile(session.Current.View, out var inView)
-            ? inView
-            : document.Library.General;
-        viewModel.Apply(
-            PanelProjector.Project(
-                profile,
-                new LangCode(localization.Current.Locale.Code),
-                LangCode.Es
-            )
+        // PER-003, EJE-013, SEL-003: the panel follows the app in front.
+        composer.Follow(
+            services.GetRequiredService<IForegroundMonitor>(),
+            services.GetRequiredService<ForegroundDescriber>().Describe
         );
+        return window;
     }
 
     private void UpdateTray(PanelViewModel viewModel) =>

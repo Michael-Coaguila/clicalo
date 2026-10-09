@@ -27,9 +27,15 @@ public static class PanelSessionReducer
             SessionAction.ShowProfile show when show.Profile != session.View => session with
             {
                 View = show.Profile,
+                PickerOpen = false,
                 Version = session.Version + 1,
             },
             SessionAction.ShowProfile => session,
+            SessionAction.TogglePicker => WithPicker(
+                session,
+                open: !session.PickerOpen && session.Presence == PanelPresence.Visible
+            ),
+            SessionAction.ClosePicker => WithPicker(session, open: false),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(action),
                 action.GetType().Name,
@@ -38,12 +44,23 @@ public static class PanelSessionReducer
         };
     }
 
+    private static PanelSession WithPicker(PanelSession session, bool open) =>
+        session.PickerOpen == open
+            ? session
+            : session with
+            {
+                PickerOpen = open,
+                Version = session.Version + 1,
+            };
+
     private static PanelSession WithPresence(PanelSession session, PanelPresence presence) =>
         session.Presence == presence
             ? session
             : session with
             {
                 Presence = presence,
+                // A hidden panel keeps no layer open (SEL-002).
+                PickerOpen = session.PickerOpen && presence == PanelPresence.Visible,
                 Version = session.Version + 1,
             };
 }
