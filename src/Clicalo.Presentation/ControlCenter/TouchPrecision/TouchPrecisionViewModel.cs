@@ -80,6 +80,8 @@ public sealed class TouchPrecisionViewModel : ObservableObject
             return;
         }
 
+        // A preset tap is a step of its own: it joins neither the slider drag before it nor the one after it (REG-07).
+        _s.Store.SealCoalescing();
         if (TouchPresets.Find(id) is { } preset)
         {
             Write(
@@ -96,6 +98,8 @@ public sealed class TouchPrecisionViewModel : ObservableObject
         {
             Write(touch with { Preset = SettingsSchema.PersonalTouchPreset });
         }
+
+        _s.Store.SealCoalescing();
     }
 
     /// <summary>

@@ -92,6 +92,27 @@ public sealed class TouchPrecisionViewModelTests
 
     [Fact]
     [Trait("Req", "TAC-005")]
+    [Trait("Req", "REG-07")]
+    public void Each_preset_tap_is_its_own_undo_step()
+    {
+        var section = Create();
+
+        section.SetValue(TouchValue.HitSlop, 20);
+        section.ChoosePreset("standard");
+        section.ChoosePreset("strong-tremor");
+        section.SetValue(TouchValue.HitSlop, 30);
+
+        _world.Store.Undo().IsSuccess.ShouldBeTrue();
+        Touch.Preset.ShouldBe("strong-tremor");
+        _world.Store.Undo().IsSuccess.ShouldBeTrue();
+        Touch.Preset.ShouldBe("standard");
+        _world.Store.Undo().IsSuccess.ShouldBeTrue();
+        Touch.Preset.ShouldBe(SettingsSchema.PersonalTouchPreset);
+        Touch.HitSlopPx.ShouldBe(20);
+    }
+
+    [Fact]
+    [Trait("Req", "TAC-005")]
     public void Moving_a_slider_switches_to_personal_and_choosing_personal_keeps_the_values()
     {
         var section = Create();
