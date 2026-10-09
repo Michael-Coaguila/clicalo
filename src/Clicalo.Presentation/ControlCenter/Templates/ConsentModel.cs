@@ -5,9 +5,4 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="Text">[consentD4].</param>
 /// <param name="AcceptText">[consentOk].</param>
 /// <param name="DeclineText">[consentNo].</param>
-public sealed record ConsentModel(
-    string Title,
-    string Text,
-    string AcceptText,
-    string DeclineText
-);
+public sealed record ConsentModel(string Title, string Text, string AcceptText, string DeclineText);

@@ -89,8 +89,7 @@ public static partial class TemplateSchema
 
             shortcuts.Add(
                 new TemplateShortcut(
-                    AiTemplateId
-                        + (shortcuts.Count + 1).ToString(CultureInfo.InvariantCulture),
+                    AiTemplateId + (shortcuts.Count + 1).ToString(CultureInfo.InvariantCulture),
                     new LocalizedText([new(LangCode.Es, es), new(LangCode.En, en)]),
                     Icon(item.Icon, isKnownIcon, "bolt"),
                     new CategoryId(Categories.Contains(item.Category) ? item.Category : "edit"),

@@ -33,7 +33,10 @@ public sealed class TemplatesSectionView : Grid
     private readonly ContentControl _available = new() { Focusable = false };
     private readonly ContentControl _installed = new() { Focusable = false };
     private readonly ContentControl _preview = new() { Focusable = false };
-    private readonly ColumnDefinition _previewColumn = new() { Width = new GridLength(WidePreview) };
+    private readonly ColumnDefinition _previewColumn = new()
+    {
+        Width = new GridLength(WidePreview),
+    };
     private readonly TextField _query;
     private readonly TextField _blankName;
     private readonly TextField _rowName;
@@ -124,7 +127,13 @@ public sealed class TemplatesSectionView : Grid
     private static CcButton Primary(string? icon, string text, Action click, double height = 44)
     {
         var button = Ui.Button(
-            Ui.IconLabel(icon, text, ink: ColorToken.OnAccent, iconInk: ColorToken.OnAccent, px: 14),
+            Ui.IconLabel(
+                icon,
+                text,
+                ink: ColorToken.OnAccent,
+                iconInk: ColorToken.OnAccent,
+                px: 14
+            ),
             text,
             click,
             ColorToken.Accent,
@@ -135,7 +144,12 @@ public sealed class TemplatesSectionView : Grid
         return button;
     }
 
-    private static CcButton Secondary(string? icon, string text, Action click, double height = 44) =>
+    private static CcButton Secondary(
+        string? icon,
+        string text,
+        Action click,
+        double height = 44
+    ) =>
         Ui.Button(
             Ui.IconLabel(icon, text, px: 13),
             text,
@@ -195,7 +209,11 @@ public sealed class TemplatesSectionView : Grid
         {
             var title = Ui.Text(screen.Title, 24, bold: true, wrap: true);
             AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level2);
-            _header.Content = Ui.Column(4, title, Ui.Text(screen.Subtitle, 14, ink: ColorToken.Muted, wrap: true));
+            _header.Content = Ui.Column(
+                4,
+                title,
+                Ui.Text(screen.Subtitle, 14, ink: ColorToken.Muted, wrap: true)
+            );
         }
 
         if (before?.Ai != screen.Ai)
@@ -219,8 +237,16 @@ public sealed class TemplatesSectionView : Grid
 
         if (
             before?.Available != screen.Available
-            || !string.Equals(before.AllInstalledText, screen.AllInstalledText, StringComparison.Ordinal)
-            || !string.Equals(before.AvailableTitle, screen.AvailableTitle, StringComparison.Ordinal)
+            || !string.Equals(
+                before.AllInstalledText,
+                screen.AllInstalledText,
+                StringComparison.Ordinal
+            )
+            || !string.Equals(
+                before.AvailableTitle,
+                screen.AvailableTitle,
+                StringComparison.Ordinal
+            )
         )
         {
             _available.Content = Available(screen);
@@ -305,7 +331,11 @@ public sealed class TemplatesSectionView : Grid
         keyButton.Margin = new Thickness(8, 0, 0, 0);
         keyLine.Children.Add(keyButton);
         keyLine.Children.Add(
-            Ui.Row(6, Ui.Icon("bolt", 16, ColorToken.Muted), Ui.Text(model.KeyStatus, 12, ink: ColorToken.Muted, wrap: true))
+            Ui.Row(
+                6,
+                Ui.Icon("bolt", 16, ColorToken.Muted),
+                Ui.Text(model.KeyStatus, 12, ink: ColorToken.Muted, wrap: true)
+            )
         );
 
         var column = Ui.Column(12, top, field, examples, privacy, keyLine);
@@ -343,12 +373,16 @@ public sealed class TemplatesSectionView : Grid
         AutomationProperties.SetName(_key, model.KeyPlaceholder);
         var box = Ui.Card(_key, ColorToken.Field, ColorToken.Border, 10, new Thickness(0));
         var paste = Secondary("content_paste", model.PasteText, PasteKey);
-        var done = Primary(null, model.DoneText, () =>
-        {
-            var key = _key.Password;
-            _key.Clear();
-            _viewModel.SaveKey(key);
-        });
+        var done = Primary(
+            null,
+            model.DoneText,
+            () =>
+            {
+                var key = _key.Password;
+                _key.Clear();
+                _viewModel.SaveKey(key);
+            }
+        );
         var row = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(done, Dock.Right);
         DockPanel.SetDock(paste, Dock.Right);
@@ -362,7 +396,12 @@ public sealed class TemplatesSectionView : Grid
         if (model.DeleteKeyText is { } delete)
         {
             var remove = Ui.Button(
-                Ui.IconLabel("key_off", delete, ink: ColorToken.DangerText, iconInk: ColorToken.DangerText),
+                Ui.IconLabel(
+                    "key_off",
+                    delete,
+                    ink: ColorToken.DangerText,
+                    iconInk: ColorToken.DangerText
+                ),
                 delete,
                 _viewModel.DeleteKey,
                 ColorToken.DangerWash
@@ -424,7 +463,11 @@ public sealed class TemplatesSectionView : Grid
             .ToList();
         var column = Ui.Column(
             10,
-            Ui.Row(8, Ui.Icon(model.Icon, 20, ColorToken.Warn), Ui.Text(model.Title, 14, bold: true, wrap: true)),
+            Ui.Row(
+                8,
+                Ui.Icon(model.Icon, 20, ColorToken.Warn),
+                Ui.Text(model.Title, 14, bold: true, wrap: true)
+            ),
             Ui.Text(model.Text, 13, wrap: true),
             Ui.Columns(3, 6, buttons)
         );
@@ -445,9 +488,21 @@ public sealed class TemplatesSectionView : Grid
         line.Children.Add(action);
         line.Children.Add(icon);
         line.Children.Add(
-            Ui.Column(1, Ui.Text(model.Line, 13, bold: true, wrap: true), Ui.Text(model.Why, 12, ink: ColorToken.Muted, wrap: true))
+            Ui.Column(
+                1,
+                Ui.Text(model.Line, 13, bold: true, wrap: true),
+                Ui.Text(model.Why, 12, ink: ColorToken.Muted, wrap: true)
+            )
         );
-        var toggle = Ui.Choice(line, model.Line, model.Open, _viewModel.ToggleKeyboard, height: double.NaN, radius: 12, offFill: ColorToken.Field);
+        var toggle = Ui.Choice(
+            line,
+            model.Line,
+            model.Open,
+            _viewModel.ToggleKeyboard,
+            height: double.NaN,
+            radius: 12,
+            offFill: ColorToken.Field
+        );
         toggle.MinHeight = 48;
         toggle.Padding = new Thickness(12, 6, 12, 6);
         toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
@@ -462,7 +517,12 @@ public sealed class TemplatesSectionView : Grid
             10,
             [
                 Options(model.LayoutTitle, model.Layouts, model.DetectedText, _viewModel.SetLayout),
-                Options(model.AppsTitle, model.AppsLanguages, model.DetectedText, _viewModel.SetAppsLanguage),
+                Options(
+                    model.AppsTitle,
+                    model.AppsLanguages,
+                    model.DetectedText,
+                    _viewModel.SetAppsLanguage
+                ),
             ]
         );
         var panel = Ui.Card(options, ColorToken.Field, ColorToken.Border, 12, new Thickness(12));
@@ -518,9 +578,21 @@ public sealed class TemplatesSectionView : Grid
         header.Children.Add(caret);
         header.Children.Add(tile);
         header.Children.Add(
-            Ui.Column(2, Ui.Text(model.Title, 15, bold: true, wrap: true), Ui.Text(model.Subtitle, 12, ink: ColorToken.Muted, wrap: true))
+            Ui.Column(
+                2,
+                Ui.Text(model.Title, 15, bold: true, wrap: true),
+                Ui.Text(model.Subtitle, 12, ink: ColorToken.Muted, wrap: true)
+            )
         );
-        var toggle = Ui.Choice(header, model.Title, model.Open, _viewModel.ToggleBlank, height: double.NaN, radius: 14, offFill: null);
+        var toggle = Ui.Choice(
+            header,
+            model.Title,
+            model.Open,
+            _viewModel.ToggleBlank,
+            height: double.NaN,
+            radius: 14,
+            offFill: null
+        );
         toggle.MinHeight = 60;
         toggle.Padding = new Thickness(14, 8, 14, 8);
         toggle.BorderThickness = new Thickness(0);
@@ -554,7 +626,13 @@ public sealed class TemplatesSectionView : Grid
         AutomationProperties.SetName(_blankName.Box, model.Placeholder);
         _blankName.SetPlaceholder(model.Placeholder);
         _blankName.Show(model.Name);
-        var mic = Ui.Button(Ui.Icon("mic", 22, ColorToken.Accent), model.DictateName, () => FocusAndDictate(_blankName), ColorToken.AccentWash, height: 48);
+        var mic = Ui.Button(
+            Ui.Icon("mic", 22, ColorToken.Accent),
+            model.DictateName,
+            () => FocusAndDictate(_blankName),
+            ColorToken.AccentWash,
+            height: 48
+        );
         mic.Width = 48;
         mic.Padding = new Thickness(0);
         var row = new DockPanel { LastChildFill = true };
@@ -569,10 +647,22 @@ public sealed class TemplatesSectionView : Grid
         var column = Ui.Column(10, row);
         if (model.IconsOpen)
         {
-            var grid = new AutoFillGrid { MinItemWidth = 44, ItemHeight = 44, Gap = 4 };
+            var grid = new AutoFillGrid
+            {
+                MinItemWidth = 44,
+                ItemHeight = 44,
+                Gap = 4,
+            };
             foreach (var option in model.Icons)
             {
-                var button = Ui.Choice(Ui.Icon(option.Icon, 20), option.Icon, option.Selected, () => _viewModel.SetBlankIcon(option.Icon), 44, 8);
+                var button = Ui.Choice(
+                    Ui.Icon(option.Icon, 20),
+                    option.Icon,
+                    option.Selected,
+                    () => _viewModel.SetBlankIcon(option.Icon),
+                    44,
+                    8
+                );
                 button.Padding = new Thickness(0);
                 grid.Children.Add(button);
             }
@@ -585,14 +675,15 @@ public sealed class TemplatesSectionView : Grid
             Ui.Wrap(
                 6,
                 model.Links.Items.Select(link =>
-                    (UIElement)Ui.Choice(
-                        Ui.IconLabel(link.Icon, link.Label),
-                        link.Label,
-                        link.Selected,
-                        () => _viewModel.SetBlankLink(link.Id),
-                        radius: 22,
-                        offFill: ColorToken.Side
-                    )
+                    (UIElement)
+                        Ui.Choice(
+                            Ui.IconLabel(link.Icon, link.Label),
+                            link.Label,
+                            link.Selected,
+                            () => _viewModel.SetBlankLink(link.Id),
+                            radius: 22,
+                            offFill: ColorToken.Side
+                        )
                 )
             )
         );
@@ -607,9 +698,20 @@ public sealed class TemplatesSectionView : Grid
 
     private StackPanel Suggested(SuggestedModel model)
     {
-        var dot = new Border { Width = 8, Height = 8, CornerRadius = new CornerRadius(4) };
+        var dot = new Border
+        {
+            Width = 8,
+            Height = 8,
+            CornerRadius = new CornerRadius(4),
+        };
         Ui.Ink(dot, Border.BackgroundProperty, ColorToken.Warn);
-        var detect = Ui.SwitchRow(null, model.DetectText, string.Empty, model.DetectOn, _viewModel.ToggleDetect);
+        var detect = Ui.SwitchRow(
+            null,
+            model.DetectText,
+            string.Empty,
+            model.DetectOn,
+            _viewModel.ToggleDetect
+        );
         detect.MinHeight = 44;
         detect.Padding = new Thickness(10, 0, 10, 0);
         var header = new DockPanel { LastChildFill = true };
@@ -619,21 +721,47 @@ public sealed class TemplatesSectionView : Grid
         var column = Ui.Column(10, header);
         foreach (var card in model.Cards)
         {
-            var preview = Secondary(null, model.PreviewText, () => _viewModel.PreviewTemplate(card.Id));
-            var install = Primary("download", model.InstallText, () => _viewModel.InstallTemplate(card.Id));
+            var preview = Secondary(
+                null,
+                model.PreviewText,
+                () => _viewModel.PreviewTemplate(card.Id)
+            );
+            var install = Primary(
+                "download",
+                model.InstallText,
+                () => _viewModel.InstallTemplate(card.Id)
+            );
             var info = Ui.Row(
                 14,
                 IconTile(card.Icon, 48, ColorToken.Side, ColorToken.Accent),
-                Ui.Column(6, Ui.Text(card.Meta, 16, bold: true, wrap: true), MiniIcons(card.Icons.Items, 24))
+                Ui.Column(
+                    6,
+                    Ui.Text(card.Meta, 16, bold: true, wrap: true),
+                    MiniIcons(card.Icons.Items, 24)
+                )
             );
             var body = Ui.Column(12, info, Ui.Columns(2, 8, [preview, install]));
-            column.Children.Add(Ui.Card(body, ColorToken.WarnWash, ColorToken.Warn, 14, new Thickness(16, 14, 16, 14)));
+            column.Children.Add(
+                Ui.Card(
+                    body,
+                    ColorToken.WarnWash,
+                    ColorToken.Warn,
+                    14,
+                    new Thickness(16, 14, 16, 14)
+                )
+            );
         }
 
         if (model.EmptyText is { } empty)
         {
             column.Children.Add(
-                Ui.Card(Ui.Text(empty, 13, ink: ColorToken.Muted, wrap: true), ColorToken.Card, null, 12, new Thickness(14, 12, 14, 12))
+                Ui.Card(
+                    Ui.Text(empty, 13, ink: ColorToken.Muted, wrap: true),
+                    ColorToken.Card,
+                    null,
+                    12,
+                    new Thickness(14, 12, 14, 12)
+                )
             );
         }
 
@@ -646,7 +774,13 @@ public sealed class TemplatesSectionView : Grid
         if (screen.AllInstalledText is { } all)
         {
             column.Children.Add(
-                Ui.Card(Ui.Text(all, 13, ink: ColorToken.Muted, wrap: true), ColorToken.Card, null, 12, new Thickness(14, 12, 14, 12))
+                Ui.Card(
+                    Ui.Text(all, 13, ink: ColorToken.Muted, wrap: true),
+                    ColorToken.Card,
+                    null,
+                    12,
+                    new Thickness(14, 12, 14, 12)
+                )
             );
             return column;
         }
@@ -654,12 +788,20 @@ public sealed class TemplatesSectionView : Grid
         var grid = new AutoFillGrid { MinItemWidth = 200, Gap = 10 };
         foreach (var card in screen.Available)
         {
-            var install = Primary("download", screen.InstallText, () => _viewModel.InstallTemplate(card.Id));
+            var install = Primary(
+                "download",
+                screen.InstallText,
+                () => _viewModel.InstallTemplate(card.Id)
+            );
             AutomationProperties.SetName(install, screen.InstallText + " " + card.Name);
             var top = Ui.Row(
                 10,
                 IconTile(card.Icon, 44, ColorToken.Side, ColorToken.Accent),
-                Ui.Column(2, Ui.Text(card.Name, 16, bold: true), Ui.Text(card.Meta, 12, ink: ColorToken.Muted))
+                Ui.Column(
+                    2,
+                    Ui.Text(card.Name, 16, bold: true),
+                    Ui.Text(card.Meta, 12, ink: ColorToken.Muted)
+                )
             );
             var open = Ui.Choice(
                 Ui.Column(12, top, MiniIcons(card.Icons.Items, 28)),
@@ -687,7 +829,10 @@ public sealed class TemplatesSectionView : Grid
 
     private StackPanel Installed(InstalledModel model)
     {
-        var column = Ui.Column(10, Ui.Row(8, SectionTitle(model.Title), Ui.Text(model.Count, 13, ink: ColorToken.Muted)));
+        var column = Ui.Column(
+            10,
+            Ui.Row(8, SectionTitle(model.Title), Ui.Text(model.Count, 13, ink: ColorToken.Muted))
+        );
         column.Children.Add(
             Ui.Wrap(
                 8,
@@ -715,7 +860,9 @@ public sealed class TemplatesSectionView : Grid
             )
         );
         var import = Secondary("download", model.ImportText, () => _ = _viewModel.ImportAsync());
-        column.Children.Add(Ui.Row(8, import, Ui.Text(model.ShareHint, 12, ink: ColorToken.Muted, wrap: true)));
+        column.Children.Add(
+            Ui.Row(8, import, Ui.Text(model.ShareHint, 12, ink: ColorToken.Muted, wrap: true))
+        );
         return column;
     }
 
@@ -748,13 +895,25 @@ public sealed class TemplatesSectionView : Grid
             Ui.Row(
                 10,
                 IconTile(model.Icon, 44, ColorToken.Card, ColorToken.Accent),
-                Ui.Column(2, heading, model.Process.Length == 0 ? null : Ui.Text(model.Process, 12, ink: ColorToken.Muted, mono: true))
+                Ui.Column(
+                    2,
+                    heading,
+                    model.Process.Length == 0
+                        ? null
+                        : Ui.Text(model.Process, 12, ink: ColorToken.Muted, mono: true)
+                )
             )
         );
         if (model.UnknownText is { } unknown)
         {
             var blank = Ui.Button(
-                Ui.Text(model.UnknownButton ?? string.Empty, 14, bold: true, ink: ColorToken.OnWarn, wrap: true),
+                Ui.Text(
+                    model.UnknownButton ?? string.Empty,
+                    14,
+                    bold: true,
+                    ink: ColorToken.OnWarn,
+                    wrap: true
+                ),
                 model.UnknownButton ?? string.Empty,
                 _viewModel.CreateFromUnknown,
                 ColorToken.Warn,
@@ -764,7 +923,15 @@ public sealed class TemplatesSectionView : Grid
             blank.MinHeight = 44;
             column.Children.Add(
                 Ui.Card(
-                    Ui.Column(8, Ui.Row(8, Ui.Icon("help", 20, ColorToken.Warn), Ui.Text(unknown, 13, wrap: true)), blank),
+                    Ui.Column(
+                        8,
+                        Ui.Row(
+                            8,
+                            Ui.Icon("help", 20, ColorToken.Warn),
+                            Ui.Text(unknown, 13, wrap: true)
+                        ),
+                        blank
+                    ),
                     ColorToken.WarnWash,
                     ColorToken.Warn,
                     10,
@@ -777,7 +944,11 @@ public sealed class TemplatesSectionView : Grid
         {
             column.Children.Add(
                 Ui.Card(
-                    Ui.Row(8, Ui.Icon("check_circle", 20, ColorToken.Accent), Ui.Text(note, 13, wrap: true)),
+                    Ui.Row(
+                        8,
+                        Ui.Icon("check_circle", 20, ColorToken.Accent),
+                        Ui.Text(note, 13, wrap: true)
+                    ),
                     ColorToken.AccentWash,
                     null,
                     10,
@@ -786,10 +957,22 @@ public sealed class TemplatesSectionView : Grid
             );
         }
 
-        column.Children.Add(Ui.Row(6, Ui.Icon("keyboard", 16, ColorToken.Muted), Ui.Text(model.KeyboardLine, 12, ink: ColorToken.Muted, wrap: true)));
+        column.Children.Add(
+            Ui.Row(
+                6,
+                Ui.Icon("keyboard", 16, ColorToken.Muted),
+                Ui.Text(model.KeyboardLine, 12, ink: ColorToken.Muted, wrap: true)
+            )
+        );
         foreach (var warning in new[] { model.OnlyEsNote, model.TextsNote }.OfType<string>())
         {
-            column.Children.Add(Ui.Row(6, Ui.Icon("translate", 16, ColorToken.WarnText), Ui.Text(warning, 12, ink: ColorToken.WarnText, wrap: true)));
+            column.Children.Add(
+                Ui.Row(
+                    6,
+                    Ui.Icon("translate", 16, ColorToken.WarnText),
+                    Ui.Text(warning, 12, ink: ColorToken.WarnText, wrap: true)
+                )
+            );
         }
 
         _renaming = null;
@@ -812,10 +995,18 @@ public sealed class TemplatesSectionView : Grid
             2,
             Ui.Text(row.Name, 14, bold: true, wrap: true),
             Ui.Text(row.Foot, 11, ink: ColorToken.Muted, mono: true, wrap: true),
-            row.Warning is null ? null : Ui.Row(4, Ui.Icon("warning", 14, ColorToken.WarnText), Ui.Text(row.Warning, 11, ink: ColorToken.WarnText, wrap: true))
+            row.Warning is null
+                ? null
+                : Ui.Row(
+                    4,
+                    Ui.Icon("warning", 14, ColorToken.WarnText),
+                    Ui.Text(row.Warning, 11, ink: ColorToken.WarnText, wrap: true)
+                )
         );
         var check = Ui.Icon(
-            row.AlreadyIn ? "check_circle" : row.Checked ? "check_box" : "check_box_outline_blank",
+            row.AlreadyIn ? "check_circle"
+                : row.Checked ? "check_box"
+                : "check_box_outline_blank",
             22,
             row.AlreadyIn || row.Checked ? ColorToken.Accent : ColorToken.Muted
         );
@@ -828,7 +1019,15 @@ public sealed class TemplatesSectionView : Grid
         content.Children.Add(check);
         content.Children.Add(icon);
         content.Children.Add(text);
-        var toggle = Ui.Choice(content, row.Name + ", " + row.Foot, row.Checked, () => _viewModel.ToggleRow(row.Index), height: double.NaN, radius: 10, offFill: null);
+        var toggle = Ui.Choice(
+            content,
+            row.Name + ", " + row.Foot,
+            row.Checked,
+            () => _viewModel.ToggleRow(row.Index),
+            height: double.NaN,
+            radius: 10,
+            offFill: null
+        );
         toggle.MinHeight = 48;
         toggle.BorderThickness = new Thickness(0);
         toggle.Padding = new Thickness(10, 6, 4, 6);
@@ -840,7 +1039,12 @@ public sealed class TemplatesSectionView : Grid
         var line = new DockPanel { LastChildFill = true };
         if (!row.AlreadyIn)
         {
-            var edit = Ui.Button(Ui.Icon("edit", 18, ColorToken.Muted), row.RenameName + ": " + row.Name, () => _viewModel.EditRow(row.Index), null);
+            var edit = Ui.Button(
+                Ui.Icon("edit", 18, ColorToken.Muted),
+                row.RenameName + ": " + row.Name,
+                () => _viewModel.EditRow(row.Index),
+                null
+            );
             edit.Width = 44;
             edit.Padding = new Thickness(0);
             edit.BorderThickness = new Thickness(0);
@@ -866,7 +1070,10 @@ public sealed class TemplatesSectionView : Grid
         }
 
         var card = Ui.Card(column, ColorToken.Card, ColorToken.Border, 10, new Thickness(0));
-        card.Opacity = row.AlreadyIn ? 0.55 : row.Checked ? 1 : 0.75;
+        card.Opacity =
+            row.AlreadyIn ? 0.55
+            : row.Checked ? 1
+            : 0.75;
         return card;
     }
 

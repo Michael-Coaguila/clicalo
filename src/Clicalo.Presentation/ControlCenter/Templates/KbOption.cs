@@ -5,9 +5,4 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="Label">Its name.</param>
 /// <param name="Selected">Whether it is the one in use.</param>
 /// <param name="Detected">Whether Windows suggests it ([detected]).</param>
-public sealed record KbOption(
-    string Id,
-    string Label,
-    bool Selected,
-    bool Detected
-);
+public sealed record KbOption(string Id, string Label, bool Selected, bool Detected);

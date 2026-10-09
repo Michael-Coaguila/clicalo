@@ -89,7 +89,9 @@ public sealed class ControlCenterWindow : Window
         Ui.Ink(this, BackgroundProperty, ColorToken.Win);
         Ui.Ink(_root, Border.BackgroundProperty, ColorToken.Win);
         _shortcuts = new ShortcutsSectionView(viewModel.Shortcuts);
-        _templates = viewModel.Templates is { } templates ? new TemplatesSectionView(templates) : null;
+        _templates = viewModel.Templates is { } templates
+            ? new TemplatesSectionView(templates)
+            : null;
         _close = Ui.Button(Ui.Icon("close", 24), string.Empty, viewModel.Close, height: 40);
         _close.Width = 44;
         _close.Padding = new Thickness(0);

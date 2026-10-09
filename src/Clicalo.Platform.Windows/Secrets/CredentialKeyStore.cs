@@ -94,7 +94,10 @@ public sealed class CredentialKeyStore : IAiKeyStore
         {
             if (credential->CredentialBlob is not null)
             {
-                new Span<byte>(credential->CredentialBlob, (int)credential->CredentialBlobSize).Clear();
+                new Span<byte>(
+                    credential->CredentialBlob,
+                    (int)credential->CredentialBlobSize
+                ).Clear();
             }
 
             PInvoke.CredFree(credential);

@@ -9,7 +9,8 @@ public sealed record TemplateGeneration(AiTemplateProposal? Proposal, AiFailure 
 {
     /// <summary>A proposal.</summary>
     /// <param name="proposal">The answer.</param>
-    public static TemplateGeneration Ok(AiTemplateProposal proposal) => new(proposal, AiFailure.None);
+    public static TemplateGeneration Ok(AiTemplateProposal proposal) =>
+        new(proposal, AiFailure.None);
 
     /// <summary>No proposal.</summary>
     /// <param name="failure">Why.</param>

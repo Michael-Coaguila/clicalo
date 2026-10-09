@@ -7,9 +7,4 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="Icon">Its icon.</param>
 /// <param name="Name">Its name.</param>
 /// <param name="Count">Its number of shortcuts.</param>
-public sealed record InstalledProfile(
-    ProfileId Id,
-    string Icon,
-    string Name,
-    string Count
-);
+public sealed record InstalledProfile(ProfileId Id, string Icon, string Name, string Count);

@@ -9,5 +9,5 @@ public static class AiExamples
 {
     /// <summary>Photoshop, Spotify, Teams, Canva, WhatsApp and OBS, in the order of the prototype.</summary>
     public static ValueList<string> All { get; } =
-        ["Photoshop", "Spotify", "Teams", "Canva", "WhatsApp", "OBS"];
+    ["Photoshop", "Spotify", "Teams", "Canva", "WhatsApp", "OBS"];
 }

@@ -72,12 +72,12 @@ internal sealed class TemplatesComposition
             () => KeyboardLayouts.Detect(InputLanguageManager.Current?.CurrentInputLanguage?.Name),
             () => KeyboardLayouts.DetectAppsLanguage(CultureInfo.InstalledUICulture.Name),
             _ => PickImport(owner()),
-            (name, content, cancellationToken) => SaveShareAsync(owner(), name, content, cancellationToken),
+            (name, content, cancellationToken) =>
+                SaveShareAsync(owner(), name, content, cancellationToken),
             notify
         );
 
-    private string Filter() =>
-        _localization.Current.Format(L.AppName) + " (*.json)|*.json";
+    private string Filter() => _localization.Current.Format(L.AppName) + " (*.json)|*.json";
 
     private ValueTask<ReadOnlyMemory<byte>?> PickImport(Window? owner)
     {

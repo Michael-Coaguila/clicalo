@@ -301,7 +301,9 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     /// <summary>[blankCreate] (PLA-010): creates it and opens «Atajos» with the library.</summary>
     public void CreateBlank()
     {
-        var process = _blankLink is Detect or NoLink ? (ProcessName?)null : new ProcessName(_blankLink);
+        var process = _blankLink is Detect or NoLink
+            ? (ProcessName?)null
+            : new ProcessName(_blankLink);
         var created = BlankProfiles.Create(
             _s.Store,
             _blankName,
@@ -534,7 +536,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         });
     }
 
-    private string Layout() => KeyboardLayouts.Effective(Settings.Keyboard.Layout, _t.DetectedLayout());
+    private string Layout() =>
+        KeyboardLayouts.Effective(Settings.Keyboard.Layout, _t.DetectedLayout());
 
     private string BlankIcon()
     {
@@ -567,7 +570,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                 T(L.AsShort),
                 Settings.AutoSuggestProfiles,
                 Settings.AutoSuggestProfiles ? suggested : [],
-                Settings.AutoSuggestProfiles && !suggested.IsEmpty ? null
+                Settings.AutoSuggestProfiles && !suggested.IsEmpty
+                    ? null
                     : T(Settings.AutoSuggestProfiles ? L.NoSugOn : L.NoSugOff),
                 T(L.Preview),
                 T(L.InstallBtn)
@@ -617,7 +621,12 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                 suggested.Add(
                     Card(
                         template,
-                        T(L.SugLine(app: template.Name.Get(Language, LangCode.Es), count: template.Shortcuts.Count))
+                        T(
+                            L.SugLine(
+                                app: template.Name.Get(Language, LangCode.Es),
+                                count: template.Shortcuts.Count
+                            )
+                        )
                     )
                 );
             }
@@ -677,11 +686,21 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     {
         var (icon, title, text, first) = error switch
         {
-            AiError.Off => ("block", L.ErrAiOffT, L.ErrAiOffD, (ErrorActionKind.Enable, L.AiEnable)),
+            AiError.Off => (
+                "block",
+                L.ErrAiOffT,
+                L.ErrAiOffD,
+                (ErrorActionKind.Enable, L.AiEnable)
+            ),
             AiError.Offline => ("wifi_off", L.ErrOffT, L.ErrOffD, (ErrorActionKind.Retry, L.Retry)),
             AiError.NoKey => ("key", L.ErrNoKeyT, L.ErrNoKeyD, (ErrorActionKind.Key, L.KeyUse)),
             AiError.BadKey => ("key_off", L.ErrKeyT, L.ErrKeyD, (ErrorActionKind.Key, L.KeyChange)),
-            AiError.Unavailable => ("cloud_off", L.ErrUnavT, L.ErrUnavD, (ErrorActionKind.Retry, L.Retry)),
+            AiError.Unavailable => (
+                "cloud_off",
+                L.ErrUnavT,
+                L.ErrUnavD,
+                (ErrorActionKind.Retry, L.Retry)
+            ),
             AiError.Invalid => ("error", L.ErrInvT, L.ErrInvD, (ErrorActionKind.Retry, L.Retry)),
             _ => (string.Empty, L.Done, L.Done, (ErrorActionKind.Templates, L.Done)),
         };
@@ -741,7 +760,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             _ => L.KbEsLa,
         };
 
-    private static Message AppsLabel(LangCode code) => code == LangCode.En ? L.KbAppsEn : L.KbAppsEs;
+    private static Message AppsLabel(LangCode code) =>
+        code == LangCode.En ? L.KbAppsEn : L.KbAppsEs;
 
     private BlankModel Blank()
     {
@@ -756,7 +776,12 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             .Select(a => new BlankLink(a.Process.Value, "apps", a.Name, false))
             .Append(new BlankLink(Detect, "radar", T(L.LinkDetectShort), false))
             .Append(new BlankLink(NoLink, "link_off", T(L.LinkNoneShort), false))
-            .Select(l => l with { Selected = string.Equals(l.Id, _blankLink, StringComparison.OrdinalIgnoreCase) });
+            .Select(l =>
+                l with
+                {
+                    Selected = string.Equals(l.Id, _blankLink, StringComparison.OrdinalIgnoreCase),
+                }
+            );
         return new BlankModel(
             T(L.BlankTitle),
             T(L.BlankSub),
@@ -817,7 +842,10 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         {
             PreviewAction.AddMissing => (T(L.AddMissing(count)), "add"),
             PreviewAction.EditShortcuts => (T(L.EditShortcuts), "edit"),
-            PreviewAction.CreateWith => (T(L.CreateWith) + " " + Count(count) + " " + T(L.ShortcutsW), "auto_awesome"),
+            PreviewAction.CreateWith => (
+                T(L.CreateWith) + " " + Count(count) + " " + T(L.ShortcutsW),
+                "auto_awesome"
+            ),
             _ => (T(L.InstallSel) + " " + Count(count) + " " + T(L.ShortcutsW), "download"),
         };
         return new PreviewModel(
@@ -833,7 +861,9 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             installed ? T(missing > 0 ? L.InstNoteSome(missing) : L.InstNoteAll) : null,
             keyboard,
             preview.OnlyOtherLanguage ? T(L.OnlyEs) : null,
-            preview.UnavailableTexts > 0 ? T(L.SharedTextsExcluded(preview.UnavailableTexts)) : null,
+            preview.UnavailableTexts > 0
+                ? T(L.SharedTextsExcluded(preview.UnavailableTexts))
+                : null,
             [
                 .. rows.Select(r => new PreviewRowModel(
                     r.Index,
@@ -859,6 +889,6 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     private string Foot(Shortcut shortcut, KeyLabelCatalog labels) =>
         ActionKinds.ChordOf(shortcut.Action) is { } chord
             ? KeyChordFormatter.Format(chord, labels, KeyLabelStyle.Full, Language, LangCode.Es)
-            : shortcut.Action is MacroAction macro ? T(L.StepsN(macro.Steps.Count))
-            : string.Empty;
+        : shortcut.Action is MacroAction macro ? T(L.StepsN(macro.Steps.Count))
+        : string.Empty;
 }

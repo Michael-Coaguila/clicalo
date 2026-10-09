@@ -101,7 +101,10 @@ public sealed class TemplatePreviewSession
                     ? profile with
                     {
                         Origin = null,
-                        Shortcuts = [.. profile.Shortcuts.Items.Select(s => s with { Origin = null })],
+                        Shortcuts =
+                        [
+                            .. profile.Shortcuts.Items.Select(s => s with { Origin = null }),
+                        ],
                     }
                     : profile;
             case PreviewSource.Shared when _shared is { } shared:
@@ -136,10 +139,14 @@ public sealed class TemplatePreviewSession
         var index = 0;
         foreach (var shortcut in draft.Shortcuts)
         {
-            var alreadyIn = installed is not null && TemplatePreviewRules.IsAlreadyIn(installed, shortcut);
+            var alreadyIn =
+                installed is not null && TemplatePreviewRules.IsAlreadyIn(installed, shortcut);
             var risky = Source == PreviewSource.Shared && TemplatePreviewRules.IsRisky(shortcut);
             var named = _names.TryGetValue(index, out var edit)
-                ? shortcut with { Name = TemplatePreviewRules.NameFor(shortcut.Name, edit) }
+                ? shortcut with
+                {
+                    Name = TemplatePreviewRules.NameFor(shortcut.Name, edit),
+                }
                 : shortcut;
             var dangerous =
                 shortcut.Action is TapAction tap && TemplateSchema.IsDangerous(tap.Chord);
@@ -289,7 +296,9 @@ public sealed class TemplatePreviewSession
             return binding;
         }
 
-        var free = processes.Names.Items.Where(p => library.ProfileFor(p) is null).ToImmutableArray();
+        var free = processes
+            .Names.Items.Where(p => library.ProfileFor(p) is null)
+            .ToImmutableArray();
         return free.IsEmpty
             ? new AppBinding.Manual()
             : new AppBinding.Processes(new ValueList<ProcessName>(free));

@@ -5,9 +5,4 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="Icon">Its icon.</param>
 /// <param name="Label">Its text.</param>
 /// <param name="Selected">Whether it is chosen.</param>
-public sealed record BlankLink(
-    string Id,
-    string Icon,
-    string Label,
-    bool Selected
-);
+public sealed record BlankLink(string Id, string Icon, string Label, bool Selected);

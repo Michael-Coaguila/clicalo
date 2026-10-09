@@ -1,10 +1,10 @@
 using System.Globalization;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
-using Clicalo.Domain.Library;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.Presentation.ControlCenter.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;

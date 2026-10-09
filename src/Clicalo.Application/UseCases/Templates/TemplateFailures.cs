@@ -22,5 +22,11 @@ internal static class TemplateFailures
 
     /// <summary>[blankCreate] without a name (PLA-010 keeps it disabled).</summary>
     public static Failure NoName() =>
-        new(NoNameCode, L.BlankPh, FailureSeverity.Info, FailureRecovery.None, FailureAnnouncement.Polite);
+        new(
+            NoNameCode,
+            L.BlankPh,
+            FailureSeverity.Info,
+            FailureRecovery.None,
+            FailureAnnouncement.Polite
+        );
 }

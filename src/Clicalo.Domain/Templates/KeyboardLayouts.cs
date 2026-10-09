@@ -23,7 +23,7 @@ public static class KeyboardLayouts
 
     /// <summary>The layouts, in the order of the prototype.</summary>
     public static ValueList<string> All { get; } =
-        [SpanishLatinAmerica, SpanishSpain, EnglishUs, EnglishInternational];
+    [SpanishLatinAmerica, SpanishSpain, EnglishUs, EnglishInternational];
 
     /// <summary>The programs languages, in the order of the prototype.</summary>
     public static ValueList<LangCode> AppsLanguages { get; } = [LangCode.Es, LangCode.En];

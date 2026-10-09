@@ -171,7 +171,14 @@ internal static partial class AiResponseReader
             }
         }
 
-        return new AiProposedShortcut(es, en, icon, new ValueList<string>([.. ids]), category, confidence);
+        return new AiProposedShortcut(
+            es,
+            en,
+            icon,
+            new ValueList<string>([.. ids]),
+            category,
+            confidence
+        );
     }
 
     private static bool OnlyProperties(JsonElement element, FrozenSet<string> allowed)
