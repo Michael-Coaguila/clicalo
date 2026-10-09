@@ -47,7 +47,10 @@ public static class WelcomeKit
         return StarterSelection.Of(installed);
     }
 
-    /// <summary>The library with what <paramref name="selection"/> marks and it does not have yet.</summary>
+    /// <summary>
+    /// The library with what <paramref name="selection"/> marks and it does not have yet; the same instance when
+    /// nothing is missing, so the store records no step.
+    /// </summary>
     /// <param name="library">The library.</param>
     /// <param name="content">The kit, the seed and the templates.</param>
     /// <param name="selection">The marked options.</param>
@@ -117,7 +120,13 @@ public static class WelcomeKit
             profiles.Add(profile);
         }
 
-        return ShortcutLibrary.CreateValidated([.. alwaysVisible], [.. profiles]);
+        return
+            alwaysVisible.Count == library.AlwaysVisible.Count
+            && profiles.Count == library.Profiles.Count
+            && profiles.Sum(p => p.Shortcuts.Count)
+                == library.Profiles.Items.Sum(p => p.Shortcuts.Count)
+            ? Results.Ok(library)
+            : ShortcutLibrary.CreateValidated([.. alwaysVisible], [.. profiles]);
     }
 
     private static bool FromSeed(Shortcut shortcut) =>
