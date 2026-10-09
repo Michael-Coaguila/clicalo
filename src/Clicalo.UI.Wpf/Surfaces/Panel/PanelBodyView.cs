@@ -39,6 +39,11 @@ public sealed class PanelBodyView : StackPanel
         ShortcutGrid = new ShortcutGridView(viewModel);
         EmptyState = new EmptyStateView(viewModel.Empty);
         Pager = new PagerView(viewModel.Pager);
+        CompactRow = new CompactRowView(
+            viewModel.Selector,
+            viewModel.Pager,
+            () => _viewModel.Layers.EmptyProfile
+        );
         Notices = new NoticeBarView(viewModel.Notices);
         NoResults = new TextBlock
         {
@@ -63,6 +68,7 @@ public sealed class PanelBodyView : StackPanel
         Children.Add(Picker);
         Children.Add(GridArea);
         Children.Add(Pager);
+        Children.Add(CompactRow);
         Children.Add(Notices);
 
         viewModel.PropertyChanged += OnPanelChanged;
@@ -93,6 +99,9 @@ public sealed class PanelBodyView : StackPanel
     /// <summary>The pager.</summary>
     public PagerView Pager { get; }
 
+    /// <summary>The bottom row of the Compact view (VCO-002).</summary>
+    public CompactRowView CompactRow { get; }
+
     /// <summary>The notice bar.</summary>
     public NoticeBarView Notices { get; }
 
@@ -115,6 +124,7 @@ public sealed class PanelBodyView : StackPanel
             .Concat(Picker.TapTargets)
             .Concat(EmptyState.TapTargets)
             .Concat(Pager.TapTargets)
+            .Concat(CompactRow.TapTargets)
             .Concat(Notices.TapTargets);
 
     /// <summary>
@@ -150,6 +160,30 @@ public sealed class PanelBodyView : StackPanel
         return space;
     }
 
+    /// <summary>
+    /// Shows or hides the bottom row of the Compact view (VCO-002) and puts the profile grid where the view wants it:
+    /// under the selector in Full, above the bottom row in Compact (SEL-003).
+    /// </summary>
+    /// <param name="shown">Whether the row shows.</param>
+    public void ApplyCompactRow(bool shown)
+    {
+        CompactRow.Show(shown);
+        var below = _viewModel.Layout.Compact;
+        var placed = below
+            ? Children.IndexOf(Picker) == Children.IndexOf(CompactRow) - 1
+            : Children.IndexOf(Picker) == Children.IndexOf(Selector) + 1;
+        if (placed)
+        {
+            return;
+        }
+
+        Children.Remove(Picker);
+        Children.Insert(
+            below ? Children.IndexOf(CompactRow) : Children.IndexOf(Selector) + 1,
+            Picker
+        );
+    }
+
     /// <summary>A horizontal swipe that started on the grid area (CUA-005).</summary>
     /// <param name="towardLeft">Whether the finger moved toward the left.</param>
     public void Swiped(bool towardLeft) => _viewModel.Pager.Swiped(towardLeft);
@@ -166,6 +200,7 @@ public sealed class PanelBodyView : StackPanel
         ShortcutGrid.Detach();
         EmptyState.Detach();
         Pager.Detach();
+        CompactRow.Detach();
         Notices.Detach();
     }
 

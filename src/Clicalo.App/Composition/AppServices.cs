@@ -4,6 +4,7 @@ using Clicalo.App.SingleInstance;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Foreground;
+using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
@@ -247,6 +248,7 @@ internal static class AppServices
         services.AddSingleton(sp => new SessionStore(
             PanelSession.Initial(ProfileInView(sp.Slot().Load.Document).Id)
         ));
+        services.AddSingleton(sp => new InteractionStore(InteractionState.Initial, sp.Time()));
         services.AddSingleton(sp =>
         {
             var coordinator = sp.Get<ForegroundChangeCoordinator>();
@@ -279,6 +281,7 @@ internal static class AppServices
         services.AddSingleton(sp => new PanelComposer(
             sp.Get<DocumentStore>(),
             sp.Get<SessionStore>(),
+            sp.Get<InteractionStore>(),
             sp.Get<ProfileViewCoordinator>(),
             sp.Get<PanelInteractionController>(),
             sp.Get<EngineObserverRelay>(),
@@ -292,6 +295,19 @@ internal static class AppServices
             Environment.IsPrivilegedProcess
         ));
         services.AddSingleton(sp => sp.Get<PanelComposer>().Panel);
+        // The bubble, the Tab view, the dimming and the positions of every surface (docs/04).
+        services.AddSingleton(sp => new SurfacesComposer(
+            sp.Get<DocumentStore>(),
+            sp.Get<SessionStore>(),
+            sp.Get<InteractionStore>(),
+            sp.Get<ProfileViewCoordinator>(),
+            sp.Get<PanelComposer>(),
+            sp.Get<PanelInteractionController>(),
+            sp.Get<EngineObserverRelay>(),
+            sp.Get<ILocalizationContext>(),
+            sp.Time(),
+            sp.Get<Dispatcher>()
+        ));
         // One theme service for the UI thread (blueprint §8.4): every surface of the thread attaches to it. The
         // container disposes both at the end, after the surfaces are closed.
         services.AddSingleton<WindowsSystemThemeSource>();
@@ -320,6 +336,8 @@ internal static class AppServices
                 composer.Suggestion
             );
             composer.AttachWindow(window);
+            sp.Get<SurfacesComposer>()
+                .Attach(window, sp.Get<SurfaceRegistry>(), sp.Get<ThemeService>());
             return window;
         });
     }
