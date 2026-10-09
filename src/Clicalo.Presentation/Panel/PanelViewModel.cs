@@ -47,6 +47,7 @@ public sealed class PanelViewModel : ObservableObject
     private List<TileViewModel> _results = [];
     private string _noResultsText = string.Empty;
     private bool _showsNoResults;
+    private bool _showsAddTile;
     private PanelModel _model = PanelModel.Empty;
     private EngineSnapshot _engine = EngineSnapshot.Empty;
     private PanelLayoutSettings _layout = PanelLayoutSettings.Default;
@@ -196,6 +197,16 @@ public sealed class PanelViewModel : ObservableObject
         private set => SetProperty(ref _showsNoResults, value);
     }
 
+    /// <summary>
+    /// Whether the dashed «+ [add]» tile follows the tiles of the page in view (edit mode, CUA-012): it takes the slot
+    /// after the last tile, so it shows on the last page only.
+    /// </summary>
+    public bool ShowsAddTile
+    {
+        get => _showsAddTile;
+        private set => SetProperty(ref _showsAddTile, value);
+    }
+
     /// <summary>The layout settings in use.</summary>
     public PanelLayoutSettings Layout => _layout;
 
@@ -342,19 +353,33 @@ public sealed class PanelViewModel : ObservableObject
             }
         }
 
+        // EJE-010: the tile of a running macro shows «Paso i/n» as its state and in place of its badge.
+        var running = snapshot.Macro is { } run
+            ? (
+                run.Shortcut,
+                Text: localizer.Format(
+                    L.MacroStep(
+                        index: Math.Clamp(run.StepIndex, 1, Math.Max(1, run.StepCount)),
+                        total: run.StepCount
+                    )
+                )
+            )
+            : default;
         foreach (var tile in _list.Concat(_strip).Concat(_results))
         {
             var isHeld = held.TryGetValue(tile.Id, out var item);
+            var step = running.Text is { } text && running.Shortcut == tile.Id ? text : null;
+            var inStrip = ReferenceEquals(_stripById.GetValueOrDefault(tile.Id), tile);
             tile.ApplyState(
                 isHeld,
-                isHeld ? localizer.Format(StateOf(item!)) : string.Empty,
+                step ?? (isHeld ? localizer.Format(StateOf(item!)) : string.Empty),
                 tile.SpokenKeys.Length > 0
                     ? tile.SpokenKeys
                     : localizer.Format(HelpOf(tile.Behavior)),
-                // The Always visible row is too low for a type badge (docs/04 §7); its type stays in the help text.
-                BadgeOf(tile.Behavior) is { } badge
-                && !ReferenceEquals(_stripById.GetValueOrDefault(tile.Id), tile)
-                    ? localizer.Format(badge)
+                    // The Always visible row is too low for a type badge (docs/04 §7); its type stays in the help text.
+                    inStrip ? string.Empty
+                    : step is not null ? step
+                    : BadgeOf(tile.Behavior) is { } badge ? localizer.Format(badge)
                     : string.Empty
             );
         }
@@ -512,15 +537,19 @@ public sealed class PanelViewModel : ObservableObject
         var list = _context.SearchingWithText ? _results : _list;
         ShowsNoResults = _context.SearchingWithText && _results.Count == 0;
         var count = list.Count;
+
+        // CUA-012: the dashed «+ [add]» tile is one more slot after the list, so it pages like a tile.
+        var slots = count + (_context.AddTile && !_context.SearchingWithText && count > 0 ? 1 : 0);
         var pageContext = new PageContext(ViewKey(), shape.Columns, shape.Rows, _layout.Compact);
         _page = Paging.Reconcile(
             _page,
             _pageContext,
             pageContext,
-            Paging.PageCount(count, shape.PerPage)
+            Paging.PageCount(slots, shape.PerPage)
         );
         _pageContext = pageContext;
-        var window = Paging.Window(count, shape.PerPage, _page);
+        var window = Paging.Window(slots, shape.PerPage, _page);
+        var shown = Math.Max(0, Math.Min(window.Count, count - window.Start));
         _stripWindow = StripLayout.Window(
             _strip.Count,
             StripLayout.Capacity(_layout),
@@ -555,7 +584,8 @@ public sealed class PanelViewModel : ObservableObject
                 .ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForStrip(count, i) : null);
         }
 
-        Sync(Tiles, list.GetRange(window.Start, window.Count));
+        Sync(Tiles, list.GetRange(window.Start, shown));
+        ShowsAddTile = shown < window.Count;
         ApplyParts(window, layers);
     }
 
@@ -619,7 +649,9 @@ public sealed class PanelViewModel : ObservableObject
             notice?.CanUndo ?? false,
             layers.Repeat,
             l.Format(L.Undo),
-            l.Format(L.Repeat)
+            l.Format(L.Repeat),
+            notice?.CanCancel ?? false,
+            l.Format(L.Cancel)
         );
         Admin.Apply(
             layers.AdminNotice,
@@ -661,5 +693,7 @@ public sealed class PanelViewModel : ObservableObject
         public void AddShortcut(ProfileId profile) { }
 
         public void RelaunchElevated() { }
+
+        public void CancelNotice() { }
     }
 }

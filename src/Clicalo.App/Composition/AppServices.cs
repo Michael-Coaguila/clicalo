@@ -4,6 +4,7 @@ using Clicalo.App.SingleInstance;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Foreground;
+using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
@@ -16,7 +17,11 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
 using Clicalo.Infrastructure.Persistence;
+using Clicalo.Platform.Windows.Clipboard;
+using Clicalo.Platform.Windows.Feedback;
 using Clicalo.Platform.Windows.Foreground;
+using Clicalo.Platform.Windows.Launch;
+using Clicalo.Platform.Windows.PointerTracking;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.UI.Wpf.Surfaces;
@@ -154,18 +159,27 @@ internal static class AppServices
         });
         services.AddSingleton<EngineInboxRelay>();
         services.AddSingleton<InternalChordReplies>();
+        // The Shell thread and the paste reach outside Clícalo; with --no-input nothing does (EJE-011, EJE-008).
+        services.AddSingleton(_ => new ShellExecutor(Environment.IsPrivilegedProcess));
+        services.AddSingleton(sp => new ClipboardPaster(sp.Get<SysEventsThread>(), sp.Time()));
+        services.AddSingleton(sp => new PointerPositionTracker(sp.Get<SysEventsThread>()));
         services.AddSingleton(sp =>
         {
             var adapters = sp.Get<EngineAdapterSet>();
+            var sends = sp.Get<AppOptions>().SendInput;
             return new EngineHostPorts(
                 adapters.Injector,
-                new DeferredShellExecutor(),
-                new DeferredClipboardPaster(),
+                sends ? sp.Get<ShellExecutor>() : new DeferredShellExecutor(),
+                sends ? sp.Get<ClipboardPaster>() : new DeferredClipboardPaster(),
                 sp.Get<EngineObserverRelay>()
             )
             {
                 // The internal chords go through the engine (§3.6, D-22).
                 ChordReplies = sp.Get<InternalChordReplies>(),
+                // EJE-009: the mouse actions act at the last pointer position outside Clícalo.
+                PointerPosition = sp.Get<PointerPositionTracker>(),
+                // EJE-012: the soft sound, when the settings turn it on.
+                Sound = new FeedbackSound(),
             };
         });
         services.AddSingleton(sp =>
@@ -174,7 +188,8 @@ internal static class AppServices
                 sp.Get<EngineHostPorts>(),
                 SettingsProjection.Engine(
                     sp.Slot().Load.Document.Settings,
-                    sp.Slot().Catalogs.CommonActions
+                    sp.Slot().Catalogs.CommonActions,
+                    sp.Slot().Catalogs.KeyLabels
                 ),
                 sp.Time(),
                 sp.Log<EngineHost>()
@@ -247,6 +262,7 @@ internal static class AppServices
         services.AddSingleton(sp => new SessionStore(
             PanelSession.Initial(ProfileInView(sp.Slot().Load.Document).Id)
         ));
+        services.AddSingleton(sp => new InteractionStore(InteractionState.Initial, sp.Time()));
         services.AddSingleton(sp =>
         {
             var coordinator = sp.Get<ForegroundChangeCoordinator>();
@@ -279,6 +295,7 @@ internal static class AppServices
         services.AddSingleton(sp => new PanelComposer(
             sp.Get<DocumentStore>(),
             sp.Get<SessionStore>(),
+            sp.Get<InteractionStore>(),
             sp.Get<ProfileViewCoordinator>(),
             sp.Get<PanelInteractionController>(),
             sp.Get<EngineObserverRelay>(),
@@ -292,6 +309,19 @@ internal static class AppServices
             Environment.IsPrivilegedProcess
         ));
         services.AddSingleton(sp => sp.Get<PanelComposer>().Panel);
+        // The bubble, the Tab view, the dimming and the positions of every surface (docs/04).
+        services.AddSingleton(sp => new SurfacesComposer(
+            sp.Get<DocumentStore>(),
+            sp.Get<SessionStore>(),
+            sp.Get<InteractionStore>(),
+            sp.Get<ProfileViewCoordinator>(),
+            sp.Get<PanelComposer>(),
+            sp.Get<PanelInteractionController>(),
+            sp.Get<EngineObserverRelay>(),
+            sp.Get<ILocalizationContext>(),
+            sp.Time(),
+            sp.Get<Dispatcher>()
+        ));
         // One theme service for the UI thread (blueprint §8.4): every surface of the thread attaches to it. The
         // container disposes both at the end, after the surfaces are closed.
         services.AddSingleton<WindowsSystemThemeSource>();
@@ -317,9 +347,12 @@ internal static class AppServices
                 SettingsProjection.Dim(settings),
                 composer.Header,
                 composer.Search,
-                composer.Suggestion
+                composer.Suggestion,
+                composer.Layers
             );
             composer.AttachWindow(window);
+            sp.Get<SurfacesComposer>()
+                .Attach(window, sp.Get<SurfaceRegistry>(), sp.Get<ThemeService>());
             return window;
         });
     }

@@ -48,6 +48,12 @@ HCBT_ACTIVATE
 GetCurrentThreadId
 GetWindowThreadProcessId
 WM_WINDOWPOSCHANGED
+EnumDisplayMonitors
+GetMonitorInfo
+MONITORINFOEXW
+MONITORINFOF_PRIMARY
+GetDpiForMonitor
+MONITOR_DPI_TYPE
 // ---- end of Windowing ----
 
 // ---- Pointer (PointerInputSource, PointerSetup) ----

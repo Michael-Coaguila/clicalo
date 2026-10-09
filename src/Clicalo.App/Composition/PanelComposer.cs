@@ -1,7 +1,10 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows.Threading;
+using Clicalo.Application.Confirmation;
 using Clicalo.Application.Coordinators;
+using Clicalo.Application.Foreground;
+using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Profiles;
@@ -20,8 +23,12 @@ using Clicalo.Domain.ProfileResolution;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
 using Clicalo.Presentation.Panel;
+using Clicalo.Presentation.Panel.ContextMenu;
+using Clicalo.Presentation.Panel.EditMode;
 using Clicalo.Presentation.Panel.Header;
+using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.Presentation.Panel.Search;
+using Clicalo.Presentation.Panel.TestMode;
 using Clicalo.UI.Wpf.Surfaces;
 
 namespace Clicalo.App.Composition;
@@ -32,9 +39,11 @@ namespace Clicalo.App.Composition;
 /// the <see cref="SessionStore"/>'s, the search and the suggestion are their view models', and every product decision
 /// is a call to the domain. It implements the intentions of the body (<see cref="IPanelBodyIntents"/>), keeps the notice
 /// on show for its duration (AVI-002) and projects everything again, once per dispatcher turn, whenever an input
-/// changes; while a finger rests on the panel the projection waits for it (PAN-009).
+/// changes; while a finger rests on the panel the projection waits for it (PAN-009). It also owns the layers above
+/// the tiles (Quick settings, edit mode, the tile menu and test mode): it is their notice sink, keeps one primary layer
+/// open at a time (PAN-008) and passes the intentions for the control center on to <see cref="ControlCenter"/>.
 /// </summary>
-internal sealed class PanelComposer : IPanelBodyIntents
+internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, IControlCenterIntents
 {
     private const string NoticeIcon = "info";
     private const string WarningIcon = "warning";
@@ -44,6 +53,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
 
     private readonly DocumentStore _store;
     private readonly SessionStore _session;
+    private readonly InteractionStore _interaction;
     private readonly ProfileViewCoordinator _profiles;
     private readonly PanelInteractionController _controller;
     private readonly EngineObserverRelay _relay;
@@ -55,7 +65,12 @@ internal sealed class PanelComposer : IPanelBodyIntents
     private readonly bool _selfElevated;
     private PanelWindow? _window;
     private PanelNotice? _notice;
+    private object? _stickyOwner;
+    private readonly object _captureOwner = new();
     private ITimer? _noticeTimer;
+
+    // Kept referenced until they fire, so the collector cannot drop a flash before it ends.
+    private readonly HashSet<ITimer> _flashTimers = [];
     private string? _elevatedApp;
     private bool _refreshQueued;
     private bool _resultsChanged = true;
@@ -63,6 +78,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     /// <summary>Creates the view models of the panel on the UI thread.</summary>
     /// <param name="store">The document.</param>
     /// <param name="session">The session of the Surfaces role.</param>
+    /// <param name="interaction">The interaction state of the Surfaces role: «−» minimizes to the bubble there.</param>
     /// <param name="profiles">Which profile is in view.</param>
     /// <param name="controller">Where the tiles' intentions go.</param>
     /// <param name="relay">The engine's snapshots, notices and last action.</param>
@@ -77,6 +93,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     public PanelComposer(
         DocumentStore store,
         SessionStore session,
+        InteractionStore interaction,
         ProfileViewCoordinator profiles,
         PanelInteractionController controller,
         EngineObserverRelay relay,
@@ -92,6 +109,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     {
         _store = store;
         _session = session;
+        _interaction = interaction;
         _profiles = profiles;
         _controller = controller;
         _relay = relay;
@@ -112,6 +130,37 @@ internal sealed class PanelComposer : IPanelBodyIntents
             modifier => KeyLabelOf(modifier)
         );
         Panel.ApplyLayout(PanelLayoutSettings.From(settings));
+
+        // The layers above the tiles: one two-tap confirmation for the Surfaces role (REG-04), timers back on this thread.
+        void Post(Action work) => _ = ui.BeginInvoke(work);
+        TestMode = new TestModeViewModel(engine, localization, this, time, Post);
+        EditMode = new EditModeViewModel(
+            store,
+            new TwoStepConfirm(time),
+            localization,
+            this,
+            this,
+            time,
+            Post
+        );
+        Menu = new TileContextMenuViewModel(store, localization, this, this);
+        QuickSettings = new QuickSettingsViewModel(
+            store,
+            localization,
+            TestMode,
+            this,
+            () =>
+                _profiles.State.View is ViewTarget.Frequents ? null : _profiles.ProfileButtonTarget
+        );
+        Layers = new PanelLayerModels(
+            QuickSettings,
+            EditMode,
+            Menu,
+            TestMode,
+            new TileInteractionModes(EditMode, TestMode, Menu),
+            () => _profiles.State.View is ViewTarget.Frequents
+        );
+
         Search = new SearchViewModel(
             search,
             localization,
@@ -132,10 +181,24 @@ internal sealed class PanelComposer : IPanelBodyIntents
             profiles,
             localization,
             new PanelHeaderActions(
-                Search: () => _ = Search.ToggleAsync(SearchTrigger.Touch),
-                Edit: null,
-                QuickSettings: null,
-                Minimize: null
+                Search: () =>
+                {
+                    CloseLayers();
+                    _ = Search.ToggleAsync(SearchTrigger.Touch);
+                },
+                Edit: () =>
+                {
+                    // AJR-001: edit mode closes Quick settings.
+                    CloseLayers();
+                    EditMode.Toggle();
+                },
+                QuickSettings: ToggleQuickSettings,
+                // PAN-001 a: «−» turns the panel into the bubble; Quick settings close with it.
+                Minimize: () =>
+                {
+                    CloseLayers();
+                    _ = _interaction.Dispatch(new InteractionAction.Minimize());
+                }
             )
         );
 
@@ -144,6 +207,10 @@ internal sealed class PanelComposer : IPanelBodyIntents
         Search.PropertyChanged += OnSearchChanged;
         Search.Results.CollectionChanged += OnResultsChanged;
         Suggestion.PropertyChanged += (_, _) => Invalidate();
+        EditMode.PropertyChanged += (_, _) => Invalidate();
+        QuickSettings.PropertyChanged += (_, _) => Invalidate();
+        Menu.PropertyChanged += (_, _) => Invalidate();
+        TestMode.PropertyChanged += (_, _) => Invalidate();
         Search.ApplyLibrary(store.Current.Library);
         Refresh();
     }
@@ -159,6 +226,36 @@ internal sealed class PanelComposer : IPanelBodyIntents
 
     /// <summary>The profile suggestion.</summary>
     public SuggestionViewModel Suggestion { get; }
+
+    /// <summary>Quick settings (AJR-001).</summary>
+    public QuickSettingsViewModel QuickSettings { get; }
+
+    /// <summary>Edit mode (CUA-012).</summary>
+    public EditModeViewModel EditMode { get; }
+
+    /// <summary>The tile menu (CUA-014).</summary>
+    public TileContextMenuViewModel Menu { get; }
+
+    /// <summary>Test mode (TAC-008).</summary>
+    public TestModeViewModel TestMode { get; }
+
+    /// <summary>The layers above the tiles, for the panel window to host.</summary>
+    public PanelLayerModels Layers { get; }
+
+    /// <summary>
+    /// The control center (Workspace role), once built: edit mode, «+ Añadir», «Plantillas», Quick settings and the tile
+    /// menu open it (CCM-004, docs/05).
+    /// </summary>
+    public ControlCenterComposer? ControlCenter { get; set; }
+
+    /// <summary>Raised after every projection, on the UI thread: the Tab view follows the same shortcuts.</summary>
+    public event EventHandler? Refreshed;
+
+    /// <summary>The last projection of the view in front: the shortcuts of the grid and of Always visible.</summary>
+    public PanelModel LastModel { get; private set; } = PanelModel.Empty;
+
+    /// <summary>Whether ↻ Repeat has a last action (AVI-004).</summary>
+    public bool CanRepeat => RepeatBinding() is not null;
 
     /// <summary>The window the view models are drawn in; the projection waits for its fingers (PAN-009).</summary>
     /// <param name="window">The panel window.</param>
@@ -195,6 +292,12 @@ internal sealed class PanelComposer : IPanelBodyIntents
 
         void Report(ExternalForeground foreground)
         {
+            // PRB-006: the app «Probar ahora» brings to the front does not change the panel's profile.
+            if (ControlCenter?.IsTrying == true)
+            {
+                return;
+            }
+
             var process = describe(foreground).Process;
             var elevated =
                 ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)
@@ -216,6 +319,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
         if (!ReferenceEquals(before, after))
         {
             Panel.ApplyLayout(PanelLayoutSettings.From(after));
+            QuickSettings.Apply(after);
             if (before.StickyModifiersRow && !after.StickyModifiersRow)
             {
                 // FIJ-005: turning the row off releases every sticky modifier.
@@ -233,6 +337,10 @@ internal sealed class PanelComposer : IPanelBodyIntents
         Header.Relocalize();
         Search.Relocalize();
         Suggestion.Relocalize();
+        QuickSettings.Relocalize();
+        EditMode.Relocalize();
+        Menu.Relocalize();
+        TestMode.Relocalize();
         _resultsChanged = true;
         Invalidate();
     }
@@ -248,6 +356,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     public void Notify(Message text, NoticeTone tone, string icon, bool canUndo = false)
     {
         ArgumentNullException.ThrowIfNull(text);
+        _stickyOwner = null;
         _notice = new PanelNotice(text, new IconRef(icon), tone, canUndo && _store.CanUndo);
         _noticeTimer?.Dispose();
         _noticeTimer = _time.CreateTimer(
@@ -258,6 +367,84 @@ internal sealed class PanelComposer : IPanelBodyIntents
         );
         Invalidate();
     }
+
+    /// <inheritdoc />
+    public void Notify(PanelNotice notice)
+    {
+        ArgumentNullException.ThrowIfNull(notice);
+        Notify(notice.Text, notice.Tone, notice.Icon.Name, notice.CanUndo);
+    }
+
+    /// <inheritdoc />
+    public void ShowSticky(object owner, PanelNotice notice)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(notice);
+        _noticeTimer?.Dispose();
+        _noticeTimer = null;
+        _notice = notice;
+        _stickyOwner = owner;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void ClearSticky(object owner)
+    {
+        if (!ReferenceEquals(_stickyOwner, owner))
+        {
+            return;
+        }
+
+        _stickyOwner = null;
+        _notice = null;
+        Invalidate();
+    }
+
+    /// <summary>
+    /// The capture mode of a binding started or ended in the control center (ATJ-008): the panel shows the fixed notice
+    /// [waitingApp] with [cancel] while it waits.
+    /// </summary>
+    /// <param name="capturing">Whether it waits for the next app.</param>
+    public void ShowCapture(bool capturing)
+    {
+        if (capturing)
+        {
+            ShowSticky(
+                _captureOwner,
+                new PanelNotice(
+                    L.WaitingApp,
+                    new IconRef("radar"),
+                    NoticeTone.Notice,
+                    CanCancel: true
+                )
+            );
+        }
+        else
+        {
+            ClearSticky(_captureOwner);
+        }
+    }
+
+    /// <inheritdoc />
+    public void CancelNotice()
+    {
+        if (ReferenceEquals(_stickyOwner, _captureOwner))
+        {
+            ControlCenter?.CancelCapture();
+        }
+    }
+
+    /// <inheritdoc />
+    public void OpenEditor(ShortcutId shortcut) =>
+        _ = ControlCenter?.OpenEditorAsync(shortcut, LeaseOrigin.Touch);
+
+    /// <inheritdoc />
+    public void OpenLibrary(ProfileId profile) =>
+        _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
+
+    /// <inheritdoc />
+    public void OpenControlCenter(ProfileId profile) =>
+        _ = ControlCenter?.OpenProfileAsync(profile, LeaseOrigin.Touch);
 
     /// <summary>A notice of the engine (AVI-001): assertive ones are warnings.</summary>
     /// <param name="notice">The notice.</param>
@@ -277,6 +464,55 @@ internal sealed class PanelComposer : IPanelBodyIntents
     /// <summary>Something ran: Frequents and ↻ Repeat may change (FRE-002, AVI-004).</summary>
     public void OnActionRan() => Invalidate();
 
+    /// <summary>
+    /// The action of <paramref name="shortcut"/> ran: its tile flashes for <c>Timings.Notices.ExecutionFlash</c> when the
+    /// settings ask for it (EJE-012, CUA-009).
+    /// </summary>
+    /// <param name="shortcut">The shortcut that ran.</param>
+    public void FlashTile(ShortcutId shortcut)
+    {
+        if (!_store.Current.Settings.Feedback.Flash)
+        {
+            return;
+        }
+
+        var tiles = Panel
+            .Tiles.Concat(Panel.Strip.Tiles)
+            .Where(tile => tile.Id == shortcut)
+            .ToArray();
+        if (tiles.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var tile in tiles)
+        {
+            tile.Flash(true);
+        }
+
+        ITimer? timer = null;
+        timer = _time.CreateTimer(
+            _ =>
+                _ = _ui.BeginInvoke(() =>
+                {
+                    foreach (var tile in tiles)
+                    {
+                        tile.Flash(false);
+                    }
+
+                    if (timer is not null && _flashTimers.Remove(timer))
+                    {
+                        timer.Dispose();
+                    }
+                }),
+            null,
+            Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan
+        );
+        _ = _flashTimers.Add(timer);
+        _ = timer.Change(Timings.Notices.ExecutionFlash, Timeout.InfiniteTimeSpan);
+    }
+
     /// <inheritdoc />
     public void ShowFrequents()
     {
@@ -295,6 +531,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
         {
             // PAN-008: one primary layer at a time.
             _ = Search.CloseAsync();
+            CloseLayers();
         }
     }
 
@@ -314,8 +551,7 @@ internal sealed class PanelComposer : IPanelBodyIntents
     }
 
     /// <inheritdoc />
-    /// <remarks>The Control Center arrives in M4; until then the tile does nothing.</remarks>
-    public void OpenTemplates() { }
+    public void OpenTemplates() => _ = ControlCenter?.OpenTemplatesAsync(LeaseOrigin.Touch);
 
     /// <inheritdoc />
     public void AdvanceSticky(ModifierKind modifier) =>
@@ -340,8 +576,8 @@ internal sealed class PanelComposer : IPanelBodyIntents
     }
 
     /// <inheritdoc />
-    /// <remarks>The editor arrives with the Control Center in M4; until then the button does nothing.</remarks>
-    public void AddShortcut(ProfileId profile) { }
+    public void AddShortcut(ProfileId profile) =>
+        _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
 
     /// <inheritdoc />
     /// <remarks>The verified elevated relaunch (D-11) is not built yet; the notice still explains why nothing is sent.</remarks>
@@ -363,8 +599,29 @@ internal sealed class PanelComposer : IPanelBodyIntents
         }
     }
 
+    /// <summary>Opens or closes Quick settings; open, it is the only primary layer (PAN-008).</summary>
+    private void ToggleQuickSettings()
+    {
+        Menu.Close();
+        QuickSettings.Toggle();
+        if (QuickSettings.IsOpen)
+        {
+            _ = Search.CloseAsync();
+            _ = _session.Dispatch(new SessionAction.ClosePicker());
+        }
+    }
+
+    /// <summary>Closes Quick settings and the tile menu (another layer opens or the panel goes away).</summary>
+    private void CloseLayers()
+    {
+        QuickSettings.Close();
+        Menu.Close();
+    }
+
     private void OnProfileViewChanged(object? sender, ProfileViewChangedEventArgs change)
     {
+        // CUA-014: another view closes the tile menu.
+        Menu.Close();
         if (change.Current.View is ViewTarget.Profile shown)
         {
             _ = _session.Dispatch(new SessionAction.ShowProfile(shown.Id));
@@ -401,8 +658,9 @@ internal sealed class PanelComposer : IPanelBodyIntents
             case nameof(SearchViewModel.IsOpen):
                 if (Search.IsOpen)
                 {
-                    // PAN-008: the search and the profile grid close each other.
+                    // PAN-008: the search, the profile grid and Quick settings close each other.
                     _ = _session.Dispatch(new SessionAction.ClosePicker());
+                    CloseLayers();
                 }
 
                 Invalidate();
@@ -467,7 +725,8 @@ internal sealed class PanelComposer : IPanelBodyIntents
         var document = _store.Current;
         var library = document.Library;
         var language = Language();
-        Panel.Apply(ProjectView(document, language));
+        LastModel = ProjectView(document, language);
+        Panel.Apply(LastModel);
         if (_resultsChanged)
         {
             _resultsChanged = false;
@@ -484,10 +743,12 @@ internal sealed class PanelComposer : IPanelBodyIntents
                 LangCode.Es
             )
         );
-        Header.ApplyLayers(Search.IsOpen, editing: false, quickSettingsOpen: false);
+        Header.ApplyLayers(Search.IsOpen, EditMode.IsOn, QuickSettings.IsOpen);
+        var frequents = _profiles.State.View is ViewTarget.Frequents;
+        EditMode.ApplyView(frequents, Search.IsSearching, _profiles.ProfileButtonTarget);
         Panel.ApplyContext(
             new PanelBodyContext(
-                Frequents: _profiles.State.View is ViewTarget.Frequents,
+                Frequents: frequents,
                 SearchingWithText: Search.IsSearching,
                 PickerOpen: _session.Current.PickerOpen,
                 ActiveAppProfile: _profiles.ActiveAppProfile,
@@ -495,9 +756,11 @@ internal sealed class PanelComposer : IPanelBodyIntents
                 ElevatedApp: _elevatedApp,
                 Notice: _notice,
                 CanRepeat: RepeatBinding() is not null,
-                EditMode: false
+                EditMode: EditMode.IsOn,
+                AddTile: EditMode.ShowsAdd
             )
         );
+        Refreshed?.Invoke(this, EventArgs.Empty);
     }
 
     private PanelModel ProjectView(Clicalo.Domain.Document.UserDocument document, LangCode language)

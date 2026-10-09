@@ -5,6 +5,8 @@ using Clicalo.Domain.Catalog;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Surfaces.Panel.ContextMenu;
+using Clicalo.UI.Wpf.Surfaces.Panel.TestMode;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
@@ -39,6 +41,11 @@ public sealed class PanelBodyView : StackPanel
         ShortcutGrid = new ShortcutGridView(viewModel);
         EmptyState = new EmptyStateView(viewModel.Empty);
         Pager = new PagerView(viewModel.Pager);
+        CompactRow = new CompactRowView(
+            viewModel.Selector,
+            viewModel.Pager,
+            () => _viewModel.Layers.EmptyProfile
+        );
         Notices = new NoticeBarView(viewModel.Notices);
         NoResults = new TextBlock
         {
@@ -63,6 +70,7 @@ public sealed class PanelBodyView : StackPanel
         Children.Add(Picker);
         Children.Add(GridArea);
         Children.Add(Pager);
+        Children.Add(CompactRow);
         Children.Add(Notices);
 
         viewModel.PropertyChanged += OnPanelChanged;
@@ -93,6 +101,9 @@ public sealed class PanelBodyView : StackPanel
     /// <summary>The pager.</summary>
     public PagerView Pager { get; }
 
+    /// <summary>The bottom row of the Compact view (VCO-002).</summary>
+    public CompactRowView CompactRow { get; }
+
     /// <summary>The notice bar.</summary>
     public NoticeBarView Notices { get; }
 
@@ -101,6 +112,12 @@ public sealed class PanelBodyView : StackPanel
 
     /// <summary>The area of the grid: the only part that shrinks when vertical space runs out (CUA-002).</summary>
     public Grid GridArea { get; }
+
+    /// <summary>The tile menu just above the grid area (CUA-014), once the layers are attached.</summary>
+    public TileContextMenuView? TileMenu { get; private set; }
+
+    /// <summary>The test mode indicator just above the notice bar (TAC-008), once the layers are attached.</summary>
+    public TestModeIndicator? TestModeIndicator { get; private set; }
 
     /// <summary>Every shortcut tile on screen: the page of the grid, then the Always visible row (FIJ-004).</summary>
     public IReadOnlyList<PanelTileControl> TileControls =>
@@ -114,8 +131,25 @@ public sealed class PanelBodyView : StackPanel
             .Concat(Selector.TapTargets)
             .Concat(Picker.TapTargets)
             .Concat(EmptyState.TapTargets)
+            .Concat(ShortcutGrid.TapTargets)
             .Concat(Pager.TapTargets)
+            .Concat(CompactRow.TapTargets)
             .Concat(Notices.TapTargets);
+
+    /// <summary>
+    /// How much higher the grid is than one row of tiles, in device-independent pixels: the room it would give back to a
+    /// sheet above it (AJR-001). Zero while it shows one row or something else.
+    /// </summary>
+    public double GridSlack
+    {
+        get
+        {
+            var shape = _viewModel.Shape;
+            return ShortcutGrid.IsVisible && shape.Rows > 1
+                ? shape.HeightPx - GridMetrics.HeightOf(1, shape.TileHeightPx, shape.GapPx)
+                : 0;
+        }
+    }
 
     /// <summary>
     /// Measures the space left for the grid and hands it to the view model (CUA-001: the rows that fit are
@@ -150,6 +184,46 @@ public sealed class PanelBodyView : StackPanel
         return space;
     }
 
+    /// <summary>
+    /// Shows or hides the bottom row of the Compact view (VCO-002) and puts the profile grid where the view wants it:
+    /// under the selector in Full, above the bottom row in Compact (SEL-003).
+    /// </summary>
+    /// <param name="shown">Whether the row shows.</param>
+    public void ApplyCompactRow(bool shown)
+    {
+        CompactRow.Show(shown);
+        var below = _viewModel.Layout.Compact;
+        var placed = below
+            ? Children.IndexOf(Picker) == Children.IndexOf(CompactRow) - 1
+            : Children.IndexOf(Picker) == Children.IndexOf(Selector) + 1;
+        if (placed)
+        {
+            return;
+        }
+
+        Children.Remove(Picker);
+        Children.Insert(
+            below ? Children.IndexOf(CompactRow) : Children.IndexOf(Selector) + 1,
+            Picker
+        );
+    }
+
+    /// <summary>
+    /// Hosts the layers of the panel in the body: the tile menu above the grid area, the test mode indicator above the
+    /// notice bar, and the marks, the × and «+ [add]» on the tiles (docs/04, prototype).
+    /// </summary>
+    /// <param name="layers">The layers.</param>
+    public void AttachLayers(PanelLayerModels layers)
+    {
+        ArgumentNullException.ThrowIfNull(layers);
+        TileMenu = new TileContextMenuView(layers.Menu);
+        Children.Insert(Children.IndexOf(GridArea), TileMenu);
+        TestModeIndicator = new TestModeIndicator(layers.TestMode);
+        Children.Insert(Children.IndexOf(Notices), TestModeIndicator);
+        Strip.AttachLayers(layers);
+        ShortcutGrid.AttachLayers(layers);
+    }
+
     /// <summary>A horizontal swipe that started on the grid area (CUA-005).</summary>
     /// <param name="towardLeft">Whether the finger moved toward the left.</param>
     public void Swiped(bool towardLeft) => _viewModel.Pager.Swiped(towardLeft);
@@ -166,7 +240,10 @@ public sealed class PanelBodyView : StackPanel
         ShortcutGrid.Detach();
         EmptyState.Detach();
         Pager.Detach();
+        CompactRow.Detach();
         Notices.Detach();
+        TileMenu?.Detach();
+        TestModeIndicator?.Detach();
     }
 
     private void OnPanelChanged(object? sender, PropertyChangedEventArgs e)

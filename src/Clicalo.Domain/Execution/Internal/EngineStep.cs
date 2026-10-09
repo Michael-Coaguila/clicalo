@@ -442,7 +442,7 @@ internal sealed class EngineStep
 
         if (completion.CountsUsage)
         {
-            CountUsage(completion.Origin);
+            CountUsage(completion.Origin, completion.Repeatable);
         }
 
         if (completion.ContinueMacro is { } run && State.Macro?.Id == run)
@@ -451,11 +451,64 @@ internal sealed class EngineStep
         }
     }
 
-    public void CountUsage(ExecutionOrigin origin)
+    /// <summary>
+    /// After an action ran (EJE-012): it counts for Frequents (FRE-002), becomes the last action for Repeat unless it
+    /// is a Hold or a Toggle (AVI-004), and the soft sound plays when it is on.
+    /// </summary>
+    public void CountUsage(ExecutionOrigin origin, bool repeatable = true)
     {
+        // PRB-006: a try in the editor is not the user's use.
+        if (origin.Trial)
+        {
+            return;
+        }
+
         Emit(new EngineEffect.CountUsage(origin.Shortcut, origin.At));
-        Emit(new EngineEffect.SetLastAction(origin.Shortcut));
+        if (repeatable)
+        {
+            Emit(new EngineEffect.SetLastAction(origin.Shortcut));
+        }
+
+        if (Config.FeedbackSound)
+        {
+            Emit(new EngineEffect.PlayFeedbackSound());
+        }
     }
+
+    /// <summary>What the release notice of <paramref name="holder"/> names (EJE-004, EJE-007), held or still queued.</summary>
+    public string? LabelOf(HolderId holder) =>
+        State.Keys.Items.TryGetValue(holder, out var item) && item.Label is { } label
+            ? label
+            : State
+                .Outbox.Items.OfType<QueuedStep.Press>()
+                .FirstOrDefault(press => press.Holder == holder)
+                ?.Template.Label;
+
+    /// <summary>The name of <paramref name="shortcut"/> in the interface language, for the notices.</summary>
+    public string NameOf(Shortcut shortcut) =>
+        shortcut.Name.Get(
+            Config.InterfaceLanguage,
+            Config.InterfaceLanguage == LangCode.Es ? LangCode.En : LangCode.Es
+        );
+
+    /// <summary>The app in front as the notices name it: its process without «.exe» (EJE-003).</summary>
+    public string AppName()
+    {
+        var process = State.Foreground?.Process.Value ?? string.Empty;
+        return process.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            ? process[..^4]
+            : process;
+    }
+
+    /// <summary>A combination written with the key labels of the interface language («Ctrl + S»).</summary>
+    public string KeysText(ValueList<Keys.KeyStroke> strokes) =>
+        Keys.KeyChordFormatter.Format(
+            Keys.KeyChord.Create(strokes),
+            Config.KeyLabels,
+            Keys.KeyLabelStyle.Full,
+            Config.InterfaceLanguage,
+            LangCode.En
+        );
 
     private void Flush(OutboxBatch batch)
     {

@@ -2,9 +2,9 @@ namespace Clicalo.Build.Tests;
 
 /// <summary>
 /// The M2 exit criterion «tocar → SendInput en InputProbe con p95 ≤ 50 ms» (blueprint §10.3, §14; NFR-001) is enforced by
-/// a run, not only measured: the <c>perf</c> job of nightly.yml runs <c>cl perf</c> every night, fails when a budget with
-/// the gate <c>everyRun</c> is broken and publishes the numbers, and lab.yml repeats it on the touch lab with every budget
-/// gating (<c>CLICALO_PERF_GATE=1</c>). Every nightly job must be green before a release. A <c>continue-on-error</c>
+/// a run, not only measured: the <c>perf</c> job of nightly.yml (run by hand) runs <c>cl perf</c>, fails when a budget
+/// with the gate <c>everyRun</c> is broken and publishes the numbers, and lab.yml repeats it on the touch lab with every
+/// budget gating (<c>CLICALO_PERF_GATE=1</c>). Every nightly job must be green before a release. A <c>continue-on-error</c>
 /// would turn the gate back into a trend, so no job has one.
 /// </summary>
 /// <remarks>
@@ -33,12 +33,13 @@ public sealed class WorkflowGateTests
     }
 
     [Fact]
-    public void The_nightly_tier_runs_every_day_and_by_hand_on_any_ref()
+    public void The_nightly_tier_runs_only_by_hand_on_any_ref()
     {
         var text = File.ReadAllText(Path.Combine(Workflows, "nightly.yml"));
         var on = string.Join('\n', Section(text, "on"));
 
-        on.ShouldContain("  schedule:");
+        // No daily schedule: the owner keeps the account's Actions minutes for other projects.
+        on.ShouldNotContain("  schedule:");
         on.ShouldContain("  workflow_dispatch:");
         on.ShouldContain("      ref:");
         Job("nightly.yml", "desk").ShouldContain(@"run: .\cl.cmd desk");

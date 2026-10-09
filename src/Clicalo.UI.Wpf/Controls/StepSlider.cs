@@ -118,6 +118,31 @@ public sealed class StepSlider : Slider
     /// <summary>The + button of the applied template.</summary>
     public IconButton? IncreaseButton { get; private set; }
 
+    /// <summary>The track between − and +, where a finger slides the knob (AJR-002).</summary>
+    public FrameworkElement? TrackElement { get; private set; }
+
+    /// <summary>
+    /// The value under <paramref name="screen"/> (physical screen pixels) along the track, snapped to the ticks and kept
+    /// between <see cref="RangeBase.Minimum"/> and <see cref="RangeBase.Maximum"/>; null before the template applies.
+    /// The panel's pointer layer consumes the finger, so the surface asks this instead of letting WPF drag the thumb.
+    /// </summary>
+    /// <param name="screen">The contact, in physical screen pixels.</param>
+    public double? ValueAt(Point screen)
+    {
+        if (TrackElement is not Track track || PresentationSource.FromVisual(track) is null)
+        {
+            return null;
+        }
+
+        var value = track.ValueFromPoint(track.PointFromScreen(screen));
+        if (TickFrequency > 0)
+        {
+            value = Minimum + (Math.Round((value - Minimum) / TickFrequency) * TickFrequency);
+        }
+
+        return Math.Clamp(value, Minimum, Maximum);
+    }
+
     /// <inheritdoc />
     public override void OnApplyTemplate()
     {
@@ -127,7 +152,8 @@ public sealed class StepSlider : Slider
 
         // The repeat buttons and the thumb of a Track are plain properties, which a template built in code cannot
         // set: each instance gets its own.
-        if (GetTemplateChild(TrackPart) is Track track)
+        TrackElement = GetTemplateChild(TrackPart) as Track;
+        if (TrackElement is Track track)
         {
             track.DecreaseRepeatButton = new RepeatButton
             {

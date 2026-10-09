@@ -37,6 +37,8 @@ public sealed class AllowUnusedTests
         listed.Contains("dStrip").ShouldBeTrue();
         listed.Contains("sidesA").ShouldBeTrue();
         listed.Contains("useOther").ShouldBeFalse();
-        listed.Count.ShouldBe(59);
+        // M4 shows dupTitle (the state of a repeated tile) and dupChangeT (REP-006), so they left the list.
+        listed.Contains("dupTitle").ShouldBeFalse();
+        listed.Count.ShouldBe(58);
     }
 }

@@ -45,6 +45,28 @@ public sealed class TapPlannerTests
     }
 
     [Fact]
+    [Trait("Req", "PRB-006")]
+    public void A_try_from_the_editor_sends_the_keys_but_leaves_frequents_and_repeat_alone()
+    {
+        var engine = new EngineHarness();
+        engine.Foreground();
+        var save = Shortcuts.Tap("save", "ctrl", "s");
+        var invoke = engine.Activation(save, ActivationPhase.Invoke, contact: null);
+
+        engine.Apply(
+            invoke with
+            {
+                Request = invoke.Request with { Origin = ActivationOrigin.TryNow },
+            }
+        );
+        engine.Settle();
+
+        engine.Sent.Count().ShouldBe(4);
+        engine.Effects.OfType<EngineEffect.CountUsage>().ShouldBeEmpty();
+        engine.Effects.OfType<EngineEffect.SetLastAction>().ShouldBeEmpty();
+    }
+
+    [Fact]
     [Trait("Req", "NFR-004")]
     public void The_events_are_spaced_by_the_inter_event_delay()
     {

@@ -13,4 +13,7 @@ public sealed record PendingExternal(EffectId Id, ShortcutId Shortcut, long Sinc
 
     /// <summary>Where and how it was started (a paste sends Ctrl+V with this epoch, target and mode).</summary>
     public ExecutionOrigin? Origin { get; init; }
+
+    /// <summary>What the notices call it: the address of a web, the name of the shortcut otherwise (EJE-011).</summary>
+    public string Name { get; init; } = string.Empty;
 }

@@ -33,4 +33,6 @@ internal sealed class RecordingBodyIntents : IPanelBodyIntents
         Calls.Add(nameof(AddShortcut) + ":" + profile.Value);
 
     public void RelaunchElevated() => Calls.Add(nameof(RelaunchElevated));
+
+    public void CancelNotice() => Calls.Add(nameof(CancelNotice));
 }

@@ -22,6 +22,9 @@ namespace Clicalo.Presentation.Panel;
 /// <param name="Notice">The notice on show (AVI-001), or <see langword="null"/> at rest.</param>
 /// <param name="CanRepeat">There is a last action to repeat (AVI-004).</param>
 /// <param name="EditMode">The panel is in edit mode (CUA-012).</param>
+/// <param name="AddTile">
+/// The dashed «+ [add]» tile ends the list (edit mode, CUA-012): it takes one slot of the last page.
+/// </param>
 public sealed record PanelBodyContext(
     bool Frequents = false,
     bool SearchingWithText = false,
@@ -31,7 +34,8 @@ public sealed record PanelBodyContext(
     string? ElevatedApp = null,
     PanelNotice? Notice = null,
     bool CanRepeat = false,
-    bool EditMode = false
+    bool EditMode = false,
+    bool AddTile = false
 )
 {
     /// <summary>The context of a new panel: a profile in view, nothing open, nothing to say.</summary>

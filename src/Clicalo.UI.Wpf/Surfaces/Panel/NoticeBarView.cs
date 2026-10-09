@@ -15,7 +15,8 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// The notice bar (AVI-001, AVI-003, AVI-004): a strip at the foot, radius 10, at least 40 high (34 in Compact), 13 px
 /// text announced as a polite live region. At rest, the info icon in muted and [ready] on a transparent fill; a notice
 /// on card with its icon in accent; a warning on warnWash with its icon in warn. [undo] in accent when the notice can
-/// be undone, and ↻ (36 × 32 visual, 44 touch) when there is a last action. It only projects
+/// be undone, [cancel] when the notice offers it (ATJ-008), and ↻ (36 × 32 visual, 44 touch) when there is a last
+/// action. It only projects
 /// <see cref="NoticeBarViewModel"/>.
 /// </summary>
 public sealed class NoticeBarView : Border
@@ -43,6 +44,17 @@ public sealed class NoticeBarView : Border
     private readonly TouchButton _undo = new()
     {
         Appearance = ButtonAppearance.Accent,
+        Height = ButtonHeight,
+        Padding = new Thickness(10, 0, 10, 0),
+        Focusable = false,
+        IsTabStop = false,
+        VerticalAlignment = VerticalAlignment.Center,
+        Margin = new Thickness(0, 0, Gap, 0),
+    };
+
+    private readonly TouchButton _cancel = new()
+    {
+        Appearance = ButtonAppearance.Neutral,
         Height = ButtonHeight,
         Padding = new Thickness(10, 0, 10, 0),
         Focusable = false,
@@ -79,16 +91,20 @@ public sealed class NoticeBarView : Border
         MinHeight = compact ? CompactHeight : PanelSizes.Layout.PanelNoticeBarHeightPx;
         _text.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(TextPx));
         _undo.SetResourceReference(Control.FontSizeProperty, ThemeKeys.TextSize(TextPx));
+        _cancel.SetResourceReference(Control.FontSizeProperty, ThemeKeys.TextSize(TextPx));
         _undo.Click += (_, _) => _viewModel.Undo();
+        _cancel.Click += (_, _) => _viewModel.Cancel();
         _repeat.Click += (_, _) => _viewModel.Repeat();
 
         var row = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_icon, Dock.Left);
         DockPanel.SetDock(_repeat, Dock.Right);
         DockPanel.SetDock(_undo, Dock.Right);
+        DockPanel.SetDock(_cancel, Dock.Right);
         row.Children.Add(_icon);
         row.Children.Add(_repeat);
         row.Children.Add(_undo);
+        row.Children.Add(_cancel);
         row.Children.Add(_text);
         Child = row;
         _announcer = new LiveAnnouncer(_text);
@@ -116,6 +132,11 @@ public sealed class NoticeBarView : Border
             {
                 yield return new PanelTapTarget(_repeat, _viewModel.Repeat);
             }
+
+            if (_viewModel.CanCancel)
+            {
+                yield return new PanelTapTarget(_cancel, _viewModel.Cancel);
+            }
         }
     }
 
@@ -142,6 +163,8 @@ public sealed class NoticeBarView : Border
         _text.SetResourceReference(TextBlock.ForegroundProperty, ThemeBrushKey.For(text));
         _undo.Content = _viewModel.UndoName;
         _undo.Visibility = _viewModel.CanUndo ? Visibility.Visible : Visibility.Collapsed;
+        _cancel.Content = _viewModel.CancelName;
+        _cancel.Visibility = _viewModel.CanCancel ? Visibility.Visible : Visibility.Collapsed;
         AutomationProperties.SetName(_repeat, _viewModel.RepeatName);
         _repeat.Visibility = _viewModel.CanRepeat ? Visibility.Visible : Visibility.Collapsed;
         Say(_viewModel.Message, _viewModel.Tone);

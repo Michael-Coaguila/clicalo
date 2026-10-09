@@ -35,6 +35,8 @@ public sealed class AlwaysVisibleRowView : StackPanel
     private readonly ShortcutTile _more;
     private readonly TextBlock _moreText = new() { FontWeight = FontWeights.Bold };
     private readonly List<(PanelTileControl Tile, PropertyChangedEventHandler Handler)> _tiles = [];
+    private readonly List<TileCell> _cells = [];
+    private PanelLayerModels? _layers;
 
     /// <summary>Creates the row of <paramref name="panel"/>.</summary>
     /// <param name="panel">The panel.</param>
@@ -114,6 +116,15 @@ public sealed class AlwaysVisibleRowView : StackPanel
         }
     }
 
+    /// <summary>Draws the test mode mark over the tiles and routes their Invoke through the modes (TAC-008).</summary>
+    /// <param name="layers">The layers of the panel.</param>
+    public void AttachLayers(PanelLayerModels layers)
+    {
+        ArgumentNullException.ThrowIfNull(layers);
+        _layers = layers;
+        Rebuild();
+    }
+
     /// <summary>Stops following the view model.</summary>
     public void Detach()
     {
@@ -158,11 +169,21 @@ public sealed class AlwaysVisibleRowView : StackPanel
         _more.Height = height;
         foreach (var viewModel in _viewModel.Tiles)
         {
-            var (control, handler) = TileFactory.Create(viewModel);
+            var (control, handler) = TileFactory.Create(
+                viewModel,
+                _layers is { } attached ? attached.Modes.Tapped : null,
+                _layers is { } menu
+                    ? tile => _ = menu.Modes.OpenMenu(tile, menu.InFrequents())
+                    : null
+            );
             TileFactory.Size(control, height, Gap, size.StripIconPx, size.StripLabelPx);
             TileFactory.ShowName(control, _viewModel.ShowsNames);
             _tiles.Add((new PanelTileControl(viewModel, control), handler));
-            _grid.Children.Add(control);
+
+            // CUA-012: the × is only on grid tiles; a tap on the row in edit mode opens the editor.
+            var cell = TileCell.Create(control, viewModel, _layers, removable: false);
+            _cells.Add(cell);
+            _grid.Children.Add(cell.Element);
         }
 
         if (_viewModel.HasMore)
@@ -179,5 +200,11 @@ public sealed class AlwaysVisibleRowView : StackPanel
         }
 
         _tiles.Clear();
+        foreach (var cell in _cells)
+        {
+            cell.Detach();
+        }
+
+        _cells.Clear();
     }
 }

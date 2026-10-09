@@ -19,4 +19,13 @@ public sealed record EngineHostPorts(
     /// absent, nobody waits for them.
     /// </summary>
     public InternalChordReplies? ChordReplies { get; init; }
+
+    /// <summary>
+    /// The last pointer position outside Clícalo, given to every activation that does not bring one (EJE-009); when
+    /// absent, mouse actions act at the centre of the foreground window.
+    /// </summary>
+    public IPointerPositionSource? PointerPosition { get; init; }
+
+    /// <summary>The soft sound after an action (EJE-012); when absent, nothing plays.</summary>
+    public IFeedbackSound? Sound { get; init; }
 }

@@ -28,4 +28,10 @@ public sealed record PressedItem(
     /// (SEG-004); <see langword="false"/> for an item with its own limit or with «Never».
     /// </summary>
     public bool InheritsGlobalLimit { get; init; }
+
+    /// <summary>
+    /// What the release notice names (EJE-004, EJE-007): the keys of a Hold under a finger, the name of a Toggle;
+    /// <see langword="null"/> for anything else.
+    /// </summary>
+    public string? Label { get; init; }
 }

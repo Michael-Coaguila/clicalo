@@ -7,14 +7,14 @@ using Clicalo.Domain.Messages;
 namespace Clicalo.App.Composition;
 
 /// <summary>
-/// The Shell thread of M2: launching apps and web pages and running system commands arrive in M3
-/// (<c>Platform.Windows/Launch</c> and <c>SystemCommands</c>, blueprint §3.2). Until then every request is answered at
-/// once as failed, with the notice «This action is not available yet», so the engine never waits for a result that
-/// will not come and never runs anything through an interpreter (LOG-008).
+/// The Shell executor of a start with <c>--no-input</c>: nothing reaches outside Clícalo, so apps, web pages and
+/// system commands (<c>Platform.Windows/Launch</c> and <c>SystemCommands</c>, blueprint §3.2) never start. Every request
+/// is answered at once as failed, with the notice «This action is not available yet», so the engine never waits for a
+/// result that will not come.
 /// </summary>
 internal sealed class DeferredShellExecutor : IShellExecutor
 {
-    /// <summary>The failure every launch gets in M2.</summary>
+    /// <summary>The failure every launch gets without input.</summary>
     public static Failure Unavailable { get; } =
         new(
             "shell.unavailable",

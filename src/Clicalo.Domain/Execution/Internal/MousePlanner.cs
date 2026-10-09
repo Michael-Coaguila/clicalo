@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 
@@ -15,8 +16,7 @@ namespace Clicalo.Domain.Execution.Internal;
 internal static class MousePlanner
 {
     /// <summary>Whether <paramref name="op"/> repeats while held (the four scroll directions).</summary>
-    public static bool IsScroll(MouseOp op) =>
-        op is MouseOp.ScrollUp or MouseOp.ScrollDown or MouseOp.ScrollLeft or MouseOp.ScrollRight;
+    public static bool IsScroll(MouseOp op) => MouseOps.RepeatsWhileHeld(op);
 
     /// <summary>A click, a drag toggle or one scroll step started by a tap or an invocation.</summary>
     public static void Plan(
@@ -73,6 +73,7 @@ internal static class MousePlanner
             StickyPlanner.Consume(step);
         }
 
+        step.Notice(L.MouseRan(name: step.NameOf(shortcut)));
         step.CountUsage(origin);
     }
 
@@ -94,6 +95,7 @@ internal static class MousePlanner
     public static void StartScroll(
         EngineStep step,
         ExecutionOrigin origin,
+        Shortcut shortcut,
         MouseAction mouse,
         int contactId
     )
@@ -125,6 +127,7 @@ internal static class MousePlanner
                 deadline
             ),
         };
+        step.Notice(L.MouseRan(name: step.NameOf(shortcut)));
         step.CountUsage(origin);
     }
 
@@ -224,10 +227,12 @@ internal static class MousePlanner
         {
             Keys = new ValueList<InjectedKey>(StickyKeys(step, origin)),
             Buttons = MouseButtons.Left,
+            Label = step.NameOf(shortcut),
         };
         step.Press(step.State.Keys.Acquire(item), holder, origin);
         StickyPlanner.Consume(step);
-        step.Notice(EngineNotices.Latched);
-        step.CountUsage(origin);
+        // EJE-007: «{name} · activado · toca otra vez para soltar».
+        step.Notice(L.LatchedName(name: step.NameOf(shortcut)));
+        step.CountUsage(origin, repeatable: false);
     }
 }

@@ -2,6 +2,7 @@ using Clicalo.Domain.Execution;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.Tests.Execution.Support;
 
 namespace Clicalo.Domain.Tests.Execution;
@@ -39,6 +40,10 @@ public sealed class HoldAndTogglePlannerTests
         engine.Lift();
         engine.Receiver.IsEmpty.ShouldBeTrue();
         engine.State.IsQuiet.ShouldBeTrue();
+        // EJE-004: «{keys} soltado» says what was released.
+        var released = engine.Effects.OfType<EngineEffect.Notice>().Last().Text;
+        released.Key.ShouldBe(L.ReleasedKeys(keys: "").Key);
+        released.Arguments.ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -95,6 +100,11 @@ public sealed class HoldAndTogglePlannerTests
         engine.Tap(toggle);
         engine.Receiver.IsEmpty.ShouldBeTrue();
         engine.Effects.OfType<EngineEffect.Notice>().Count().ShouldBe(2);
+        // EJE-007: «{name} · soltado» says what was released.
+        engine
+            .Effects.OfType<EngineEffect.Notice>()
+            .Last()
+            .Text.Key.ShouldBe(L.UnlatchedName(name: "").Key);
     }
 
     [Fact]

@@ -1,11 +1,13 @@
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
+using Clicalo.Application.Interaction;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Surfaces;
@@ -21,7 +23,7 @@ namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 /// <summary>
 /// The M2 panel with the visual base of M3.1, headless: the panel is built but never shown, so no handle, no desktop
 /// and no input. It takes the shape of the prototype, the theme service of its thread, the look of each tile and the
-/// opacity of <see cref="DimPolicy"/>.
+/// opacity of <see cref="DimPolicy"/> through the interaction store and the surface dimmer.
 /// </summary>
 public sealed class PanelWindowLookTests
 {
@@ -36,7 +38,7 @@ public sealed class PanelWindowLookTests
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
-        var (window, theme, _) = Build(lab, time, textScalePercent: 150);
+        var (window, theme, _, _) = Build(lab, time, textScalePercent: 150);
         try
         {
             WpfThread.Invoke(() =>
@@ -73,7 +75,7 @@ public sealed class PanelWindowLookTests
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
-        var (window, theme, viewModel) = Build(lab, time, textScalePercent: 100);
+        var (window, theme, viewModel, store) = Build(lab, time, textScalePercent: 100);
         try
         {
             WpfThread.Invoke(() =>
@@ -92,8 +94,12 @@ public sealed class PanelWindowLookTests
             WpfThread.Invoke(WpfThread.DrainPendingWork);
             WpfThread.Invoke(() => window.Opacity).ShouldBe(0.35, 0.001);
 
-            // Panic: «Release all» is never dimmed (SEG-002).
-            WpfThread.Invoke(() => viewModel.ApplyEngine(HeldCtrl()));
+            // Panic: «Release all» is never dimmed (SEG-002); the composition reports it to the store.
+            WpfThread.Invoke(() =>
+            {
+                viewModel.ApplyEngine(HeldCtrl());
+                _ = store.Dispatch(new InteractionAction.SetOpen(DimExceptions.Panic, true));
+            });
             WpfThread.Invoke(() => window.Opacity).ShouldBe(0.92, 0.001);
             time.Advance(TimeSpan.FromSeconds(10));
             WpfThread.Invoke(WpfThread.DrainPendingWork);
@@ -111,7 +117,12 @@ public sealed class PanelWindowLookTests
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
-        var (window, theme, _) = Build(lab, time, textScalePercent: 100, ThemeChoice.HighContrast);
+        var (window, theme, _, _) = Build(
+            lab,
+            time,
+            textScalePercent: 100,
+            ThemeChoice.HighContrast
+        );
         try
         {
             WpfThread.Invoke(() =>
@@ -126,7 +137,12 @@ public sealed class PanelWindowLookTests
         }
     }
 
-    private static (PanelWindow Window, ThemeService Theme, PanelViewModel ViewModel) Build(
+    private static (
+        PanelWindow Window,
+        ThemeService Theme,
+        PanelViewModel ViewModel,
+        InteractionStore Store
+    ) Build(
         SurfaceLab lab,
         FakeTimeProvider time,
         int textScalePercent,
@@ -165,7 +181,15 @@ public sealed class PanelWindowLookTests
                 theme,
                 new DimSettings(AutoDim: false, Opacity: 1, DimTo: 1)
             );
-            return (window, theme, viewModel);
+            var store = new InteractionStore(InteractionState.Initial, time);
+            var dimmer = new SurfaceDimmer(
+                new SurfaceDimming(store, window.DimSettings),
+                theme,
+                window.Dispatcher
+            );
+            dimmer.Follow(window);
+            window.Closed += (_, _) => dimmer.Dispose();
+            return (window, theme, viewModel, store);
         });
 
     private static void Close(PanelWindow window, ThemeService theme) =>

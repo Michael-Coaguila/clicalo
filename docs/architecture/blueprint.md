@@ -1423,7 +1423,7 @@ DocumentStore + SessionStore + InteractionSnapshot + EngineSnapshot
 - **Ningún ViewModel decide reglas de producto.** La proyección completa cuesta ≤2 ms con 50 perfiles y 2000 atajos, y hay un *benchmark* en CI (NFR-016).
 - **No hay tipos de WPF en Presentation.** Se usan `ThemeToken`, `IconRef`, la geometría de Domain y la visibilidad como `bool`. Los convertidores viven en UI.Wpf.
 - **Estabilidad bajo el dedo (PAN-009).** Con `Freeze.ActiveContacts > 0`, `GridMetrics` y `Paging` reciben la composición congelada. El pánico, el aviso de administrador y la sugerencia se proyectan como superposiciones flotantes. La composición pendiente se aplica al terminar el último contacto.
-- **`TwoStepConfirm`** (REG-04, 3,5 s con `TimeProvider`) es el **único** productor de `ConfirmationToken` (CLC0010, §4.4). Lo usan ✕, Eliminar (atajo, perfil, repetido, paso), Reiniciar Frecuentes, Reemplazar al importar, Restaurar, Volver a la versión anterior, desinstalar el componente de sistema y borrar datos. El comando destructivo solo se despacha en el segundo toque.
+- **`TwoStepConfirm`** (REG-04, 3,5 s con `TimeProvider`) es el **único** productor de `ConfirmationToken` (CLC0010, §4.4). Lo usan ✕, Eliminar (atajo, perfil, repetido, paso), «Dejar solo en Siempre visible» (REP-005, que borra apariciones), Reiniciar Frecuentes, Reemplazar al importar, Restaurar, Volver a la versión anterior, desinstalar el componente de sistema y borrar datos. El comando destructivo solo se despacha en el segundo toque.
 - **Enrutadores explícitos** (`DomainEventRouter`, `EngineOutputRouter`) con registros en `Clicalo.App`. Una prueba falla si algún evento no tiene manejador.
   - `ProfileDeleted` → volver a General (PER-008).
   - `ShortcutDeleted` → cerrar el menú o el editor.

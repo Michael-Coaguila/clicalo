@@ -3,6 +3,7 @@ using Clicalo.Domain.Execution.Internal;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Execution;
@@ -135,7 +136,7 @@ public static class EngineReducer
                 LaunchPlanner.Failed(step, failed.Effect, failed.Failure);
                 break;
             case EngineEvent.SystemCommandCompleted completed:
-                LaunchPlanner.SystemCompleted(step, completed.Effect);
+                LaunchPlanner.SystemCompleted(step, completed.Effect, completed.Succeeded);
                 break;
         }
 
@@ -188,7 +189,8 @@ public static class EngineReducer
             activation.RequiredForeground,
             activation.Injection,
             activation.LastExternalPointer,
-            request.At
+            request.At,
+            Trial: request.Origin == ActivationOrigin.TryNow
         );
 
         // A latched Toggle (or drag, or invoked Hold) and a running macro stop on the next accepted tap, whatever the
@@ -270,7 +272,8 @@ public static class EngineReducer
     {
         var contact = activation.Request.ContactId;
         var invoked = activation.Request.Phase == ActivationPhase.Invoke || contact is null;
-        switch (shortcut.Action)
+        var action = ActivationPolicy.Effective(shortcut.Action);
+        switch (action)
         {
             case TapAction tap:
                 KeyPlanner.Tap(step, origin, ChordFor(shortcut, tap, step));
@@ -285,19 +288,19 @@ public static class EngineReducer
                 KeyPlanner.Toggle(step, origin, shortcut, toggle.Chord, HoldOrigin.Toggle);
                 break;
             case TextAction text:
-                TextPlanner.Plan(step, origin, text);
+                TextPlanner.Plan(step, origin, shortcut, text);
                 break;
             case MouseAction mouse when MousePlanner.IsScroll(mouse.Op) && !invoked:
-                MousePlanner.StartScroll(step, origin, mouse, contact!.Value);
+                MousePlanner.StartScroll(step, origin, shortcut, mouse, contact!.Value);
                 break;
             case MouseAction mouse:
                 MousePlanner.Plan(step, origin, shortcut, mouse);
                 break;
             case MacroAction macro:
-                MacroPlanner.Start(step, origin, macro);
+                MacroPlanner.Start(step, origin, shortcut, macro);
                 break;
             default:
-                LaunchPlanner.Plan(step, origin, shortcut.Action);
+                LaunchPlanner.Plan(step, origin, shortcut, action);
                 break;
         }
     }
@@ -324,9 +327,12 @@ public static class EngineReducer
 
     private static void ContactEnded(EngineStep step, int contactId)
     {
-        if (step.CancelHolder(HolderId.ForContact(contactId)))
+        var holder = HolderId.ForContact(contactId);
+        var label = step.LabelOf(holder);
+        if (step.CancelHolder(holder))
         {
-            step.Notice(EngineNotices.Released);
+            // EJE-004: «{keys} soltado» says what was released.
+            step.Notice(label is null ? EngineNotices.Released : L.ReleasedKeys(keys: label));
         }
 
         if (step.State.Scroll?.ContactId == contactId)

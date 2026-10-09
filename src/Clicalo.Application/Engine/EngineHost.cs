@@ -215,6 +215,18 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             _config = changed.Config with { TimestampFrequency = _time.TimestampFrequency };
         }
 
+        if (
+            engineEvent is EngineEvent.Activation { LastExternalPointer: null } activation
+            && _ports.PointerPosition?.LastExternal is { } pointer
+        )
+        {
+            // EJE-009: the mouse actions act at the last pointer position outside Clícalo, read when the tap arrives.
+            engineEvent = activation with
+            {
+                LastExternalPointer = pointer,
+            };
+        }
+
         var before = _state;
         try
         {
@@ -304,6 +316,9 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
                 break;
             case EngineEffect.SendInternalChord chord:
                 SendChord(chord);
+                break;
+            case EngineEffect.PlayFeedbackSound:
+                _ports.Sound?.Play();
                 break;
         }
     }

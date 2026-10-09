@@ -8,12 +8,14 @@ using Clicalo.App.SingleInstance;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Foreground;
+using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Timing;
@@ -64,6 +66,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private PersistenceScheduler? _scheduler;
     private TrayController? _tray;
     private ShowPipeServer? _pipe;
+    private ControlCenterComposer? _controlCenter;
     private Task _persistence = Task.CompletedTask;
     private Task _guardian = Task.CompletedTask;
     private Task? _exit;
@@ -255,6 +258,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         window.ContentRendered += (_, _) => OnFirstFrame(adapters.Guardian);
         window.Present();
+        _controlCenter = BuildControlCenter(services, store, slot, ui, foreground, monitor, window);
+        Track(_controlCenter.Dispose);
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);
@@ -306,14 +311,13 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 // The engine obeys the settings it was built with until told otherwise (SEG-004, SEG-005, TAC-002).
                 _ = engine.Post(
                     new EngineEvent.ConfigChanged(
-                        SettingsProjection.Engine(change.After.Settings, catalogs.CommonActions)
+                        SettingsProjection.Engine(
+                            change.After.Settings,
+                            catalogs.CommonActions,
+                            catalogs.KeyLabels
+                        )
                     )
                 );
-                if (change.Before.Settings.Language != change.After.Settings.Language)
-                {
-                    // IDI-001: the language switches in place; LanguageChanged repaints below.
-                    _ = localization.TrySetLanguage(change.After.Settings.Language.Value);
-                }
             }
 
             _ = _application!.Dispatcher.BeginInvoke(() =>
@@ -327,12 +331,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 composer.OnDocumentChanged(change);
             });
         };
-        localization.LanguageChanged += (_, _) =>
-            _ = _application!.Dispatcher.BeginInvoke(() =>
-            {
-                composer.Relocalize();
-                _ = _tray?.RelocalizeAsync();
-            });
+        // IDI-001: the lang setting is the single source; every window repaints its texts in place on its own thread.
+        var language = new LanguageFollower(localization, store);
+        Track(language.Dispose);
+        void OnUiThread(Action work) => _ = _application!.Dispatcher.BeginInvoke(work);
+        _ = language.Register(composer.Relocalize, OnUiThread);
+        _ = language.Register(() => _ = _tray?.RelocalizeAsync(), OnUiThread);
         relay.SnapshotChanged += (_, change) =>
         {
             viewModel.ApplyEngine(change.Snapshot);
@@ -342,6 +346,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         relay.UsageCounted += (_, counted) =>
         {
             _ = store.Dispatch(new RecordUsage(counted.Shortcut));
+            composer.FlashTile(counted.Shortcut);
             composer.OnActionRan();
         };
         relay.NoticeRaised += (_, notice) => composer.OnEngineNotice(notice);
@@ -352,6 +357,55 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             services.GetRequiredService<ForegroundDescriber>().Describe
         );
         return window;
+    }
+
+    /// <summary>
+    /// The Control Center (docs/05): opened from the tray and from the panel, it follows the external foreground for
+    /// «Probar en» and the capture mode, and never covers the panel (CCM-004).
+    /// </summary>
+    private ControlCenterComposer BuildControlCenter(
+        IServiceProvider services,
+        DocumentStore store,
+        StartupSlot slot,
+        Dispatcher ui,
+        ForegroundChangeCoordinator foreground,
+        ForegroundMonitor monitor,
+        PanelWindow window
+    )
+    {
+        var controlCenter = new ControlCenterComposer(
+            store,
+            slot.Localization,
+            services.GetRequiredService<IForegroundOrchestrator>(),
+            services.GetRequiredService<IEngineInbox>(),
+            () => foreground.CurrentEpoch,
+            services.GetRequiredService<Clicalo.Application.Profiles.ProfileViewCoordinator>(),
+            services.GetRequiredService<ThemeService>(),
+            ui,
+            _time,
+            slot.Catalogs,
+            services.GetRequiredService<ITouchKeyboard>(),
+            new ControlCenterOpenApps(),
+            () => new Rect(window.Left, window.Top, window.ActualWidth, window.ActualHeight),
+            Environment.IsPrivilegedProcess
+        );
+        var describer = services.GetRequiredService<ForegroundDescriber>();
+        monitor.ExternalForegroundChanged += (_, change) =>
+            controlCenter.OnExternalForeground(describer.Describe(change.Foreground).Process);
+        var panel = services.GetRequiredService<PanelComposer>();
+        panel.ControlCenter = controlCenter;
+        var interaction = services.GetRequiredService<InteractionStore>();
+        // CCM-004: nothing dims while the control center is open; ATJ-008: the capture notice shows in the panel.
+        controlCenter.StateChanged += (_, _) =>
+        {
+            _ = interaction.Dispatch(
+                new InteractionAction.SetOpen(DimExceptions.ControlCenterOpen, controlCenter.IsOpen)
+            );
+            panel.ShowCapture(controlCenter.IsCapturing);
+        };
+        // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
+        foreground.IsTrying = () => controlCenter.IsTrying;
+        return controlCenter;
     }
 
     private void UpdateTray(PanelViewModel viewModel) =>
@@ -439,8 +493,23 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var tray = services.GetRequiredService<TrayController>();
         var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
         var ui = _application!.Dispatcher;
-        tray.ShowHideRequested += (_, _) => _ = ui.BeginInvoke(visibility.Toggle);
+        var interaction = services.GetRequiredService<InteractionStore>();
+        tray.ShowHideRequested += (_, _) =>
+            _ = ui.BeginInvoke(() =>
+            {
+                // BUR-003: a click on the tray with the bubble on screen brings the panel back.
+                if (visibility.IsVisible && interaction.Current.Minimized)
+                {
+                    _ = interaction.Dispatch(new InteractionAction.Restore());
+                }
+                else
+                {
+                    visibility.Toggle();
+                }
+            });
         tray.ExitRequested += (_, _) => _ = ui.BeginInvoke(() => _ = ExitAsync());
+        tray.ControlCenterRequested += (_, _) =>
+            _ = ui.BeginInvoke(() => _ = _controlCenter?.OpenAsync(LeaseOrigin.Tray));
         // «Soltar todo» works with a hung engine too: what Windows reports down goes up without the engine (ADR-0023).
         var release = services.GetRequiredService<EngineAdapterSet>().PressedRelease;
         tray.ReleasePressedRequested += (_, _) => _ = Task.Run(release.ReleasePressed);

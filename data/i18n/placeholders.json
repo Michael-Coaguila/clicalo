@@ -42,5 +42,9 @@
   "key": {
     "type": "text",
     "description": "Nombre de una tecla ya traducido, por ejemplo «Ñ»."
+  },
+  "seconds": {
+    "type": "number",
+    "description": "Duración en segundos con decimales, por ejemplo «0,5»; con coma en español y punto en inglés."
   }
 }

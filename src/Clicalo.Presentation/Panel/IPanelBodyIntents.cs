@@ -43,6 +43,9 @@ public interface IPanelBodyIntents
     /// <param name="profile">The empty profile.</param>
     void AddShortcut(ProfileId profile);
 
+    /// <summary>[cancel] of a notice that offers it: ends the capture mode of a binding (ATJ-008).</summary>
+    void CancelNotice();
+
     /// <summary>[adminBtn]: relaunch Clícalo elevated, keeping the state (EJE-013).</summary>
     void RelaunchElevated();
 }

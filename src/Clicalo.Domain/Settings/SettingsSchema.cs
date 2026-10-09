@@ -23,6 +23,9 @@ public static class SettingsSchema
     /// <summary>Opacity: 0.30 to 1.00 in steps of 0.05 (GEN-009, docs/02).</summary>
     public static SettingRange Opacity { get; } = new(0.30, 1.00, 0.05);
 
+    /// <summary>The − and + buttons of Quick settings move the opacity by 0.10 (AJR-002).</summary>
+    public static double OpacityButtonStep => 0.10;
+
     /// <summary>Dimmed opacity: 0.10 to 0.80 in steps of 0.05 (GEN-009).</summary>
     public static SettingRange DimTo { get; } = new(0.10, 0.80, 0.05);
 

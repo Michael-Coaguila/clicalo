@@ -20,4 +20,10 @@ public enum ActivationOrigin
 
     /// <summary>The Repeat button (AVI-004).</summary>
     Repeat,
+
+    /// <summary>
+    /// «Probar ahora» in the editor (PRB-004): runs like an Invoke, but is not counted for Frecuentes and does not
+    /// become the last action of Repetir (PRB-006).
+    /// </summary>
+    TryNow,
 }

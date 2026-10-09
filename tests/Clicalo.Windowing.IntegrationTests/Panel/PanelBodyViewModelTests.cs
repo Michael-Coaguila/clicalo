@@ -322,6 +322,31 @@ public sealed class PanelBodyViewModelTests
     }
 
     [Fact]
+    [Trait("Req", "ATJ-008")]
+    public void The_capture_notice_stays_with_its_cancel_button()
+    {
+        var panel = Panel(3);
+        panel.Notices.CanCancel.ShouldBeFalse();
+
+        panel.ApplyContext(
+            PanelBodyContext.Idle with
+            {
+                Notice = new PanelNotice(
+                    L.WaitingApp,
+                    new IconRef("radar"),
+                    NoticeTone.Notice,
+                    CanCancel: true
+                ),
+            }
+        );
+        panel.Notices.Message.ShouldBe("Abre la app que quieres vincular…");
+        panel.Notices.CanCancel.ShouldBeTrue();
+        panel.Notices.CancelName.ShouldBe("Cancelar");
+        panel.Notices.Cancel();
+        _intents.Calls.ShouldBe(["CancelNotice"]);
+    }
+
+    [Fact]
     [Trait("Req", "EJE-013")]
     public void An_elevated_app_shows_the_administrator_notice_and_its_button_relaunches()
     {
@@ -415,6 +440,35 @@ public sealed class PanelBodyViewModelTests
 
         panel.Notices.Message.ShouldBe("Ready. Tap a button to use it.");
         panel.Selector.FrequentsName.ShouldBe("Frequent");
+    }
+
+    [Fact]
+    [Trait("Req", "CUA-012")]
+    public void The_add_tile_takes_the_slot_after_the_last_tile_and_pages_like_one()
+    {
+        var panel = Panel(9);
+        panel.ShowsAddTile.ShouldBeFalse();
+
+        panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
+
+        // Nine tiles fill page 1; «+ Añadir» goes alone to page 2.
+        panel.Pager.PageCount.ShouldBe(2);
+        Ids(panel).ShouldBe(Range(0, 9));
+        panel.ShowsAddTile.ShouldBeFalse();
+        panel.Pager.Next();
+        Ids(panel).ShouldBe([]);
+        panel.ShowsAddTile.ShouldBeTrue();
+
+        // Searching hides it (CUA-012: no «+ Añadir» in the search).
+        panel.ApplyContext(
+            PanelBodyContext.Idle with
+            {
+                EditMode = true,
+                AddTile = true,
+                SearchingWithText = true,
+            }
+        );
+        panel.ShowsAddTile.ShouldBeFalse();
     }
 
     private static string[] Range(int start, int count) =>

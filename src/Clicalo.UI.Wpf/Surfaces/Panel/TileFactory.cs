@@ -18,9 +18,16 @@ internal static class TileFactory
 {
     /// <summary>A new tile for <paramref name="viewModel"/>, kept painted while it lives.</summary>
     /// <param name="viewModel">The tile's view model.</param>
+    /// <param name="intercept">
+    /// Asked first on a UI Automation Invoke or Toggle (edit mode and test mode take it, EJE-001); when it returns
+    /// <see langword="true"/> the tile does not run.
+    /// </param>
+    /// <param name="secondary">The secondary action of the tile (right click, CUA-014): opens its menu.</param>
     /// <returns>The control and the handler to detach with <see cref="Detach"/>.</returns>
     public static (ShortcutTile Control, PropertyChangedEventHandler Handler) Create(
-        TileViewModel viewModel
+        TileViewModel viewModel,
+        Func<TileViewModel, bool>? intercept = null,
+        Action<TileViewModel>? secondary = null
     )
     {
         var control = new ShortcutTile
@@ -33,8 +40,9 @@ internal static class TileFactory
                     ? ShortcutTilePattern.Invoke
                     : ShortcutTilePattern.Toggle,
         };
-        control.Invoked += (_, _) => viewModel.Invoke();
-        control.Toggled += (_, _) => viewModel.Invoke();
+        control.Invoked += (_, _) => Invoke(viewModel, intercept);
+        control.Toggled += (_, _) => Invoke(viewModel, intercept);
+        control.SecondaryRequested += (_, _) => secondary?.Invoke(viewModel);
         PropertyChangedEventHandler handler = (_, _) => Paint(control, viewModel);
         viewModel.PropertyChanged += handler;
         Paint(control, viewModel);
@@ -101,6 +109,14 @@ internal static class TileFactory
         );
     }
 
+    private static void Invoke(TileViewModel viewModel, Func<TileViewModel, bool>? intercept)
+    {
+        if (intercept?.Invoke(viewModel) != true)
+        {
+            viewModel.Invoke();
+        }
+    }
+
     private static void Paint(ShortcutTile control, TileViewModel viewModel)
     {
         control.Keys = viewModel.Keys;
@@ -112,6 +128,7 @@ internal static class TileFactory
         control.Symbol = viewModel.Icon.Length == 0 ? null : viewModel.Icon;
         control.Category = CategoryOf(viewModel.Category);
         control.Badge = viewModel.Badge;
+        control.IsFlashing = viewModel.IsFlashing;
 
         // CUA-009: a Mantener tile held down shrinks with its outline; a latched toggle shows ACTIVO and its wash.
         control.IsHeld = viewModel.IsLatched && viewModel.Behavior == TileBehavior.Hold;

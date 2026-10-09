@@ -35,6 +35,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados, con `perf (x64)` cada noche y obligatorio antes de cada versión; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck (retirados por ADR-0023) | M2 |
 | D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
 | D-25 | Guardián simple | Hasta el 2026-10-05, *ledger* en memoria compartida, valla de generación, emergencia y protocolo 2 de Sentinel; desde entonces el plano recoge [ADR-0023](../adr/0023-guardian-simple.md) | Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia; las partes de D-21, D-22 y D-23 sobre ellos quedan retiradas | M2 |
+| D-26 | Formas del panel, Pestaña, burbuja y atenuado | Burbuja y Pestaña en `PanelSession`, `InteractionState` en Domain, monitor por `monitorDevicePath` (§6.4, §3.7) | `InteractionStore` en Application con la burbuja, la barra y la guía; `PanelForms` puro; monitor por nombre de dispositivo; asa por lado | M3 |
+| D-27 | Capas del panel e integración de M3 | Menú de toque largo y Ajustes rápidos como ventanas hijas (§8.1) | Dibujados dentro del panel; una capa primaria en `PanelComposer`; asa de la Pestaña con margen táctil | M3 |
+| D-28 | Efectos laterales de «Probar ahora» | `SuppressSwitchHandling(3 s, token)` en el motor y `ForegroundClassifier` (§3.6, §7.9) | `ActivationOrigin.TryNow` en la activación y `ForegroundChangeCoordinator.IsTrying` mientras dura la prueba | M4 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -725,6 +728,72 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   (el usuario usa «Soltar todo» de la bandeja y, si hace falta, sale); una tecla del teclado físico pulsada en ese
   instante también se suelta.
 - **Revisión.** Con la primera ejecución nocturna de S9 en la CI y en la aceptación en hardware (sesión bloqueada real).
+
+## D-26 · Formas del panel, Pestaña, burbuja y atenuado (M3)
+
+- **Plano.** [§6.4](blueprint.md#64-estado-cuatro-dueños-deshacer-y-autoguardado) pone la burbuja
+  (`Presence = Bubble(restoreTo)`) y la Pestaña (`DockSession`) en `PanelSession`, y `InteractionState` en
+  `Domain.Interaction`; [§3.7](blueprint.md#37-colocación-y-orden-z) identifica el monitor por
+  `monitorDevicePath`.
+- **Implementado.**
+  - `InteractionState` vive en `Application.Interaction` (`InteractionStore`, escritor único en el rol Surfaces) y
+    guarda, además del atenuado y sus excepciones, la burbuja (`Minimized`), la barra abierta, su ventana al costado y
+    el paso de la guía. `PanelSession` solo sigue con Visible/Oculto; la forma visible la decide
+    `PanelForms.Of(visible, density, minimized, dockOpen)` (Domain, pura). La cuadrícula de perfiles al costado de la
+    barra es la misma de la sesión (`PickerOpen`).
+  - Las reglas puras están en `Domain.PanelLayout` (`PanelGeometry`, `DockGeometry`, `DockRules`, `PanelForms`,
+    `CompactRowRules`) y `Domain.Touch` (`DragTracker`). UI.Wpf no ve Application: `SurfaceSet` coloca las
+    superficies y `SurfaceDimmer` aplica la opacidad que decide `Presentation.Dock.SurfaceDimming` con el
+    `InteractionStore`.
+  - El monitor se identifica por su nombre de dispositivo (`\\.\DISPLAY1`, el `MonitorPosition` de M2), leído con
+    `EnumDisplayMonitors`/`GetMonitorInfo` en `UI.Wpf.Windowing.DisplayMonitors`.
+  - La posición del asa se guarda por lado, no por monitor y lado (PES-016 queda a medias: el formato de
+    `handlePosBySide` no cambia).
+  - Al arrancar, el panel va al monitor principal si tiene posición guardada; si no, al primero conectado que la tenga.
+- **Motivo.** Sin cambiar el formato del documento ni el contrato de `PanelSession`, que otros paquetes de M3 usan en
+  paralelo; la regla sigue siendo pura y con tabla de transiciones.
+- **Revisión.** Al cerrar M3, si se quiere mover la burbuja y la Pestaña a `PanelSession` como dice el plano.
+
+## D-27 · Capas del panel e integración de M3
+
+- **Plano.** [§8.1](blueprint.md#81-superficies-y-ventanas) lista el menú de toque largo y Ajustes rápidos como ventanas hijas
+  `NonActivatingWindow`; [§6.4](blueprint.md#64-estado-cuatro-dueños-deshacer-y-autoguardado) pone la capa primaria,
+  el menú y el Modo prueba en los almacenes de sesión e interacción.
+- **Implementado.**
+  - El menú de toque largo y Ajustes rápidos se dibujan dentro del panel, como piden CUA-014, AJR-001 y el prototipo:
+    el menú encima de la cuadrícula y la hoja debajo de la búsqueda. Mientras el menú está abierto, sus filas actúan
+    y cualquier otro toque solo lo cierra.
+  - El estado de cada capa vive en su propio ViewModel (`QuickSettings.IsOpen`, `EditMode.IsOn`, `Menu.IsOpen`,
+    `TestMode.IsOn`). `PanelComposer` mantiene una sola capa primaria abierta (PAN-008) y avisa al `InteractionStore`
+    para que no se atenúe nada mientras están abiertas.
+  - Las intenciones hacia el Centro de control (`OpenEditor`, `OpenLibrary`, `OpenControlCenter`) llegan a
+    `ControlCenterComposer` por `PanelComposer.ControlCenter`; mientras está abierto, `DimExceptions.ControlCenterOpen`
+    evita el atenuado y el modo captura muestra en el panel el aviso fijo [waitingApp] con Cancelar.
+  - Todo objetivo del panel responde en 44 × 44 con un margen táctil invisible alrededor de su dibujo (`TouchBounds`).
+    La hoja de Ajustes rápidos se limita al espacio libre del área de trabajo y se desplaza con el dedo; el deslizador
+    de opacidad sigue al dedo. El menú de la ficha se abre también con el clic derecho, la tecla Menú, Mayús+F10 o
+    «clic derecho {nombre}» (WPF no ofrece `ShowContextMenu` de UI Automation).
+  - El asa de la Pestaña es una ventana de 44 de fondo (REG-02, ACC-002) que dibuja el asa de 32 contra el borde y
+    pinta el resto con un pincel de alfa 1 para recibir el toque. Pierde la sombra, porque la ventana de sombra
+    seguiría a toda la ventana.
+- **Motivo.** Lo más simple que cumple el comportamiento del prototipo y REG-02 sin cambiar la capa de ventanas ni el
+  formato del documento.
+- **Revisión.** Si se quiere la sombra del asa, la capa de ventanas puede aprender un margen táctil invisible.
+
+## D-28 · Efectos laterales de «Probar ahora» sin ventana de supresión
+
+- **Plano.** [§3.6](blueprint.md#36-foregroundorchestrator-el-único-dueño-de-los-cambios-de-primer-plano) pide `SuppressSwitchHandling(3 s, token)` en el motor durante
+  «Probar ahora», y §7.9 deja a `ForegroundClassifier` decidir que un cambio dentro de esa ventana no es real (PRB-006).
+- **Repositorio.** La activación de la prueba llega con `ActivationOrigin.TryNow`: el motor la ejecuta como un
+  `Invoke`, pero `ExecutionOrigin.Trial` hace que no cuente para Frecuentes ni cambie Repetir. Mientras
+  `TryNowRun.IsRunning`, `ForegroundChangeCoordinator.IsTrying` publica los cambios de app con época nueva y sin
+  `isUserSwitch` (no hay soltado de SEG-005) y conserva la app del usuario como referencia, así que la vuelta a ella al
+  cerrar el CC tampoco es un cambio; el panel no sigue esos cambios (no cambia de perfil) y el modo captura ya los
+  ignoraba.
+- **Motivo.** Un indicador mientras dura la prueba es más simple que una ventana de tiempo con *token* en el motor y no
+  depende de que la prueba quepa en 3 s.
+- **Coste.** Ninguno conocido; el estado vive en Application y no en el motor.
+- **Revisión.** Con la verificación de escritorio de «Probar ahora» (M4).
 
 ## Puntos del plano pendientes de resolver
 
