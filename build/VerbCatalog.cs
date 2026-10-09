@@ -21,6 +21,7 @@ internal static class VerbCatalog
     public const string Note = "note";
     public const string Perf = "perf";
     public const string Quarantine = "quarantine";
+    public const string Package = "package";
 
     /// <summary>
     /// Verbs that run a verb of <c>tools/Clicalo.DevCli</c> with the same name. Everything written after one of
@@ -29,11 +30,17 @@ internal static class VerbCatalog
     public static IReadOnlyList<string> DevCli { get; } = [I18nCheck, I18nImport, AdrCheck];
 
     /// <summary>
+    /// Verbs whose following words are their own options: the developer CLI verbs and <c>cl package</c>
+    /// (<c>cl package --channel beta --version 2.0.0-beta.1</c>).
+    /// </summary>
+    public static IReadOnlyList<string> WithArguments { get; } = [.. DevCli, Package];
+
+    /// <summary>
     /// Verbs implemented so far (M0, the M2 walking skeleton and the nightly quarantine), in the order they are listed
     /// to people.
     /// </summary>
     public static IReadOnlyList<string> Available { get; } =
-    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli, Run, Note, Perf, Quarantine];
+    [Setup, Build, Fast, Test, Desk, Fix, Check, Clean, .. DevCli, Run, Note, Perf, Quarantine, Package];
 
     /// <summary>Verbs of later milestones (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =
@@ -66,7 +73,7 @@ internal static class VerbCatalog
     {
         for (var i = 0; i < args.Count; i++)
         {
-            if (IsDevCli(args[i]))
+            if (WithArguments.Contains(args[i], StringComparer.Ordinal))
             {
                 return ([.. args.Take(i + 1)], [.. args.Skip(i + 1)]);
             }
