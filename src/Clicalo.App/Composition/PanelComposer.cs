@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows.Threading;
 using Clicalo.Application.Confirmation;
 using Clicalo.Application.Coordinators;
+using Clicalo.Application.Foreground;
 using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
@@ -241,10 +242,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     public PanelLayerModels Layers { get; }
 
     /// <summary>
-    /// The control center (Workspace role) that opens the editor, the library and its pages for the panel (CCM-004).
-    /// Until it exists the intentions go nowhere; it marshals them to its own thread.
+    /// The control center (Workspace role), once built: edit mode, «+ Añadir», «Plantillas», Quick settings and the tile
+    /// menu open it (CCM-004, docs/05).
     /// </summary>
-    public IControlCenterIntents? ControlCenter { get; set; }
+    public ControlCenterComposer? ControlCenter { get; set; }
 
     /// <summary>Raised after every projection, on the UI thread: the Tab view follows the same shortcuts.</summary>
     public event EventHandler? Refreshed;
@@ -290,6 +291,12 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
         void Report(ExternalForeground foreground)
         {
+            // PRB-006: the app «Probar ahora» brings to the front does not change the panel's profile.
+            if (ControlCenter?.IsTrying == true)
+            {
+                return;
+            }
+
             var process = describe(foreground).Process;
             var elevated =
                 ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)
@@ -393,13 +400,16 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <inheritdoc />
-    public void OpenEditor(ShortcutId shortcut) => ControlCenter?.OpenEditor(shortcut);
+    public void OpenEditor(ShortcutId shortcut) =>
+        _ = ControlCenter?.OpenEditorAsync(shortcut, LeaseOrigin.Touch);
 
     /// <inheritdoc />
-    public void OpenLibrary(ProfileId profile) => ControlCenter?.OpenLibrary(profile);
+    public void OpenLibrary(ProfileId profile) =>
+        _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
 
     /// <inheritdoc />
-    public void OpenControlCenter(ProfileId profile) => ControlCenter?.OpenControlCenter(profile);
+    public void OpenControlCenter(ProfileId profile) =>
+        _ = ControlCenter?.OpenProfileAsync(profile, LeaseOrigin.Touch);
 
     /// <summary>A notice of the engine (AVI-001): assertive ones are warnings.</summary>
     /// <param name="notice">The notice.</param>
@@ -506,8 +516,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <inheritdoc />
-    /// <remarks>The Control Center arrives in M4; until then the tile does nothing.</remarks>
-    public void OpenTemplates() { }
+    public void OpenTemplates() => _ = ControlCenter?.OpenTemplatesAsync(LeaseOrigin.Touch);
 
     /// <inheritdoc />
     public void AdvanceSticky(ModifierKind modifier) =>
@@ -532,8 +541,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <inheritdoc />
-    /// <remarks>The editor arrives with the Control Center in M4; until then the button does nothing.</remarks>
-    public void AddShortcut(ProfileId profile) { }
+    public void AddShortcut(ProfileId profile) =>
+        _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
 
     /// <inheritdoc />
     /// <remarks>The verified elevated relaunch (D-11) is not built yet; the notice still explains why nothing is sent.</remarks>

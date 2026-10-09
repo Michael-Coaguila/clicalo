@@ -11,4 +11,7 @@ public enum TrayCommand
 
     /// <summary>«Salir»: releases everything and ends Clícalo.</summary>
     Exit = 3,
+
+    /// <summary>«Centro de control»: opens the Control Center (blueprint §8.1, CCM-004).</summary>
+    ControlCenter = 4,
 }

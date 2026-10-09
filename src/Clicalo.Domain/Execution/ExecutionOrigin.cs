@@ -15,11 +15,13 @@ namespace Clicalo.Domain.Execution;
 /// <param name="Injection">The injection mode.</param>
 /// <param name="ExternalPointer">Last pointer position outside Clícalo, or <see langword="null"/>.</param>
 /// <param name="At">When it was activated.</param>
+/// <param name="Trial">Whether it is a «Probar ahora» run, which leaves Frecuentes and Repetir alone (PRB-006).</param>
 public sealed record ExecutionOrigin(
     ShortcutId Shortcut,
     long Epoch,
     ForegroundWindowId? RequiredForeground,
     InjectionMode Injection,
     PhysicalPoint? ExternalPointer,
-    DateTimeOffset At
+    DateTimeOffset At,
+    bool Trial = false
 );

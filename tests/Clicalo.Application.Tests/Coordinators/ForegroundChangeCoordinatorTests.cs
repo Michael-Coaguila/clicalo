@@ -94,6 +94,26 @@ public sealed class ForegroundChangeCoordinatorTests : IDisposable
     }
 
     [Fact]
+    [Trait("Req", "PRB-006")]
+    public void The_switches_of_a_try_and_the_way_back_are_not_user_switches()
+    {
+        var trying = false;
+        _coordinator.IsTrying = () => trying;
+        _coordinator.Start();
+        _monitor.SwitchTo(Window(0x10, process: 100));
+
+        trying = true;
+        _monitor.SwitchTo(Window(0x20, process: 200));
+        trying = false;
+        // The Control Center closes and gives the foreground back to the app the user was in.
+        _monitor.SwitchTo(Window(0x10, process: 100));
+
+        Changes()
+            .Select(change => (change.Info.Epoch, change.IsUserSwitch))
+            .ShouldBe([(1L, false), (2L, false), (3L, false)]);
+    }
+
+    [Fact]
     public void A_repeated_report_of_the_same_observation_is_posted_once()
     {
         var word = Window(0x10, process: 100);

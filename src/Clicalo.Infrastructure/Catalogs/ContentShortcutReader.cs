@@ -10,23 +10,25 @@ using Clicalo.Infrastructure.Persistence.Mappers;
 namespace Clicalo.Infrastructure.Catalogs;
 
 /// <summary>
-/// A shortcut of the starter content (<c>data/schemas/shortcut.schema.json</c>), validated again when loaded because
-/// content is untrusted (LOG-006). The kit uses tap (with its language variants, CAT-005), hold, toggle, mouse, macro
-/// and web; a shortcut of another kind (text, app or system, which only the library offers) or one that does not
-/// validate (a key outside the catalog, a wait out of range, an address that is not http or https) is left out rather
-/// than guessed.
+/// A shortcut of the starter content and of the «Añadir atajo» library (<c>data/schemas/shortcut.schema.json</c>),
+/// validated again when loaded because content is untrusted (LOG-006). The kit uses tap (with its language variants,
+/// CAT-005), hold, toggle, mouse, macro and web; only the library also offers text (empty until the person writes it,
+/// so it starts «Incompleto», ATJ-010) and system actions. A shortcut of another kind, or one that does not validate (a
+/// key outside the catalog, a wait out of range, an address that is not http or https), is left out rather than
+/// guessed.
 /// </summary>
 internal static class ContentShortcutReader
 {
     /// <summary>The shortcuts of <paramref name="array"/> that validate, in order.</summary>
     /// <param name="array">The JSON array of shortcuts.</param>
-    public static ValueList<TemplateShortcut> ReadAll(JsonElement array)
+    /// <param name="library">Whether it is the «Añadir atajo» library, which also offers text and system actions.</param>
+    public static ValueList<TemplateShortcut> ReadAll(JsonElement array, bool library = false)
     {
         var shortcuts = new List<TemplateShortcut>();
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in array.EnumerateArray())
         {
-            if (Read(item) is { } shortcut && ids.Add(shortcut.ItemId))
+            if (Read(item, library) is { } shortcut && ids.Add(shortcut.ItemId))
             {
                 shortcuts.Add(shortcut);
             }
@@ -35,9 +37,9 @@ internal static class ContentShortcutReader
         return [.. shortcuts];
     }
 
-    private static TemplateShortcut? Read(JsonElement item)
+    private static TemplateShortcut? Read(JsonElement item, bool library)
     {
-        if (Action(item.GetProperty("action")) is not { } action)
+        if (Action(item.GetProperty("action"), library) is not { } action)
         {
             return null;
         }
@@ -52,7 +54,7 @@ internal static class ContentShortcutReader
         );
     }
 
-    private static ShortcutAction? Action(JsonElement action) =>
+    private static ShortcutAction? Action(JsonElement action, bool library) =>
         action.GetProperty("type").GetString() switch
         {
             "tap" => Tap(action),
@@ -75,6 +77,16 @@ internal static class ContentShortcutReader
             ),
             "macro" => Macro(action.GetProperty("steps")),
             "web" => Web(action.GetProperty("url").GetString()),
+            "text" when library => new TextAction(
+                SecretText.From(action.GetProperty("text").GetString() ?? string.Empty),
+                action.TryGetProperty("method", out var method)
+                && string.Equals(method.GetString(), "paste", StringComparison.Ordinal)
+                    ? TextMethod.Paste
+                    : TextMethod.Unicode
+            ),
+            "system" when library => new SystemAction(
+                new SystemCommandId(ContentJson.String(action, "command"))
+            ),
             _ => null,
         };
 

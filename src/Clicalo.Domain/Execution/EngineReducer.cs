@@ -188,7 +188,8 @@ public static class EngineReducer
             activation.RequiredForeground,
             activation.Injection,
             activation.LastExternalPointer,
-            request.At
+            request.At,
+            Trial: request.Origin == ActivationOrigin.TryNow
         );
 
         // A latched Toggle (or drag, or invoked Hold) and a running macro stop on the next accepted tap, whatever the

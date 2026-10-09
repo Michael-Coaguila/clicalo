@@ -133,7 +133,8 @@
       "name": "Icons",
       "group": "rules",
       "description": "Automatic icons for shortcuts and combos.",
-      "dependsOn": ["Catalog", "Keys"]
+      "dependsOn": ["Catalog", "Keys", "Timing"],
+      "deviation": "Timing added: the limits of the icon suggestion (6 icons, words of 3 letters, reverse match from 4) live in timings.json (EDI-005, NFR-020)."
     },
     {
       "name": "Dimming",

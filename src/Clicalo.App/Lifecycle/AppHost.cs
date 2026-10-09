@@ -65,6 +65,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private PersistenceScheduler? _scheduler;
     private TrayController? _tray;
     private ShowPipeServer? _pipe;
+    private ControlCenterComposer? _controlCenter;
     private Task _persistence = Task.CompletedTask;
     private Task _guardian = Task.CompletedTask;
     private Task? _exit;
@@ -256,6 +257,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         window.ContentRendered += (_, _) => OnFirstFrame(adapters.Guardian);
         window.Present();
+        _controlCenter = BuildControlCenter(services, store, slot, ui, foreground, monitor, window);
+        Track(_controlCenter.Dispose);
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);
@@ -353,6 +356,45 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             services.GetRequiredService<ForegroundDescriber>().Describe
         );
         return window;
+    }
+
+    /// <summary>
+    /// The Control Center (docs/05): opened from the tray and from the panel, it follows the external foreground for
+    /// «Probar en» and the capture mode, and never covers the panel (CCM-004).
+    /// </summary>
+    private ControlCenterComposer BuildControlCenter(
+        IServiceProvider services,
+        DocumentStore store,
+        StartupSlot slot,
+        Dispatcher ui,
+        ForegroundChangeCoordinator foreground,
+        ForegroundMonitor monitor,
+        PanelWindow window
+    )
+    {
+        var controlCenter = new ControlCenterComposer(
+            store,
+            slot.Localization,
+            services.GetRequiredService<IForegroundOrchestrator>(),
+            services.GetRequiredService<IEngineInbox>(),
+            () => foreground.CurrentEpoch,
+            services.GetRequiredService<Clicalo.Application.Profiles.ProfileViewCoordinator>(),
+            services.GetRequiredService<ThemeService>(),
+            ui,
+            _time,
+            slot.Catalogs,
+            services.GetRequiredService<ITouchKeyboard>(),
+            new ControlCenterOpenApps(),
+            () => new Rect(window.Left, window.Top, window.ActualWidth, window.ActualHeight),
+            Environment.IsPrivilegedProcess
+        );
+        var describer = services.GetRequiredService<ForegroundDescriber>();
+        monitor.ExternalForegroundChanged += (_, change) =>
+            controlCenter.OnExternalForeground(describer.Describe(change.Foreground).Process);
+        services.GetRequiredService<PanelComposer>().ControlCenter = controlCenter;
+        // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
+        foreground.IsTrying = () => controlCenter.IsTrying;
+        return controlCenter;
     }
 
     private void UpdateTray(PanelViewModel viewModel) =>
@@ -455,6 +497,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 }
             });
         tray.ExitRequested += (_, _) => _ = ui.BeginInvoke(() => _ = ExitAsync());
+        tray.ControlCenterRequested += (_, _) =>
+            _ = ui.BeginInvoke(() => _ = _controlCenter?.OpenAsync(LeaseOrigin.Tray));
         // «Soltar todo» works with a hung engine too: what Windows reports down goes up without the engine (ADR-0023).
         var release = services.GetRequiredService<EngineAdapterSet>().PressedRelease;
         tray.ReleasePressedRequested += (_, _) => _ = Task.Run(release.ReleasePressed);

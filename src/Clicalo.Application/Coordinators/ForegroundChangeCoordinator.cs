@@ -13,7 +13,9 @@ namespace Clicalo.Application.Coordinators;
 /// A real switch is a change of the app the user sees. Coming back to the same app after a lease (the tray menu, the
 /// Control Center) is reported by the monitor as a change, since Clícalo was in front in between, but it keeps what is
 /// held: it gets a new epoch and <c>isUserSwitch = false</c>. The monitor already leaves out Clícalo's own windows, the
-/// shell, the touch keyboard and Voice access. «Try now» (PRB-006) joins in M4. Events arrive on the SysEvents thread;
+/// shell, the touch keyboard and Voice access. While «Probar ahora» runs (<see cref="IsTrying"/>, PRB-006), its switches
+/// get a new epoch but are never user switches, and the app the user was in stays the reference, so coming back to it
+/// afterwards is not a switch either. Events arrive on the SysEvents thread;
 /// <see cref="Start"/> may run on any thread.
 /// </remarks>
 public sealed class ForegroundChangeCoordinator : IDisposable
@@ -24,6 +26,7 @@ public sealed class ForegroundChangeCoordinator : IDisposable
     private readonly bool _selfElevated;
     private readonly Lock _gate = new();
     private ExternalForeground? _last;
+    private uint? _userApp;
     private long _epoch;
     private bool _started;
 
@@ -47,6 +50,11 @@ public sealed class ForegroundChangeCoordinator : IDisposable
         _describe = describe;
         _selfElevated = selfElevated;
     }
+
+    /// <summary>
+    /// Whether «Probar ahora» is running (PRB-006); read on the SysEvents thread. Set once by the composition.
+    /// </summary>
+    public Func<bool> IsTrying { get; set; } = static () => false;
 
     /// <summary>The epoch of the last foreground posted to the engine; zero before the first one.</summary>
     public long CurrentEpoch => Interlocked.Read(ref _epoch);
@@ -111,8 +119,15 @@ public sealed class ForegroundChangeCoordinator : IDisposable
             return;
         }
 
-        var isUserSwitch = _last is not null && _last.AppProcessId != foreground.AppProcessId;
         _last = foreground;
+        if (IsTrying())
+        {
+            Post(foreground, isUserSwitch: false);
+            return;
+        }
+
+        var isUserSwitch = _userApp is { } user && user != foreground.AppProcessId;
+        _userApp = foreground.AppProcessId;
         Post(foreground, isUserSwitch);
     }
 

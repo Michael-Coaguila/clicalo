@@ -86,6 +86,7 @@ public sealed class ArchitectureDocumentsTests
                     "ReplaceOnImport",
                     "RestoreBackup",
                     "DeleteMacroStep",
+                    "KeepOnlyInAlwaysVisible",
                 ],
                 ignoreOrder: true
             );

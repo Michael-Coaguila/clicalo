@@ -62,6 +62,7 @@ public sealed class ActivationPolicyTests
             ActivationOrigin.UiaInvoke,
             ActivationOrigin.Keyboard,
             ActivationOrigin.Repeat,
+            ActivationOrigin.TryNow,
         ];
 
     [Theory]
@@ -73,6 +74,7 @@ public sealed class ActivationPolicyTests
             is ActivationOrigin.UiaInvoke
                 or ActivationOrigin.Keyboard
                 or ActivationOrigin.Repeat
+                or ActivationOrigin.TryNow
             ? ActivationPhase.Invoke
             : ActivationPhase.ContactEnded;
 
