@@ -4,9 +4,9 @@ using Clicalo.Domain.Execution;
 namespace Clicalo.App.Composition;
 
 /// <summary>
-/// The clipboard of M2: pasting a Text action (EJE-008, <c>Platform.Windows/Clipboard</c> on the SysEvents thread)
-/// arrives in M3. The text is never copied or kept here; the engine hears nothing back and its paste times out as any
-/// paste that does not get ready.
+/// The clipboard of a start with <c>--no-input</c>: the paste of a Text action (EJE-008,
+/// <c>Platform.Windows/Clipboard</c>) never touches the session's clipboard. The text is never copied or kept here; the
+/// engine hears nothing back and sends nothing, as for any paste that does not get ready.
 /// </summary>
 internal sealed class DeferredClipboardPaster : IClipboardPaster
 {
