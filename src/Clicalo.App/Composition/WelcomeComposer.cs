@@ -100,7 +100,19 @@ internal sealed class WelcomeComposer : IDisposable
                 CancellationToken.None
             )
             .ConfigureAwait(true);
-        _lease = result is LeaseResult.Granted granted ? granted.Lease : null;
+        if (result is not LeaseResult.Granted granted)
+        {
+            return;
+        }
+
+        if (_window == window)
+        {
+            _lease = granted.Lease;
+            return;
+        }
+
+        // The welcome ended while the lease was pending: give the foreground back at once.
+        _ = await granted.Lease.RestoreAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
     /// <inheritdoc />
