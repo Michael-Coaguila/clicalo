@@ -260,6 +260,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         window.Present();
         _controlCenter = BuildControlCenter(services, store, slot, ui, foreground, monitor, window);
         Track(_controlCenter.Dispose);
+        var system = SystemLifecycle.Start(services, this, _options, ui, _time);
+        Track(system.Dispose);
+        _controlCenter.System = system.Services;
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);

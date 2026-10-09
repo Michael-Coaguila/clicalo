@@ -75,6 +75,205 @@
   },
   "added": {
     "notes": "Claves que no están en el paquete y que la conversión necesita.",
+    "updErrT": {
+      "notes": "Título de la tarjeta de actualización con error (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "rollbackBtn",
+      "text": { "es": "No se pudo actualizar", "en": "Couldn't update" }
+    },
+    "updErrOffline": {
+      "notes": "Error de actualización: sin conexión (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updErrT",
+      "text": { "es": "Sin conexión. Comprueba internet y vuelve a intentarlo.", "en": "No connection. Check the internet and try again." }
+    },
+    "updErrDamaged": {
+      "notes": "Error de actualización: el paquete no coincide con su suma de comprobación (ACT-001, ACT-003). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updErrOffline",
+      "text": { "es": "La descarga llegó dañada y no se instaló.", "en": "The download arrived damaged and wasn't installed." }
+    },
+    "updErrSpace": {
+      "notes": "Error de actualización: sin espacio (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updErrDamaged",
+      "text": { "es": "No hay espacio suficiente en el disco.", "en": "There isn't enough space on the disk." }
+    },
+    "updErrStopped": {
+      "notes": "Error de actualización: interrumpida (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updErrSpace",
+      "text": { "es": "La actualización se interrumpió. Tus datos están intactos.", "en": "The update was interrupted. Your data is intact." }
+    },
+    "updUnavailT": {
+      "notes": "Tarjeta de actualización de una copia que no se instaló con el instalador (versión de desarrollo). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updErrStopped",
+      "text": { "es": "Actualizaciones no disponibles", "en": "Updates unavailable" }
+    },
+    "updUnavailD": {
+      "notes": "Detalle de la tarjeta anterior. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updUnavailT",
+      "text": { "es": "Esta copia de Clícalo no se instaló con el instalador.", "en": "This copy of Clícalo wasn't installed with the installer." }
+    },
+    "lastCheckAt": {
+      "notes": "Subtítulo de «Estás al día» con la fecha real de la última comprobación (ACT-001); {date} es whenToday, whenYesterday o whenDate. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updUnavailD",
+      "text": { "es": "Última comprobación: {date}", "en": "Last checked: {date}" }
+    },
+    "notCheckedYet": {
+      "notes": "Subtítulo de «Estás al día» antes de la primera comprobación (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "lastCheckAt",
+      "text": { "es": "Aún no se ha comprobado", "en": "Not checked yet" }
+    },
+    "rollingBack": {
+      "notes": "Título de la tarjeta mientras se vuelve a la versión anterior (ACT-005). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "notCheckedYet",
+      "text": { "es": "Volviendo a la versión {version}…", "en": "Going back to version {version}…" }
+    },
+    "whenToday": {
+      "notes": "Fecha relativa de hoy con la hora, como en el prototipo «Hoy, 09:12» (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "rollingBack",
+      "text": { "es": "Hoy, {time}", "en": "Today, {time}" }
+    },
+    "whenYesterday": {
+      "notes": "Fecha relativa de ayer con la hora, como en el prototipo «Ayer, 18:40» (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "whenToday",
+      "text": { "es": "Ayer, {time}", "en": "Yesterday, {time}" }
+    },
+    "whenDate": {
+      "notes": "Fecha anterior con la hora, como en el prototipo «22 sep, 16:27» (COP-004); {date} ya va escrita en el idioma. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "whenYesterday",
+      "text": { "es": "{date}, {time}", "en": "{date}, {time}" }
+    },
+    "lastBackupAt": {
+      "notes": "Estado de la pestaña Copias de seguridad, «[lastShort] {fecha}» sin concatenar fragmentos (SIS-001, IDI-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "whenDate",
+      "text": { "es": "Última: {date}", "en": "Last: {date}" }
+    },
+    "backupNone": {
+      "notes": "Estado de la pestaña Copias y del historial vacío (SIS-001, COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "lastBackupAt",
+      "text": { "es": "Sin copias aún", "en": "No backups yet" }
+    },
+    "bakMeta": {
+      "notes": "Línea de una copia del historial: tipo y recuentos de esa copia (COP-004); {name} es el tipo. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "backupNone",
+      "plural": {
+        "es": { "one": "{name} · {count} perfil · {total} atajos", "other": "{name} · {count} perfiles · {total} atajos" },
+        "en": { "one": "{name} · {count} profile · {total} shortcuts", "other": "{name} · {count} profiles · {total} shortcuts" }
+      }
+    },
+    "bakAuto": {
+      "notes": "Tipo de copia del historial (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "bakMeta",
+      "text": { "es": "Automática", "en": "Automatic" }
+    },
+    "bakManual": {
+      "notes": "Tipo de copia del historial (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "bakAuto",
+      "text": { "es": "Manual", "en": "Manual" }
+    },
+    "bakPreUpdate": {
+      "notes": "Tipo de copia del historial (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "bakManual",
+      "text": { "es": "Antes de actualizar", "en": "Before updating" }
+    },
+    "bakPreMigrate": {
+      "notes": "Tipo de copia del historial (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "bakPreUpdate",
+      "text": { "es": "Antes de migrar", "en": "Before migrating" }
+    },
+    "bakPreChange": {
+      "notes": "Tipo de copia del historial: antes de restaurar, importar, reiniciar Frecuentes o reparar (COP-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "bakPreMigrate",
+      "text": { "es": "Antes de un cambio grande", "en": "Before a big change" }
+    },
+    "autoBackupD": {
+      "notes": "Descripción de «Copia automática» con la corrección de §9 del catálogo (COP-003, DIS-68) sin tocar [rAutoD] del paquete. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "bakPreChange",
+      "text": { "es": "Guarda una copia a los 30 s de cada cambio (últimas 12).", "en": "Saves a copy 30 s after each change (last 12)." }
+    },
+    "exportDone": {
+      "notes": "Aviso de [Exportar] cuando se guardó el archivo (COP-002); sustituye a [exported] del prototipo, que era una demostración. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "autoBackupD",
+      "text": { "es": "Copia exportada", "en": "Backup exported" }
+    },
+    "exportFailed": {
+      "notes": "Aviso de [Exportar] cuando no se pudo escribir el archivo (COP-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "exportDone",
+      "text": { "es": "No se pudo exportar la copia", "en": "Couldn't export the backup" }
+    },
+    "backupFailed": {
+      "notes": "Aviso de [Crear copia ahora] cuando no se pudo escribir (COP-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "exportFailed",
+      "text": { "es": "No se pudo crear la copia", "en": "Couldn't create the backup" }
+    },
+    "impSummary": {
+      "notes": "Resumen del archivo elegido en Importar, antes de Combinar o Reemplazar (COP-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "backupFailed",
+      "plural": {
+        "es": { "one": "{count} perfil · {total} atajos · versión {version}", "other": "{count} perfiles · {total} atajos · versión {version}" },
+        "en": { "one": "{count} profile · {total} shortcuts · version {version}", "other": "{count} profiles · {total} shortcuts · version {version}" }
+      }
+    },
+    "impTextsLost": {
+      "notes": "Aviso del resumen de Importar: textos cifrados de otro equipo o usuario (COP-005). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "impSummary",
+      "plural": {
+        "es": { "one": "{count} texto cifrado no se puede leer en este equipo: tendrás que volver a escribirlo.", "other": "{count} textos cifrados no se pueden leer en este equipo: tendrás que volver a escribirlos." },
+        "en": { "one": "{count} encrypted text can't be read on this computer: you'll need to type it again.", "other": "{count} encrypted texts can't be read on this computer: you'll need to type them again." }
+      }
+    },
+    "reopenAdmin": {
+      "notes": "Fila de Inicio y estabilidad que sustituye a «Iniciar como administrador» por la decisión D7 del usuario (2026-10-09, ADR-0027). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "impTextsLost",
+      "text": { "es": "Reabrir como administrador", "en": "Reopen as administrator" }
+    },
+    "reopenAdminD": {
+      "notes": "Descripción de la fila anterior (D7). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reopenAdmin",
+      "text": { "es": "Para enviar atajos a programas de administrador. Windows pide confirmación cada vez.", "en": "To send shortcuts to programs running as administrator. Windows asks for confirmation each time." }
+    },
+    "reopenBtn": {
+      "notes": "Botón de la fila «Reabrir como administrador» (D7). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reopenAdminD",
+      "text": { "es": "Reabrir", "en": "Reopen" }
+    },
+    "adminActive": {
+      "notes": "Estado de la fila cuando Clícalo ya es administrador (D7). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reopenBtn",
+      "text": { "es": "Clícalo ya funciona como administrador", "en": "Clícalo is already running as administrator" }
+    },
+    "adminCancelled": {
+      "notes": "Aviso cuando se cancela la confirmación de Windows (SIS-002, D7). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "adminActive",
+      "text": { "es": "Sigue sin permisos de administrador: se canceló la confirmación de Windows", "en": "Still without administrator rights: the Windows confirmation was cancelled" }
+    },
+    "adminNotInstalled": {
+      "notes": "Aviso cuando el ejecutable no es el instalado (D7, ADR-0027). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "adminCancelled",
+      "text": { "es": "Solo la copia instalada de Clícalo puede reabrirse como administrador", "en": "Only the installed copy of Clícalo can reopen as administrator" }
+    },
+    "adminFailed": {
+      "notes": "Aviso cuando Windows no pudo relanzar (D7). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "adminNotInstalled",
+      "text": { "es": "Windows no pudo reabrir Clícalo como administrador", "en": "Windows couldn't reopen Clícalo as administrator" }
+    },
+    "startNotInstalled": {
+      "notes": "Aviso de «Iniciar con Windows» en una copia que no es la instalada (SIS-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "adminFailed",
+      "text": { "es": "Solo la copia instalada puede iniciarse con Windows", "en": "Only the installed copy can start with Windows" }
+    },
+    "startFailed": {
+      "notes": "Aviso cuando Windows no deja cambiar el inicio (SIS-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "startNotInstalled",
+      "text": { "es": "Windows no permitió cambiar el inicio", "en": "Windows didn't allow changing the startup" }
+    },
+    "crashRecoveryD": {
+      "notes": "Descripción de «Recuperación automática» con el mismo significado en ES y EN (§9 del catálogo, SIS-002, SIS-004) sin tocar [rCrashD]. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "startFailed",
+      "text": { "es": "Si Clícalo se cierra por un error, se vuelve a abrir solo, suelta las teclas y, si hace falta, restaura tu última copia buena.", "en": "If Clícalo closes because of an error, it reopens by itself, releases the keys and, if needed, restores your last good copy." }
+    },
+    "alwaysOn": {
+      "notes": "Estado de «Recuperación automática», que el guardián cumple siempre (SIS-004). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "crashRecoveryD",
+      "text": { "es": "Siempre activa", "en": "Always on" }
+    },
     "kgMods": {
       "notes": "Grupo de teclas del selector (data/catalogs/keys.json).",
       "after": "kgSides",

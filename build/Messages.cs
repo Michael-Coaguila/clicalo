@@ -41,6 +41,8 @@ internal static class Messages
         "Crea la nota de novedades para usuarios de la rama, en español e inglés, en changes/unreleased.";
     public const string QuarantineDescription =
         "Compila y ejecuta solo las pruebas en cuarentena (Category=Quarantine), con CLICALO_DESKTOP_TESTS=1.";
+    public const string PackageDescription =
+        "Empaqueta Clícalo con Velopack en artifacts/package (Setup.exe y paquetes) sin publicarlo; con --channel y --version.";
     public const string PerfDescription =
         "Publica las variantes de S5 y mide el arranque, la memoria y, en la CI, del toque al envío.";
 
@@ -66,6 +68,9 @@ internal static class Messages
     public const string NotePurpose = "nota de novedades para usuarios";
     public const string PublishPurpose = "publicación de las variantes de arranque (S5)";
     public const string PerfPurpose = "mediciones de rendimiento en el escritorio";
+    public const string PackagePublishPurpose =
+        "publicación autocontenida de Clícalo y Sentinel para el paquete";
+    public const string PackagePurpose = "empaquetado con Velopack";
 
     public static string DevCliPurpose(string verb) =>
         "orden " + verb + " de la herramienta de desarrollo";
@@ -213,6 +218,25 @@ internal static class Messages
     public const string PublishSection = "Errores de publicación";
     public const string PublishHint =
         "Revisa el error; la publicación con Native AOT de Sentinel necesita las herramientas de C++ de Visual Studio.";
+
+    public const string PackageUsage =
+        "Uso: cl package [--channel stable|beta] [--version X.Y.Z o X.Y.Z-beta.N].";
+
+    public static string PackageBadChannel(string channel) =>
+        "El canal «" + channel + "» no existe: usa stable o beta.";
+
+    public static string PackageBadVersion(string version) =>
+        "La versión «" + version + "» no es SemVer: usa X.Y.Z o X.Y.Z-beta.N.";
+
+    public static string PackageUnknownOption(string option) =>
+        "La opción «" + option + "» no existe en cl package.";
+
+    public const string PackageFailed = "vpk pack no pudo crear el paquete.";
+    public const string PackageSection = "Salida de vpk";
+    public const string PackageHint =
+        "Revisa la salida; vpk es la herramienta local de .config/dotnet-tools.json (cl setup la restaura).";
+
+    public static string PackageDone(string setup) => "instalador en " + setup + ", sin publicar";
 
     public const string BuildFailed = "La compilación terminó con errores.";
     public const string BuildSection = "Errores de compilación";

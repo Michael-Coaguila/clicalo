@@ -12,6 +12,7 @@ using Clicalo.Presentation.ControlCenter;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
+using Clicalo.UI.Wpf.Workspace.SystemSection;
 
 namespace Clicalo.UI.Wpf.Workspace;
 
@@ -51,6 +52,7 @@ public sealed class ControlCenterWindow : Window
     private readonly ContentControl _status = new() { Focusable = false };
     private readonly ColumnDefinition _navColumn = new() { Width = new GridLength(WideNav) };
     private readonly ShortcutsSectionView _shortcuts;
+    private readonly SystemSectionView? _system;
     private readonly CcButton _close;
     private bool _narrow;
     private bool _closing;
@@ -87,6 +89,7 @@ public sealed class ControlCenterWindow : Window
         Ui.Ink(this, BackgroundProperty, ColorToken.Win);
         Ui.Ink(_root, Border.BackgroundProperty, ColorToken.Win);
         _shortcuts = new ShortcutsSectionView(viewModel.Shortcuts);
+        _system = viewModel.System is { } system ? new SystemSectionView(system) : null;
         _close = Ui.Button(Ui.Icon("close", 24), string.Empty, viewModel.Close, height: 40);
         _close.Width = 44;
         _close.Padding = new Thickness(0);
@@ -155,6 +158,7 @@ public sealed class ControlCenterWindow : Window
         _closing = true;
         _viewModel.PropertyChanged -= OnChanged;
         _shortcuts.Detach();
+        _system?.Detach();
         Close();
     }
 
@@ -375,8 +379,12 @@ public sealed class ControlCenterWindow : Window
         AutomationProperties.SetName(group, _viewModel.LanguageName);
         _languages.Content = group;
         _nav.Content = Nav();
-        _section.Content =
-            _viewModel.Section == ControlCenterSection.Shortcuts ? _shortcuts : Soon();
+        _section.Content = _viewModel.Section switch
+        {
+            ControlCenterSection.Shortcuts => _shortcuts,
+            ControlCenterSection.System when _system is not null => _system,
+            _ => Soon(),
+        };
         _status.Content = Status();
     }
 

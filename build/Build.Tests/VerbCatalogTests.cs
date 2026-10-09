@@ -61,6 +61,7 @@ public sealed class VerbCatalogTests
             "note",
             "perf",
             "quarantine",
+            "package",
         ]);
 
     [Fact]
