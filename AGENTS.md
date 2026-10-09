@@ -131,8 +131,8 @@ Disponibles desde M0: `setup`, `build`, `fast`, `test`, `desk`, `fix`, `check` y
 `i18n-check`, `i18n-import` y `adr-check`, que ejecutan la orden del mismo nombre de `tools/Clicalo.DevCli`
 con las opciones que se escriban detrás (`cl i18n-import --check`, `cl adr-check --base main`). Desde M2:
 `run` (la app sin envío de teclas y con datos aislados), `note`, `perf` y `quarantine`. `check`, `test` y `fast`
-solo ejecutan las pruebas deterministas: dejan fuera las de escritorio, caos, rendimiento y cuarentena, que corren
-cada noche (`nightly.yml`) y son obligatorias antes de cada versión. Llegan después: `pr` (M1); `states`,
+solo ejecutan las pruebas deterministas: dejan fuera las de escritorio, caos, rendimiento y cuarentena, que se lanzan
+a mano (`nightly.yml` o `cl desk` en local) y son obligatorias antes de cada versión. Llegan después: `pr` (M1); `states`,
 `accept` y `trace` (M3); `beta` y `sign-manifest` (M5). Cada orden termina en una línea legible por Narrador. Detalle, pasos de `cl check` y
 variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 

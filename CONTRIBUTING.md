@@ -86,9 +86,9 @@ no el historial de `main`: los commits de M0, anteriores a este trabajo, no llev
 - **En cada PR (bloquea):** `verify` (= `cl check`, solo pruebas deterministas: sin escritorio, caos,
   rendimiento ni cuarentena), `title`, `adr` y `dco`; con el repositorio público, también `verify (arm64)`,
   CodeQL y Scorecard.
-- **Cada noche (no bloquea):** `nightly.yml` ejecuta `cl desk`, `cl perf` y `cl quarantine`. Si falla, abre o
-  actualiza el *issue* con la etiqueta `nightly`. Para probar el escritorio de tu PR antes de fusionarlo:
-  Actions › nightly › *Run workflow* con tu rama (o `refs/pull/<número>/head`).
+- **A mano (no bloquea):** `nightly.yml` ejecuta `cl desk`, `cl perf` y `cl quarantine`; ya no corre cada noche,
+  para no gastar los minutos de Actions de la cuenta. Para probar el escritorio de tu PR antes de fusionarlo:
+  Actions › nightly › *Run workflow* con tu rama (o `refs/pull/<número>/head`), o `cl desk` en local.
 - **Antes de publicar una versión (M5 en adelante):** todo en verde, incluido el nivel nocturno, el equipo
   táctil (`lab.yml`) y la aceptación en hardware.
 - Una prueba inestable que no es un defecto del producto se pone en cuarentena con su *issue*, no se
@@ -185,9 +185,9 @@ history of `main`: the M0 commits, which predate the job, do not carry it.
 6. Never edit generated code: change the data or the generator.
 
 The CI gates a PR only with deterministic tests (`verify` = `cl check`, plus `title`, `adr` and `dco`). Desktop,
-performance, chaos and quarantined tests run every night in `nightly.yml`, which opens or updates an issue labeled
-`nightly` when they fail; run it by hand on your branch (Actions › nightly › Run workflow) to try the desktop tests
-before merging. Before any release (M5 onwards) everything must be green, including the nightly tier, the touch lab
+performance, chaos and quarantined tests run by hand in `nightly.yml` (no daily schedule, to save the account's
+Actions minutes); run it on your branch (Actions › nightly › Run workflow), or `cl desk` locally, to try the desktop
+tests before merging. Before any release (M5 onwards) everything must be green, including the nightly tier, the touch lab
 and the hardware acceptance.
 
 ### ADRs and requirements

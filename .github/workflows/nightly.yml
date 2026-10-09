@@ -13,10 +13,9 @@
 # issues), no secrets, no top-level env or defaults.
 name: nightly
 
+# By hand only: the owner keeps the Actions minutes of the account for other private projects, so there is no daily
+# schedule. Run it (or `cl desk`, `cl perf` and `cl quarantine` locally) before every release.
 on:
-  schedule:
-    # Every day at 03:17 UTC, after the day's merges and outside the busy hour of the hosted runners.
-    - cron: "17 3 * * *"
   workflow_dispatch:
     inputs:
       ref:

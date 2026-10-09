@@ -26,7 +26,7 @@ REG-03 se siguen verificando); cambia cuándo se ejecuta cada prueba.
 | Nivel | Qué ejecuta | Cuándo | Si falla |
 |---|---|---|---|
 | **PR** | `cl check` (trabajo `verify`): pruebas deterministas, sin `Requires=Desktop`, `Category=Chaos`, `Category=Perf` ni `Category=Quarantine` | Cada PR y cada *push* a `main` | Bloquea la fusión |
-| **Nocturno** | [`nightly.yml`](../../.github/workflows/nightly.yml): `cl desk` (escritorio, caos incluido), `cl perf` (presupuestos de `budgets.json`) y `cl quarantine` | Cada día, y a mano (Actions › nightly › *Run workflow*, con una rama o `refs/pull/<n>/head` para probar el escritorio de un PR) | Abre o comenta el *issue* con la etiqueta `nightly`; no bloquea |
+| **Nocturno** | [`nightly.yml`](../../.github/workflows/nightly.yml): `cl desk` (escritorio, caos incluido), `cl perf` (presupuestos de `budgets.json`) y `cl quarantine` | A mano (Actions › nightly › *Run workflow*, con una rama o `refs/pull/<n>/head` para probar el escritorio de un PR), o `cl desk` en local; sin ejecución diaria, para no gastar los minutos de Actions | No bloquea |
 | **Publicación** | Todo lo anterior en verde, más el equipo táctil (`lab.yml`) y la aceptación en hardware | Antes de cualquier versión, de M5 en adelante | No se publica |
 
 Las pruebas de escritorio, de tiempos reales, de caos y los bucles estadísticos van al nivel nocturno: llevan
