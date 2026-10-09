@@ -155,10 +155,10 @@ public sealed class ControlCenterViewModel : ObservableObject
     /// <param name="section">The section.</param>
     public void Select(ControlCenterSection section)
     {
-        var opened = section != Section;
         Section = section;
-        if (opened && section == ControlCenterSection.Templates)
+        if (section == ControlCenterSection.Templates)
         {
+            // The open apps and the key are read again each time the section shows (PLA-011, PLA-003).
             Templates?.OnOpened();
         }
 
