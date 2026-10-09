@@ -17,7 +17,8 @@ namespace Clicalo.Infrastructure.Updates;
 /// Velopack, takes the <c>pre-update</c> backup and ends the instance cleanly so the updater can install;</item>
 /// <item>it never goes down by itself: a channel that offers an older version (Beta → Estable) is ignored until it
 /// catches up; the only downgrade is [Volver], confirmed with two taps, to the version before the last update and
-/// during <c>Timings.Backups.PreviousVersionRetention</c>.</item>
+/// during <c>Timings.Backups.PreviousVersionRetention</c>; the version left behind is then offered but never installed
+/// by itself.</item>
 /// </list>
 /// One operation at a time; the status is published on any thread.
 /// </summary>
@@ -149,8 +150,9 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
         }
         else if (VersionOrder.Compare(current, saved.LastRunVersion) < 0)
         {
-            // Back from [Volver]: there is nothing older to go back to.
-            next = new UpdateState(current, null, null);
+            // Back from [Volver]: there is nothing older to go back to, and the version left behind is never installed
+            // again by itself (it is still offered, for [Instalar ahora]).
+            next = new UpdateState(current, null, null, saved.LastRunVersion);
         }
         else
         {
@@ -431,7 +433,19 @@ public sealed partial class UpdateService : IUpdateService, IDisposable
     private void ScheduleAutoInstall()
     {
         var settings = _hooks.Settings();
-        if (!settings.Automatic || settings.AskBefore || Status.Phase != UpdatePhase.Found)
+        string? declined;
+        lock (_gate)
+        {
+            declined = _state?.DeclinedVersion;
+        }
+
+        var status = Status;
+        if (
+            !settings.Automatic
+            || settings.AskBefore
+            || status.Phase != UpdatePhase.Found
+            || string.Equals(status.NewVersion, declined, StringComparison.OrdinalIgnoreCase)
+        )
         {
             return;
         }

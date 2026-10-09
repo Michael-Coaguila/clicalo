@@ -81,6 +81,9 @@ public sealed class UpdateFormatsTests
         UpdateStateFile
             .Parse(UpdateStateFile.Write(new UpdateState("2.0.0", null, null)))
             .ShouldBe(new UpdateState("2.0.0", null, null));
+        UpdateStateFile
+            .Parse(UpdateStateFile.Write(new UpdateState("2.0.0", null, null, "2.1.0")))
+            .ShouldBe(new UpdateState("2.0.0", null, null, "2.1.0"));
         UpdateStateFile.Parse("not json"u8).ShouldBeNull();
         UpdateStateFile.Parse("[1,2]"u8).ShouldBeNull();
         UpdateStateFile.Parse("{\"lastRunVersion\":\"\"}"u8).ShouldBeNull();

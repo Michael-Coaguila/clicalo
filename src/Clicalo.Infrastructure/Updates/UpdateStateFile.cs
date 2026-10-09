@@ -61,6 +61,7 @@ internal sealed class UpdateStateFile(string path, IAtomicFileWriter writer) : I
 
             var previous = (string?)json["previousVersion"];
             var updatedAt = (string?)json["updatedAtUtc"];
+            var declined = (string?)json["declinedVersion"];
             return new UpdateState(
                 last,
                 string.IsNullOrWhiteSpace(previous) ? null : previous,
@@ -71,7 +72,8 @@ internal sealed class UpdateStateFile(string path, IAtomicFileWriter writer) : I
                     out var at
                 )
                     ? at
-                    : null
+                    : null,
+                string.IsNullOrWhiteSpace(declined) ? null : declined
             );
         }
         catch (JsonException)
@@ -96,6 +98,7 @@ internal sealed class UpdateStateFile(string path, IAtomicFileWriter writer) : I
                 "O",
                 CultureInfo.InvariantCulture
             ),
+            ["declinedVersion"] = state.DeclinedVersion,
         };
         return Encoding.UTF8.GetBytes(json.ToJsonString());
     }

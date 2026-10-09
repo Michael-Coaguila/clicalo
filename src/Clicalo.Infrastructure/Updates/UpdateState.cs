@@ -8,8 +8,12 @@ namespace Clicalo.Infrastructure.Updates;
 /// <param name="LastRunVersion">The version that ran last.</param>
 /// <param name="PreviousVersion">The version before the last update; null after a rollback or a first install.</param>
 /// <param name="UpdatedAt">When the last update was first run.</param>
+/// <param name="DeclinedVersion">
+/// The version the person went back from with [Volver]: it is still offered, but never installed by itself.
+/// </param>
 internal sealed record UpdateState(
     string LastRunVersion,
     string? PreviousVersion,
-    DateTimeOffset? UpdatedAt
+    DateTimeOffset? UpdatedAt,
+    string? DeclinedVersion = null
 );

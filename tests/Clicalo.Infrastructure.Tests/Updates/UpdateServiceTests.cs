@@ -290,7 +290,33 @@ public sealed class UpdateServiceTests
 
         service.Status.Phase.ShouldBe(UpdatePhase.UpToDate);
         service.Status.RollbackVersion.ShouldBeNull();
-        _state.State.ShouldBe(new UpdateState("2.0.0", null, null));
+        _state.State.ShouldBe(new UpdateState("2.0.0", null, null, "2.1.0"));
+    }
+
+    [Fact]
+    [Trait("Req", "ACT-005")]
+    [Trait("Req", "ACT-003")]
+    public async Task The_version_left_behind_is_offered_but_never_installed_by_itself()
+    {
+        _client.CurrentVersion = "2.0.0";
+        _client.Feed[UpdateChannel.Stable].AddRange(["2.0.0", "2.1.0"]);
+        _state.State = new UpdateState("2.1.0", "2.0.0", Now - TimeSpan.FromDays(1));
+        _settings = _settings with { AskBefore = false };
+        _idle = Timings.Updates.UpdateIdleRequired;
+        using var service = Create();
+
+        await service.StartAsync(CancellationToken.None);
+        _time.Advance(Timings.Updates.UpdateIdleRequired);
+
+        service.Status.Phase.ShouldBe(UpdatePhase.Found);
+        service.Status.NewVersion.ShouldBe("2.1.0");
+        _client.Applied.ShouldBeEmpty("the person went back from 2.1.0");
+        _exits.ShouldBe(0);
+
+        _client.Feed[UpdateChannel.Stable].Add("2.2.0");
+        await service.CheckAsync(CancellationToken.None);
+
+        _client.Applied.ShouldBe(["2.2.0"], "a later version installs as usual");
     }
 
     private UpdateService Create() =>
