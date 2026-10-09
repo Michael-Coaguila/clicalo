@@ -41,9 +41,11 @@ public static class DockGeometry
     public static bool IsVertical(DockSide side) => side is DockSide.Left or DockSide.Right;
 
     /// <summary>
-    /// The closed handle (PES-001): 32 × 116 on the left and right edges or 128 × 32 on the top and bottom ones,
-    /// centered at <paramref name="percent"/> of the edge (kept within 8–92 %), against the edge of the work area;
-    /// on the right edge with <paramref name="gutter"/>, 18 px away from it for the scroll bar of the app.
+    /// The window of the closed handle (PES-001): it draws 32 × 116 on the left and right edges or 128 × 32 on the top
+    /// and bottom ones, but takes a touch 44 deep (REG-02, ACC-002), so the window is as thick as the touch target and
+    /// the handle is drawn against the screen edge inside it. It is centered at <paramref name="percent"/> of the edge
+    /// (kept within 8–92 %), against the edge of the work area; on the right edge with <paramref name="gutter"/>, 18 px
+    /// away from it for the scroll bar of the app.
     /// </summary>
     /// <param name="side">The edge.</param>
     /// <param name="percent">The position saved for that edge.</param>
@@ -60,7 +62,9 @@ public static class DockGeometry
         var layout = PanelSizes.Layout;
         var work = monitor.WorkArea;
         var p = ClampPercent(percent) / 100d;
-        var thickness = monitor.ToPhysical(layout.DockHandleThicknessPx);
+        var thickness = monitor.ToPhysical(
+            Math.Max(layout.DockHandleThicknessPx, layout.MinTouchTargetPx)
+        );
         if (IsVertical(side))
         {
             var length = monitor.ToPhysical(layout.DockHandleVerticalLengthPx);

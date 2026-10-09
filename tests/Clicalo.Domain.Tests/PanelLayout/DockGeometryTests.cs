@@ -20,20 +20,25 @@ public sealed class DockGeometryTests
         Scale: 1
     );
 
-    /// <summary>Every edge, the size of its handle and where it stands at 50 %.</summary>
+    /// <summary>
+    /// Every edge, the window of its handle and where it stands at 50 %: 116 or 128 long and 44 deep, the touch target
+    /// of the handle drawn 32 deep against the edge (REG-02, ACC-002).
+    /// </summary>
     public static TheoryData<DockSide, PhysicalRect> Handles =>
         new()
         {
-            { DockSide.Right, new PhysicalRect(1920 - 32, 520 - 58, 32, 116) },
-            { DockSide.Left, new PhysicalRect(0, 520 - 58, 32, 116) },
-            { DockSide.Top, new PhysicalRect(960 - 64, 0, 128, 32) },
-            { DockSide.Bottom, new PhysicalRect(960 - 64, 1040 - 32, 128, 32) },
+            { DockSide.Right, new PhysicalRect(1920 - 44, 520 - 58, 44, 116) },
+            { DockSide.Left, new PhysicalRect(0, 520 - 58, 44, 116) },
+            { DockSide.Top, new PhysicalRect(960 - 64, 0, 128, 44) },
+            { DockSide.Bottom, new PhysicalRect(960 - 64, 1040 - 44, 128, 44) },
         };
 
     [Theory]
     [MemberData(nameof(Handles))]
     [Trait("Req", "PES-001")]
-    public void The_handle_is_32_by_116_on_a_side_and_128_by_32_on_top_and_bottom(
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "ACC-002")]
+    public void The_handle_takes_a_touch_44_deep_along_116_on_a_side_and_128_on_top_and_bottom(
         DockSide side,
         PhysicalRect expected
     ) => DockGeometry.Handle(side, 50, Monitor, gutter: false).ShouldBe(expected);
@@ -44,7 +49,7 @@ public sealed class DockGeometryTests
     {
         DockGeometry
             .Handle(DockSide.Right, 50, Monitor, gutter: true)
-            .Left.ShouldBe(1920 - 18 - 32);
+            .Left.ShouldBe(1920 - 18 - 44);
         DockGeometry.Handle(DockSide.Left, 50, Monitor, gutter: true).Left.ShouldBe(0);
     }
 

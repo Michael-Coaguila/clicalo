@@ -78,10 +78,12 @@ public sealed class SurfaceWindowsTests
     }
 
     [Theory]
-    [InlineData(DockSide.Right, 32, 116)]
-    [InlineData(DockSide.Bottom, 128, 32)]
+    [InlineData(DockSide.Right, 44, 116)]
+    [InlineData(DockSide.Bottom, 128, 44)]
     [Trait("Req", "PES-001")]
-    public void The_handle_is_rounded_toward_the_screen_and_sized_by_its_edge(
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "ACC-002")]
+    public void The_handle_is_drawn_32_deep_rounded_toward_the_screen_and_takes_a_touch_44_deep(
         DockSide side,
         double width,
         double height
@@ -103,9 +105,11 @@ public sealed class SurfaceWindowsTests
             );
             try
             {
-                handle.Look.ShouldBe(SurfaceLook.DockHandle(side));
                 handle.Button.Width.ShouldBe(width);
                 handle.Button.Height.ShouldBe(height);
+                var face = handle.Button.Content.ShouldBeOfType<System.Windows.Controls.Border>();
+                face.CornerRadius.ShouldBe(SurfaceLook.DockHandle(side).Corners);
+                (DockGeometry.IsVertical(side) ? face.Width : face.Height).ShouldBe(32);
                 handle.Title.ShouldBe("Abrir barra");
             }
             finally

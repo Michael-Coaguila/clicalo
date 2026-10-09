@@ -23,11 +23,22 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// and a <c>warn</c> dot of 9 when anything is held. A tap opens the bar; a drag along the edge moves it, without opening
 /// it (PAN-004). One window per edge, since the shape of its corners is fixed when it is created.
 /// </summary>
+/// <remarks>
+/// REG-02, ACC-002: the window is 44 deep (<see cref="DockGeometry.Handle"/>) and the handle is drawn 32 deep against
+/// the screen edge inside it; the rest of the window is filled with an almost transparent brush (alpha 1), so a touch
+/// there still reaches the handle instead of going through the per-pixel transparent window. The handle has no
+/// shadow: a shadow window would follow the whole 44-deep window.
+/// </remarks>
 public sealed class DockHandleWindow : TouchSurface
 {
     private const double ChevronPx = 22;
     private const double IconPx = 20;
     private const double DotPx = 9;
+
+    /// <summary>Paints the touch band around the drawn handle without showing it: alpha 0 would let touches through.</summary>
+    private static readonly Brush TouchBand = Frozen(
+        new SolidColorBrush(AlmostTransparent(ThemeCatalog.GetPalette(ThemeId.Dark).Shadow))
+    );
 
     private readonly DockBarViewModel _viewModel;
     private readonly TouchButton _button;
@@ -56,7 +67,7 @@ public sealed class DockHandleWindow : TouchSurface
             theme,
             touch,
             static (_, _, _) => { },
-            SurfaceLook.DockHandle(side)
+            new SurfaceLook(default, Shadow: null)
         )
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -64,9 +75,29 @@ public sealed class DockHandleWindow : TouchSurface
         _viewModel = viewModel;
         var layout = PanelSizes.Layout;
         var vertical = DockGeometry.IsVertical(side);
-        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
-        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
-        SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        Background = TouchBand;
+        BorderThickness = new Thickness(0);
+        var face = new Border
+        {
+            CornerRadius = SurfaceLook.DockHandle(side).Corners,
+            Width = vertical ? layout.DockHandleThicknessPx : double.NaN,
+            Height = vertical ? double.NaN : layout.DockHandleThicknessPx,
+            HorizontalAlignment = side switch
+            {
+                DockSide.Left => HorizontalAlignment.Left,
+                DockSide.Right => HorizontalAlignment.Right,
+                _ => HorizontalAlignment.Stretch,
+            },
+            VerticalAlignment = side switch
+            {
+                DockSide.Top => VerticalAlignment.Top,
+                DockSide.Bottom => VerticalAlignment.Bottom,
+                _ => VerticalAlignment.Stretch,
+            },
+        };
+        face.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
+        face.SetResourceReference(Border.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
+        face.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
         var chevron = SurfaceParts.Icon(
             side switch
@@ -101,15 +132,19 @@ public sealed class DockHandleWindow : TouchSurface
         _ = stack.Children.Add(chevron);
         iconBox.Margin = vertical ? new Thickness(0, 6, 0, 0) : new Thickness(6, 0, 0, 0);
         _ = stack.Children.Add(iconBox);
+        face.Child = stack;
+        var depth = Math.Max(layout.DockHandleThicknessPx, layout.MinTouchTargetPx);
         _button = new TouchButton
         {
             Appearance = ButtonAppearance.Ghost,
-            Content = stack,
+            Content = face,
             Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
             MinWidth = 0,
             MinHeight = 0,
-            Width = vertical ? layout.DockHandleThicknessPx : layout.DockHandleHorizontalLengthPx,
-            Height = vertical ? layout.DockHandleVerticalLengthPx : layout.DockHandleThicknessPx,
+            Width = vertical ? depth : layout.DockHandleHorizontalLengthPx,
+            Height = vertical ? layout.DockHandleVerticalLengthPx : depth,
             Focusable = false,
             IsTabStop = false,
             Background = Brushes.Transparent,
@@ -171,6 +206,15 @@ public sealed class DockHandleWindow : TouchSurface
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
+
+    private static Color AlmostTransparent(Color color) =>
+        Color.FromArgb(byte.MinValue + 1, color.R, color.G, color.B);
+
+    private static Brush Frozen(Brush brush)
+    {
+        brush.Freeze();
+        return brush;
+    }
 
     private void Refresh()
     {
