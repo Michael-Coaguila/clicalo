@@ -77,8 +77,12 @@ public sealed class PackageTests
                 "Michael Coaguila",
                 "--channel",
                 "beta",
+                "--runtime",
+                BuildSteps.RuntimeIdentifier,
                 "--releaseNotes",
                 "notes.md",
+                "--delta",
+                "None",
                 "--outputDir",
                 "out",
             ]);

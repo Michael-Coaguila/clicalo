@@ -14,12 +14,14 @@ internal sealed partial class BuildSteps
     /// <summary>
     /// Publishes Clícalo self-contained with ReadyToRun and Sentinel self-contained next to it (without Native AOT: the
     /// package does not need the C++ linker), writes the release notes and runs <c>vpk pack</c> into
-    /// <c>artifacts/package</c>, where the earlier packages stay so Velopack can build the delta.
+    /// <c>artifacts/package/&lt;channel&gt;</c>, emptied first: the same commit and options always give the same
+    /// files, full packages only (no deltas; Velopack downloads the full package).
     /// </summary>
     /// <param name="args">The words after <c>cl package</c>.</param>
     public async Task PackageAsync(IReadOnlyList<string> args)
     {
-        var output = Path.Combine(layout.Artifacts, "package");
+        var root = Path.Combine(layout.Artifacts, "package");
+        var output = root;
         PackageOptions? options = null;
         string? publish = null;
         await context.Steps.RunAsync(
@@ -37,11 +39,17 @@ internal sealed partial class BuildSteps
                     );
                 }
 
-                publish = Path.Combine(output, "publish", options.Version);
-                if (Directory.Exists(publish))
+                output = Path.Combine(root, options.Channel);
+                publish = Path.Combine(root, "publish", options.Channel);
+                foreach (var folder in new[] { output, publish })
                 {
-                    Directory.Delete(publish, recursive: true);
+                    if (Directory.Exists(folder))
+                    {
+                        Directory.Delete(folder, recursive: true);
+                    }
                 }
+
+                Directory.CreateDirectory(output);
 
                 // Sentinel first: Clícalo's own copies of the shared files are the ones that stay.
                 await PublishProjectAsync(SentinelProject, publish, PackageProperties(options, aot: false));
@@ -53,7 +61,7 @@ internal sealed partial class BuildSteps
             Messages.PackagePurpose,
             async () =>
             {
-                var notes = Path.Combine(output, "notes-" + options!.Version + ".md");
+                var notes = Path.Combine(root, "notes-" + options!.Channel + ".md");
                 await File.WriteAllTextAsync(
                     notes,
                     ReleaseNotesWriter.Write(options.Version, await CommitDateAsync(), Fragments()),
@@ -139,8 +147,12 @@ internal sealed partial class BuildSteps
             "Michael Coaguila",
             "--channel",
             options.Channel,
+            "--runtime",
+            RuntimeIdentifier,
             "--releaseNotes",
             notes,
+            "--delta",
+            "None",
             "--outputDir",
             output,
         ];

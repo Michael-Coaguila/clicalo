@@ -3,11 +3,11 @@ using Clicalo.App.Composition;
 using Clicalo.App.Lifecycle;
 using Clicalo.App.SingleInstance;
 using Clicalo.Infrastructure.Logging;
-using Clicalo.Infrastructure.Updates;
 using Clicalo.Platform.Windows.Startup;
 using Clicalo.UI.Wpf.Pointer;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Velopack;
 
 namespace Clicalo.App;
 
@@ -25,7 +25,13 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        Installation.RunHooks(args, StartupRegistration.RemoveForUninstall);
+        // Velopack's hooks first, here in Main where vpk pack looks for them (ADR-0027).
+        VelopackApp
+            .Build()
+            .SetArgs(args)
+            .SetAutoApplyOnStartup(false)
+            .OnBeforeUninstallFastCallback(_ => StartupRegistration.RemoveForUninstall())
+            .Run();
         PointerSetup.DisableStylusAndTouchSupport();
         _ = PointerSetup.EnableMouseInPointer();
 
