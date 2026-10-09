@@ -6,8 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Clicalo.Presentation.ControlCenter.About;
 using Clicalo.UI.Wpf.Theming.Generated;
-using Clicalo.UI.Wpf.Welcome;
 using Clicalo.UI.Wpf.Workspace.Internal;
+using Clicalo.UI.Wpf.Workspace.Welcome;
 
 namespace Clicalo.UI.Wpf.Workspace.About;
 

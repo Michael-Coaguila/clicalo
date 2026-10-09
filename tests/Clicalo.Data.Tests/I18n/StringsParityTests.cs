@@ -46,17 +46,14 @@ public sealed class StringsParityTests
             .Order(StringComparer.Ordinal)
             .ShouldBe([
                 // Texts of the M3 actions: what each action did and why a launch did not start (catalog §6.1, R-21).
+                "aboutVersion",
                 "actionFailed",
-                // Texts of the M2 walking skeleton: the tray, the app name and the actions of M3 (catalog §6.1).
                 "actionUnavailable",
-                // Texts of the M4 Control Center: «Atajos» and its editor (catalog §6.1, R-22).
                 "addedToProf",
                 "alreadyAdded",
                 "appGone",
                 "appName",
-                // Texts of the M2 integration: failures, undo labels and notices of the five packages (catalog §6.1).
                 "backupDamaged",
-                // Key-group and category labels of data/catalogs (keys.json, categories.json).
                 "catEdit",
                 "catFile",
                 "catFmt",
@@ -68,12 +65,14 @@ public sealed class StringsParityTests
                 "catWeb",
                 "catWin",
                 "ccSoon",
-                // Texts of the M3 Tab view (prototype formats and scroll tools without a key, catalog §6.1).
                 "coachStep",
                 "confirmRun",
                 "confirmRunD",
+                "contactPending",
+                "creatorInitials",
+                "creatorName",
+                "creatorRole",
                 "dataUnreadable",
-                // Texts of the M3 Quick settings, edit mode, context menu and test mode (catalog §6.1).
                 "delA",
                 "dockPageOf",
                 "dockScrollDown",
@@ -81,7 +80,14 @@ public sealed class StringsParityTests
                 "elevatedRefused",
                 "engineFault",
                 "exitApp",
+                "fbBodyLog",
+                "fbBodySys",
+                "fbLogFile",
+                "fbMailCopied",
+                "fbSendLogD",
+                "fbSubject",
                 "generalFixed",
+                "gitHub",
                 "guardianUnstable",
                 "handleLock",
                 "hideA",
@@ -93,9 +99,10 @@ public sealed class StringsParityTests
                 "importInvalid",
                 "importTooLarge",
                 "incompleteTap",
-                // Texts of the M3 search and profile suggestion (catalog §6.1).
                 "installedApp",
                 "itemGone",
+                "kbAppsEn",
+                "kbAppsEs",
                 "keyMissing",
                 "kgFn",
                 "kgMods",
@@ -104,13 +111,16 @@ public sealed class StringsParityTests
                 "latchedName",
                 "launchUnsafe",
                 "linkedToApp",
+                "logPvEmpty",
+                "logPvFailed",
                 "macroCancelled",
                 "macroRanName",
                 "macroRunning",
-                // Texts of the M3 and M4 integration: what a release let go and the step of a running macro (catalog §6.1, R-23).
                 "macroStep",
                 "mouseRan",
                 "noOpenApps",
+                "obKbLine",
+                "obStep",
                 "opLess",
                 "opMore",
                 "openedName",
@@ -153,6 +163,7 @@ public sealed class StringsParityTests
                 "voiceSay",
                 "waitLonger",
                 "waitShorter",
+                "welcomeTitle",
             ]);
         entries
             .Where(static e => I18nData.Category(e.Key) is not null)

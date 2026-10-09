@@ -5,7 +5,7 @@ using System.Windows.Shapes;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
-namespace Clicalo.UI.Wpf.Welcome;
+namespace Clicalo.UI.Wpf.Workspace.Welcome;
 
 /// <summary>
 /// The logo of Clícalo (TEM-008): the accent square with the hand of three strokes, and the word with the «ı» whose

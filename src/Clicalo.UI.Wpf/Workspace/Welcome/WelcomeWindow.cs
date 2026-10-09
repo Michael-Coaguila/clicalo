@@ -11,7 +11,7 @@ using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
-namespace Clicalo.UI.Wpf.Welcome;
+namespace Clicalo.UI.Wpf.Workspace.Welcome;
 
 /// <summary>
 /// The welcome (docs/06, BIE-001): a window 600 wide with padding 32 and radius 20, always on top, with five progress

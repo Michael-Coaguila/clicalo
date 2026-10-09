@@ -1,6 +1,6 @@
 using System.Windows.Automation.Peers;
 
-namespace Clicalo.UI.Wpf.Welcome;
+namespace Clicalo.UI.Wpf.Workspace.Welcome;
 
 /// <summary>The peer of <see cref="BrandWord"/>: one text element with the whole word and no children.</summary>
 /// <param name="owner">The word.</param>

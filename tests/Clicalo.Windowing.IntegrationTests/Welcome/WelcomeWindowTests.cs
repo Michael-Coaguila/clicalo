@@ -5,7 +5,7 @@ using Clicalo.Presentation.Welcome;
 using Clicalo.TestKit;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Theming;
-using Clicalo.UI.Wpf.Welcome;
+using Clicalo.UI.Wpf.Workspace.Welcome;
 using Clicalo.Windowing.IntegrationTests.Theming;
 
 namespace Clicalo.Windowing.IntegrationTests.Welcome;

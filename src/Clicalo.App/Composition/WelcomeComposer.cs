@@ -8,7 +8,7 @@ using Clicalo.Domain.Document;
 using Clicalo.Domain.Templates;
 using Clicalo.Presentation.Welcome;
 using Clicalo.UI.Wpf.Theming;
-using Clicalo.UI.Wpf.Welcome;
+using Clicalo.UI.Wpf.Workspace.Welcome;
 
 namespace Clicalo.App.Composition;
 
@@ -59,6 +59,9 @@ internal sealed class WelcomeComposer : IDisposable
     /// <summary>Raised on the UI thread when the welcome ends.</summary>
     public event EventHandler<WelcomeEndedEventArgs>? Ended;
 
+    /// <summary>Raised on the UI thread when <see cref="IsOpen"/> changes (DimExceptions.WelcomeOpen, SEG-002).</summary>
+    public event EventHandler? StateChanged;
+
     /// <summary>Whether the welcome is open: the panel does not dim meanwhile (DimExceptions.WelcomeOpen).</summary>
     public bool IsOpen => _window is not null;
 
@@ -90,6 +93,7 @@ internal sealed class WelcomeComposer : IDisposable
         window.CloseRequested += (_, _) => session.Skip();
         window.Show();
         window.Place(SystemParameters.WorkArea);
+        StateChanged?.Invoke(this, EventArgs.Empty);
         var result = await _foreground
             .AcquireAsync(
                 new LeaseRequest(LeaseKind.ControlCenter, window.Token, origin, null),
@@ -112,6 +116,7 @@ internal sealed class WelcomeComposer : IDisposable
         _window?.Destroy();
         _window = null;
         _viewModel = null;
+        StateChanged?.Invoke(this, EventArgs.Empty);
         var lease = _lease;
         _lease = null;
         if (lease is not null)

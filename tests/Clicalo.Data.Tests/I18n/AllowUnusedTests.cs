@@ -39,6 +39,8 @@ public sealed class AllowUnusedTests
         listed.Contains("useOther").ShouldBeFalse();
         // M4 shows dupTitle (the state of a repeated tile) and dupChangeT (REP-006), so they left the list.
         listed.Contains("dupTitle").ShouldBeFalse();
-        listed.Count.ShouldBe(58);
+        // About and the welcome show creatorRole and fbLogFile, the catalog §9 corrections of creator and fbLogD.
+        listed.Contains("creator").ShouldBeTrue();
+        listed.Count.ShouldBe(60);
     }
 }

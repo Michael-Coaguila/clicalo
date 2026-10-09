@@ -1,7 +1,7 @@
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 
-namespace Clicalo.UI.Wpf.Welcome;
+namespace Clicalo.UI.Wpf.Workspace.Welcome;
 
 /// <summary>
 /// The logo word drawn in pieces («Cl», «ı» with its accent stroke, «calo»), exposed to UI Automation as one text
