@@ -827,6 +827,7 @@
   "globalHotkeyD": "Funciona desde cualquier app. Viene apagado: actívalo y elige una combinación de la lista.",
   "timeMultiplierT": "Más tiempo para confirmar y leer avisos",
   "timeMultiplierD": "Alarga la confirmación de dos toques y lo que duran los avisos: ×1, ×2 o ×3.",
+  "dockNotices": "Avisos",
   "behind": "tu documento",
   "panelShows": "Tu panel muestra:",
   "activeApp": "app activa",

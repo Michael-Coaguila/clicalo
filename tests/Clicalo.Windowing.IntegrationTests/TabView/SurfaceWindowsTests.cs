@@ -146,7 +146,7 @@ public sealed class SurfaceWindowsTests
                 bar.Look.ShouldBe(SurfaceLook.Panel);
                 bar.TileControls.Select(static t => t.AccessibleName)
                     .ShouldBe(["Copiar", "Mantener Ctrl", "Mayús fija", "Web"]);
-                bar.Buttons.Count.ShouldBe(10);
+                bar.Buttons.Count.ShouldBe(11);
 
                 dock.ApplyTileSpace(130);
                 bar.TileControls.Count.ShouldBe(2);
@@ -277,6 +277,8 @@ public sealed class SurfaceWindowsTests
         public void ToggleSticky() { }
 
         public void TogglePinOpen() { }
+
+        public void QuickSettings() { }
 
         public void CoachNext() { }
 

@@ -43,6 +43,25 @@ public static class DockRules
     public static bool ShowsCoach(bool barOpen, bool coachDone, bool sideWindowOpen) =>
         barOpen && !coachDone && !sideWindowOpen;
 
+    /// <summary>
+    /// PES-014: the notice surface of the Tab view shows beside the bar, or beside the handle when the bar is closed,
+    /// while there is something to tell: a notice, the administrator notice or test mode.
+    /// </summary>
+    /// <param name="form">The form of the panel.</param>
+    /// <param name="notice">A notice is on show (AVI-002).</param>
+    /// <param name="adminNotice">The app in front is elevated and Clícalo is not (EJE-013).</param>
+    /// <param name="testMode">Test mode is on (TAC-008).</param>
+    public static bool ShowsNotices(PanelForm form, bool notice, bool adminNotice, bool testMode) =>
+        PanelForms.IsDock(form) && (notice || adminNotice || testMode);
+
+    /// <summary>
+    /// PES-009, CUA-014: Quick settings and the menu of a shortcut open beside the bar only while it is open.
+    /// </summary>
+    /// <param name="form">The form of the panel.</param>
+    /// <param name="open">Quick settings or the menu is open.</param>
+    public static bool ShowsBesideBar(PanelForm form, bool open) =>
+        form == PanelForm.DockOpen && open;
+
     /// <summary>The step after <paramref name="step"/>, or <see langword="null"/> when the guide ends (PES-015).</summary>
     /// <param name="step">The step on show, from 0.</param>
     public static int? NextCoachStep(int step) => step + 1 < CoachSteps ? step + 1 : null;

@@ -21,4 +21,20 @@ public sealed record SurfaceLayout(
     bool Panic,
     DockFlyout Flyout,
     bool ShowsCoach
-);
+)
+{
+    /// <summary>
+    /// The settings the handle reads its position from, per monitor and edge (PES-016); <see langword="null"/> uses the
+    /// position per edge of <see cref="Dock"/>.
+    /// </summary>
+    public UserSettings? Settings { get; init; }
+
+    /// <summary>The notice surface of the Tab view shows beside the bar or the handle (PES-014).</summary>
+    public bool ShowsNotice { get; init; }
+
+    /// <summary>The menu of a shortcut shows beside the open bar (CUA-014, PES-010).</summary>
+    public bool ShowsMenu { get; init; }
+
+    /// <summary>Quick settings show beside the open bar (PES-009).</summary>
+    public bool ShowsQuick { get; init; }
+}

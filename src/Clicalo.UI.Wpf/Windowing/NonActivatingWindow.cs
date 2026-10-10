@@ -43,7 +43,10 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// Look (spike S6, <c>docs/testing/spikes/S6.md</c>): a surface with a <see cref="Look"/> is a per-pixel transparent
 /// window (<c>AllowsTransparency</c>) whose template rounds and clips it, so the transparent corners let touches through;
 /// its shadow lives in a separate click-through window (<c>WS_EX_LAYERED | WS_EX_TRANSPARENT</c>) right below it.
-/// <see cref="FadeTo"/> and <see cref="ApplyDim"/> change the opacity of both (GEN-009).
+/// <see cref="FadeTo"/> and <see cref="ApplyDim"/> change the opacity of both (GEN-009). A surface whose window is
+/// larger than what it draws, to take the touch on 44 px (REG-02), gives the shadow the drawn shape with
+/// <see cref="ShadowShape"/> and <see cref="ShadowInset"/>, so the shadow hugs the drawing and not the touch margin
+/// (the handle of the Tab view, PES-001).
 /// </para>
 /// <para>
 /// Showing is only <see cref="ShowPassive"/>: <c>Show()</c>, <c>ShowDialog()</c>, <c>Activate()</c>, <c>Focus()</c>
@@ -72,6 +75,8 @@ public abstract class NonActivatingWindow : Window
 
     private nint _handle;
     private SurfaceLook? _look;
+    private SurfaceLook? _shadowShape;
+    private Thickness _shadowInset;
     private SurfaceShadow? _shadow;
 
     /// <summary>
@@ -140,6 +145,40 @@ public abstract class NonActivatingWindow : Window
         }
     }
 
+    /// <summary>
+    /// The shape and the shadow of what the surface draws when that is not the whole window; null, the default, uses
+    /// <see cref="Look"/>. Set it in the constructor, with <see cref="ShadowInset"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The handle already exists.</exception>
+    public SurfaceLook? ShadowShape
+    {
+        get => _shadowShape;
+        protected set
+        {
+            VerifyBeforeHandle();
+            _shadowShape = value;
+            if (value?.Shadow is not null)
+            {
+                SetResourceReference(ShadowBrushProperty, ThemeBrushKey.For(ColorToken.Shadow));
+            }
+        }
+    }
+
+    /// <summary>
+    /// How far inside the window the drawing of <see cref="ShadowShape"/> starts on each side, in device-independent
+    /// pixels: the invisible touch margin the shadow must not follow (REG-02, PES-001).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The handle already exists.</exception>
+    public Thickness ShadowInset
+    {
+        get => _shadowInset;
+        protected set
+        {
+            VerifyBeforeHandle();
+            _shadowInset = value;
+        }
+    }
+
     /// <summary>The shadow window once the handle exists; <see cref="WindowToken.None"/> without a shadow.</summary>
     public WindowToken ShadowWindow =>
         _shadow is { } shadow ? new(shadow.Handle) : WindowToken.None;
@@ -155,7 +194,7 @@ public abstract class NonActivatingWindow : Window
     {
         get
         {
-            if (_look?.Shadow is not { } shadow || SystemParameters.HighContrast)
+            if ((_shadowShape ?? _look)?.Shadow is not { } shadow || SystemParameters.HighContrast)
             {
                 return default;
             }
@@ -373,9 +412,9 @@ public abstract class NonActivatingWindow : Window
             throw;
         }
 
-        if (_look?.Shadow is not null)
+        if ((_shadowShape ?? _look) is { Shadow: not null } shape)
         {
-            _shadow = new SurfaceShadow(this, _look, anchor);
+            _shadow = new SurfaceShadow(this, shape, anchor, _shadowInset);
             _shadow.Follow();
         }
 
@@ -390,6 +429,17 @@ public abstract class NonActivatingWindow : Window
     protected virtual void OnSurfaceInitialized() { }
 
     private HWND EnsureSurfaceHandle() => (HWND)new WindowInteropHelper(this).EnsureHandle();
+
+    private void VerifyBeforeHandle()
+    {
+        VerifyAccess();
+        if (new WindowInteropHelper(this).Handle != 0)
+        {
+            throw new InvalidOperationException(
+                "The shadow of a surface is set before its handle exists."
+            );
+        }
+    }
 
     [SuppressMessage(
         "Clicalo.Windowing",

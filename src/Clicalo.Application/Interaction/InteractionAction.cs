@@ -34,10 +34,19 @@ public abstract record InteractionAction
     public sealed record CloseFlyout : InteractionAction;
 
     /// <summary>
-    /// The view changed (Quick settings › View, Expand or Search on the bar): out of the bubble, the bar folded and no
-    /// side window (PAN-001 c, d).
+    /// The view changed (Quick settings › View or Expand on the bar): out of the bubble, the bar folded and no side
+    /// window (PAN-001 c, d).
     /// </summary>
     public sealed record ViewChanged : InteractionAction;
+
+    /// <summary>
+    /// 🔍 on the bar (BUS-006): the Full view with the search, for a while; the side windows close and the bar is
+    /// where it was when the search ends.
+    /// </summary>
+    public sealed record PeekSearch : InteractionAction;
+
+    /// <summary>The search opened from the bar closed, or one of its results ran: back to the Tab view (BUS-006).</summary>
+    public sealed record EndSearchPeek : InteractionAction;
 
     /// <summary>[next] in the guide: the next step (PES-015); after the last one it is back at 0 for another time.</summary>
     public sealed record CoachNext : InteractionAction;

@@ -161,7 +161,7 @@ public sealed class SurfaceSetDesktopTests
                 () => { },
                 static (_, _, _) => { },
                 _ => { },
-                (_, _) => { },
+                (_, _, _) => { },
                 (_, _) => { },
                 () => { }
             )
@@ -194,6 +194,8 @@ public sealed class SurfaceSetDesktopTests
         public void ToggleSticky() { }
 
         public void TogglePinOpen() { }
+
+        public void QuickSettings() { }
 
         public void CoachNext() { }
 

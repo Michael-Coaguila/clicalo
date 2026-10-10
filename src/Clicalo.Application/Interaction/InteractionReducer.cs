@@ -24,7 +24,23 @@ public static class InteractionReducer
         ArgumentNullException.ThrowIfNull(action);
         var next = action switch
         {
-            InteractionAction.Minimize => state with { Minimized = true, Flyout = DockFlyout.None },
+            // «−» on the Full view of a search from the bar only ends it: the Tab view has no bubble (PAN-001).
+            InteractionAction.Minimize => state.SearchPeek
+                ? state with
+                {
+                    SearchPeek = false,
+                }
+                : state with
+                {
+                    Minimized = true,
+                    Flyout = DockFlyout.None,
+                },
+            InteractionAction.PeekSearch => state with
+            {
+                SearchPeek = true,
+                Flyout = DockFlyout.None,
+            },
+            InteractionAction.EndSearchPeek => state with { SearchPeek = false },
             InteractionAction.Restore => state with { Minimized = false },
             InteractionAction.OpenDock => state with { DockOpen = true },
             InteractionAction.CloseDock => state with
@@ -41,6 +57,7 @@ public static class InteractionReducer
             InteractionAction.CloseFlyout => state with { Flyout = DockFlyout.None },
             InteractionAction.ViewChanged => state with
             {
+                SearchPeek = false,
                 Minimized = false,
                 DockOpen = false,
                 Flyout = DockFlyout.None,

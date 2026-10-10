@@ -22,7 +22,9 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// The open bar of the Tab view (docs/04 «Vista pestaña», PES-005 to PES-008): radius 18, padding 8 and gap 6, with four
 /// zones separated by dividers: (1) close and expand; (2) «What to see», the segmented ★ Frequents / profile and the
 /// Auto/Fixed pill; (3) the shortcuts that fit whole, with «▲ i/N ▼» on a side edge or ◀ ▶ on the top and bottom ones;
-/// (4) the tools: Search, Repeat, 📌 Pinned, Sticky keys, the lock of the bar and the Mantener scroll up and down. One
+/// (4) the tools: Search, Repeat, 📌 Pinned, Sticky keys, the lock of the bar, <c>tune</c> for Quick settings (PES-009)
+/// and the Mantener scroll up and down. Its shortcuts open their menu with a long press and show the marks of test mode
+/// (PES-010, PES-014). One
 /// window per edge: its shape and its direction are fixed when it is created. It measures what is left for the
 /// shortcuts along the edge and hands it to the view model (PES-007: they are counted, not estimated).
 /// </summary>
@@ -37,6 +39,7 @@ public sealed class DockBarWindow : TouchSurface
     private const double ToolLength = 40;
     private const double PinnedLength = 38;
     private const double LockLength = 34;
+    private const double TuneLength = 34;
     private const double PagerLength = 30;
     private const double HorizontalArrowWidth = 26;
     private const double HorizontalPairWidth = 40;
@@ -53,6 +56,7 @@ public sealed class DockBarWindow : TouchSurface
         ShortcutTile Control,
         PropertyChangedEventHandler Handler
     )> _tileControls = [];
+    private readonly List<Clicalo.UI.Wpf.Surfaces.Panel.TestMode.TestMarkBadge> _badges = [];
     private readonly ShortcutTile _close;
     private readonly ShortcutTile _expand;
     private readonly TouchButton _frequents;
@@ -73,6 +77,7 @@ public sealed class DockBarWindow : TouchSurface
     private readonly TouchButton _pinned;
     private readonly TouchButton _sticky;
     private readonly TouchButton _lock;
+    private readonly TouchButton _tune;
     private readonly ShortcutTile _scrollUp;
     private readonly ShortcutTile _scrollDown;
     private readonly PropertyChangedEventHandler _scrollUpHandler;
@@ -110,6 +115,7 @@ public sealed class DockBarWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(viewModel);
         Side = side;
         _viewModel = viewModel;
+        Modes = viewModel.Modes;
         _vertical = DockGeometry.IsVertical(side);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
@@ -275,6 +281,10 @@ public sealed class DockBarWindow : TouchSurface
         Size(_pinned, PinnedLength, crossTile, horizontalWidth: 56);
         Size(_sticky, PinnedLength, crossTile, horizontalWidth: 56);
         Size(_lock, LockLength, crossTile, horizontalWidth: 56);
+
+        // PES-009: Quick settings beside the bar, the side of the Tab view included.
+        _tune = SurfaceParts.Button("tune", 20, ButtonAppearance.Neutral, viewModel.QuickSettings);
+        Size(_tune, TuneLength, crossTile, horizontalWidth: 44);
         (_scrollUp, _scrollUpHandler) = DockTileFactory.Create(
             viewModel.ScrollUp,
             double.NaN,
@@ -299,6 +309,7 @@ public sealed class DockBarWindow : TouchSurface
         _ = tools.Children.Add(_pinned);
         _ = tools.Children.Add(_sticky);
         _ = tools.Children.Add(_lock);
+        _ = tools.Children.Add(_tune);
         _ = tools.Children.Add(Pair(_scrollUp, _scrollDown, ToolLength, crossTile));
         foreach (FrameworkElement tool in tools.Children)
         {
@@ -358,13 +369,34 @@ public sealed class DockBarWindow : TouchSurface
     /// <summary>Sticky keys, where its window goes beside.</summary>
     public PhysicalRect StickyButtonBounds => PhysicalBounds(_sticky, inflate: false);
 
+    /// <summary>The <c>tune</c> button, where Quick settings go beside (PES-009).</summary>
+    public PhysicalRect TuneButtonBounds => PhysicalBounds(_tune, inflate: false);
+
+    /// <summary>The <c>tune</c> button (PES-009).</summary>
+    public TouchButton TuneButton => _tune;
+
     /// <summary>The shortcut tiles of the page, in order.</summary>
     public IReadOnlyList<ShortcutTile> TileControls =>
         [.. _tileControls.Select(static t => t.Control)];
 
-    /// <summary>The buttons of the bar, in order: close, expand, Frequents, profile, Auto/Fixed, search, repeat, pinned, sticky, lock.</summary>
+    /// <summary>
+    /// The buttons of the bar, in order: close, expand, Frequents, profile, Auto/Fixed, search, repeat, pinned, sticky,
+    /// lock, tune.
+    /// </summary>
     public IReadOnlyList<Control> Buttons =>
-        [_close, _expand, _frequents, _profile, _pill, _search, _repeat, _pinned, _sticky, _lock];
+        [
+            _close,
+            _expand,
+            _frequents,
+            _profile,
+            _pill,
+            _search,
+            _repeat,
+            _pinned,
+            _sticky,
+            _lock,
+            _tune,
+        ];
 
     /// <inheritdoc />
     protected override IEnumerable<SurfaceTarget> CollectTargets()
@@ -376,7 +408,7 @@ public sealed class DockBarWindow : TouchSurface
         yield return SurfaceTarget.Button(_pill, _viewModel.ToggleLock);
         foreach (var (viewModel, control, _) in _tileControls)
         {
-            yield return SurfaceTarget.For(control, viewModel);
+            yield return SurfaceTarget.For(control, viewModel, longPress: Modes is not null);
         }
 
         yield return SurfaceTarget.Button(_previous, _viewModel.Previous);
@@ -386,6 +418,7 @@ public sealed class DockBarWindow : TouchSurface
         yield return SurfaceTarget.Button(_pinned, _viewModel.TogglePinned);
         yield return SurfaceTarget.Button(_sticky, _viewModel.ToggleSticky);
         yield return SurfaceTarget.Button(_lock, _viewModel.TogglePinOpen);
+        yield return SurfaceTarget.Button(_tune, _viewModel.QuickSettings);
         yield return SurfaceTarget.For(_scrollUp, _viewModel.ScrollUp);
         yield return SurfaceTarget.For(_scrollDown, _viewModel.ScrollDown);
     }
@@ -401,6 +434,11 @@ public sealed class DockBarWindow : TouchSurface
         foreach (var (viewModel, _, handler) in _tileControls)
         {
             DockTileFactory.Detach(viewModel, handler);
+        }
+
+        foreach (var badge in _badges)
+        {
+            badge.Detach();
         }
 
         base.OnClosed(e);
@@ -507,6 +545,12 @@ public sealed class DockBarWindow : TouchSurface
             DockTileFactory.Detach(viewModel, handler);
         }
 
+        foreach (var badge in _badges)
+        {
+            badge.Detach();
+        }
+
+        _badges.Clear();
         _tileControls.Clear();
         _tiles.Children.Clear();
         var metrics = _viewModel.Metrics;
@@ -517,14 +561,21 @@ public sealed class DockBarWindow : TouchSurface
                 _vertical ? double.NaN : metrics.DockHorizontalTileWidthPx,
                 _vertical ? metrics.DockVerticalTileHeightPx : metrics.DockHorizontalTileHeightPx,
                 metrics.DockTileIconPx,
-                Math.Max(TypeScale.Minimum, metrics.DockTileLabelPx)
+                Math.Max(TypeScale.Minimum, metrics.DockTileLabelPx),
+                Modes
             );
-            control.Margin =
+            var (cell, badge) = DockTileFactory.Cell(control, tile, Modes);
+            cell.Margin =
                 _tiles.Children.Count == 0 ? new Thickness(0)
                 : _vertical ? new Thickness(0, Gap, 0, 0)
                 : new Thickness(Gap, 0, 0, 0);
+            if (badge is not null)
+            {
+                _badges.Add(badge);
+            }
+
             _tileControls.Add((tile, control, handler));
-            _ = _tiles.Children.Add(control);
+            _ = _tiles.Children.Add(cell);
         }
 
         RefreshTargets();
@@ -596,6 +647,10 @@ public sealed class DockBarWindow : TouchSurface
         _lock.Appearance = pinOpen ? ButtonAppearance.Accent : ButtonAppearance.Neutral;
         SurfaceParts.Name(_lock, vm.PinName);
         _lock.ToolTip = vm.PinName;
+        SurfaceParts.Name(_tune, labels.QuickSettings);
+        _tune.ToolTip = labels.QuickSettings;
+        _tune.Appearance =
+            state?.QuickOpen == true ? ButtonAppearance.Outline : ButtonAppearance.Neutral;
         RefreshTargets();
     }
 

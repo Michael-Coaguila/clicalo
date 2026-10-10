@@ -39,6 +39,12 @@ public sealed record InteractionState(
     public static InteractionState Initial { get; } =
         new(false, false, DockFlyout.None, 0, DimExceptions.None, false, null, 0);
 
+    /// <summary>
+    /// 🔍 on the bar of the Tab view opened the search (BUS-006): the panel shows as the Full view until the search
+    /// closes or a result runs; the saved view stays the Tab view.
+    /// </summary>
+    public bool SearchPeek { get; init; }
+
     /// <summary>The notices and which one shows now (AVI-002).</summary>
     public NoticeQueue Notices { get; init; } = NoticeQueue.Empty;
 
