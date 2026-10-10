@@ -100,7 +100,7 @@ public sealed class SearchSurfaceTests
             card.Visibility.ShouldBe(Visibility.Collapsed);
         });
 
-    private static SearchViewModel Search()
+    internal static SearchViewModel Search()
     {
         var search = new SearchViewModel(
             new PanelSearch(
@@ -119,7 +119,7 @@ public sealed class SearchSurfaceTests
         return search;
     }
 
-    private static SuggestionViewModel Suggestion() =>
+    internal static SuggestionViewModel Suggestion() =>
         new(
             new DocumentStore(
                 SearchTestWorld.Document(),

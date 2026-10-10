@@ -455,7 +455,7 @@ public sealed class TemplatesSectionTests
             false
         );
 
-    private sealed class Setup
+    internal sealed class Setup
     {
         public Setup(bool consent = false)
         {
@@ -575,7 +575,7 @@ public sealed class TemplatesSectionTests
             );
     }
 
-    private sealed class Canned : ITemplateGenerator
+    internal sealed class Canned : ITemplateGenerator
     {
         public List<TemplateRequest> Requests { get; } = [];
 
@@ -616,7 +616,7 @@ public sealed class TemplatesSectionTests
         }
     }
 
-    private sealed class MemoryKeys : IAiKeyStore
+    internal sealed class MemoryKeys : IAiKeyStore
     {
         private Sensitive<string>? _key;
 
@@ -639,7 +639,7 @@ public sealed class TemplatesSectionTests
         }
     }
 
-    private sealed class NoSharing : IProfileSharing
+    internal sealed class NoSharing : IProfileSharing
     {
         public SharedProfileFile Export(Profile profile, bool includeTextsInClear) =>
             new("clicalo-perfil-x.json", ReadOnlyMemory<byte>.Empty, 0);

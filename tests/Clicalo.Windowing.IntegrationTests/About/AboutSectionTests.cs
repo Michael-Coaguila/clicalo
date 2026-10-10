@@ -397,7 +397,7 @@ public sealed class AboutSectionTests
             theme.Dispose();
         });
 
-    private sealed class World
+    internal sealed class World
     {
         public World(AboutLinks? links = null) =>
             Services = new AboutServices(

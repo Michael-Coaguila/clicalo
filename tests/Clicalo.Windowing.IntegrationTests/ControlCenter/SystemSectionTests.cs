@@ -16,6 +16,7 @@ using Clicalo.TestKit;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Workspace;
+using Clicalo.Windowing.IntegrationTests.Automation.Audit;
 using Clicalo.Windowing.IntegrationTests.Theming;
 
 namespace Clicalo.Windowing.IntegrationTests.ControlCenter;
@@ -638,7 +639,8 @@ public sealed class SystemSectionTests
     [Fact]
     [Trait("Req", "SIS-001")]
     [Trait("Req", "REG-02")]
-    public void The_window_draws_the_three_tabs()
+    [Trait("Req", "REG-06")]
+    public void The_window_draws_the_three_tabs_with_every_control_named_and_at_44()
     {
         var world = new SystemTestWorld();
         world.Updates.Status = world.Updates.Status with
@@ -692,6 +694,15 @@ public sealed class SystemSectionTests
 
                     WpfThread.DrainPendingWork();
                     viewModel.System.Screen.Tab.ShouldBe(tab);
+
+                    // REG-02, REG-06: the tab as it is drawn, at the default size of the window.
+                    using var host = AuditHost.OfWindow(
+                        window,
+                        theme,
+                        ControlCenterWindow.DefaultWidth,
+                        ControlCenterWindow.DefaultHeight
+                    );
+                    SurfaceAudit.ShouldPass(host, "Sistema · " + tab, atLeast: 10, TouchInput.Wpf);
                 });
                 if (preview)
                 {
