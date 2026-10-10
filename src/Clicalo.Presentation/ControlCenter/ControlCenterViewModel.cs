@@ -1,4 +1,3 @@
-using System.Globalization;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Library;
@@ -95,7 +94,9 @@ public sealed class ControlCenterViewModel : ObservableObject
                 services.Confirm,
                 services.Time,
                 services.Post,
-                services.OpenWelcome ?? (static () => { })
+                services.OpenWelcome ?? (static () => { }),
+                services.Templates?.Ai,
+                () => services.Catalogs().KeyLabels
             )
         );
         TouchPrecision = new TouchPrecisionViewModel(
@@ -216,9 +217,20 @@ public sealed class ControlCenterViewModel : ObservableObject
     public void Select(ControlCenterSection section)
     {
         Section = section;
+        if (section != ControlCenterSection.Shortcuts)
+        {
+            // EDI-010: «Grabar con teclado» belongs to the editor; in another section the keyboard is free again.
+            Shortcuts.Editor.StopRecording();
+        }
+
         if (section == ControlCenterSection.System)
         {
             System?.OnShown();
+        }
+
+        if (section == ControlCenterSection.Panel)
+        {
+            General.OnShown();
         }
 
         if (section == ControlCenterSection.Templates)
@@ -337,7 +349,8 @@ public sealed class ControlCenterViewModel : ObservableObject
                 notice.IsWarning,
                 canUndo,
                 T(L.Undo),
-                T(notice.UndoName ?? L.Undo)
+                T(notice.UndoName ?? L.Undo),
+                IsNotice: true
             )
             : new StatusModel("info", T(L.Saved), false, false, T(L.Undo), T(L.Undo));
     }
@@ -368,7 +381,7 @@ public sealed class ControlCenterViewModel : ObservableObject
             count > 0
                 ? countName is { } name
                     ? T(name)
-                    : count.ToString(CultureInfo.InvariantCulture) + " " + T(L.DupSummary)
+                    : T(L.DupSummaryN(count))
                 : string.Empty,
             section == Section,
             separator

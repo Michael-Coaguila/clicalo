@@ -11,6 +11,9 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="PickLabel">[openTabs] or [pickProgram].</param>
 /// <param name="Picks">The open apps, for an App shortcut.</param>
 /// <param name="DictateName">The accessible name of the dictation button.</param>
+/// <param name="OpenLabel">[linkOpenApps], over the open apps.</param>
+/// <param name="ProgramsLabel">[programsInstalled], over the installed programs.</param>
+/// <param name="Programs">The installed programs, Store apps included (EDI-014).</param>
 public sealed record TargetModel(
     string Label,
     string Value,
@@ -18,5 +21,8 @@ public sealed record TargetModel(
     string InvalidText,
     string PickLabel,
     ValueList<AppChip> Picks,
-    string DictateName
+    string DictateName,
+    string OpenLabel,
+    string ProgramsLabel,
+    ValueList<ProgramChip> Programs
 );

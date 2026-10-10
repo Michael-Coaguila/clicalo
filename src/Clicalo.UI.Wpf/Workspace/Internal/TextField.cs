@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Resources;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -10,14 +11,19 @@ namespace Clicalo.UI.Wpf.Workspace.Internal;
 
 /// <summary>
 /// A text field of the Control Center (docs/05): 44 high (or three lines), <c>field</c> fill, 10 px radius, an accent
-/// outline of 2 while it has the keyboard, and a placeholder that hides while there is text. Changes are reported as
+/// outline and the focus ring of 3 px, 2 px outside (TEM-009), while it has the keyboard, and a placeholder that hides
+/// while there is text. Changes are reported as
 /// they are typed (everything saves itself, REG-07). The view model's text replaces the field's only while the field
 /// does not have the keyboard, so typing is never overwritten.
 /// </summary>
 internal sealed class TextField : Border
 {
+    private const double Radius = 10;
+    private const double Outline = 1;
+
     private readonly TextBlock _placeholder;
     private bool _applying;
+    private bool _warn;
 
     /// <summary>Creates the field.</summary>
     /// <param name="name">Its accessible name.</param>
@@ -26,8 +32,8 @@ internal sealed class TextField : Border
     /// <param name="mono">JetBrains Mono, for addresses and programs.</param>
     public TextField(string name, string placeholder, bool multiline = false, bool mono = false)
     {
-        CornerRadius = new CornerRadius(10);
-        BorderThickness = new Thickness(1);
+        CornerRadius = new CornerRadius(Radius);
+        BorderThickness = new Thickness(Outline);
         SnapsToDevicePixels = true;
         Ui.Ink(this, BackgroundProperty, ColorToken.Field);
         Ui.Ink(this, BorderBrushProperty, ColorToken.Border);
@@ -61,6 +67,7 @@ internal sealed class TextField : Border
         var layers = new Grid();
         layers.Children.Add(_placeholder);
         layers.Children.Add(Box);
+        FocusRing = FieldFocusRing.Attach(layers, Box, Radius, Outline);
         Child = layers;
         Box.TextChanged += (_, _) =>
         {
@@ -87,6 +94,9 @@ internal sealed class TextField : Border
 
     /// <summary>The text box.</summary>
     public TextBox Box { get; }
+
+    /// <summary>The focus ring, visible while the box has the keyboard (TEM-009).</summary>
+    public Border FocusRing { get; }
 
     /// <summary>The text.</summary>
     public string Text => Box.Text;
@@ -124,13 +134,20 @@ internal sealed class TextField : Border
     /// <param name="warn">Whether to warn.</param>
     public void Warn(bool warn)
     {
-        Ui.Ink(this, BorderBrushProperty, warn ? ColorToken.Warn : ColorToken.Border);
-        BorderThickness = new Thickness(warn ? 2 : 1);
+        _warn = warn;
+        Paint(Box.IsKeyboardFocused);
     }
 
-    private void Focused(bool focused)
-    {
-        Ui.Ink(this, BorderBrushProperty, focused ? ColorToken.Accent : ColorToken.Border);
-        BorderThickness = new Thickness(focused ? 2 : 1);
-    }
+    private void Focused(bool focused) => Paint(focused);
+
+    // The outline keeps its thickness, so the ring stays 2 px outside it and the text never jumps; the colour says
+    // warn, focus or rest.
+    private void Paint(bool focused) =>
+        Ui.Ink(
+            this,
+            BorderBrushProperty,
+            _warn ? ColorToken.Warn
+                : focused ? ColorToken.Accent
+                : ColorToken.Border
+        );
 }

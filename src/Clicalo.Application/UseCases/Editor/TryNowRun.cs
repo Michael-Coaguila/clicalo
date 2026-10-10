@@ -18,7 +18,8 @@ namespace Clicalo.Application.UseCases.Editor;
 /// </summary>
 /// <remarks>
 /// Hold is held and Toggle latched for <c>Timings.TryNow.TryNowHoldDuration</c>, then released with a second
-/// activation. A blocked combination, an incomplete shortcut and an elevated app (when Clícalo is not) are never tried.
+/// activation. A shortcut that asks for confirmation is confirmed in the Control Center before the try, so it is sent
+/// without it. A blocked combination, an incomplete shortcut and an elevated app (when Clícalo is not) are never tried.
 /// Used by the Workspace role, one run at a time; continuations resume on the calling thread.
 /// </remarks>
 public sealed class TryNowRun
@@ -99,7 +100,17 @@ public sealed class TryNowRun
         try
         {
             return await TryAsync(
-                    new Attempt(shortcut, origin, injection, target),
+                    // PRB-004: the person already confirmed it in the Control Center, so the engine runs it at once
+                    // instead of arming it.
+                    new Attempt(
+                        shortcut with
+                        {
+                            Options = shortcut.Options with { Confirm = false },
+                        },
+                        origin,
+                        injection,
+                        target
+                    ),
                     controlCenter,
                     cancellationToken
                 )

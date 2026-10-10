@@ -15,6 +15,7 @@ namespace Clicalo.Presentation.ControlCenter.General;
 /// <param name="Safety">Seguridad de teclas.</param>
 /// <param name="Access">Accesibilidad y datos.</param>
 /// <param name="Start">Primeros pasos.</param>
+/// <param name="Ai">Inteligencia artificial (GEN-015); null where the AI is not composed.</param>
 public sealed record GeneralScreen(
     string Title,
     string Subtitle,
@@ -25,5 +26,6 @@ public sealed record GeneralScreen(
     FeedbackModel Feedback,
     SafetyModel Safety,
     AccessModel Access,
-    StartModel Start
+    StartModel Start,
+    AiModel? Ai = null
 );

@@ -151,7 +151,7 @@ public sealed class ShortcutEditorView : StackPanel
 
         if (before?.Combo != model.Combo)
         {
-            Show(_combo, model.Combo is { } combo ? Combo(combo) : null);
+            Show(_combo, model.Combo is { } combo ? ComboView.Build(combo, _viewModel) : null);
         }
 
         if (
@@ -376,7 +376,11 @@ public sealed class ShortcutEditorView : StackPanel
         var dictate = Ui.Button(
             Ui.Icon("mic", 22, ColorToken.Accent),
             model.DictateName,
-            () => Dictate(_name),
+            () =>
+            {
+                _ = Keyboard.Focus(_name.Box);
+                _viewModel.DictateName();
+            },
             ColorToken.AccentWash
         );
         dictate.Width = 44;
@@ -432,6 +436,17 @@ public sealed class ShortcutEditorView : StackPanel
         glass.Margin = new Thickness(0, 0, 6, 0);
         DockPanel.SetDock(glass, Dock.Left);
         search.Children.Add(glass);
+        var dictateIcon = Ui.Button(
+            Ui.Icon("mic", 22, ColorToken.Accent),
+            model.DictateName,
+            () => Dictate(_iconSearch),
+            ColorToken.AccentWash
+        );
+        dictateIcon.Width = 44;
+        dictateIcon.Padding = new Thickness(0);
+        dictateIcon.Margin = new Thickness(6, 0, 0, 0);
+        DockPanel.SetDock(dictateIcon, Dock.Right);
+        search.Children.Add(dictateIcon);
         search.Children.Add(_iconSearch);
         body.Children.Add(search);
         var grid = new AutoFillGrid
@@ -487,208 +502,6 @@ public sealed class ShortcutEditorView : StackPanel
             Ui.Columns(4, 6, options),
             Ui.Text(model.Description, 13, ink: ColorToken.Muted, wrap: true)
         );
-    }
-
-    private StackPanel Combo(ComboModel model)
-    {
-        var box = Ui.Column(0);
-        if (model.Replacing is { } replacing)
-        {
-            var keep = Ui.Button(
-                Ui.Text(model.KeepOldText, 12, bold: true),
-                model.KeepOldText,
-                _viewModel.KeepOldCombination,
-                ColorToken.Card,
-                stroke: ColorToken.Border
-            );
-            var strip = new DockPanel { LastChildFill = true };
-            DockPanel.SetDock(keep, Dock.Right);
-            strip.Children.Add(keep);
-            strip.Children.Add(
-                Ui.Row(
-                    8,
-                    Ui.Icon("swap_horiz", 18, ColorToken.Warn),
-                    Ui.Text(replacing, 12, wrap: true)
-                )
-            );
-            box.Children.Add(
-                Ui.Card(strip, ColorToken.WarnWash, null, 0, new Thickness(10, 6, 6, 6))
-            );
-        }
-
-        var chips = new List<UIElement>();
-        if (model.Empty is { } empty)
-        {
-            chips.Add(Ui.Text(empty, 13, ink: ColorToken.Muted, wrap: true));
-        }
-
-        foreach (var chip in model.Chips)
-        {
-            if (chip.Index > 0)
-            {
-                chips.Add(Ui.Text("+", 13, ink: ColorToken.Muted));
-            }
-
-            var key = Ui.Button(
-                Ui.Row(
-                    4,
-                    Ui.Text(chip.Label, 14, mono: true),
-                    Ui.Icon("close", 16, ColorToken.Muted)
-                ),
-                chip.RemoveName,
-                () => _viewModel.RemoveKey(chip.Index),
-                ColorToken.Card,
-                stroke: ColorToken.Border,
-                radius: 8
-            );
-            key.Padding = new Thickness(10, 0, 6, 0);
-            chips.Add(key);
-        }
-
-        var keys = Ui.Wrap(4, chips);
-        keys.Margin = new Thickness(8, 8, 4, 4);
-        keys.MinHeight = 54;
-        box.Children.Add(keys);
-        var back = IconOnly("backspace", model.BackName, _viewModel.RemoveLastKey);
-        back.IsEnabled = model.HasKeys;
-        var clear = Ui.Button(
-            Ui.IconLabel("restart_alt", model.ClearText, 18, 12),
-            model.ClearText,
-            _viewModel.ClearKeys
-        );
-        clear.IsEnabled = model.HasKeys;
-        clear.BorderThickness = new Thickness(0);
-        var foot = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(clear, Dock.Right);
-        DockPanel.SetDock(back, Dock.Right);
-        foot.Children.Add(clear);
-        foot.Children.Add(back);
-        foot.Children.Add(Ui.Text(model.Count, 12, ink: ColorToken.Muted));
-        box.Children.Add(Ui.Card(foot, ColorToken.Card, null, 0, new Thickness(12, 0, 4, 0)));
-        var column = Ui.Column(
-            8,
-            Ui.Caption(model.Title),
-            Ui.Card(box, ColorToken.Field, ColorToken.Border, 12, new Thickness(0))
-        );
-        if (model.WarningText is { } warning)
-        {
-            var danger = model.Warning == WarningTone.Danger;
-            var card = Ui.Card(
-                Ui.Row(
-                    8,
-                    Ui.Icon(
-                        danger ? "block" : "info",
-                        20,
-                        danger ? ColorToken.DangerText : ColorToken.Warn
-                    ),
-                    Ui.Text(warning, 13, wrap: true)
-                ),
-                danger ? ColorToken.DangerWash : ColorToken.WarnWash,
-                danger ? ColorToken.Danger : ColorToken.Warn,
-                10,
-                new Thickness(12, 10, 12, 10)
-            );
-            AutomationProperties.SetLiveSetting(
-                card,
-                danger ? AutomationLiveSetting.Assertive : AutomationLiveSetting.Polite
-            );
-            column.Children.Add(card);
-        }
-
-        if (model.StepEditing is { } step)
-        {
-            var done = Ui.Button(
-                Ui.Text(model.DoneText, 12, bold: true, ink: ColorToken.OnAccent),
-                model.DoneText,
-                _viewModel.StopEditingStep,
-                ColorToken.Accent,
-                ColorToken.OnAccent,
-                radius: 8
-            );
-            var strip = new DockPanel { LastChildFill = true };
-            DockPanel.SetDock(done, Dock.Right);
-            strip.Children.Add(done);
-            strip.Children.Add(
-                Ui.Row(8, Ui.Icon("edit", 18, ColorToken.Accent), Ui.Text(step, 12, bold: true))
-            );
-            column.Children.Add(
-                Ui.Card(strip, ColorToken.AccentWash, null, 10, new Thickness(10, 4, 4, 4))
-            );
-        }
-
-        column.Children.Add(
-            Ui.Columns(
-                4,
-                6,
-                [.. model.Modifiers.Select(cell => (UIElement)KeyButton(cell, mono: true))]
-            )
-        );
-        var groups = model.Groups.Select(group =>
-        {
-            var tab = Ui.Choice(
-                Ui.Text(
-                    group.Label,
-                    12,
-                    bold: true,
-                    ink: group.Selected ? ColorToken.Text : ColorToken.Muted
-                ),
-                group.Label,
-                group.Selected,
-                () => _viewModel.ChooseGroup(group.Group),
-                44,
-                8,
-                offFill: null
-            );
-            if (group.Selected)
-            {
-                CcChrome.Paint(tab, ColorToken.CardHi, ColorToken.Text, null);
-            }
-            else
-            {
-                CcChrome.Paint(tab, null, ColorToken.Muted, null);
-            }
-
-            tab.BorderThickness = new Thickness(0);
-            tab.Padding = new Thickness(8, 0, 8, 0);
-            return (UIElement)tab;
-        });
-        column.Children.Add(Ui.Wrap(4, groups));
-        var cells = new AutoFillGrid
-        {
-            Columns = model.Columns,
-            MinItemWidth = 92,
-            Gap = 4,
-        };
-        foreach (var cell in model.Cells)
-        {
-            cells.Children.Add(KeyButton(cell, mono: true));
-        }
-
-        column.Children.Add(cells);
-        column.Children.Add(
-            Ui.Row(
-                6,
-                Ui.Icon("format_list_numbered", 16, ColorToken.Muted),
-                Ui.Text(model.OrderHint, 12, ink: ColorToken.Muted, wrap: true)
-            )
-        );
-        return column;
-    }
-
-    private CcToggle KeyButton(KeyCell cell, bool mono)
-    {
-        var label = Ui.Text(cell.Label, 12, mono: mono, wrap: true);
-        label.TextAlignment = TextAlignment.Center;
-        var button = Ui.Choice(
-            label,
-            cell.AccessibleName,
-            cell.Chosen,
-            () => _viewModel.TapKey(cell.Key),
-            44,
-            8
-        );
-        button.Padding = new Thickness(4);
-        return button;
     }
 
     private StackPanel? Fields(EditorModel model, bool keyChanged)
@@ -801,6 +614,7 @@ public sealed class ShortcutEditorView : StackPanel
             if (target.PickLabel.Length > 0 && !target.Picks.IsEmpty)
             {
                 column.Children.Add(Ui.Caption(target.PickLabel));
+                column.Children.Add(Ui.Text(target.OpenLabel, 12, ink: ColorToken.Muted));
                 column.Children.Add(
                     Ui.Wrap(
                         6,
@@ -816,6 +630,37 @@ public sealed class ShortcutEditorView : StackPanel
                                 )
                         )
                     )
+                );
+            }
+
+            if (!target.Programs.IsEmpty)
+            {
+                if (target.Picks.IsEmpty)
+                {
+                    column.Children.Add(Ui.Caption(target.PickLabel));
+                }
+
+                column.Children.Add(Ui.Text(target.ProgramsLabel, 12, ink: ColorToken.Muted));
+                var programs = Ui.Wrap(
+                    6,
+                    target.Programs.Select(program =>
+                        (UIElement)
+                            Ui.Choice(
+                                Ui.Text(program.Name, 13, bold: true),
+                                program.Name,
+                                string.Equals(
+                                    program.Target,
+                                    target.Value,
+                                    StringComparison.Ordinal
+                                ),
+                                () => _viewModel.PickInstalled(program.Target),
+                                44,
+                                22
+                            )
+                    )
+                );
+                column.Children.Add(
+                    new TouchPanScrollViewer { Content = programs, MaxHeight = 196 }
                 );
             }
 
@@ -1095,6 +940,9 @@ public sealed class ShortcutEditorView : StackPanel
                 inner.Children.Add(Ui.Caption(hold));
                 inner.Children.Add(Segments(model.Holds, _viewModel.SetHold));
                 inner.Children.Add(Ui.Text(model.HoldText, 12, ink: ColorToken.Muted, wrap: true));
+                inner.Children.Add(
+                    Ui.Text(model.HoldSwitchText, 12, ink: ColorToken.Muted, wrap: true)
+                );
             }
 
             if (model.MethodLabel is { } method)
@@ -1351,19 +1199,24 @@ public sealed class ShortcutEditorView : StackPanel
 
         var live = Ui.Button(
             Ui.IconLabel(
-                "send",
+                model.LiveArmed ? "verified" : "send",
                 model.LiveText,
                 20,
                 14,
-                ink: ColorToken.OnAccent,
-                iconInk: ColorToken.OnAccent
+                ink: model.LiveArmed ? ColorToken.OnWarn : ColorToken.OnAccent,
+                iconInk: model.LiveArmed ? ColorToken.OnWarn : ColorToken.OnAccent
             ),
             model.LiveText,
             _viewModel.TryLive,
-            ColorToken.Accent,
-            ColorToken.OnAccent,
+            model.LiveArmed ? ColorToken.Warn : ColorToken.Accent,
+            model.LiveArmed ? ColorToken.OnWarn : ColorToken.OnAccent,
             height: 48
         );
+        if (model.LiveArmed)
+        {
+            AutomationProperties.SetLiveSetting(live, AutomationLiveSetting.Polite);
+        }
+
         live.IsEnabled = model.CanLive;
         body.Children.Add(live);
         body.Children.Add(Ui.Text(model.How, 12, ink: ColorToken.Muted, wrap: true));

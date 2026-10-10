@@ -44,6 +44,12 @@ public sealed class AllowUnusedTests
         listed.Contains("quotaFree").ShouldBeTrue();
         // About and the welcome show creatorRole and fbLogFile, the catalog §9 corrections of creator and fbLogD.
         listed.Contains("creator").ShouldBeTrue();
-        listed.Count.ShouldBe(65);
+        // M6: the active app is marked with activeShort (ATJ-008), so it left the list; the fragments that were joined
+        // to a number give way to whole messages with their plural (IDI-004), and autoReleaseD and recorded to the
+        // texts that say what the app does (catalog §9).
+        listed.Contains("activeShort").ShouldBeFalse();
+        listed.Contains("shortcutsW").ShouldBeTrue();
+        listed.Contains("autoReleaseD").ShouldBeTrue();
+        listed.Count.ShouldBe(72);
     }
 }

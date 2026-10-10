@@ -164,6 +164,32 @@ public sealed class AiAssistant
         AskingConsent = !Settings.Consent;
     }
 
+    /// <summary>
+    /// General › IA (GEN-015, PLA-004): turns the AI on or off. Turning it on from General does not ask for the
+    /// consent there: the card of Plantillas asks before the first attempt.
+    /// </summary>
+    /// <param name="enabled">Whether the AI can be used.</param>
+    /// <returns>Whether the setting was written.</returns>
+    public bool SetEnabled(bool enabled)
+    {
+        AskingConsent = false;
+        if (Error == AiError.Off)
+        {
+            Error = AiError.None;
+        }
+
+        return _store.Dispatch(new SetSetting(SettingPaths.AiDisabled, !enabled)).IsSuccess;
+    }
+
+    /// <summary>General › IA (GEN-015, PLA-004): gives the consent, or revokes it.</summary>
+    /// <param name="given">Whether the person consents to sending the four data of [consentD4].</param>
+    /// <returns>Whether the setting was written.</returns>
+    public bool SetConsent(bool given)
+    {
+        AskingConsent = false;
+        return _store.Dispatch(new SetSetting(SettingPaths.AiConsent, given)).IsSuccess;
+    }
+
     /// <summary>Saves the pasted key (PLA-003, ADR-0008): the document only keeps where it is.</summary>
     /// <param name="key">The key; an empty one is ignored.</param>
     /// <returns>Whether it was saved.</returns>

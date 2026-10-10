@@ -8,7 +8,9 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Shell;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Geometry;
 using Clicalo.Presentation.ControlCenter;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.About;
@@ -34,13 +36,13 @@ namespace Clicalo.UI.Wpf.Workspace;
 public sealed class ControlCenterWindow : Window
 {
     /// <summary>The default width (CCM-001).</summary>
-    public const double DefaultWidth = 1120;
+    public const double DefaultWidth = ControlCenterPlacer.DefaultWidth;
 
     /// <summary>The default height (CCM-001).</summary>
-    public const double DefaultHeight = 680;
+    public const double DefaultHeight = ControlCenterPlacer.DefaultHeight;
 
-    private const double LeastWidth = 760;
-    private const double LeastHeight = 520;
+    private const double LeastWidth = ControlCenterPlacer.LeastWidth;
+    private const double LeastHeight = ControlCenterPlacer.LeastHeight;
     private const double NarrowBelow = 1240;
     private const double TitleHeight = 52;
     private const double StatusHeight = 48;
@@ -62,6 +64,9 @@ public sealed class ControlCenterWindow : Window
     private readonly TouchPrecisionView _touch;
     private readonly AboutSectionView? _about;
     private readonly CcButton _close;
+    private readonly TextBlock _statusText = Ui.Text(string.Empty, 13);
+    private readonly LiveAnnouncer _statusAnnouncer;
+    private string? _announced;
     private bool _narrow;
     private bool _closing;
 
@@ -73,6 +78,7 @@ public sealed class ControlCenterWindow : Window
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(theme);
         _viewModel = viewModel;
+        _statusAnnouncer = new LiveAnnouncer(_statusText);
         theme.Attach(this);
         Width = DefaultWidth;
         Height = DefaultHeight;
@@ -157,6 +163,12 @@ public sealed class ControlCenterWindow : Window
         viewModel.PropertyChanged += OnChanged;
         SizeChanged += (_, _) => ApplyWidth();
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewKeyUp += OnPreviewKeyUp;
+        // EDI-010: the recording only lives while the window has the keyboard. Once another window takes it, the
+        // keys that were held are released out of sight, and a stale modifier would slip into the next combination.
+        Deactivated += (_, _) => viewModel.Shortcuts.Editor.StopRecording();
+        // ACC-004: a section that draws itself again does not take the keyboard away.
+        _ = FocusKeeper.Attach(this);
         Render();
     }
 
@@ -179,41 +191,67 @@ public sealed class ControlCenterWindow : Window
         Close();
     }
 
-    /// <summary>Places it on the work area that holds <paramref name="avoid"/> without covering it (CCM-004).</summary>
-    /// <param name="workArea">The work area of the monitor of the panel, in device-independent pixels.</param>
-    /// <param name="avoid">The panel, in device-independent pixels; empty for none.</param>
-    /// <param name="size">The remembered size, if any.</param>
-    public void Place(Rect workArea, Rect avoid, Size? size)
+    /// <summary>
+    /// Places it where <see cref="ControlCenterPlacer"/> planned (CCM-001, CCM-004): on that monitor, with that size,
+    /// beside the panel. The plan is in physical pixels; WPF converts <see cref="Window.Left"/> and
+    /// <see cref="Window.Top"/> with the scale of the monitor the window is on now, so it first moves onto the monitor
+    /// and then takes its size and its place with that monitor's scale.
+    /// </summary>
+    /// <param name="spot">Where it opens.</param>
+    public void Place(ControlCenterSpot spot)
     {
-        ApplyLeastSize(workArea);
-        if (size is { } remembered)
+        ArgumentNullException.ThrowIfNull(spot);
+        _ = new WindowInteropHelper(this).EnsureHandle();
+        var scale = spot.Monitor.Scale > 0 ? spot.Monitor.Scale : 1;
+        var work = spot.Monitor.WorkArea;
+        ApplyLeastSize(new Rect(0, 0, work.Width / scale, work.Height / scale));
+        if (WindowState != WindowState.Normal)
         {
-            Width = Math.Min(Math.Max(remembered.Width, MinWidth), workArea.Width);
-            Height = Math.Min(Math.Max(remembered.Height, MinHeight), workArea.Height);
-        }
-        else
-        {
-            Width = Math.Min(DefaultWidth, workArea.Width);
-            Height = Math.Min(DefaultHeight, workArea.Height);
+            WindowState = WindowState.Normal;
         }
 
-        var left = workArea.Left + ((workArea.Width - Width) / 2);
-        var top = workArea.Top + ((workArea.Height - Height) / 2);
-        if (!avoid.IsEmpty && new Rect(left, top, Width, Height).IntersectsWith(avoid))
-        {
-            var spaceLeft = avoid.Left - workArea.Left;
-            var spaceRight = workArea.Right - avoid.Right;
-            left =
-                spaceRight >= spaceLeft
-                    ? Math.Max(workArea.Left, Math.Min(avoid.Right + 8, workArea.Right - Width))
-                    : Math.Min(
-                        workArea.Right - Width,
-                        Math.Max(workArea.Left, avoid.Left - 8 - Width)
-                    );
-        }
+        var before = CurrentScale();
+        Left = spot.Bounds.Left / before;
+        Top = spot.Bounds.Top / before;
+        Width = Math.Max(MinWidth, spot.Bounds.Width / scale);
+        Height = Math.Max(MinHeight, spot.Bounds.Height / scale);
+        var after = CurrentScale();
+        Left = spot.Bounds.Left / after;
+        Top = spot.Bounds.Top / after;
+    }
 
-        Left = left;
-        Top = top;
+    /// <summary>
+    /// Where the window is now, to remember it (CCM-001, D9): its restored rectangle in physical pixels and whether it
+    /// is maximized.
+    /// </summary>
+    public (PhysicalRect Bounds, bool Maximized) ReadPlacement()
+    {
+        var scale = CurrentScale();
+        var rect =
+            WindowState == WindowState.Normal || RestoreBounds.IsEmpty
+                ? new Rect(Left, Top, ActualWidth, ActualHeight)
+                : RestoreBounds;
+        return (
+            new PhysicalRect(
+                (int)Math.Round(rect.Left * scale),
+                (int)Math.Round(rect.Top * scale),
+                (int)Math.Round(rect.Width * scale),
+                (int)Math.Round(rect.Height * scale)
+            ),
+            WindowState == WindowState.Maximized
+        );
+    }
+
+    /// <summary>
+    /// Maximizes it, as it was left (D9). Only once it is in front through its lease: maximizing a window activates
+    /// it, and the Control Center never activates itself.
+    /// </summary>
+    public void Maximize() => WindowState = WindowState.Maximized;
+
+    private double CurrentScale()
+    {
+        var scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        return scale > 0 ? scale : 1;
     }
 
     /// <inheritdoc />
@@ -251,8 +289,27 @@ public sealed class ControlCenterWindow : Window
         Render();
     }
 
+    private void OnPreviewKeyUp(object sender, KeyEventArgs e)
+    {
+        var editor = _viewModel.Shortcuts.Editor;
+        if (editor.IsRecording)
+        {
+            e.Handled = true;
+            editor.RecordKeyUp(RecordedKeys.IdOf(e));
+        }
+    }
+
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        var editor = _viewModel.Shortcuts.Editor;
+        if (editor.IsRecording)
+        {
+            // EDI-010: while «Grabar con teclado» is on, every key the window receives belongs to the recording.
+            e.Handled = true;
+            editor.RecordKeyDown(RecordedKeys.IdOf(e));
+            return;
+        }
+
         if (e.Key != Key.Escape)
         {
             return;
@@ -562,16 +619,36 @@ public sealed class ControlCenterWindow : Window
         icon.Margin = new Thickness(0, 0, 8, 0);
         DockPanel.SetDock(icon, Dock.Left);
         row.Children.Add(icon);
-        var text = Ui.Text(
-            status.Text,
-            13,
-            ink: status.IsWarning ? ColorToken.Text : ColorToken.Muted
+        // ACC-001: the status bar is a live region. Its text block stays, so a new message is a change of that
+        // region and is announced: polite for a notice, assertive for a warning. Going back to [saved] is not read.
+        if (_statusText.Parent is Panel old)
+        {
+            old.Children.Remove(_statusText);
+        }
+
+        Ui.Ink(
+            _statusText,
+            TextBlock.ForegroundProperty,
+            status.IsWarning ? ColorToken.Text : ColorToken.Muted
         );
-        AutomationProperties.SetLiveSetting(
-            text,
-            status.IsWarning ? AutomationLiveSetting.Assertive : AutomationLiveSetting.Polite
-        );
-        row.Children.Add(text);
+        if (status.IsNotice && !string.Equals(_announced, status.Text, StringComparison.Ordinal))
+        {
+            _announced = status.Text;
+            _statusAnnouncer.Announce(
+                status.Text,
+                status.IsWarning ? AnnouncementUrgency.Assertive : AnnouncementUrgency.Polite
+            );
+        }
+        else
+        {
+            _statusText.Text = status.Text;
+            if (!status.IsNotice)
+            {
+                _announced = null;
+            }
+        }
+
+        row.Children.Add(_statusText);
         return row;
     }
 }

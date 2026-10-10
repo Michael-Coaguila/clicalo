@@ -15,6 +15,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Privacy;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
+using Clicalo.Presentation.ControlCenter.Editor;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -43,6 +44,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     private string _blankLink = NoLink;
     private string? _selectedTemplate;
     private int? _editingRow;
+    private int? _keysRow;
+    private KeyGroup _keysGroup = KeyGroup.Letters;
     private bool _keyOpen;
     private bool _keyboardOpen;
     private bool _blankOpen;
@@ -66,8 +69,12 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         _s = services;
         _t = templates;
         _openProfile = openProfile;
+        RowKeys = new RowCombo(this);
         _screen = Build();
     }
+
+    /// <summary>Who the combination box of a row of the preview talks to (PLA-016).</summary>
+    public IComboEditor RowKeys { get; }
 
     /// <summary>Everything the section shows.</summary>
     public TemplatesScreen Screen
@@ -112,7 +119,11 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     /// <summary>Esc with something unfolded (CCM-001): closes the innermost one and says whether there was one.</summary>
     public bool CloseMenu()
     {
-        if (_editingRow is not null)
+        if (_keysRow is not null)
+        {
+            _keysRow = null;
+        }
+        else if (_editingRow is not null)
         {
             _editingRow = null;
         }
@@ -382,6 +393,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         _t.Preview.ShowTemplate(template);
         _selectedTemplate = id;
         _editingRow = null;
+        _keysRow = null;
         Invalidate();
     }
 
@@ -426,6 +438,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             _t.Preview.ShowShared(shared);
             _selectedTemplate = null;
             _editingRow = null;
+            _keysRow = null;
             Notify(L.ImportedPv, "download", false);
         }
         else
@@ -451,6 +464,31 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     public void EditRow(int index)
     {
         _editingRow = _editingRow == index ? null : index;
+        _keysRow = null;
+        Invalidate();
+    }
+
+    /// <summary>[changeKeys] of a row: opens or closes its combination box (PLA-016).</summary>
+    /// <param name="index">The row.</param>
+    public void EditRowKeys(int index)
+    {
+        _keysRow = _keysRow == index ? null : index;
+        _keysGroup = KeyGroup.Letters;
+        _editingRow = null;
+        Invalidate();
+    }
+
+    /// <summary>
+    /// «Actualizar a la variante {idioma}» (EC-PLA-04): the installed shortcuts that still have the keys of another
+    /// programs language get the ones of the current one, with undo.
+    /// </summary>
+    public void UpdateVariant()
+    {
+        if (_t.Preview.UpdateVariant(Language).TryGetValue(out var outcome))
+        {
+            Announce(outcome);
+        }
+
         Invalidate();
     }
 
@@ -476,6 +514,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         if (result.TryGetValue(out var outcome))
         {
             _editingRow = null;
+            _keysRow = null;
             if (_t.Preview.Source is null)
             {
                 _selectedTemplate = null;
@@ -544,6 +583,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             _t.Preview.ShowAi(template);
             _selectedTemplate = null;
             _editingRow = null;
+            _keysRow = null;
         }
 
         _hasKey = _t.Ai.HasKey;
@@ -612,7 +652,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                         p.Id,
                         p.Icon.Name,
                         p.Name.Get(Language, LangCode.Es),
-                        Count(p.Shortcuts.Count)
+                        Count(p.Shortcuts.Count),
+                        T(L.ShortcutsN(p.Shortcuts.Count))
                     )),
                 ],
                 T(L.ImportProf),
@@ -662,7 +703,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                 TemplatePreviewRules.InstalledFrom(library, t.Id) is null
                 && !(detect && shown.Contains(t.Id))
             )
-            .Select(t => Card(t, Count(t.Shortcuts.Count) + " " + T(L.ShortcutsW)))
+            .Select(t => Card(t, T(L.ShortcutsN(t.Shortcuts.Count))))
             .ToList();
         return ([.. suggested], [.. available]);
     }
@@ -866,11 +907,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         {
             PreviewAction.AddMissing => (T(L.AddMissing(count)), "add"),
             PreviewAction.EditShortcuts => (T(L.EditShortcuts), "edit"),
-            PreviewAction.CreateWith => (
-                T(L.CreateWith) + " " + Count(count) + " " + T(L.ShortcutsW),
-                "auto_awesome"
-            ),
-            _ => (T(L.InstallSel) + " " + Count(count) + " " + T(L.ShortcutsW), "download"),
+            PreviewAction.CreateWith => (T(L.CreateWithN(count)), "auto_awesome"),
+            _ => (T(L.InstallSelN(count)), "download"),
         };
         return new PreviewModel(
             true,
@@ -900,14 +938,77 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                     r.Risky ? T(L.RiskyMark)
                         : r.Dangerous ? T(L.DangerMark)
                         : null,
-                    T(L.Rename)
+                    T(L.Rename),
+                    T(L.SearchDictate),
+                    !r.AlreadyIn && ActionKinds.ChordOf(r.Shortcut.Action) is not null
+                        ? T(L.ChangeKeys)
+                        : null,
+                    _keysRow == r.Index
+                    && !r.AlreadyIn
+                    && ActionKinds.ChordOf(r.Shortcut.Action) is { } chord
+                        ? ComboProjection.Build(
+                            chord,
+                            _keysGroup,
+                            labels,
+                            Language,
+                            T,
+                            r.Shortcut.Action is TapAction
+                        ) with
+                        {
+                            StepEditing = T(L.ChangeKeys),
+                        }
+                        : null
                 )),
             ],
             text,
             icon,
             action == PreviewAction.EditShortcuts || count > 0,
-            action == PreviewAction.EditShortcuts
+            action == PreviewAction.EditShortcuts,
+            preview.StaleVariants > 0
+                ? T(
+                    Settings.Keyboard.AppsLanguage == LangCode.En
+                        ? L.UpdateVariantEn
+                        : L.UpdateVariantEs
+                )
+                : null
         );
+    }
+
+    // The combination box of the row whose keys are open (PLA-016): every edit goes to the preview, not the document.
+    private sealed class RowCombo(TemplatesSectionViewModel owner) : IComboEditor
+    {
+        public void TapKey(KeyId key) => Edit(chord => ChordEdits.Tap(chord, key));
+
+        public void RemoveKey(int index) => Edit(chord => ChordEdits.RemoveAt(chord, index));
+
+        public void RemoveLastKey() => Edit(ChordEdits.RemoveLast);
+
+        public void ClearKeys() => Edit(static _ => KeyChord.Empty);
+
+        public void ChooseGroup(KeyGroup group)
+        {
+            owner._keysGroup = group;
+            owner.Invalidate();
+        }
+
+        public void KeepOldCombination() { }
+
+        public void StopEditingStep()
+        {
+            owner._keysRow = null;
+            owner.Invalidate();
+        }
+
+        public void ToggleRecording() { }
+
+        private void Edit(Func<KeyChord, KeyChord> change)
+        {
+            if (owner._keysRow is { } row)
+            {
+                owner._t.Preview.EditChord(row, change);
+                owner.Invalidate();
+            }
+        }
     }
 
     private string Foot(Shortcut shortcut, KeyLabelCatalog labels) =>

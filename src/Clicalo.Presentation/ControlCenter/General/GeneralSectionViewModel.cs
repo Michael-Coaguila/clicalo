@@ -2,6 +2,7 @@ using System.Globalization;
 using Clicalo.Application.Confirmation;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -23,6 +24,8 @@ public sealed class GeneralSectionViewModel : ObservableObject
     private const string SavedIcon = "check";
     private const string ResetIcon = "restart_alt";
     private const string CoachIcon = "help";
+    private const string AiKeyTarget = "ai-key";
+    private const string DeleteKeyOperation = "DeleteKey";
 
     /// <summary>The keys on the miniature tile of «Mostrar teclas» (key names are not translated).</summary>
     private const string SampleKeys = "Ctrl + C";
@@ -36,6 +39,8 @@ public sealed class GeneralSectionViewModel : ObservableObject
     private GeneralScreen _screen;
     private bool _resetArmed;
     private ITimer? _disarm;
+    private ITimer? _keyDisarm;
+    private bool _hasKey;
 
     /// <summary>Creates the section; it follows the document and the language by itself.</summary>
     /// <param name="services">What it works with.</param>
@@ -43,6 +48,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(services);
         _s = services;
+        _hasKey = services.Ai?.HasKey ?? false;
         _screen = Project();
         services.Store.Changed += (_, _) => services.Post(Refresh);
         services.Localization.LanguageChanged += (_, _) => services.Post(Refresh);
@@ -62,6 +68,16 @@ public sealed class GeneralSectionViewModel : ObservableObject
 
     /// <summary>Projects the section again (settings, language, armed state).</summary>
     public void Refresh() => Screen = Project();
+
+    /// <summary>The section shows: whether there is a saved key is read again (GEN-015).</summary>
+    public void OnShown()
+    {
+        if (_s.Ai is { } ai)
+        {
+            _hasKey = ai.HasKey;
+            Refresh();
+        }
+    }
 
     /// <summary>A language button (GEN-002): the language changes at once in every window (IDI-001).</summary>
     /// <param name="code">The language code.</param>
@@ -221,6 +237,71 @@ public sealed class GeneralSectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>A button of [timeMultiplierT] (ACC-006): ×1, ×2 or ×3.</summary>
+    /// <param name="times">The multiplier.</param>
+    public void SetTimeMultiplier(int times) => Write(SettingPaths.TimeMultiplier, times);
+
+    /// <summary>[globalHotkeyT] (BUR-005, D10): off by default.</summary>
+    public void ToggleGlobalHotkey() =>
+        Write(SettingPaths.GlobalHotkeyEnabled, !Settings.GlobalHotkey.Enabled);
+
+    /// <summary>A combination of the closed list of the global shortcut (BUR-005, D10).</summary>
+    /// <param name="id">Its id in <c>data/catalogs/global-hotkeys.json</c>.</param>
+    public void SetGlobalHotkey(string id) => Write(SettingPaths.GlobalHotkeyCombo, id);
+
+    /// <summary>[aiUse] (GEN-015, PLA-004): turns the AI on or off.</summary>
+    public void ToggleAi()
+    {
+        if (_s.Ai is { } ai && ai.SetEnabled(Settings.Ai.Disabled))
+        {
+            Saved();
+        }
+    }
+
+    /// <summary>[consentRevoke] or [consentGive] (GEN-015, PLA-004).</summary>
+    public void ToggleAiConsent()
+    {
+        if (_s.Ai is { } ai && ai.SetConsent(!Settings.Ai.Consent))
+        {
+            Saved();
+        }
+    }
+
+    /// <summary>
+    /// [keyDelete] (GEN-015, PLA-003, REG-04): the first tap arms it ([delConfirm]); the second one deletes the saved
+    /// key. It cannot be undone, because Clícalo never keeps a copy of the key: pasting it again in Plantillas
+    /// restores it.
+    /// </summary>
+    public void DeleteAiKey()
+    {
+        if (_s.Ai is not { } ai)
+        {
+            return;
+        }
+
+        switch (_s.Confirm.Tap(new ConfirmationSubject(DeleteKeyOperation, AiKeyTarget)))
+        {
+            case TwoStepResult.Confirmed:
+                _keyDisarm?.Dispose();
+                ai.DeleteKey();
+                _hasKey = ai.HasKey;
+                Notify(new WorkspaceNotice(L.KeyDeleted, "key_off", false, false));
+                break;
+            case TwoStepResult.Armed armed:
+                _keyDisarm?.Dispose();
+                var wait = armed.Until - _s.Time.GetUtcNow();
+                _keyDisarm = _s.Time.CreateTimer(
+                    _ => _s.Post(Refresh),
+                    null,
+                    wait > TimeSpan.Zero ? wait : TimeSpan.Zero,
+                    Timeout.InfiniteTimeSpan
+                );
+                break;
+        }
+
+        Refresh();
+    }
+
     /// <summary>[seeWelcome] (GEN-014): closes the Control Center and opens the welcome at step 0.</summary>
     public void SeeWelcome() => _s.OpenWelcome();
 
@@ -290,6 +371,12 @@ public sealed class GeneralSectionViewModel : ObservableObject
         }
     }
 
+    private void Saved()
+    {
+        Refresh();
+        Notify(new WorkspaceNotice(L.Saved, SavedIcon, _s.Store.CanUndo, false));
+    }
+
     private void Notify(WorkspaceNotice notice) =>
         Noticed?.Invoke(this, new WorkspaceNoticeEventArgs(notice));
 
@@ -320,7 +407,13 @@ public sealed class GeneralSectionViewModel : ObservableObject
                 T(_resetArmed ? L.DelConfirm : L.ResetFreq),
                 T(L.ResetFreq),
                 T(L.ResetFreqD),
-                _resetArmed
+                _resetArmed,
+                T(L.TimeMultiplierT),
+                T(L.TimeMultiplierD),
+                Times(settings),
+                Switch("keyboard", L.GlobalHotkeyT, L.GlobalHotkeyD, settings.GlobalHotkey.Enabled),
+                T(L.Keys),
+                settings.GlobalHotkey.Enabled ? Hotkeys(settings) : []
             ),
             new StartModel(
                 T(L.SecStart),
@@ -329,7 +422,84 @@ public sealed class GeneralSectionViewModel : ObservableObject
                 T(L.SeeCoach),
                 T(L.SeeCoachD),
                 Switch("keyboard_off", L.UNokb, L.UNokbD, settings.NoKeyboardUser)
-            )
+            ),
+            Ai(settings)
+        );
+    }
+
+    private ValueList<SettingOption<int>> Times(UserSettings settings)
+    {
+        var title = T(L.TimeMultiplierT);
+        var range = SettingsSchema.TimeMultiplier;
+        return
+        [
+            .. Enumerable
+                .Range((int)range.Min, (int)(range.Max - range.Min) + 1)
+                .Select(times =>
+                {
+                    var label = T(L.TimesN(times));
+                    return new SettingOption<int>(
+                        times,
+                        label,
+                        T(L.SettingOption(setting: title, name: label)),
+                        settings.TimeMultiplier == times
+                    );
+                }),
+        ];
+    }
+
+    private ValueList<SettingOption<string>> Hotkeys(UserSettings settings)
+    {
+        var labels = _s.KeyLabels?.Invoke() ?? KeyLabelCatalog.Empty;
+        var language = new LangCode(_s.Localization.Current.Locale.Code);
+        return
+        [
+            .. GlobalHotkeys.All.Select(hotkey =>
+            {
+                var label = KeyChordFormatter.Format(
+                    hotkey.Keys,
+                    labels,
+                    KeyLabelStyle.Full,
+                    language,
+                    LangCode.Es
+                );
+                return new SettingOption<string>(
+                    hotkey.Id,
+                    label,
+                    KeyChordFormatter.Format(
+                        hotkey.Keys,
+                        labels,
+                        KeyLabelStyle.Spoken,
+                        language,
+                        LangCode.Es
+                    ),
+                    string.Equals(hotkey.Id, settings.GlobalHotkey.Combo, StringComparison.Ordinal)
+                );
+            }),
+        ];
+    }
+
+    private AiModel? Ai(UserSettings settings)
+    {
+        if (_s.Ai is null)
+        {
+            return null;
+        }
+
+        var armed =
+            _s.Confirm.ArmedSubject is { } subject
+            && string.Equals(subject.Operation, DeleteKeyOperation, StringComparison.Ordinal)
+            && string.Equals(subject.Target, AiKeyTarget, StringComparison.Ordinal);
+        return new AiModel(
+            T(L.SecAi),
+            Switch("auto_awesome", L.AiUse, L.AiUseD, !settings.Ai.Disabled),
+            T(settings.Ai.Consent ? L.ConsentGiven : L.ConsentNotGiven),
+            settings.Ai.Consent,
+            T(settings.Ai.Consent ? L.ConsentRevoke : L.ConsentGive),
+            T(L.ConsentD4),
+            T(_hasKey ? L.QuotaKey : L.KeyNone),
+            _hasKey ? T(armed ? L.DelConfirm : L.KeyDelete) : null,
+            armed
         );
     }
 
@@ -385,9 +555,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
 
     private LayoutModel Layout(UserSettings settings)
     {
-        var culture = _s.Localization.Current.Locale.Culture;
         var rowsTitle = T(L.RowsVis);
-        var columnsWord = T(L.Columns).ToLower(culture);
         var autoRows = settings.Size == PanelSize.Small ? 2 : 3;
         return new LayoutModel(
             T(L.SecLayout),
@@ -403,7 +571,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                         return new SettingOption<int>(
                             rows,
                             label,
-                            rowsTitle + ": " + label,
+                            T(L.SettingOption(setting: rowsTitle, name: label)),
                             settings.RowsPreference == rows,
                             rows == 0 ? autoRows : rows
                         );
@@ -419,8 +587,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                     .Range((int)SettingsSchema.Columns.Min, 3)
                     .Select(columns =>
                     {
-                        var label =
-                            columns.ToString(CultureInfo.InvariantCulture) + " " + columnsWord;
+                        var label = T(L.ColumnsN(columns));
                         return new SettingOption<int>(
                             columns,
                             label,
@@ -495,7 +662,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                     return new SettingOption<int>(
                         count,
                         label,
-                        perPageTitle + ": " + label,
+                        T(L.SettingOption(setting: perPageTitle, name: label)),
                         dock.PerPage == count
                     );
                 }),

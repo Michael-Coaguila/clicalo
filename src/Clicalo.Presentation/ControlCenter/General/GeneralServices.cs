@@ -1,6 +1,8 @@
 using Clicalo.Application.Confirmation;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Store;
+using Clicalo.Application.UseCases.Ai;
+using Clicalo.Domain.Keys;
 
 namespace Clicalo.Presentation.ControlCenter.General;
 
@@ -11,11 +13,15 @@ namespace Clicalo.Presentation.ControlCenter.General;
 /// <param name="Time">The clock of the armed state.</param>
 /// <param name="Post">Runs an action on the UI thread, after the current work.</param>
 /// <param name="OpenWelcome">«Ver la bienvenida otra vez»: closes the Control Center and opens the welcome at step 0 (GEN-014).</param>
+/// <param name="Ai">The AI, for its card (GEN-015); null hides the card.</param>
+/// <param name="KeyLabels">The names of the keys, for the combinations of the global shortcut (BUR-005).</param>
 public sealed record GeneralServices(
     DocumentStore Store,
     ILocalizationContext Localization,
     TwoStepConfirm Confirm,
     TimeProvider Time,
     Action<Action> Post,
-    Action OpenWelcome
+    Action OpenWelcome,
+    AiAssistant? Ai = null,
+    Func<KeyLabelCatalog>? KeyLabels = null
 );

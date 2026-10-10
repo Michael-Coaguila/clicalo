@@ -416,6 +416,37 @@ public sealed class ShortcutsWorkspace
         Notify(L.ComboCleared, "restart_alt", undo: true);
     }
 
+    /// <summary>
+    /// «Grabar con teclado» closed (EDI-010): the recorded combination replaces the one of the box, as its own undo
+    /// step, with the notice «[recorded]: {teclas}».
+    /// </summary>
+    /// <param name="chord">The modifiers in the order they were pressed, with their side, and the key.</param>
+    public void RecordChord(KeyChord chord)
+    {
+        ArgumentNullException.ThrowIfNull(chord);
+        if (chord.IsEmpty || ChordInBox() is not { } current || current.Equals(chord))
+        {
+            return;
+        }
+
+        _store.SealCoalescing();
+        EditChord(_ => chord);
+        _store.SealCoalescing();
+        Notify(
+            L.RecordedKeys(
+                keys: KeyChordFormatter.Format(
+                    chord,
+                    Catalogs.KeyLabels,
+                    KeyLabelStyle.Full,
+                    UiLanguage(),
+                    LangCode.Es
+                )
+            ),
+            "keyboard",
+            undo: true
+        );
+    }
+
     /// <summary>The combination of the box: the macro step being edited, or the shortcut's.</summary>
     public KeyChord? ChordInBox() =>
         Selected?.Action switch

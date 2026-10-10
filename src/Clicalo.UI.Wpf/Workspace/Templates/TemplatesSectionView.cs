@@ -50,9 +50,11 @@ public sealed class TemplatesSectionView : Grid
         MinHeight = 42,
         FocusVisualStyle = null,
     };
+    private readonly Grid _keyLayers = new();
     private readonly LiveAnnouncer _announcer;
     private TemplatesScreen? _shown;
     private int? _renaming;
+    private int? _renamingShown;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
@@ -82,6 +84,8 @@ public sealed class TemplatesSectionView : Grid
             }
         };
         _key.SetResourceReference(PasswordBox.FontSizeProperty, ThemeKeys.TextSize(15));
+        _keyLayers.Children.Add(_key);
+        _ = FieldFocusRing.Attach(_keyLayers, _key, 10, 1);
         Ui.Ink(_key, PasswordBox.ForegroundProperty, ColorToken.Text);
         Ui.Ink(_key, PasswordBox.CaretBrushProperty, ColorToken.Text);
 
@@ -381,9 +385,9 @@ public sealed class TemplatesSectionView : Grid
 
     private StackPanel KeyField(AiCardModel model)
     {
-        Detach(_key);
+        Detach(_keyLayers);
         AutomationProperties.SetName(_key, model.KeyPlaceholder);
-        var box = Ui.Card(_key, ColorToken.Field, ColorToken.Border, 10, new Thickness(0));
+        var box = Ui.Card(_keyLayers, ColorToken.Field, ColorToken.Border, 10, new Thickness(0));
         var paste = Secondary("content_paste", model.PasteText, PasteKey);
         var done = Primary(
             null,
@@ -872,7 +876,7 @@ public sealed class TemplatesSectionView : Grid
                     );
                     var button = Ui.Button(
                         content,
-                        profile.Name + ", " + profile.Count,
+                        profile.Name + ", " + profile.CountName,
                         () => _viewModel.OpenInstalled(profile.Id),
                         ColorToken.Card,
                         stroke: ColorToken.Border,
@@ -1006,6 +1010,13 @@ public sealed class TemplatesSectionView : Grid
             column.Children.Add(Row(row));
         }
 
+        _renamingShown = _renaming;
+        if (model.VariantText is { } variant)
+        {
+            // EC-PLA-04: the installed shortcuts keep their keys when the programs language changes; this updates them.
+            column.Children.Add(Secondary("translate", variant, _viewModel.UpdateVariant, 48));
+        }
+
         var finalButton = model.ButtonSecondary
             ? Secondary(model.ButtonIcon, model.ButtonText, _viewModel.InstallPreview, 48)
             : Primary(model.ButtonIcon, model.ButtonText, _viewModel.InstallPreview, 48);
@@ -1075,6 +1086,25 @@ public sealed class TemplatesSectionView : Grid
             edit.BorderThickness = new Thickness(0);
             DockPanel.SetDock(edit, Dock.Right);
             line.Children.Add(edit);
+            if (row.KeysName is { } keysName)
+            {
+                // PLA-016: the keys of the row can change before installing.
+                var keys = Ui.Button(
+                    Ui.Icon(
+                        "keyboard",
+                        18,
+                        row.Combo is null ? ColorToken.Muted : ColorToken.Accent
+                    ),
+                    keysName + ": " + row.Name,
+                    () => _viewModel.EditRowKeys(row.Index),
+                    null
+                );
+                keys.Width = 44;
+                keys.Padding = new Thickness(0);
+                keys.BorderThickness = new Thickness(0);
+                DockPanel.SetDock(keys, Dock.Right);
+                line.Children.Add(keys);
+            }
         }
 
         line.Children.Add(toggle);
@@ -1084,14 +1114,43 @@ public sealed class TemplatesSectionView : Grid
             _renaming = row.Index;
             Detach(_rowName);
             AutomationProperties.SetName(_rowName.Box, row.RenameName);
-            _rowName.Show(row.Name, force: true);
-            _rowName.Margin = new Thickness(10, 0, 10, 10);
-            column.Children.Add(_rowName);
-            _ = Dispatcher.BeginInvoke(() =>
+            var starting = _renamingShown != row.Index;
+            _rowName.Show(row.Name, force: starting);
+            // PLA-015, ACC-011: the name of a row is dictated like every other free text.
+            var dictate = Ui.Button(
+                Ui.Icon("mic", 22, ColorToken.Accent),
+                row.DictateName,
+                () => FocusAndDictate(_rowName),
+                ColorToken.AccentWash
+            );
+            dictate.Width = 44;
+            dictate.Padding = new Thickness(0);
+            dictate.Margin = new Thickness(6, 0, 0, 0);
+            var field = new DockPanel
             {
-                _ = Keyboard.Focus(_rowName.Box);
-                _rowName.Box.SelectAll();
-            });
+                LastChildFill = true,
+                Margin = new Thickness(10, 0, 10, 10),
+            };
+            DockPanel.SetDock(dictate, Dock.Right);
+            field.Children.Add(dictate);
+            field.Children.Add(_rowName);
+            column.Children.Add(field);
+            if (starting)
+            {
+                // Only when the field opens: selecting again on every keystroke would replace what is being typed.
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    _ = Keyboard.Focus(_rowName.Box);
+                    _rowName.Box.SelectAll();
+                });
+            }
+        }
+
+        if (row.Combo is { } combo)
+        {
+            var box = ComboView.Build(combo, _viewModel.RowKeys);
+            box.Margin = new Thickness(10, 0, 10, 10);
+            column.Children.Add(box);
         }
 
         var card = Ui.Card(column, ColorToken.Card, ColorToken.Border, 10, new Thickness(0));

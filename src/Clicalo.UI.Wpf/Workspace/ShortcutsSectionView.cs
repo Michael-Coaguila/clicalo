@@ -651,13 +651,25 @@ public sealed class ShortcutsSectionView : Grid
         {
             var apps = model.Apps.Select(app =>
             {
+                var mark = app.Mark is { } active
+                    ? Ui.Card(
+                        Ui.Text(active, 11, bold: true, ink: ColorToken.Accent),
+                        ColorToken.AccentWash,
+                        null,
+                        8,
+                        new Thickness(6, 1, 6, 1)
+                    )
+                    : null;
                 var chip = Ui.Choice(
                     Ui.Row(
                         6,
                         Ui.Text(app.Name, 13, bold: true),
-                        Ui.Text(app.Process, 11, ink: ColorToken.Muted, mono: true)
+                        Ui.Text(app.Process, 11, ink: ColorToken.Muted, mono: true),
+                        mark
                     ),
-                    app.Name + " " + app.Process,
+                    app.Mark is null
+                        ? app.Name + " " + app.Process
+                        : app.Name + " " + app.Process + ", " + app.Mark,
                     app.Selected,
                     () => _viewModel.BindApp(app.Process),
                     44,

@@ -24,6 +24,10 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="TipsTitle">[tipsTitle] after no.</param>
 /// <param name="Tips">[tip1] to [tip4] after no.</param>
 /// <param name="Running">Whether a try is running.</param>
+/// <param name="LiveArmed">
+/// Whether «Probar ahora» waits for its second tap: a shortcut that asks for confirmation is confirmed here before
+/// it is tried (PRB-004).
+/// </param>
 public sealed record TestModel(
     string Title,
     string CloseName,
@@ -44,5 +48,6 @@ public sealed record TestModel(
     string? Answer,
     string? TipsTitle,
     ValueList<string> Tips,
-    bool Running
+    bool Running,
+    bool LiveArmed
 );

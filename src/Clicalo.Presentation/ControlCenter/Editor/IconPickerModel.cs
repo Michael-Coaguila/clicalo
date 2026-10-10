@@ -7,8 +7,10 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="Suggested">Up to six suggestions.</param>
 /// <param name="SearchPlaceholder">[iconSearch].</param>
 /// <param name="Icons">The grid: the search results, or the featured icons and then the rest.</param>
+/// <param name="DictateName">The accessible name of the dictation button next to the search (ACC-011).</param>
 public sealed record IconPickerModel(
     ValueList<IconOption> Suggested,
     string SearchPlaceholder,
-    ValueList<IconOption> Icons
+    ValueList<IconOption> Icons,
+    string DictateName
 );

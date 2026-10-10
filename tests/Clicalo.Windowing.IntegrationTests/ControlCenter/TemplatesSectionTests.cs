@@ -170,6 +170,66 @@ public sealed class TemplatesSectionTests
     }
 
     [Fact]
+    [Trait("Req", "GEN-015")]
+    [Trait("Req", "PLA-004")]
+    [Trait("Req", "PLA-003")]
+    [Trait("Req", "REG-04")]
+    public void General_has_the_ai_card_to_revoke_the_consent_turn_the_ai_off_and_delete_the_key()
+    {
+        var setup = new Setup(consent: true);
+        var (window, theme, viewModel) = setup.Build();
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                viewModel.Templates!.SaveKey("sk-test");
+                var general = viewModel.General;
+                viewModel.Select(ControlCenterSection.Panel);
+                var settings = () => setup.World.Store.Current.Settings.Ai;
+                var ai = general.Screen.Ai.ShouldNotBeNull();
+                ai.Caption.ShouldBe("Inteligencia artificial");
+                ai.Use.On.ShouldBeTrue();
+                ai.Consent.ShouldBeTrue();
+                ai.ConsentState.ShouldBe("Consentimiento dado");
+                ai.ConsentAction.ShouldBe("Revocar consentimiento");
+                ai.ConsentDetail.ShouldContain("la distribución del teclado");
+                ai.KeyState.ShouldBe("Usando tu clave: sin límite");
+                ai.DeleteKeyText.ShouldBe("Borrar clave");
+
+                general.ToggleAiConsent();
+                settings().Consent.ShouldBeFalse();
+                ai = general.Screen.Ai.ShouldNotBeNull();
+                ai.ConsentState.ShouldBe("Sin consentimiento: se te pedirá antes de generar");
+                ai.ConsentAction.ShouldBe("Dar consentimiento");
+                general.ToggleAiConsent();
+                settings().Consent.ShouldBeTrue();
+
+                general.ToggleAi();
+                settings().Disabled.ShouldBeTrue();
+                general.Screen.Ai.ShouldNotBeNull().Use.On.ShouldBeFalse();
+                general.ToggleAi();
+                settings().Disabled.ShouldBeFalse();
+
+                // Two taps (REG-04): the first one only arms the button.
+                general.DeleteAiKey();
+                setup.Keys.HasKey().ShouldBeTrue();
+                ai = general.Screen.Ai.ShouldNotBeNull();
+                ai.DeleteKeyArmed.ShouldBeTrue();
+                ai.DeleteKeyText.ShouldBe("Confirmar");
+                general.DeleteAiKey();
+                setup.Keys.HasKey().ShouldBeFalse();
+                ai = general.Screen.Ai.ShouldNotBeNull();
+                ai.DeleteKeyText.ShouldBeNull();
+                ai.KeyState.ShouldBe("Sin clave: la IA usa tu propia clave de API de Anthropic");
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
     [Trait("Req", "REG-04")]
     [Trait("Req", "PLA-003")]
     public void Deleting_the_key_takes_two_taps()
@@ -211,6 +271,66 @@ public sealed class TemplatesSectionTests
     }
 
     [Fact]
+    [Trait("Req", "PLA-015")]
+    [Trait("Req", "PLA-016")]
+    [Trait("Req", "ACC-011")]
+    [Trait("Req", "IDI-004")]
+    public void A_row_of_the_preview_changes_its_keys_before_installing_and_dictates_its_name()
+    {
+        var setup = new Setup();
+        var (window, theme, viewModel) = setup.Build();
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                var templates = viewModel.Templates!;
+                viewModel.Select(ControlCenterSection.Templates);
+                WpfThread.DrainPendingWork();
+                templates
+                    .Screen.Available.Single(c =>
+                        string.Equals(c.Id, "excel", StringComparison.Ordinal)
+                    )
+                    .Meta.ShouldBe("1 atajo", "never «1 atajos»");
+                templates.PreviewTemplate("notes");
+                WpfThread.DrainPendingWork();
+                var row = templates.Screen.Preview.Rows[0];
+                row.DictateName.ShouldBe("Dictar");
+                row.KeysName.ShouldBe("Cambiar teclas");
+                row.Combo.ShouldBeNull();
+                templates.Screen.Preview.ButtonText.ShouldBe("Instalar 2 atajos");
+
+                templates.EditRowKeys(0);
+                WpfThread.DrainPendingWork();
+                var combo = templates.Screen.Preview.Rows[0].Combo.ShouldNotBeNull();
+                combo.Chips.Select(c => c.Label).ShouldBe(["Ctrl", "G"]);
+                combo.RecordText.ShouldBeNull("the preview does not record");
+                templates.RowKeys.TapKey(KeyIds.Shift);
+                WpfThread.DrainPendingWork();
+                templates.Screen.Preview.Rows[0].Foot.ShouldStartWith("Ctrl + G + ");
+                templates.Screen.Preview.Rows[1].Combo.ShouldBeNull();
+                templates.RowKeys.StopEditingStep();
+                WpfThread.DrainPendingWork();
+                templates.Screen.Preview.Rows[0].Combo.ShouldBeNull();
+
+                templates.InstallPreview();
+                WpfThread.DrainPendingWork();
+                var profile = setup
+                    .World.Store.Current.Library.ProfileFor(Notepad)
+                    .ShouldNotBeNull();
+                profile
+                    .Shortcuts[0]
+                    .Action.ShouldBeOfType<TapAction>()
+                    .Chord.Strokes.Select(s => s.Key)
+                    .ShouldBe([KeyIds.Ctrl, KeyIds.G, KeyIds.Shift]);
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
     [Trait("Req", "PLA-013")]
     [Trait("Req", "PLA-015")]
     public void A_template_card_opens_its_preview_and_installs_the_checked_shortcuts()
@@ -230,7 +350,7 @@ public sealed class TemplatesSectionTests
                 templates.Screen.Suggested.Cards.ShouldHaveSingleItem().Selected.ShouldBeTrue();
                 templates.ToggleRow(1);
                 WpfThread.DrainPendingWork();
-                templates.Screen.Preview.ButtonText.ShouldBe("Instalar 1 atajos");
+                templates.Screen.Preview.ButtonText.ShouldBe("Instalar 1 atajo");
 
                 templates.InstallPreview();
                 WpfThread.DrainPendingWork();
