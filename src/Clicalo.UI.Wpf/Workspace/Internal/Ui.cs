@@ -14,6 +14,9 @@ namespace Clicalo.UI.Wpf.Workspace.Internal;
 /// </summary>
 internal static class Ui
 {
+    /// <summary>Below this width a switch row has no room for its text beside the icon and the switch.</summary>
+    private const double SwitchRowStackWidth = 220;
+
     /// <summary>A text on the type scale.</summary>
     public static TextBlock Text(
         string text,
@@ -374,18 +377,19 @@ internal static class Ui
             VerticalAlignment = VerticalAlignment.Center,
         };
         var layout = new DockPanel { LastChildFill = true };
+        SymbolIcon? symbol = null;
         if (icon is not null)
         {
-            var symbol = Icon(icon, 22, ColorToken.Accent);
+            symbol = Icon(icon, 22, ColorToken.Accent);
             symbol.Margin = new Thickness(0, 0, 12, 0);
             DockPanel.SetDock(symbol, Dock.Left);
             layout.Children.Add(symbol);
         }
 
-        knob.Margin = new Thickness(12, 0, 0, 0);
-        DockPanel.SetDock(knob, Dock.Right);
         layout.Children.Add(knob);
         layout.Children.Add(text);
+        PlaceSwitch(knob, symbol, double.PositiveInfinity);
+        layout.SizeChanged += (_, e) => PlaceSwitch(knob, symbol, e.NewSize.Width);
         var row = new CcToggle
         {
             Content = layout,
@@ -400,6 +404,20 @@ internal static class Ui
         AutomationProperties.SetHelpText(row, description);
         row.Click += (_, _) => click();
         return row;
+    }
+
+    /// <summary>
+    /// The switch goes at the end of its row; where the row is too narrow to leave room for the text beside it (a
+    /// narrow column of the smallest window, CCM-005), it goes under the text and the icon is left out, so the text
+    /// keeps the width of the row and nothing is cut.
+    /// </summary>
+    private static void PlaceSwitch(ToggleSwitch knob, SymbolIcon? symbol, double width)
+    {
+        var below = width < SwitchRowStackWidth;
+        DockPanel.SetDock(knob, below ? Dock.Bottom : Dock.Right);
+        knob.HorizontalAlignment = below ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+        knob.Margin = below ? new Thickness(0, 6, 0, 0) : new Thickness(12, 0, 0, 0);
+        symbol?.Visibility = below ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>A small caption above a group of controls (12 px, bold, muted).</summary>

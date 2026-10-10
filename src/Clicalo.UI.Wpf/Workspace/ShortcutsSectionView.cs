@@ -686,22 +686,38 @@ public sealed class ShortcutsSectionView : Grid
                         new Thickness(6, 1, 6, 1)
                     )
                     : null;
-                var chip = Ui.Choice(
-                    Ui.Row(
-                        6,
+                // The name, the process and the mark go on one line and, where the column is narrower than them (the
+                // smallest window, CCM-005), on the next ones: the chip grows and nothing of it is cut.
+                var parts = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
+                foreach (
+                    var part in new FrameworkElement?[]
+                    {
                         Ui.Text(app.Name, 13, bold: true),
                         Ui.Text(app.Process, 11, ink: ColorToken.Muted, mono: true),
-                        mark
-                    ),
+                        mark,
+                    }
+                )
+                {
+                    if (part is not null)
+                    {
+                        part.Margin = new Thickness(3, 1, 3, 1);
+                        parts.Children.Add(part);
+                    }
+                }
+
+                var chip = Ui.Choice(
+                    parts,
                     app.Mark is null
                         ? app.Name + " " + app.Process
                         : app.Name + " " + app.Process + ", " + app.Mark,
                     app.Selected,
                     () => _viewModel.BindApp(app.Process),
-                    44,
+                    double.NaN,
                     22,
                     role: CcToggleRole.Option
                 );
+                chip.MinHeight = 44;
+                chip.Padding = new Thickness(9, 4, 9, 4);
                 return (UIElement)chip;
             });
             var detect = Ui.Button(

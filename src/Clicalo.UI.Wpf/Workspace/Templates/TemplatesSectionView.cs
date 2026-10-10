@@ -573,12 +573,16 @@ public sealed class TemplatesSectionView : Grid
                 option.Detected ? option.Label + ", " + detected : option.Label,
                 option.Selected,
                 () => choose(option.Id),
+                height: double.NaN,
                 radius: 9,
                 offFill: null,
                 role: CcToggleRole.Option
             );
+
+            // In the narrowest window a name takes three lines: the option grows with it (CCM-005).
+            button.MinHeight = 44;
             button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            button.Padding = new Thickness(10, 0, 10, 0);
+            button.Padding = new Thickness(10, 4, 10, 4);
             button.Margin = new Thickness(0, 6, 0, 0);
             column.Children.Add(button);
         }
