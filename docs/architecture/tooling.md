@@ -43,8 +43,7 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
 | `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
 | `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
-| `cl beta` | Lanza la publicación beta (`beta.yml`) | M5 |
-| `cl sign-manifest` | Firma el manifiesto con la llave de hardware del mantenedor ([ADR-0013](../adr/0013-firma-de-codigo-y-manifiesto-firmado.md)) | M5 |
+| `cl package` | Publica Clícalo autocontenido y lo empaqueta con Velopack en `artifacts/package/<canal>` (`--channel stable|beta`, `--version`); no publica nada. La 2.0 sale sin firma, así que `cl beta` y `cl sign-manifest` esperan a la firma con SignPath ([ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md), [guía de publicación](../guides/release.md)) | M5 |
 
 ### Qué hace `cl check`
 

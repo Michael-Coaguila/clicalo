@@ -41,7 +41,7 @@
       "id": "elevation",
       "paths": ["src/Clicalo.Platform.Windows/Elevation/**"],
       "apis": ["ShellExecuteEx"],
-      "justification": "Relaunching elevated uses ShellExecuteEx(\"runas\") after WinVerifyTrust and the pinned publisher check; the table of §4.4 omits it but §3.3 rule 2 requires it.",
+      "justification": "«Reabrir como administrador» (user decision D7, ADR-0027) uses ShellExecuteEx(\"runas\") with the UAC prompt every time, only after checking that the process is exactly the installed Clicalo.exe of %LocalAppData%\\Clicalo.App\\current with no links in its path; WinVerifyTrust returns with the SignPath signature.",
       "blueprint": "§3.3"
     },
     {
