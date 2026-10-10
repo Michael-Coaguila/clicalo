@@ -3,6 +3,7 @@ using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
 using Microsoft.Extensions.Time.Testing;
 
@@ -221,6 +222,53 @@ public sealed class InteractionReducerTests
 
         failure.ShouldBeOfType<InvalidOperationException>();
         store.Current.Minimized.ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "BUS-006")]
+    public void A_search_from_the_bar_is_a_temporary_Full_view_that_leaves_the_bar_as_it_was()
+    {
+        var open = Reduce(
+            Reduce(InteractionState.Initial, new InteractionAction.OpenDock()),
+            new InteractionAction.ToggleFlyout(DockFlyout.Pinned)
+        );
+
+        var peek = Reduce(open, new InteractionAction.PeekSearch());
+        peek.SearchPeek.ShouldBeTrue();
+        peek.Flyout.ShouldBe(DockFlyout.None);
+        peek.DockOpen.ShouldBeTrue();
+        PanelForms
+            .Of(true, PanelDensity.Dock, peek.Minimized, peek.DockOpen, peek.SearchPeek)
+            .ShouldBe(PanelForm.Full);
+
+        // The search closed or a result ran: the Tab view is back with its bar open.
+        var back = Reduce(peek, new InteractionAction.EndSearchPeek());
+        back.SearchPeek.ShouldBeFalse();
+        PanelForms
+            .Of(true, PanelDensity.Dock, back.Minimized, back.DockOpen, back.SearchPeek)
+            .ShouldBe(PanelForm.DockOpen);
+        Reduce(back, new InteractionAction.EndSearchPeek()).ShouldBeSameAs(back);
+    }
+
+    [Fact]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "BUS-006")]
+    public void Minimize_or_another_view_end_the_search_from_the_bar()
+    {
+        var peek = Reduce(
+            Reduce(InteractionState.Initial, new InteractionAction.OpenDock()),
+            new InteractionAction.PeekSearch()
+        );
+
+        // «−» on the temporary Full view goes back to the Tab view, which has no bubble.
+        var minimized = Reduce(peek, new InteractionAction.Minimize());
+        minimized.SearchPeek.ShouldBeFalse();
+        minimized.Minimized.ShouldBeFalse();
+
+        var changed = Reduce(peek, new InteractionAction.ViewChanged());
+        changed.SearchPeek.ShouldBeFalse();
+        changed.DockOpen.ShouldBeFalse();
     }
 
     [Fact]

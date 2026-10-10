@@ -187,6 +187,89 @@ public sealed class DockGeometryTests
     }
 
     [Fact]
+    [Trait("Req", "PES-014")]
+    public void The_notice_surface_goes_beside_the_bar_at_its_end_when_nothing_is_there()
+    {
+        var bar = new PhysicalRect(1832, 100, 88, 840);
+
+        DockGeometry
+            .BesideClear(DockSide.Right, bar, 300, 60, 8, DockAlign.End, Monitor, [])
+            .ShouldBe(new PhysicalRect(1832 - 8 - 300, 940 - 60, 300, 60));
+
+        // A window that is elsewhere beside the bar does not move it.
+        DockGeometry
+            .BesideClear(
+                DockSide.Right,
+                bar,
+                300,
+                60,
+                8,
+                DockAlign.End,
+                Monitor,
+                [new PhysicalRect(1588, 100, 236, 400)]
+            )
+            .ShouldBe(new PhysicalRect(1832 - 8 - 300, 940 - 60, 300, 60));
+    }
+
+    [Fact]
+    [Trait("Req", "PES-014")]
+    public void The_notice_surface_goes_further_in_when_a_window_or_Release_all_is_in_its_place()
+    {
+        var bar = new PhysicalRect(1832, 100, 88, 840);
+        var pinned = new PhysicalRect(1832 - 16 - 230, 500, 230, 300);
+        var pill = new PhysicalRect(1832 - 8 - 140 - 250, 800, 140, 44);
+
+        var beyondPinned = DockGeometry.BesideClear(
+            DockSide.Right,
+            bar,
+            300,
+            400,
+            8,
+            DockAlign.End,
+            Monitor,
+            [pinned]
+        );
+        beyondPinned.Right.ShouldBe(pinned.Left - 8);
+        beyondPinned.Bottom.ShouldBe(bar.Bottom);
+
+        // Two in the way: beyond both.
+        var beyondBoth = DockGeometry.BesideClear(
+            DockSide.Right,
+            bar,
+            300,
+            400,
+            8,
+            DockAlign.End,
+            Monitor,
+            [pinned, pill]
+        );
+        beyondBoth.Right.ShouldBe(Math.Min(pinned.Left, pill.Left) - 8);
+
+        // Beside the closed handle with «Release all» centered beside it: the notice goes beyond the pill.
+        var handle = new PhysicalRect(1920 - 44, 462, 44, 116);
+        var besideHandle = DockGeometry.Beside(
+            DockSide.Right,
+            handle,
+            140,
+            44,
+            8,
+            DockAlign.Center,
+            Monitor
+        );
+        var notice = DockGeometry.BesideClear(
+            DockSide.Right,
+            handle,
+            300,
+            60,
+            8,
+            DockAlign.End,
+            Monitor,
+            [besideHandle]
+        );
+        notice.Right.ShouldBe(besideHandle.Left - 8);
+    }
+
+    [Fact]
     [Trait("Req", "PES-013")]
     public void Release_all_floats_110_from_the_edge_or_180_from_the_bottom()
     {
