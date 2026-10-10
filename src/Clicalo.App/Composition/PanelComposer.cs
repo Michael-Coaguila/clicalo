@@ -386,7 +386,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
     /// <summary>
     /// Shows a notice in the notice bar for <c>Timings.Notices.NoticeDuration</c> (or the undo duration when it offers
-    /// [undo]), the newest replacing the one on show (AVI-001, AVI-002, AVI-003).
+    /// [undo]), times the multiplier of the settings (ACC-006), the newest replacing the one on show (AVI-001, AVI-002,
+    /// AVI-003).
     /// </summary>
     /// <param name="text">The text.</param>
     /// <param name="tone">Notice (polite) or warning (assertive).</param>
@@ -401,7 +402,11 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         _noticeTimer = _time.CreateTimer(
             static state => ((PanelComposer)state!).QueueNoticeEnd(),
             this,
-            canUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration,
+            // ACC-006: the notices last ×1, ×2 or ×3, as the settings say; [undo] stays for as long (AVI-003).
+            InteractionTime.Scale(
+                canUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration,
+                _store.Current.Settings.TimeMultiplier
+            ),
             Timeout.InfiniteTimeSpan
         );
         Invalidate();
