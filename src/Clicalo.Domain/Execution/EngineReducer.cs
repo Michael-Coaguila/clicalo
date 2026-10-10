@@ -445,8 +445,10 @@ public static class EngineReducer
                 step.State = step.State with { Paused = true };
                 break;
             case TerminalReason.EngineFault:
+                // BUR-004: a fault never resumes by itself; paused, nothing is sent until «Reanudar».
                 step.State = EngineState.Empty with
                 {
+                    Paused = step.State.Paused,
                     Foreground = step.State.Foreground,
                     Filters = step.State.Filters,
                     Sequence = step.State.Sequence,

@@ -624,6 +624,54 @@
       "after": "keyMissing",
       "text": { "es": "Se soltaron las teclas al bloquear o suspender el equipo", "en": "Keys were released when the computer was locked or suspended" }
     },
+    "freqEmptyT": {
+      "notes": "Título de la tarjeta de Frecuentes vacío (CUA-010, catálogo §9). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "emptyProfS",
+      "text": { "es": "Aún no hay frecuentes", "en": "No frequents yet" }
+    },
+    "freqEmptyS": {
+      "notes": "Texto de la tarjeta de Frecuentes vacío (CUA-010, catálogo §9). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "freqEmptyT",
+      "text": { "es": "Los atajos que uses aparecerán aquí.", "en": "The shortcuts you use will appear here." }
+    },
+    "backToProfile": {
+      "notes": "Botón de la tarjeta de Frecuentes vacío (CUA-010): vuelve al perfil del selector. Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "freqEmptyS",
+      "text": { "es": "Volver a {profile}", "en": "Back to {profile}" }
+    },
+    "suggestionDot": {
+      "notes": "Nombre accesible del punto amarillo del botón de perfil cuando hay una sugerencia pendiente para la app activa (SEL-005). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "createFor",
+      "text": { "es": "Hay una sugerencia de perfil para {app}", "en": "There is a profile suggestion for {app}" }
+    },
+    "pauseApp": {
+      "notes": "Entrada «Pausar» del menú de bandeja (BUR-003, BUR-004). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "hidePanel",
+      "text": { "es": "Pausar", "en": "Pause" }
+    },
+    "resumeApp": {
+      "notes": "Entrada «Reanudar» del menú de bandeja mientras Clícalo está en pausa (BUR-004). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "pauseApp",
+      "text": { "es": "Reanudar", "en": "Resume" }
+    },
+    "trayPaused": {
+      "notes": "Texto accesible del icono de bandeja mientras Clícalo está en pausa (BUR-004). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "trayHidden",
+      "text": { "es": "Clícalo · en pausa", "en": "Clícalo · paused" }
+    },
+    "globalHotkeyTaken": {
+      "notes": "Aviso cuando Windows no deja registrar la combinación del atajo global porque otra app ya la usa (BUR-005, D10). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "globalHotkeyD",
+      "text": {
+        "es": "Otra app ya usa {keys}. Elige otra combinación en el centro de control.",
+        "en": "Another app already uses {keys}. Pick another combination in the control center."
+      }
+    },
+    "adminRestarting": {
+      "notes": "Aviso real de [adminBtn] (EJE-013): corrige [adminOn], que en el paquete termina en «(simulado)» y se conserva sin uso por paridad. Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "adminOn",
+      "text": { "es": "Se reiniciará como administrador", "en": "Will restart as administrator" }
+    },
     "macroRunning": {
       "notes": "Una macro en curso (EJE-010). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
       "after": "releasedOnLock",
