@@ -135,11 +135,12 @@ solo ejecutan las pruebas deterministas: dejan fuera las de escritorio, caos, re
 a mano (`nightly.yml` o `cl desk` en local) y son obligatorias antes de cada versión. Desde M5: `package`
 (`cl package --channel beta --version 2.0.0-beta.1`), que empaqueta Clícalo con Velopack en `artifacts/package` y no
 publica nada. Desde M6: `trace`, que escribe en `artifacts/cl/trace.md` cada requisito del catálogo con las pruebas
-que lo nombran en `[Trait("Req", …)]` y marca los MUST sin prueba. No se construyen `states` ni `accept`
+que lo nombran en `[Trait("Req", …)]` y marca los MUST sin prueba. No se construyen `states`, `accept` ni `pr`
 ([D-29](docs/architecture/deviations.md)): los cubren las vistas previas sin pantalla y el
-[guion de aceptación manual](docs/guides/aceptacion-manual.md). Siguen pendientes `pr`, y `beta` y `sign-manifest`,
-que esperan a la firma (ADR-0027). Cada orden termina en una línea legible por Narrador. Detalle, pasos de
-`cl check` y variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
+[guion de aceptación manual](docs/guides/aceptacion-manual.md), y un PR se abre desde GitHub. Siguen pendientes
+`beta` y `sign-manifest`, que esperan a la firma (ADR-0027). Cada orden termina en una línea legible por
+Narrador. Detalle, pasos de `cl check` y variables de entorno:
+[tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 
 ## Dónde está cada cosa
 
