@@ -7,6 +7,7 @@ namespace Clicalo.Application.UseCases.Editor;
 /// <param name="Name">The name the Start menu shows.</param>
 /// <param name="Target">
 /// The text of the App field that opens it: <c>shell:AppsFolder\&lt;AUMID&gt;</c>, which <see cref="Targets.ParseApp"/>
-/// reads as a Store app target and the launcher opens without a command interpreter.
+/// reads as a Store app target, or the path of the program when Windows names it by its path. Either way the launcher
+/// opens it without a command interpreter.
 /// </param>
 public sealed record InstalledProgram(string Name, string Target);

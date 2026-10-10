@@ -1,4 +1,5 @@
 using Clicalo.Application.UseCases.Editor;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Library;
 using Clicalo.Platform.Windows.Launch.InstalledApps;
 
@@ -22,8 +23,19 @@ public sealed class InstalledAppsReaderTests
         programs
             .Select(p => p.Name)
             .ShouldBe(programs.Select(p => p.Name).Order(StringComparer.CurrentCultureIgnoreCase));
-        // Every target is a Store-style target the launcher opens without a command interpreter.
-        programs.ShouldAllBe(p => Targets.ParseApp(p.Target) is AppTarget.StoreApp);
+        // Every target is one the launcher opens, without a command interpreter: through the Applications folder, or
+        // by the path of the program when Windows names it by its path.
+        programs.ShouldAllBe(p =>
+            LaunchSafety.Check(
+                new LaunchRequest.StartApp(Targets.ParseApp(p.Target)),
+                confirmed: false
+            ) == LaunchVerdict.Allowed
+        );
+        programs.ShouldContain(p => Targets.ParseApp(p.Target) is AppTarget.StoreApp);
+        programs.ShouldContain(
+            p => Targets.ParseApp(p.Target) is AppTarget.Executable,
+            "the Windows tools of the Start menu are named by their path"
+        );
         programs
             .Select(p => p.Target)
             .Distinct(StringComparer.Ordinal)
