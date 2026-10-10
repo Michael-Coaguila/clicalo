@@ -167,6 +167,47 @@ internal sealed partial class BuildSteps
         }
     }
 
+    /// <summary>
+    /// Adds to the final line of <c>cl trace</c> where the report is and how many MUST requirements have neither a test
+    /// nor a line in the manual acceptance script.
+    /// </summary>
+    public void NoteTraceReport()
+    {
+        var report = Path.Combine(layout.ClDirectory, "trace.md");
+        if (File.Exists(report))
+        {
+            context.AddNote(
+                Messages.TraceReport(
+                    layout.RelativeForward(report),
+                    TraceUncovered(File.ReadAllText(report))
+                )
+            );
+        }
+    }
+
+    /// <summary>
+    /// The number on the summary line «MUST sin prueba automática ni guion manual: N.» of the report the developer CLI
+    /// writes (<c>TraceReport.UncoveredLabel</c> in tools/Clicalo.DevCli), or null when the line is not there.
+    /// </summary>
+    internal static int? TraceUncovered(string markdown)
+    {
+        const string Label = "MUST sin prueba automática ni guion manual: ";
+        var at = markdown.IndexOf(Label, StringComparison.Ordinal);
+        if (at < 0)
+        {
+            return null;
+        }
+
+        var digits = markdown
+            .AsSpan(at + Label.Length)
+            .ToString()
+            .TakeWhile(char.IsAsciiDigit)
+            .ToArray();
+        return int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var count)
+            ? count
+            : null;
+    }
+
     /// <summary>The <c>CLICALO_PERF_APPS</c> value for the published <paramref name="variants"/>.</summary>
     public static string PerfApps(IReadOnlyList<PublishVariant> variants, string output) =>
         string.Join(

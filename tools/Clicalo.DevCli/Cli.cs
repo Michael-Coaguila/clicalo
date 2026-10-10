@@ -1,5 +1,6 @@
 using Clicalo.DevCli.Adr;
 using Clicalo.DevCli.I18n;
+using Clicalo.DevCli.Trace;
 
 namespace Clicalo.DevCli;
 
@@ -9,6 +10,7 @@ internal static class Cli
     private const string CheckVerb = "i18n-check";
     private const string ImportVerb = "i18n-import";
     private const string AdrVerb = "adr-check";
+    private const string TraceVerb = "trace";
 
     private const string Help = """
         Clicalo developer CLI (behind `cl`).
@@ -24,6 +26,9 @@ internal static class Cli
           adr-check     Fail when the files changed since the merge base with <ref> touch a path of
                         architecture/sensitive-paths.json and no ADR (docs/adr/NNNN-*.md) changed with them.
                         --base <ref>     required: the branch or commit the change is compared with.
+          trace         Write artifacts/cl/trace.md: every requirement of docs/requirements/catalog.md with the
+                        tests that name it in a requirement trait, and the MUST requirements without a test.
+                        Fails only when a trait names an identifier that is not in the catalog.
           help          Show this help.
 
         Common options:
@@ -53,7 +58,7 @@ internal static class Cli
             return ExitCodes.Success;
         }
 
-        if (verb is not (CheckVerb or ImportVerb or AdrVerb))
+        if (verb is not (CheckVerb or ImportVerb or AdrVerb or TraceVerb))
         {
             error.WriteLine(Help);
             error.WriteLine("Unknown verb '" + verb + "'.");
@@ -82,6 +87,7 @@ internal static class Cli
         {
             CheckVerb => I18nCheckCommand.Run(root, options.StrictUnused, output),
             ImportVerb => I18nImportCommand.Run(root, options.Check, output),
+            TraceVerb => TraceCommand.Run(root, output),
             _ => AdrCheckCommand.Run(root, options.Base!, output),
         };
     }

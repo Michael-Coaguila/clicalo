@@ -81,6 +81,16 @@ internal sealed class ClVerbs(
     public Task AdrCheckAsync() => steps.DevCliAsync(VerbCatalog.AdrCheck, devCliArguments);
 
     /// <summary>
+    /// <c>cl trace</c>: writes <c>artifacts/cl/trace.md</c>, every requirement of the catalog with its tests, and says
+    /// how many MUST requirements have neither a test nor a line in the manual acceptance script.
+    /// </summary>
+    public async Task TraceAsync()
+    {
+        await steps.DevCliAsync(VerbCatalog.Trace, devCliArguments);
+        steps.NoteTraceReport();
+    }
+
+    /// <summary>
     /// <c>cl run</c>: builds the app and starts it with its data isolated in <c>%TEMP%\clicalo-dev</c> and without key
     /// sending (<c>--no-input</c>).
     /// </summary>

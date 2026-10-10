@@ -407,7 +407,8 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
 
     /// <summary>
     /// Runs <paramref name="verb"/> of the developer CLI with <paramref name="arguments"/> as one step named after the
-    /// verb (<c>cl i18n-check</c>, <c>cl i18n-import</c>, <c>cl adr-check</c>), with the same report as the i18n step.
+    /// verb (<c>cl i18n-check</c>, <c>cl i18n-import</c>, <c>cl adr-check</c>, <c>cl trace</c>), with the same report as
+    /// the i18n step.
     /// </summary>
     public Task DevCliAsync(string verb, IReadOnlyList<string> arguments) =>
         context.Steps.RunAsync(
@@ -420,6 +421,7 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
                     {
                         VerbCatalog.I18nCheck => Messages.I18nFailed,
                         VerbCatalog.AdrCheck => Messages.AdrCheckFailed,
+                        VerbCatalog.Trace => Messages.TraceFailed,
                         _ => Messages.DevCliFailed(verb),
                     },
                     Messages.DevCliSection(verb),
@@ -427,6 +429,7 @@ internal sealed partial class BuildSteps(RepoLayout layout, RunContext context)
                     {
                         VerbCatalog.I18nCheck => Messages.I18nHint,
                         VerbCatalog.I18nImport => Messages.I18nImportHint,
+                        VerbCatalog.Trace => Messages.TraceHint,
                         _ => Messages.AdrCheckHint,
                     }
                 )
