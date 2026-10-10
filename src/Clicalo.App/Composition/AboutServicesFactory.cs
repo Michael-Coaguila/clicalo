@@ -70,8 +70,7 @@ internal static class AboutServicesFactory
             DocumentFormats.AppVersion,
             WindowsVersion(),
             AboutLinks.Current,
-            (address, cancellationToken) =>
-                OpenAsync(shell, openMail, address, cancellationToken),
+            (address, cancellationToken) => OpenAsync(shell, openMail, address, cancellationToken),
             text => Copy(ui, text),
             dictate,
             cancellationToken => ReadLogAsync(locations.LogFile, cancellationToken),

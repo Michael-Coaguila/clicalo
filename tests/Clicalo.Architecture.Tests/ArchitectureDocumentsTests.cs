@@ -93,7 +93,7 @@ public sealed class ArchitectureDocumentsTests
         registry
             .UseCases.Select(c => c.Name)
             .ShouldBe(
-                ["RollbackVersion", "UninstallKeepOrDeleteData", "UninstallSystemComponent"],
+                ["RollbackVersion", "UninstallKeepOrDeleteData", "StartFromScratchOnReinstall"],
                 ignoreOrder: true
             );
     }
@@ -152,6 +152,12 @@ public sealed class ArchitectureDocumentsTests
             "data/schemas/document.schema.json",
             "docs/architecture/contracts.md",
             "src/Clicalo.Platform.Core/Ipc/IpcRequest.cs",
+            // ADR-0029: what may be started (the feedback email, the uninstaller) and deleting data on uninstall.
+            "src/Clicalo.Platform.Windows/Launch/ShellExecutor.cs",
+            "src/Clicalo.Platform.Windows/Launch/UninstallerLauncher.cs",
+            "src/Clicalo.Domain/Execution/LaunchSafety.cs",
+            "src/Clicalo.App/Lifecycle/SystemUninstall.cs",
+            "src/Clicalo.Infrastructure/Persistence/UninstallDataWipe.cs",
             "LICENSE",
             "architecture/sensitive-paths.json",
         ];

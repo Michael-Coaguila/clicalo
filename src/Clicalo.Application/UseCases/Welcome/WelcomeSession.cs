@@ -173,9 +173,7 @@ public sealed class WelcomeSession
 
         // The store only runs a destructive command with a token of its own operation (CLC0010).
         switch (
-            _confirm.Tap(
-                new ConfirmationSubject(nameof(RestoreBackup), StartFromScratchOperation)
-            )
+            _confirm.Tap(new ConfirmationSubject(nameof(RestoreBackup), StartFromScratchOperation))
         )
         {
             case TwoStepResult.Armed armed:

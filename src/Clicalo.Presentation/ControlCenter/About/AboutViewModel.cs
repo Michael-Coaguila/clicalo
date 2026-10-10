@@ -31,7 +31,8 @@ public sealed class AboutViewModel : ObservableObject
 
     private readonly AboutServices _s;
 
-    private string? Email => string.IsNullOrWhiteSpace(_s.Links.Email) ? null : _s.Links.Email.Trim();
+    private string? Email =>
+        string.IsNullOrWhiteSpace(_s.Links.Email) ? null : _s.Links.Email.Trim();
 
     private FeedbackKind _kind = FeedbackKind.Suggestion;
     private string _message = string.Empty;
@@ -178,10 +179,7 @@ public sealed class AboutViewModel : ObservableObject
             // message is copied.
             var opened =
                 Email is { } email
-                && await _s.Open(
-                        FeedbackMail.Address(email, subject, body),
-                        CancellationToken.None
-                    )
+                && await _s.Open(FeedbackMail.Address(email, subject, body), CancellationToken.None)
                     .ConfigureAwait(true);
             if (opened)
             {

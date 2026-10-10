@@ -70,6 +70,8 @@ public static class ImportReview
             }
         }
 
-        return library.Map(l => ReferenceEquals(l, incoming.Library) ? incoming : incoming with { Library = l });
+        return library.Map(l =>
+            ReferenceEquals(l, incoming.Library) ? incoming : incoming with { Library = l }
+        );
     }
 }

@@ -78,7 +78,10 @@ public sealed class ShellExecutorTests
     [Trait("Req", "ACE-004")]
     [Trait("Req", "LOG-008")]
     [InlineData("mailto:otra@persona.example?subject=a", "contacto@clicalo.example")]
-    [InlineData("mailto:contacto@clicalo.example?cc=otra@persona.example", "contacto@clicalo.example")]
+    [InlineData(
+        "mailto:contacto@clicalo.example?cc=otra@persona.example",
+        "contacto@clicalo.example"
+    )]
     [InlineData("mailto:contacto@clicalo.example?subject=a", null)]
     [InlineData("https://clicalo.example/", "contacto@clicalo.example")]
     public async Task The_email_app_never_opens_for_anything_but_the_project_address(

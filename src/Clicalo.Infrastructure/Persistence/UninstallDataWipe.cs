@@ -13,7 +13,8 @@ public static class UninstallDataWipe
     public const string MarkerName = "delete-data-on-uninstall";
 
     /// <summary>What the marker file holds: its presence is the request.</summary>
-    public static ReadOnlyMemory<byte> Marker { get; } = "clicalo.uninstall.delete-data\n"u8.ToArray();
+    public static ReadOnlyMemory<byte> Marker { get; } =
+        "clicalo.uninstall.delete-data\n"u8.ToArray();
 
     /// <summary>Where the marker of <paramref name="locations"/> goes.</summary>
     /// <param name="locations">The data folders.</param>

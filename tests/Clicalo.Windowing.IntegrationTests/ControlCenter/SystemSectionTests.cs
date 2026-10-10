@@ -417,7 +417,9 @@ public sealed class SystemSectionTests
             view.UpdateLayout();
             Find(view, AutomationControlType.TabItem)
                 .Select(t =>
-                    ((ISelectionItemProvider)t.GetPattern(PatternInterface.SelectionItem)!).IsSelected
+                    (
+                        (ISelectionItemProvider)t.GetPattern(PatternInterface.SelectionItem)!
+                    ).IsSelected
                 )
                 .ShouldBe([false, false, true]);
             view.Detach();
@@ -460,7 +462,11 @@ public sealed class SystemSectionTests
                 AutoIcon: false,
                 new CategoryId("edit"),
                 action,
-                new ShortcutOptions(Confirm: false, new HoldLimit.InheritGlobal(), IsPrivate: false),
+                new ShortcutOptions(
+                    Confirm: false,
+                    new HoldLimit.InheritGlobal(),
+                    IsPrivate: false
+                ),
                 Origin: null,
                 PinnedFrom: null
             );

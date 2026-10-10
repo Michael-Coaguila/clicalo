@@ -48,15 +48,7 @@ public sealed class ImportReviewTests
     public void A_backup_of_ones_own_data_asks_nothing()
     {
         var current = Document(Copy, Web, App, Macro);
-        var backup = Document(
-            Copy,
-            Web with
-            {
-                Id = new ShortcutId("web-older-id"),
-            },
-            App,
-            Macro
-        );
+        var backup = Document(Copy, Web with { Id = new ShortcutId("web-older-id") }, App, Macro);
 
         ImportReview
             .Pending(current, backup)

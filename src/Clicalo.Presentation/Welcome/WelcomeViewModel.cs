@@ -232,10 +232,7 @@ public sealed class WelcomeViewModel : ObservableObject
     /// <summary>What [Siguiente] of step 1 changes and what it leaves as the person set it (BIE-010).</summary>
     private WelcomeChangesNote? Changes(UserSettings settings)
     {
-        if (
-            Session.PendingChanges is not { } plan
-            || (plan.Changes.IsEmpty && plan.Kept.IsEmpty)
-        )
+        if (Session.PendingChanges is not { } plan || (plan.Changes.IsEmpty && plan.Kept.IsEmpty))
         {
             return null;
         }
@@ -260,17 +257,14 @@ public sealed class WelcomeViewModel : ObservableObject
                     _ => L.SizeM,
                 }
             ),
-            WelcomeSetting.VoiceNumbers => settings.VoiceNumbers
-                ? L.ObChVoiceOn
-                : L.ObChVoiceOff,
+            WelcomeSetting.VoiceNumbers => settings.VoiceNumbers ? L.ObChVoiceOn : L.ObChVoiceOff,
             _ => settings.NoKeyboardUser ? L.ObChNoKbOn : L.ObChNoKbOff,
         };
 
     private static Message PresetLabel(string preset) =>
         string.Equals(preset, TouchPresets.Standard.Id, StringComparison.Ordinal) ? L.PStd
         : string.Equals(preset, TouchPresets.MildTremor.Id, StringComparison.Ordinal) ? L.PLeve
-        : string.Equals(preset, TouchPresets.StrongTremor.Id, StringComparison.Ordinal)
-            ? L.PFuerte
+        : string.Equals(preset, TouchPresets.StrongTremor.Id, StringComparison.Ordinal) ? L.PFuerte
         : L.PCustom;
 
     private static Message LayoutLabel(string layout) =>

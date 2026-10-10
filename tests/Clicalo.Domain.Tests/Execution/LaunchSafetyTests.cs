@@ -20,7 +20,9 @@ public sealed class LaunchSafetyTests
     [Trait("Req", "ACE-004")]
     [InlineData("mailto:contacto@clicalo.example")]
     [InlineData("mailto:contacto@clicalo.example?subject=%5BCl%C3%ADcalo%5D%20Idea")]
-    [InlineData("mailto:Contacto@Clicalo.Example?subject=a&body=l%C3%ADnea%201%0D%0Al%C3%ADnea%202")]
+    [InlineData(
+        "mailto:Contacto@Clicalo.Example?subject=a&body=l%C3%ADnea%201%0D%0Al%C3%ADnea%202"
+    )]
     public void The_feedback_email_opens_only_towards_the_project_address(string address) =>
         LaunchSafety.CheckMail(new Uri(address), ProjectMail).ShouldBe(LaunchVerdict.Allowed);
 

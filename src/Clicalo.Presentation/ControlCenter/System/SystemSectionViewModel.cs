@@ -588,9 +588,7 @@ public sealed class SystemSectionViewModel : ObservableObject
     private void RestoreReviewed(RestoreReview restore)
     {
         switch (
-            _s.Confirm.Tap(
-                new ConfirmationSubject(nameof(RestoreBackup), ReviewTarget(restore.Id))
-            )
+            _s.Confirm.Tap(new ConfirmationSubject(nameof(RestoreBackup), ReviewTarget(restore.Id)))
         )
         {
             case TwoStepResult.Confirmed confirmed:
@@ -954,13 +952,7 @@ public sealed class SystemSectionViewModel : ObservableObject
         var replaceArmed = IsArmed(nameof(ReplaceOnImport), pick.Version);
         return new ImportCardModel(
             T(L.ImpT),
-            T(
-                L.ImpSummary(
-                    version: pick.Version,
-                    count: pick.Profiles,
-                    total: pick.Shortcuts
-                )
-            ),
+            T(L.ImpSummary(version: pick.Version, count: pick.Profiles, total: pick.Shortcuts)),
             pick.UnavailableTexts > 0
                 ? T(L.ImpTextsLost(count: pick.UnavailableTexts))
                 : string.Empty,
