@@ -53,9 +53,12 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
     private ITimer? _armTimer;
     private int _textVersion;
     private ChordRecorder? _recorder;
-    private ImmutableArray<InstalledProgram> _programs = [];
+    private ValueList<ProgramChip> _programs = [];
+    private string _programFilter = string.Empty;
+    private int _programsVersion;
     private bool _targetsRequested;
     private bool _programsRequested;
+    private bool _programsLoading;
 
     /// <summary>Creates the editor.</summary>
     /// <param name="services">The services of the Control Center.</param>
@@ -287,6 +290,23 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
             string.Equals(a.Process.Value, process, StringComparison.OrdinalIgnoreCase)
         );
         Workspace.SetApp(app?.ExecutablePath ?? process);
+    }
+
+    /// <summary>
+    /// The search filter of «Elegir programa» (EDI-014): the installed programs whose name has every word typed or
+    /// dictated stay on show. The list itself does not change, so the view only hides and shows its buttons.
+    /// </summary>
+    /// <param name="text">What the person typed or dictated.</param>
+    public void FilterPrograms(string text)
+    {
+        var filter = text ?? string.Empty;
+        if (string.Equals(filter, _programFilter, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _programFilter = filter;
+        _invalidate();
     }
 
     /// <summary>A chip of the installed programs of «Elegir programa» (EDI-014).</summary>
@@ -681,6 +701,7 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
         _for = key;
         _pickerOpen = false;
         _iconQuery = string.Empty;
+        _programFilter = string.Empty;
         _duplicatesOpen = false;
         _voiceHowOpen = false;
         _testOpen = false;
@@ -760,12 +781,16 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
             return;
         }
 
+        // EDI-014: the first read takes a moment; the card says so meanwhile instead of showing nothing.
+        _programsLoading = true;
         try
         {
             var programs = await read(CancellationToken.None).ConfigureAwait(true);
             _s.Post(() =>
             {
-                _programs = programs;
+                _programs = [.. programs.Select(static p => ProgramChip.Of(p.Target, p.Name))];
+                _programsVersion++;
+                _programsLoading = false;
                 // An empty answer is read again the next time an App shortcut shows.
                 _programsRequested = !programs.IsEmpty;
                 _invalidate();
@@ -774,6 +799,8 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
         catch (OperationCanceledException)
         {
             _programsRequested = false;
+            _programsLoading = false;
+            _invalidate();
         }
     }
 
@@ -1167,7 +1194,14 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
                 T(L.SearchDictate),
                 T(L.LinkOpenApps),
                 T(L.ProgramsInstalled),
-                [.. _programs.Select(p => new ProgramChip(p.Target, p.Name))]
+                _programs,
+                _programsLoading && _programs.IsEmpty ? T(L.ProgramsLoading) : null,
+                T(L.ProgramsSearch),
+                _programFilter,
+                !_programs.IsEmpty && ProgramFilter.Count(_programs, _programFilter) == 0
+                    ? T(L.NoResults)
+                    : null,
+                _programsVersion
             ),
             _ => null,
         };

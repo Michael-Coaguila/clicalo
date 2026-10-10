@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -164,6 +165,171 @@ public sealed class ControlCenterM6Tests
                         new AppTarget.StoreApp("Microsoft.WindowsCalculator_8wekyb3d8bbwe!App")
                     );
                 editor.Model!.Target!.Value.ShouldBe(Calculator);
+            }
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-014")]
+    public void While_the_installed_programs_are_read_the_first_time_the_card_says_so()
+    {
+        var world = new ControlCenterTestWorld();
+        var reading = new TaskCompletionSource<ImmutableArray<InstalledProgram>>();
+        var services = world.Services with
+        {
+            InstalledPrograms = _ => new ValueTask<ImmutableArray<InstalledProgram>>(reading.Task),
+        };
+        Run(
+            services,
+            world,
+            viewModel =>
+            {
+                var editor = viewModel.Shortcuts.Editor;
+                var view = new ShortcutEditorView(editor);
+                editor.SetKind(ActionKind.App);
+                WpfThread.DrainPendingWork();
+                WpfThread.DrainPendingWork();
+
+                var target = editor.Model!.Target.ShouldNotBeNull();
+                target.ProgramsLoading.ShouldBe("Leyendo los programas instalados…");
+                target.Programs.ShouldBeEmpty();
+                view.Programs.Note.ShouldBe("Leyendo los programas instalados…");
+                view.Programs.Buttons.ShouldBeEmpty();
+
+                reading.SetResult([new InstalledProgram("Calculadora", "calc.exe")]);
+                WpfThread.DrainPendingWork();
+                WpfThread.DrainPendingWork();
+
+                target = editor.Model!.Target.ShouldNotBeNull();
+                target.ProgramsLoading.ShouldBeNull();
+                target.Programs.ShouldHaveSingleItem().Name.ShouldBe("Calculadora");
+                view.Programs.Note.ShouldBeEmpty();
+                view.Programs.ShownNames.ShouldBe(["Calculadora"]);
+                view.Detach();
+            }
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-014")]
+    public void The_filter_of_Choose_program_keeps_the_programs_that_have_every_word()
+    {
+        var world = new ControlCenterTestWorld();
+        var services = world.Services with
+        {
+            InstalledPrograms = _ =>
+                ValueTask.FromResult<ImmutableArray<InstalledProgram>>([
+                    new InstalledProgram("Calculadora", "calc.exe"),
+                    new InstalledProgram("Cámara", "camera.exe"),
+                    new InstalledProgram("Bloc de notas", "notepad.exe"),
+                    new InstalledProgram("Notas rápidas", "sticky.exe"),
+                ]),
+        };
+        Run(
+            services,
+            world,
+            viewModel =>
+            {
+                var editor = viewModel.Shortcuts.Editor;
+                editor.SetKind(ActionKind.App);
+                WpfThread.DrainPendingWork();
+                WpfThread.DrainPendingWork();
+                var all = editor.Model!.Target.ShouldNotBeNull();
+                all.ProgramSearch.ShouldBe("Buscar programa…");
+                all.ProgramQuery.ShouldBeEmpty();
+                all.ProgramsNoMatch.ShouldBeNull();
+                Shown(all).ShouldBe(["Calculadora", "Cámara", "Bloc de notas", "Notas rápidas"]);
+
+                // Without accents and without case, as it is dictated.
+                editor.FilterPrograms("CAMARA");
+                WpfThread.DrainPendingWork();
+                var camera = editor.Model!.Target.ShouldNotBeNull();
+                camera.ProgramQuery.ShouldBe("CAMARA");
+                Shown(camera).ShouldBe(["Cámara"]);
+
+                // Every word, in any order.
+                editor.FilterPrograms("notas bloc");
+                WpfThread.DrainPendingWork();
+                Shown(editor.Model!.Target!).ShouldBe(["Bloc de notas"]);
+
+                editor.FilterPrograms("zzz");
+                WpfThread.DrainPendingWork();
+                var none = editor.Model!.Target.ShouldNotBeNull();
+                Shown(none).ShouldBeEmpty();
+                none.ProgramsNoMatch.ShouldBe("Nada coincide. Prueba con otra palabra.");
+
+                // The list itself is the same one: the filter never reads or builds it again.
+                none.ProgramsVersion.ShouldBe(all.ProgramsVersion);
+                none.Programs.ShouldBe(all.Programs);
+            }
+        );
+
+        static string[] Shown(TargetModel target) =>
+            [
+                .. target
+                    .Programs.Where(p => ProgramFilter.Matches(p, target.ProgramQuery))
+                    .Select(static p => p.Name),
+            ];
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-014")]
+    [Trait("Req", "ACC-011")]
+    public void The_choices_of_hundreds_of_programs_are_built_once_and_the_filter_only_hides_them()
+    {
+        var world = new ControlCenterTestWorld();
+        var services = world.Services with
+        {
+            InstalledPrograms = _ =>
+                ValueTask.FromResult<ImmutableArray<InstalledProgram>>([
+                    .. Enumerable
+                        .Range(1, 300)
+                        .Select(static i => new InstalledProgram(
+                            "Programa " + i.ToString(CultureInfo.InvariantCulture),
+                            "p" + i.ToString(CultureInfo.InvariantCulture) + ".exe"
+                        )),
+                ]),
+        };
+        Run(
+            services,
+            world,
+            viewModel =>
+            {
+                var editor = viewModel.Shortcuts.Editor;
+                var view = new ShortcutEditorView(editor);
+                editor.SetKind(ActionKind.App);
+                WpfThread.DrainPendingWork();
+                WpfThread.DrainPendingWork();
+                var built = view.Programs.Buttons.ToArray();
+                built.Length.ShouldBe(300);
+                view.Programs.ShownNames.Count.ShouldBe(300);
+
+                // The filter has a name and a dictation button beside it (ACC-011).
+                AutomationProperties.GetName(view.Programs.SearchBox).ShouldBe("Buscar programa…");
+
+                foreach (var typed in new[] { "p", "pr", "programa 12" })
+                {
+                    editor.FilterPrograms(typed);
+                    WpfThread.DrainPendingWork();
+                    view.Programs.Buttons.ShouldBe(built, "no button is built for a keystroke");
+                }
+
+                // «Programa 12», «Programa 112», «Programa 120» to «Programa 129» and «Programa 212».
+                view.Programs.ShownNames.Count.ShouldBe(13);
+                view.Programs.ShownNames[0].ShouldBe("Programa 12");
+
+                // Choosing one marks it in place.
+                editor.PickInstalled("p12.exe");
+                WpfThread.DrainPendingWork();
+                view.Programs.Buttons.ShouldBe(built);
+                view.Programs.Buttons.Count(static b => b.IsChecked == true).ShouldBe(1);
+                view.Programs.Buttons[11].IsChecked.ShouldBe(true);
+
+                editor.FilterPrograms("zzz");
+                WpfThread.DrainPendingWork();
+                view.Programs.ShownNames.ShouldBeEmpty();
+                view.Programs.Note.ShouldBe("Nada coincide. Prueba con otra palabra.");
+                view.Detach();
             }
         );
     }

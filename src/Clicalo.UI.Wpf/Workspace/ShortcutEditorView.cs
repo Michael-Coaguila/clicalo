@@ -35,6 +35,7 @@ public sealed class ShortcutEditorView : StackPanel
     private readonly TextField _iconSearch;
     private readonly TextField _text;
     private readonly TextField _target;
+    private readonly ProgramListView _programs;
     private readonly Dictionary<int, TextField> _stepTexts = [];
     private EditorModel? _shown;
     private string _shownKey = string.Empty;
@@ -53,6 +54,15 @@ public sealed class ShortcutEditorView : StackPanel
         _text.Changed += (_, _) => _viewModel.SetText(_text.Text);
         _target = new TextField(string.Empty, string.Empty, mono: true);
         _target.Changed += (_, _) => _viewModel.SetTarget(_target.Text);
+        _programs = new ProgramListView(
+            _viewModel.FilterPrograms,
+            _viewModel.PickInstalled,
+            box =>
+            {
+                _ = Keyboard.Focus(box);
+                _viewModel.Dictate();
+            }
+        );
         foreach (
             var region in new[]
             {
@@ -75,6 +85,12 @@ public sealed class ShortcutEditorView : StackPanel
         viewModel.PropertyChanged += OnChanged;
         Render();
     }
+
+    /// <summary>
+    /// The installed programs of «Elegir programa» (EDI-014): one list for the life of the editor, so its hundreds of
+    /// choices are not built again when a letter is typed.
+    /// </summary>
+    public ProgramListView Programs => _programs;
 
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
@@ -638,36 +654,17 @@ public sealed class ShortcutEditorView : StackPanel
                 );
             }
 
-            if (!target.Programs.IsEmpty)
+            // EDI-014: the list of programs is kept between renders; only its filter and its mark change.
+            Detach(_programs);
+            if (target.ProgramsLoading is not null || !target.Programs.IsEmpty)
             {
                 if (target.Picks.IsEmpty)
                 {
                     column.Children.Add(Ui.Caption(target.PickLabel));
                 }
 
-                column.Children.Add(Ui.Text(target.ProgramsLabel, 12, ink: ColorToken.Muted));
-                var programs = Ui.Wrap(
-                    6,
-                    target.Programs.Select(program =>
-                        (UIElement)
-                            Ui.Choice(
-                                Ui.Text(program.Name, 13, bold: true),
-                                program.Name,
-                                string.Equals(
-                                    program.Target,
-                                    target.Value,
-                                    StringComparison.Ordinal
-                                ),
-                                () => _viewModel.PickInstalled(program.Target),
-                                44,
-                                22,
-                                role: CcToggleRole.Option
-                            )
-                    )
-                );
-                column.Children.Add(
-                    new TouchPanScrollViewer { Content = programs, MaxHeight = 196 }
-                );
+                _programs.Apply(target);
+                column.Children.Add(_programs);
             }
 
             return column;

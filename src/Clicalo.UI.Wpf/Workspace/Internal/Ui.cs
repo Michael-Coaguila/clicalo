@@ -314,9 +314,26 @@ internal static class Ui
         {
             Content = content,
             Height = height,
-            IsChecked = on,
             Role = role,
         };
+        PaintChoice(toggle, on, offFill);
+        toggle.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
+        AutomationProperties.SetName(toggle, name);
+        toggle.Click += (_, _) => click();
+        return toggle;
+    }
+
+    /// <summary>
+    /// Marks a <see cref="Choice"/> as chosen or not, in place: a long list changes its mark without building its
+    /// buttons again (EDI-014).
+    /// </summary>
+    /// <param name="toggle">The choice.</param>
+    /// <param name="on">Whether it is the chosen one.</param>
+    /// <param name="offFill">Its fill while it is not chosen.</param>
+    public static void PaintChoice(CcToggle toggle, bool on, ColorToken? offFill = ColorToken.Card)
+    {
+        ArgumentNullException.ThrowIfNull(toggle);
+        toggle.IsChecked = on;
         if (on)
         {
             CcChrome.Paint(toggle, ColorToken.AccentWash, ColorToken.Text, ColorToken.Accent);
@@ -325,12 +342,8 @@ internal static class Ui
         else
         {
             CcChrome.Paint(toggle, offFill, ColorToken.Text, ColorToken.Border);
+            toggle.BorderThickness = new Thickness(1);
         }
-
-        toggle.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
-        AutomationProperties.SetName(toggle, name);
-        toggle.Click += (_, _) => click();
-        return toggle;
     }
 
     /// <summary>
