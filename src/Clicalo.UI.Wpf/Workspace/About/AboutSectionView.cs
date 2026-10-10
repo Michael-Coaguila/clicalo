@@ -174,6 +174,20 @@ public sealed class AboutSectionView : Border
             ColorToken.Border
         );
         AutomationProperties.SetAutomationId(gitHub, "about.github");
+        CcButton? linkedIn = null;
+        if (screen.LinkedInText is { } linkedInText)
+        {
+            // ACE-001, D11: only while there is a real address.
+            linkedIn = Ui.Button(
+                Ui.IconLabel("work", linkedInText, 18, 14),
+                linkedInText,
+                () => _ = _viewModel.OpenLinkedInAsync(),
+                null,
+                ColorToken.Text,
+                ColorToken.Border
+            );
+            AutomationProperties.SetAutomationId(linkedIn, "about.linkedin");
+        }
         var share = Ui.Button(
             Ui.IconLabel(
                 "volunteer_activism",
@@ -189,7 +203,7 @@ public sealed class AboutSectionView : Border
         share.BorderThickness = new Thickness(0);
         AutomationProperties.SetAutomationId(share, "about.share");
         var card = Ui.Card(
-            Ui.Column(10, identity, gitHub, share),
+            Ui.Column(10, identity, gitHub, linkedIn, share),
             ColorToken.Side,
             null,
             14,
@@ -339,19 +353,15 @@ public sealed class AboutSectionView : Border
 
     private StackPanel Direct(AboutScreen screen)
     {
-        var email = Ui.Text(
-            screen.Email,
-            13,
-            ink: screen.EmailPending ? ColorToken.Muted : ColorToken.Text,
-            mono: !screen.EmailPending
-        );
-        var emailRow = new DockPanel { LastChildFill = true };
-        var mail = Ui.Icon("mail", 20, ColorToken.Accent);
-        mail.Margin = new Thickness(0, 0, 8, 0);
-        DockPanel.SetDock(mail, Dock.Left);
-        emailRow.Children.Add(mail);
-        if (!screen.EmailPending)
+        // ACE-005, D11: the email and its copy button only while there is a real address.
+        Border? emailBox = null;
+        if (screen.Email is { } address)
         {
+            var emailRow = new DockPanel { LastChildFill = true };
+            var mail = Ui.Icon("mail", 20, ColorToken.Accent);
+            mail.Margin = new Thickness(0, 0, 8, 0);
+            DockPanel.SetDock(mail, Dock.Left);
+            emailRow.Children.Add(mail);
             var copy = Ui.Button(
                 Ui.Icon("content_copy", 18),
                 screen.CopyName,
@@ -364,17 +374,17 @@ public sealed class AboutSectionView : Border
             AutomationProperties.SetAutomationId(copy, "about.copyEmail");
             DockPanel.SetDock(copy, Dock.Right);
             emailRow.Children.Add(copy);
+            emailRow.Children.Add(Ui.Text(address, 13, mono: true));
+            emailBox = Ui.Card(
+                emailRow,
+                ColorToken.Field,
+                ColorToken.Border,
+                10,
+                new Thickness(12, 6, 6, 6)
+            );
+            emailBox.MinHeight = 56;
         }
 
-        emailRow.Children.Add(email);
-        var emailBox = Ui.Card(
-            emailRow,
-            ColorToken.Field,
-            ColorToken.Border,
-            10,
-            new Thickness(12, 6, 6, 6)
-        );
-        emailBox.MinHeight = 56;
         var card = Ui.Card(
             Ui.Column(10, emailBox, Ui.Text(screen.Promise, 13, ink: ColorToken.Muted, wrap: true)),
             ColorToken.Card,
@@ -386,6 +396,13 @@ public sealed class AboutSectionView : Border
             10,
             Ui.Caption(screen.DirectTitle),
             card,
+            LinkRow(
+                "help",
+                screen.GuideTitle,
+                screen.GuideDescription,
+                "about.guide",
+                () => _ = _viewModel.OpenGuideAsync()
+            ),
             LinkRow(
                 "bug_report",
                 screen.IssuesTitle,

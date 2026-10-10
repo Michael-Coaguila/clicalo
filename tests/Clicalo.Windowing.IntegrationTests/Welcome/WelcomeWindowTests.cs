@@ -1,6 +1,10 @@
 using System.IO;
 using System.Windows;
+using Clicalo.Application.UseCases.Welcome;
+using Clicalo.Domain.Commands;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Domain.Templates;
 using Clicalo.Presentation.Welcome;
 using Clicalo.TestKit;
 using Clicalo.TestKit.Windows.Rendering;
@@ -103,7 +107,10 @@ public sealed class WelcomeWindowTests
                 viewModel.Next();
                 screen = viewModel.Screen;
                 screen.Title.ShouldBe("¿Qué apps usas más?");
-                screen.KeyboardLine.ShouldBe("Para Office y apps en español");
+                screen.KeyboardLine.ShouldBe(
+                    "Para Español (España) · Office y apps en español",
+                    "the keyboard Windows reports and the programs language, as in Plantillas"
+                );
                 screen.Kit.Count.ShouldBe(10);
                 screen.Kit[0].Label.ShouldBe("Básicos");
                 screen.Kit[0].Selected.ShouldBeTrue();
@@ -121,6 +128,101 @@ public sealed class WelcomeWindowTests
                     .Themes.Select(t => t.Label)
                     .ShouldBe(["Auto", "Oscuro", "Claro", "Alto contraste"]);
                 screen.NextText.ShouldBe("Empezar");
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    public void A_repeated_welcome_says_what_changes_and_what_stays_as_it_was_left()
+    {
+        var world = new WelcomeTestWorld();
+        world.Session.Next();
+        world.Session.ToggleUse(WelcomeUse.Tremor);
+        while (!world.Session.HasEnded)
+        {
+            world.Session.Next();
+        }
+
+        // Afterwards the person makes the panel small by hand.
+        _ = world.Store.Dispatch(new SetSetting(SettingPaths.Size, PanelSize.Small));
+        var repeated = new WelcomeSession(world.Store, WelcomeTestWorld.Content(), repeat: true);
+        var (window, theme, viewModel) = Build(world, repeated);
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                viewModel.Next();
+                viewModel.Screen.Uses.Single(u => u.Selected).Label.ShouldBe("Tengo temblor");
+                viewModel.Screen.Changes.ShouldBeNull("the recorded answers change nothing");
+
+                viewModel.ToggleUse(nameof(WelcomeUse.Tremor));
+                viewModel.ToggleUse(nameof(WelcomeUse.Voice));
+
+                var note = viewModel.Screen.Changes.ShouldNotBeNull();
+                note.ChangesTitle.ShouldBe("Al continuar, esto cambia:");
+                note.Changes.ShouldBe([
+                    "Precisión táctil: Estándar",
+                    "Números para control por voz: activados",
+                ]);
+                note.KeptTitle.ShouldBe("Esto se queda como lo dejaste:");
+                note.Kept.ShouldBe(["Tamaño del panel: Pequeño"]);
+
+                viewModel.Next();
+                var settings = world.Store.Current.Settings;
+                settings.VoiceNumbers.ShouldBeTrue();
+                settings.Size.ShouldBe(PanelSize.Small);
+                viewModel.Back();
+                viewModel.Screen.Changes.ShouldBeNull("nothing more to change");
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-010")]
+    [Trait("Req", "REG-04")]
+    public void A_reinstallation_asks_on_step_0_and_starting_from_scratch_takes_two_taps()
+    {
+        var world = new WelcomeTestWorld();
+        world.Session.Skip();
+        var session = new WelcomeSession(
+            world.Store,
+            WelcomeTestWorld.Content(),
+            repeat: true,
+            WelcomeFreshStart.Of(WelcomeTestWorld.Content, new FreshIds(), world.Time)
+        );
+        var (window, theme, viewModel) = Build(world, session);
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                var card = viewModel.Screen.Reinstall.ShouldNotBeNull();
+                card.Title.ShouldBe("Encontré tus atajos y ajustes de antes");
+                card.KeepText.ShouldBe("Conservar mis datos");
+                card.FreshText.ShouldBe("Empezar de cero");
+                card.FreshArmed.ShouldBeFalse();
+
+                viewModel.StartFromScratch();
+                viewModel.Screen.Reinstall!.FreshArmed.ShouldBeTrue();
+                viewModel.Screen.Reinstall.FreshText.ShouldBe("¿Seguro?");
+                world.Store.Current.Onboarding.Completed.ShouldBeTrue("one tap changes nothing");
+                world.Time.Advance(TimeSpan.FromSeconds(4));
+                viewModel.Screen.Reinstall!.FreshArmed.ShouldBeFalse("the button disarms on time");
+
+                viewModel.StartFromScratch();
+                viewModel.StartFromScratch();
+                var done = viewModel.Screen.Reinstall.ShouldNotBeNull();
+                done.Done.ShouldStartWith("Empezaste de cero");
+                world.Store.Current.Onboarding.Completed.ShouldBeFalse();
+                world.Store.Current.Library.AlwaysVisible.ShouldBeEmpty();
             });
         }
         finally
@@ -227,7 +329,8 @@ public sealed class WelcomeWindowTests
     }
 
     private static (WelcomeWindow Window, ThemeService Theme, WelcomeViewModel ViewModel) Build(
-        WelcomeTestWorld world
+        WelcomeTestWorld world,
+        WelcomeSession? session = null
     ) =>
         WpfThread.Invoke(() =>
         {
@@ -237,7 +340,13 @@ public sealed class WelcomeWindowTests
                 100,
                 reduceMotion: true
             );
-            var viewModel = new WelcomeViewModel(world.Session, world.Localization);
+            var viewModel = new WelcomeViewModel(
+                session ?? world.Session,
+                world.Localization,
+                () => KeyboardLayouts.SpanishSpain,
+                world.Time,
+                work => work()
+            );
             world.Localization.LanguageChanged += (_, _) => viewModel.Refresh();
             var window = new WelcomeWindow(viewModel, theme);
             WpfThread.DrainPendingWork();
@@ -276,4 +385,15 @@ public sealed class WelcomeWindowTests
             window.Destroy();
             theme.Dispose();
         });
+
+    private sealed class FreshIds : IIdGenerator
+    {
+        private int _next;
+
+        public ProfileId NewProfileId() =>
+            new("fp" + (++_next).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        public ShortcutId NewShortcutId() =>
+            new("fs" + (++_next).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
 }

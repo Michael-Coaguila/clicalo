@@ -1,8 +1,14 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases.Editor;
+using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Document;
 using Clicalo.Domain.Errors;
+using Clicalo.Domain.Library;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.SystemSection;
@@ -181,10 +187,329 @@ public sealed class SystemSectionTests
 
             notices[^1].Icon.ShouldBe("restore");
             notices[^1].CanUndo.ShouldBeTrue();
+            world
+                .Base.Localization.Current.Format(notices[^1].Text)
+                .ShouldBe("Copia restaurada: Hoy, 11:00", "COP-004: the notice says which backup");
             world.Base.Store.Current.Settings.Updates.Automatic.ShouldBeTrue(
                 "the backup came back"
             );
         });
+    }
+
+    [Fact]
+    [Trait("Req", "LOG-008")]
+    [Trait("Req", "COP-002")]
+    public void An_imported_backup_asks_to_confirm_its_web_app_and_macro_shortcuts_one_by_one()
+    {
+        var world = new SystemTestWorld();
+        WpfThread.Invoke(() =>
+        {
+            var system = new SystemSectionViewModel(world.Services, world.Services.System!);
+            system.SelectTab(SystemTab.Backups);
+            world.Backups.Pick = Results.Ok(
+                new ImportPick(WithRisky(ControlCenterTestWorld.Document()), 3, 10, "2.0.0", 0)
+            );
+
+            system.Import();
+            WpfThread.DrainPendingWork();
+
+            var card = system.Screen.Backups.ImportCard.ShouldNotBeNull();
+            card.CanMerge.ShouldBeTrue();
+            card.ReviewNote.ShouldStartWith("Estos atajos abren algo o ejecutan varios pasos");
+            card.Review.Select(r => r.Name).ShouldBe(["Clima", "Bloc"]);
+            card.Review.Select(r => r.Detail).ShouldBe(["https://clima.example/", "notepad.exe"]);
+            card.Review.ShouldAllBe(r => !r.Checked, "nothing risky is installed by default");
+
+            system.ToggleReview(card.Review[0].Id);
+            WpfThread.DrainPendingWork();
+            system.Screen.Backups.ImportCard!.Review[0].Checked.ShouldBeTrue();
+            system.ImportMerge();
+            WpfThread.DrainPendingWork();
+
+            var names = world
+                .Base.Store.Current.Library.EnumerateShortcuts()
+                .Select(located => located.Shortcut.Name.Get(LangCode.Es, LangCode.Es))
+                .ToList();
+            names.ShouldContain("Clima", StringComparer.Ordinal, "the one that was ticked");
+            names.ShouldNotContain("Bloc", StringComparer.Ordinal, "the one that was not");
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "LOG-008")]
+    [Trait("Req", "COP-004")]
+    [Trait("Req", "REG-04")]
+    public void Restoring_a_backup_with_new_risky_shortcuts_reviews_them_first()
+    {
+        var world = new SystemTestWorld();
+        WpfThread.Invoke(() =>
+        {
+            var system = new SystemSectionViewModel(world.Services, world.Services.System!);
+            var notices = Notices(system);
+            system.SelectTab(SystemTab.Backups);
+            system.BackupNow();
+            WpfThread.DrainPendingWork();
+            var row = system.Screen.Backups.Rows.ShouldHaveSingleItem();
+            // The file of that backup was changed outside Clícalo: it now opens an address and an app.
+            world.Backups.Files[row.Id] = WithRisky(world.Backups.Files[row.Id]);
+
+            system.Restore(row.Id);
+            system.Restore(row.Id);
+            WpfThread.DrainPendingWork();
+
+            var card = system.Screen.Backups.ImportCard.ShouldNotBeNull("the review opens instead");
+            card.CanMerge.ShouldBeFalse();
+            card.Title.ShouldBe("Hoy, 11:00");
+            card.Replace.ShouldBe("Restaurar");
+            card.Review.Select(r => r.Name).ShouldBe(["Clima", "Bloc"]);
+            notices
+                .Select(n => n.Icon)
+                .ShouldBe(
+                    ["backup", "shield"],
+                    "nothing was restored yet: the review is announced"
+                );
+
+            system.ImportReplace();
+            WpfThread.DrainPendingWork();
+            system.Screen.Backups.ImportCard!.ReplaceArmed.ShouldBeTrue();
+            system.Screen.Backups.ImportCard.Replace.ShouldBe("¿Seguro?");
+            system.ImportReplace();
+            WpfThread.DrainPendingWork();
+
+            notices[^1].Icon.ShouldBe("restore");
+            notices[^1].CanUndo.ShouldBeTrue();
+            system.Screen.Backups.ImportCard.ShouldBeNull();
+            world
+                .Base.Store.Current.Library.EnumerateShortcuts()
+                .Select(located => located.Shortcut.Id.Value)
+                .ShouldNotContain(
+                    id => id.StartsWith("risky-", StringComparison.Ordinal),
+                    "nothing that was not ticked came back"
+                );
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-010")]
+    [Trait("Req", "REG-04")]
+    public void Uninstalling_takes_two_taps_and_keeps_the_data_by_default()
+    {
+        var world = new SystemTestWorld();
+        WpfThread.Invoke(() =>
+        {
+            var system = new SystemSectionViewModel(world.Services, world.Services.System!);
+            system.SelectTab(SystemTab.Start);
+            WpfThread.DrainPendingWork();
+            var row = system.Screen.Start.Uninstall;
+            row.Title.ShouldBe("Desinstalar Clícalo");
+            row.Button.ShouldBe("Desinstalar");
+            row.DeleteData.On.ShouldBeFalse("the data is kept by default");
+            row.Available.ShouldBeTrue();
+
+            system.Uninstall();
+            WpfThread.DrainPendingWork();
+            system.Screen.Start.Uninstall.Armed.ShouldBeTrue();
+            system.Screen.Start.Uninstall.Button.ShouldBe("¿Seguro?");
+            world.Uninstaller.Calls.ShouldBeEmpty();
+            system.Uninstall();
+            WpfThread.DrainPendingWork();
+
+            world.Uninstaller.Calls.ShouldBe([false]);
+            world.Backups.Exported.ShouldBe(0, "keeping the data needs no copy");
+            world.Uninstaller.Token!.Subject.Operation.ShouldBe(ISystemUninstall.Operation);
+        });
+    }
+
+    [Theory]
+    [Trait("Req", "NFR-010")]
+    [Trait("Req", "REG-08")]
+    [InlineData(ExportOutcome.Done, true)]
+    [InlineData(ExportOutcome.Cancelled, false)]
+    [InlineData(ExportOutcome.Failed, false)]
+    [InlineData(ExportOutcome.InsideData, false)]
+    public void Deleting_the_data_needs_a_saved_copy_first(ExportOutcome copy, bool uninstalls)
+    {
+        var world = new SystemTestWorld();
+        world.Backups.Export = copy;
+        WpfThread.Invoke(() =>
+        {
+            var system = new SystemSectionViewModel(world.Services, world.Services.System!);
+            var notices = Notices(system);
+            system.ToggleDeleteData();
+            system.Uninstall();
+            system.ToggleDeleteData();
+            system.ToggleDeleteData();
+            system.Uninstall();
+            WpfThread.DrainPendingWork();
+            world.Uninstaller.Calls.ShouldBeEmpty("changing the option disarms the button");
+            system.Uninstall();
+            WpfThread.DrainPendingWork();
+
+            world.Backups.Exported.ShouldBe(1);
+            world.Backups.ExportedOutsideData.ShouldBe(
+                true,
+                "the copy must survive the uninstaller"
+            );
+            world.Uninstaller.Calls.ShouldBe(uninstalls ? [true] : []);
+            if (!uninstalls)
+            {
+                notices
+                    .ShouldHaveSingleItem()
+                    .Text.ShouldBe(
+                        copy == ExportOutcome.InsideData
+                            ? Clicalo.Domain.Messages.L.UninstallCopyInside
+                            : Clicalo.Domain.Messages.L.UninstallNeedsCopy
+                    );
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-010")]
+    public void A_copy_that_was_not_installed_or_an_uninstaller_that_does_not_start_is_explained()
+    {
+        var world = new SystemTestWorld();
+        WpfThread.Invoke(() =>
+        {
+            var system = new SystemSectionViewModel(world.Services, world.Services.System!);
+            var notices = Notices(system);
+            world.Uninstaller.Starts = false;
+            system.Uninstall();
+            system.Uninstall();
+            WpfThread.DrainPendingWork();
+            notices[^1].Text.ShouldBe(Clicalo.Domain.Messages.L.UninstallFailed);
+
+            world.Uninstaller.IsAvailable = false;
+            system.Refresh();
+            system.Screen.Start.Uninstall.Available.ShouldBeFalse();
+            system.Screen.Start.Uninstall.Description.ShouldStartWith(
+                "Esta copia de Clícalo no se instaló"
+            );
+            system.Uninstall();
+            notices[^1].Text.ShouldBe(Clicalo.Domain.Messages.L.UninstallNotInstalled);
+            world.Uninstaller.Calls.Count.ShouldBe(1);
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "SIS-001")]
+    public void The_tabs_are_a_tab_control_with_selectable_tab_items_for_ui_automation()
+    {
+        var world = new SystemTestWorld();
+        WpfThread.Invoke(() =>
+        {
+            var viewModel = new SystemSectionViewModel(world.Services, world.Services.System!);
+            var view = new Clicalo.UI.Wpf.Workspace.SystemSection.SystemSectionView(viewModel);
+            view.Measure(new Size(1000, 900));
+            view.Arrange(new Rect(0, 0, 1000, 900));
+            view.UpdateLayout();
+            var strip = Find(view, AutomationControlType.Tab).ShouldHaveSingleItem();
+            strip.GetName().ShouldBe("Sistema");
+            var selection = strip
+                .GetPattern(PatternInterface.Selection)
+                .ShouldBeAssignableTo<ISelectionProvider>()!;
+            selection.CanSelectMultiple.ShouldBeFalse();
+            selection.IsSelectionRequired.ShouldBeTrue();
+
+            var tabs = Find(view, AutomationControlType.TabItem);
+            tabs.Select(t => t.GetName())
+                .ShouldBe(["Actualizaciones", "Copias de seguridad", "Inicio y estabilidad"]);
+            tabs.ShouldAllBe(t => t.GetPattern(PatternInterface.Toggle) == null);
+            var items = tabs.Select(t =>
+                    t.GetPattern(PatternInterface.SelectionItem)
+                        .ShouldBeAssignableTo<ISelectionItemProvider>()!
+                )
+                .ToList();
+            items.Select(i => i.IsSelected).ShouldBe([true, false, false]);
+            Should.Throw<InvalidOperationException>(items[0].RemoveFromSelection);
+
+            items[2].Select();
+            WpfThread.DrainPendingWork();
+
+            viewModel.Screen.Tab.ShouldBe(SystemTab.Start);
+            view.UpdateLayout();
+            Find(view, AutomationControlType.TabItem)
+                .Select(t =>
+                    (
+                        (ISelectionItemProvider)t.GetPattern(PatternInterface.SelectionItem)!
+                    ).IsSelected
+                )
+                .ShouldBe([false, false, true]);
+            view.Detach();
+        });
+    }
+
+    private static List<AutomationPeer> Find(UIElement root, AutomationControlType type)
+    {
+        var found = new List<AutomationPeer>();
+        void Walk(DependencyObject node)
+        {
+            if (
+                node is UIElement element
+                && UIElementAutomationPeer.CreatePeerForElement(element) is { } peer
+                && peer.GetAutomationControlType() == type
+            )
+            {
+                found.Add(peer);
+            }
+
+            var count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(node);
+            for (var i = 0; i < count; i++)
+            {
+                Walk(System.Windows.Media.VisualTreeHelper.GetChild(node, i));
+            }
+        }
+
+        Walk(root);
+        return found;
+    }
+
+    /// <summary><paramref name="document"/> with a Web and an App shortcut added to General.</summary>
+    private static UserDocument WithRisky(UserDocument document)
+    {
+        static Shortcut Risky(string id, string name, string icon, ShortcutAction action) =>
+            new(
+                new ShortcutId(id),
+                LocalizedText.Same(name, LangCode.Es, LangCode.En),
+                new IconRef(icon),
+                AutoIcon: false,
+                new CategoryId("edit"),
+                action,
+                new ShortcutOptions(
+                    Confirm: false,
+                    new HoldLimit.InheritGlobal(),
+                    IsPrivate: false
+                ),
+                Origin: null,
+                PinnedFrom: null
+            );
+
+        var library = document
+            .Library.AddShortcut(
+                new ListRef.InProfile(ProfileId.General),
+                Risky(
+                    "risky-web",
+                    "Clima",
+                    "public",
+                    new UrlAction(new UrlTarget.Valid(new Uri("https://clima.example/")))
+                ),
+                ListPosition.End
+            )
+            .Bind(l =>
+                l.AddShortcut(
+                    new ListRef.InProfile(ProfileId.General),
+                    Risky(
+                        "risky-app",
+                        "Bloc",
+                        "edit_note",
+                        new AppAction(new AppTarget.Executable("notepad.exe", string.Empty))
+                    ),
+                    ListPosition.End
+                )
+            )
+            .Value;
+        return document with { Library = library };
     }
 
     [Fact]

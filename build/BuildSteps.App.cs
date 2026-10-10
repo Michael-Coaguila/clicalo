@@ -206,7 +206,8 @@ internal sealed partial class BuildSteps
         + "en: \"\"\n";
 
     /// <summary>
-    /// The <c>dotnet publish</c> arguments of <paramref name="project"/> for this machine's runtime. The runtime goes in
+    /// The <c>dotnet publish</c> arguments of <paramref name="project"/> for <paramref name="runtime"/> (this machine's
+    /// when null). The runtime goes in
     /// <c>ClicaloRuntimeIdentifier</c>, which only the published executables turn into their <c>RuntimeIdentifier</c>
     /// (Directory.Build.props): <c>-r</c> is a global property that would reach the restore of every library, generator
     /// and analyzer they reference, whose lock files hold no runtime graph, and fail it with NU1004 in locked mode.
@@ -214,14 +215,15 @@ internal sealed partial class BuildSteps
     internal static List<string> PublishArguments(
         string project,
         string folder,
-        IReadOnlyList<string> properties
+        IReadOnlyList<string> properties,
+        string? runtime = null
     ) =>
         [
             "publish",
             project,
             "-c",
             Release,
-            "-p:ClicaloRuntimeIdentifier=" + RuntimeIdentifier,
+            "-p:ClicaloRuntimeIdentifier=" + (runtime ?? RuntimeIdentifier),
             "-o",
             folder,
             .. properties,
@@ -230,11 +232,12 @@ internal sealed partial class BuildSteps
     private async Task PublishProjectAsync(
         string project,
         string folder,
-        IReadOnlyList<string> properties
+        IReadOnlyList<string> properties,
+        string? runtime = null
     )
     {
         var log = PrepareErrorLog("publish");
-        var args = PublishArguments(project, layout.Relative(folder), properties);
+        var args = PublishArguments(project, layout.Relative(folder), properties, runtime);
         AddMsBuildSwitches(args, log);
         var exitCode = await RunAsync(args);
         if (exitCode != 0)

@@ -34,18 +34,18 @@ public static class FeedbackMail
     }
 
     /// <summary>The <c>mailto:</c> address that opens the email app with the message ready.</summary>
-    /// <param name="to">The recipient (the configured address, trusted), or <see langword="null"/> when there is none yet.</param>
+    /// <param name="to">The recipient: the contact email of the project (<see cref="AboutLinks.Email"/>).</param>
     /// <param name="subject">The subject.</param>
     /// <param name="body">The body.</param>
-    public static Uri Address(string? to, string subject, string body)
+    public static Uri Address(string to, string subject, string body)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(to);
         ArgumentNullException.ThrowIfNull(subject);
         ArgumentNullException.ThrowIfNull(body);
-        var recipient = string.IsNullOrWhiteSpace(to) ? string.Empty : to.Trim();
         return new Uri(
             Uri.UriSchemeMailto
                 + ":"
-                + recipient
+                + to.Trim()
                 + "?subject="
                 + Uri.EscapeDataString(subject)
                 + "&body="

@@ -19,7 +19,9 @@ namespace Clicalo.App.Composition;
 /// <list type="bullet">
 /// <item>the real version of the app and of Windows;</item>
 /// <item>addresses open on the Shell thread through <see cref="IShellExecutor"/>, which only starts http and https
-/// (LOG-008): a <c>mailto:</c> address is refused there, so the view model copies the message instead (ACE-004);</item>
+/// (LOG-008); the feedback email goes through its own entry, which opens the email app only towards the contact
+/// address of the project (ACE-004, ADR-0029), and without that entry (a start with <c>--no-input</c>) or without an
+/// address the view model copies the message instead;</item>
 /// <item>the log preview is the tail of <c>clicalo.log</c>, already redacted when it was written (LOG-001), and the
 /// copy to attach is written with <see cref="IAtomicFileWriter"/> next to it as <c>clicalo-registro.log</c>, whose
 /// folder Explorer opens with the file selected.</item>
@@ -44,6 +46,10 @@ internal static class AboutServicesFactory
     /// <param name="ui">The UI dispatcher (the clipboard).</param>
     /// <param name="dictate">Windows dictation for the focused field.</param>
     /// <param name="notify">The status bar of the Control Center.</param>
+    /// <param name="openMail">
+    /// Opens the email app for a <c>mailto:</c> address (<c>ShellExecutor.OpenMailAsync</c>); null where nothing may
+    /// reach outside Clícalo.
+    /// </param>
     public static AboutServices Create(
         ILocalizationContext localization,
         DataLocations locations,
@@ -51,7 +57,8 @@ internal static class AboutServicesFactory
         IAtomicFileWriter files,
         Dispatcher ui,
         Func<CancellationToken, ValueTask<bool>> dictate,
-        Action<WorkspaceNotice> notify
+        Action<WorkspaceNotice> notify,
+        Func<Uri, CancellationToken, Task<bool>>? openMail = null
     )
     {
         ArgumentNullException.ThrowIfNull(locations);
@@ -63,8 +70,7 @@ internal static class AboutServicesFactory
             DocumentFormats.AppVersion,
             WindowsVersion(),
             AboutLinks.Current,
-            (address, cancellationToken) =>
-                StartAsync(shell, new LaunchRequest.OpenUrl(address), cancellationToken),
+            (address, cancellationToken) => OpenAsync(shell, openMail, address, cancellationToken),
             text => Copy(ui, text),
             dictate,
             cancellationToken => ReadLogAsync(locations.LogFile, cancellationToken),
@@ -157,6 +163,24 @@ internal static class AboutServicesFactory
             )
             .ConfigureAwait(true);
         return AttachmentName;
+    }
+
+    /// <summary>A web address through the Shell thread; a <c>mailto:</c> address through its own entry, if any.</summary>
+    internal static async ValueTask<bool> OpenAsync(
+        IShellExecutor shell,
+        Func<Uri, CancellationToken, Task<bool>>? openMail,
+        Uri address,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!string.Equals(address.Scheme, Uri.UriSchemeMailto, StringComparison.Ordinal))
+        {
+            return await StartAsync(shell, new LaunchRequest.OpenUrl(address), cancellationToken)
+                .ConfigureAwait(true);
+        }
+
+        return openMail is not null
+            && await openMail(address, cancellationToken).ConfigureAwait(true);
     }
 
     private static async ValueTask<bool> StartAsync(

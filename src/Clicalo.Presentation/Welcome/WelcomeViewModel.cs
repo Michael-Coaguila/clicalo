@@ -13,7 +13,10 @@ namespace Clicalo.Presentation.Welcome;
 /// <summary>
 /// The welcome (docs/06, BIE-001 to BIE-010) over a <see cref="WelcomeSession"/>, which holds the rules: this view
 /// model only projects the texts and the choices of each step in the interface language (<see cref="Screen"/>) and
-/// passes the taps on. The composition root calls <see cref="Refresh"/> when the language changes.
+/// passes the taps on. The composition root calls <see cref="Refresh"/> when the language changes. Step 2 shows the
+/// keyboard Windows reports and the programs language, as Plantillas does (BIE-006, PLA-009); step 1 of a repeated
+/// welcome says what [Siguiente] changes and what stays as the person left it (BIE-010); step 0 of a reinstallation
+/// asks whether to keep the data or start from scratch (P6).
 /// </summary>
 public sealed class WelcomeViewModel : ObservableObject
 {
@@ -27,17 +30,35 @@ public sealed class WelcomeViewModel : ObservableObject
     ];
 
     private readonly ILocalizationContext _localization;
+    private readonly Func<string>? _detectedLayout;
+    private readonly TimeProvider? _time;
+    private readonly Action<Action>? _post;
     private WelcomeScreen? _screen;
 
     /// <summary>Creates the view model of <paramref name="session"/>.</summary>
     /// <param name="session">The welcome.</param>
     /// <param name="localization">The interface language.</param>
-    public WelcomeViewModel(WelcomeSession session, ILocalizationContext localization)
+    /// <param name="detectedLayout">
+    /// The layout of the keyboard in use (<c>KeyboardLayouts.Detect</c>), the same Plantillas shows; null assumes the
+    /// default one.
+    /// </param>
+    /// <param name="time">The clock of the armed «Empezar de cero»; null never repaints it on its own.</param>
+    /// <param name="post">Runs an action on the UI thread, after the current work.</param>
+    public WelcomeViewModel(
+        WelcomeSession session,
+        ILocalizationContext localization,
+        Func<string>? detectedLayout = null,
+        TimeProvider? time = null,
+        Action<Action>? post = null
+    )
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(localization);
         Session = session;
         _localization = localization;
+        _detectedLayout = detectedLayout;
+        _time = time;
+        _post = post;
         session.Changed += (_, _) => Refresh();
         Refresh();
     }
@@ -64,6 +85,29 @@ public sealed class WelcomeViewModel : ObservableObject
     /// <summary>A language of step 0.</summary>
     /// <param name="code">The language code.</param>
     public void SetLanguage(string code) => Session.SetLanguage(new LangCode(code));
+
+    /// <summary>
+    /// «Empezar de cero» of step 0 (P6, REG-04): the first tap arms it and the button says [confirmB] until the window
+    /// passes; the second replaces the data, after a backup.
+    /// </summary>
+    public void StartFromScratch()
+    {
+        Session.StartFromScratch();
+        if (
+            Session.FreshStartArmedUntil is { } until
+            && _time is { } time
+            && _post is { } post
+            && until > time.GetUtcNow()
+        )
+        {
+            _ = time.CreateTimer(
+                _ => post(Refresh),
+                null,
+                until - time.GetUtcNow(),
+                Timeout.InfiniteTimeSpan
+            );
+        }
+    }
 
     /// <summary>A chip of step 1.</summary>
     /// <param name="use">The option, as <see cref="WelcomeOption.Id"/> gives it.</param>
@@ -123,6 +167,7 @@ public sealed class WelcomeViewModel : ObservableObject
             T(L.CreatorName),
             T(L.CreatorInitials),
             T(L.CreatorRole),
+            Reinstall(),
             [
                 .. _localization.Languages.Select(locale => new WelcomeOption(
                     locale.Code,
@@ -141,9 +186,16 @@ public sealed class WelcomeViewModel : ObservableObject
                     Session.Uses.Contains(option.Use)
                 )),
             ],
+            Changes(settings),
             T(
-                L.ObKbLine(
-                    app: settings.Keyboard.AppsLanguage == LangCode.En ? L.KbAppsEn : L.KbAppsEs
+                L.KbForLine(
+                    app: settings.Keyboard.AppsLanguage == LangCode.En ? L.KbAppsEn : L.KbAppsEs,
+                    name: LayoutLabel(
+                        KeyboardLayouts.Effective(
+                            settings.Keyboard.Layout,
+                            _detectedLayout?.Invoke() ?? KeyboardLayouts.Detect(null)
+                        )
+                    )
                 )
             ),
             Kit(settings.Language),
@@ -157,6 +209,72 @@ public sealed class WelcomeViewModel : ObservableObject
             T(Session.IsLastStep ? L.Finish : L.Next)
         );
     }
+
+    /// <summary>The question of a reinstallation (P6): keep the data, the default, or start from scratch.</summary>
+    private WelcomeReinstallCard? Reinstall()
+    {
+        if (!Session.OffersFreshStart && !Session.StartedFresh)
+        {
+            return null;
+        }
+
+        var armed = Session.FreshStartArmedUntil is not null;
+        return new WelcomeReinstallCard(
+            T(L.ReinstallT),
+            T(L.ReinstallD),
+            T(L.ReinstallKeep),
+            T(armed ? L.ConfirmB : L.ReinstallFresh),
+            armed,
+            Session.StartedFresh ? T(L.ReinstallDone) : string.Empty
+        );
+    }
+
+    /// <summary>What [Siguiente] of step 1 changes and what it leaves as the person set it (BIE-010).</summary>
+    private WelcomeChangesNote? Changes(UserSettings settings)
+    {
+        if (Session.PendingChanges is not { } plan || (plan.Changes.IsEmpty && plan.Kept.IsEmpty))
+        {
+            return null;
+        }
+
+        return new WelcomeChangesNote(
+            T(L.ObChangesT),
+            [.. plan.Changes.Items.Select(setting => T(Line(setting, plan.Settings)))],
+            T(L.ObKeptT),
+            [.. plan.Kept.Items.Select(setting => T(Line(setting, settings)))]
+        );
+    }
+
+    private static Message Line(WelcomeSetting setting, UserSettings settings) =>
+        setting switch
+        {
+            WelcomeSetting.TouchPreset => L.ObChPreset(name: PresetLabel(settings.Touch.Preset)),
+            WelcomeSetting.Size => L.ObChSize(
+                name: settings.Size switch
+                {
+                    PanelSize.Small => L.SizeS,
+                    PanelSize.Large => L.SizeL,
+                    _ => L.SizeM,
+                }
+            ),
+            WelcomeSetting.VoiceNumbers => settings.VoiceNumbers ? L.ObChVoiceOn : L.ObChVoiceOff,
+            _ => settings.NoKeyboardUser ? L.ObChNoKbOn : L.ObChNoKbOff,
+        };
+
+    private static Message PresetLabel(string preset) =>
+        string.Equals(preset, TouchPresets.Standard.Id, StringComparison.Ordinal) ? L.PStd
+        : string.Equals(preset, TouchPresets.MildTremor.Id, StringComparison.Ordinal) ? L.PLeve
+        : string.Equals(preset, TouchPresets.StrongTremor.Id, StringComparison.Ordinal) ? L.PFuerte
+        : L.PCustom;
+
+    private static Message LayoutLabel(string layout) =>
+        layout switch
+        {
+            KeyboardLayouts.SpanishSpain => L.KbEsEs,
+            KeyboardLayouts.EnglishUs => L.KbEnUs,
+            KeyboardLayouts.EnglishInternational => L.KbEnInt,
+            _ => L.KbEsLa,
+        };
 
     private ValueList<WelcomeOption> Kit(LangCode language)
     {

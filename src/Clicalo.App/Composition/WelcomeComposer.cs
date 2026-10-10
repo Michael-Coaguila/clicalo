@@ -27,6 +27,9 @@ internal sealed class WelcomeComposer : IDisposable
     private readonly ThemeService _theme;
     private readonly Dispatcher _ui;
     private readonly Func<StarterContent?> _content;
+    private readonly Func<string>? _detectedLayout;
+    private readonly WelcomeFreshStart? _fresh;
+    private readonly TimeProvider _time;
     private WelcomeWindow? _window;
     private WelcomeViewModel? _viewModel;
     private ForegroundLease? _lease;
@@ -38,13 +41,19 @@ internal sealed class WelcomeComposer : IDisposable
     /// <param name="theme">The theme service of the UI thread.</param>
     /// <param name="ui">The UI dispatcher.</param>
     /// <param name="content">The starter kit read at start (<c>RuntimeCatalogs.Content</c>).</param>
+    /// <param name="detectedLayout">The layout of the keyboard in use, for step 2 (BIE-006); null assumes the default.</param>
+    /// <param name="fresh">How «Empezar de cero» builds the empty document (P6); null never offers it.</param>
+    /// <param name="time">The clock of the armed «Empezar de cero».</param>
     public WelcomeComposer(
         DocumentStore store,
         ILocalizationContext localization,
         IForegroundOrchestrator foreground,
         ThemeService theme,
         Dispatcher ui,
-        Func<StarterContent?> content
+        Func<StarterContent?> content,
+        Func<string>? detectedLayout = null,
+        WelcomeFreshStart? fresh = null,
+        TimeProvider? time = null
     )
     {
         _store = store;
@@ -53,6 +62,9 @@ internal sealed class WelcomeComposer : IDisposable
         _theme = theme;
         _ui = ui;
         _content = content;
+        _detectedLayout = detectedLayout;
+        _fresh = fresh;
+        _time = time ?? TimeProvider.System;
         localization.LanguageChanged += (_, _) => _ = _ui.BeginInvoke(() => _viewModel?.Refresh());
     }
 
@@ -76,7 +88,11 @@ internal sealed class WelcomeComposer : IDisposable
     /// <summary>Opens the welcome on step 0; nothing if it is already open.</summary>
     /// <param name="repeat">Opened from General › Ver la bienvenida otra vez (BIE-010), not by a first start.</param>
     /// <param name="origin">What asked for it, for the foreground ladder.</param>
-    public async Task OpenAsync(bool repeat, LeaseOrigin origin)
+    /// <param name="reinstall">
+    /// The first start of a new installation that found data from before (P6): step 0 also asks whether to keep the
+    /// data, the default, or start from scratch.
+    /// </param>
+    public async Task OpenAsync(bool repeat, LeaseOrigin origin, bool reinstall = false)
     {
         _ui.VerifyAccess();
         if (_window is not null)
@@ -84,8 +100,14 @@ internal sealed class WelcomeComposer : IDisposable
             return;
         }
 
-        var session = new WelcomeSession(_store, _content(), repeat);
-        var viewModel = new WelcomeViewModel(session, _localization);
+        var session = new WelcomeSession(_store, _content(), repeat, reinstall ? _fresh : null);
+        var viewModel = new WelcomeViewModel(
+            session,
+            _localization,
+            _detectedLayout,
+            _time,
+            work => _ = _ui.BeginInvoke(work)
+        );
         var window = new WelcomeWindow(viewModel, _theme);
         _viewModel = viewModel;
         _window = window;

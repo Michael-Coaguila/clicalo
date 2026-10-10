@@ -125,6 +125,12 @@ public sealed partial class DocumentRepository : IDocumentRepository
     public bool IsReadOnly => _readOnly;
 
     /// <summary>
+    /// Whether the document in memory is the default shown when nothing usable was found, not yet accepted by the user:
+    /// nothing is written until <see cref="AcceptDefaultDocument"/> (§6.5, DAT-003).
+    /// </summary>
+    public bool IsAwaitingAcceptance => _awaitingAcceptance;
+
+    /// <summary>
     /// The user accepted the default document shown when nothing usable was found (§6.5): saving is enabled. It does
     /// nothing in any other read-only case.
     /// </summary>

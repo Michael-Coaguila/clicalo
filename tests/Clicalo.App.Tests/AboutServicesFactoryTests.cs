@@ -98,4 +98,37 @@ public sealed class AboutServicesFactoryTests : IDisposable
     {
         AboutServicesFactory.WindowsVersion().ShouldMatch(@"^Windows 1[01] \(\d+\)$");
     }
+
+    [Fact]
+    [Trait("Req", "ACE-004")]
+    [Trait("Req", "LOG-008")]
+    public async Task An_email_address_only_opens_through_its_own_entry()
+    {
+        // ADR-0029: the Shell thread only starts http and https; a mailto: address goes through the entry that checks
+        // it is for the project, and without that entry (--no-input) nothing opens.
+        var shell = new Clicalo.App.Composition.DeferredShellExecutor();
+        var mail = new Uri("mailto:contacto@clicalo.example?subject=a");
+        var asked = new List<Uri>();
+
+        var withEntry = await AboutServicesFactory.OpenAsync(
+            shell,
+            (address, _) =>
+            {
+                asked.Add(address);
+                return Task.FromResult(true);
+            },
+            mail,
+            TestContext.Current.CancellationToken
+        );
+        var withoutEntry = await AboutServicesFactory.OpenAsync(
+            shell,
+            null,
+            mail,
+            TestContext.Current.CancellationToken
+        );
+
+        withEntry.ShouldBeTrue();
+        asked.ShouldBe([mail]);
+        withoutEntry.ShouldBeFalse();
+    }
 }

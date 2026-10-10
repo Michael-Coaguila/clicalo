@@ -58,11 +58,13 @@ public sealed class DocumentRepositoryTests : IDisposable
         load.IsReadOnly.ShouldBeTrue();
         save.Failure.Code.ShouldBe("persist.readonly");
         File.ReadAllBytes(Data.Document).ShouldBe(before);
+        repository.IsAwaitingAcceptance.ShouldBeFalse();
         repository.AcceptDefaultDocument();
         repository.IsReadOnly.ShouldBeTrue();
     }
 
     [Fact]
+    [Trait("Req", "DAT-003")]
     public async Task Nothing_usable_is_a_default_in_memory_not_written_until_accepted()
     {
         Put(Data.Document, Encoding.UTF8.GetBytes("{ truncated"));
@@ -77,8 +79,15 @@ public sealed class DocumentRepositoryTests : IDisposable
             "persist.readonly"
         );
         File.Exists(Data.Document).ShouldBeFalse();
+        repository.IsAwaitingAcceptance.ShouldBeTrue();
         repository.AcceptDefaultDocument();
         repository.IsReadOnly.ShouldBeFalse();
+        repository.IsAwaitingAcceptance.ShouldBeFalse();
+        (await repository.SaveAsync(TestDocuments.Document(), Token)).IsSuccess.ShouldBeTrue();
+        File.Exists(Data.Document).ShouldBeTrue("the accepted document is saved in its place");
+        Directory
+            .GetFiles(Data.Quarantine)
+            .Length.ShouldBe(1, "what could not be read stays in quarantine, never overwritten");
     }
 
     [Fact]
@@ -88,6 +97,7 @@ public sealed class DocumentRepositoryTests : IDisposable
         var repository = Repository(files: new AlwaysLocked(Data.Document));
 
         var load = await FakeClock.RunAsync(_time, repository.LoadAsync(Token));
+        repository.IsAwaitingAcceptance.ShouldBeFalse("a locked file is never given up for lost");
         repository.AcceptDefaultDocument();
 
         load.IsReadOnly.ShouldBeTrue();

@@ -1,5 +1,6 @@
 using Clicalo.Application.UseCases.Welcome;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Document;
 using Clicalo.Domain.Settings;
 using PanelSize = Clicalo.Domain.Settings.PanelSize;
 
@@ -78,5 +79,117 @@ public sealed class WelcomeEffectsTests
                 ignoreOrder: true
             );
         WelcomeEffects.Read(SettingsSchema.Defaults).ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    public void An_effect_only_reaches_a_setting_that_still_has_what_the_welcome_left()
+    {
+        // The welcome left: strong preset, L, voice off. Then the person turned voice on and chose S by hand.
+        var left = WelcomeEffects.Plan(
+            SettingsSchema.Defaults,
+            null,
+            new HashSet<WelcomeUse> { WelcomeUse.Tremor },
+            hadTremor: false
+        );
+        left.Changes.ShouldBe([WelcomeSetting.TouchPreset, WelcomeSetting.Size]);
+        left.Kept.ShouldBeEmpty();
+        var byHand = left.Settings with { Size = PanelSize.Small, VoiceNumbers = true };
+
+        var plan = WelcomeEffects.Plan(
+            byHand,
+            left.Baseline,
+            new HashSet<WelcomeUse> { WelcomeUse.NoKeyboard },
+            hadTremor: true
+        );
+
+        plan.Changes.ShouldBe([WelcomeSetting.TouchPreset, WelcomeSetting.NoKeyboard]);
+        plan.Kept.ShouldBe([WelcomeSetting.Size, WelcomeSetting.VoiceNumbers]);
+        plan.Settings.Touch.Preset.ShouldBe(TouchPresets.MildTremor.Id);
+        plan.Settings.NoKeyboardUser.ShouldBeTrue();
+        plan.Settings.Size.ShouldBe(PanelSize.Small, "changed by hand");
+        plan.Settings.VoiceNumbers.ShouldBeTrue("changed by hand");
+        plan.Baseline.ShouldBe(
+            new WelcomeBaseline(TouchPresets.MildTremor.Id, PanelSize.Large, false, true),
+            "what was changed by hand keeps its old baseline, so it is still recognized next time"
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-005")]
+    [Trait("Req", "EC-BIE-01")]
+    public void Unmarking_tremor_takes_back_the_size_the_welcome_had_set()
+    {
+        var withTremor = WelcomeEffects.Plan(
+            SettingsSchema.Defaults,
+            null,
+            new HashSet<WelcomeUse> { WelcomeUse.Tremor },
+            hadTremor: false
+        );
+
+        var without = WelcomeEffects.Plan(
+            withTremor.Settings,
+            withTremor.Baseline,
+            new HashSet<WelcomeUse>(),
+            hadTremor: true
+        );
+
+        without.Settings.Size.ShouldBe(SettingsSchema.Defaults.Size);
+        without.Settings.Touch.Preset.ShouldBe(TouchPresets.Standard.Id);
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-005")]
+    public void A_preset_that_does_not_change_keeps_the_values_the_person_tuned()
+    {
+        var tuned = SettingsSchema.Defaults with
+        {
+            Touch = SettingsSchema.Defaults.Touch with
+            {
+                Preset = TouchPresets.MildTremor.Id,
+                HitSlopPx = SettingsSchema.Defaults.Touch.HitSlopPx + 1,
+            },
+        };
+
+        var plan = WelcomeEffects.Plan(
+            tuned,
+            null,
+            new HashSet<WelcomeUse> { WelcomeUse.Touch },
+            hadTremor: false
+        );
+
+        plan.Settings.Touch.ShouldBe(tuned.Touch);
+        plan.Changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-005")]
+    public void Without_a_keyboard_the_library_and_the_ai_come_before_typing()
+    {
+        WelcomeEffects.PrefersLibraryOverTyping(SettingsSchema.Defaults).ShouldBeFalse();
+        WelcomeEffects
+            .PrefersLibraryOverTyping(
+                WelcomeEffects.Apply(
+                    SettingsSchema.Defaults,
+                    new HashSet<WelcomeUse> { WelcomeUse.NoKeyboard }
+                )
+            )
+            .ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    public void The_recorded_answers_map_one_to_one_to_the_options()
+    {
+        var all = Enum.GetValues<WelcomeUse>();
+
+        var answers = WelcomeAnswers.Create(
+            WelcomeEffects.ToAnswers(all),
+            ["basics"],
+            WelcomeBaseline.Of(SettingsSchema.Defaults)
+        );
+
+        answers.Uses.Select(a => a.ToString()).ShouldBe(all.Select(u => u.ToString()));
+        WelcomeEffects.UsesOf(answers).ShouldBe(all, ignoreOrder: true);
     }
 }

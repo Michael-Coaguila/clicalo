@@ -61,9 +61,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private readonly InstanceMutex _mutex;
     private readonly ILoggerFactory _logs;
     private readonly ILogger _logger;
+    private readonly bool _firstRunAfterInstall;
     private readonly CancellationTokenSource _stop = new();
     private readonly TimeProvider _time = TimeProvider.System;
     private readonly List<Action> _teardown = [];
+    private readonly object _recoveryNotice = new();
     private System.Windows.Application? _application;
     private ServiceProvider? _services;
     private EngineThread? _engine;
@@ -77,13 +79,24 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private Task _guardian = Task.CompletedTask;
     private Task? _exit;
     private bool _firstFrame;
+    private bool _askReinstall;
+    private Action? _beforeEnd;
 
     /// <summary>Creates the host of the instance that owns <paramref name="mutex"/>.</summary>
+    /// <param name="options">The command line.</param>
+    /// <param name="identity">The session and user of this instance.</param>
+    /// <param name="mutex">The single-instance mutex, owned.</param>
+    /// <param name="logs">The product log.</param>
+    /// <param name="firstRunAfterInstall">
+    /// The installer started this process right after installing (Velopack's first-run hook): with data from before,
+    /// the welcome asks whether to keep it or start from scratch (NFR-010, P6).
+    /// </param>
     public AppHost(
         AppOptions options,
         InstanceIdentity identity,
         InstanceMutex mutex,
-        ILoggerFactory logs
+        ILoggerFactory logs,
+        bool firstRunAfterInstall = false
     )
     {
         _options = options;
@@ -91,6 +104,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _mutex = mutex;
         _logs = logs;
         _logger = logs.CreateLogger<AppHost>();
+        // A start Sentinel relaunched, or one with isolated data, is never the first run of an installation.
+        _firstRunAfterInstall =
+            firstRunAfterInstall && options.AfterCrash is null && !options.IsolatedData;
     }
 
     /// <summary>Whether the first frame of the panel is on screen.</summary>
@@ -115,6 +131,24 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     {
         _application?.Dispatcher.VerifyAccess();
         return _exit ??= ExitCoreAsync(AppExitCode.Ok);
+    }
+
+    /// <summary>
+    /// <see cref="ExitAsync"/> with one last action once every key is released and the document flushed, right before
+    /// the process leaves: «Desinstalar Clícalo» starts the uninstaller there (NFR-010, ADR-0029). Ignored when the
+    /// exit had already begun.
+    /// </summary>
+    /// <param name="last">The action; a failure in it never keeps the process alive.</param>
+    internal Task ExitThenAsync(Action last)
+    {
+        ArgumentNullException.ThrowIfNull(last);
+        _application?.Dispatcher.VerifyAccess();
+        if (_exit is null)
+        {
+            _beforeEnd = last;
+        }
+
+        return ExitAsync();
     }
 
     /// <inheritdoc />
@@ -180,6 +214,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             )
             .ConfigureAwait(true);
         slot.Load = read.Documents.Load;
+        _askReinstall = WelcomeFreshStart.ShouldAsk(
+            _firstRunAfterInstall,
+            newData: read.Documents.Load.Outcome == DocumentLoadOutcome.FirstRun,
+            read.Documents.Load.Document
+        );
         slot.Localization = read.Localization;
         slot.Catalogs = read.Catalogs;
         var loadTime = _time.GetElapsedTime(started);
@@ -197,6 +236,25 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         // 3. Autosave, and the engine on its own thread.
         var store = services.GetRequiredService<DocumentStore>();
         _scheduler = services.GetRequiredService<PersistenceScheduler>();
+        var repository = services.GetRequiredService<DocumentRepository>();
+        var awaitingAcceptance = repository.IsAwaitingAcceptance;
+        if (awaitingAcceptance)
+        {
+            // DAT-003: the default document shown when nothing could be read is only written once the person uses
+            // it. Subscribed before the autosave, so the change that accepts it is the first one saved.
+            store.Changed += (_, change) =>
+            {
+                if (repository.IsAwaitingAcceptance && StartupRecovery.Accepts(change))
+                {
+                    repository.AcceptDefaultDocument();
+                    LogDefaultAccepted(_logger);
+                    _ = ui.BeginInvoke(() =>
+                        services.GetRequiredService<PanelComposer>().ClearSticky(_recoveryNotice)
+                    );
+                }
+            };
+        }
+
         store.Changed += _scheduler.OnDocumentChanged;
         var scheduler = _scheduler;
         if (read.Documents.SavePending)
@@ -264,9 +322,24 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         window.ContentRendered += (_, _) => OnFirstFrame(adapters.Guardian);
         window.Present();
+        if (StartupRecovery.NoticeFor(slot.Load.Outcome, awaitingAcceptance) is { } recovery)
+        {
+            // SIS-004, DAT-003: said in the panel and kept there until another notice takes its place.
+            services
+                .GetRequiredService<PanelComposer>()
+                .ShowSticky(
+                    _recoveryNotice,
+                    new PanelNotice(
+                        recovery,
+                        new Domain.Catalog.IconRef("warning"),
+                        NoticeTone.Warning
+                    )
+                );
+        }
+
         _controlCenter = BuildControlCenter(services, store, slot, ui, foreground, monitor, window);
         Track(_controlCenter.Dispose);
-        var system = SystemLifecycle.Start(services, this, _options, ui, _time);
+        var system = SystemLifecycle.Start(services, this, _options, ui, _time, ExitThenAsync);
         Track(system.Dispose);
         _controlCenter.System = system.Services;
         _controlCenter.About = (dictate, notify) =>
@@ -279,10 +352,21 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
                 services.GetRequiredService<IAtomicFileWriter>(),
                 ui,
                 dictate,
-                notify
+                notify,
+                // ACE-004, ADR-0029: the email app opens only towards the contact address of the project.
+                _options.SendInput
+                    ? (address, cancellationToken) =>
+                        services
+                            .GetRequiredService<ShellExecutor>()
+                            .OpenMailAsync(
+                                address,
+                                Presentation.ControlCenter.About.AboutLinks.Current.Email,
+                                cancellationToken
+                            )
+                    : null
             );
         _store = store;
-        _welcome = BuildWelcome(services, store, slot, ui);
+        _welcome = BuildWelcome(services, store, slot, ui, _time);
         Track(_welcome.Dispose);
         _controlCenter.OpenWelcome = () => _ = OpenWelcomeAgainAsync();
         if (_firstFrame)
@@ -454,7 +538,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         IServiceProvider services,
         DocumentStore store,
         StartupSlot slot,
-        Dispatcher ui
+        Dispatcher ui,
+        TimeProvider time
     )
     {
         var welcome = new WelcomeComposer(
@@ -463,7 +548,18 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             services.GetRequiredService<IForegroundOrchestrator>(),
             services.GetRequiredService<ThemeService>(),
             ui,
-            () => slot.Catalogs.Content
+            () => slot.Catalogs.Content,
+            // BIE-006: the keyboard Windows reports, as Plantillas shows it (PLA-009).
+            () =>
+                Domain.Templates.KeyboardLayouts.Detect(
+                    System.Windows.Input.InputLanguageManager.Current?.CurrentInputLanguage?.Name
+                ),
+            WelcomeFreshStart.Of(
+                () => slot.Catalogs.Content,
+                services.GetRequiredService<IIdGenerator>(),
+                time
+            ),
+            time
         );
         var interaction = services.GetRequiredService<InteractionStore>();
         var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
@@ -490,13 +586,20 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
     private void OpenWelcomeIfPending()
     {
-        if (
-            _welcome is { } welcome
-            && _store is { } store
-            && WelcomeComposer.IsPending(store.Current)
-        )
+        if (_welcome is not { } welcome || _store is not { } store)
+        {
+            return;
+        }
+
+        if (WelcomeComposer.IsPending(store.Current))
         {
             _ = welcome.OpenAsync(repeat: false, LeaseOrigin.Internal);
+        }
+        else if (_askReinstall)
+        {
+            // NFR-010, P6: a reinstallation that found data from before asks once; keeping it is the default.
+            _askReinstall = false;
+            _ = welcome.OpenAsync(repeat: true, LeaseOrigin.Internal, reinstall: true);
         }
     }
 
@@ -653,6 +756,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         await WaitQuietlyAsync(Task.WhenAll(_persistence, _guardian)).ConfigureAwait(true);
         _mutex.Dispose();
+        if (_beforeEnd is { } last)
+        {
+            DisposeQuietly(last);
+        }
+
         EndApplication(code);
     }
 
@@ -800,4 +908,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Message = "suspend.flush_late: the flush did not finish before the computer suspended"
     )]
     private static partial void LogSuspendFlushLate(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 16,
+        Level = LogLevel.Information,
+        Message = "doc.default_accepted: the default document is saved from now on"
+    )]
+    private static partial void LogDefaultAccepted(ILogger logger);
 }

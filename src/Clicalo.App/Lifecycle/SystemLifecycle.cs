@@ -19,8 +19,8 @@ namespace Clicalo.App.Lifecycle;
 /// <summary>
 /// The life of «Sistema» (docs/05 §5, ADR-0027): the updates start once the panel is up (a check at start and every
 /// 24 h with «Actualizar automáticamente»), «Iniciar con Windows» and «Reabrir como administrador» only ever use the
-/// installed executable, and every way out (an update, the handover to the elevated instance) goes through
-/// <see cref="IAppLifetime.ExitAsync"/>: release all, flush, exit code 0, so Sentinel does not relaunch.
+/// installed executable, and every way out (an update, the handover to the elevated instance, «Desinstalar Clícalo»)
+/// goes through <see cref="IAppLifetime.ExitAsync"/>: release all, flush, exit code 0, so Sentinel does not relaunch.
 /// </summary>
 internal sealed class SystemLifecycle : IDisposable
 {
@@ -41,12 +41,16 @@ internal sealed class SystemLifecycle : IDisposable
     /// <param name="options">The command line: isolated data turns every system feature off.</param>
     /// <param name="ui">The UI dispatcher, where the exit runs.</param>
     /// <param name="time">The clock.</param>
+    /// <param name="exitThen">
+    /// The exit of «Desinstalar Clícalo»: the same way out, with an action right before the process leaves.
+    /// </param>
     public static SystemLifecycle Start(
         IServiceProvider services,
         IAppLifetime lifetime,
         AppOptions options,
         Dispatcher ui,
-        TimeProvider time
+        TimeProvider time,
+        Func<Action, Task> exitThen
     )
     {
         var store = services.GetRequiredService<DocumentStore>();
@@ -90,13 +94,25 @@ internal sealed class SystemLifecycle : IDisposable
             enabled: !options.IsolatedData && !Environment.IsPrivilegedProcess
         );
         _ = Task.Run(() => updates.StartAsync(CancellationToken.None));
+        var uninstaller = new Platform.Windows.Launch.UninstallerLauncher(installed);
+        // Whether this copy can be uninstalled is read from the disk once, off the UI thread: «Sistema» asks on every
+        // projection. Starting the uninstaller verifies it again.
+        var canUninstall = new System.Runtime.CompilerServices.StrongBox<bool>();
+        _ = Task.Run(() => Volatile.Write(ref canUninstall.Value, uninstaller.IsAvailable));
         var system = new SystemServices(
             updates,
             new SystemBackups(locations, backups, scheduler, writer, time),
             new StartupRegistration(installed),
             new ElevatedRelaunch(installed),
             services.GetRequiredService<IIdGenerator>(),
-            ExitAsync
+            ExitAsync,
+            new SystemUninstall(
+                () => Volatile.Read(ref canUninstall.Value),
+                uninstaller.Start,
+                locations,
+                writer,
+                last => ui.InvokeAsync(() => exitThen(last)).Task.Unwrap()
+            )
         );
         return new SystemLifecycle(updates, system);
     }

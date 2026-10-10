@@ -21,7 +21,15 @@ internal sealed class SystemTestWorld
         Base = new ControlCenterTestWorld();
         Services = Base.Services with
         {
-            System = new SystemServices(Updates, Backups, Startup, Elevation, new Ids(), EndAsync),
+            System = new SystemServices(
+                Updates,
+                Backups,
+                Startup,
+                Elevation,
+                new Ids(),
+                EndAsync,
+                Uninstaller
+            ),
         };
     }
 
@@ -36,6 +44,8 @@ internal sealed class SystemTestWorld
     public FakeStartup Startup { get; } = new();
 
     public FakeElevation Elevation { get; } = new();
+
+    public FakeUninstall Uninstaller { get; } = new();
 
     public int Ended { get; private set; }
 
@@ -138,10 +148,20 @@ internal sealed class SystemTestWorld
             CancellationToken cancellationToken
         ) => Task.FromResult(Results.Ok(Files[id]));
 
+        public int Exported { get; private set; }
+
+        public bool? ExportedOutsideData { get; private set; }
+
         public Task<ExportOutcome> ExportAsync(
             UserDocument document,
+            bool outsideData,
             CancellationToken cancellationToken
-        ) => Task.FromResult(Export);
+        )
+        {
+            Exported++;
+            ExportedOutsideData = outsideData;
+            return Task.FromResult(Export);
+        }
 
         public Task<Result<ImportPick>?> PickImportAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Pick);
@@ -177,6 +197,28 @@ internal sealed class SystemTestWorld
         {
             Asked++;
             return Task.FromResult(Answer);
+        }
+    }
+
+    internal sealed class FakeUninstall : ISystemUninstall
+    {
+        public bool IsAvailable { get; set; } = true;
+
+        public bool Starts { get; set; } = true;
+
+        public List<bool> Calls { get; } = [];
+
+        public ConfirmationToken? Token { get; private set; }
+
+        public Task<bool> UninstallAsync(
+            bool deleteData,
+            ConfirmationToken token,
+            CancellationToken cancellationToken
+        )
+        {
+            Calls.Add(deleteData);
+            Token = token;
+            return Task.FromResult(Starts);
         }
     }
 

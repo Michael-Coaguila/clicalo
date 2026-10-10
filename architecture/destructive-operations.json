@@ -43,11 +43,11 @@
     },
     {
       "name": "UninstallKeepOrDeleteData",
-      "description": "Uninstalls from the Control Center, optionally deleting the user data."
+      "description": "Uninstalls from the Control Center (System > Uninstall); the data is kept unless the person asks to delete it, after saving a copy (NFR-010, ADR-0029). ISystemUninstall.UninstallAsync only runs with the ConfirmationToken of this operation."
     },
     {
-      "name": "UninstallSystemComponent",
-      "description": "Removes the elevated system component and its scheduled task."
+      "name": "StartFromScratchOnReinstall",
+      "description": "Replaces the document with the one of a new installation when a reinstallation found data from before (NFR-010, proposal P6, ADR-0029). It is dispatched as the RestoreBackup command, with a backup of the current document first and undo."
     }
   ]
 }

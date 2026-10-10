@@ -13,6 +13,7 @@ namespace Clicalo.Presentation.ControlCenter.About;
 /// <param name="AppName">[appName], drawn as the logo word.</param>
 /// <param name="VersionLine">«v{version} · MIT · código abierto».</param>
 /// <param name="GitHubText">[gitHub].</param>
+/// <param name="LinkedInText">[linkedIn], or <see langword="null"/> while there is no LinkedIn address (D11).</param>
 /// <param name="ShareText">[shareShort].</param>
 /// <param name="FeedbackTitle">[fbTitle].</param>
 /// <param name="Kinds">The four kinds of feedback.</param>
@@ -30,13 +31,16 @@ namespace Clicalo.Presentation.ControlCenter.About;
 /// <param name="PreviewOpen">Whether the preview of the log is open.</param>
 /// <param name="PreviewText">The log exactly as it would be sent, or why there is none; empty while it loads.</param>
 /// <param name="SendText">[fbSend].</param>
-/// <param name="SendNote">[fbSendD], or [fbSendLogD] when the log is attached.</param>
+/// <param name="SendNote">
+/// [fbSendD], or [fbSendLogD] when the log is attached; [fbSendCopyD] while there is no contact email.
+/// </param>
 /// <param name="Sending">Whether a send is under way ([Enviar por correo] waits).</param>
 /// <param name="DirectTitle">[fbDirect].</param>
-/// <param name="Email">The contact email, or the visible marker [contactPending].</param>
-/// <param name="EmailPending">Whether there is no contact email yet (nothing to copy).</param>
+/// <param name="Email">The contact email, or <see langword="null"/> while there is none: its row is hidden (D11).</param>
 /// <param name="CopyName">[copy], the name of the copy button.</param>
 /// <param name="Promise">[fbPromise].</param>
+/// <param name="GuideTitle">[userGuide].</param>
+/// <param name="GuideDescription">[userGuideD].</param>
 /// <param name="IssuesTitle">[fbGh].</param>
 /// <param name="IssuesDescription">[fbGhD].</param>
 /// <param name="ContributeTitle">[fbContrib].</param>
@@ -52,6 +56,7 @@ public sealed record AboutScreen(
     string AppName,
     string VersionLine,
     string GitHubText,
+    string? LinkedInText,
     string ShareText,
     string FeedbackTitle,
     ValueList<AboutOption> Kinds,
@@ -72,10 +77,11 @@ public sealed record AboutScreen(
     string SendNote,
     bool Sending,
     string DirectTitle,
-    string Email,
-    bool EmailPending,
+    string? Email,
     string CopyName,
     string Promise,
+    string GuideTitle,
+    string GuideDescription,
     string IssuesTitle,
     string IssuesDescription,
     string ContributeTitle,
