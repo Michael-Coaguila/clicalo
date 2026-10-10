@@ -141,6 +141,19 @@ public class TouchButton : Button
         set => SetValue(IsOnProperty, value);
     }
 
+    /// <inheritdoc />
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        if (GetTemplateChild(ButtonChrome.ContentPart) is ContentPresenter presenter)
+        {
+            WrappedText.Apply(
+                presenter,
+                centered: HorizontalContentAlignment == HorizontalAlignment.Center
+            );
+        }
+    }
+
     /// <summary>Clicks the button as a tap does; UI Automation's Expand, Collapse and Toggle end here.</summary>
     internal void ClickFromAutomation() => OnClick();
 

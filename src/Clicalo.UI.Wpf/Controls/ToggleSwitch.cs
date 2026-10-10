@@ -99,6 +99,12 @@ public sealed class ToggleSwitch : ToggleButton
         {
             knob.RenderTransform = _knobShift;
         }
+
+        // A label longer than the row wraps and the row grows; it is never cut (the prototype's rows wrap too).
+        if (GetTemplateChild(ContentPart) is ContentPresenter presenter)
+        {
+            WrappedText.Apply(presenter, centered: false);
+        }
     }
 
     /// <summary>

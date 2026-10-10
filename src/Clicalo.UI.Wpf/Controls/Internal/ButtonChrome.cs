@@ -72,15 +72,18 @@ internal static class ButtonChrome
             .Element<SymbolIcon>(IconPart)
             .With(SymbolIcon.SymbolProperty, Templates.Bind(TouchButton.SymbolProperty))
             .With(SymbolIcon.SizeProperty, Templates.Bind(TouchButton.IconSizeProperty))
-            .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+            .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
+            .With(DockPanel.DockProperty, Dock.Left);
         var content = Templates
             .Element<ContentPresenter>(ContentPart)
             .With(FrameworkElement.MarginProperty, new Thickness(IconGap, 0, 0, 0))
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
             .With(ContentPresenter.RecognizesAccessKeyProperty, false);
+        // The content takes what the icon leaves of the button, so a text that has no room for one line wraps
+        // (TouchButton) instead of being cut.
         var row = Templates
-            .Element<StackPanel>()
-            .With(StackPanel.OrientationProperty, Orientation.Horizontal)
+            .Element<DockPanel>()
+            .With(DockPanel.LastChildFillProperty, true)
             .With(
                 FrameworkElement.HorizontalAlignmentProperty,
                 Templates.Bind(Control.HorizontalContentAlignmentProperty)

@@ -25,6 +25,8 @@ public sealed class DockCoachWindow : TouchSurface
     private const double StepPx = 12;
     private const double TitlePx = 15;
     private const double TextPx = 13;
+    private const double SkipPx = 12;
+    private const double NextPx = 13;
 
     private readonly DockBarViewModel _viewModel;
     private readonly TextBlock _step;
@@ -75,6 +77,7 @@ public sealed class DockCoachWindow : TouchSurface
             height: TouchTargetSize.MinimumSize
         );
         _skip.Symbol = null;
+        _skip.FontSize = SkipPx;
         _next = SurfaceParts.Button(
             "arrow_forward",
             0,
@@ -83,6 +86,7 @@ public sealed class DockCoachWindow : TouchSurface
             height: TouchTargetSize.MinimumSize
         );
         _next.Symbol = null;
+        _next.FontSize = NextPx;
         // On the accent card: [coachSkip] outlined in onAccent, [next] filled with onAccent in accent (PES-015).
         _skip.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.OnAccent));
         _skip.SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.OnAccent));
