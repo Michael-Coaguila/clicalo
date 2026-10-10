@@ -11,9 +11,10 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The empty profile card (CUA-010): a dashed outline of 2 px in line and radius 12, the <c>inbox</c> icon of 30 in
-/// muted, [emptyProfT] in 14 bold, [emptyProfS] in 12 muted and the 44 px accent button «+ [addShortcut]». It only
-/// projects <see cref="EmptyStateViewModel"/>.
+/// The empty card of the grid (CUA-010): a dashed outline of 2 px in line and radius 12, an icon of 30 in muted, a
+/// title in 14 bold, a text in 12 muted and a 44 px accent button. An empty profile shows <c>inbox</c>, [emptyProfT],
+/// [emptyProfS] and «+ [addShortcut]»; an empty Frequents shows <c>star</c>, [freqEmptyT], [freqEmptyS] and «Volver a
+/// {perfil}». It only projects <see cref="EmptyStateViewModel"/>.
 /// </summary>
 public sealed class EmptyStateView : Grid
 {
@@ -25,6 +26,13 @@ public sealed class EmptyStateView : Grid
     private const double DashedBorder = 2;
 
     private readonly EmptyStateViewModel _viewModel;
+    private readonly SymbolIcon _icon = new()
+    {
+        Size = IconPx,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        Margin = new Thickness(0, 0, 0, Gap),
+    };
+
     private readonly TextBlock _title = new()
     {
         FontWeight = FontWeights.Bold,
@@ -67,17 +75,10 @@ public sealed class EmptyStateView : Grid
         outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
         Children.Add(outline);
 
-        var icon = new SymbolIcon
-        {
-            Symbol = "inbox",
-            Size = IconPx,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        icon.SetResourceReference(
+        _icon.SetResourceReference(
             SymbolIcon.ForegroundProperty,
             ThemeBrushKey.For(ColorToken.Muted)
         );
-        icon.Margin = new Thickness(0, 0, 0, Gap);
         _title.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(TitlePx));
         _title.SetResourceReference(
             TextBlock.ForegroundProperty,
@@ -91,7 +92,7 @@ public sealed class EmptyStateView : Grid
         _add.Click += (_, _) => _viewModel.Add();
 
         var stack = new StackPanel { Margin = new Thickness(12, 18, 12, 18) };
-        stack.Children.Add(icon);
+        stack.Children.Add(_icon);
         stack.Children.Add(_title);
         stack.Children.Add(_subtitle);
         stack.Children.Add(_add);
@@ -113,8 +114,10 @@ public sealed class EmptyStateView : Grid
     private void Refresh()
     {
         Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
+        _icon.Symbol = _viewModel.Icon;
         _title.Text = _viewModel.Title;
         _subtitle.Text = _viewModel.Subtitle;
+        _add.Symbol = _viewModel.ButtonIcon;
         _add.Content = _viewModel.ButtonName;
     }
 }

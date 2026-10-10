@@ -4,6 +4,7 @@ using Clicalo.Application.Foreground;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
@@ -39,6 +40,7 @@ public sealed class SearchViewModel : ObservableObject
     private string _searchName = string.Empty;
     private string _dictateName = string.Empty;
     private string _noResultsText = string.Empty;
+    private readonly Func<InjectionMode?>? _appMode;
     private int _generation;
 
     /// <summary>Creates the search.</summary>
@@ -50,14 +52,20 @@ public sealed class SearchViewModel : ObservableObject
     /// search finds what the user sees (BUS-004).
     /// </param>
     /// <param name="notify">Shows a notice in the notice bar (assertive: the search only reports failures).</param>
+    /// <param name="appMode">
+    /// The mode of the profile of the app in front, which the results of General and Always visible inherit (D24);
+    /// <see langword="null"/> uses the mode of General.
+    /// </param>
     public SearchViewModel(
         PanelSearch search,
         ILocalizationContext localization,
         Func<WindowToken> panel,
         Func<Shortcut, string?> combination,
-        Action<Message> notify
+        Action<Message> notify,
+        Func<InjectionMode?>? appMode = null
     )
     {
+        _appMode = appMode;
         ArgumentNullException.ThrowIfNull(search);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(panel);
@@ -362,7 +370,7 @@ public sealed class SearchViewModel : ObservableObject
         var localizer = _localization.Current;
         var language = new LangCode(localizer.Locale.Code);
         var always = localizer.Format(L.Always);
-        var general = library.General;
+        var appMode = _appMode?.Invoke();
         foreach (var hit in ShortcutSearch.Find(library, _query, _combination))
         {
             var profile =
@@ -370,7 +378,11 @@ public sealed class SearchViewModel : ObservableObject
             Results.Add(
                 new SearchResultViewModel(
                     this,
-                    new TileBinding(hit.Shortcut, hit.Profile, (profile ?? general).Injection),
+                    new TileBinding(
+                        hit.Shortcut,
+                        hit.Profile,
+                        PanelProjector.InheritedMode(library, profile, appMode)
+                    ),
                     hit.Shortcut.Name.Get(language, LangCode.Es),
                     profile?.Name.Get(language, LangCode.Es) ?? always
                 )

@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using Clicalo.Domain.Catalog;
 using Clicalo.Presentation.Panel.Header;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -21,8 +22,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.Header;
 /// </summary>
 /// <remarks>
 /// It only shows <see cref="PanelHeaderViewModel"/> and forwards taps. The grip and the title are the drag zones that
-/// move the panel (PAN-004): the panel's pointer layer reads <see cref="DragZones"/>; they are never buttons. A button
-/// whose action the composition did not give stays hidden.
+/// move the panel (PAN-004): the panel's pointer layer reads <see cref="DragZones"/>. The grip is never a button; the
+/// title is one only while the Full view shows no selector row (SEL-006): a tap that did not drag opens the profile
+/// grid, and UI Automation sees it as an ExpandCollapse button with the name of the profile. A button whose action the
+/// composition did not give stays hidden.
 /// </remarks>
 public sealed class PanelHeader : Border
 {
@@ -38,6 +41,7 @@ public sealed class PanelHeader : Border
     private readonly PanelHeaderViewModel _viewModel;
     private readonly Border _grip;
     private readonly DockPanel _title;
+    private readonly ShortcutTile _titleButton;
     private readonly SymbolIcon _titleIcon;
     private readonly TextBlock _titleText;
     private readonly Ellipse _dot;
@@ -128,6 +132,17 @@ public sealed class PanelHeader : Border
         _title.Children.Add(_dot);
         _title.Children.Add(_titleText);
 
+        // SEL-006: over the title, an invisible ExpandCollapse button for voice, keyboard and switches; the finger
+        // goes through the pointer layer of the panel, which also lets the same zone drag (PAN-004).
+        _titleButton = PanelChrome.NewButton(PanelChrome.Large, ShortcutTilePattern.ExpandCollapse);
+        _titleButton.Height = TouchTarget.AtLeastMinimum(height);
+        _titleButton.Margin = _title.Margin;
+        _titleButton.Opacity = 0;
+        _titleButton.Visibility = Visibility.Collapsed;
+        _titleButton.Invoked += (_, _) => _viewModel.TitleTapped();
+        _titleButton.ExpandRequested += (_, _) => _viewModel.TitleTapped();
+        _titleButton.CollapseRequested += (_, _) => _viewModel.TitleTapped();
+
         _autoFixed = new AutoFixedButton
         {
             Margin = Overlap(AutoFixedButton.VisualSize, AutoFixedButton.VisualSize),
@@ -151,7 +166,10 @@ public sealed class PanelHeader : Border
 
         DockPanel.SetDock(_grip, Dock.Left);
         row.Children.Add(_grip);
-        row.Children.Add(_title);
+        var titleArea = new Grid();
+        titleArea.Children.Add(_title);
+        titleArea.Children.Add(_titleButton);
+        row.Children.Add(titleArea);
         Child = row;
 
         _viewModel.PropertyChanged += OnViewModelChanged;
@@ -160,6 +178,9 @@ public sealed class PanelHeader : Border
 
     /// <summary>The zones that drag the panel (PAN-004): the grip and the title.</summary>
     public IReadOnlyList<FrameworkElement> DragZones => [_grip, _title];
+
+    /// <summary>The button over the title while it opens the profile grid (SEL-006); collapsed otherwise.</summary>
+    public ShortcutTile TitleButton => _titleButton;
 
     /// <summary>The Auto/Fixed button (desktop tests and the composition locate it).</summary>
     public AutoFixedButton AutoFixed => _autoFixed;
@@ -172,13 +193,25 @@ public sealed class PanelHeader : Border
     /// Click (<see cref="PanelTapTarget"/>); hidden ones have no bounds and the surface skips them.
     /// </summary>
     public IReadOnlyList<PanelTapTarget> TapTargets =>
-        [
-            new(_autoFixed, _viewModel.ToggleLock),
-            new(_search, _viewModel.Search),
-            new(_edit, _viewModel.Edit),
-            new(_quick, _viewModel.QuickSettings),
-            new(_minimize, _viewModel.Minimize),
-        ];
+        _viewModel.TitleOpensPicker
+            ?
+            [
+                // SEL-006: a tap on the title that did not drag the panel opens the profile grid.
+                new(_title, _viewModel.TitleTapped),
+                new(_autoFixed, _viewModel.ToggleLock),
+                new(_search, _viewModel.Search),
+                new(_edit, _viewModel.Edit),
+                new(_quick, _viewModel.QuickSettings),
+                new(_minimize, _viewModel.Minimize),
+            ]
+            :
+            [
+                new(_autoFixed, _viewModel.ToggleLock),
+                new(_search, _viewModel.Search),
+                new(_edit, _viewModel.Edit),
+                new(_quick, _viewModel.QuickSettings),
+                new(_minimize, _viewModel.Minimize),
+            ];
 
     private static double Overflow(double visual) =>
         Math.Max(0, (TouchTarget.MinimumSize - visual) / 2);
@@ -222,6 +255,12 @@ public sealed class PanelHeader : Border
             _titleText,
             vm.ShowsActiveAppDot ? vm.ActiveAppDotName : string.Empty
         );
+
+        _titleButton.Visibility = Shown(vm.TitleOpensPicker);
+        _titleButton.AccessibleName = vm.Title;
+        _titleButton.AccessibleHelpText = vm.TitleHelp;
+        _titleButton.AccessibleState = vm.ShowsActiveAppDot ? vm.ActiveAppDotName : string.Empty;
+        _titleButton.IsExpanded = vm.IsPickerOpen;
 
         _autoFixed.Visibility = Shown(vm.ShowsAutoFixed);
         _autoFixed.IsChecked = vm.IsFixed;

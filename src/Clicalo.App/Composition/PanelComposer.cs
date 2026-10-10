@@ -22,6 +22,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.ProfileResolution;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
+using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.ContextMenu;
 using Clicalo.Presentation.Panel.EditMode;
@@ -42,6 +43,8 @@ namespace Clicalo.App.Composition;
 /// changes; while a finger rests on the panel the projection waits for it (PAN-009). It also owns the layers above
 /// the tiles (Quick settings, edit mode, the tile menu and test mode): it is their notice sink, keeps one primary layer
 /// open at a time (PAN-008) and passes the intentions for the control center on to <see cref="ControlCenter"/>.
+/// While Clícalo is paused from the tray (BUR-004) it hides the panel and stops following the app in front; it keeps
+/// the optional global shortcut of the tray on the combination of the settings (BUR-005).
 /// </summary>
 internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, IControlCenterIntents
 {
@@ -50,6 +53,12 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private const string UndoIcon = "undo";
     private const string LockedIcon = "lock";
     private const string FollowingIcon = "autorenew";
+    private const string AdminIcon = "admin_panel_settings";
+
+    /// <summary>The ids of ⏶ and ⏷ of the Tab bar (<c>DockBarViewModel</c>): the panic strip names them (SEG-001).</summary>
+    private const string DockScrollUpId = "dock.scrollUp";
+
+    private const string DockScrollDownId = "dock.scrollDown";
 
     private readonly DocumentStore _store;
     private readonly SessionStore _session;
@@ -72,6 +81,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     // Kept referenced until they fire, so the collector cannot drop a flash before it ends.
     private readonly HashSet<ITimer> _flashTimers = [];
     private string? _elevatedApp;
+    private IForegroundMonitor? _monitor;
+    private Func<ExternalForeground, ForegroundDetails>? _describe;
+    private TrayController? _tray;
+    private bool _relaunching;
     private bool _refreshQueued;
     private bool _resultsChanged = true;
 
@@ -136,7 +149,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         TestMode = new TestModeViewModel(engine, localization, this, time, Post);
         EditMode = new EditModeViewModel(
             store,
-            new TwoStepConfirm(time),
+            // ACC-006: the two-tap window lasts ×1, ×2 or ×3, as the settings say when the first tap arms it.
+            new TwoStepConfirm(time, () => _store.Current.Settings.TimeMultiplier),
             localization,
             this,
             this,
@@ -157,7 +171,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             EditMode,
             Menu,
             TestMode,
-            new TileInteractionModes(EditMode, TestMode, Menu),
+            new TileInteractionModes(EditMode, TestMode, Menu) { IgnoredFeedback = ShowIgnored },
             () => _profiles.State.View is ViewTarget.Frequents
         );
 
@@ -166,7 +180,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             localization,
             () => _window?.SurfaceWindow ?? default,
             shortcut => KeyLines(forSearch: true).For(shortcut).Line,
-            message => Notify(message, NoticeTone.Warning, WarningIcon)
+            message => Notify(message, NoticeTone.Warning, WarningIcon),
+            AppMode
         );
         Suggestion = new SuggestionViewModel(
             store,
@@ -200,6 +215,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                     _ = _interaction.Dispatch(new InteractionAction.Minimize());
                 }
             )
+            {
+                // SEL-006: without the selector row, the title opens the profile grid, with ★ Frequents in it.
+                Title = TogglePicker,
+            }
         );
 
         _profiles.Changed += OnProfileViewChanged;
@@ -211,6 +230,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         QuickSettings.PropertyChanged += (_, _) => Invalidate();
         Menu.PropertyChanged += (_, _) => Invalidate();
         TestMode.PropertyChanged += (_, _) => Invalidate();
+        Panel.PropertyChanged += OnPanelChanged;
         Search.ApplyLibrary(store.Current.Library);
         Refresh();
     }
@@ -284,26 +304,40 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         ArgumentNullException.ThrowIfNull(monitor);
         ArgumentNullException.ThrowIfNull(describe);
+        _monitor = monitor;
+        _describe = describe;
         monitor.ExternalForegroundChanged += (_, change) => Report(change.Foreground);
         if (monitor.Current is { } current)
         {
             Report(current);
         }
+    }
 
-        void Report(ExternalForeground foreground)
+    /// <summary>
+    /// The tray, once it shows (BUR-005, user decision D10): its optional global shortcut follows the settings from here
+    /// on, off by default; when Windows refuses the combination because another program owns it, the panel says so.
+    /// </summary>
+    /// <param name="tray">The tray.</param>
+    public void AttachTray(TrayController tray)
+    {
+        ArgumentNullException.ThrowIfNull(tray);
+        _tray = tray;
+        ApplyHotkey(_store.Current.Settings.GlobalHotkey, announce: false);
+    }
+
+    private void Report(ExternalForeground foreground)
+    {
+        // PRB-006: the app «Probar ahora» brings to the front does not change the profile of the panel.
+        if (ControlCenter?.IsTrying == true || _describe is not { } describe)
         {
-            // PRB-006: the app «Probar ahora» brings to the front does not change the panel's profile.
-            if (ControlCenter?.IsTrying == true)
-            {
-                return;
-            }
-
-            var process = describe(foreground).Process;
-            var elevated =
-                ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)
-                == ElevationState.TargetElevated;
-            _ = _ui.BeginInvoke(() => OnForeground(process, elevated));
+            return;
         }
+
+        var process = describe(foreground).Process;
+        var elevated =
+            ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)
+            == ElevationState.TargetElevated;
+        _ = _ui.BeginInvoke(() => OnForeground(process, elevated));
     }
 
     /// <summary>The document changed (on the UI thread): profiles, search, suggestion and layout follow it.</summary>
@@ -324,6 +358,11 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             {
                 // FIJ-005: turning the row off releases every sticky modifier.
                 _ = _engine.Post(new EngineEvent.ClearSticky());
+            }
+
+            if (before.GlobalHotkey != after.GlobalHotkey)
+            {
+                ApplyHotkey(after.GlobalHotkey, announce: true);
             }
         }
 
@@ -580,11 +619,184 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
 
     /// <inheritdoc />
-    /// <remarks>The verified elevated relaunch (D-11) is not built yet; the notice still explains why nothing is sent.</remarks>
-    public void RelaunchElevated() { }
+    /// <remarks>
+    /// «Reabrir como administrador» of the system package (user decision D7, ADR-0027): Windows asks with its UAC and
+    /// only the installed, verified executable is started. Once the elevated instance started, the panel says
+    /// [adminRestarting] and this instance ends cleanly (release all, flush); the document on disk is the state the
+    /// new one starts from. Cancelling or failing leaves everything as it was, with the reason.
+    /// </remarks>
+    public void RelaunchElevated()
+    {
+        if (_relaunching || ControlCenter?.System is not { } system)
+        {
+            return;
+        }
+
+        if (system.Elevation.IsElevated)
+        {
+            Notify(L.AdminActive, NoticeTone.Notice, AdminIcon);
+            return;
+        }
+
+        _relaunching = true;
+        _ = RelaunchAsync(system);
+    }
+
+    private async Task RelaunchAsync(
+        Clicalo.Presentation.ControlCenter.SystemSection.SystemServices system
+    )
+    {
+        try
+        {
+            var outcome = await system
+                .Elevation.RelaunchAsync(CancellationToken.None)
+                .ConfigureAwait(true);
+            switch (outcome)
+            {
+                case ElevationOutcome.Started:
+                    Notify(L.AdminRestarting, NoticeTone.Notice, AdminIcon);
+                    await system.EndForHandover().ConfigureAwait(true);
+                    return;
+                case ElevationOutcome.Cancelled:
+                    Notify(L.AdminCancelled, NoticeTone.Warning, AdminIcon);
+                    break;
+                case ElevationOutcome.NotInstalled:
+                    Notify(L.AdminNotInstalled, NoticeTone.Warning, AdminIcon);
+                    break;
+                default:
+                    Notify(L.AdminFailed, NoticeTone.Warning, WarningIcon);
+                    break;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            Notify(L.AdminFailed, NoticeTone.Warning, WarningIcon);
+        }
+        finally
+        {
+            _relaunching = false;
+        }
+    }
+
+    /// <summary>
+    /// The discreet answer to an ignored touch (TAC-003): a slight outline on the tile for
+    /// <c>Timings.Touch.IgnoredTouchFeedback</c>, without sound. It follows the flash setting, so it can be turned off.
+    /// </summary>
+    private void ShowIgnored(TileViewModel tile)
+    {
+        if (!_store.Current.Settings.Feedback.Flash)
+        {
+            return;
+        }
+
+        tile.ShowIgnored(true);
+        ITimer? timer = null;
+        timer = _time.CreateTimer(
+            _ =>
+                _ = _ui.BeginInvoke(() =>
+                {
+                    tile.ShowIgnored(false);
+                    if (timer is not null && _flashTimers.Remove(timer))
+                    {
+                        timer.Dispose();
+                    }
+                }),
+            null,
+            Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan
+        );
+        _ = _flashTimers.Add(timer);
+        _ = timer.Change(Timings.Touch.IgnoredTouchFeedback, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// Pause and resume (BUR-004): paused, the panel hides and the profile no longer follows the app in front; when
+    /// Clícalo resumes, the panel comes back and catches up with the app that is in front by then.
+    /// </summary>
+    private void OnPanelChanged(object? sender, PropertyChangedEventArgs change)
+    {
+        if (
+            !string.Equals(
+                change.PropertyName,
+                nameof(PanelViewModel.IsPaused),
+                StringComparison.Ordinal
+            )
+        )
+        {
+            return;
+        }
+
+        if (Panel.IsPaused)
+        {
+            CloseLayers();
+            _ = Search.CloseAsync();
+            _ = _session.Dispatch(new SessionAction.ClosePicker());
+            _ = _session.Dispatch(new SessionAction.Hide());
+            return;
+        }
+
+        // «Reanudar», a click on the icon and the global shortcut all bring the panel back (BUR-005).
+        _ = _session.Dispatch(new SessionAction.Show());
+        if (_monitor?.Current is { } current)
+        {
+            Report(current);
+        }
+    }
+
+    /// <summary>Puts the global shortcut of the tray on the combination of the settings, or turns it off (BUR-005).</summary>
+    private void ApplyHotkey(GlobalHotkeySettings settings, bool announce)
+    {
+        if (_tray is not { } tray)
+        {
+            return;
+        }
+
+        var hotkey = settings.Enabled ? GlobalHotkeys.Find(settings.Combo) : null;
+        _ = ApplyAsync();
+
+        async Task ApplyAsync()
+        {
+            try
+            {
+                var registered = await tray.SetHotkeyAsync(hotkey?.Keys).ConfigureAwait(true);
+                if (!registered && hotkey is not null && (announce || settings.Enabled))
+                {
+                    // Another program owns the combination: say so, and the person picks another one of the list.
+                    Notify(
+                        L.GlobalHotkeyTaken(keys: KeysText(hotkey.Keys)),
+                        NoticeTone.Warning,
+                        WarningIcon
+                    );
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Exiting.
+            }
+        }
+    }
+
+    private string KeysText(KeyChord chord) =>
+        KeyChordFormatter.Format(
+            chord,
+            _catalogs.KeyLabels,
+            KeyLabelStyle.Full,
+            Language(),
+            LangCode.Es
+        );
+
+    /// <summary>The mode of the profile of the app in front, which General, Always visible and Frequents inherit (D24).</summary>
+    private InjectionMode? AppMode() =>
+        PanelProjector.AppMode(_store.Current.Library, _profiles.ActiveAppProfile);
 
     private void OnForeground(ProcessName process, bool elevated)
     {
+        // BUR-004: paused, the profile does not change with the app; resuming reports the app in front again.
+        if (Panel.IsPaused)
+        {
+            return;
+        }
+
         var name = process.IsEmpty ? null : DisplayName(process);
         var elevatedApp = elevated ? name : null;
         if (!string.Equals(elevatedApp, _elevatedApp, StringComparison.Ordinal))
@@ -760,6 +972,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 AddTile: EditMode.ShowsAdd
             )
         );
+        Header.ApplyPicker(Panel.TitleOpensPicker, _session.Current.PickerOpen);
         Refreshed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -779,7 +992,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 _profiles.ProfileButtonTarget,
                 _localization.Current.Format(L.Always),
                 language,
-                LangCode.Es
+                LangCode.Es,
+                AppMode()
             );
         }
 
@@ -789,7 +1003,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             _profiles.ProfileButtonTarget,
             language,
             LangCode.Es,
-            keys.For
+            keys.For,
+            AppMode()
         );
     }
 
@@ -828,13 +1043,22 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             location.List is ListRef.InProfile list && library.TryGetProfile(list.Id, out var owner)
                 ? owner
                 : null;
-        return new TileBinding(shortcut, origin?.Id, (origin ?? library.General).Injection);
+        return new TileBinding(
+            shortcut,
+            origin?.Id,
+            PanelProjector.InheritedMode(library, origin, AppMode())
+        );
     }
 
     private string? NameOf(ShortcutId id) =>
         _store.Current.Library.TryGetShortcut(id, out var shortcut)
             ? shortcut.Name.Get(Language(), LangCode.Es)
-            : null;
+        // SEG-001: ⏶ and ⏷ of the Tab bar are held like any Hold; the panic strip says their name.
+        : string.Equals(id.Value, DockScrollUpId, StringComparison.Ordinal)
+            ? _localization.Current.Format(L.DockScrollUp)
+        : string.Equals(id.Value, DockScrollDownId, StringComparison.Ordinal)
+            ? _localization.Current.Format(L.DockScrollDown)
+        : null;
 
     private string KeyLabelOf(ModifierKind modifier) =>
         KeyChordFormatter.KeyText(

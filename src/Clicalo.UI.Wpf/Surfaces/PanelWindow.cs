@@ -354,6 +354,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
                 // AJR-001, AJR-002: a finger that slid the opacity or scrolled the sheet is not a tap.
                 _ = _dragged.Add(sample.PointerId);
             }
+
+            if (_body.Picker.Track(sample, _drag?.ThresholdPx ?? 0))
+            {
+                // TAC-004: a finger that scrolled the profile grid chooses no profile.
+                _ = _dragged.Add(sample.PointerId);
+            }
         }
 
         TrackTouching();

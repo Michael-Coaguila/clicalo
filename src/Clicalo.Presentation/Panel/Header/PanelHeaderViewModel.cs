@@ -37,6 +37,9 @@ public sealed class PanelHeaderViewModel : ObservableObject
     private bool _isSearchOpen;
     private bool _isEditing;
     private bool _isQuickSettingsOpen;
+    private bool _titleOpensPicker;
+    private bool _isPickerOpen;
+    private string _titleHelp = string.Empty;
 
     /// <summary>Creates the header.</summary>
     /// <param name="profiles">Where Auto/Fixed goes (PER-006).</param>
@@ -178,6 +181,30 @@ public sealed class PanelHeaderViewModel : ObservableObject
         private set => SetProperty(ref _isQuickSettingsOpen, value);
     }
 
+    /// <summary>
+    /// Whether a tap on the title opens the profile grid (SEL-006): in the Full view without the selector row, so
+    /// Frequents and the other profiles stay one tap away. The title still drags the panel (PAN-004).
+    /// </summary>
+    public bool TitleOpensPicker
+    {
+        get => _titleOpensPicker;
+        private set => SetProperty(ref _titleOpensPicker, value);
+    }
+
+    /// <summary>Whether the profile grid is open: the ExpandCollapse state of the title (SEL-006).</summary>
+    public bool IsPickerOpen
+    {
+        get => _isPickerOpen;
+        private set => SetProperty(ref _isPickerOpen, value);
+    }
+
+    /// <summary>[switchProf], the help text of the title while it opens the profile grid.</summary>
+    public string TitleHelp
+    {
+        get => _titleHelp;
+        private set => SetProperty(ref _titleHelp, value);
+    }
+
     /// <summary>Whether Search has an action and shows.</summary>
     public bool HasSearch => _actions.Search is not null;
 
@@ -215,10 +242,20 @@ public sealed class PanelHeaderViewModel : ObservableObject
         IsQuickSettingsOpen = quickSettingsOpen;
     }
 
+    /// <summary>Applies whether the title opens the profile grid and whether that grid is open (SEL-006).</summary>
+    /// <param name="titleOpensPicker">The Full view shows no selector row, and the composition gave the action.</param>
+    /// <param name="pickerOpen">Whether the profile grid is open.</param>
+    public void ApplyPicker(bool titleOpensPicker, bool pickerOpen)
+    {
+        TitleOpensPicker = titleOpensPicker && _actions.Title is not null;
+        IsPickerOpen = pickerOpen;
+    }
+
     /// <summary>Formats every text again in the current language (IDI-001).</summary>
     public void Relocalize()
     {
         var localizer = _localization.Current;
+        TitleHelp = localizer.Format(L.SwitchProf);
         MoveName = localizer.Format(L.Move);
         SearchName = localizer.Format(L.SearchA);
         EditName = localizer.Format(L.Edit);
@@ -230,6 +267,18 @@ public sealed class PanelHeaderViewModel : ObservableObject
 
     /// <summary>The Auto/Fixed button (a tap, or UI Automation Toggle): PER-006.</summary>
     public void ToggleLock() => _profiles.ToggleLock();
+
+    /// <summary>
+    /// A tap on the title, or its UI Automation Invoke, Expand or Collapse (SEL-006): opens or closes the profile grid
+    /// while <see cref="TitleOpensPicker"/>; nothing otherwise.
+    /// </summary>
+    public void TitleTapped()
+    {
+        if (TitleOpensPicker)
+        {
+            _actions.Title?.Invoke();
+        }
+    }
 
     /// <summary>The Search button.</summary>
     public void Search() => _actions.Search?.Invoke();

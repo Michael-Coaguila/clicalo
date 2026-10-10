@@ -6,7 +6,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
@@ -19,8 +21,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// The profile grid (SEL-003), under the selector in the Full view: a card with a tile per profile (76 high, at least 88
 /// wide; icon in accent and the name in 13 px cut with «…»), accentWash and a 2 px accent outline on the profile in
 /// view, a 9 px dot on the profile of the active app, «Crear para {app}» in warn when it applies, «+ Más» with a
-/// dashed outline, and the legend of the dot. It scrolls inside <see cref="FrameworkElement.MaxHeight"/>, which the
-/// surface sets to 46 % of the work area. It only projects <see cref="PickerGridViewModel"/>.
+/// dashed outline, and the legend of the dot. Opened from the title of the header it starts with ★ Frequents
+/// (SEL-006). It scrolls inside <see cref="FrameworkElement.MaxHeight"/>, which the surface sets to 46 % of the work
+/// area: a finger that moves past the cancel distance scrolls it and chooses nothing (TAC-004, <see cref="Track"/>),
+/// and a tile scrolled out of view is not a target. It only projects <see cref="PickerGridViewModel"/>.
 /// </summary>
 public sealed class PickerGridView : Border
 {
@@ -51,6 +55,18 @@ public sealed class PickerGridView : Border
         FontWeight = FontWeights.Bold,
         HorizontalAlignment = HorizontalAlignment.Center,
     };
+
+    private readonly ShortcutTile _frequents;
+    private readonly TextBlock _frequentsText = new()
+    {
+        FontWeight = FontWeights.Bold,
+        TextTrimming = TextTrimming.CharacterEllipsis,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        Margin = new Thickness(0, 5, 0, 0),
+    };
+
+    private readonly ScrollViewer _scroller;
+    private readonly PanScroll _pan = new();
     private readonly TextBlock _legend = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly List<(PickerEntryViewModel Entry, ShortcutTile Control)> _entries = [];
 
@@ -75,6 +91,25 @@ public sealed class PickerGridView : Border
         _more = Extra("add", _moreText, ColorToken.Muted, dashed: true);
         PanelChrome.Paint(_more, null, ColorToken.Muted, null);
         _more.Invoked += (_, _) => _viewModel.More();
+
+        // SEL-006: ★ Frequents, first in the grid while the selector row is not there to offer it.
+        _frequents = NewTile();
+        var star = new SymbolIcon
+        {
+            Symbol = "star",
+            Size = IconPx,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        star.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Accent)
+        );
+        _frequentsText.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(NamePx));
+        var frequents = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        frequents.Children.Add(star);
+        frequents.Children.Add(_frequentsText);
+        _frequents.Tag = frequents;
+        _frequents.Invoked += (_, _) => _viewModel.Frequents();
 
         var legend = new StackPanel
         {
@@ -101,13 +136,14 @@ public sealed class PickerGridView : Border
         var stack = new StackPanel { Orientation = Orientation.Vertical };
         stack.Children.Add(_grid);
         stack.Children.Add(legend);
-        Child = new ScrollViewer
+        _scroller = new ScrollViewer
         {
             Content = stack,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Focusable = false,
         };
+        Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
         viewModel.Entries.CollectionChanged += OnEntriesChanged;
@@ -115,27 +151,89 @@ public sealed class PickerGridView : Border
         Rebuild();
     }
 
-    /// <summary>Every tile of the grid while it shows.</summary>
+    /// <summary>
+    /// Every tile of the grid while it shows; a tile scrolled out of the view is left out, so a touch under or over
+    /// the grid never chooses a profile nobody sees (TAC-004).
+    /// </summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
         get
         {
             if (!_viewModel.IsVisible)
             {
-                yield break;
+                return [];
+            }
+
+            var targets = new List<PanelTapTarget>();
+            if (_viewModel.HasFrequents)
+            {
+                targets.Add(new PanelTapTarget(_frequents, _viewModel.Frequents));
             }
 
             foreach (var (entry, control) in _entries)
             {
-                yield return new PanelTapTarget(control, entry.Choose);
+                targets.Add(new PanelTapTarget(control, entry.Choose));
             }
 
             if (_viewModel.HasSuggestion)
             {
-                yield return new PanelTapTarget(_suggestion, _viewModel.CreateSuggested);
+                targets.Add(new PanelTapTarget(_suggestion, _viewModel.CreateSuggested));
             }
 
-            yield return new PanelTapTarget(_more, _viewModel.More);
+            targets.Add(new PanelTapTarget(_more, _viewModel.More));
+            var view = TouchBounds.Of(_scroller, inflate: false);
+            return targets.FindAll(target => InView(view, target.Element));
+        }
+    }
+
+    /// <summary>The ★ Frequents tile (SEL-006).</summary>
+    public ShortcutTile FrequentsTile => _frequents;
+
+    /// <summary>The scroll viewer of the grid (TAC-004).</summary>
+    public ScrollViewer Scroller => _scroller;
+
+    /// <summary>
+    /// Follows a finger, pen or mouse contact of the panel (TAC-004): one that goes down on the grid and moves
+    /// vertically past <paramref name="thresholdPx"/> scrolls it, and is no longer a tap.
+    /// </summary>
+    /// <param name="sample">The pointer sample, in physical screen pixels.</param>
+    /// <param name="thresholdPx">The cancel distance, in physical pixels.</param>
+    /// <returns>Whether the contact scrolled the grid: it chooses nothing.</returns>
+    public bool Track(in PointerSample sample, double thresholdPx)
+    {
+        switch (sample.Phase)
+        {
+            case PointerPhase.Down when _viewModel.IsVisible && !_pan.IsTracking:
+                if (TouchBounds.Of(_scroller, inflate: false).Contains(sample.Position))
+                {
+                    _ = _pan.Down(sample.PointerId, sample.Position.Y, _scroller.VerticalOffset);
+                }
+
+                return false;
+
+            case PointerPhase.Move:
+                if (
+                    _pan.Move(
+                        sample.PointerId,
+                        sample.Position.Y,
+                        thresholdPx,
+                        VisualTreeHelper.GetDpi(this).DpiScaleY
+                    )
+                    is not { } offset
+                )
+                {
+                    return false;
+                }
+
+                _scroller.ScrollToVerticalOffset(offset);
+                return true;
+
+            case PointerPhase.Up
+            or PointerPhase.Cancel:
+                return _pan.Up(sample.PointerId);
+
+            default:
+                return false;
         }
     }
 
@@ -149,6 +247,13 @@ public sealed class PickerGridView : Border
             entry.PropertyChanged -= OnChanged;
         }
     }
+
+    private static bool InView(PhysicalRect view, FrameworkElement element) =>
+        view.IsEmpty
+        || (
+            TouchBounds.Of(element, inflate: false) is { IsEmpty: false } bounds
+            && view.Contains(bounds.Center)
+        );
 
     private static ShortcutTile NewTile()
     {
@@ -237,6 +342,24 @@ public sealed class PickerGridView : Border
         _moreText.Text = _viewModel.MoreName;
         _more.AccessibleName = _viewModel.MoreName;
         _legend.Text = _viewModel.Legend;
+        _frequentsText.Text = _viewModel.FrequentsName;
+        _frequents.AccessibleName = _viewModel.FrequentsName;
+        _frequents.AccessibleState = _viewModel.FrequentsState;
+        if (_viewModel.IsFrequentsCurrent)
+        {
+            PanelChrome.Paint(
+                _frequents,
+                ColorToken.AccentWash,
+                ColorToken.Text,
+                ColorToken.Accent
+            );
+            _frequents.BorderThickness = new Thickness(ActiveBorder);
+        }
+        else
+        {
+            PanelChrome.Paint(_frequents, ColorToken.Side, ColorToken.Text, ColorToken.Border);
+        }
+
         foreach (var (entry, control) in _entries)
         {
             control.AccessibleName = entry.Name;
@@ -315,6 +438,11 @@ public sealed class PickerGridView : Border
             - BorderThickness.Right;
         _grid.Columns = PickerLayout.Columns(width > 0 ? width : double.NaN, _compact);
         _grid.Children.Clear();
+        if (_viewModel.HasFrequents)
+        {
+            _grid.Children.Add(_frequents);
+        }
+
         foreach (var (_, control) in _entries)
         {
             _grid.Children.Add(control);
