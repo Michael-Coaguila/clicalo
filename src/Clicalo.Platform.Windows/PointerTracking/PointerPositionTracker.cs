@@ -18,7 +18,8 @@ namespace Clicalo.Platform.Windows.PointerTracking;
 /// context on the <see cref="SysEventsThread"/>, without <c>WINEVENT_SKIPOWNPROCESS</c>, keeps only the cursor
 /// (<c>OBJID_CURSOR</c>). The events of one turn of the message loop are coalesced into one sample, which reads
 /// <c>GetCursorPos</c> and keeps the point when the window under it (<c>WindowFromPoint</c> → <c>GA_ROOT</c>) is not
-/// Clícalo's. It is not a keyboard or mouse hook and never delays anybody's cursor.
+/// Clícalo's. It is not a keyboard or mouse hook and never delays anybody's cursor. <see cref="MovedOutside"/> tells
+/// when that point changes: a finger touched another app (CUA-014).
 /// </summary>
 public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
 {
@@ -41,6 +42,12 @@ public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
         _thread = thread;
         _thread.Post(Install);
     }
+
+    /// <summary>
+    /// The pointer went to another place outside Clícalo's windows: a touch on another app, or the mouse moving over
+    /// it. Raised on the SysEvents thread; not for the first position ever seen.
+    /// </summary>
+    public event EventHandler? MovedOutside;
 
     /// <inheritdoc />
     public PhysicalPoint? LastExternal
@@ -177,9 +184,12 @@ public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
             }
         }
 
-        Volatile.Write(
-            ref _last,
-            new StrongBox<PhysicalPoint>(new PhysicalPoint(point.X, point.Y))
-        );
+        var next = new PhysicalPoint(point.X, point.Y);
+        var previous = Volatile.Read(ref _last);
+        Volatile.Write(ref _last, new StrongBox<PhysicalPoint>(next));
+        if (previous is not null && previous.Value != next)
+        {
+            MovedOutside?.Invoke(this, EventArgs.Empty);
+        }
     }
 }

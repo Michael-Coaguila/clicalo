@@ -468,8 +468,9 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                     );
                     TileTapped?.Invoke(this, new DockTileEventArgs(tile));
                 }
-                else
+                else if (Modes?.TappedElsewhere() != true)
                 {
+                    // CUA-014: with the menu of a shortcut open, a tap on another button only closes it.
                     target.Tap?.Invoke();
                 }
 
@@ -493,7 +494,7 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                     && !_dragged.Contains(gesture.PointerId)
                     && TargetOf(gesture)?.Tile is { } pressed:
                 // CUA-014, PES-010: 600 ms without moving opens the menu of the shortcut instead of running it.
-                _ = modes.LongPressed(pressed);
+                _ = modes.LongPressed(pressed, _contacts.DeviceOf(gesture.PointerId));
                 break;
 
             case GestureKind.Ignored

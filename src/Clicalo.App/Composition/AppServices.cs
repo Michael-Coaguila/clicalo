@@ -20,6 +20,7 @@ using Clicalo.Infrastructure.Persistence;
 using Clicalo.Platform.Windows.Clipboard;
 using Clicalo.Platform.Windows.Feedback;
 using Clicalo.Platform.Windows.Foreground;
+using Clicalo.Platform.Windows.Hotkeys;
 using Clicalo.Platform.Windows.Launch;
 using Clicalo.Platform.Windows.PointerTracking;
 using Clicalo.Platform.Windows.SysEvents;
@@ -163,6 +164,11 @@ internal static class AppServices
         services.AddSingleton(_ => new ShellExecutor(Environment.IsPrivilegedProcess));
         services.AddSingleton(sp => new ClipboardPaster(sp.Get<SysEventsThread>(), sp.Time()));
         services.AddSingleton(sp => new PointerPositionTracker(sp.Get<SysEventsThread>()));
+        // CUA-014: Esc and a touch on another app cancel the menu of a shortcut of the Tab view.
+        services.AddSingleton(sp => new MenuCancelSignals(
+            sp.Get<SysEventsThread>(),
+            sp.Get<PointerPositionTracker>()
+        ));
         services.AddSingleton(sp =>
         {
             var adapters = sp.Get<EngineAdapterSet>();
@@ -321,7 +327,8 @@ internal static class AppServices
             sp.Get<ILocalizationContext>(),
             sp.Time(),
             sp.Get<Dispatcher>(),
-            sp.Get<ITouchKeyboard>()
+            sp.Get<ITouchKeyboard>(),
+            sp.Get<MenuCancelSignals>()
         ));
         // One theme service for the UI thread (blueprint §8.4): every surface of the thread attaches to it. The
         // container disposes both at the end, after the surfaces are closed.

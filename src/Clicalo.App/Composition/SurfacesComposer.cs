@@ -51,6 +51,7 @@ internal sealed class SurfacesComposer : IDockIntents
     private readonly TimeProvider _time;
     private readonly Dispatcher _ui;
     private readonly ITouchKeyboard? _keyboard;
+    private readonly MenuOutsideCancel? _menuCancel;
     private SurfaceSet? _surfaces;
     private ITimer? _collapseTimer;
     private bool _refreshQueued;
@@ -67,6 +68,10 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <param name="time">The clock of the collapse.</param>
     /// <param name="ui">The dispatcher of the UI thread.</param>
     /// <param name="keyboard">The touch keyboard: the panel moves out of its way (BUS-002); null without one.</param>
+    /// <param name="menuCancel">
+    /// Esc and the pointer outside Clícalo, which cancel the menu of a shortcut of the Tab view (CUA-014); null without
+    /// them.
+    /// </param>
     public SurfacesComposer(
         DocumentStore store,
         SessionStore session,
@@ -78,7 +83,8 @@ internal sealed class SurfacesComposer : IDockIntents
         ILocalizationContext localization,
         TimeProvider time,
         Dispatcher ui,
-        ITouchKeyboard? keyboard = null
+        ITouchKeyboard? keyboard = null,
+        IMenuCancelSignals? menuCancel = null
     )
     {
         _store = store;
@@ -91,6 +97,17 @@ internal sealed class SurfacesComposer : IDockIntents
         _time = time;
         _ui = ui;
         _keyboard = keyboard;
+        if (menuCancel is not null)
+        {
+            // CUA-014: the windows of the Tab view never take the foreground, so Esc and a touch on another app
+            // reach the menu of a shortcut through the platform.
+            _menuCancel = new MenuOutsideCancel(
+                menuCancel,
+                work => _ = ui.BeginInvoke(work),
+                panel.Menu.Close
+            );
+        }
+
         Dock = new DockBarViewModel(controller, localization, this, panel.Layers);
         if (Dock.Modes is { } modes)
         {
@@ -684,6 +701,7 @@ internal sealed class SurfacesComposer : IDockIntents
             }
         );
         var showsMenu = DockRules.ShowsBesideBar(form, _panel.Menu.IsOpen);
+        _menuCancel?.Apply(showsMenu, Dock.Modes?.MenuOpenedByFinger == true);
         _surfaces?.Apply(
             new SurfaceLayout(
                 form,

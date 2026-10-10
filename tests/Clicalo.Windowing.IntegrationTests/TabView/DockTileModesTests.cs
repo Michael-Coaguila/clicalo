@@ -91,6 +91,41 @@ public sealed class DockTileModesTests
     }
 
     [Fact]
+    [Trait("Req", "CUA-014")]
+    public void With_the_menu_open_a_tap_on_another_button_of_the_bar_only_closes_it()
+    {
+        _modes.TappedElsewhere().ShouldBeFalse();
+        _ = _modes.OpenMenu(Tile(InteractionsWorld.Bold));
+
+        _modes.TappedElsewhere().ShouldBeTrue();
+
+        _world.Menu.IsOpen.ShouldBeFalse();
+        _modes.TappedElsewhere().ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "CUA-014")]
+    public void Only_a_long_press_of_a_finger_lets_a_touch_outside_cancel_the_menu()
+    {
+        var tile = Tile(InteractionsWorld.Bold);
+        _modes.MenuOpenedByFinger.ShouldBeFalse();
+
+        _modes.LongPressed(tile, PointerKind.Finger).ShouldBeTrue();
+        _modes.MenuOpenedByFinger.ShouldBeTrue();
+        _world.Menu.Close();
+        _modes.MenuOpenedByFinger.ShouldBeFalse();
+
+        _modes.LongPressed(tile, PointerKind.Pen).ShouldBeTrue();
+        _modes.MenuOpenedByFinger.ShouldBeFalse();
+        _world.Menu.Close();
+
+        _modes.LongPressed(tile, PointerKind.Finger).ShouldBeTrue();
+        // A right click or the accessible secondary action opens it again: the pointer no longer cancels it.
+        _modes.OpenMenu(tile).ShouldBeTrue();
+        _modes.MenuOpenedByFinger.ShouldBeFalse();
+    }
+
+    [Fact]
     [Trait("Req", "PES-014")]
     [Trait("Req", "TAC-008")]
     public void In_test_mode_the_shortcuts_of_the_bar_are_marked_and_nothing_runs()

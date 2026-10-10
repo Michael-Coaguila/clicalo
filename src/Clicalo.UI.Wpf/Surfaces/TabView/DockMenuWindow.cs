@@ -16,7 +16,8 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// (<see cref="TileContextMenuView"/> over the same <see cref="TileContextMenuViewModel"/>: [ctxPin]/[ctxUnpin],
 /// [ctxHide], [edit], [cancel], rows of 44), in a <see cref="NonActivatingWindow"/> beside the bar, never a
 /// <c>ContextMenu</c> nor a <c>Popup</c> (REG-01). A long press, a right click or the accessible secondary action on a
-/// shortcut opens it; a row, [cancel] or a tap on another shortcut closes it.
+/// shortcut opens it; a row, [cancel], a tap on another shortcut or button of the bar, Esc or a touch on another app
+/// closes it (<c>MenuOutsideCancel</c>: the window never has the keyboard).
 /// </summary>
 public sealed class DockMenuWindow : TouchSurface
 {

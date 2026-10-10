@@ -11,13 +11,14 @@ namespace Clicalo.Presentation.Dock;
 /// TAC-008): the same rules as the tiles of the panel, for the Tab view. In test mode a tap or the start of a hold is
 /// marked ✓ and an ignored touch ⊘, and nothing runs; in normal use an ignored touch gets a slight outline (TAC-003); a
 /// long press, a right click or the accessible secondary action
-/// opens the menu of the shortcut, which shows beside the bar; while that menu is open, a tap on a shortcut only
-/// closes it. The Tab view has no edit mode.
+/// opens the menu of the shortcut, which shows beside the bar; while that menu is open, a tap on a shortcut or on any
+/// other button of the bar only closes it. The Tab view has no edit mode.
 /// </summary>
 public sealed class DockTileModes
 {
     private readonly TileContextMenuViewModel _menu;
     private readonly Func<bool> _inFrequents;
+    private bool _openedByFinger;
 
     /// <summary>Joins test mode and the menu for the Tab view.</summary>
     /// <param name="test">Test mode.</param>
@@ -70,6 +71,29 @@ public sealed class DockTileModes
         return TestMode.OnCounted(tile.Id);
     }
 
+    /// <summary>
+    /// An accepted tap on a button of the bar or of a window beside it that is not a shortcut (CUA-014): with the menu
+    /// open it is «a tap outside», which only closes the menu, as on the panel.
+    /// </summary>
+    /// <returns>Whether the menu took the tap: the button must not act.</returns>
+    public bool TappedElsewhere()
+    {
+        if (!_menu.IsOpen)
+        {
+            return false;
+        }
+
+        _menu.Close();
+        return true;
+    }
+
+    /// <summary>
+    /// Whether a long press of a finger opened the menu that is open now (CUA-014): a touch on another app then cancels
+    /// it. A mouse or a pen move the pointer outside Clícalo on their way to the menu, so the menu they open is not
+    /// cancelled that way.
+    /// </summary>
+    public bool MenuOpenedByFinger => _menu.IsOpen && _openedByFinger;
+
     /// <summary>A Mantener starts holding: in test mode it is marked ✓ and holds nothing.</summary>
     /// <param name="tile">The shortcut.</param>
     /// <returns>Whether a mode took it: the shortcut must not hold.</returns>
@@ -105,11 +129,18 @@ public sealed class DockTileModes
     /// nothing; otherwise it opens the menu.
     /// </summary>
     /// <param name="tile">The shortcut.</param>
+    /// <param name="device">What pressed: a finger, the pen or the mouse.</param>
     /// <returns>Whether the menu opened.</returns>
-    public bool LongPressed(DockTileViewModel tile)
+    public bool LongPressed(DockTileViewModel tile, PointerKind device = PointerKind.Mouse)
     {
         ArgumentNullException.ThrowIfNull(tile);
-        return !TestMode.OnCounted(tile.Id) && OpenMenu(tile);
+        if (TestMode.OnCounted(tile.Id) || !OpenMenu(tile))
+        {
+            return false;
+        }
+
+        _openedByFinger = device == PointerKind.Finger;
+        return true;
     }
 
     /// <summary>
@@ -121,6 +152,7 @@ public sealed class DockTileModes
     public bool OpenMenu(DockTileViewModel tile)
     {
         ArgumentNullException.ThrowIfNull(tile);
+        _openedByFinger = false;
         _menu.Open(tile.Id, tile.AccessibleName, tile.Icon, _inFrequents());
         return true;
     }
