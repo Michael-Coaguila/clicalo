@@ -64,7 +64,9 @@ public sealed class PanicPillWindow : TouchSurface
         AutomationProperties.SetLiveSetting(_button, AutomationLiveSetting.Assertive);
         _announcer = new LiveAnnouncer(_button);
         Content = _button;
-        IsVisibleChanged += (_, _) => Say();
+
+        // The button is on screen exactly while its window is: it tells when the pill appears.
+        _button.IsVisibleChanged += (_, _) => Say();
     }
 
     /// <summary>The button.</summary>
@@ -105,7 +107,7 @@ public sealed class PanicPillWindow : TouchSurface
     /// </summary>
     private void Say()
     {
-        if (!IsVisible || _held.Length == 0)
+        if (!_button.IsVisible || _held.Length == 0)
         {
             _announced = string.Empty;
             return;
