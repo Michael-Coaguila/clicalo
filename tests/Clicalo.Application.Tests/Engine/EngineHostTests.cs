@@ -304,12 +304,10 @@ public sealed class EngineHostTests
     [Trait("Req", "BUR-004")]
     public void An_exception_while_paused_leaves_the_engine_paused()
     {
-        using var world = new HostWorld(HostWorld.HoldingShift())
+        using var world = new HostWorld(HostWorld.HoldingShift() with { Paused = true })
         {
             ThrowOn = typeof(EngineEvent.SessionResumed),
         };
-        world.Handle(new EngineEvent.Terminal(TerminalReason.Pause));
-        world.Host.State.Paused.ShouldBeTrue();
 
         world.Handle(new EngineEvent.SessionResumed());
 

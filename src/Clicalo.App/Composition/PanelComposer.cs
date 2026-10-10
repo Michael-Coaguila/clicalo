@@ -322,7 +322,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         ArgumentNullException.ThrowIfNull(tray);
         _tray = tray;
-        ApplyHotkey(_store.Current.Settings.GlobalHotkey, announce: false);
+        ApplyHotkey(_store.Current.Settings.GlobalHotkey);
     }
 
     private void Report(ExternalForeground foreground)
@@ -362,7 +362,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
             if (before.GlobalHotkey != after.GlobalHotkey)
             {
-                ApplyHotkey(after.GlobalHotkey, announce: true);
+                ApplyHotkey(after.GlobalHotkey);
             }
         }
 
@@ -744,7 +744,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <summary>Puts the global shortcut of the tray on the combination of the settings, or turns it off (BUR-005).</summary>
-    private void ApplyHotkey(GlobalHotkeySettings settings, bool announce)
+    private void ApplyHotkey(GlobalHotkeySettings settings)
     {
         if (_tray is not { } tray)
         {
@@ -759,7 +759,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             try
             {
                 var registered = await tray.SetHotkeyAsync(hotkey?.Keys).ConfigureAwait(true);
-                if (!registered && hotkey is not null && (announce || settings.Enabled))
+                if (!registered && hotkey is not null)
                 {
                     // Another program owns the combination: say so, and the person picks another one of the list.
                     Notify(
