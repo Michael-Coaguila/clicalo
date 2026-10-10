@@ -1,8 +1,9 @@
 namespace Clicalo.Build;
 
 /// <summary>
-/// Every <c>cl</c> verb of blueprint §13: one dictable word each. Verbs that later milestones deliver are
-/// listed too, so <c>cl run</c> answers "available in M2" instead of "unknown verb".
+/// Every <c>cl</c> verb of blueprint §13: one dictable word each. Verbs that are planned but not built yet are
+/// listed too, so <c>cl beta</c> answers "available in M5" instead of "unknown verb". <c>states</c> and
+/// <c>accept</c> are not built (deviations D-29): the headless previews and the manual acceptance script replace them.
 /// </summary>
 internal static class VerbCatalog
 {
@@ -17,6 +18,7 @@ internal static class VerbCatalog
     public const string I18nCheck = "i18n-check";
     public const string I18nImport = "i18n-import";
     public const string AdrCheck = "adr-check";
+    public const string Trace = "trace";
     public const string Run = "run";
     public const string Note = "note";
     public const string Perf = "perf";
@@ -27,7 +29,7 @@ internal static class VerbCatalog
     /// Verbs that run a verb of <c>tools/Clicalo.DevCli</c> with the same name. Everything written after one of
     /// them on the command line is passed to it (for example <c>cl i18n-import --check</c>).
     /// </summary>
-    public static IReadOnlyList<string> DevCli { get; } = [I18nCheck, I18nImport, AdrCheck];
+    public static IReadOnlyList<string> DevCli { get; } = [I18nCheck, I18nImport, AdrCheck, Trace];
 
     /// <summary>
     /// Verbs whose following words are their own options: the developer CLI verbs and <c>cl package</c>
@@ -36,8 +38,8 @@ internal static class VerbCatalog
     public static IReadOnlyList<string> WithArguments { get; } = [.. DevCli, Package];
 
     /// <summary>
-    /// Verbs implemented so far (M0, the M2 walking skeleton and the nightly quarantine), in the order they are listed
-    /// to people.
+    /// Verbs implemented so far (M0, the M2 walking skeleton, the nightly quarantine, the package and the
+    /// traceability report), in the order they are listed to people.
     /// </summary>
     public static IReadOnlyList<string> Available { get; } =
     [
@@ -57,15 +59,9 @@ internal static class VerbCatalog
         Package,
     ];
 
-    /// <summary>Verbs of later milestones (blueprint §14), in the order of blueprint §13.</summary>
+    /// <summary>Verbs that are planned and not built yet (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =
     [
-        // The state matrix with approved render snapshots is an M3 exit criterion.
-        new("states", "M3"),
-        // Hardware acceptance and the manual script first gate a milestone in M3.
-        new("accept", "M3"),
-        // M3 requires every MUST of the panel, engine, touch and safety modules to carry [Req].
-        new("trace", "M3"),
         // Spike pull requests start in M1.
         new("pr", "M1"),
         // The first signed beta is the M5 exit criterion.

@@ -11,18 +11,18 @@ using Clicalo.Infrastructure.Backup;
 using Clicalo.Infrastructure.Persistence;
 using Clicalo.TestKit;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Clicalo.App.Tests;
 
 /// <summary>
 /// The suspend of the running instance against a real temporary data folder (blueprint §6.4, §7.6): what the host
 /// hands to <c>PBT_APMSUSPEND</c> releases through the engine's observer and then writes the pending document and
-/// usage through the single Persistence consumer, before the message is answered.
+/// usage through the single Persistence consumer, before the message is answered. The limit of the flush runs on a
+/// fake clock nobody moves, so a slow disk can never cut the write (the limit itself is <see cref="SuspendFlushTests"/>).
 /// </summary>
 [Trait("Req", "DAT-002")]
 [Trait("Req", "REG-08")]
-[Trait("Category", "Quarantine")]
-[Trait("Issue", "4")]
 public sealed class SuspendFlushPersistenceTests : IDisposable
 {
     private static readonly string ContentFolder = RepoPaths.Combine("data", "content");
@@ -96,7 +96,7 @@ public sealed class SuspendFlushPersistenceTests : IDisposable
 
         // Nothing is held: the release is confirmed at once, and no autosave loop runs, so only the suspend writes.
         SuspendFlush
-            .Run(new EngineObserverRelay(static _ => { }), scheduler, TimeProvider.System)
+            .Run(new EngineObserverRelay(static _ => { }), scheduler, new FakeTimeProvider())
             .ShouldBeTrue();
 
         (await Documents().LoadAsync(token)).Document.Onboarding.Completed.ShouldBeTrue();

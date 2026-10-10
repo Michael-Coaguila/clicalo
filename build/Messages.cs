@@ -34,6 +34,8 @@ internal static class Messages
         "Reconstruye data/i18n con la receta revisada; con --check no escribe y compara.";
     public const string AdrCheckDescription =
         "Exige un ADR si el cambio toca una ruta sensible; se usa con --base y la rama de comparación.";
+    public const string TraceDescription =
+        "Escribe artifacts/cl/trace.md: cada requisito del catálogo con sus pruebas y los MUST sin prueba.";
 
     public const string RunDescription =
         "Compila y abre Clícalo con datos aislados en %TEMP%\\clicalo-dev y sin envío de teclas.";
@@ -140,6 +142,19 @@ internal static class Messages
     public static string NoteExists(string file) => "la nota ya existía en " + file;
 
     public static string PerfReport(string file) => "números en " + file;
+
+    public static string TraceReport(string file, int? uncovered) =>
+        "trazabilidad en "
+        + file
+        + uncovered switch
+        {
+            null => string.Empty,
+            0 => "; ningún MUST sin prueba ni guion manual",
+            _ => string.Create(
+                CultureInfo.InvariantCulture,
+                $"; {uncovered} MUST sin prueba ni guion manual"
+            ),
+        };
 
     public static string SetupPending(string items, string file) =>
         "falta " + items + "; instrucciones en " + file;
@@ -273,6 +288,11 @@ internal static class Messages
     public const string AdrCheckSection = "Salida de adr-check";
     public const string AdrCheckHint =
         "Escribe o actualiza un ADR en docs/adr (ver docs/adr/README.md), o pasa --base con la rama de comparación.";
+
+    public const string TraceFailed =
+        "Hay rasgos de requisito que no nombran ningún requisito del catálogo (trace).";
+    public const string TraceHint =
+        "Corrige el identificador del rasgo Req de la prueba o declara el requisito en docs/requirements/catalog.md.";
 
     public static string DevCliFailed(string verb) => "La orden " + verb + " falló.";
 

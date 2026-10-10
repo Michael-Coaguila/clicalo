@@ -65,8 +65,9 @@ Qué es vinculante del paquete está resumido en
 - Una prueba que verifica un requisito lleva `[Trait("Req", "<ID>")]`, con el identificador exacto del
   catálogo. Los detalles están en la
   [estrategia de pruebas](../architecture/testing-strategy.md#trazabilidad-requisito--prueba).
-- `cl trace` generará `traceability.md` en esta carpeta a partir del catálogo y de los resultados de la CI.
-  Ese archivo **no se versiona**.
+- `cl trace` escribe `artifacts/cl/trace.md` (no se versiona): cada requisito con las pruebas que lo nombran y,
+  arriba, los MUST sin prueba. Un MUST que solo se puede comprobar a mano se nombra en el
+  [guion de aceptación manual](../guides/aceptacion-manual.md).
 - Desde el hito RC, ningún MUST puede quedar sin prueba automática o sin una entrada en el guion manual o
   en la aceptación en hardware.
 

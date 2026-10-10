@@ -188,6 +188,7 @@ internal sealed class ClApplication(
         targets.Add(VerbCatalog.I18nCheck, Messages.I18nCheckDescription, verbs.I18nCheckAsync);
         targets.Add(VerbCatalog.I18nImport, Messages.I18nImportDescription, verbs.I18nImportAsync);
         targets.Add(VerbCatalog.AdrCheck, Messages.AdrCheckDescription, verbs.AdrCheckAsync);
+        targets.Add(VerbCatalog.Trace, Messages.TraceDescription, verbs.TraceAsync);
         targets.Add(VerbCatalog.Run, Messages.RunDescription, verbs.RunAppAsync);
         targets.Add(VerbCatalog.Note, Messages.NoteDescription, verbs.NoteAsync);
         targets.Add(VerbCatalog.Perf, Messages.PerfDescription, verbs.PerfAsync);
@@ -234,10 +235,12 @@ internal sealed class ClApplication(
             VerbCatalog.I18nCheck => Messages.I18nCheckDescription,
             VerbCatalog.I18nImport => Messages.I18nImportDescription,
             VerbCatalog.AdrCheck => Messages.AdrCheckDescription,
+            VerbCatalog.Trace => Messages.TraceDescription,
             VerbCatalog.Run => Messages.RunDescription,
             VerbCatalog.Note => Messages.NoteDescription,
             VerbCatalog.Perf => Messages.PerfDescription,
             VerbCatalog.Quarantine => Messages.QuarantineDescription,
+            VerbCatalog.Package => Messages.PackageDescription,
             _ => string.Empty,
         };
 

@@ -72,7 +72,7 @@ Automation (REG-06); autoguardado y todo se puede deshacer (REG-07); nunca se pi
 | `Process.Start`, `ProcessStartInfo` | `Platform.Windows/Launch` | `ILauncher` (sin intérprete) |
 | `Assembly.Load*`, `AssemblyLoadContext.LoadFrom*` | En ningún sitio (ADR-0017) | Datos validados |
 | `ShellExecute*`, `IShellDispatch2`, WMI (`System.Management`) | `Platform.Windows/Launch` y `Platform.Windows/SystemCommands` (hilo Shell) | `ILauncher`, `ISystemCommandRunner` |
-| `ShellExecuteEx` con `runas` | También `Platform.Windows/Elevation`, tras verificar la firma con `WinVerifyTrust` (D-11) | Relanzamiento elevado verificado |
+| `ShellExecuteEx` con `runas` | También `Platform.Windows/Elevation`, solo tras comprobar que el proceso es la copia instalada (`%LocalAppData%\Clicalo.App\current\Clicalo.exe`), que existe y que su ruta no tiene enlaces (ADR-0027; la 2.0 no lleva firma, así que ya no es `WinVerifyTrust`) | Relanzamiento elevado verificado |
 | Escritura de archivos | `Infrastructure/Persistence/AtomicFile.cs` y el *sink* de registros | `IAtomicFileWriter` |
 | `DateTime.Now/UtcNow`, `DateTimeOffset.Now/UtcNow`, `Stopwatch.StartNew`, `Task.Delay` sin `TimeProvider`, `Thread.Sleep`, `Guid.NewGuid`, `Random.Shared` | Solo adaptadores | `TimeProvider`, `IIdGenerator` |
 | `Task.Result`, `Task.Wait`, `GetAwaiter().GetResult()` | `App/Shutdown` | `await` |
@@ -132,9 +132,14 @@ Disponibles desde M0: `setup`, `build`, `fast`, `test`, `desk`, `fix`, `check` y
 con las opciones que se escriban detrás (`cl i18n-import --check`, `cl adr-check --base main`). Desde M2:
 `run` (la app sin envío de teclas y con datos aislados), `note`, `perf` y `quarantine`. `check`, `test` y `fast`
 solo ejecutan las pruebas deterministas: dejan fuera las de escritorio, caos, rendimiento y cuarentena, que se lanzan
-a mano (`nightly.yml` o `cl desk` en local) y son obligatorias antes de cada versión. Llegan después: `pr` (M1); `states`,
-`accept` y `trace` (M3); `package` (M5; la 2.0 sale sin firma y `beta` y `sign-manifest` esperan a la firma, ADR-0027). Cada orden termina en una línea legible por Narrador. Detalle, pasos de `cl check` y
-variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
+a mano (`nightly.yml` o `cl desk` en local) y son obligatorias antes de cada versión. Desde M5: `package`
+(`cl package --channel beta --version 2.0.0-beta.1`), que empaqueta Clícalo con Velopack en `artifacts/package` y no
+publica nada. Desde M6: `trace`, que escribe en `artifacts/cl/trace.md` cada requisito del catálogo con las pruebas
+que lo nombran en `[Trait("Req", …)]` y marca los MUST sin prueba. No se construyen `states` ni `accept`
+([D-29](docs/architecture/deviations.md)): los cubren las vistas previas sin pantalla y el
+[guion de aceptación manual](docs/guides/aceptacion-manual.md). Siguen pendientes `pr`, y `beta` y `sign-manifest`,
+que esperan a la firma (ADR-0027). Cada orden termina en una línea legible por Narrador. Detalle, pasos de
+`cl check` y variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 
 ## Dónde está cada cosa
 
@@ -153,4 +158,5 @@ variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 | Destinos de `cl` y herramientas | `build/` y `tools/` |
 | Configuración común de compilación | `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `.editorconfig`, `global.json`, `nuget.config` |
 | Seguridad y privacidad | `docs/security/`, `SECURITY.md`, `PRIVACY.md` |
-| Guías | `docs/guides/` |
+| Guías | `docs/guides/` (para quien usa Clícalo: `guia-de-usuario.md`; antes de publicar: `aceptacion-manual.md` y `release.md`) |
+| Trazabilidad requisito → pruebas | `cl trace` (`artifacts/cl/trace.md`) |

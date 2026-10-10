@@ -4,7 +4,7 @@ namespace Clicalo.Build.Tests;
 public sealed class ClApplicationTests
 {
     private const string Verbs =
-        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import, adr-check, run, note, perf, quarantine y package";
+        "setup, build, fast, test, desk, fix, check, clean, i18n-check, i18n-import, adr-check, trace, run, note, perf, quarantine y package";
 
     private const string VerbList = "cl: las órdenes son " + Verbs;
 
@@ -40,8 +40,7 @@ public sealed class ClApplicationTests
     }
 
     [Theory]
-    [InlineData("trace", "M3")]
-    [InlineData("states", "M3")]
+    [InlineData("beta", "M5")]
     [InlineData("sign-manifest", "M5")]
     public async Task A_planned_verb_answers_its_milestone_and_fails(string verb, string milestone)
     {
@@ -69,6 +68,37 @@ public sealed class ClApplicationTests
         output.ShouldContain("sign-manifest");
         output.ShouldContain("Disponible en M5.");
         LastLine(output).ShouldBe(VerbList);
+    }
+
+    [Fact]
+    public async Task Trace_is_listed_with_its_description()
+    {
+        var (exitCode, output) = await RunAsync();
+
+        exitCode.ShouldBe(0);
+        output.ShouldContain("  trace ");
+        output.ShouldContain("artifacts/cl/trace.md");
+    }
+
+    [Theory]
+    [InlineData("- MUST sin prueba automática ni guion manual: 12.\n", 12)]
+    [InlineData("- MUST sin prueba automática ni guion manual: 0.\n", 0)]
+    [InlineData("# Trazabilidad\n", null)]
+    public void The_final_line_of_trace_says_how_many_MUST_have_no_test(string report, int? count)
+    {
+        BuildSteps.TraceUncovered(report).ShouldBe(count);
+        Messages
+            .TraceReport("artifacts/cl/trace.md", count)
+            .ShouldBe(
+                count switch
+                {
+                    null => "trazabilidad en artifacts/cl/trace.md",
+                    0 =>
+                        "trazabilidad en artifacts/cl/trace.md; ningún MUST sin prueba ni guion manual",
+                    _ =>
+                        "trazabilidad en artifacts/cl/trace.md; 12 MUST sin prueba ni guion manual",
+                }
+            );
     }
 
     [Fact]

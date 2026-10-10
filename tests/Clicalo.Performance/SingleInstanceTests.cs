@@ -1,8 +1,5 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.IO.Pipes;
-using System.Security.Cryptography;
-using System.Security.Principal;
 
 namespace Clicalo.Performance;
 
@@ -42,7 +39,7 @@ public sealed class SingleInstanceTests
         // The name taken before Clícalo starts: its server then finds the name held (FILE_FLAG_FIRST_PIPE_INSTANCE)
         // and runs without its pipe, and a second start must detect that the server is not Clícalo.
         using var squatter = new NamedPipeServerStream(
-            PipeName(),
+            RunningInstance.PipeName,
             PipeDirection.InOut,
             NamedPipeServerStream.MaxAllowedServerInstances,
             PipeTransmissionMode.Message,
@@ -66,23 +63,6 @@ public sealed class SingleInstanceTests
             );
             read.ShouldBe(0, "nothing was sent to the squatter");
         }
-    }
-
-    /// <summary>
-    /// The pipe name of this user and session (App/SingleInstance/InstanceIdentity): the first 16 hexadecimal
-    /// characters of SHA-256 over the binary SID, then the session id.
-    /// </summary>
-    private static string PipeName()
-    {
-        using var identity = WindowsIdentity.GetCurrent();
-        var sid = identity.User.ShouldNotBeNull();
-        var binary = new byte[sid.BinaryLength];
-        sid.GetBinaryForm(binary, 0);
-        using var process = Process.GetCurrentProcess();
-        return "Clicalo."
-            + Convert.ToHexStringLower(SHA256.HashData(binary))[..16]
-            + "."
-            + process.SessionId.ToString(CultureInfo.InvariantCulture);
     }
 
     private static int RunSecondStart(AppVariant variant)

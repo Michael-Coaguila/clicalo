@@ -36,6 +36,7 @@ public sealed class TemplatesSectionTests
 
     [Fact]
     [Trait("Req", "PLA-001")]
+    [Trait("Req", "PLA-002")]
     [Trait("Req", "PLA-009")]
     [Trait("Req", "PLA-011")]
     [Trait("Req", "PLA-012")]

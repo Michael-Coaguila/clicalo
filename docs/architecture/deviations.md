@@ -38,6 +38,7 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-26 | Formas del panel, Pestaña, burbuja y atenuado | Burbuja y Pestaña en `PanelSession`, `InteractionState` en Domain, monitor por `monitorDevicePath` (§6.4, §3.7) | `InteractionStore` en Application con la burbuja, la barra y la guía; `PanelForms` puro; monitor por nombre de dispositivo; asa por lado | M3 |
 | D-27 | Capas del panel e integración de M3 | Menú de toque largo y Ajustes rápidos como ventanas hijas (§8.1) | Dibujados dentro del panel; una capa primaria en `PanelComposer`; asa de la Pestaña con margen táctil | M3 |
 | D-28 | Efectos laterales de «Probar ahora» | `SuppressSwitchHandling(3 s, token)` en el motor y `ForegroundClassifier` (§3.6, §7.9) | `ActivationOrigin.TryNow` en la activación y `ForegroundChangeCoordinator.IsTrying` mientras dura la prueba | M4 |
+| D-29 | Verbos `cl states` y `cl accept` | Dos verbos de `cl`: instantáneas de todos los estados y acompañamiento de la aceptación en hardware (§10.1, §13) | No se construyen: las vistas previas sin pantalla cubren los estados y `docs/guides/aceptacion-manual.md` es el guion; `cl trace` sí existe y escribe `artifacts/cl/trace.md` | M6 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -794,6 +795,34 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   depende de que la prueba quepa en 3 s.
 - **Coste.** Ninguno conocido; el estado vive en Application y no en el motor.
 - **Revisión.** Con la verificación de escritorio de «Probar ahora» (M4).
+
+## D-29 · Sin `cl states` ni `cl accept`
+
+- **Plano.** [§10.1](blueprint.md#101-pirámide-y-proyectos-de-prueba) y
+  [§13](blueprint.md#13-convenciones-de-ingeniería) piden `cl states`, que genera las instantáneas de todos los estados
+  y abre la carpeta (el sustituto de una galería de controles), y `cl accept`, que acompaña la aceptación en hardware
+  táctil (§10.2). [§10.4](blueprint.md#104-análisis-estático-cobertura-y-mutación) pide además `cl trace`, que genera
+  `traceability.md` a partir del catálogo y de los resultados de las pruebas.
+- **Repositorio.** `states` y `accept` no se construyen y ya no figuran como verbos previstos (`build/VerbCatalog.cs`):
+  `cl states` y `cl accept` responden «orden desconocida».
+  - Los **estados** los cubren las pruebas sin pantalla que ya existen: `Clicalo.Windowing.IntegrationTests`
+    construye el panel, el Centro de control y la bienvenida sin mostrarlos y comprueba lo que proyectan; con
+    `CLICALO_CC_PREVIEW=1`, las del Centro de control, «Acerca de» y la bienvenida escriben además sus vistas previas
+    en PNG en `artifacts/cc-preview`, para compararlas a ojo con `docs/design/reference`.
+  - La **aceptación** es un documento, el [guion de aceptación manual](../guides/aceptacion-manual.md): lo que solo
+    se comprueba con la persona usuaria o en una máquina limpia, con los requisitos que cubre cada paso.
+  - `cl trace` **sí existe**, con dos diferencias: lee los rasgos `[Trait("Req", …)]` del código de las pruebas en
+    vez de sus resultados (no necesita compilar ni ejecutar, y da lo mismo en cualquier equipo) y escribe en
+    `artifacts/cl/trace.md` en vez de en `docs/requirements/traceability.md` (un archivo generado no se versiona ni
+    se edita). Un MUST sin prueba que el guion manual nombra figura como «solo en el guion manual».
+- **Motivo.** Simplicidad (decisión del usuario del 2026-10-09 para cerrar la 2.0): una matriz de instantáneas
+  aprobadas y un asistente interactivo de aceptación son dos herramientas más que mantener para una sola persona, y
+  lo que aportan ya lo dan las vistas previas y un guion que se lee con Narrador.
+- **Coste.** No hay comparación automática píxel a píxel de cada estado: una regresión visual que no cambie el modelo
+  de la vista solo se ve al mirar las vistas previas o al seguir el guion. El guion se sigue a mano y su resultado no
+  queda en un archivo.
+- **Revisión.** Si tras la 2.0 aparecen regresiones visuales que las pruebas de modelo no detectan, se reabre
+  `cl states` con instantáneas aprobadas.
 
 ## Puntos del plano pendientes de resolver
 

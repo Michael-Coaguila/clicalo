@@ -133,9 +133,11 @@ internal sealed partial class BuildSteps
         );
 
     /// <summary>
-    /// <c>cl perf</c>, first step: publishes every <see cref="PublishVariant"/> of Clicalo.exe (and Sentinel next to it)
-    /// in Release under <paramref name="output"/>, with the same restore as any build: the lock files hold the graphs of
-    /// both shipped runtimes, and in CI the restore is locked (<see cref="PublishArguments"/>).
+    /// <c>cl perf</c>, first step: publishes every <see cref="PublishVariant"/> of Clicalo.exe in Release under
+    /// <paramref name="output"/>, with the same restore as any build: the lock files hold the graphs of both shipped
+    /// runtimes, and in CI the restore is locked (<see cref="PublishArguments"/>). Sentinel (Native AOT) is published
+    /// next to it only in continuous integration: only a start that sends keys launches it, and outside the CI every
+    /// measured start carries <c>--no-input</c>, so the maintainer's machine measures the start without the C++ linker.
     /// </summary>
     public Task PublishAsync(IReadOnlyList<PublishVariant> variants, string output) =>
         context.Steps.RunAsync(
@@ -152,7 +154,10 @@ internal sealed partial class BuildSteps
                     }
 
                     await PublishProjectAsync(AppProject, folder, variant.Properties);
-                    await PublishProjectAsync(SentinelProject, folder, []);
+                    if (context.Mode.Ci)
+                    {
+                        await PublishProjectAsync(SentinelProject, folder, []);
+                    }
                 }
             }
         );
@@ -165,6 +170,47 @@ internal sealed partial class BuildSteps
         {
             context.AddNote(Messages.PerfReport(layout.RelativeForward(report)));
         }
+    }
+
+    /// <summary>
+    /// Adds to the final line of <c>cl trace</c> where the report is and how many MUST requirements have neither a test
+    /// nor a line in the manual acceptance script.
+    /// </summary>
+    public void NoteTraceReport()
+    {
+        var report = Path.Combine(layout.ClDirectory, "trace.md");
+        if (File.Exists(report))
+        {
+            context.AddNote(
+                Messages.TraceReport(
+                    layout.RelativeForward(report),
+                    TraceUncovered(File.ReadAllText(report))
+                )
+            );
+        }
+    }
+
+    /// <summary>
+    /// The number on the summary line «MUST sin prueba automática ni guion manual: N.» of the report the developer CLI
+    /// writes (<c>TraceReport.UncoveredLabel</c> in tools/Clicalo.DevCli), or null when the line is not there.
+    /// </summary>
+    internal static int? TraceUncovered(string markdown)
+    {
+        const string Label = "MUST sin prueba automática ni guion manual: ";
+        var at = markdown.IndexOf(Label, StringComparison.Ordinal);
+        if (at < 0)
+        {
+            return null;
+        }
+
+        var digits = markdown
+            .AsSpan(at + Label.Length)
+            .ToString()
+            .TakeWhile(char.IsAsciiDigit)
+            .ToArray();
+        return int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var count)
+            ? count
+            : null;
     }
 
     /// <summary>The <c>CLICALO_PERF_APPS</c> value for the published <paramref name="variants"/>.</summary>
