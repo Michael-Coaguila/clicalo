@@ -89,7 +89,9 @@ internal sealed class SystemUninstall(
         }
         else
         {
-            UninstallDataWipe.Withdraw(locations);
+            // Off the UI thread: it touches the disk.
+            await Task.Run(() => UninstallDataWipe.Withdraw(locations), cancellationToken)
+                .ConfigureAwait(true);
         }
 
         await exitThen(() =>

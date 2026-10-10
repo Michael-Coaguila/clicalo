@@ -95,6 +95,10 @@ internal sealed class SystemLifecycle : IDisposable
         );
         _ = Task.Run(() => updates.StartAsync(CancellationToken.None));
         var uninstaller = new Platform.Windows.Launch.UninstallerLauncher(installed);
+        // Whether this copy can be uninstalled is read from the disk once, off the UI thread: «Sistema» asks on every
+        // projection. Starting the uninstaller verifies it again.
+        var canUninstall = new System.Runtime.CompilerServices.StrongBox<bool>();
+        _ = Task.Run(() => Volatile.Write(ref canUninstall.Value, uninstaller.IsAvailable));
         var system = new SystemServices(
             updates,
             new SystemBackups(locations, backups, scheduler, writer, time),
@@ -103,7 +107,7 @@ internal sealed class SystemLifecycle : IDisposable
             services.GetRequiredService<IIdGenerator>(),
             ExitAsync,
             new SystemUninstall(
-                () => uninstaller.IsAvailable,
+                () => Volatile.Read(ref canUninstall.Value),
                 uninstaller.Start,
                 locations,
                 writer,
