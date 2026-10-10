@@ -40,6 +40,8 @@ namespace Clicalo.App.Composition;
 /// </summary>
 internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 {
+    private const string PausedIcon = "pause";
+
     private readonly DocumentStore _store;
     private readonly ILocalizationContext _localization;
     private readonly IForegroundOrchestrator _foreground;
@@ -51,6 +53,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     private readonly IOpenApps _openApps;
     private readonly ProfileViewCoordinator _profilesInView;
     private readonly TryNowRun _tryNow;
+    private readonly IEngineInbox _engine;
     private readonly Func<Rect> _panel;
     private readonly ShortcutsWorkspace _shortcuts;
     private readonly ProfileWorkspace _profiles;
@@ -63,6 +66,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     private ITimer? _noticeTimer;
     private PanelNotice? _panelNotice;
     private bool _ownNotice;
+    private bool _paused;
     private ProcessName? _lastApp;
     private bool _maximize;
     private bool _open;
@@ -114,7 +118,15 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         _openApps = openApps;
         _profilesInView = profilesInView;
         _panel = panel;
-        _tryNow = new TryNowRun(foreground, engine, foregroundEpoch, time, selfElevated);
+        _engine = engine;
+        _tryNow = new TryNowRun(
+            foreground,
+            engine,
+            foregroundEpoch,
+            time,
+            selfElevated,
+            () => _paused
+        );
         _catalogs = _catalogs with { KeyLabels = runtime.KeyLabels, Starter = runtime.Content };
         _shortcuts = new ShortcutsWorkspace(store, localization, () => _catalogs, ShownProfile);
         _profiles = new ProfileWorkspace(store, _shortcuts, () => _catalogs);
@@ -171,6 +183,27 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         }
 
         ShowPanelNotice();
+    }
+
+    /// <summary>
+    /// Clícalo was paused or resumed (BUR-004). Paused, the Control Center opens and edits as always, because editing
+    /// sends nothing; its status bar says «Clícalo · en pausa» while it rests, and «Probar ahora» explains the pause
+    /// and offers «Reanudar» instead of a try that would send nothing. Called on the UI thread.
+    /// </summary>
+    /// <param name="paused">Whether Clícalo is paused.</param>
+    public void OnPaused(bool paused)
+    {
+        if (_paused == paused)
+        {
+            return;
+        }
+
+        _paused = paused;
+        Invalidate();
+        if (_viewModel is not null && !_ownNotice)
+        {
+            ShowPanelNotice();
+        }
     }
 
     /// <summary>Whether «Probar ahora» is running: its app switches are not the user's (PRB-006). Any thread.</summary>
@@ -470,7 +503,10 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             About?.Invoke(DictateAsync, Notify),
             OpenWelcome,
             Notify,
-            InstalledAppsReader.ListAsync
+            InstalledAppsReader.ListAsync,
+            () => _paused,
+            // BUR-004: resuming brings the panel back, and the tray follows the panel.
+            () => _ = _engine.Post(new EngineEvent.SetPaused(false))
         );
         _viewModel = new ControlCenterViewModel(services, () => _ = CloseAsync());
         if (_viewModel.System is { } system)
@@ -563,6 +599,9 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             case TryNowOutcome.Incomplete:
                 Notify(new WorkspaceNotice(L.Incomplete, "warning", false, true));
                 break;
+            case TryNowOutcome.Paused:
+                Notify(new WorkspaceNotice(L.TestPaused, PausedIcon, false, true));
+                break;
         }
 
         return outcome;
@@ -624,6 +663,11 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
                     notice.Tone == NoticeTone.Warning
                 )
             );
+        }
+        else if (_paused)
+        {
+            // BUR-004: at rest, the bar says that nothing is sent meanwhile.
+            _viewModel?.ShowNotice(new WorkspaceNotice(L.TrayPaused, PausedIcon, false, true));
         }
         else
         {

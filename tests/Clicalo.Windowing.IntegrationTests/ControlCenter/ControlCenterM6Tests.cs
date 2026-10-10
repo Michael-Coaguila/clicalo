@@ -213,6 +213,65 @@ public sealed class ControlCenterM6Tests
     }
 
     [Fact]
+    [Trait("Req", "BUR-004")]
+    [Trait("Req", "PRB-004")]
+    public void Paused_the_test_card_says_so_and_its_button_resumes_instead_of_trying()
+    {
+        var world = new ControlCenterTestWorld();
+        var tries = 0;
+        var resumes = 0;
+        var paused = true;
+        var services = world.Services with
+        {
+            TryNow = (_, _, _) =>
+            {
+                tries++;
+                return ValueTask.FromResult(TryNowOutcome.Asked);
+            },
+            IsPaused = () => paused,
+            Resume = () => resumes++,
+        };
+        Run(
+            services,
+            world,
+            viewModel =>
+            {
+                var editor = viewModel.Shortcuts.Editor;
+                editor.ToggleTest();
+                WpfThread.DrainPendingWork();
+                WpfThread.DrainPendingWork();
+                var test = editor.Model!.Test.ShouldNotBeNull();
+                test.PausedText.ShouldBe(
+                    "Clícalo está en pausa y no envía nada. Reanuda para probar."
+                );
+                test.LiveText.ShouldBe("Reanudar");
+                test.CanLive.ShouldBeTrue();
+                test.LiveArmed.ShouldBeFalse();
+
+                editor.TryLive();
+                WpfThread.DrainPendingWork();
+                resumes.ShouldBe(1);
+                tries.ShouldBe(0, "nothing is tried while paused");
+                editor.Model!.Test!.Question.ShouldBeNull();
+
+                // Resumed: the card is «Probar ahora» again and tries.
+                paused = false;
+                viewModel.Shortcuts.Invalidate();
+                viewModel.Refresh();
+                WpfThread.DrainPendingWork();
+                test = editor.Model!.Test.ShouldNotBeNull();
+                test.PausedText.ShouldBeNull();
+                test.LiveText.ShouldBe("Probar ahora en Word");
+
+                editor.TryLive();
+                WpfThread.DrainPendingWork();
+                tries.ShouldBe(1);
+                resumes.ShouldBe(1);
+            }
+        );
+    }
+
+    [Fact]
     [Trait("Req", "EDI-016")]
     public void The_auto_release_lines_say_what_the_shortcut_really_does()
     {

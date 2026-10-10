@@ -349,6 +349,7 @@
   "uninstallFailed": "Windows no pudo iniciar la desinstalación. Nada se borró.",
   "uninstallCopyInside": "No se desinstaló: esa carpeta se borra con tus datos. Guarda la copia en otro sitio.",
   "confirmCloseName": "Toca otra vez para confirmar — {name}",
+  "testPaused": "Clícalo está en pausa y no envía nada. Reanuda para probar.",
   "riskyReviewT": "Estos atajos abren algo o ejecutan varios pasos. Marca solo los que reconozcas: los demás no se instalan.",
   "rolledBack": "Se volverá a la versión anterior al reiniciar (simulado)",
   "bakFormat": "JSON con versión",

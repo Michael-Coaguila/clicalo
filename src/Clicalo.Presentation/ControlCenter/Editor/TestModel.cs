@@ -28,6 +28,10 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// Whether «Probar ahora» waits for its second tap: a shortcut that asks for confirmation is confirmed here before
 /// it is tried (PRB-004).
 /// </param>
+/// <param name="PausedText">
+/// [testPaused] while Clícalo is paused (BUR-004): nothing would be sent, so the card says so and its button is
+/// [resumeApp] instead of «Probar ahora». Null otherwise.
+/// </param>
 public sealed record TestModel(
     string Title,
     string CloseName,
@@ -49,5 +53,6 @@ public sealed record TestModel(
     string? TipsTitle,
     ValueList<string> Tips,
     bool Running,
-    bool LiveArmed
+    bool LiveArmed,
+    string? PausedText = null
 );

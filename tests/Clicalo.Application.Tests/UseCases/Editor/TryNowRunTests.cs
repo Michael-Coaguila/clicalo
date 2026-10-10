@@ -120,6 +120,43 @@ public sealed class TryNowRunTests
         inbox.Events.Count.ShouldBe(1);
     }
 
+    [Fact]
+    [Trait("Req", "BUR-004")]
+    public async Task Paused_nothing_is_tried_and_the_control_center_stays_where_it_is()
+    {
+        using var world = new ForegroundWorld();
+        var inbox = new RecordingEngineInbox();
+        var paused = true;
+        var run = new TryNowRun(
+            new GrantingForeground(world.Orchestrator),
+            inbox,
+            () => 0,
+            new FakeTimeProvider(TestTime.Epoch),
+            selfElevated: false,
+            () => paused
+        );
+        var window = new ControlCenterWindow();
+        var tap = TestTiles.Shortcut(
+            "copy",
+            new TapAction(KeyChord.FromKeys(KeyIds.Ctrl, KeyIds.C), [])
+        );
+
+        var (outcome, lease) = await run.RunAsync(
+            tap,
+            null,
+            InjectionMode.VirtualKey,
+            Notepad,
+            window,
+            TestContext.Current.CancellationToken
+        );
+
+        outcome.ShouldBe(TryNowOutcome.Paused);
+        lease.ShouldBeNull();
+        inbox.Events.ShouldBeEmpty();
+        window.Hidden.ShouldBe(0);
+        run.IsRunning.ShouldBeFalse();
+    }
+
     private sealed class ControlCenterWindow : ITryNowWindow
     {
         public WindowToken Window => ForegroundWorld.ControlCenter;

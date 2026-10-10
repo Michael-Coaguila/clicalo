@@ -1217,9 +1217,29 @@ public sealed class ShortcutEditorView : StackPanel
             );
         }
 
+        if (model.PausedText is { } pausedText)
+        {
+            // BUR-004: paused, «Probar ahora» would send nothing; the card says why and its button resumes.
+            var pausedLine = Ui.Card(
+                Ui.Row(
+                    8,
+                    Ui.Icon("pause", 18, ColorToken.WarnText),
+                    Ui.Text(pausedText, 13, bold: true, wrap: true)
+                ),
+                ColorToken.Win,
+                null,
+                10,
+                new Thickness(10, 8, 10, 8)
+            );
+            AutomationProperties.SetLiveSetting(pausedLine, AutomationLiveSetting.Polite);
+            body.Children.Add(pausedLine);
+        }
+
         var live = Ui.Button(
             Ui.IconLabel(
-                model.LiveArmed ? "verified" : "send",
+                model.PausedText is not null ? "play_arrow"
+                    : model.LiveArmed ? "verified"
+                    : "send",
                 model.LiveText,
                 20,
                 14,

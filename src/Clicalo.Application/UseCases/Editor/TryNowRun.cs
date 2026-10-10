@@ -29,6 +29,7 @@ public sealed class TryNowRun
     private readonly Func<long> _foregroundEpoch;
     private readonly TimeProvider _time;
     private readonly bool _selfElevated;
+    private readonly Func<bool>? _paused;
     private volatile bool _running;
 
     /// <summary>Creates the use case.</summary>
@@ -37,12 +38,14 @@ public sealed class TryNowRun
     /// <param name="foregroundEpoch">The epoch of the verified external foreground.</param>
     /// <param name="time">The clock of the delays.</param>
     /// <param name="selfElevated">Whether Clícalo runs elevated.</param>
+    /// <param name="paused">Whether Clícalo is paused (BUR-004): a try then does nothing; null when it never is.</param>
     public TryNowRun(
         IForegroundOrchestrator foreground,
         IEngineInbox engine,
         Func<long> foregroundEpoch,
         TimeProvider time,
-        bool selfElevated
+        bool selfElevated,
+        Func<bool>? paused = null
     )
     {
         ArgumentNullException.ThrowIfNull(foreground);
@@ -54,6 +57,7 @@ public sealed class TryNowRun
         _foregroundEpoch = foregroundEpoch;
         _time = time;
         _selfElevated = selfElevated;
+        _paused = paused;
     }
 
     /// <summary>
@@ -81,6 +85,12 @@ public sealed class TryNowRun
         ArgumentNullException.ThrowIfNull(shortcut);
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(controlCenter);
+        if (_paused?.Invoke() == true)
+        {
+            // BUR-004: paused, the engine sends nothing; switching apps and asking «¿Hizo lo esperado?» would lie.
+            return (TryNowOutcome.Paused, null);
+        }
+
         if (ShortcutCompleteness.Evaluate(shortcut) != CompletenessIssue.None)
         {
             return (TryNowOutcome.Incomplete, null);

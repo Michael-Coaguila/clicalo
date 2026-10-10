@@ -1564,6 +1564,11 @@
       "notes": "Aviso al armar un atajo con confirmación (EJE-002: «[confirmClose] — {nombre}»), sin concatenar [confirmClose] y el nombre (IDI-004). Texto nuevo del cierre de M6, pendiente de ratificar en §6.1 del catálogo.",
       "after": "uninstallCopyInside",
       "text": { "es": "Toca otra vez para confirmar — {name}", "en": "Tap again to confirm — {name}" }
+    },
+    "testPaused": {
+      "notes": "Línea de la tarjeta «Probar» mientras Clícalo está en pausa (BUR-004): «Probar ahora» no envía nada, así que la tarjeta lo explica y el botón pasa a ser [resumeApp]. También es el aviso de la barra de estado si se pide una prueba en pausa. Texto nuevo del cierre de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "confirmCloseName",
+      "text": { "es": "Clícalo está en pausa y no envía nada. Reanuda para probar.", "en": "Clícalo is paused and sends nothing. Resume to try." }
     }
   },
   "retired": {

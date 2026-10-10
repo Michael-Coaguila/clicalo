@@ -38,6 +38,8 @@ namespace Clicalo.Presentation.ControlCenter;
 /// <param name="InstalledPrograms">
 /// Reads the programs installed, Store apps included, for «Elegir programa» (EDI-014); null where they cannot be read.
 /// </param>
+/// <param name="IsPaused">Whether Clícalo is paused and sends nothing (BUR-004); null where it never is.</param>
+/// <param name="Resume">«Reanudar» (BUR-004): sending is back and the panel shows again.</param>
 public sealed record ControlCenterServices(
     DocumentStore Store,
     ShortcutsWorkspace Shortcuts,
@@ -58,5 +60,7 @@ public sealed record ControlCenterServices(
     AboutServices? About = null,
     Action? OpenWelcome = null,
     Action<WorkspaceNotice>? Notify = null,
-    Func<CancellationToken, ValueTask<ImmutableArray<InstalledProgram>>>? InstalledPrograms = null
+    Func<CancellationToken, ValueTask<ImmutableArray<InstalledProgram>>>? InstalledPrograms = null,
+    Func<bool>? IsPaused = null,
+    Action? Resume = null
 );

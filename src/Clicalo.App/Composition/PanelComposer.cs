@@ -761,6 +761,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             return;
         }
 
+        // BUR-004: the Control Center says the pause in its status bar and in «Probar ahora».
+        ControlCenter?.OnPaused(Panel.IsPaused);
         if (Panel.IsPaused)
         {
             CloseLayers();

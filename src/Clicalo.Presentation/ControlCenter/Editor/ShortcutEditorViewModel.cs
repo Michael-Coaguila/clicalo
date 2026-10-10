@@ -512,10 +512,17 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
 
     /// <summary>
     /// «Probar ahora en {app}» (PRB-004). A shortcut that asks for confirmation is confirmed here first: the first
-    /// tap arms the button and the second one tries it.
+    /// tap arms the button and the second one tries it. While Clícalo is paused the button is «Reanudar» (BUR-004):
+    /// nothing would be sent, so it resumes instead of trying.
     /// </summary>
     public void TryLive()
     {
+        if (IsPaused)
+        {
+            _s.Resume?.Invoke();
+            return;
+        }
+
         if (
             !_running
             && Workspace.Selected is { Options.Confirm: true }
@@ -769,6 +776,8 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
             _programsRequested = false;
         }
     }
+
+    private bool IsPaused => _s.IsPaused?.Invoke() == true;
 
     private void StartTry() => _ = TryLiveAsync();
 
@@ -1275,6 +1284,9 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
         var (phaseIcon, phase) = Phase(shortcut);
         var armed =
             Workspace.Pane is EditorPane.Editing editing && IsArmed(TryOperation, editing.Id.Value);
+
+        // BUR-004: paused, nothing is sent; the card says so and offers to resume instead of a try that would fail.
+        var paused = IsPaused;
         return new TestModel(
             T(L.TestTitle),
             T(L.Close),
@@ -1292,12 +1304,16 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
                 )),
             ],
             _apps.IsEmpty ? T(L.NoOpenApps) : null,
-            armed ? T(L.ConfirmClose) : T(L.TestLive2(app: target?.Name ?? string.Empty)),
-            target is not null
-                && complete
-                && !blocked
-                && !_running
-                && Workspace.Pane is EditorPane.Editing,
+            paused ? T(L.ResumeApp)
+                : armed ? T(L.ConfirmClose)
+                : T(L.TestLive2(app: target?.Name ?? string.Empty)),
+            paused
+                ? !_running
+                : target is not null
+                    && complete
+                    && !blocked
+                    && !_running
+                    && Workspace.Pane is EditorPane.Editing,
             T(L.TestHow),
             _answer == TestAnswer.Asking && target is not null
                 ? T(L.TestAskQ(app: target.Name))
@@ -1308,7 +1324,8 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
             _answer == TestAnswer.No ? T(L.TipsTitle) : null,
             _answer == TestAnswer.No ? [T(L.Tip1), T(L.Tip2), T(L.Tip3), T(L.Tip4)] : [],
             _running,
-            armed
+            armed && !paused,
+            paused ? T(L.TestPaused) : null
         );
     }
 
