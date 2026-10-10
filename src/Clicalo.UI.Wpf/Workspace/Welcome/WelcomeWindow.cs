@@ -70,6 +70,8 @@ public sealed class WelcomeWindow : Window
         Content = frame;
         viewModel.PropertyChanged += OnChanged;
         PreviewKeyDown += OnPreviewKeyDown;
+        // ACC-004: a step that draws itself again does not take the keyboard away.
+        _ = FocusKeeper.Attach(this);
         Render();
     }
 

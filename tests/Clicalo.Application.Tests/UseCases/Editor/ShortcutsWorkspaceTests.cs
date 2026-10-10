@@ -11,6 +11,7 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Privacy;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
 
 namespace Clicalo.Application.Tests.UseCases.Editor;
@@ -340,5 +341,39 @@ public sealed class ShortcutsWorkspaceTests
 
         _workspace.List.ShouldBe(new ListRef.InProfile(ProfileId.General));
         _workspace.Pane.ShouldBe(new EditorPane.Editing(new ShortcutId("undo")));
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-005")]
+    public void An_empty_list_opens_the_library_for_whoever_cannot_use_the_keyboard()
+    {
+        _harness
+            .Dispatch(
+                new CreateProfile(
+                    Document.Library.General with
+                    {
+                        Shortcuts = [],
+                    },
+                    ListPosition.End
+                )
+            )
+            .IsSuccess.ShouldBeTrue();
+        var empty = _harness.Changes[^1].Events.OfType<ProfileCreated>().Single().Id;
+
+        _workspace.SelectList(new ListRef.InProfile(empty));
+        _workspace.Pane.ShouldBeOfType<EditorPane.Empty>("typing is the default way to create");
+
+        _harness
+            .Dispatch(new SetSetting(SettingPaths.NoKeyboardUser, true))
+            .IsSuccess.ShouldBeTrue();
+        _workspace.SelectList(Word);
+        _workspace.Pane.ShouldBe(new EditorPane.Editing(StoreSamples.Bold));
+        _workspace.SelectList(new ListRef.InProfile(empty));
+        _workspace.Pane.ShouldBeOfType<EditorPane.Library>();
+        _workspace.Open(new ListRef.InProfile(empty), null, library: false);
+        _workspace.Pane.ShouldBeOfType<EditorPane.Library>();
+
+        _workspace.CloseLibrary();
+        _workspace.Pane.ShouldBeOfType<EditorPane.Empty>("✕ still leaves the library");
     }
 }

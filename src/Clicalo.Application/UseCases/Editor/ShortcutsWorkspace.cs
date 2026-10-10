@@ -135,7 +135,7 @@ public sealed class ShortcutsWorkspace
             return;
         }
 
-        SetPane(FirstOf(List));
+        ShowFirstOf(List);
     }
 
     /// <summary>A row of the profiles column: the list and its first shortcut (ATJ-002).</summary>
@@ -150,7 +150,7 @@ public sealed class ShortcutsWorkspace
 
         Leave();
         List = list;
-        SetPane(FirstOf(list));
+        ShowFirstOf(list);
     }
 
     /// <summary>A tile of the grid, a row of a repeated card or a search: the shortcut in the editor.</summary>
@@ -958,6 +958,23 @@ public sealed class ShortcutsWorkspace
     private string Display(LocalizedText name) => name.Get(UiLanguage(), LangCode.Es);
 
     private LangCode UiLanguage() => new(_localization.Current.Locale.Code);
+
+    /// <summary>
+    /// The first shortcut of the list. For whoever said «No puedo usar el teclado», an empty list opens «Añadir atajo»
+    /// in the place of the empty editor, so creating starts from the library and not from typing (BIE-005).
+    /// </summary>
+    private void ShowFirstOf(ListRef list)
+    {
+        var first = FirstOf(list);
+        if (first is EditorPane.Empty && _store.Current.Settings.NoKeyboardUser)
+        {
+            _beforeLibrary = first;
+            SetPane(new EditorPane.Library());
+            return;
+        }
+
+        SetPane(first);
+    }
 
     private EditorPane FirstOf(ListRef list) =>
         _store.Current.Library.TryGetList(list, out var shortcuts) && !shortcuts.IsEmpty
