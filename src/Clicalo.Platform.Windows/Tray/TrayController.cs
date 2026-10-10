@@ -287,7 +287,9 @@ public sealed class TrayController : IDisposable
         PauseChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private void Run(TrayCommand? command)
+    /// <summary>Runs a command of the menu, once the foreground is back with the app that had it.</summary>
+    /// <param name="command">The command chosen, or <see langword="null"/> when the menu was dismissed.</param>
+    internal void Run(TrayCommand? command)
     {
         switch (command)
         {

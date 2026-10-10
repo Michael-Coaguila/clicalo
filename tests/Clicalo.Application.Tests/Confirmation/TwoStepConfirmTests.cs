@@ -32,6 +32,37 @@ public sealed class TwoStepConfirmTests
         confirm.ArmedSubject.ShouldBe(DeleteBold);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [Trait("Req", "ACC-006")]
+    public void The_window_lasts_as_many_times_as_the_time_multiplier_says(int multiplier)
+    {
+        var confirm = new TwoStepConfirm(_time, () => multiplier);
+
+        var until = confirm.Tap(DeleteBold).ShouldBeOfType<TwoStepResult.Armed>().Until;
+
+        until.ShouldBe(_time.After(Timings.Confirmation.DestructiveConfirmWindow * multiplier));
+        _time.AdvanceToJustBefore(until);
+        confirm.Tap(DeleteBold).ShouldBeOfType<TwoStepResult.Confirmed>();
+    }
+
+    [Fact]
+    [Trait("Req", "ACC-006")]
+    public void The_multiplier_is_read_when_the_first_tap_arms()
+    {
+        var multiplier = 1;
+        var confirm = new TwoStepConfirm(_time, () => multiplier);
+        var first = confirm.Tap(DeleteBold).ShouldBeOfType<TwoStepResult.Armed>().Until;
+        confirm.Disarm();
+
+        multiplier = 3;
+        var second = confirm.Tap(DeleteBold).ShouldBeOfType<TwoStepResult.Armed>().Until;
+
+        (second - first).ShouldBe(Timings.Confirmation.DestructiveConfirmWindow * 2);
+    }
+
     [Fact]
     public void A_second_tap_in_time_confirms_and_disarms()
     {

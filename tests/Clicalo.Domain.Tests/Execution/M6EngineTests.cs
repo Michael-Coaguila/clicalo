@@ -237,6 +237,51 @@ public sealed class M6EngineTests
         engine.Sent.ShouldBeEmpty();
     }
 
+    [Fact]
+    [Trait("Req", "BUR-004")]
+    [Trait("Req", "SEG-007")]
+    public void Pausing_releases_everything_and_nothing_is_sent_until_it_resumes()
+    {
+        var engine = Engine();
+        var copy = Shortcuts.Tap("copy", "ctrl", "c");
+        engine.Press(Shortcuts.Hold("shift", "shift"));
+        engine.Settle();
+        engine.Receiver.IsEmpty.ShouldBeFalse();
+
+        engine.Apply(new EngineEvent.Terminal(TerminalReason.Pause));
+
+        engine.State.Paused.ShouldBeTrue();
+        engine.Receiver.IsEmpty.ShouldBeTrue();
+        var sent = engine.Sent.Count();
+        engine.Tap(copy, contact: 2);
+        engine.Invoke(Shortcuts.Toggle("ctrl", "ctrl"));
+        engine.Press(ScrollDown, contact: 3);
+        engine.Settle();
+        engine.Sent.Count().ShouldBe(sent);
+        engine.State.IsQuiet.ShouldBeTrue();
+
+        engine.Apply(new EngineEvent.SetPaused(false));
+        engine.Advance(TimeSpan.FromSeconds(1));
+        engine.Tap(copy, contact: 2);
+        engine.Settle();
+
+        engine.Sent.Count().ShouldBeGreaterThan(sent);
+        engine.Receiver.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Req", "BUR-004")]
+    [Trait("Req", "NFR-005")]
+    public void An_engine_fault_while_paused_does_not_resume()
+    {
+        var engine = Engine();
+        engine.Apply(new EngineEvent.Terminal(TerminalReason.Pause));
+
+        engine.Apply(new EngineEvent.Terminal(TerminalReason.EngineFault));
+
+        engine.State.Paused.ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData(0, 1)]
     [InlineData(1, 1)]
