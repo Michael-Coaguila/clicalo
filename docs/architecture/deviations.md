@@ -35,10 +35,11 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-23 | Criterios de salida de M2 tras la verificación | Presupuestos en `tests/Clicalo.Performance/budgets.json`; rendimiento en el equipo táctil y no obligatorio en el PR; `lab.yml` semanal y antes de cada beta; prueba de bandeja con el icono real | `data/catalogs/budgets.json` con esquema; puerta de toque → `SendInput` también en los alojados, con `perf (x64)` cada noche y obligatorio antes de cada versión; `lab.yml` solo a mano; bandeja con un toque en el panel y `OpenMenuAsync`; muerte en cada paso y congelar y reanudar reducidos sin CsCheck (retirados por ADR-0023) | M2 |
 | D-24 | Latencia del panel en la CI | Toque → `SendInput` p95 ≤ 50 ms sobre 20 toques (§7.1, §10.3), medido con puntero sintético | La parte del panel (levantamiento → buzón del motor) se juzga con el mismo presupuesto sobre 21 toques medidos, con un dispositivo sintético por tipo y un toque de calentamiento por dispositivo que se comprueba e informa pero no entra en el p95 | M2 |
 | D-25 | Guardián simple | Hasta el 2026-10-05, *ledger* en memoria compartida, valla de generación, emergencia y protocolo 2 de Sentinel; desde entonces el plano recoge [ADR-0023](../adr/0023-guardian-simple.md) | Sentinel y «Soltar todo» de la bandeja sueltan lo que Windows dice que está pulsado; sin *ledger*, valla ni emergencia; las partes de D-21, D-22 y D-23 sobre ellos quedan retiradas | M2 |
-| D-26 | Formas del panel, Pestaña, burbuja y atenuado | Burbuja y Pestaña en `PanelSession`, `InteractionState` en Domain, monitor por `monitorDevicePath` (§6.4, §3.7) | `InteractionStore` en Application con la burbuja, la barra y la guía; `PanelForms` puro; monitor por nombre de dispositivo; asa por lado | M3 |
-| D-27 | Capas del panel e integración de M3 | Menú de toque largo y Ajustes rápidos como ventanas hijas (§8.1) | Dibujados dentro del panel; una capa primaria en `PanelComposer`; asa de la Pestaña con margen táctil | M3 |
+| D-26 | Formas del panel, Pestaña, burbuja y atenuado | Burbuja y Pestaña en `PanelSession`, `InteractionState` en Domain, monitor por `monitorDevicePath` (§6.4, §3.7) | `InteractionStore` en Application con la burbuja, la barra, la guía, la cola de avisos y la búsqueda temporal; `PanelForms` puro; monitor por nombre de dispositivo; asa por monitor y lado desde M6 | M3 |
+| D-27 | Capas del panel e integración de M3 | Menú de toque largo y Ajustes rápidos como ventanas hijas (§8.1) | Dibujados dentro del panel; una capa primaria en `PanelComposer`; asa de la Pestaña con margen táctil (con su sombra desde M6) | M3 |
 | D-28 | Efectos laterales de «Probar ahora» | `SuppressSwitchHandling(3 s, token)` en el motor y `ForegroundClassifier` (§3.6, §7.9) | `ActivationOrigin.TryNow` en la activación y `ForegroundChangeCoordinator.IsTrying` mientras dura la prueba | M4 |
 | D-29 | Verbos `cl states` y `cl accept` | Dos verbos de `cl`: instantáneas de todos los estados y acompañamiento de la aceptación en hardware (§10.1, §13) | No se construyen: las vistas previas sin pantalla cubren los estados y `docs/guides/aceptacion-manual.md` es el guion; `cl trace` sí existe y escribe `artifacts/cl/trace.md` | M6 |
+| D-30 | Integración de M6 | Avisos en `Domain.Interaction` (§6.4); menú de la ficha con Esc y «tocar fuera»; Shell y WMI solo en el hilo Shell (§3.2); copia `pre-reset` y componente de sistema al desinstalar (§9.3); menú de bandeja sin Pausar (§8.1) | Cola de avisos en `Application.Interaction` y publicada por `PanelComposer`; el menú de la Pestaña se cierra sin Esc ni «tocar fuera»; programas instalados en un hilo STA propio; «Empezar de cero» guarda `pre-restore`; desinstalación según ADR-0029; Pausar y atajo global en `TrayController` | M6 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -748,8 +749,14 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     `InteractionStore`.
   - El monitor se identifica por su nombre de dispositivo (`\\.\DISPLAY1`, el `MonitorPosition` de M2), leído con
     `EnumDisplayMonitors`/`GetMonitorInfo` en `UI.Wpf.Windowing.DisplayMonitors`.
-  - La posición del asa se guarda por lado, no por monitor y lado (PES-016 queda a medias: el formato de
-    `handlePosBySide` no cambia).
+  - ~~La posición del asa se guarda por lado, no por monitor y lado.~~ **Cerrado en M6:** el asa se lee con
+    `MonitorHandlePositions.PositionFor` y se guarda en `handlePosByMonitor` (documento 1.1, ADR-0028) para el
+    monitor en el que está la Pestaña, además de por lado; un monitor que no se reconoce usa la posición por lado
+    (PES-016, D9). El monitor se identifica con el mismo nombre de dispositivo (`\\.\DISPLAYn`) que las posiciones del
+    panel, no con la ruta de DisplayConfig que recomienda ADR-0028: un solo identificador para todo y sin código de
+    plataforma nuevo.
+  - Desde M6, `InteractionState` guarda también la cola de avisos (`NoticeQueue`, AVI-002) y la búsqueda temporal
+    desde la barra (`SearchPeek`, BUS-006), con sus acciones en `InteractionReducer`.
   - Al arrancar, el panel va al monitor principal si tiene posición guardada; si no, al primero conectado que la tenga.
 - **Motivo.** Sin cambiar el formato del documento ni el contrato de `PanelSession`, que otros paquetes de M3 usan en
   paralelo; la regla sigue siendo pura y con tabla de transiciones.
@@ -775,11 +782,14 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     de opacidad sigue al dedo. El menú de la ficha se abre también con el clic derecho, la tecla Menú, Mayús+F10 o
     «clic derecho {nombre}» (WPF no ofrece `ShowContextMenu` de UI Automation).
   - El asa de la Pestaña es una ventana de 44 de fondo (REG-02, ACC-002) que dibuja el asa de 32 contra el borde y
-    pinta el resto con un pincel de alfa 1 para recibir el toque. Pierde la sombra, porque la ventana de sombra
-    seguiría a toda la ventana.
+    pinta el resto con un pincel de alfa 1 para recibir el toque. ~~Pierde la sombra, porque la ventana de sombra
+    seguiría a toda la ventana.~~ **Cerrado en M6:** `NonActivatingWindow` tiene `ShadowShape` y `ShadowInset`, y la
+    sombra sigue los 32 px dibujados y no la ventana táctil de 44 (PES-001).
 - **Motivo.** Lo más simple que cumple el comportamiento del prototipo y REG-02 sin cambiar la capa de ventanas ni el
   formato del documento.
-- **Revisión.** Si se quiere la sombra del asa, la capa de ventanas puede aprender un margen táctil invisible.
+- **Revisión.** Cerrada en M6 en lo que toca a la sombra del asa. Desde M6 el menú de toque largo y Ajustes rápidos
+  de la vista Pestaña sí son ventanas `NonActivatingWindow` al costado de la barra (`DockMenuWindow`,
+  `DockQuickWindow`), como dice §8.1; en Completa y Compacta siguen dentro del panel.
 
 ## D-28 · Efectos laterales de «Probar ahora» sin ventana de supresión
 
@@ -823,6 +833,52 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   queda en un archivo.
 - **Revisión.** Si tras la 2.0 aparecen regresiones visuales que las pruebas de modelo no detectan, se reabre
   `cl states` con instantáneas aprobadas.
+
+## D-30 · Integración de M6
+
+- **Plano.** [§6.4](blueprint.md#64-estado-cuatro-dueños-deshacer-y-autoguardado) pone la cola de avisos en
+  `Domain.Interaction` y habla de un estado de mensajes compartido por el panel y el Centro de control;
+  [§3.2](blueprint.md#32-modelo-de-hilos) reserva al hilo Shell las llamadas al *shell* de Windows;
+  [§8.1](blueprint.md#81-superficies-y-ventanas) describe el menú de bandeja sin Pausar ni atajo global;
+  [§7.9](blueprint.md#79-cambio-de-app-de-extremo-a-extremo-per-003) no prevé volver a mirar una app de la Tienda;
+  [§9.3](blueprint.md#93-actualizaciones) desinstala el componente de sistema y guarda una copia `pre-reset` al
+  empezar de cero. El catálogo (CUA-014) cancela el menú de la ficha con Esc o al tocar fuera.
+- **Repositorio.**
+  - **Avisos.** `NoticeQueue` vive en `Application.Interaction` (dentro de `InteractionState`, como en D-26) y solo
+    cambia con `InteractionReducer`. `PanelComposer` publica el aviso en curso con `NoticePublished`; el panel, la
+    superficie de avisos de la Pestaña y la barra de estado del Centro de control (CCM-003, por
+    `ControlCenterComposer.OnPanelNotice`) pintan ese mismo aviso. Los avisos propios del Centro de control no entran
+    en la cola: duran su tiempo en la barra de estado y después vuelve el aviso del panel.
+  - **Menú de la ficha en la Pestaña (CUA-014).** Se abre en `DockMenuWindow`, al costado de la barra, y se cierra con
+    una fila, [cancel], un toque en otro atajo, un cambio de perfil, página o app, o al cerrar la barra. No hay Esc
+    ni «tocar fuera»: esas ventanas nunca toman el foco (REG-01) y no reciben teclas ni los toques sobre otras apps.
+    En Completa y Compacta el menú no cambia (D-27).
+  - **Programas instalados (EDI-014).** `Platform.Windows/Launch/InstalledApps` lee `shell:AppsFolder` en un hilo STA
+    propio y corto, no en el hilo Shell; resuelve las carpetas conocidas con `SHGetKnownFolderPath`, descarta con
+    `File.Exists` las entradas sin archivo y solo ofrece lo que `LaunchSafety` permite abrir. No lee el contenido de
+    ningún archivo.
+  - **Colocación del Centro de control (CCM-004).** La superficie que no debe tapar se lee de las ventanas de WPF (la
+    mayor `NonActivatingWindow` visible, en píxeles físicos); el rectángulo que pasa `AppHost` queda como respaldo.
+  - **Bandeja (BUR-003 a BUR-005).** El menú tiene Pausar/Reanudar; la pausa es el evento terminal
+    `TerminalReason.Pause`, sobrevive a un fallo del motor y se quita cuando el panel vuelve a mostrarse. El atajo
+    global opcional (`RegisterHotKey`) vive en `TrayController`, en el hilo SysEvents, y pide lo mismo que un clic en
+    el icono: nunca el primer plano. `AppHost` lo conecta con `PanelComposer.AttachTray`.
+  - **Primer plano (PER-002, CAT-007).** Si el marco `ApplicationFrameHost.exe` llega al frente antes que su app, se
+    vuelve a buscar la app con el sondeo acotado `Timings.Foreground.HostedAppRecheck` (3,85 s en total) y se publica
+    de nuevo como un cambio de app. De `explorer.exe` solo cuentan como app las ventanas de carpeta.
+  - **Motor (SEG-001).** El desplazamiento mantenido es un elemento del registro de pulsadas, con un solo titular.
+  - **Desinstalar y reinstalar (NFR-010, P6).** Rige [ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md),
+    que sustituye la frase de ADR-0027 que aplazaba la pregunta de los datos: no hay componente de sistema que
+    desinstalar (D7), la instancia solo deja un marcador y el *hook* del desinstalador borra los datos. «Empezar de
+    cero» en la bienvenida se despacha como `RestoreBackup` del documento de una instalación nueva, así que su copia
+    previa queda en `pre-restore` («Antes de un cambio grande») y no en `pre-reset`.
+- **Motivo.** Lo más simple que cumple el catálogo sin un formato persistido ni un comando de dominio nuevos, y sin
+  que ninguna superficie del panel tome el foco.
+- **Coste.** En la Pestaña, quien abre el menú de una ficha por error tiene que tocar [cancel] u otro atajo. Un aviso
+  propio del Centro de control no se ve en el panel. Tras «Empezar de cero», la copia anterior aparece entre las
+  copias «Antes de un cambio grande».
+- **Revisión.** Tras la 2.0: cerrar el menú de la Pestaña al tocar cualquier otra superficie de Clícalo, y recoger en
+  el plano (§7.3, §7.9, §8.1 y §9.3) lo que aquí se describe.
 
 ## Puntos del plano pendientes de resolver
 
