@@ -85,7 +85,7 @@ public static class InteractionReducer
             },
             InteractionAction.ShowStickyNotice sticky => state with
             {
-                Notices = state.Notices.ShowSticky(sticky.Owner, sticky.Notice),
+                Notices = state.Notices.ShowSticky(sticky.Owner, sticky.Notice, now),
             },
             InteractionAction.ClearStickyNotice clear => state with
             {

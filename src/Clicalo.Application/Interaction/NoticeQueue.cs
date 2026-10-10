@@ -86,31 +86,29 @@ public sealed class NoticeQueue
 
     /// <summary>
     /// Shows the fixed notice of <paramref name="owner"/>, on top of the other fixed ones. A plain notice on show gives
-    /// way to it; a safety notice or one with [undo] ends first.
+    /// way to it, and then a waiting safety notice or the one with [undo] shows first; a safety notice or one with
+    /// [undo] on show ends first. Telling the same state again changes nothing.
     /// </summary>
     /// <param name="owner">Whose state it tells.</param>
     /// <param name="notice">The notice.</param>
-    public NoticeQueue ShowSticky(object owner, Notice notice)
+    /// <param name="now">The current time.</param>
+    public NoticeQueue ShowSticky(object owner, Notice notice, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(notice);
-        var plainOnShow = Current is { Kind: NoticeKind.Normal };
-        if (
-            !plainOnShow
-            && !Sticky.IsEmpty
-            && ReferenceEquals(Sticky[^1].Owner, owner)
-            && Sticky[^1].Notice == notice
-        )
+        foreach (var other in Sticky)
         {
-            return this;
+            if (ReferenceEquals(other.Owner, owner) && other.Notice == notice)
+            {
+                return this;
+            }
         }
 
         var sticky = Sticky
             .RemoveAll(other => ReferenceEquals(other.Owner, owner))
             .Add(new StickyNotice(owner, notice));
-        return plainOnShow
-            ? new NoticeQueue(null, TimeSpan.Zero, null, Waiting, sticky)
-            : new NoticeQueue(Current, CurrentDuration, EndsAt, Waiting, sticky);
+        var queue = new NoticeQueue(Current, CurrentDuration, EndsAt, Waiting, sticky);
+        return Current is { Kind: NoticeKind.Normal } ? queue.Next(Waiting, now) : queue;
     }
 
     /// <summary>The state of <paramref name="owner"/> ended: its fixed notice goes away; every other notice stays.</summary>

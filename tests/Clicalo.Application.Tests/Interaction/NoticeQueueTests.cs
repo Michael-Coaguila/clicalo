@@ -166,7 +166,7 @@ public sealed class NoticeQueueTests
     {
         var hold = new object();
         var holding = Plain(L.HoldingKeys(keys: "Ctrl"));
-        var queue = NoticeQueue.Empty.ShowSticky(hold, holding);
+        var queue = NoticeQueue.Empty.ShowSticky(hold, holding, Now);
 
         queue.Shown.ShouldBe(holding);
         queue.ShownOwner.ShouldBeSameAs(hold);
@@ -193,15 +193,48 @@ public sealed class NoticeQueueTests
         var edit = new object();
         var hint = Plain(L.EditHint);
 
-        NoticeQueue.Empty.Post(Sent, Short, Now).ShowSticky(edit, hint).Shown.ShouldBe(hint);
+        NoticeQueue.Empty.Post(Sent, Short, Now).ShowSticky(edit, hint, Now).Shown.ShouldBe(hint);
 
-        var undo = NoticeQueue.Empty.Post(Deleted, Long, Now).ShowSticky(edit, hint);
+        var undo = NoticeQueue.Empty.Post(Deleted, Long, Now).ShowSticky(edit, hint, Now);
         undo.Shown.ShouldBe(Deleted);
         undo.Advance(Now + Long).Shown.ShouldBe(hint);
 
-        var safety = NoticeQueue.Empty.Post(ReleasedAlone, Short, Now).ShowSticky(edit, hint);
+        var safety = NoticeQueue.Empty.Post(ReleasedAlone, Short, Now).ShowSticky(edit, hint, Now);
         safety.Shown.ShouldBe(ReleasedAlone);
         safety.Advance(Now + Short).Shown.ShouldBe(hint);
+    }
+
+    [Fact]
+    [Trait("Req", "AVI-002")]
+    public void A_fixed_notice_that_replaces_a_plain_one_lets_the_waiting_safety_notice_show_first()
+    {
+        var hold = new object();
+        var holding = Plain(L.HoldingKeys(keys: "Ctrl"));
+
+        // The safety notice waits behind a plain one; a Mantener starts and takes the plain one away.
+        var queue = NoticeQueue
+            .Empty.Post(ReleasedOnSwitch, Short, Now)
+            .Post(Sent, Short, Now)
+            .ShowSticky(hold, holding, Now + TimeSpan.FromSeconds(1));
+
+        queue.Shown.ShouldBe(ReleasedOnSwitch);
+        queue.EndsAt.ShouldBe(Now + TimeSpan.FromSeconds(1) + Short);
+        queue.Waiting.ShouldBeEmpty();
+        queue.Advance(Now + TimeSpan.FromSeconds(1) + Short).Shown.ShouldBe(holding);
+    }
+
+    [Fact]
+    [Trait("Req", "AVI-002")]
+    public void Telling_the_same_fixed_state_again_does_not_take_a_notice_away()
+    {
+        var hold = new object();
+        var holding = Plain(L.HoldingKeys(keys: "Ctrl"));
+
+        // Every engine snapshot tells the Mantener again while it lasts: the notice posted meanwhile stays.
+        var covered = NoticeQueue.Empty.ShowSticky(hold, holding, Now).Post(Sent, Short, Now);
+
+        covered.ShowSticky(hold, holding, Now).ShouldBeSameAs(covered);
+        covered.Shown.ShouldBe(Sent);
     }
 
     [Fact]
@@ -214,14 +247,14 @@ public sealed class NoticeQueueTests
         var step1 = Plain(L.MacroRunning(name: "Informe", index: 1, total: 3));
         var step2 = Plain(L.MacroRunning(name: "Informe", index: 2, total: 3));
 
-        var queue = NoticeQueue.Empty.ShowSticky(edit, hint).ShowSticky(macro, step1);
+        var queue = NoticeQueue.Empty.ShowSticky(edit, hint, Now).ShowSticky(macro, step1, Now);
         queue.Shown.ShouldBe(step1);
 
         // The same owner updates its notice in place; the same notice again changes nothing.
-        var next = queue.ShowSticky(macro, step2);
+        var next = queue.ShowSticky(macro, step2, Now);
         next.Shown.ShouldBe(step2);
         next.Sticky.Length.ShouldBe(2);
-        next.ShowSticky(macro, step2).ShouldBeSameAs(next);
+        next.ShowSticky(macro, step2, Now).ShouldBeSameAs(next);
 
         next.ClearSticky(macro).Shown.ShouldBe(hint);
         next.ClearSticky(macro).ShownOwner.ShouldBeSameAs(edit);
