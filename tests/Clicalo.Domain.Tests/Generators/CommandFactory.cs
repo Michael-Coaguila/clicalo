@@ -143,7 +143,10 @@ internal static class CommandFactory
             nameof(KeepOnlyInAlwaysVisible) => new KeepOnlyInAlwaysVisible(target),
             nameof(DeleteMacroStep) => new DeleteMacroStep(target, (c % 4) - 1),
             nameof(ReplaceOnImport) => new ReplaceOnImport(Imported(library, b)),
-            nameof(MergeOnImport) => new MergeOnImport(Imported(library, b)),
+            // A merge keeps everything the document has, so half of them import the library as it is: with only the
+            // libraries of Imported, which drop a profile or are minimal, a merge almost never succeeded and
+            // Every_generated_kind_succeeds_on_some_document failed now and then.
+            nameof(MergeOnImport) => new MergeOnImport(c % 2 == 0 ? library : Imported(library, b)),
             nameof(RestoreBackup) => new RestoreBackup(Backup(document, b, c % 5 == 0)),
             nameof(AddShortcuts) => new AddShortcuts(
                 PickProfile(library, a),
