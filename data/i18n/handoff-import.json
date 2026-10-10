@@ -409,11 +409,6 @@
       "after": "logPvEmpty",
       "text": { "es": "No se pudo preparar el registro.", "en": "Couldn’t prepare the log." }
     },
-    "contactPending": {
-      "notes": "Marcador visible del correo de contacto mientras no exista (ACE-005; el prototipo usaba un correo personal, PQ-38). Se sustituye por el correo real antes de publicar. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
-      "after": "fbDirect",
-      "text": { "es": "Correo de contacto pendiente", "en": "Contact email pending" }
-    },
     "welcomeTitle": {
       "notes": "Título y nombre accesible de la ventana de la bienvenida (BIE-001). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
       "after": "seeWelcomeD",
@@ -423,11 +418,6 @@
       "notes": "Nombre accesible de las 5 barras de progreso de la bienvenida (BIE-001). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
       "after": "welcomeTitle",
       "text": { "es": "Paso {index} de {total}", "en": "Step {index} of {total}" }
-    },
-    "obKbLine": {
-      "notes": "Línea del teclado del paso «¿Qué apps usas más?» (BIE-006): el idioma de los programas, que elige la variante de las plantillas (PLA-009, PLA-013). Sin concatenar [kbFor] (IDI-004). Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
-      "after": "kbFor",
-      "text": { "es": "Para {app}", "en": "For {app}" }
     },
     "hidePanel": {
       "notes": "Menú de la bandeja con el panel visible: la otra mitad de «Mostrar/Ocultar» (BUR-003; la mitad «Mostrar» es restore). Texto nuevo del esqueleto andante (M2), pendiente de ratificar en §6.1 del catálogo.",
@@ -1131,6 +1121,146 @@
         "es": "Alarga la confirmación de dos toques y lo que duran los avisos: ×1, ×2 o ×3.",
         "en": "Lengthens the two-tap confirmation and how long notices stay: ×1, ×2 or ×3."
       }
+    },
+    "linkedIn": {
+      "notes": "Botón de LinkedIn de la tarjeta de la app (ACE-001), escrito en el código del prototipo (IDI-002). Solo se muestra cuando hay una dirección real (decisión D11 del usuario). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "gitHub",
+      "text": { "es": "LinkedIn", "en": "LinkedIn" }
+    },
+    "fbSendCopyD": {
+      "notes": "Nota bajo [Enviar por correo] mientras no haya correo de contacto (ACE-004, decisión D11 del usuario): el mensaje se copia en lugar de abrir el correo. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbSendLogD",
+      "text": { "es": "Aún no hay un correo de contacto: copiaré el mensaje para que lo pegues donde quieras, por ejemplo en «Reportar en GitHub».", "en": "There is no contact email yet: I'll copy the message so you can paste it wherever you like, for example in “Report on GitHub”." }
+    },
+    "userGuide": {
+      "notes": "Enlace a la guía de usuario del repositorio, que se abre en el navegador (ACE-005). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbPromise",
+      "text": { "es": "Guía de usuario", "en": "User guide" }
+    },
+    "userGuideD": {
+      "notes": "Descripción del enlace a la guía de usuario (ACE-005). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "userGuide",
+      "text": { "es": "Cómo usar Clícalo paso a paso. Se abre en el navegador.", "en": "How to use Clícalo step by step. It opens in the browser." }
+    },
+    "restoredAt": {
+      "notes": "Aviso al restaurar una copia del historial, con su fecha (COP-004: «Copia restaurada: {fecha}»). {date} es la fecha de la copia ([whenToday], [whenYesterday] o [whenDate]). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "restoredT",
+      "text": { "es": "Copia restaurada: {date}", "en": "Backup restored: {date}" }
+    },
+    "docRecovered": {
+      "notes": "Aviso al arrancar cuando el documento no se pudo leer y se recuperó de la versión anterior o de la última copia válida (SIS-004, DAT-003). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "dataUnreadable",
+      "text": { "es": "No pude leer tus datos: restauré la última copia válida. Nada se borró.", "en": "I couldn't read your data: I restored the last valid copy. Nothing was deleted." }
+    },
+    "obChangesT": {
+      "notes": "Título del aviso del paso «¿Cómo usas tu equipo?» al repetir la bienvenida: qué ajustes cambian al continuar (BIE-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "ob1b",
+      "text": { "es": "Al continuar, esto cambia:", "en": "When you continue, this changes:" }
+    },
+    "obKeptT": {
+      "notes": "Título de los ajustes que la bienvenida repetida no toca porque la persona los cambió a mano (BIE-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obChangesT",
+      "text": { "es": "Esto se queda como lo dejaste:", "en": "This stays as you left it:" }
+    },
+    "obChPreset": {
+      "notes": "Línea del aviso de BIE-010: el preset de precisión táctil. {name} es el nombre del preset ([pStd], [pLeve], [pFuerte] o [pCustom]). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obKeptT",
+      "text": { "es": "Precisión táctil: {name}", "en": "Touch precision: {name}" }
+    },
+    "obChSize": {
+      "notes": "Línea del aviso de BIE-010: el tamaño del panel. {name} es [sizeS], [sizeM] o [sizeL]. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obChPreset",
+      "text": { "es": "Tamaño del panel: {name}", "en": "Panel size: {name}" }
+    },
+    "obChVoiceOn": {
+      "notes": "Línea del aviso de BIE-010: los números para control por voz quedan activados. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obChSize",
+      "text": { "es": "Números para control por voz: activados", "en": "Numbers for voice control: on" }
+    },
+    "obChVoiceOff": {
+      "notes": "Línea del aviso de BIE-010: los números para control por voz quedan desactivados. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obChVoiceOn",
+      "text": { "es": "Números para control por voz: desactivados", "en": "Numbers for voice control: off" }
+    },
+    "obChNoKbOn": {
+      "notes": "Línea del aviso de BIE-010: «No puedo usar el teclado» queda activado. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obChVoiceOff",
+      "text": { "es": "No puedo usar el teclado: activado", "en": "I can't use the keyboard: on" }
+    },
+    "obChNoKbOff": {
+      "notes": "Línea del aviso de BIE-010: «No puedo usar el teclado» queda desactivado. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "obChNoKbOn",
+      "text": { "es": "No puedo usar el teclado: desactivado", "en": "I can't use the keyboard: off" }
+    },
+    "reinstallT": {
+      "notes": "Título de la pregunta de la bienvenida al reinstalar con datos de una instalación anterior (NFR-010, propuesta P6). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "ob0b",
+      "text": { "es": "Encontré tus atajos y ajustes de antes", "en": "I found your shortcuts and settings from before" }
+    },
+    "reinstallD": {
+      "notes": "Explicación de la pregunta al reinstalar: conservar es lo predeterminado y empezar de cero guarda antes una copia (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reinstallT",
+      "text": { "es": "Se conservan tal como estaban. Si prefieres empezar de cero, antes guardo una copia que puedes restaurar en Sistema › Copias de seguridad.", "en": "They are kept just as they were. If you would rather start from scratch, I first save a backup you can restore in System › Backups." }
+    },
+    "reinstallKeep": {
+      "notes": "Opción predeterminada de la pregunta al reinstalar (NFR-010, P6). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reinstallD",
+      "text": { "es": "Conservar mis datos", "en": "Keep my data" }
+    },
+    "reinstallFresh": {
+      "notes": "Opción de empezar de cero al reinstalar, con dos toques (NFR-010, P6, REG-04). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reinstallKeep",
+      "text": { "es": "Empezar de cero", "en": "Start from scratch" }
+    },
+    "reinstallDone": {
+      "notes": "Confirmación tras empezar de cero al reinstalar (NFR-010, P6). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "reinstallFresh",
+      "text": { "es": "Empezaste de cero. Tu copia anterior está en Sistema › Copias de seguridad.", "en": "You started from scratch. Your previous backup is in System › Backups." }
+    },
+    "riskyReviewT": {
+      "notes": "Aviso de la tarjeta de Importar y de Restaurar: los atajos Web, App y Macro de una copia que aún no tienes se confirman uno a uno (LOG-008). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "impTextsLost",
+      "text": { "es": "Estos atajos abren algo o ejecutan varios pasos. Marca solo los que reconozcas: los demás no se instalan.", "en": "These shortcuts open something or run several steps. Tick only the ones you recognise: the rest are not installed." }
+    },
+    "uninstallT": {
+      "notes": "Fila «Desinstalar Clícalo» de Sistema › Inicio y estabilidad (NFR-010, propuesta P6). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "alwaysOn",
+      "text": { "es": "Desinstalar Clícalo", "en": "Uninstall Clícalo" }
+    },
+    "uninstallD": {
+      "notes": "Descripción de «Desinstalar Clícalo»: los datos se conservan por defecto (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallT",
+      "text": { "es": "Tus atajos y ajustes se quedan en este equipo por si vuelves a instalarlo.", "en": "Your shortcuts and settings stay on this computer in case you install it again." }
+    },
+    "uninstallWipe": {
+      "notes": "Opción de borrar también los datos al desinstalar (NFR-010, P6). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallD",
+      "text": { "es": "Borrar también mis atajos y ajustes", "en": "Also delete my shortcuts and settings" }
+    },
+    "uninstallWipeD": {
+      "notes": "Descripción de la opción de borrar los datos: antes se guarda una copia donde la persona elija (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallWipe",
+      "text": { "es": "Antes te pediré guardar una copia donde tú elijas. Sin esa copia no se borra nada.", "en": "First I'll ask you to save a copy wherever you choose. Without that copy nothing is deleted." }
+    },
+    "uninstallBtn": {
+      "notes": "Botón de «Desinstalar Clícalo», con dos toques (NFR-010, P6, REG-04). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallWipeD",
+      "text": { "es": "Desinstalar", "en": "Uninstall" }
+    },
+    "uninstallNotInstalled": {
+      "notes": "Aviso al desinstalar una copia que no se instaló con el instalador (NFR-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallBtn",
+      "text": { "es": "Esta copia de Clícalo no se instaló con el instalador: no hay nada que desinstalar.", "en": "This copy of Clícalo wasn't installed with the installer: there is nothing to uninstall." }
+    },
+    "uninstallNeedsCopy": {
+      "notes": "Aviso cuando se pidió borrar los datos al desinstalar y no se guardó la copia (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallNotInstalled",
+      "text": { "es": "No se desinstaló: para borrar tus datos, guarda antes la copia.", "en": "Not uninstalled: to delete your data, save the copy first." }
+    },
+    "uninstallFailed": {
+      "notes": "Aviso cuando Windows no pudo iniciar la desinstalación (NFR-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallNeedsCopy",
+      "text": { "es": "Windows no pudo iniciar la desinstalación. Nada se borró.", "en": "Windows couldn't start the uninstaller. Nothing was deleted." }
     }
   },
   "retired": {
