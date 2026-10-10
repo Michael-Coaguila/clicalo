@@ -11,9 +11,11 @@ namespace Clicalo.Presentation.ControlCenter.About;
 /// <item>[shareShort] copies the address of the repository and says [shared];</item>
 /// <item>[logPvT] shows the log exactly as it would be attached, already redacted (ACE-003);</item>
 /// <item>[Enviar por correo] saves that log as a file and opens its folder when it is attached (a <c>mailto:</c> link
-/// cannot attach files), then opens the email app with «[Clícalo] {kind}» and the body; without an email app the
-/// message is copied and [fbMailCopied] says so (ACE-004).</item>
+/// cannot attach files), then opens the email app with «[Clícalo] {kind}» and the body, only ever towards the contact
+/// email of the project (ADR-0029); without that address or without an email app the message is copied and
+/// [fbMailCopied] says so (ACE-004).</item>
 /// </list>
+/// The LinkedIn button and the email row are hidden while their address is empty (user decision D11).
 /// The message is kept while the window lives; the composition root calls <see cref="Refresh"/> when the language
 /// changes.
 /// </summary>
@@ -28,6 +30,9 @@ public sealed class AboutViewModel : ObservableObject
     ];
 
     private readonly AboutServices _s;
+
+    private string? Email => string.IsNullOrWhiteSpace(_s.Links.Email) ? null : _s.Links.Email.Trim();
+
     private FeedbackKind _kind = FeedbackKind.Suggestion;
     private string _message = string.Empty;
     private bool _attachLog = true;
@@ -63,6 +68,13 @@ public sealed class AboutViewModel : ObservableObject
     /// <summary>«Colaborar con el código»: the repository in the browser.</summary>
     public Task OpenContributeAsync() => OpenAsync(_s.Links.Repository);
 
+    /// <summary>«Guía de usuario»: the guide in the browser.</summary>
+    public Task OpenGuideAsync() => OpenAsync(_s.Links.Guide);
+
+    /// <summary>[LinkedIn]: the profile in the browser; nothing while there is none (ACE-001, D11).</summary>
+    public Task OpenLinkedInAsync() =>
+        _s.Links.LinkedIn is { } profile ? OpenAsync(profile) : Task.CompletedTask;
+
     /// <summary>[shareShort]: copies the address of the repository (ACE-001).</summary>
     public void Share()
     {
@@ -73,7 +85,7 @@ public sealed class AboutViewModel : ObservableObject
     /// <summary>Copies the contact email ([copiedEmail], ACE-005); nothing while there is none.</summary>
     public void CopyEmail()
     {
-        if (_s.Links.Email is not { } email)
+        if (Email is not { } email)
         {
             return;
         }
@@ -162,11 +174,15 @@ public sealed class AboutViewModel : ObservableObject
                 _includeSystem ? T(L.FbBodySys(version: _s.Version, name: _s.System)) : null,
                 logLine
             );
-            var opened = await _s.Open(
-                    FeedbackMail.Address(_s.Links.Email, subject, body),
-                    CancellationToken.None
-                )
-                .ConfigureAwait(true);
+            // ACE-004, ADR-0029: the email app opens only towards the contact email of the project; without one the
+            // message is copied.
+            var opened =
+                Email is { } email
+                && await _s.Open(
+                        FeedbackMail.Address(email, subject, body),
+                        CancellationToken.None
+                    )
+                    .ConfigureAwait(true);
             if (opened)
             {
                 _s.Notify(new WorkspaceNotice(L.SentMail, "send", false, false));
@@ -187,7 +203,7 @@ public sealed class AboutViewModel : ObservableObject
     /// <summary>Projects everything again (the language changed, or the section).</summary>
     public void Refresh()
     {
-        var email = _s.Links.Email;
+        var email = Email;
         Screen = new AboutScreen(
             T(L.AboutTitle),
             T(L.AboutSub),
@@ -199,6 +215,7 @@ public sealed class AboutViewModel : ObservableObject
             T(L.AppName),
             T(L.AboutVersion(version: _s.Version, name: L.OpenSource)),
             T(L.GitHub),
+            _s.Links.LinkedIn is null ? null : T(L.LinkedIn),
             T(L.ShareShort),
             T(L.FbTitle),
             [
@@ -223,13 +240,18 @@ public sealed class AboutViewModel : ObservableObject
             _previewOpen,
             PreviewText(),
             T(L.FbSend),
-            T(_attachLog ? L.FbSendLogD : L.FbSendD),
+            T(
+                email is null ? L.FbSendCopyD
+                : _attachLog ? L.FbSendLogD
+                : L.FbSendD
+            ),
             _sending,
             T(L.FbDirect),
-            email ?? T(L.ContactPending),
-            email is null,
+            email,
             T(L.Copy),
             T(L.FbPromise),
+            T(L.UserGuide),
+            T(L.UserGuideD),
             T(L.FbGh),
             T(L.FbGhD),
             T(L.FbContrib),

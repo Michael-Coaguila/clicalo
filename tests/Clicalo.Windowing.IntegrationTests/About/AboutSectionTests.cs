@@ -19,6 +19,9 @@ namespace Clicalo.Windowing.IntegrationTests.About;
 /// </summary>
 public sealed class AboutSectionTests
 {
+    /// <summary>A contact address for the tests: the real one does not exist yet (D11).</summary>
+    private const string Mail = "contacto@clicalo.example";
+
     private const string Log =
         "2026-10-09 09:12:03 INF app.started\n2026-10-09 09:15:02 INF text.sent [oculto · 23 caracteres]";
 
@@ -40,12 +43,101 @@ public sealed class AboutSectionTests
         screen.Kinds[0].Selected.ShouldBeTrue("Sugerencia is the default");
         screen.AttachLog.ShouldBeTrue();
         screen.IncludeSystem.ShouldBeTrue();
-        screen.Email.ShouldBe("Correo de contacto pendiente", "no contact email exists yet");
-        screen.EmailPending.ShouldBeTrue();
         AboutLinks.Current.Repository.AbsoluteUri.ShouldBe(
             "https://github.com/Michael-Coaguila/clicalo"
         );
+        screen.GuideTitle.ShouldBe("Guía de usuario");
+        AboutLinks.Current.Guide.AbsoluteUri.ShouldBe(
+            "https://github.com/Michael-Coaguila/clicalo/blob/main/docs/guides/guia-de-usuario.md"
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "ACE-001")]
+    [Trait("Req", "ACE-005")]
+    public void The_email_and_LinkedIn_are_hidden_while_they_do_not_exist()
+    {
+        // User decision D11: nothing invented is ever shown in their place.
         AboutLinks.Current.LinkedIn.ShouldBeNull("there is no real LinkedIn address yet");
+        AboutLinks.Current.Email.ShouldBeNull("there is no contact email yet");
+        var hidden = new AboutViewModel(new World().Services).Screen;
+        hidden.Email.ShouldBeNull();
+        hidden.LinkedInText.ShouldBeNull();
+        hidden.SendNote.ShouldStartWith("Aún no hay un correo de contacto");
+
+        var shown = new AboutViewModel(
+            new World(
+                AboutLinks.Current with
+                {
+                    Email = Mail,
+                    LinkedIn = new Uri("https://www.linkedin.com/in/ejemplo"),
+                }
+            ).Services
+        ).Screen;
+        shown.Email.ShouldBe(Mail);
+        shown.LinkedInText.ShouldBe("LinkedIn");
+        shown.SendNote.ShouldStartWith("Se abrirá tu app de correo");
+    }
+
+    [Fact]
+    [Trait("Req", "ACE-001")]
+    [Trait("Req", "ACE-005")]
+    public void The_view_only_builds_the_buttons_that_have_an_address()
+    {
+        static List<string> Ids(World world)
+        {
+            var (view, theme, _) = Build(world);
+            try
+            {
+                return WpfThread.Invoke(() =>
+                {
+                    view.Measure(new Size(1300, 2000));
+                    view.Arrange(new Rect(0, 0, 1300, 2000));
+                    view.UpdateLayout();
+                    var ids = new List<string>();
+                    Collect(view, ids);
+                    return ids;
+                });
+            }
+            finally
+            {
+                Close(view, theme);
+            }
+        }
+
+        var without = Ids(new World());
+        without.ShouldContain("about.github", StringComparer.Ordinal);
+        without.ShouldContain("about.guide", StringComparer.Ordinal);
+        without.ShouldNotContain("about.linkedin", StringComparer.Ordinal);
+        without.ShouldNotContain("about.copyEmail", StringComparer.Ordinal);
+
+        var with = Ids(
+            new World(
+                AboutLinks.Current with
+                {
+                    Email = Mail,
+                    LinkedIn = new Uri("https://www.linkedin.com/in/ejemplo"),
+                }
+            )
+        );
+        with.ShouldContain("about.linkedin", StringComparer.Ordinal);
+        with.ShouldContain("about.copyEmail", StringComparer.Ordinal);
+    }
+
+    private static void Collect(DependencyObject root, List<string> ids)
+    {
+        var count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            var id = System.Windows.Automation.AutomationProperties.GetAutomationId(child);
+            if (!string.IsNullOrEmpty(id))
+            {
+                ids.Add(id);
+            }
+
+            Collect(child, ids);
+        }
     }
 
     [Fact]
@@ -58,6 +150,8 @@ public sealed class AboutSectionTests
 
         await viewModel.OpenRepositoryAsync();
         await viewModel.OpenIssuesAsync();
+        await viewModel.OpenGuideAsync();
+        await viewModel.OpenLinkedInAsync();
         viewModel.Share();
         viewModel.CopyEmail();
 
@@ -66,6 +160,7 @@ public sealed class AboutSectionTests
             .ShouldBe([
                 "https://github.com/Michael-Coaguila/clicalo",
                 "https://github.com/Michael-Coaguila/clicalo/issues",
+                "https://github.com/Michael-Coaguila/clicalo/blob/main/docs/guides/guia-de-usuario.md",
             ]);
         world.Copied.ShouldBe(
             ["https://github.com/Michael-Coaguila/clicalo"],
@@ -100,7 +195,7 @@ public sealed class AboutSectionTests
     [Trait("Req", "ACE-004")]
     public async Task Send_saves_the_log_and_opens_the_email_with_subject_and_body()
     {
-        var world = new World();
+        var world = new World(AboutLinks.Current with { Email = Mail });
         var viewModel = new AboutViewModel(world.Services);
         viewModel.SetKind(FeedbackKind.Bug);
         viewModel.SetMessage("El botón Copiar no responde");
@@ -110,6 +205,10 @@ public sealed class AboutSectionTests
         world.Saved.ShouldBe([Log]);
         var mail = world.Opened.ShouldHaveSingleItem();
         mail.Scheme.ShouldBe("mailto");
+        mail.OriginalString.ShouldStartWith("mailto:" + Mail + "?subject=");
+        Clicalo
+            .Domain.Execution.LaunchSafety.CheckMail(mail, Mail)
+            .ShouldBe(Clicalo.Domain.Execution.LaunchVerdict.Allowed);
         var query = Uri.UnescapeDataString(mail.Query);
         query.ShouldContain("subject=[Clícalo] Algo falla");
         query.ShouldContain(
@@ -125,7 +224,7 @@ public sealed class AboutSectionTests
     [Trait("Req", "ACE-004")]
     public async Task Without_log_and_system_the_body_is_the_message_alone()
     {
-        var world = new World();
+        var world = new World(AboutLinks.Current with { Email = Mail });
         var viewModel = new AboutViewModel(world.Services);
         viewModel.ToggleLog();
         viewModel.ToggleSystem();
@@ -142,13 +241,30 @@ public sealed class AboutSectionTests
     [Trait("Req", "ACE-004")]
     public async Task Without_an_email_app_the_message_is_copied()
     {
-        var world = new World { CanOpen = false };
+        var world = new World(AboutLinks.Current with { Email = Mail }) { CanOpen = false };
         var viewModel = new AboutViewModel(world.Services);
         viewModel.ToggleLog();
         viewModel.SetMessage("Idea");
 
         await viewModel.SendAsync();
 
+        world.Copied.ShouldHaveSingleItem().ShouldStartWith("[Clícalo] Sugerencia\n\nIdea");
+        world.Notices.ShouldHaveSingleItem().Text.ShouldBe(Clicalo.Domain.Messages.L.FbMailCopied);
+    }
+
+    [Fact]
+    [Trait("Req", "ACE-004")]
+    public async Task Without_a_contact_email_nothing_opens_and_the_message_is_copied()
+    {
+        // User decision D11 and ADR-0029: the email app only ever opens towards the address of the project.
+        var world = new World();
+        var viewModel = new AboutViewModel(world.Services);
+        viewModel.ToggleLog();
+        viewModel.SetMessage("Idea");
+
+        await viewModel.SendAsync();
+
+        world.Opened.ShouldBeEmpty();
         world.Copied.ShouldHaveSingleItem().ShouldStartWith("[Clícalo] Sugerencia\n\nIdea");
         world.Notices.ShouldHaveSingleItem().Text.ShouldBe(Clicalo.Domain.Messages.L.FbMailCopied);
     }
@@ -283,12 +399,12 @@ public sealed class AboutSectionTests
 
     private sealed class World
     {
-        public World() =>
+        public World(AboutLinks? links = null) =>
             Services = new AboutServices(
                 PanelTestData.Localization("es"),
                 "2.0.0",
                 "Windows 11 (26300)",
-                AboutLinks.Current,
+                links ?? AboutLinks.Current,
                 (uri, _) =>
                 {
                     Opened.Add(uri);

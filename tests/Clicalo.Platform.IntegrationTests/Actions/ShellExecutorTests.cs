@@ -74,6 +74,31 @@ public sealed class ShellExecutorTests
         failed.Failure.Code.ShouldBe("launch.unsafe");
     }
 
+    [Theory]
+    [Trait("Req", "ACE-004")]
+    [Trait("Req", "LOG-008")]
+    [InlineData("mailto:otra@persona.example?subject=a", "contacto@clicalo.example")]
+    [InlineData("mailto:contacto@clicalo.example?cc=otra@persona.example", "contacto@clicalo.example")]
+    [InlineData("mailto:contacto@clicalo.example?subject=a", null)]
+    [InlineData("https://clicalo.example/", "contacto@clicalo.example")]
+    public async Task The_email_app_never_opens_for_anything_but_the_project_address(
+        string address,
+        string? projectMail
+    )
+    {
+        // ADR-0029: refused before the Shell thread is asked; the accepted case would open the email app of this
+        // computer, so it is only checked by hand before a release.
+        using var shell = new ShellExecutor(selfElevated: false);
+
+        var opened = await shell.OpenMailAsync(
+            new Uri(address),
+            projectMail,
+            TestContext.Current.CancellationToken
+        );
+
+        opened.ShouldBeFalse();
+    }
+
     [Fact]
     [Trait("Req", "EJE-016")]
     public async Task An_unknown_system_command_answers_that_it_did_not_run()
