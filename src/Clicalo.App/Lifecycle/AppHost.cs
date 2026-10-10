@@ -524,6 +524,29 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             );
             panel.ShowCapture(controlCenter.IsCapturing);
         };
+        // CCM-003: the notices are one shared state, so the status bar shows what the panel shows.
+        panel.NoticePublished += (_, published) => controlCenter.OnPanelNotice(published.Notice);
+        controlCenter.OnPanelNotice(panel.CurrentNotice);
+        // PRB-004: «Probar ahora» says [switching] in the panel, fixed, while the Control Center is hidden.
+        var switching = new object();
+        controlCenter.PanelNotice = message =>
+        {
+            if (message is null)
+            {
+                panel.ClearSticky(switching);
+            }
+            else
+            {
+                panel.ShowSticky(
+                    switching,
+                    new PanelNotice(
+                        message,
+                        new Domain.Catalog.IconRef("swap_horiz"),
+                        NoticeTone.Notice
+                    )
+                );
+            }
+        };
         // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
         foreground.IsTrying = () => controlCenter.IsTrying;
         return controlCenter;
@@ -726,6 +749,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Track(tray.Dispose);
         await tray.StartAsync().ConfigureAwait(true);
         _tray = tray;
+        // BUR-005: the optional global shortcut follows the settings from here on (off by default, D10).
+        services.GetRequiredService<PanelComposer>().AttachTray(tray);
         UpdateTray(services.GetRequiredService<PanelViewModel>());
     }
 

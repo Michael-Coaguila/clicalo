@@ -10,6 +10,7 @@ using Clicalo.Application.Profiles;
 using Clicalo.Application.Store;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
@@ -21,6 +22,7 @@ using Clicalo.Platform.Windows.Launch.InstalledApps;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.About;
 using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
 using Clicalo.UI.Wpf.Workspace;
@@ -59,6 +61,8 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     private ControlCenterWindow? _window;
     private ForegroundLease? _lease;
     private ITimer? _noticeTimer;
+    private PanelNotice? _panelNotice;
+    private bool _ownNotice;
     private ProcessName? _lastApp;
     private bool _maximize;
     private bool _open;
@@ -151,6 +155,23 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     /// Control Center is hidden (PRB-004). Set before the window is first opened.
     /// </summary>
     public Action<Message?>? PanelNotice { get; set; }
+
+    /// <summary>
+    /// The notice the panel has on show, or null when its bars rest (CCM-003): the status bar shows it too, because
+    /// the notices are one shared state. A notice of the Control Center itself stays until its time ends, and the
+    /// newest notice of the panel replaces it. Called on the UI thread, also while the window does not exist yet.
+    /// </summary>
+    /// <param name="notice">The notice on show in the panel, or <see langword="null"/> at rest.</param>
+    public void OnPanelNotice(PanelNotice? notice)
+    {
+        _panelNotice = notice;
+        if (_viewModel is null || (notice is null && _ownNotice))
+        {
+            return;
+        }
+
+        ShowPanelNotice();
+    }
 
     /// <summary>Whether «Probar ahora» is running: its app switches are not the user's (PRB-006). Any thread.</summary>
     public bool IsTrying => _tryNow.IsRunning;
@@ -434,7 +455,8 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             _profiles,
             _localization,
             () => _catalogs,
-            new TwoStepConfirm(_time),
+            // ACC-006: the two-tap window lasts ×1, ×2 or ×3, as General says.
+            new TwoStepConfirm(_time, () => _store.Current.Settings.TimeMultiplier),
             _time,
             action => _ = _ui.BeginInvoke(action),
             ActiveAppProfile,
@@ -461,6 +483,12 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 
         _window = new ControlCenterWindow(_viewModel, _theme);
         _window.CloseRequested += (_, _) => _ = CloseAsync();
+        if (_panelNotice is not null)
+        {
+            // CCM-003: a notice the panel already shows is in the status bar from the first frame.
+            ShowPanelNotice();
+        }
+
         return _window;
     }
 
@@ -547,24 +575,60 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             return;
         }
 
+        _ownNotice = true;
         _viewModel.ShowNotice(notice);
         _noticeTimer?.Dispose();
         _noticeTimer = _time.CreateTimer(
             static state =>
             {
                 var composer = (ControlCenterComposer)state!;
-                _ = composer._ui.BeginInvoke(() => composer._viewModel?.ClearNotice());
+                _ = composer._ui.BeginInvoke(composer.EndOwnNotice);
             },
             this,
             // ACC-006: the notices stay ×1, ×2 or ×3 as long, as General says.
-            (notice.CanUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration)
-                * Math.Clamp(
-                    _store.Current.Settings.TimeMultiplier,
-                    (int)SettingsSchema.TimeMultiplier.Min,
-                    (int)SettingsSchema.TimeMultiplier.Max
-                ),
+            InteractionTime.Scale(
+                notice.CanUndo
+                    ? Timings.Notices.UndoNoticeDuration
+                    : Timings.Notices.NoticeDuration,
+                _store.Current.Settings.TimeMultiplier
+            ),
             Timeout.InfiniteTimeSpan
         );
+    }
+
+    /// <summary>The notice of the Control Center ended: the bar goes back to the panel's notice, or rests.</summary>
+    private void EndOwnNotice()
+    {
+        if (_ownNotice)
+        {
+            ShowPanelNotice();
+        }
+    }
+
+    /// <summary>
+    /// Paints the notice of the panel in the status bar, or [saved] when the panel rests (CCM-003). The queue of the
+    /// panel times it (AVI-002), so no timer runs here.
+    /// </summary>
+    private void ShowPanelNotice()
+    {
+        _ownNotice = false;
+        _noticeTimer?.Dispose();
+        _noticeTimer = null;
+        if (_panelNotice is { } notice)
+        {
+            _viewModel?.ShowNotice(
+                new WorkspaceNotice(
+                    notice.Text,
+                    notice.Icon.Name,
+                    notice.CanUndo,
+                    notice.Tone == NoticeTone.Warning
+                )
+            );
+        }
+        else
+        {
+            _viewModel?.ClearNotice();
+        }
     }
 
     private void Invalidate()
