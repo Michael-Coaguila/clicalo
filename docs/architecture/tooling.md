@@ -35,7 +35,6 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl i18n-check [--strict-unused]` | Ejecuta `i18n-check` de `tools/Clicalo.DevCli` (ver abajo) | M0 |
 | `cl i18n-import [--check]` | Ejecuta `i18n-import` de `tools/Clicalo.DevCli`: reconstruye `data/i18n` o, con `--check`, solo compara | M0 |
 | `cl adr-check --base <ref>` | Ejecuta `adr-check` de `tools/Clicalo.DevCli`, lo mismo que el trabajo `adr` de la CI (`cl adr-check --base main` en local) | M0 |
-| `cl pr` | Abre el PR de la rama actual | M1 |
 | `cl run` | Arranca la compilación Debug de `Clicalo.exe` con datos aislados en `%TEMP%\clicalo-dev` y **sin envío de teclas** (`--no-input`) | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
 | `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`) y ejecuta las mediciones `Category=Perf`, una cada vez (hay un solo Clícalo por sesión). Fuera de la CI, sin envío de teclas (`--no-input`) y con datos temporales, y sin Sentinel, que solo se lanza cuando se envían teclas: así no hace falta el enlazador de C++. En la CI publica además Sentinel (Native AOT), que sí necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio. Si hay otro Clícalo abierto en la sesión, la medición lo dice y no arranca | M2 |

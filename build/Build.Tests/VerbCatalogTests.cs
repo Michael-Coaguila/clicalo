@@ -3,8 +3,8 @@ namespace Clicalo.Build.Tests;
 public sealed class VerbCatalogTests
 {
     /// <summary>
-    /// The flow of blueprint §13: every dictable verb, one word each. <c>states</c> and <c>accept</c> are not built
-    /// (deviations D-29).
+    /// The flow of blueprint §13: every dictable verb, one word each. <c>states</c>, <c>accept</c> and <c>pr</c> are
+    /// not built (deviations D-29).
     /// </summary>
     private static readonly string[] BlueprintVerbs =
     [
@@ -18,7 +18,6 @@ public sealed class VerbCatalogTests
         "run",
         "trace",
         "note",
-        "pr",
         "beta",
         "perf",
         "sign-manifest",
@@ -120,9 +119,11 @@ public sealed class VerbCatalogTests
     [Theory]
     [InlineData("states")]
     [InlineData("accept")]
+    [InlineData("pr")]
     public void The_verbs_that_are_not_built_are_unknown(string verb)
     {
-        // Deviations D-29: the headless previews cover the states and the manual script covers the acceptance.
+        // Deviations D-29: the headless previews cover the states and the manual script covers the acceptance; a
+        // pull request is opened from GitHub, so «cl pr» no longer answers «available in M1».
         VerbCatalog.IsAvailable(verb).ShouldBeFalse();
         VerbCatalog.FindFuture(verb).ShouldBeNull();
     }

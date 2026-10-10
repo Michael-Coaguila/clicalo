@@ -4,6 +4,8 @@ namespace Clicalo.Build;
 /// Every <c>cl</c> verb of blueprint §13: one dictable word each. Verbs that are planned but not built yet are
 /// listed too, so <c>cl beta</c> answers "available in M5" instead of "unknown verb". <c>states</c> and
 /// <c>accept</c> are not built (deviations D-29): the headless previews and the manual acceptance script replace them.
+/// <c>pr</c> is not built either: a pull request is opened from GitHub, and a verb that answered "available in M1"
+/// five milestones later only misled.
 /// </summary>
 internal static class VerbCatalog
 {
@@ -62,8 +64,6 @@ internal static class VerbCatalog
     /// <summary>Verbs that are planned and not built yet (blueprint §14), in the order of blueprint §13.</summary>
     public static IReadOnlyList<FutureVerb> Future { get; } =
     [
-        // Spike pull requests start in M1.
-        new("pr", "M1"),
         // The first signed beta is the M5 exit criterion.
         new("beta", "M5"),
         // Manifest signing with the hardware key ships with the update channel (M5).
