@@ -9,7 +9,8 @@ namespace Clicalo.Presentation.Dock;
 /// <summary>
 /// What a gesture on a shortcut of the bar or of «Pinned» does before it reaches the engine (PES-010, PES-014, CUA-014,
 /// TAC-008): the same rules as the tiles of the panel, for the Tab view. In test mode a tap or the start of a hold is
-/// marked ✓ and an ignored touch ⊘, and nothing runs; a long press, a right click or the accessible secondary action
+/// marked ✓ and an ignored touch ⊘, and nothing runs; in normal use an ignored touch gets a slight outline (TAC-003); a
+/// long press, a right click or the accessible secondary action
 /// opens the menu of the shortcut, which shows beside the bar; while that menu is open, a tap on a shortcut only
 /// closes it. The Tab view has no edit mode.
 /// </summary>
@@ -74,13 +75,29 @@ public sealed class DockTileModes
     /// <returns>Whether a mode took it: the shortcut must not hold.</returns>
     public bool HoldStarted(DockTileViewModel tile) => Tapped(tile);
 
-    /// <summary>The recognizer ignored a touch on the shortcut (TAC-002): test mode marks it ⊘.</summary>
+    /// <summary>
+    /// Shows the discreet answer to an ignored touch on a shortcut in normal use (TAC-003); the composition times it
+    /// and leaves it out when the person turned the flash off. Unset, an ignored touch shows nothing.
+    /// </summary>
+    public Action<DockTileViewModel>? IgnoredFeedback { get; set; }
+
+    /// <summary>
+    /// The recognizer ignored a touch on the shortcut (TAC-002): test mode marks it ⊘; in normal use the shortcut
+    /// answers with a slight outline (TAC-003), as a tile of the panel does. A resting palm gets no answer.
+    /// </summary>
     /// <param name="tile">The shortcut.</param>
     /// <param name="reason">Why it was ignored.</param>
     public void Ignored(DockTileViewModel tile, IgnoreReason reason)
     {
         ArgumentNullException.ThrowIfNull(tile);
-        TestMode.OnIgnored(tile.Id, reason);
+        if (TestMode.IsOn)
+        {
+            TestMode.OnIgnored(tile.Id, reason);
+        }
+        else if (reason != IgnoreReason.Palm)
+        {
+            IgnoredFeedback?.Invoke(tile);
+        }
     }
 
     /// <summary>

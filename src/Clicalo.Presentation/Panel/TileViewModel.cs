@@ -12,7 +12,7 @@ namespace Clicalo.Presentation.Panel;
 /// as intentions; the <see cref="PanelInteractionController"/> turns them into engine events. It decides nothing.
 /// Every gesture has an equivalent without gesture (§8.6): a hold is a latched toggle when invoked (EJE-005).
 /// </summary>
-public sealed class TileViewModel : ObservableObject
+public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
 {
     private readonly PanelInteractionController _controller;
     private readonly SearchResultViewModel? _result;

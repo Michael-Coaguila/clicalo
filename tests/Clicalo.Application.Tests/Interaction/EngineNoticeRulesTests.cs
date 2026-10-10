@@ -26,7 +26,7 @@ public sealed class EngineNoticeRulesTests
         EngineNoticeRules.KindOf(L.ElevatedRefused(app: "regedit")).ShouldBe(NoticeKind.Safety);
 
         EngineNoticeRules.KindOf(L.Released).ShouldBe(NoticeKind.Normal);
-        EngineNoticeRules.KindOf(L.ConfirmClose).ShouldBe(NoticeKind.Normal);
+        EngineNoticeRules.KindOf(L.ConfirmCloseName(name: "Cerrar")).ShouldBe(NoticeKind.Normal);
         EngineNoticeRules
             .KindOf(L.MacroRanName(name: "Informe", total: 3))
             .ShouldBe(NoticeKind.Normal);

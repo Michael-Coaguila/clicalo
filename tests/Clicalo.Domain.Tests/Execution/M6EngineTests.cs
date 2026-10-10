@@ -217,6 +217,26 @@ public sealed class M6EngineTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-002")]
+    [Trait("Req", "IDI-004")]
+    public void Arming_a_shortcut_with_confirmation_names_it_in_the_warning()
+    {
+        var engine = Engine();
+        var close = Shortcuts.Of(
+            "close",
+            new TapAction(Chords.Of("alt", "f4"), []),
+            Shortcuts.Confirming
+        );
+
+        var effects = engine.Tap(close);
+
+        var notice = effects.OfType<EngineEffect.Notice>().ShouldHaveSingleItem();
+        notice.Urgency.ShouldBe(NoticeUrgency.Assertive);
+        notice.Text.ShouldBe(L.ConfirmCloseName(name: "close"));
+        engine.Sent.ShouldBeEmpty();
+    }
+
+    [Fact]
     [Trait("Req", "ACC-006")]
     [Trait("Req", "EJE-002")]
     public void The_armed_shortcut_disarms_when_its_longer_window_ends()

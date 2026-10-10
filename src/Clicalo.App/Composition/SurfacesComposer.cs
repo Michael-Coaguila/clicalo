@@ -92,6 +92,12 @@ internal sealed class SurfacesComposer : IDockIntents
         _ui = ui;
         _keyboard = keyboard;
         Dock = new DockBarViewModel(controller, localization, this, panel.Layers);
+        if (Dock.Modes is { } modes)
+        {
+            // TAC-003: an ignored touch on the bar or on a window beside it answers like one on the panel.
+            modes.IgnoredFeedback = tile => panel.ShowIgnored(tile.ShowIgnored);
+        }
+
         Bubble = new BubbleViewModel(
             localization,
             () => _ = _interaction.Dispatch(new InteractionAction.Restore()),

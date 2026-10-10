@@ -9,14 +9,17 @@ namespace Clicalo.Presentation.Dock;
 
 /// <summary>
 /// One shortcut of the bar of the Tab view or of its «Pinned» window (PES-007, PES-010): icon and name, without keys or
-/// badges, but with its accessible state and its voice number. It forwards what happens on it to the
+/// badges, but with its accessible state, its voice number, the warn outline of an armed confirmation (EJE-002) and the
+/// slight outline of an ignored touch (TAC-003). It forwards what happens on it to the
 /// <see cref="PanelInteractionController"/>, like a tile of the panel, and decides nothing.
 /// </summary>
-public sealed class DockTileViewModel : ObservableObject
+public sealed class DockTileViewModel : ObservableObject, IIgnoredTouchState
 {
     private readonly PanelInteractionController _controller;
     private TileModel _model;
     private bool _isLatched;
+    private bool _isArmed;
+    private bool _isIgnored;
     private string _accessibleState = string.Empty;
     private string _accessibleHelpText = string.Empty;
     private int? _voiceNumber;
@@ -70,6 +73,30 @@ public sealed class DockTileViewModel : ObservableObject
         get => _isLatched;
         private set => SetProperty(ref _isLatched, value);
     }
+
+    /// <summary>
+    /// Whether the first tap armed the shortcut and it waits for the confirmation tap (EJE-002): it shows a warn
+    /// outline and <see cref="AccessibleState"/> says so, as on the panel.
+    /// </summary>
+    public bool IsArmed
+    {
+        get => _isArmed;
+        private set => SetProperty(ref _isArmed, value);
+    }
+
+    /// <summary>
+    /// Whether the touch filter just ignored a touch on the shortcut (TAC-003): a slight outline shows for
+    /// <c>Timings.Touch.IgnoredTouchFeedback</c>, so the person knows nothing was sent.
+    /// </summary>
+    public bool IsIgnored
+    {
+        get => _isIgnored;
+        private set => SetProperty(ref _isIgnored, value);
+    }
+
+    /// <summary>Starts or ends the outline of an ignored touch (the composition times it, TAC-003).</summary>
+    /// <param name="ignored">Whether it shows.</param>
+    public void ShowIgnored(bool ignored) => IsIgnored = ignored;
 
     /// <summary>The voice number (ACC-009); <see langword="null"/> when they are off.</summary>
     public int? VoiceNumber
@@ -128,9 +155,10 @@ public sealed class DockTileViewModel : ObservableObject
         }
     }
 
-    internal void ApplyState(bool latched, string state, string helpText)
+    internal void ApplyState(bool latched, bool armed, string state, string helpText)
     {
         IsLatched = latched;
+        IsArmed = armed;
         AccessibleState = state;
         AccessibleHelpText = helpText;
     }

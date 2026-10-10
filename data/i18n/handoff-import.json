@@ -1559,6 +1559,11 @@
       "notes": "Aviso cuando la copia previa a borrar los datos se quiso guardar dentro de la carpeta de datos, que el desinstalador borra (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "uninstallFailed",
       "text": { "es": "No se desinstaló: esa carpeta se borra con tus datos. Guarda la copia en otro sitio.", "en": "Not uninstalled: that folder is deleted with your data. Save the copy somewhere else." }
+    },
+    "confirmCloseName": {
+      "notes": "Aviso al armar un atajo con confirmación (EJE-002: «[confirmClose] — {nombre}»), sin concatenar [confirmClose] y el nombre (IDI-004). Texto nuevo del cierre de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallCopyInside",
+      "text": { "es": "Toca otra vez para confirmar — {name}", "en": "Tap again to confirm — {name}" }
     }
   },
   "retired": {

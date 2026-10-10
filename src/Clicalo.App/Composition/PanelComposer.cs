@@ -171,7 +171,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             EditMode,
             Menu,
             TestMode,
-            new TileInteractionModes(EditMode, TestMode, Menu) { IgnoredFeedback = ShowIgnored },
+            new TileInteractionModes(EditMode, TestMode, Menu)
+            {
+                IgnoredFeedback = tile => ShowIgnored(tile.ShowIgnored),
+            },
             () => _profiles.State.View is ViewTarget.Frequents
         );
 
@@ -711,21 +714,23 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     /// <summary>
     /// The discreet answer to an ignored touch (TAC-003): a slight outline on the tile for
     /// <c>Timings.Touch.IgnoredTouchFeedback</c>, without sound. It follows the flash setting, so it can be turned off.
+    /// The shortcuts of the Tab view use it too.
     /// </summary>
-    private void ShowIgnored(TileViewModel tile)
+    /// <param name="show">Starts (<see langword="true"/>) and ends the outline of the touched tile.</param>
+    internal void ShowIgnored(Action<bool> show)
     {
         if (!_store.Current.Settings.Feedback.Flash)
         {
             return;
         }
 
-        tile.ShowIgnored(true);
+        show(true);
         ITimer? timer = null;
         timer = _time.CreateTimer(
             _ =>
                 _ = _ui.BeginInvoke(() =>
                 {
-                    tile.ShowIgnored(false);
+                    show(false);
                     if (timer is not null && _flashTimers.Remove(timer))
                     {
                         timer.Dispose();

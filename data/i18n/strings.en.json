@@ -348,6 +348,7 @@
   "uninstallNeedsCopy": "Not uninstalled: to delete your data, save the copy first.",
   "uninstallFailed": "Windows couldn't start the uninstaller. Nothing was deleted.",
   "uninstallCopyInside": "Not uninstalled: that folder is deleted with your data. Save the copy somewhere else.",
+  "confirmCloseName": "Tap again to confirm — {name}",
   "riskyReviewT": "These shortcuts open something or run several steps. Tick only the ones you recognise: the rest are not installed.",
   "rolledBack": "Will go back to the previous version on restart (simulated)",
   "bakFormat": "Versioned JSON",

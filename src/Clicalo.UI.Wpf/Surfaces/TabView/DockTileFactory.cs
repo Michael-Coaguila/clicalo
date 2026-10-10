@@ -15,7 +15,8 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// Turns a <see cref="DockTileViewModel"/> into a <see cref="ShortcutTile"/> without keys nor badges (PES-007, PES-010):
 /// icon, name, voice number and accessible state, kept in step with the view model until <see cref="Detach"/>. With
 /// the modes of the bar, UI Automation Invoke asks test mode first (PES-014), a right click or the accessible secondary
-/// action opens the menu of the shortcut (CUA-014, PES-010), and the tile shows the ✓ or ⊘ of test mode (TAC-008).
+/// action opens the menu of the shortcut (CUA-014, PES-010), and the tile shows the ✓ or ⊘ of test mode (TAC-008). As on
+/// the panel, an armed shortcut has its warn outline (EJE-002) and an ignored touch its slight one (TAC-003).
 /// </summary>
 internal static class DockTileFactory
 {
@@ -62,8 +63,8 @@ internal static class DockTileFactory
     }
 
     /// <summary>
-    /// The tile with the ✓ or ⊘ of test mode over it (PES-014, TAC-008); the tile itself without the modes. The margin of
-    /// the tile goes on what this returns.
+    /// The tile with the slight outline of an ignored touch (TAC-003) and the ✓ or ⊘ of test mode over it (PES-014,
+    /// TAC-008); the tile itself without the modes. The margin of the tile goes on what this returns.
     /// </summary>
     /// <param name="control">The tile.</param>
     /// <param name="viewModel">Its shortcut.</param>
@@ -82,6 +83,7 @@ internal static class DockTileFactory
         var badge = new TestMarkBadge(modes.TestMode, viewModel.Id);
         var cell = new Grid();
         cell.Children.Add(control);
+        cell.Children.Add(new IgnoredTouchOutline(viewModel));
         cell.Children.Add(badge);
         return (cell, badge);
     }
@@ -110,5 +112,6 @@ internal static class DockTileFactory
         control.Symbol = viewModel.Icon.Length == 0 ? null : viewModel.Icon;
         control.Category = TileFactory.CategoryOf(viewModel.Category);
         control.IsHeld = viewModel.IsLatched && viewModel.Behavior == TileBehavior.Hold;
+        control.IsArmed = viewModel.IsArmed;
     }
 }

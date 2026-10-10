@@ -248,7 +248,10 @@ public static class EngineReducer
                             ),
                     },
                 };
-                step.Notice(EngineNotices.ConfirmArmed, NoticeUrgency.Assertive);
+                step.Notice(
+                    EngineNotices.ConfirmArmed(step.NameOf(shortcut)),
+                    NoticeUrgency.Assertive
+                );
                 break;
             case ActivationDecision.Refused refused:
                 step.Notice(

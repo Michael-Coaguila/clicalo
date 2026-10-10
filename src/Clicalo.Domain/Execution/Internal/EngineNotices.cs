@@ -49,8 +49,11 @@ internal static class EngineNotices
     /// <param name="app">The app's process name.</param>
     public static Message ElevatedRefused(string app) => L.ElevatedRefused(app);
 
-    /// <summary>The first tap armed a shortcut that asks for confirmation (EJE-002).</summary>
-    public static Message ConfirmArmed => L.ConfirmClose;
+    /// <summary>
+    /// The first tap armed a shortcut that asks for confirmation (EJE-002): «Toca otra vez para confirmar — {nombre}».
+    /// </summary>
+    /// <param name="name">The name of the armed shortcut in the interface language.</param>
+    public static Message ConfirmArmed(string name) => L.ConfirmCloseName(name: name);
 
     /// <summary>A Hold was released (EJE-004).</summary>
     public static Message Released => L.Released;

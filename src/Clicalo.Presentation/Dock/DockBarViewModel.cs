@@ -291,7 +291,10 @@ public sealed class DockBarViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsPinned));
     }
 
-    /// <summary>Applies what the engine holds: the state of every shortcut (PES-007) and the dot of the handle.</summary>
+    /// <summary>
+    /// Applies what the engine holds: the state of every shortcut (PES-007), the shortcut armed for its confirmation tap
+    /// (EJE-002) and the dot of the handle.
+    /// </summary>
     /// <param name="snapshot">The engine snapshot.</param>
     public void ApplyEngine(EngineSnapshot snapshot)
     {
@@ -310,10 +313,14 @@ public sealed class DockBarViewModel : ObservableObject
         foreach (var tile in _list.Concat(_pinned).Append(ScrollUp).Append(ScrollDown))
         {
             var isHeld = held.TryGetValue(tile.Id, out var item);
+
+            // EJE-002: the armed shortcut shows its warn outline and says «Toca otra vez para confirmar», as on the panel.
+            var armed = snapshot.Armed?.Shortcut == tile.Id;
             tile.ApplyState(
                 isHeld,
-                isHeld
-                    ? localizer.Format(item!.ContactId is null ? L.Latched : L.Holding)
+                armed,
+                isHeld ? localizer.Format(item!.ContactId is null ? L.Latched : L.Holding)
+                    : armed ? localizer.Format(L.ConfirmClose)
                     : string.Empty,
                 localizer.Format(
                     tile.Behavior switch
