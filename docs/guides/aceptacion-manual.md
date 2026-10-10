@@ -88,7 +88,7 @@ Activa Narrador (Ctrl + Win + Entrar o Configuración › Accesibilidad).
 | 5.4 | Mantén un «Mantener» | Lee la franja roja con las teclas pulsadas, sin que la busques. «Soltar todo» se puede activar con Narrador | REG-06, REG-03, SEG-002 |
 | 5.5 | Provoca un aviso (elimina un atajo y deshaz) | Lee el aviso cuando aparece, una sola vez | REG-06, AVI-001 |
 | 5.6 | Abre el Centro de control y recorre las seis secciones con Tab | El orden es lógico. Se sabe en qué sección estás. Ningún control queda sin nombre | ACC-004, NFR-007 |
-| 5.7 | Repite la bienvenida con Narrador activo | Se puede terminar entera. Lee el paso («Paso 2 de 4») y las opciones marcadas | REG-06, BIE-001 |
+| 5.7 | Repite la bienvenida con Narrador activo | Se puede terminar entera. Lee en qué paso estás y qué opciones están marcadas | REG-06, BIE-001 |
 | 5.8 | Usa el panel en la vista «Pestaña» | Lee el asa, la barra y sus botones | REG-06, PES-001 |
 
 ## 6. Acceso por voz y recorrido sin teclado

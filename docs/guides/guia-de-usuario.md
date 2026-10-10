@@ -53,17 +53,20 @@ otro camino, no lo abras.
 
 ## 2. Primer arranque y bienvenida
 
-La primera vez se abre la ventana «Bienvenida a Clícalo». Son pocos pasos. En cada uno puedes tocar
+La primera vez se abre la ventana «Bienvenida a Clícalo». Son cinco pasos. En cada uno puedes tocar
 «Omitir».
 
-1. **«Tus atajos, a un toque».** Explica qué es el panel.
+1. **«Tus atajos, a un toque».** Explica qué es el panel. Aquí eliges el idioma: «Español» o «English».
 2. **«¿Cómo usas tu equipo?»** Puedes marcar varias: «Pantalla táctil», «Control por voz», «No puedo usar el
    teclado», «Tengo temblor» y «Mouse o trackball». Clícalo ajusta el tamaño del panel y la precisión del
    toque por ti.
 3. **«¿Qué apps usas más?»** «Básicos» viene marcado: copiar, pegar, deshacer, dictar y más, para cualquier
    app. Marca además las apps que uses (Word, Excel, Navegador, Correo y otras). Cada una instala sus
    atajos. Puedes desmarcar todo y empezar vacío.
-4. **«¿Cómo quieres el panel?»** Elige la vista. La puedes cambiar después.
+4. **«¿Cómo quieres el panel?»** Elige la vista: «Completa», «Compacta» o «Pestaña».
+5. **«Elige cómo se ve».** El tamaño (S, M o L) y el tema. Se aplica al tocar.
+
+Todo lo que eliges aquí se puede cambiar después.
 
 Al terminar verás «¡Todo listo!».
 
