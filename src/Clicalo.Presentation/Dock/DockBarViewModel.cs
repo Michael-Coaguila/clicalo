@@ -44,6 +44,7 @@ public sealed class DockBarViewModel : ObservableObject
     private PageWindow _window = Paging.Window(0, 1, 0);
     private int _page;
     private double _tileSpace = double.NaN;
+    private int _textScalePercent = (int)SettingsSchema.TextScalePercent.Min;
     private int _perPage = 1;
     private bool _isVertical = true;
     private string _pageLabel = string.Empty;
@@ -382,9 +383,36 @@ public sealed class DockBarViewModel : ObservableObject
         ApplyEngine(_engine);
     }
 
-    /// <summary>The length of one shortcut along the bar: 50/58/70 high (vertical) or 62/72/88 wide (PES-007).</summary>
+    /// <summary>
+    /// The length of one shortcut along the bar: 62/72/88 wide (horizontal) or 50/58/70 high (vertical, PES-007), and
+    /// then as much higher as a tile of the panel gets with the text scale, (scale − 1) × name × 1.6 (CUA-011), so its
+    /// name, which follows the scale, still has its line.
+    /// </summary>
     public double TileLength =>
-        IsVertical ? Metrics.DockVerticalTileHeightPx : Metrics.DockHorizontalTileWidthPx;
+        IsVertical
+            ? Metrics.DockVerticalTileHeightPx
+                + (
+                    (_textScalePercent - 100)
+                    / 100d
+                    * Math.Max(PanelSizes.Layout.MinTextPx, Metrics.DockTileLabelPx)
+                    * PanelSizes.Layout.TextScaleTileGrowth
+                )
+            : Metrics.DockHorizontalTileWidthPx;
+
+    /// <summary>The text scale of the person, 100 to 150 % (CUA-011): the shortcuts of a side bar grow with it.</summary>
+    /// <param name="percent">The text scale.</param>
+    public void ApplyTextScale(int percent)
+    {
+        var scale = (int)SettingsSchema.TextScalePercent.Clamp(percent);
+        if (scale == _textScalePercent)
+        {
+            return;
+        }
+
+        _textScalePercent = scale;
+        OnPropertyChanged(nameof(TileLength));
+        Repage();
+    }
 
     /// <summary>The handle was tapped.</summary>
     public void OpenBar() => _intents.OpenBar();

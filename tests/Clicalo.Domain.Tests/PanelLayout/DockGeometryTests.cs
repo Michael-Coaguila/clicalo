@@ -108,9 +108,14 @@ public sealed class DockGeometryTests
     [InlineData(SizeId.M, 88, 66)]
     [InlineData(SizeId.L, 108, 78)]
     [Trait("Req", "PES-005")]
-    public void The_bar_is_as_thick_as_its_size_says(SizeId size, int width, int height)
+    [Trait("Req", "PES-007")]
+    public void The_bar_is_as_thick_as_its_size_says(SizeId size, int width, int inside)
     {
         var metrics = PanelSizes.Get(size);
+
+        // A top or bottom bar shows 58/66/78 of height, as its shortcuts are, inside its padding of 8.
+        var height = inside + (2 * DockGeometry.BarPaddingPx);
+        metrics.DockHorizontalTileHeightPx.ShouldBe(inside);
 
         DockGeometry
             .Bar(DockSide.Right, 400, metrics, Monitor, gutter: false)
@@ -130,7 +135,7 @@ public sealed class DockGeometryTests
         vertical.ShouldBe(new PhysicalRect(1920 - 88, 12, 88, 1040 - 24));
 
         var horizontal = DockGeometry.Bar(DockSide.Bottom, 600, metrics, Monitor, gutter: false);
-        horizontal.ShouldBe(new PhysicalRect(660, 1040 - 12 - 66, 600, 66));
+        horizontal.ShouldBe(new PhysicalRect(660, 1040 - 12 - 82, 600, 82));
         DockGeometry.Bar(DockSide.Top, 600, metrics, Monitor, gutter: false).Top.ShouldBe(12);
         DockGeometry.MaxBarLength(DockSide.Top, Monitor).ShouldBe(1920 - 40);
     }

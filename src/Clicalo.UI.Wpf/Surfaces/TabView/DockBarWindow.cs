@@ -31,14 +31,19 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 public sealed class DockBarWindow : TouchSurface
 {
     private const double Gap = 6;
-    private const double Pad = 8;
+    private const double Pad = DockGeometry.BarPaddingPx;
     private const double ControlsLength = 30;
     private const double FrequentsLength = 42;
     private const double ProfileLength = 54;
     private const double PillLength = 28;
     private const double ToolLength = 40;
     private const double PinnedLength = 38;
-    private const double LockLength = 34;
+
+    /// <summary>
+    /// The lock is as long as Pinned: «Se pliega» (DIS-44) in 11 px (TEM-007) has no room beside its icon on a side
+    /// edge, so it goes under it and the button takes 4 px more than the prototype's 34.
+    /// </summary>
+    private const double LockLength = PinnedLength;
     private const double TuneLength = 34;
     private const double PagerLength = 30;
     private const double HorizontalArrowWidth = 26;
@@ -48,6 +53,7 @@ public sealed class DockBarWindow : TouchSurface
     private const double ActiveDotPx = 8;
 
     private readonly DockBarViewModel _viewModel;
+    private readonly ThemeService _theme;
     private readonly bool _vertical;
     private readonly StackPanel _root;
     private readonly StackPanel _tiles;
@@ -62,6 +68,11 @@ public sealed class DockBarWindow : TouchSurface
     private readonly TouchButton _frequents;
     private readonly TextBlock _frequentsLabel;
     private readonly TextBlock _stickyLabel;
+    private readonly SymbolIcon _pillIcon;
+    private readonly TextBlock _pillLabel;
+    private readonly TextBlock _pinnedLabel;
+    private readonly SymbolIcon _lockIcon;
+    private readonly TextBlock _lockLabel;
     private readonly TouchButton _profile;
     private readonly TextBlock _profileName;
     private readonly SymbolIcon _profileIcon;
@@ -115,13 +126,18 @@ public sealed class DockBarWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(viewModel);
         Side = side;
         _viewModel = viewModel;
+        _theme = theme;
+        viewModel.ApplyTextScale(theme.TextScalePercent);
         Modes = viewModel.Modes;
         _vertical = DockGeometry.IsVertical(side);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
         var metrics = viewModel.Metrics;
-        var thickness = (_vertical ? metrics.DockBarWidthPx : metrics.DockBarHeightPx) - (2 * Pad);
+
+        // PES-005, PES-007: a side bar is 76/88/108 wide with its padding; a top or bottom one is its padding around
+        // what it shows, which is as high as its shortcuts (58/66/78).
+        var thickness = _vertical ? metrics.DockBarWidthPx - (2 * Pad) : metrics.DockBarHeightPx;
         _inner = thickness;
         var crossTile = _vertical ? double.NaN : metrics.DockHorizontalTileHeightPx;
 
@@ -208,6 +224,9 @@ public sealed class DockBarWindow : TouchSurface
             viewModel.ToggleLock
         );
         _pill.FontSize = SmallLabelPx;
+
+        // Prototype: the icon before the text on a side edge and above it on the top and bottom ones.
+        (_pillIcon, _pillLabel) = SurfaceParts.Labeled(_pill, "autorenew", 16, stacked: !_vertical);
         Size(_pill, PillLength, crossTile, horizontalWidth: 46);
 
         // 3. The shortcuts, with their pager.
@@ -263,6 +282,7 @@ public sealed class DockBarWindow : TouchSurface
             viewModel.TogglePinned
         );
         _pinned.FontSize = SmallLabelPx;
+        _pinnedLabel = SurfaceParts.Labeled(_pinned, "push_pin", 18, stacked: !_vertical).Label;
         _sticky = SurfaceParts.Button(
             "keyboard_command_key",
             18,
@@ -278,6 +298,7 @@ public sealed class DockBarWindow : TouchSurface
             viewModel.TogglePinOpen
         );
         _lock.FontSize = SmallLabelPx;
+        (_lockIcon, _lockLabel) = SurfaceParts.Labeled(_lock, "lock_open", 18, stacked: true);
         Size(_pinned, PinnedLength, crossTile, horizontalWidth: 56);
         Size(_sticky, PinnedLength, crossTile, horizontalWidth: 56);
         Size(_lock, LockLength, crossTile, horizontalWidth: 56);
@@ -352,6 +373,7 @@ public sealed class DockBarWindow : TouchSurface
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Labels.PropertyChanged += OnViewModelChanged;
         _viewModel.PageTiles.CollectionChanged += OnPageChanged;
+        _theme.Changed += OnThemeChanged;
         LayoutUpdated += (_, _) => MeasureTileSpace();
         RebuildTiles();
         Refresh();
@@ -429,6 +451,7 @@ public sealed class DockBarWindow : TouchSurface
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _viewModel.Labels.PropertyChanged -= OnViewModelChanged;
         _viewModel.PageTiles.CollectionChanged -= OnPageChanged;
+        _theme.Changed -= OnThemeChanged;
         DockTileFactory.Detach(_viewModel.ScrollUp, _scrollUpHandler);
         DockTileFactory.Detach(_viewModel.ScrollDown, _scrollDownHandler);
         foreach (var (viewModel, _, handler) in _tileControls)
@@ -536,7 +559,27 @@ public sealed class DockBarWindow : TouchSurface
     private void OnPageChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         RebuildTiles();
 
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (
+            string.Equals(
+                e.PropertyName,
+                nameof(DockBarViewModel.TileLength),
+                StringComparison.Ordinal
+            )
+        )
+        {
+            RebuildTiles();
+        }
+        else
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>CUA-011: the shortcuts of a side bar are as high as the text scale asks.</summary>
+    private void OnThemeChanged(object? sender, EventArgs e) =>
+        _viewModel.ApplyTextScale(_theme.TextScalePercent);
 
     private void RebuildTiles()
     {
@@ -559,7 +602,7 @@ public sealed class DockBarWindow : TouchSurface
             var (control, handler) = DockTileFactory.Create(
                 tile,
                 _vertical ? double.NaN : metrics.DockHorizontalTileWidthPx,
-                _vertical ? metrics.DockVerticalTileHeightPx : metrics.DockHorizontalTileHeightPx,
+                _vertical ? _viewModel.TileLength : metrics.DockHorizontalTileHeightPx,
                 metrics.DockTileIconPx,
                 Math.Max(TypeScale.Minimum, metrics.DockTileLabelPx),
                 Modes
@@ -612,8 +655,8 @@ public sealed class DockBarWindow : TouchSurface
         _tune.IsExpanded = state?.QuickOpen == true;
         _pill.IsOn = state?.IsFixed == true;
         _lock.IsOn = state?.Dock.PinOpen == true;
-        _pill.Symbol = vm.AutoFixedIcon;
-        _pill.Content = vm.AutoFixedLabel;
+        _pillIcon.Symbol = vm.AutoFixedIcon;
+        _pillLabel.Text = vm.AutoFixedLabel;
         _pill.Appearance =
             state?.IsFixed == true ? ButtonAppearance.Danger : ButtonAppearance.Outline;
         SurfaceParts.Name(_pill, vm.AutoFixedName);
@@ -636,7 +679,7 @@ public sealed class DockBarWindow : TouchSurface
         Dimmed(_repeat, _repeat.IsEnabled);
         Dimmed(_previous, vm.CanGoPrevious);
         Dimmed(_next, vm.CanGoNext);
-        _pinned.Content = labels.PinnedShort;
+        _pinnedLabel.Text = labels.PinnedShort;
         SurfaceParts.Name(_pinned, labels.Pinned);
         _pinned.Visibility = SurfaceParts.Shown(vm.ShowsPinned);
         _pinned.Appearance =
@@ -651,8 +694,8 @@ public sealed class DockBarWindow : TouchSurface
                 ? ButtonAppearance.Outline
                 : ButtonAppearance.Neutral;
         var pinOpen = state?.Dock.PinOpen == true;
-        _lock.Symbol = pinOpen ? "lock" : "lock_open";
-        _lock.Content = vm.PinLabel;
+        _lockIcon.Symbol = pinOpen ? "lock" : "lock_open";
+        _lockLabel.Text = vm.PinLabel;
         _lock.Appearance = pinOpen ? ButtonAppearance.Accent : ButtonAppearance.Neutral;
         SurfaceParts.Name(_lock, vm.PinName);
         _lock.ToolTip = vm.PinName;

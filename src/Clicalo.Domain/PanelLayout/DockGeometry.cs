@@ -21,6 +21,9 @@ public static class DockGeometry
     /// <summary>A horizontal bar stays this far from its edge (PES-005).</summary>
     public const int HorizontalBarInsetPx = 12;
 
+    /// <summary>The padding of the open bar around what it shows (PES-005).</summary>
+    public const int BarPaddingPx = 8;
+
     /// <summary>The floating «Release all» of the open bar stays this far from a side edge or the top (PES-013).</summary>
     public const int PanicInsetPx = 110;
 
@@ -157,9 +160,10 @@ public static class DockGeometry
     }
 
     /// <summary>
-    /// The open bar (PES-005): as thick as the size says (76/88/108 wide on a vertical edge, 58/66/78 high on a
-    /// horizontal one), as long as its content up to <see cref="MaxBarLength"/>, centered along its edge; against a
-    /// vertical edge (18 px away on the right with <paramref name="gutter"/>), 12 px away from a horizontal one.
+    /// The open bar (PES-005): as thick as the size says (76/88/108 wide on a vertical edge; on a horizontal one, its
+    /// padding around what it shows, which is 58/66/78 high as its shortcuts are, PES-007), as long as its content up
+    /// to <see cref="MaxBarLength"/>, centered along its edge; against a vertical edge (18 px away on the right with
+    /// <paramref name="gutter"/>), 12 px away from a horizontal one.
     /// </summary>
     /// <param name="side">The edge.</param>
     /// <param name="length">The length its content asks for, in physical pixels.</param>
@@ -189,7 +193,7 @@ public static class DockGeometry
             return new PhysicalRect(left, top, width, along);
         }
 
-        var height = monitor.ToPhysical(size.DockBarHeightPx);
+        var height = monitor.ToPhysical(size.DockBarHeightPx + (2 * BarPaddingPx));
         var inset = monitor.ToPhysical(HorizontalBarInsetPx);
         var x = work.Left + ((work.Width - along) / 2);
         var y = side == DockSide.Top ? work.Top + inset : work.Bottom - inset - height;
