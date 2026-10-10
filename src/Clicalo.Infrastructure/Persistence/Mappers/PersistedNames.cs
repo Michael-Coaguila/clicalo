@@ -1,11 +1,12 @@
 using System.Collections.Frozen;
+using Clicalo.Domain.Document;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Settings;
 
 namespace Clicalo.Infrastructure.Persistence.Mappers;
 
 /// <summary>
-/// The persisted names of the Domain enums (schema 1.0). They are part of the format, so they never follow a rename in
+/// The persisted names of the Domain enums (schema 1.1). They are part of the format, so they never follow a rename in
 /// C#; the mouse ids are those of <c>data/catalogs/mouse.json</c> and the setting names those of docs/02.
 /// </summary>
 internal static class PersistedNames
@@ -34,6 +35,16 @@ internal static class PersistedNames
             (Domain.Settings.DockSide.Left, "left"),
             (Domain.Settings.DockSide.Top, "top"),
             (Domain.Settings.DockSide.Bottom, "bottom")
+        );
+
+    /// <summary>The answers of the welcome step 1 (BIE-005, schema 1.1, ADR-0028).</summary>
+    public static NameMap<WelcomeAnswer> WelcomeAnswer { get; } =
+        new(
+            (Domain.Document.WelcomeAnswer.Touch, "touch"),
+            (Domain.Document.WelcomeAnswer.Voice, "voice"),
+            (Domain.Document.WelcomeAnswer.NoKeyboard, "noKeyboard"),
+            (Domain.Document.WelcomeAnswer.Tremor, "tremor"),
+            (Domain.Document.WelcomeAnswer.Mouse, "mouse")
         );
 
     public static NameMap<UpdateChannel> Channel { get; } =

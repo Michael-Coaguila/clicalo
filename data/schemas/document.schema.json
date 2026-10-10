@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/document.schema.json",
-  "title": "Clícalo document 1.0",
-  "description": "clicalo.json and every backup (blueprint §6.5, ADR-0007, ADR-0018): the envelope and the payload of schema 1.0. A later minor only adds optional members, which an older version keeps when rewriting; a greater major is never written by an older version. Also defines the shared profile of DAT-007 ($defs/profileShare).",
+  "title": "Clícalo document 1.1",
+  "description": "clicalo.json and every backup (blueprint §6.5, ADR-0007, ADR-0018): the envelope and the payload of schema 1.1 (1.0 plus the optional members of ADR-0028). A later minor only adds optional members, which an older version keeps when rewriting; a greater major is never written by an older version. Also defines the shared profile of DAT-007 ($defs/profileShare).",
   "type": "object",
   "required": ["format", "schema", "writtenBy", "seq", "writtenAtUtc", "payloadSha256", "payload"],
   "properties": {
@@ -84,7 +84,7 @@
           "type": "array",
           "items": { "type": "string" }
         },
-        "onboarding": { "type": "object", "properties": { "completed": { "type": "boolean" } } },
+        "onboarding": { "$ref": "#/$defs/onboarding" },
         "usage": {
           "description": "Only in backups: the usage of that moment (§6.8).",
           "$ref": "usage.schema.json#/$defs/usage"
@@ -201,7 +201,73 @@
             "channel": { "enum": ["stable", "beta"] }
           }
         },
-        "noKeyboardUser": { "type": "boolean" }
+        "noKeyboardUser": { "type": "boolean" },
+        "handlePosByMonitor": {
+          "description": "Since 1.1 (ADR-0028, PES-016): the Tab handle position per monitor and side, in percent; a monitor without an entry uses dock.handlePosBySide. Repeats after the first are ignored.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["monitor", "side", "pos"],
+            "properties": {
+              "monitor": { "description": "Stable monitor identifier given by the platform (the DisplayConfig monitor device path).", "type": "string", "minLength": 1 },
+              "side": { "enum": ["right", "left", "top", "bottom"] },
+              "pos": { "type": "integer" }
+            }
+          }
+        },
+        "controlCenter": {
+          "description": "Since 1.1 (ADR-0028, CCM-001): the Control Center's restored rectangle in DIP, its monitor and whether it was maximized. Absent until it is first moved or resized.",
+          "type": "object",
+          "required": ["monitor", "x", "y", "width", "height"],
+          "properties": {
+            "monitor": { "type": "string", "minLength": 1 },
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 },
+            "maximized": { "type": "boolean" }
+          }
+        },
+        "globalHotkey": {
+          "description": "Since 1.1 (ADR-0028, BUR-005, user decision D10): the global shortcut that shows or hides the panel, off by default.",
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "combo": { "description": "An id of data/catalogs/global-hotkeys.json; an unknown one takes the first of the list.", "type": "string" }
+          }
+        },
+        "timeMultiplier": {
+          "description": "Since 1.1 (ADR-0028, ACC-006): multiplier of the two-tap confirmation window and of the duration of notices, 1, 2 or 3.",
+          "type": "integer"
+        }
+      }
+    },
+    "onboarding": {
+      "description": "The welcome state. Since 1.1 (ADR-0028, BIE-010) also what the last welcome answered; the answers are read only with a complete baseline.",
+      "type": "object",
+      "properties": {
+        "completed": { "type": "boolean" },
+        "uses": {
+          "description": "Marked options of step 1 (BIE-005).",
+          "type": "array",
+          "items": { "enum": ["touch", "voice", "noKeyboard", "tremor", "mouse"] }
+        },
+        "kit": {
+          "description": "Marked option ids of step 2 (data/content/starter.json).",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "baseline": {
+          "description": "The settings step 1 changes, as the welcome left them: a repeated welcome only changes those still equal to these values.",
+          "type": "object",
+          "required": ["touchPreset", "size", "voiceNumbers", "noKeyboardUser"],
+          "properties": {
+            "touchPreset": { "type": "string", "minLength": 1 },
+            "size": { "enum": ["S", "M", "L"] },
+            "voiceNumbers": { "type": "boolean" },
+            "noKeyboardUser": { "type": "boolean" }
+          }
+        }
       }
     },
     "profile": {

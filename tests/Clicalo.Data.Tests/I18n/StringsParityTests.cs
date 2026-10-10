@@ -119,6 +119,8 @@ public sealed class StringsParityTests
                 "fbSubject",
                 "generalFixed",
                 "gitHub",
+                "globalHotkeyD",
+                "globalHotkeyT",
                 "guardianUnstable",
                 // Texts of the M4 Control Center: «General y panel» and «Precisión táctil» (catalog §6.1, R-27).
                 "handleDown",
@@ -233,6 +235,8 @@ public sealed class StringsParityTests
                 "textTyped",
                 "textTypedPrivate",
                 "textUnavailable",
+                "timeMultiplierD",
+                "timeMultiplierT",
                 "tmLeft",
                 "trayHidden",
                 "uNokbD",

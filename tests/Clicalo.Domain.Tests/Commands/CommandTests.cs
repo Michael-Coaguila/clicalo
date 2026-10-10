@@ -493,6 +493,29 @@ public sealed class CommandTests
             .Value.Next.ShouldBeSameAs(change.Next);
     }
 
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    public void Finishing_the_welcome_records_its_answers_and_keeps_them_otherwise()
+    {
+        var answers = WelcomeAnswers.Create(
+            [WelcomeAnswer.Voice],
+            ["basics"],
+            WelcomeBaseline.Of(Document.Settings)
+        );
+
+        var first = Apply(new FinishOnboarding { Answers = answers });
+
+        first.Next.Onboarding.ShouldBe(new OnboardingState(true) { Answers = answers });
+        first.Undo.ShouldBe(new UndoIntent.Transparent());
+        new FinishOnboarding()
+            .Apply(first.Next, Contexts.Fresh())
+            .Value.Next.ShouldBeSameAs(first.Next);
+        var again = answers with { Kit = ["basics", "word"] };
+        new FinishOnboarding { Answers = again }
+            .Apply(first.Next, Contexts.Fresh())
+            .Value.Next.Onboarding.Answers.ShouldBe(again);
+    }
+
     private static DocumentChange Apply(IDocumentCommand command)
     {
         var result = command.Apply(Document, Contexts.Fresh());

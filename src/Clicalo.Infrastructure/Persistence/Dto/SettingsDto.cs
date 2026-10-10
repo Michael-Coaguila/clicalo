@@ -67,6 +67,18 @@ internal sealed record SettingsDto
 
     public bool? NoKeyboardUser { get; init; }
 
+    /// <summary>Handle position per monitor and side (PES-016); since 1.1, at this level so a 1.0 version keeps it.</summary>
+    public List<MonitorHandlePositionDto>? HandlePosByMonitor { get; init; }
+
+    /// <summary>Size, position and monitor of the Control Center (CCM-001); since 1.1.</summary>
+    public ControlCenterDto? ControlCenter { get; init; }
+
+    /// <summary>The global shortcut (BUR-005); since 1.1.</summary>
+    public GlobalHotkeyDto? GlobalHotkey { get; init; }
+
+    /// <summary>Multiplier of the confirmation window and of notices (ACC-006): 1, 2 or 3; since 1.1.</summary>
+    public int? TimeMultiplier { get; init; }
+
     /// <summary>Settings of a later minor, kept when rewriting (§6.5).</summary>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

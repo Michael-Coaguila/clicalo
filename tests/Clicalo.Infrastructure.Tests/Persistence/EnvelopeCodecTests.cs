@@ -34,7 +34,7 @@ public sealed class EnvelopeCodecTests
             ]);
         root["format"]!.GetValue<string>().ShouldBe(DocumentFormats.Document);
         root["schema"]!["major"]!.GetValue<int>().ShouldBe(1);
-        root["schema"]!["minor"]!.GetValue<int>().ShouldBe(0);
+        root["schema"]!["minor"]!.GetValue<int>().ShouldBe(1);
         root["seq"]!.GetValue<long>().ShouldBe(1842);
         root["writtenAtUtc"]!.GetValue<string>().ShouldBe("2026-09-25T10:31:02.000Z");
         root["payloadSha256"]!.GetValue<string>().ShouldMatch("^[0-9a-f]{64}$");

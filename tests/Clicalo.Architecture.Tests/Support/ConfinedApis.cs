@@ -81,7 +81,9 @@ internal static class ConfinedApis
                 Uses(),
                 Allowed(
                     "Clicalo.Infrastructure.Persistence.AtomicFile",
-                    "Clicalo.Infrastructure.Logging.FixedNameRollingFileSink"
+                    "Clicalo.Infrastructure.Logging.FixedNameRollingFileSink",
+                    // Only reads the log tail with FileAccess.Read (banned-api-exceptions.json, ACE-003, ACE-004).
+                    "Clicalo.App.Composition.AboutServicesFactory"
                 ),
                 "files are written through IAtomicFileWriter (ADR-0007)"
             ),
