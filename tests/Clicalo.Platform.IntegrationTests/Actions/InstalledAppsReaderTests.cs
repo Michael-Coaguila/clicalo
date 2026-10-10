@@ -24,6 +24,10 @@ public sealed class InstalledAppsReaderTests
             .ShouldBe(programs.Select(p => p.Name).Order(StringComparer.CurrentCultureIgnoreCase));
         // Every target is a Store-style target the launcher opens without a command interpreter.
         programs.ShouldAllBe(p => Targets.ParseApp(p.Target) is AppTarget.StoreApp);
-        programs.Select(p => p.Target).Distinct(StringComparer.Ordinal).Count().ShouldBe(programs.Length);
+        programs
+            .Select(p => p.Target)
+            .Distinct(StringComparer.Ordinal)
+            .Count()
+            .ShouldBe(programs.Length);
     }
 }

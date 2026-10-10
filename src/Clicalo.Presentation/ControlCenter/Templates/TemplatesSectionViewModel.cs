@@ -393,6 +393,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         _t.Preview.ShowTemplate(template);
         _selectedTemplate = id;
         _editingRow = null;
+        _keysRow = null;
         Invalidate();
     }
 
@@ -437,6 +438,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             _t.Preview.ShowShared(shared);
             _selectedTemplate = null;
             _editingRow = null;
+            _keysRow = null;
             Notify(L.ImportedPv, "download", false);
         }
         else
@@ -581,6 +583,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             _t.Preview.ShowAi(template);
             _selectedTemplate = null;
             _editingRow = null;
+            _keysRow = null;
         }
 
         _hasKey = _t.Ai.HasKey;
