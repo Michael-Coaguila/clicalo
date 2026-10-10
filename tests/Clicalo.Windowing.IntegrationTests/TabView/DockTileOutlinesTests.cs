@@ -201,6 +201,65 @@ public sealed class DockTileOutlinesTests
         });
     }
 
+    [Fact]
+    [Trait("Req", "TAC-004")]
+    [Trait("Req", "EJE-004")]
+    public void While_Pinned_scrolls_its_shortcuts_wait_to_see_that_the_finger_is_not_scrolling()
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var dock = Dock(DockFlyout.Pinned, pinEverything: true);
+            var panel = new PanelViewModel(
+                new PanelInteractionController(_world.Engine, () => 1, _world.Time),
+                _world.Localization,
+                PanelDesktopFixture.Touch,
+                _ => null
+            );
+            var window = new DockFlyoutWindow(
+                DockFlyout.Pinned,
+                dock,
+                panel,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                // Everything fits: nothing scrolls, and a Mantener holds as anywhere else.
+                Layout(window, height: 2_000);
+                window.Scroller.ScrollableHeight.ShouldBe(0);
+                var tiles = window.CurrentTargets().Where(static t => t.Tile is not null).ToList();
+                tiles.Count.ShouldBe(4);
+                tiles.ShouldContain(static t => t.Kind == TouchTargetKind.Hold);
+                tiles.ShouldAllBe(static t => !t.InScrollZone);
+
+                // Taller than it may be: the window scrolls under the finger.
+                Layout(window, height: 60);
+                window.Scroller.ScrollableHeight.ShouldBeGreaterThan(0);
+                window
+                    .CurrentTargets()
+                    .Where(static t => t.Tile is not null)
+                    .ShouldAllBe(static t => t.InScrollZone);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static void Layout(DockFlyoutWindow window, double height)
+    {
+        window.Scroller.Measure(new Size(260, height));
+        window.Scroller.Arrange(new Rect(0, 0, 260, height));
+        window.Scroller.UpdateLayout();
+    }
+
     private static IgnoredTouchOutline OutlineOf(FrameworkElement tile) =>
         tile
             .Parent.ShouldBeOfType<Grid>()
@@ -210,7 +269,7 @@ public sealed class DockTileOutlinesTests
     private static ThemeService Theme() =>
         new(new FakeSystemTheme(), ThemeChoice.Dark, 100, reduceMotion: true);
 
-    private DockBarViewModel Dock(DockFlyout flyout = DockFlyout.None)
+    private DockBarViewModel Dock(DockFlyout flyout = DockFlyout.None, bool pinEverything = false)
     {
         var dock = new DockBarViewModel(
             new PanelInteractionController(_world.Engine, () => 1, _world.Time),
@@ -226,7 +285,7 @@ public sealed class DockTileOutlinesTests
             )
         );
         var model = PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es);
-        dock.ApplyTiles(model.Tiles, [model.Tiles[0]]);
+        dock.ApplyTiles(model.Tiles, pinEverything ? model.Tiles : [model.Tiles[0]]);
         dock.Apply(
             new DockBarState(
                 new DockSettings

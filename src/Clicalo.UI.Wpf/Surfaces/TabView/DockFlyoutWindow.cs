@@ -165,11 +165,21 @@ public sealed class DockFlyoutWindow : TouchSurface
         // TAC-004, REG-02: what is scrolled out of sight is no target; its touch margin would take touches from
         // what shows.
         var view = PhysicalBounds(_scroller, inflate: false);
+
+        // TAC-004, EJE-004: while «Pinned» scrolls, a Mantener waits to see that the finger is not scrolling.
+        var scrolls = _scroller.ScrollableHeight > 0;
         foreach (var (viewModel, control, _) in _tiles)
         {
             if (InView(view, control))
             {
-                yield return SurfaceTarget.For(control, viewModel, longPress: Modes is not null);
+                yield return SurfaceTarget.For(
+                    control,
+                    viewModel,
+                    longPress: Modes is not null
+                ) with
+                {
+                    InScrollZone = scrolls,
+                };
             }
         }
 

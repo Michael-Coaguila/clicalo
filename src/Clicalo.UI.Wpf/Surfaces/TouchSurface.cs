@@ -259,12 +259,17 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                 continue;
             }
 
-            targets.Add(new GestureTarget(new TouchTargetId(id), bounds, target.Kind));
+            targets.Add(
+                new GestureTarget(new TouchTargetId(id), bounds, target.Kind, target.InScrollZone)
+            );
             _targets[id] = target;
         }
 
         gestures.Recognizer.SetTargets(targets.ToImmutable());
     }
+
+    /// <summary>The targets the surface offers now, in order, as <see cref="RefreshTargets"/> reads them.</summary>
+    public IReadOnlyList<SurfaceTarget> CurrentTargets() => [.. CollectTargets()];
 
     /// <summary>Every target on screen, in order.</summary>
     protected abstract IEnumerable<SurfaceTarget> CollectTargets();

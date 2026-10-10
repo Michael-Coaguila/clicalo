@@ -19,6 +19,12 @@ public sealed record SurfaceTarget(
     DockTileViewModel? Tile = null
 )
 {
+    /// <summary>
+    /// Whether the target lies in a zone of the surface that scrolls now (TAC-004): a Mantener there waits until the
+    /// finger shows that it is not scrolling before it holds anything (<see cref="TouchTarget.InScrollZone"/>).
+    /// </summary>
+    public bool InScrollZone { get; init; }
+
     /// <summary>A button.</summary>
     /// <param name="element">The button.</param>
     /// <param name="tap">What a tap does.</param>
