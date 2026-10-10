@@ -94,6 +94,26 @@ public sealed class TrayPauseTests : IDisposable
     }
 
     [Fact]
+    [Trait("Req", "BUR-004")]
+    [Trait("Req", "SIS-003")]
+    public void A_panel_that_comes_back_while_paused_resumes()
+    {
+        // Paused with the panel on screen: the panel hides, and hiding it does not resume.
+        _tray.Run(TrayCommand.Pause);
+        _ = _tray.UpdateStateAsync(panelVisible: true, anythingHeld: false);
+        _ = _tray.UpdateStateAsync(panelVisible: false, anythingHeld: false);
+        _tray.IsPaused.ShouldBeTrue();
+
+        // A second start of Clícalo shows the panel without the tray: it must not be a panel that sends nothing.
+        _ = _tray.UpdateStateAsync(panelVisible: true, anythingHeld: false);
+
+        _tray.IsPaused.ShouldBeFalse();
+        _engine.Posted[^1].ShouldBeOfType<EngineEvent.SetPaused>().On.ShouldBeFalse();
+        _pauseChanges.ShouldBe(2);
+        _showHide.ShouldBe(0);
+    }
+
+    [Fact]
     [Trait("Req", "BUR-005")]
     [Trait("Req", "REG-01")]
     public void Showing_or_hiding_the_panel_never_asks_for_the_foreground_nor_touches_the_engine()

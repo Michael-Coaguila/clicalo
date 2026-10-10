@@ -125,11 +125,24 @@ public sealed class TrayController : IDisposable
     /// </summary>
     /// <param name="panelVisible">Whether the panel is on screen.</param>
     /// <param name="anythingHeld">Whether the engine holds anything.</param>
+    /// <remarks>
+    /// A panel that comes back while Clícalo is paused resumes it (BUR-004): a second start of Clícalo shows the panel
+    /// without going through the tray (SIS-003), and a panel on screen that sends nothing and says nothing would be a
+    /// dead end.
+    /// </remarks>
     public Task UpdateStateAsync(bool panelVisible, bool anythingHeld)
     {
         var before = TrayMenuModel.Tooltip(State);
+        var cameBack = panelVisible && !_panelVisible;
         _panelVisible = panelVisible;
         _anythingHeld = anythingHeld;
+        if (cameBack && _paused)
+        {
+            _paused = false;
+            _ = _engine.Post(new EngineEvent.SetPaused(false));
+            PauseChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         return RefreshTooltipAsync(before);
     }
 
