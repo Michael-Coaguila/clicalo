@@ -14,6 +14,9 @@ namespace Clicalo.UI.Wpf.Workspace.Internal;
 /// </summary>
 internal static class Ui
 {
+    /// <summary>Below this width a switch row has no room for its text beside the icon and the switch.</summary>
+    private const double SwitchRowStackWidth = 220;
+
     /// <summary>A text on the type scale.</summary>
     public static TextBlock Text(
         string text,
@@ -22,16 +25,34 @@ internal static class Ui
         ColorToken ink = ColorToken.Text,
         bool mono = false,
         bool wrap = false
+    ) => Fill(new TextBlock(), text, px, bold, ink, mono, wrap);
+
+    /// <summary>
+    /// A separator drawn as text (the «+» between two keys), on the type scale: UI Automation does not see it
+    /// (<see cref="DecorativeText"/>, UIA008).
+    /// </summary>
+    public static TextBlock Separator(
+        string text,
+        double px,
+        bool bold = false,
+        ColorToken ink = ColorToken.Muted
+    ) => Fill(new DecorativeText(), text, px, bold, ink, mono: false, wrap: false);
+
+    private static TextBlock Fill(
+        TextBlock block,
+        string text,
+        double px,
+        bool bold,
+        ColorToken ink,
+        bool mono,
+        bool wrap
     )
     {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontWeight = bold ? FontWeights.Bold : FontWeights.Normal,
-            TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
-            TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        block.Text = text;
+        block.FontWeight = bold ? FontWeights.Bold : FontWeights.Normal;
+        block.TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
+        block.TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis;
+        block.VerticalAlignment = VerticalAlignment.Center;
         block.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(px));
         Ink(block, TextBlock.ForegroundProperty, ink);
         if (mono)
@@ -244,7 +265,11 @@ internal static class Ui
         return row;
     }
 
-    /// <summary>A button with <paramref name="content"/>, named <paramref name="name"/> for UI Automation.</summary>
+    /// <summary>
+    /// A button with <paramref name="content"/>, named <paramref name="name"/> for UI Automation. With
+    /// <paramref name="expanded"/> it is the header of a collapsible: ExpandCollapse with that state instead of Invoke
+    /// (ACC-001).
+    /// </summary>
     public static CcButton Button(
         object content,
         string name,
@@ -253,11 +278,17 @@ internal static class Ui
         ColorToken ink = ColorToken.Text,
         ColorToken? stroke = null,
         double height = 44,
-        double radius = 10
+        double radius = 10,
+        bool? expanded = null
     )
     {
         ArgumentNullException.ThrowIfNull(click);
-        var button = new CcButton { Content = content, Height = height };
+        var button = new CcButton
+        {
+            Content = content,
+            Height = height,
+            IsExpanded = expanded,
+        };
         CcChrome.Paint(button, fill, ink, stroke);
         button.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
         AutomationProperties.SetName(button, name);
@@ -266,8 +297,9 @@ internal static class Ui
     }
 
     /// <summary>
-    /// A button that shows a choice: accentWash with a 2 px accent outline when <paramref name="on"/>, card with a
-    /// border otherwise, and the Toggle state for UI Automation.
+    /// A button that shows a state: accentWash with a 2 px accent outline when <paramref name="on"/>, card with a
+    /// border otherwise. For UI Automation it is what <paramref name="role"/> says (ACC-001): a switch with Toggle (the
+    /// default), a choice of a group with SelectionItem, or the header of a collapsible with ExpandCollapse.
     /// </summary>
     public static CcToggle Choice(
         object content,
@@ -276,7 +308,8 @@ internal static class Ui
         Action click,
         double height = 44,
         double radius = 10,
-        ColorToken? offFill = ColorToken.Card
+        ColorToken? offFill = ColorToken.Card,
+        CcToggleRole role = CcToggleRole.Toggle
     )
     {
         ArgumentNullException.ThrowIfNull(click);
@@ -284,8 +317,26 @@ internal static class Ui
         {
             Content = content,
             Height = height,
-            IsChecked = on,
+            Role = role,
         };
+        PaintChoice(toggle, on, offFill);
+        toggle.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
+        AutomationProperties.SetName(toggle, name);
+        toggle.Click += (_, _) => click();
+        return toggle;
+    }
+
+    /// <summary>
+    /// Marks a <see cref="Choice"/> as chosen or not, in place: a long list changes its mark without building its
+    /// buttons again (EDI-014).
+    /// </summary>
+    /// <param name="toggle">The choice.</param>
+    /// <param name="on">Whether it is the chosen one.</param>
+    /// <param name="offFill">Its fill while it is not chosen.</param>
+    public static void PaintChoice(CcToggle toggle, bool on, ColorToken? offFill = ColorToken.Card)
+    {
+        ArgumentNullException.ThrowIfNull(toggle);
+        toggle.IsChecked = on;
         if (on)
         {
             CcChrome.Paint(toggle, ColorToken.AccentWash, ColorToken.Text, ColorToken.Accent);
@@ -294,12 +345,8 @@ internal static class Ui
         else
         {
             CcChrome.Paint(toggle, offFill, ColorToken.Text, ColorToken.Border);
+            toggle.BorderThickness = new Thickness(1);
         }
-
-        toggle.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
-        AutomationProperties.SetName(toggle, name);
-        toggle.Click += (_, _) => click();
-        return toggle;
     }
 
     /// <summary>
@@ -326,21 +373,23 @@ internal static class Ui
             IsChecked = on,
             IsHitTestVisible = false,
             Focusable = false,
+            IsDrawingOnly = true,
             VerticalAlignment = VerticalAlignment.Center,
         };
         var layout = new DockPanel { LastChildFill = true };
+        SymbolIcon? symbol = null;
         if (icon is not null)
         {
-            var symbol = Icon(icon, 22, ColorToken.Accent);
+            symbol = Icon(icon, 22, ColorToken.Accent);
             symbol.Margin = new Thickness(0, 0, 12, 0);
             DockPanel.SetDock(symbol, Dock.Left);
             layout.Children.Add(symbol);
         }
 
-        knob.Margin = new Thickness(12, 0, 0, 0);
-        DockPanel.SetDock(knob, Dock.Right);
         layout.Children.Add(knob);
         layout.Children.Add(text);
+        PlaceSwitch(knob, symbol, double.PositiveInfinity);
+        layout.SizeChanged += (_, e) => PlaceSwitch(knob, symbol, e.NewSize.Width);
         var row = new CcToggle
         {
             Content = layout,
@@ -355,6 +404,20 @@ internal static class Ui
         AutomationProperties.SetHelpText(row, description);
         row.Click += (_, _) => click();
         return row;
+    }
+
+    /// <summary>
+    /// The switch goes at the end of its row; where the row is too narrow to leave room for the text beside it (a
+    /// narrow column of the smallest window, CCM-005), it goes under the text and the icon is left out, so the text
+    /// keeps the width of the row and nothing is cut.
+    /// </summary>
+    private static void PlaceSwitch(ToggleSwitch knob, SymbolIcon? symbol, double width)
+    {
+        var below = width < SwitchRowStackWidth;
+        DockPanel.SetDock(knob, below ? Dock.Bottom : Dock.Right);
+        knob.HorizontalAlignment = below ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+        knob.Margin = below ? new Thickness(0, 6, 0, 0) : new Thickness(12, 0, 0, 0);
+        symbol?.Visibility = below ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>A small caption above a group of controls (12 px, bold, muted).</summary>

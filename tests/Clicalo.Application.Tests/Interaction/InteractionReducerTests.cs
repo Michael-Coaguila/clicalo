@@ -1,6 +1,9 @@
 using Clicalo.Application.Interaction;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
 using Microsoft.Extensions.Time.Testing;
 
@@ -219,6 +222,103 @@ public sealed class InteractionReducerTests
 
         failure.ShouldBeOfType<InvalidOperationException>();
         store.Current.Minimized.ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "BUS-006")]
+    public void A_search_from_the_bar_is_a_temporary_Full_view_that_leaves_the_bar_as_it_was()
+    {
+        var open = Reduce(
+            Reduce(InteractionState.Initial, new InteractionAction.OpenDock()),
+            new InteractionAction.ToggleFlyout(DockFlyout.Pinned)
+        );
+
+        var peek = Reduce(open, new InteractionAction.PeekSearch());
+        peek.SearchPeek.ShouldBeTrue();
+        peek.Flyout.ShouldBe(DockFlyout.None);
+        peek.DockOpen.ShouldBeTrue();
+        PanelForms
+            .Of(true, PanelDensity.Dock, peek.Minimized, peek.DockOpen, peek.SearchPeek)
+            .ShouldBe(PanelForm.Full);
+
+        // The search closed or a result ran: the Tab view is back with its bar open.
+        var back = Reduce(peek, new InteractionAction.EndSearchPeek());
+        back.SearchPeek.ShouldBeFalse();
+        PanelForms
+            .Of(true, PanelDensity.Dock, back.Minimized, back.DockOpen, back.SearchPeek)
+            .ShouldBe(PanelForm.DockOpen);
+        Reduce(back, new InteractionAction.EndSearchPeek()).ShouldBeSameAs(back);
+    }
+
+    [Fact]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "BUS-006")]
+    public void Minimize_or_another_view_end_the_search_from_the_bar()
+    {
+        var peek = Reduce(
+            Reduce(InteractionState.Initial, new InteractionAction.OpenDock()),
+            new InteractionAction.PeekSearch()
+        );
+
+        // «−» on the temporary Full view goes back to the Tab view, which has no bubble.
+        var minimized = Reduce(peek, new InteractionAction.Minimize());
+        minimized.SearchPeek.ShouldBeFalse();
+        minimized.Minimized.ShouldBeFalse();
+
+        var changed = Reduce(peek, new InteractionAction.ViewChanged());
+        changed.SearchPeek.ShouldBeFalse();
+        changed.DockOpen.ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "AVI-002")]
+    public void The_notices_change_only_through_the_reducer_with_its_clock()
+    {
+        var owner = new object();
+        var sent = new Notice(L.Released, new IconRef("info"));
+        var hint = new Notice(L.EditHint, new IconRef("edit"));
+        var undo = new Notice(L.Deleted, new IconRef("delete"), Kind: NoticeKind.Undo);
+        var duration = Timings.Notices.NoticeDuration;
+
+        var posted = Reduce(
+            InteractionState.Initial,
+            new InteractionAction.PostNotice(sent, duration)
+        );
+        posted.Notices.Shown.ShouldBe(sent);
+        posted.Notices.EndsAt.ShouldBe(Now + duration);
+        posted.Version.ShouldBe(1);
+
+        // A tick before its end changes nothing; at its end the bar rests.
+        Reduce(posted, new InteractionAction.NoticeTick()).ShouldBeSameAs(posted);
+        InteractionReducer
+            .Reduce(posted, new InteractionAction.NoticeTick(), Now + duration)
+            .Notices.Shown.ShouldBeNull();
+
+        var sticky = Reduce(posted, new InteractionAction.ShowStickyNotice(owner, hint));
+        sticky.Notices.Shown.ShouldBe(hint);
+        Reduce(sticky, new InteractionAction.ShowStickyNotice(owner, hint)).ShouldBeSameAs(sticky);
+        Reduce(sticky, new InteractionAction.ClearStickyNotice(owner)).Notices.Shown.ShouldBeNull();
+
+        var withUndo = Reduce(sticky, new InteractionAction.PostNotice(undo, duration));
+        withUndo.Notices.Shown.ShouldBe(undo);
+        Reduce(withUndo, new InteractionAction.DismissNotices(NoticeKind.Undo))
+            .Notices.Shown.ShouldBe(hint);
+    }
+
+    [Fact]
+    [Trait("Req", "AVI-002")]
+    public void A_notice_never_wakes_or_dims_the_surfaces()
+    {
+        var notice = new Notice(L.Released, new IconRef("info"));
+        var posted = Reduce(
+            InteractionState.Initial,
+            new InteractionAction.PostNotice(notice, Timings.Notices.NoticeDuration)
+        );
+
+        posted.Exceptions.ShouldBe(DimExceptions.None);
+        posted.LastLeave.ShouldBeNull();
+        posted.PointerInside.ShouldBeFalse();
     }
 
     private static InteractionState Reduce(InteractionState state, InteractionAction action) =>

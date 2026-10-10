@@ -3,13 +3,16 @@ using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Messages;
+using Clicalo.Platform.Windows.Hotkeys;
 
 namespace Clicalo.Platform.Windows.Tray;
 
 /// <summary>
-/// The tray of M2 (blueprint §8.1, BUR-003): the icon and its menu with «Mostrar u ocultar», «Soltar todo» and
-/// «Salir». A click on the icon asks to show or hide the panel. The menu opens inside a <c>TrayMenu</c> lease on
+/// The tray (blueprint §8.1, BUR-003, BUR-004) and the optional global shortcut (BUR-005): the icon and its menu with
+/// «Mostrar u ocultar», «Centro de control», «Soltar todo», «Pausar» and «Salir». A click on the icon, or the global
+/// shortcut, asks to show or hide the panel. The menu opens inside a <c>TrayMenu</c> lease on
 /// <see cref="TrayMenuHost"/> (origin <see cref="LeaseOrigin.Tray"/>: the click gave Clícalo the foreground right),
 /// and the foreground goes back to the app that had it BEFORE the chosen command runs, so the key releases of «Soltar
 /// todo» reach that app (SEG-003) and nothing stays in Clícalo (REG-01).
@@ -20,6 +23,16 @@ namespace Clicalo.Platform.Windows.Tray;
 /// (ADR-0023); showing, hiding and exiting belong to the Surfaces
 /// role and the lifetime of the app, so they are raised as events, on the thread that ran the menu (never the UI
 /// thread): the composition marshals them. Texts come from <c>data/i18n</c> in the current language.
+/// <para>
+/// «Pausar» (BUR-004) posts <see cref="EngineEvent.Terminal"/> with <see cref="TerminalReason.Pause"/>, which releases
+/// everything and blocks every send; «Reanudar», a click on the icon, «Mostrar panel» and the global shortcut post
+/// <see cref="EngineEvent.SetPaused"/> off. The panel hides and comes back by following the paused state of the
+/// engine, and the text of the icon says «en pausa» meanwhile.
+/// </para>
+/// <para>
+/// The global shortcut (BUR-005, user decision D10) is off until <see cref="SetHotkeyAsync"/> gives it a combination
+/// of the closed list. <c>WM_HOTKEY</c> activates no window, and showing the panel is passive (REG-01).
+/// </para>
 /// </remarks>
 public sealed class TrayController : IDisposable
 {
@@ -28,8 +41,10 @@ public sealed class TrayController : IDisposable
     private readonly IForegroundOrchestrator _foreground;
     private readonly IEngineInbox _engine;
     private readonly ILocalizationContext _localization;
+    private readonly GlobalPanelHotkey _hotkey;
     private volatile bool _panelVisible = true;
     private volatile bool _anythingHeld;
+    private volatile bool _paused;
     private int _menuBusy;
     private int _disposed;
 
@@ -57,10 +72,24 @@ public sealed class TrayController : IDisposable
         _foreground = foreground;
         _engine = engine;
         _localization = localization;
+        _hotkey = new GlobalPanelHotkey(icon.Thread);
+        _hotkey.Pressed += OnHotkeyPressed;
     }
 
-    /// <summary>A click on the icon, or «Mostrar u ocultar» in the menu (BUR-003).</summary>
+    /// <summary>
+    /// A click on the icon, «Mostrar u ocultar» in the menu (BUR-003) or the global shortcut (BUR-005), while not
+    /// paused.
+    /// </summary>
     public event EventHandler? ShowHideRequested;
+
+    /// <summary>«Pausar» or «Reanudar» was used (BUR-004); <see cref="IsPaused"/> has the new state.</summary>
+    public event EventHandler? PauseChanged;
+
+    /// <summary>Whether Clícalo is paused from the tray (BUR-004).</summary>
+    public bool IsPaused => _paused;
+
+    /// <summary>What the icon and the menu show now.</summary>
+    public TrayState State => new(_panelVisible, _anythingHeld, _paused);
 
     /// <summary>
     /// «Soltar todo» in the menu, after <see cref="EngineEvent.ReleaseAll"/> was posted: the release that does not need
@@ -87,7 +116,7 @@ public sealed class TrayController : IDisposable
         await _menu.StartAsync().ConfigureAwait(false);
         _icon.Invoked += OnIconInvoked;
         _icon.MenuRequested += OnMenuRequested;
-        await _icon.ShowAsync(Tooltip()).ConfigureAwait(false);
+        await _icon.ShowAsync(Tooltip(), TrayMenuModel.IsDimmed(State)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -96,14 +125,64 @@ public sealed class TrayController : IDisposable
     /// </summary>
     /// <param name="panelVisible">Whether the panel is on screen.</param>
     /// <param name="anythingHeld">Whether the engine holds anything.</param>
+    /// <remarks>
+    /// A panel that comes back while Clícalo is paused resumes it (BUR-004): a second start of Clícalo shows the panel
+    /// without going through the tray (SIS-003), and a panel on screen that sends nothing and says nothing would be a
+    /// dead end.
+    /// </remarks>
     public Task UpdateStateAsync(bool panelVisible, bool anythingHeld)
     {
-        var tooltipChanged = _panelVisible != panelVisible;
+        var before = TrayMenuModel.Tooltip(State);
+        var cameBack = panelVisible && !_panelVisible;
         _panelVisible = panelVisible;
         _anythingHeld = anythingHeld;
-        return tooltipChanged && _icon.IsShown
-            ? _icon.SetTooltipAsync(Tooltip())
-            : Task.CompletedTask;
+        if (cameBack && _paused)
+        {
+            _paused = false;
+            _ = _engine.Post(new EngineEvent.SetPaused(false));
+            PauseChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        return RefreshTooltipAsync(before);
+    }
+
+    /// <summary>
+    /// Turns the global shortcut on with <paramref name="chord"/>, or off with <see langword="null"/> (BUR-005).
+    /// Completes with <see langword="false"/> when the combination cannot be registered: another program owns it, or
+    /// it is not one a global shortcut can use; the shortcut is then off.
+    /// </summary>
+    /// <param name="chord">A combination of <c>GlobalHotkeys</c>, or <see langword="null"/>.</param>
+    public async Task<bool> SetHotkeyAsync(KeyChord? chord)
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        if (chord is null)
+        {
+            return await _hotkey.ApplyAsync(null).ConfigureAwait(false);
+        }
+
+        if (HotkeyChord.From(chord) is not { } registration)
+        {
+            _ = await _hotkey.ApplyAsync(null).ConfigureAwait(false);
+            return false;
+        }
+
+        return await _hotkey.ApplyAsync(registration).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// What a click on the icon and the global shortcut do: resume when paused, otherwise ask to show or hide the
+    /// panel.
+    /// </summary>
+    public void TogglePanel()
+    {
+        if (_paused)
+        {
+            SetPaused(false);
+        }
+        else
+        {
+            ShowHideRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     /// <summary>Formats the icon's text again in the current language (IDI-001).</summary>
@@ -116,17 +195,13 @@ public sealed class TrayController : IDisposable
         var localizer = _localization.Current;
         return
         [
-            new(
-                (int)TrayCommand.ShowHide,
-                localizer.Format(_panelVisible ? L.HidePanel : L.Restore)
-            ),
-            new((int)TrayCommand.ControlCenter, localizer.Format(L.Cc)),
-            new(
-                (int)TrayCommand.ReleaseAll,
-                localizer.Format(L.ReleaseAll),
-                IsEnabled: _anythingHeld
-            ),
-            new((int)TrayCommand.Exit, localizer.Format(L.ExitApp)),
+            .. TrayMenuModel
+                .Entries(State)
+                .Select(entry => new TrayMenuItem(
+                    (int)entry.Command,
+                    localizer.Format(entry.Text),
+                    entry.IsEnabled
+                )),
         ];
     }
 
@@ -189,20 +264,54 @@ public sealed class TrayController : IDisposable
 
         _icon.Invoked -= OnIconInvoked;
         _icon.MenuRequested -= OnMenuRequested;
+        _hotkey.Pressed -= OnHotkeyPressed;
+        _hotkey.Dispose();
         _menu.DismissMenu();
         _icon.Dispose();
         _menu.Dispose();
     }
 
-    private string Tooltip() =>
-        _localization.Current.Format(_panelVisible ? L.AppName : L.TrayHidden);
+    private string Tooltip() => _localization.Current.Format(TrayMenuModel.Tooltip(State));
 
-    private void Run(TrayCommand? command)
+    private Task RefreshTooltipAsync(Message before) =>
+        before != TrayMenuModel.Tooltip(State) && _icon.IsShown
+            // BUR-003, BUR-004: the text and the look change together; hidden or paused, the icon shows at 55 %.
+            ? _icon.SetAppearanceAsync(Tooltip(), TrayMenuModel.IsDimmed(State))
+            : Task.CompletedTask;
+
+    /// <summary>
+    /// Pauses or resumes (BUR-004). Pausing is a terminal event: the engine releases everything and sends nothing
+    /// until it is told to resume.
+    /// </summary>
+    private void SetPaused(bool paused)
+    {
+        if (_paused == paused)
+        {
+            return;
+        }
+
+        var before = TrayMenuModel.Tooltip(State);
+        _paused = paused;
+        _ = _engine.Post(
+            paused
+                ? new EngineEvent.Terminal(TerminalReason.Pause)
+                : new EngineEvent.SetPaused(false)
+        );
+        _ = RefreshTooltipAsync(before);
+        PauseChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Runs a command of the menu, once the foreground is back with the app that had it.</summary>
+    /// <param name="command">The command chosen, or <see langword="null"/> when the menu was dismissed.</param>
+    internal void Run(TrayCommand? command)
     {
         switch (command)
         {
             case TrayCommand.ShowHide:
-                ShowHideRequested?.Invoke(this, EventArgs.Empty);
+                TogglePanel();
+                break;
+            case TrayCommand.Pause:
+                SetPaused(!_paused);
                 break;
             case TrayCommand.ReleaseAll:
                 _ = _engine.Post(new EngineEvent.ReleaseAll(ReleaseReason.User));
@@ -217,8 +326,9 @@ public sealed class TrayController : IDisposable
         }
     }
 
-    private void OnIconInvoked(object? sender, TrayIconEventArgs click) =>
-        ShowHideRequested?.Invoke(this, EventArgs.Empty);
+    private void OnIconInvoked(object? sender, TrayIconEventArgs click) => TogglePanel();
+
+    private void OnHotkeyPressed(object? sender, EventArgs pressed) => TogglePanel();
 
     private void OnMenuRequested(object? sender, TrayIconEventArgs request) =>
         _ = OpenMenuSafelyAsync(request.Position);

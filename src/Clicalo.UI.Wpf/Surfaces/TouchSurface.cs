@@ -5,6 +5,7 @@ using System.Windows.Media;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
+using Clicalo.Presentation.Dock;
 using Clicalo.UI.Wpf.Pointer;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
@@ -18,8 +19,9 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// takes the foreground, REG-01) whose finger, pen and mouse go through the product's pointer layer
 /// (<see cref="PointerInputSource"/> feeding a <see cref="GestureHost"/>, ADR-0006): every target answers on at least
 /// 44 × 44 (REG-02), a Mantener holds while its contact lasts (EJE-004), and a zone can drag the surface
-/// (<see cref="DragTracker"/>, PAN-004): a contact that dragged never counts as a tap. Hiding a surface ends its holds
-/// (REG-03).
+/// (<see cref="DragTracker"/>, PAN-004): a contact that dragged never counts as a tap, and neither does one that
+/// scrolled a zone of the surface (TAC-004, <see cref="TrackContact"/>). With <see cref="Modes"/>, test mode and the
+/// menu of a shortcut take its gestures first (PES-010, PES-014, CUA-014). Hiding a surface ends its holds (REG-03).
 /// </summary>
 [SuppressMessage(
     "Design",
@@ -98,6 +100,21 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     /// <summary>The theme service of the UI thread.</summary>
     protected ThemeService Theme => _theme;
 
+    /// <summary>
+    /// Test mode and the menu of the shortcuts of this surface (PES-010, PES-014): asked before a shortcut runs.
+    /// <see langword="null"/>, the default, for a surface without them.
+    /// </summary>
+    protected DockTileModes? Modes { get; set; }
+
+    /// <summary>
+    /// The width the surface keeps, in logical pixels, while its height follows its content: text wraps inside it
+    /// (PES-010, PES-011, PES-014, PES-015). <see cref="double.NaN"/>, the default: both follow the content.
+    /// </summary>
+    protected double FixedWidth { get; set; } = double.NaN;
+
+    /// <summary>The distance past which a contact drags or scrolls instead of tapping, in physical pixels (PAN-004).</summary>
+    protected double DragThresholdPx => _drag.ThresholdPx;
+
     /// <summary>The surface on screen, in physical pixels; empty before it has a handle.</summary>
     public PhysicalRect ScreenBounds => PhysicalBounds(this, inflate: false);
 
@@ -161,9 +178,19 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
             return (1, 1);
         }
 
-        content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var border = BorderThickness;
-        var width = content.DesiredSize.Width + border.Left + border.Right;
+        var fixedWidth = FixedWidth is > 0 and < double.PositiveInfinity;
+        content.Measure(
+            new Size(
+                fixedWidth
+                    ? Math.Max(0, FixedWidth - border.Left - border.Right)
+                    : double.PositiveInfinity,
+                double.PositiveInfinity
+            )
+        );
+        var width = fixedWidth
+            ? FixedWidth
+            : content.DesiredSize.Width + border.Left + border.Right;
         var height = content.DesiredSize.Height + border.Top + border.Bottom;
         return (
             Math.Max(1, (int)Math.Ceiling(width * scale)),
@@ -178,6 +205,11 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
         {
             _contacts.Observe(sample);
             TrackDrag(sample);
+            if (TrackContact(sample))
+            {
+                // TAC-004: a contact that scrolled or slid something activates nothing.
+                _ = _dragged.Add(sample.PointerId);
+            }
         }
 
         SetTouching(_contacts.Count > 0);
@@ -227,15 +259,28 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                 continue;
             }
 
-            targets.Add(new GestureTarget(new TouchTargetId(id), bounds, target.Kind));
+            targets.Add(
+                new GestureTarget(new TouchTargetId(id), bounds, target.Kind, target.InScrollZone)
+            );
             _targets[id] = target;
         }
 
         gestures.Recognizer.SetTargets(targets.ToImmutable());
     }
 
+    /// <summary>The targets the surface offers now, in order, as <see cref="RefreshTargets"/> reads them.</summary>
+    public IReadOnlyList<SurfaceTarget> CurrentTargets() => [.. CollectTargets()];
+
     /// <summary>Every target on screen, in order.</summary>
     protected abstract IEnumerable<SurfaceTarget> CollectTargets();
+
+    /// <summary>
+    /// Follows a contact for a zone of the surface that scrolls or slides under the finger (TAC-004); nothing by
+    /// default.
+    /// </summary>
+    /// <param name="sample">The pointer sample, in physical screen pixels.</param>
+    /// <returns>Whether the contact scrolled or slid: it is not a tap.</returns>
+    protected virtual bool TrackContact(in PointerSample sample) => false;
 
     /// <summary>The zones whose drag moves the surface; none by default.</summary>
     protected virtual IEnumerable<FrameworkElement> DragZones => [];
@@ -414,6 +459,12 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                 when !_dragged.Contains(gesture.PointerId) && TargetOf(gesture) is { } target:
                 if (target.Tile is { } tile)
                 {
+                    // PES-014, CUA-014: test mode and an open menu take the tap before the engine.
+                    if (Modes?.Tapped(tile) == true)
+                    {
+                        break;
+                    }
+
                     tile.Tapped(
                         gesture.PointerId,
                         _contacts.DeviceOf(gesture.PointerId),
@@ -422,19 +473,39 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                     );
                     TileTapped?.Invoke(this, new DockTileEventArgs(tile));
                 }
-                else
+                else if (Modes?.TappedElsewhere() != true)
                 {
+                    // CUA-014: with the menu of a shortcut open, a tap on another button only closes it.
                     target.Tap?.Invoke();
                 }
 
                 break;
 
             case GestureKind.HoldStart when TargetOf(gesture)?.Tile is { } held:
+                if (Modes?.HoldStarted(held) == true)
+                {
+                    break;
+                }
+
                 held.HoldStarted(
                     gesture.PointerId,
                     _contacts.DeviceOf(gesture.PointerId),
                     gesture.Timestamp
                 );
+                break;
+
+            case GestureKind.LongPress
+                when Modes is { } modes
+                    && !_dragged.Contains(gesture.PointerId)
+                    && TargetOf(gesture)?.Tile is { } pressed:
+                // CUA-014, PES-010: 600 ms without moving opens the menu of the shortcut instead of running it.
+                _ = modes.LongPressed(pressed, _contacts.DeviceOf(gesture.PointerId));
+                break;
+
+            case GestureKind.Ignored
+                when Modes is { } modes && TargetOf(gesture)?.Tile is { } ignored:
+                // TAC-008: test mode marks an ignored touch with its reason.
+                modes.Ignored(ignored, gesture.Ignored);
                 break;
 
             case GestureKind.HoldEnd:

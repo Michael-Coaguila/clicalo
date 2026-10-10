@@ -289,6 +289,8 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 
 ### 3.3 Elevación, uiAccess y componente de sistema
 
+> **Modificado en la 2.0 por la decisión D7 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** no hay componente de sistema ni inicio elevado sin UAC. «Reabrir como administrador» es un botón de Sistema › Inicio que pide la confirmación de UAC cada vez y solo eleva el `Clicalo.exe` instalado en `%LocalAppData%\Clicalo.App\current`; «Iniciar con Windows» arranca siempre sin elevación. Lo que sigue describe el diseño original.
+
 Hay **una sola instalación por usuario** (Velopack, sin UAC) y un **componente de sistema opcional** que se instala una vez con UAC desde Sistema › Inicio. El componente cumple SIS-002 en la 2.0 y es la base de uiAccess en M7.
 
 | Capacidad | Solo instalación por usuario (predeterminada) | Con componente de sistema (2.0, opcional) | uiAccess (M7, sobre el componente) |
@@ -667,7 +669,7 @@ Hay seis mecanismos. Todos se ejecutan en la CI y todos bloquean.
 5. **Prueba de facetas de `ActionKind`.** Recorre todos los subtipos de `ShortcutAction` y exige que cada uno tenga sus facetas registradas en todas las capas: planificador (Domain), validador de completitud (Domain), mapeador DTO (Infrastructure), editor (Presentation), vista (UI.Wpf) y claves de texto en ES y EN. Es la forma de tener exhaustividad mientras C# no tenga uniones discriminadas.
 
 6. **Pruebas de reglas de producto** (`Architecture.Tests/ProductRules`):
-   - **R4 (REG-04):** todo comando destructivo implementa `IDestructiveCommand`. Una lista cerrada en `architecture/destructive-operations.json` exige que existan y lo implementen: `DeleteShortcut`, `DeleteProfile`, `DeleteDuplicate`, `ResetFrequents`, `ReplaceOnImport`, `RestoreBackup`, `DeleteMacroStep` y los casos de uso `RollbackVersion`, `UninstallKeepOrDeleteData` y `UninstallSystemComponent`. Un comando cuyo `Apply` elimina entidades o vacía listas (detectado con CsCheck sobre documentos generados) y no está en la lista hace fallar la prueba.
+   - **R4 (REG-04):** todo comando destructivo implementa `IDestructiveCommand`. Una lista cerrada en `architecture/destructive-operations.json` exige que existan y lo implementen: `DeleteShortcut`, `DeleteProfile`, `DeleteDuplicate`, `ResetFrequents`, `ReplaceOnImport`, `RestoreBackup`, `DeleteMacroStep`, `KeepOnlyInAlwaysVisible` y los casos de uso `RollbackVersion`, `UninstallKeepOrDeleteData` y `StartFromScratchOnReinstall` (hasta M6 figuraba `UninstallSystemComponent`, que dejó de existir con la decisión D7; [ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md)). Un comando cuyo `Apply` elimina entidades o vacía listas (detectado con CsCheck sobre documentos generados) y no está en la lista hace fallar la prueba.
    - **R7 (REG-07):** la prueba recorre todos los `IDocumentCommand` y los aplica a documentos generados. Exige `UndoIntent.Record`, salvo los que figuran en `architecture/undo-exemptions.json` con su justificación (`RecordUsage`, posición del panel, ajustes cuyo descriptor tenga `Undoable = false`, `FinishOnboarding`).
    - **R5 (REG-05, ACC-011):** es la regla UIA010 (§10.2). Todo campo de texto libre tiene un botón hermano «Dictar» (🎤), o «Pegar» en el campo de la clave de IA.
 
@@ -1546,6 +1548,8 @@ public sealed record TemplateRequest(string AppName, KeyboardLayoutKind Layout, 
 
 ### 9.3 Actualizaciones
 
+> **Modificado en la 2.0 por la decisión D6 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** sin manifiesto firmado ni `.sig`. Velopack lee las GitHub Releases del repositorio por HTTPS y verifica cada paquete; nunca baja de versión por sí solo, «Volver» descarga la versión anterior durante 7 días y una instancia elevada no actualiza. Lo que sigue describe el diseño original, que vuelve con la firma de SignPath.
+
 ```
 UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
  1 GET releases.{channel}.json + .sig (GitHub Releases) mediante SignedManifestSource : Velopack IUpdateSource
@@ -1600,6 +1604,9 @@ UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
 **Interruptores de emergencia**, como datos firmados y nunca como código remoto: `disabledFeatures`, `minSafeVersion` y `revoked`.
 
 **Desinstalación (NFR-010):**
+
+> **Modificado en la 2.0 ([ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md), decisión D7 del usuario):** no hay componente de sistema que desinstalar. «Desinstalar Clícalo» está en Sistema › Inicio y estabilidad: conserva los datos por defecto y, si se pide borrarlos, exige dos toques y una copia guardada fuera de las carpetas de datos; la instancia deja un marcador, sale por `ExitAsync` y el *hook* del desinstalador borra. Al reinstalar, «Empezar de cero» guarda la copia previa en `pre-restore` ([D-30](deviations.md#d-30--integración-de-m6)).
+
 - **Desde Sistema › Desinstalar:** pregunta «¿conservar datos?» con dos toques si se borran, borra si procede, desinstala el componente de sistema si existe (UAC) y lanza `Update.exe --uninstall`.
 - **Desde Configuración de Windows:** los *hooks* de Velopack no pueden mostrar UI, así que este camino **conserva siempre los datos** y no toca `%AppData%\Clicalo`. Una prueba de S8 lo comprueba.
 - **Al reinstalar**, la bienvenida detecta los datos existentes y ofrece conservarlos (por defecto) o empezar de cero con una copia previa `pre-reset` (P6).
@@ -1780,6 +1787,8 @@ Se guardan en `tests/Clicalo.Performance/budgets.json`, que está versionado.
 ---
 
 ## 11. Distribución, versionado y publicación
+
+> **Modificado en la 2.0 por la decisión D6 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** la 2.0 sale sin firma de código, sin `cl beta` ni `cl sign-manifest` y sin GitHub Actions de publicación. `cl package [--channel stable|beta]` empaqueta en local con Velopack y la publicación es manual ([guía de publicación](../guides/release.md)).
 
 - **Instalador:** Velopack `Setup.exe` por usuario y sin UAC, con `packId Clicalo.App`.
   - Autocontenido para `win-x64` (beta y estable) y `win-arm64` (beta; estable según P5).

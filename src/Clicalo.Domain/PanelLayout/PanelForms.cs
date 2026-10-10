@@ -13,10 +13,21 @@ public static class PanelForms
     /// <param name="density">The view: Full, Compact or Tab.</param>
     /// <param name="minimized">«−» turned it into the bubble; the Tab view has no «−» and never minimizes.</param>
     /// <param name="dockOpen">The bar of the Tab view is open.</param>
-    public static PanelForm Of(bool visible, PanelDensity density, bool minimized, bool dockOpen) =>
+    /// <param name="searchPeek">
+    /// 🔍 on the bar opened the search (BUS-006): the Tab view shows as the Full view until the search closes or a
+    /// result runs, without changing the saved view.
+    /// </param>
+    public static PanelForm Of(
+        bool visible,
+        PanelDensity density,
+        bool minimized,
+        bool dockOpen,
+        bool searchPeek = false
+    ) =>
         !visible ? PanelForm.Hidden
         : density == PanelDensity.Dock
-            ? dockOpen ? PanelForm.DockOpen
+            ? searchPeek ? PanelForm.Full
+                : dockOpen ? PanelForm.DockOpen
                 : PanelForm.DockClosed
         : minimized ? PanelForm.Bubble
         : density == PanelDensity.Compact ? PanelForm.Compact

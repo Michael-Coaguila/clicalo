@@ -26,28 +26,10 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// It is the only view model that reveals the text of a Text shortcut, to put it in its field (blueprint §6.2, rule of
 /// <c>SecretText</c>); the text never goes into a model.
 /// </remarks>
-public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
+public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, IComboEditor
 {
     private const string DraftKey = "draft";
-
-    private static readonly ImmutableArray<KeyId> ModifierKeys =
-    [
-        KeyIds.Ctrl,
-        KeyIds.Alt,
-        KeyIds.Shift,
-        KeyIds.Win,
-    ];
-
-    private static readonly ImmutableArray<KeyGroup> PickerGroups =
-    [
-        KeyGroup.Sides,
-        KeyGroup.Letters,
-        KeyGroup.Nums,
-        KeyGroup.Fn,
-        KeyGroup.Special,
-        KeyGroup.Numpad,
-        KeyGroup.Media,
-    ];
+    private const string TryOperation = "TryNow";
 
     private readonly ControlCenterServices _s;
     private readonly Action _invalidate;
@@ -70,6 +52,13 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _try;
     private ITimer? _armTimer;
     private int _textVersion;
+    private ChordRecorder? _recorder;
+    private ValueList<ProgramChip> _programs = [];
+    private string _programFilter = string.Empty;
+    private int _programsVersion;
+    private bool _targetsRequested;
+    private bool _programsRequested;
+    private bool _programsLoading;
 
     /// <summary>Creates the editor.</summary>
     /// <param name="services">The services of the Control Center.</param>
@@ -104,6 +93,11 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _shortcutKey, value);
     }
 
+    /// <summary>
+    /// Whether «Grabar con teclado» is on (EDI-010): the window passes it the keys it receives, and only then.
+    /// </summary>
+    public bool IsRecording => _recorder is not null;
+
     private ShortcutsWorkspace Workspace => _s.Shortcuts;
 
     private LangCode Language => new(_s.Localization.Current.Locale.Code);
@@ -121,6 +115,23 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         if (!string.Equals(key, _for, StringComparison.Ordinal))
         {
             OnShortcutChanged(key);
+        }
+
+        if (_recorder is not null && Workspace.ChordInBox() is null)
+        {
+            _recorder = null;
+        }
+
+        if (shortcut?.Action is AppAction && !_targetsRequested)
+        {
+            // EDI-014: «Elegir programa» loads when the App kind shows, not when the «Probar» card opens.
+            _targetsRequested = true;
+            _ = LoadAppsAsync();
+            if (!_programsRequested && _s.InstalledPrograms is not null)
+            {
+                _programsRequested = true;
+                _ = LoadProgramsAsync();
+            }
         }
 
         ShortcutKey = key ?? string.Empty;
@@ -153,7 +164,11 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
     /// <summary>Esc with a menu open (CCM-001): closes the innermost one and says whether there was one.</summary>
     public bool CloseMenu()
     {
-        if (_pickerOpen)
+        if (_recorder is not null)
+        {
+            _recorder = null;
+        }
+        else if (_pickerOpen)
         {
             _pickerOpen = false;
         }
@@ -200,7 +215,10 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
     public void Rename(string text) => Workspace.Rename(text);
 
     /// <summary>🎤 next to a free text field (ACC-011): Windows dictation for the focused field.</summary>
-    public void Dictate() => _ = DictateAsync();
+    public void Dictate() => _ = DictateAsync(null);
+
+    /// <summary>[dictName] next to the name (EDI-001): dictation starts and the status bar says [dictNameT].</summary>
+    public void DictateName() => _ = DictateAsync(L.DictNameT);
 
     /// <summary>A kind of the «Qué hace» grid (EDI-006).</summary>
     /// <param name="kind">The kind.</param>
@@ -272,6 +290,86 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
             string.Equals(a.Process.Value, process, StringComparison.OrdinalIgnoreCase)
         );
         Workspace.SetApp(app?.ExecutablePath ?? process);
+    }
+
+    /// <summary>
+    /// The search filter of «Elegir programa» (EDI-014): the installed programs whose name has every word typed or
+    /// dictated stay on show. The list itself does not change, so the view only hides and shows its buttons.
+    /// </summary>
+    /// <param name="text">What the person typed or dictated.</param>
+    public void FilterPrograms(string text)
+    {
+        var filter = text ?? string.Empty;
+        if (string.Equals(filter, _programFilter, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _programFilter = filter;
+        _invalidate();
+    }
+
+    /// <summary>A chip of the installed programs of «Elegir programa» (EDI-014).</summary>
+    /// <param name="target">What the App field gets.</param>
+    public void PickInstalled(string target)
+    {
+        Workspace.SetApp(target);
+        _textVersion++;
+        _invalidate();
+    }
+
+    /// <inheritdoc />
+    public void ToggleRecording()
+    {
+        _recorder =
+            _recorder is null && Workspace.ChordInBox() is not null ? new ChordRecorder() : null;
+        _invalidate();
+    }
+
+    /// <summary>The recording ends without a combination (the window hides, another shortcut opens).</summary>
+    public void StopRecording()
+    {
+        if (_recorder is not null)
+        {
+            _recorder = null;
+            _invalidate();
+        }
+    }
+
+    /// <summary>
+    /// A key went down in the Control Center while it records (EDI-010): modifiers wait, Esc cancels and the first
+    /// other key closes the recording with the modifiers held, in the order they were pressed.
+    /// </summary>
+    /// <param name="key">The catalog key with its side; null for a key that is not in the catalog.</param>
+    public void RecordKeyDown(KeyId? key)
+    {
+        if (_recorder is not { } recorder || key is not { } pressed)
+        {
+            return;
+        }
+
+        switch (recorder.Down(pressed))
+        {
+            case ChordRecording.Cancelled:
+                _recorder = null;
+                _invalidate();
+                break;
+            case ChordRecording.Recorded recorded:
+                _recorder = null;
+                Workspace.RecordChord(recorded.Chord);
+                _invalidate();
+                break;
+        }
+    }
+
+    /// <summary>A key went up while it records: a released modifier leaves the combination (EDI-010).</summary>
+    /// <param name="key">The catalog key; null for a key that is not in the catalog.</param>
+    public void RecordKeyUp(KeyId? key)
+    {
+        if (key is { } released)
+        {
+            _recorder?.Up(released);
+        }
     }
 
     /// <summary>A + button under the steps (EDI-013).</summary>
@@ -432,8 +530,31 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         _invalidate();
     }
 
-    /// <summary>«Probar ahora en {app}» (PRB-004).</summary>
-    public void TryLive() => _ = TryLiveAsync();
+    /// <summary>
+    /// «Probar ahora en {app}» (PRB-004). A shortcut that asks for confirmation is confirmed here first: the first
+    /// tap arms the button and the second one tries it. While Clícalo is paused the button is «Reanudar» (BUR-004):
+    /// nothing would be sent, so it resumes instead of trying.
+    /// </summary>
+    public void TryLive()
+    {
+        if (IsPaused)
+        {
+            _s.Resume?.Invoke();
+            return;
+        }
+
+        if (
+            !_running
+            && Workspace.Selected is { Options.Confirm: true }
+            && Workspace.Pane is EditorPane.Editing editing
+        )
+        {
+            Confirm(Subject(TryOperation, editing.Id.Value), _ => StartTry());
+            return;
+        }
+
+        StartTry();
+    }
 
     /// <summary>The answer to «¿Hizo lo esperado?» (PRB-004).</summary>
     /// <param name="yes">Whether it worked.</param>
@@ -558,19 +679,6 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
             _ => null,
         };
 
-    private static Message GroupLabel(KeyGroup group) =>
-        group switch
-        {
-            KeyGroup.Sides => L.KgSides,
-            KeyGroup.Letters => L.KgLetters,
-            KeyGroup.Nums => L.KgNums,
-            KeyGroup.Fn => L.KgFn,
-            KeyGroup.Special => L.KgSpecial,
-            KeyGroup.Numpad => L.KgNumpad,
-            KeyGroup.Media => L.KgMedia,
-            _ => L.KgMods,
-        };
-
     private static string StepIcon(MacroStep step) =>
         step switch
         {
@@ -593,6 +701,7 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         _for = key;
         _pickerOpen = false;
         _iconQuery = string.Empty;
+        _programFilter = string.Empty;
         _duplicatesOpen = false;
         _voiceHowOpen = false;
         _testOpen = false;
@@ -602,6 +711,8 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         _try?.Cancel();
         _s.Confirm.Disarm();
         _textVersion++;
+        _recorder = null;
+        _targetsRequested = false;
     }
 
     private void StopPlayback()
@@ -641,11 +752,15 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         && string.Equals(armed.Operation, operation, StringComparison.Ordinal)
         && string.Equals(armed.Target, target, StringComparison.Ordinal);
 
-    private async Task DictateAsync()
+    private async Task DictateAsync(Message? started)
     {
         try
         {
-            _ = await _s.Dictate(CancellationToken.None).ConfigureAwait(true);
+            var dictating = await _s.Dictate(CancellationToken.None).ConfigureAwait(true);
+            if (dictating && started is { } text)
+            {
+                _s.Notify?.Invoke(new WorkspaceNotice(text, "mic", false, false));
+            }
         }
         catch (OperationCanceledException)
         {
@@ -658,6 +773,40 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         var apps = await _s.OpenApps(CancellationToken.None).ConfigureAwait(true);
         _s.Post(() => ApplyApps(apps));
     }
+
+    private async Task LoadProgramsAsync()
+    {
+        if (_s.InstalledPrograms is not { } read)
+        {
+            return;
+        }
+
+        // EDI-014: the first read takes a moment; the card says so meanwhile instead of showing nothing.
+        _programsLoading = true;
+        try
+        {
+            var programs = await read(CancellationToken.None).ConfigureAwait(true);
+            _s.Post(() =>
+            {
+                _programs = [.. programs.Select(static p => ProgramChip.Of(p.Target, p.Name))];
+                _programsVersion++;
+                _programsLoading = false;
+                // An empty answer is read again the next time an App shortcut shows.
+                _programsRequested = !programs.IsEmpty;
+                _invalidate();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            _programsRequested = false;
+            _programsLoading = false;
+            _invalidate();
+        }
+    }
+
+    private bool IsPaused => _s.IsPaused?.Invoke() == true;
+
+    private void StartTry() => _ = TryLiveAsync();
 
     private async Task TryLiveAsync()
     {
@@ -830,7 +979,8 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
                         icon.Name,
                         string.Equals(icon.Name, current, StringComparison.Ordinal)
                     )),
-            ]
+            ],
+            T(L.SearchDictate)
         );
     }
 
@@ -862,81 +1012,30 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         }
 
         var chord = Workspace.ChordInBox() ?? KeyChord.Empty;
-        var labels = _s.Catalogs().KeyLabels;
-        var warning = ComboWarnings.Of(chord);
-        return new ComboModel(
-            T(L.Keys),
-            Workspace.ReplacedChord is { } replaced
+        var recording = _recorder is not null;
+        var model = ComboProjection.Build(
+            chord,
+            _group,
+            _s.Catalogs().KeyLabels,
+            Language,
+            T,
+            shortcut.Action is TapAction && editingStep is null
+        );
+        return model with
+        {
+            Replacing = Workspace.ReplacedChord is { } replaced
                 ? T(L.ReplaceMsg(keys: Format(replaced, KeyLabelStyle.Full)))
                 : null,
-            T(L.KeepOld),
-            chord.IsEmpty ? T(L.ComboEmpty) : null,
-            [
-                .. chord.Strokes.Select(
-                    (stroke, i) =>
-                    {
-                        var label = KeyChordFormatter.KeyText(
-                            stroke,
-                            labels,
-                            KeyLabelStyle.Full,
-                            Language,
-                            LangCode.Es
-                        );
-                        return new KeyChip(i, label, T(L.RemoveKeyN(key: label)));
-                    }
-                ),
-            ],
-            chord.IsEmpty ? T(L.ComboNone) : T(L.ComboN(chord.Strokes.Count)),
-            !chord.IsEmpty,
-            T(L.BackKey),
-            T(L.ClearKeys),
-            warning switch
-            {
-                ComboWarning.Blocked => WarningTone.Danger,
-                ComboWarning.Special => WarningTone.Warn,
-                _ => WarningTone.None,
-            },
-            warning switch
-            {
-                ComboWarning.Blocked => T(L.BlockedB),
-                ComboWarning.Special => T(L.BlockedS),
-                _ => null,
-            },
-            editingStep is { } open ? T(L.StepEditMsg(index: open + 1)) : null,
-            T(L.Done),
-            [.. ModifierKeys.Select(key => Cell(key, chord))],
-            [
-                .. PickerGroups.Select(group => new KeyGroupTab(
-                    group,
-                    T(GroupLabel(group)),
-                    group == _group
-                )),
-            ],
-            [
-                .. KeyDefinitions
-                    .All.Where(definition => definition.Group == _group)
-                    .Select(definition => Cell(definition.Id, chord)),
-            ],
-            _group switch
-            {
-                KeyGroup.Letters or KeyGroup.Nums => 7,
-                KeyGroup.Fn => 6,
-                _ => 0,
-            },
-            T(L.OrderHint2)
-        );
-    }
-
-    private KeyCell Cell(KeyId key, KeyChord chord)
-    {
-        var labels = _s.Catalogs().KeyLabels;
-        var stroke = new KeyStroke(key);
-        return new KeyCell(
-            key,
-            KeyChordFormatter.KeyText(stroke, labels, KeyLabelStyle.Full, Language, LangCode.Es),
-            KeyChordFormatter.KeyText(stroke, labels, KeyLabelStyle.Spoken, Language, LangCode.Es),
-            ChordEdits.IsChosen(chord, key)
-        );
+            Empty = recording ? null : model.Empty,
+            StepEditing = editingStep is { } open ? T(L.StepEditMsg(index: open + 1)) : null,
+            Recording = recording ? T(L.Recording) : null,
+            // EDI-010: hidden for whoever said «No puedo usar el teclado», unless it is already recording.
+            RecordText =
+                recording ? T(L.Cancel)
+                : _s.Store.Current.Settings.NoKeyboardUser ? null
+                : T(L.RecPhys),
+            RecordHint = T(L.RecHint),
+        };
     }
 
     private string Format(KeyChord chord, KeyLabelStyle style) =>
@@ -1080,7 +1179,10 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
                 T(L.BadUrl),
                 string.Empty,
                 [],
-                T(L.SearchDictate)
+                T(L.SearchDictate),
+                string.Empty,
+                string.Empty,
+                []
             ),
             AppAction app => new TargetModel(
                 T(L.AppPath),
@@ -1089,7 +1191,17 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
                 string.Empty,
                 T(L.PickProgram),
                 [.. _apps.Select(a => new AppChip(a.Process.Value, a.Name, false))],
-                T(L.SearchDictate)
+                T(L.SearchDictate),
+                T(L.LinkOpenApps),
+                T(L.ProgramsInstalled),
+                _programs,
+                _programsLoading && _programs.IsEmpty ? T(L.ProgramsLoading) : null,
+                T(L.ProgramsSearch),
+                _programFilter,
+                !_programs.IsEmpty && ProgramFilter.Count(_programs, _programFilter) == 0
+                    ? T(L.NoResults)
+                    : null,
+                _programsVersion
             ),
             _ => null,
         };
@@ -1115,6 +1227,13 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         var number = index >= 0 ? index + 1 : count + 1;
         var name = shortcut.Name.Get(Language, LangCode.Es);
         var settings = _s.Store.Current.Settings;
+        // [autoReleaseD] promised a release on every app switch; these say what this shortcut really does.
+        var neverByTime = shortcut.Options.MaxHold switch
+        {
+            HoldLimit.Never => true,
+            HoldLimit.After => false,
+            _ => settings.KeySafety.MaxHold is null,
+        };
         return new MoreModel(
             T(L.MoreOpts),
             index >= 0 ? T(L.PositionOf(index: index + 1, total: count)) : string.Empty,
@@ -1128,7 +1247,12 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
             ],
             holds ? T(L.AutoRelease) : null,
             holds ? Holds(shortcut.Options.MaxHold) : [],
-            T(L.AutoReleaseD),
+            T(neverByTime ? L.AutoReleaseNever : L.AutoReleaseTimed),
+            T(
+                settings.KeySafety.ReleaseOnAppSwitch
+                    ? L.AutoReleaseSwitchOn
+                    : L.AutoReleaseSwitchOff
+            ),
             text is null ? null : T(L.TextMethod),
             text is null
                 ? []
@@ -1192,6 +1316,11 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
         var blocked =
             ComboWarnings.Of(ActionKinds.ChordOf(shortcut.Action)) == ComboWarning.Blocked;
         var (phaseIcon, phase) = Phase(shortcut);
+        var armed =
+            Workspace.Pane is EditorPane.Editing editing && IsArmed(TryOperation, editing.Id.Value);
+
+        // BUR-004: paused, nothing is sent; the card says so and offers to resume instead of a try that would fail.
+        var paused = IsPaused;
         return new TestModel(
             T(L.TestTitle),
             T(L.Close),
@@ -1209,12 +1338,16 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
                 )),
             ],
             _apps.IsEmpty ? T(L.NoOpenApps) : null,
-            T(L.TestLive2(app: target?.Name ?? string.Empty)),
-            target is not null
-                && complete
-                && !blocked
-                && !_running
-                && Workspace.Pane is EditorPane.Editing,
+            paused ? T(L.ResumeApp)
+                : armed ? T(L.ConfirmClose)
+                : T(L.TestLive2(app: target?.Name ?? string.Empty)),
+            paused
+                ? !_running
+                : target is not null
+                    && complete
+                    && !blocked
+                    && !_running
+                    && Workspace.Pane is EditorPane.Editing,
             T(L.TestHow),
             _answer == TestAnswer.Asking && target is not null
                 ? T(L.TestAskQ(app: target.Name))
@@ -1224,7 +1357,9 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable
             _answer == TestAnswer.Yes ? T(L.TestOk) : null,
             _answer == TestAnswer.No ? T(L.TipsTitle) : null,
             _answer == TestAnswer.No ? [T(L.Tip1), T(L.Tip2), T(L.Tip3), T(L.Tip4)] : [],
-            _running
+            _running,
+            armed && !paused,
+            paused ? T(L.TestPaused) : null
         );
     }
 

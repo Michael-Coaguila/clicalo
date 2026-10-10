@@ -67,6 +67,9 @@ public static class PeerSnapshot
 
     private static IEnumerable<AutomationPeer> ControlChildren(AutomationPeer peer)
     {
+        // Without a UIA client listening nothing refreshes the children a peer already listed: a second snapshot of
+        // the same view, after its view model changed, would still see the old ones.
+        peer.ResetChildrenCache();
         foreach (var child in peer.GetChildren() ?? [])
         {
             if (child.IsControlElement())

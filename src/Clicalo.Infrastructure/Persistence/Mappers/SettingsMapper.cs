@@ -115,6 +115,42 @@ internal static class SettingsMapper
                 )
                 : defaults.Updates,
             NoKeyboardUser = dto.NoKeyboardUser ?? defaults.NoKeyboardUser,
+            HandlePositionsByMonitor = dto.HandlePosByMonitor is { } handles
+                ? ValueListBuilder.From(
+                    handles
+                        .Where(h => h.Monitor is { Length: > 0 } && h.Pos is not null)
+                        .Select(h =>
+                            PersistedNames.DockSide.TryParse(h.Side, out var side)
+                                ? new MonitorHandlePosition(h.Monitor!, side, h.Pos!.Value)
+                                : null
+                        )
+                        .OfType<MonitorHandlePosition>()
+                )
+                : defaults.HandlePositionsByMonitor,
+            ControlCenter = dto.ControlCenter
+                is {
+                    Monitor: { Length: > 0 } monitor,
+                    X: { } x,
+                    Y: { } y,
+                    Width: { } width,
+                    Height: { } height,
+                } center
+                ? new ControlCenterPlacement(
+                    monitor,
+                    x,
+                    y,
+                    width,
+                    height,
+                    center.Maximized ?? false
+                )
+                : defaults.ControlCenter,
+            GlobalHotkey = dto.GlobalHotkey is { } hotkey
+                ? new GlobalHotkeySettings(
+                    hotkey.Enabled ?? defaults.GlobalHotkey.Enabled,
+                    hotkey.Combo ?? defaults.GlobalHotkey.Combo
+                )
+                : defaults.GlobalHotkey,
+            TimeMultiplier = dto.TimeMultiplier ?? defaults.TimeMultiplier,
         };
     }
 
@@ -221,6 +257,32 @@ internal static class SettingsMapper
                 Channel = PersistedNames.Channel.Name(settings.Updates.Channel),
             },
             NoKeyboardUser = settings.NoKeyboardUser,
+            HandlePosByMonitor =
+            [
+                .. settings.HandlePositionsByMonitor.Select(h => new MonitorHandlePositionDto
+                {
+                    Monitor = h.MonitorId,
+                    Side = PersistedNames.DockSide.Name(h.Side),
+                    Pos = h.Position,
+                }),
+            ],
+            ControlCenter = settings.ControlCenter is { } center
+                ? new ControlCenterDto
+                {
+                    Monitor = center.MonitorId,
+                    X = center.X,
+                    Y = center.Y,
+                    Width = center.Width,
+                    Height = center.Height,
+                    Maximized = center.Maximized,
+                }
+                : null,
+            GlobalHotkey = new GlobalHotkeyDto
+            {
+                Enabled = settings.GlobalHotkey.Enabled,
+                Combo = settings.GlobalHotkey.Combo,
+            },
+            TimeMultiplier = settings.TimeMultiplier,
             Extra = extra is null
                 ? null
                 : new Dictionary<string, JsonElement>(extra, StringComparer.Ordinal),

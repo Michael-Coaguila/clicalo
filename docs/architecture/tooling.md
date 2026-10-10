@@ -35,16 +35,12 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl i18n-check [--strict-unused]` | Ejecuta `i18n-check` de `tools/Clicalo.DevCli` (ver abajo) | M0 |
 | `cl i18n-import [--check]` | Ejecuta `i18n-import` de `tools/Clicalo.DevCli`: reconstruye `data/i18n` o, con `--check`, solo compara | M0 |
 | `cl adr-check --base <ref>` | Ejecuta `adr-check` de `tools/Clicalo.DevCli`, lo mismo que el trabajo `adr` de la CI (`cl adr-check --base main` en local) | M0 |
-| `cl pr` | Abre el PR de la rama actual | M1 |
 | `cl run` | Arranca la compilación Debug de `Clicalo.exe` con datos aislados en `%TEMP%\clicalo-dev` y **sin envío de teclas** (`--no-input`) | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
-| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`, cada una con Sentinel) y ejecuta las mediciones `Category=Perf`; fuera de la CI, sin envío de teclas. Necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio (el enlazador de Native AOT de Sentinel) | M2 |
+| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`) y ejecuta las mediciones `Category=Perf`, una cada vez (hay un solo Clícalo por sesión). Fuera de la CI, sin envío de teclas (`--no-input`) y con datos temporales, y sin Sentinel, que solo se lanza cuando se envían teclas: así no hace falta el enlazador de C++. En la CI publica además Sentinel (Native AOT), que sí necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio. Si hay otro Clícalo abierto en la sesión, la medición lo dice y no arranca | M2 |
 | `cl quarantine` | Solo las pruebas en cuarentena (`Category=Quarantine`, cada una con su *issue*), sin escritorio o de escritorio, con `CLICALO_DESKTOP_TESTS=1` y un módulo cada vez; nunca las mediciones. Fuera de la CI deja fuera las de teclas reservadas y las de caos, como `cl desk`. Lo ejecuta `nightly.yml` | M2 |
-| `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
-| `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
-| `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
-| `cl beta` | Lanza la publicación beta (`beta.yml`) | M5 |
-| `cl sign-manifest` | Firma el manifiesto con la llave de hardware del mantenedor ([ADR-0013](../adr/0013-firma-de-codigo-y-manifiesto-firmado.md)) | M5 |
+| `cl trace` | Ejecuta `trace` de `tools/Clicalo.DevCli`: escribe `artifacts/cl/trace.md` con cada requisito del catálogo y las pruebas que lo nombran en `[Trait("Req", …)]`, y arriba los MUST sin prueba. La línea final dice cuántos MUST no tienen ni prueba ni entrada en el [guion manual](../guides/aceptacion-manual.md). Falla solo si un rasgo nombra un identificador que no está en el catálogo | M6 |
+| `cl package` | Publica Clícalo autocontenido y lo empaqueta con Velopack en `artifacts/package/<canal>` (`--channel stable|beta`, `--version`); no publica nada. La 2.0 sale sin firma, así que `cl beta` y `cl sign-manifest` esperan a la firma con SignPath ([ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md), [guía de publicación](../guides/release.md)) | M5 |
 
 ### Qué hace `cl check`
 
@@ -97,9 +93,12 @@ y el informe de errores de `cl`:
 | `i18n-check` | Valida `data/i18n` igual que el generador (errores `CLCI`), las reglas CLDR y `allow-unused.txt` |
 | `i18n-import` | Reconstruye `data/i18n/strings.*.json` desde el paquete de diseño con la receta revisada ([ADR-0011](../adr/0011-formato-i18n.md)); con `--check` no escribe y falla si no coincide |
 | `adr-check --base <ref>` | Falla si los archivos cambiados desde la base de fusión con `<ref>` tocan una ruta de `architecture/sensitive-paths.json` sin un ADR nuevo o cambiado en `docs/adr/` (error `CLCA010`, [§13](blueprint.md#13-convenciones-de-ingeniería)) |
+| `trace` | Escribe `artifacts/cl/trace.md`: lee las declaraciones de `docs/requirements/catalog.md` (requisitos, reglas y casos límite), busca los rasgos `[Trait("Req", …)]` en el código de `tests/`, `build/`, `tools/` y `generators/` y los identificadores que nombra `docs/guides/aceptacion-manual.md`. El informe es Markdown con encabezados y listas, sin fechas: el mismo commit da los mismos bytes. Un rasgo con un identificador que no está en el catálogo es el error `CLCT010` |
+| `app-icon [--check]` | Dibuja el icono de Clícalo (BUR-003) a partir del logotipo de «Acerca de» y de los colores de `data/tokens` (acento del tema claro), sin herramientas externas, y escribe `assets/icons/clicalo.ico` (16 a 256 px: el ejecutable, el instalador y la bandeja) y `assets/icons/clicalo-dim.ico` (el de la bandeja al 55 %, con el panel oculto o en pausa). Con `--check` no escribe y falla si los archivos no son lo que dibuja; una prueba de `Clicalo.DevCli.Tests` lo ejecuta en `cl check`. No tiene verbo de `cl`: se lanza con `dotnet run --project tools/Clicalo.DevCli -- app-icon` |
 
 Salida en formato MSBuild, última línea legible por Narrador y códigos de salida 0 (sin problemas), 1
-(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace` y `states`.
+(problemas) y 2 (uso incorrecto, con la ayuda). `states` no se construye
+([D-29](deviations.md#d-29--sin-cl-states-ni-cl-accept)).
 
 ### Opciones de `Clicalo.exe` para desarrollo
 

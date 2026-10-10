@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
@@ -25,8 +26,10 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// <item>the profile grid (PES-011): 236 wide, the header [pickProfile] and the same grid as SEL-003;</item>
 /// <item>sticky keys (PES-008, AUD-13): Ctrl, Alt, Shift and Win with their three states.</item>
 /// </list>
-/// It scrolls when taller than the work area less 140. Where it goes is the surface set's
-/// (<c>DockGeometry.Beside</c>).
+/// It scrolls when taller than the work area less 140, with the finger: a contact that slides past the «cancel if
+/// you slide» distance scrolls and activates nothing (TAC-004), and what is scrolled out of sight is no target. The
+/// shortcuts of «Pinned» open their menu with a long press and show the marks of test mode (PES-010, PES-014). Where it
+/// goes is the surface set's (<c>DockGeometry.Beside</c>).
 /// </summary>
 public sealed class DockFlyoutWindow : TouchSurface
 {
@@ -44,11 +47,13 @@ public sealed class DockFlyoutWindow : TouchSurface
     private readonly StickyKeysRowView? _sticky;
     private readonly TextBlock _header;
     private readonly ScrollViewer _scroller;
+    private readonly TouchSurfaceScroll _scroll = new();
     private readonly List<(
         DockTileViewModel ViewModel,
         ShortcutTile Control,
         PropertyChangedEventHandler Handler
     )> _tiles = [];
+    private readonly List<Clicalo.UI.Wpf.Surfaces.Panel.TestMode.TestMarkBadge> _badges = [];
 
     /// <summary>Creates the window of <paramref name="flyout"/> on the UI thread of <paramref name="registry"/>.</summary>
     /// <param name="flyout">Which window: Pinned, Profiles or Sticky.</param>
@@ -83,6 +88,7 @@ public sealed class DockFlyoutWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(panel);
         Flyout = flyout;
         _viewModel = viewModel;
+        Modes = viewModel.Modes;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
@@ -129,14 +135,8 @@ public sealed class DockFlyoutWindow : TouchSurface
         }
 
         SizeToContent = SizeToContent.Height;
-        _scroller = new ScrollViewer
-        {
-            Content = body,
-            Padding = new Thickness(8),
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Focusable = false,
-        };
+        FixedWidth = Width;
+        _scroller = new SurfaceScrollViewer { Content = body, Padding = new Thickness(8) };
         Content = _scroller;
         viewModel.Labels.PropertyChanged += OnLabelsChanged;
         RebuildPinned();
@@ -156,22 +156,80 @@ public sealed class DockFlyoutWindow : TouchSurface
     /// <summary>The shortcut tiles of «Pinned», in order.</summary>
     public IReadOnlyList<ShortcutTile> TileControls => [.. _tiles.Select(static t => t.Control)];
 
+    /// <summary>The zone that scrolls when the window is taller than it may be (TAC-004).</summary>
+    public ScrollViewer Scroller => _scroller;
+
     /// <inheritdoc />
     protected override IEnumerable<SurfaceTarget> CollectTargets()
     {
+        // TAC-004, REG-02: what is scrolled out of sight is no target; its touch margin would take touches from
+        // what shows.
+        var view = PhysicalBounds(_scroller, inflate: false);
+
+        // TAC-004, EJE-004: while «Pinned» scrolls, a Mantener waits to see that the finger is not scrolling.
+        var scrolls = _scroller.ScrollableHeight > 0;
         foreach (var (viewModel, control, _) in _tiles)
         {
-            yield return SurfaceTarget.For(control, viewModel);
+            if (InView(view, control))
+            {
+                yield return SurfaceTarget.For(
+                    control,
+                    viewModel,
+                    longPress: Modes is not null
+                ) with
+                {
+                    InScrollZone = scrolls,
+                };
+            }
         }
 
         foreach (var target in _picker?.TapTargets ?? [])
         {
-            yield return SurfaceTarget.Button(target.Element, target.Tap);
+            if (InView(view, target.Element))
+            {
+                yield return SurfaceTarget.Button(target.Element, target.Tap);
+            }
         }
 
         foreach (var target in _sticky?.TapTargets ?? [])
         {
-            yield return SurfaceTarget.Button(target.Element, target.Tap);
+            if (InView(view, target.Element))
+            {
+                yield return SurfaceTarget.Button(target.Element, target.Tap);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    protected override bool TrackContact(in PointerSample sample)
+    {
+        switch (sample.Phase)
+        {
+            case PointerPhase.Down:
+                if (
+                    _scroller.ScrollableHeight > 0
+                    && PhysicalBounds(_scroller, inflate: false).Contains(sample.Position)
+                )
+                {
+                    _scroll.Down(sample.PointerId, sample.Position.Y, _scroller.VerticalOffset);
+                }
+
+                return false;
+
+            case PointerPhase.Move:
+                if (
+                    _scroll.Move(sample.PointerId, sample.Position.Y, DragThresholdPx, DpiScale)
+                    is not { } offset
+                )
+                {
+                    return false;
+                }
+
+                _scroller.ScrollToVerticalOffset(offset);
+                return true;
+
+            default:
+                return _scroll.Up(sample.PointerId);
         }
     }
 
@@ -187,8 +245,24 @@ public sealed class DockFlyoutWindow : TouchSurface
             DockTileFactory.Detach(viewModel, handler);
         }
 
+        foreach (var badge in _badges)
+        {
+            badge.Detach();
+        }
+
         base.OnClosed(e);
     }
+
+    /// <summary>
+    /// Whether the center of <paramref name="element"/> shows inside <paramref name="view"/>, the scroller on screen;
+    /// before the window has a handle nothing is filtered.
+    /// </summary>
+    private static bool InView(PhysicalRect view, FrameworkElement element) =>
+        view.IsEmpty
+        || (
+            PhysicalBounds(element, inflate: false) is { IsEmpty: false } bounds
+            && view.Contains(bounds.Center)
+        );
 
     private void OnLabelsChanged(object? sender, PropertyChangedEventArgs e) => Relabel();
 
@@ -219,6 +293,12 @@ public sealed class DockFlyoutWindow : TouchSurface
             DockTileFactory.Detach(viewModel, handler);
         }
 
+        foreach (var badge in _badges)
+        {
+            badge.Detach();
+        }
+
+        _badges.Clear();
         _tiles.Clear();
         _pinnedGrid.Children.Clear();
         foreach (var tile in _viewModel.PinnedTiles)
@@ -228,11 +308,18 @@ public sealed class DockFlyoutWindow : TouchSurface
                 double.NaN,
                 PinnedTileHeight,
                 PinnedIconPx,
-                PinnedLabelPx
+                PinnedLabelPx,
+                Modes
             );
-            control.Margin = new Thickness(Gap / 2);
+            var (cell, badge) = DockTileFactory.Cell(control, tile, Modes);
+            cell.Margin = new Thickness(Gap / 2);
+            if (badge is not null)
+            {
+                _badges.Add(badge);
+            }
+
             _tiles.Add((tile, control, handler));
-            _ = _pinnedGrid.Children.Add(control);
+            _ = _pinnedGrid.Children.Add(cell);
         }
 
         RefreshTargets();

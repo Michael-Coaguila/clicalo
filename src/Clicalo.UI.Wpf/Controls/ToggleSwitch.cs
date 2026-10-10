@@ -99,11 +99,24 @@ public sealed class ToggleSwitch : ToggleButton
         {
             knob.RenderTransform = _knobShift;
         }
+
+        // A label longer than the row wraps and the row grows; it is never cut (the prototype's rows wrap too).
+        if (GetTemplateChild(ContentPart) is ContentPresenter presenter)
+        {
+            WrappedText.Apply(presenter, centered: false);
+        }
     }
 
+    /// <summary>
+    /// The switch is only the drawing of the state of a row that is the switch itself (docs/07: «toda la fila es
+    /// tocable»): UI Automation then sees the row and not a second, nameless switch inside it. Set it before the switch
+    /// is shown.
+    /// </summary>
+    public bool IsDrawingOnly { get; init; }
+
     /// <inheritdoc />
-    protected override AutomationPeer OnCreateAutomationPeer() =>
-        new TouchToggleAutomationPeer(this);
+    protected override AutomationPeer? OnCreateAutomationPeer() =>
+        IsDrawingOnly ? null : new TouchToggleAutomationPeer(this);
 
     /// <inheritdoc />
     protected override void OnChecked(RoutedEventArgs e)

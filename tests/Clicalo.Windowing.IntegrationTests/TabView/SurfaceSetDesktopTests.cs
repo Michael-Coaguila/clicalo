@@ -1,5 +1,6 @@
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Interaction;
+using Clicalo.Application.Session;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.PanelLayout;
@@ -35,7 +36,7 @@ public sealed class SurfaceSetDesktopTests
     public void Every_form_shows_passively_inside_the_work_area()
     {
         using var lab = SurfaceLab.Create();
-        var (set, panel, theme) = WpfThread.Invoke(() => Build(lab));
+        var (set, panel, theme, _) = WpfThread.Invoke(() => Build(lab));
         try
         {
             foreach (
@@ -97,6 +98,87 @@ public sealed class SurfaceSetDesktopTests
         }
     }
 
+    [DesktopFact]
+    [Trait("Req", "PES-014")]
+    [Trait("Req", "PES-001")]
+    [Trait("Req", "REG-01")]
+    public void The_notice_surface_shows_beside_the_handle_or_the_bar_clear_of_the_other_windows()
+    {
+        using var lab = SurfaceLab.Create();
+        var (set, panel, theme, model) = WpfThread.Invoke(() => Build(lab));
+        try
+        {
+            WpfThread.Invoke(() =>
+                model.ApplyContext(
+                    new PanelBodyContext(
+                        Notice: new PanelNotice(
+                            Clicalo.Domain.Messages.L.ReleasedSwitch,
+                            new IconRef("warning"),
+                            NoticeTone.Warning
+                        )
+                    )
+                )
+            );
+            WpfThread.Invoke(() =>
+            {
+                set.Apply(Layout(PanelForm.Full));
+                panel.Present();
+            });
+            WpfThread.Invoke(WpfThread.DrainPendingWork);
+            foreach (var form in new[] { PanelForm.DockClosed, PanelForm.DockOpen })
+            {
+                WpfThread.Invoke(() => set.Apply(Layout(form) with { ShowsNotice = true }));
+                WpfThread.Invoke(WpfThread.DrainPendingWork);
+
+                WpfThread.Invoke(() =>
+                {
+                    set.Notice.IsVisible.ShouldBeTrue(form.ToString());
+                    var notice = set.Notice.ScreenBounds;
+                    var anchor =
+                        form == PanelForm.DockClosed
+                            ? set.Handle(DockSide.Right).ScreenBounds
+                            : set.Bar(DockSide.Right).ScreenBounds;
+                    notice.Right.ShouldBeLessThanOrEqualTo(anchor.Left, form.ToString());
+                    var monitor = PanelGeometry.MonitorOf(notice, set.Monitors);
+                    notice.Left.ShouldBeGreaterThanOrEqualTo(monitor.WorkArea.Left);
+                    notice.Bottom.ShouldBeLessThanOrEqualTo(monitor.WorkArea.Bottom);
+
+                    // It keeps its 300 px and its text wraps inside them, whatever the notice says.
+                    notice.Width.ShouldBe((int)Math.Ceiling(300 * monitor.Scale));
+                    if (form == PanelForm.DockOpen)
+                    {
+                        var pinned = set.Flyout(DockFlyout.Pinned).ScreenBounds;
+                        pinned.Width.ShouldBe((int)Math.Ceiling(230 * monitor.Scale));
+                        var apart =
+                            notice.Right <= pinned.Left
+                            || pinned.Right <= notice.Left
+                            || notice.Bottom <= pinned.Top
+                            || pinned.Bottom <= notice.Top;
+                        apart.ShouldBeTrue("the notice covers «Pinned»");
+                    }
+                    else
+                    {
+                        // PES-001: the handle has its shadow, around the 32 px it draws.
+                        set.Handle(DockSide.Right).Shadow.ShouldNotBeNull();
+                    }
+                });
+            }
+
+            WpfThread.Invoke(() => set.Apply(Layout(PanelForm.DockClosed)));
+            WpfThread.Invoke(WpfThread.DrainPendingWork);
+            WpfThread.Invoke(() => set.Notice.IsVisible.ShouldBeFalse());
+            lab.Guard.Violations.ShouldBe(0);
+        }
+        finally
+        {
+            WpfThread.Invoke(() =>
+            {
+                panel.Close();
+                theme.Dispose();
+            });
+        }
+    }
+
     private static SurfaceLayout Layout(PanelForm form) =>
         new(
             form,
@@ -117,7 +199,12 @@ public sealed class SurfaceSetDesktopTests
             ShowsCoach: false
         );
 
-    private static (SurfaceSet Set, PanelWindow Panel, ThemeService Theme) Build(SurfaceLab lab)
+    private static (
+        SurfaceSet Set,
+        PanelWindow Panel,
+        ThemeService Theme,
+        PanelViewModel Model
+    ) Build(SurfaceLab lab)
     {
         var time = TimeProvider.System;
         var theme = new ThemeService(
@@ -136,6 +223,9 @@ public sealed class SurfaceSetDesktopTests
         );
         var model = PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es);
         viewModel.Apply(model);
+
+        // The panel is not hidden from the tray: its window shows in the Full view.
+        viewModel.ApplySession(new PanelSession(PanelPresence.Visible, PanelTestData.Word, 1));
         var panel = new PanelWindow(
             viewModel,
             lab.Registry,
@@ -161,12 +251,12 @@ public sealed class SurfaceSetDesktopTests
                 () => { },
                 static (_, _, _) => { },
                 _ => { },
-                (_, _) => { },
+                (_, _, _) => { },
                 (_, _) => { },
                 () => { }
             )
         );
-        return (set, panel, theme);
+        return (set, panel, theme, viewModel);
     }
 
     private sealed class SilentIntents : IDockIntents
@@ -194,6 +284,8 @@ public sealed class SurfaceSetDesktopTests
         public void ToggleSticky() { }
 
         public void TogglePinOpen() { }
+
+        public void QuickSettings() { }
 
         public void CoachNext() { }
 

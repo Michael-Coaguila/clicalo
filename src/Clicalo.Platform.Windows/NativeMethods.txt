@@ -76,6 +76,9 @@ RegisterWindowMessage
 ChangeWindowMessageFilterEx
 LoadIcon
 IDI_APPLICATION
+CreateIconFromResourceEx
+DestroyIcon
+GetSystemMetrics
 CreatePopupMenu
 AppendMenu
 DestroyMenu
@@ -114,6 +117,13 @@ TOKEN_USER
 // actions
 // ---- Launch: apps and webs on the Shell thread, unelevated through the desktop shell when Clicalo is elevated ----
 ShellExecute
+SHCreateItemFromParsingName
+SHGetKnownFolderPath
+IShellItem
+IEnumShellItems
+BHID_EnumItems
+SIGDN
+CoTaskMemFree
 IShellWindows
 ShellWindows
 IShellFolderViewDual
@@ -161,3 +171,12 @@ MonitorFromPoint
 
 // ---- Feedback: the soft sound after an action (EJE-012) ----
 PlaySound
+
+// ---- Secrets: the person's own AI key in the Credential Manager (ADR-0008, user decision D5) ----
+CredWrite
+CredRead
+CredDelete
+CredFree
+CREDENTIALW
+CRED_TYPE
+CRED_PERSIST

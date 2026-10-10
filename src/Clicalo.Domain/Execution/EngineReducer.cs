@@ -140,6 +140,7 @@ public static class EngineReducer
                 break;
         }
 
+        MousePlanner.SyncScroll(step);
         step.UpdateTimers(state);
         step.State = step.State with { Version = state.Version + 1 };
         return new EngineTransition(step.State, step.Effects);
@@ -177,7 +178,10 @@ public static class EngineReducer
             filter,
             step.Config.Touch,
             request.At
-        );
+        )
+        {
+            TimeMultiplier = step.Config.TimeMultiplier,
+        };
         var outcome = ActivationPolicy.Decide(context);
         step.State = step.State with
         {
@@ -235,10 +239,19 @@ public static class EngineReducer
                     Armed = new ArmedConfirmation(armed.Shortcut, armed.Until)
                     {
                         UntilTicks =
-                            step.Now + step.Ticks(Timings.Confirmation.ExecuteConfirmWindow),
+                            step.Now
+                            + step.Ticks(
+                                InteractionTime.Scale(
+                                    Timings.Confirmation.ExecuteConfirmWindow,
+                                    step.Config.TimeMultiplier
+                                )
+                            ),
                     },
                 };
-                step.Notice(EngineNotices.ConfirmArmed, NoticeUrgency.Assertive);
+                step.Notice(
+                    EngineNotices.ConfirmArmed(step.NameOf(shortcut)),
+                    NoticeUrgency.Assertive
+                );
                 break;
             case ActivationDecision.Refused refused:
                 step.Notice(
@@ -327,17 +340,18 @@ public static class EngineReducer
 
     private static void ContactEnded(EngineStep step, int contactId)
     {
+        if (step.State.Scroll?.ContactId == contactId)
+        {
+            // EJE-009: the scroll ends with its contact, silently: it held no key.
+            MousePlanner.StopScroll(step);
+        }
+
         var holder = HolderId.ForContact(contactId);
         var label = step.LabelOf(holder);
         if (step.CancelHolder(holder))
         {
             // EJE-004: «{keys} soltado» says what was released.
             step.Notice(label is null ? EngineNotices.Released : L.ReleasedKeys(keys: label));
-        }
-
-        if (step.State.Scroll?.ContactId == contactId)
-        {
-            step.State = step.State with { Scroll = null };
         }
     }
 
@@ -396,7 +410,7 @@ public static class EngineReducer
                 MacroPlanner.Cancel(step, run);
             }
 
-            step.State = step.State with { Scroll = null };
+            MousePlanner.StopScroll(step);
             foreach (
                 var holder in step
                     .State.Outbox.Items.Select(static s => s.Holder)
@@ -434,14 +448,25 @@ public static class EngineReducer
                 step.State = step.State with { Paused = true };
                 break;
             case TerminalReason.EngineFault:
+                // BUR-004: a fault never resumes by itself; paused, nothing is sent until «Reanudar».
                 step.State = EngineState.Empty with
                 {
+                    Paused = step.State.Paused,
                     Foreground = step.State.Foreground,
                     Filters = step.State.Filters,
                     Sequence = step.State.Sequence,
                     BlockedReleases = step.State.BlockedReleases,
                 };
                 break;
+        }
+
+        if (wasBusy && reason is TerminalReason.Lock or TerminalReason.Suspend)
+        {
+            // SEG-006: nobody reads a notice behind the lock screen; it is raised again when the session is back.
+            step.State = step.State with
+            {
+                ReleasedOnLock = true,
+            };
         }
 
         if (
@@ -565,5 +590,14 @@ public static class EngineReducer
     private static void SessionResumed(EngineStep step)
     {
         step.ResendBlockedReleases();
+        if (step.State.ReleasedOnLock)
+        {
+            // SEG-006: back from the lock or the suspension, the notice explains why nothing is held any more.
+            step.State = step.State with
+            {
+                ReleasedOnLock = false,
+            };
+            step.Notice(EngineNotices.ReleasedOnLock, NoticeUrgency.Assertive);
+        }
     }
 }

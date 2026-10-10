@@ -48,8 +48,11 @@ decisión de stack y se revisó el plano. Son la evidencia que citan los ADR.
   [catálogo](../requirements/catalog.md).
 - Seguridad y privacidad: [modelo de amenazas](../security/threat-model.md) y
   [privacidad](../security/privacy.md).
-- Guías: [preparar el entorno](../guides/dev-setup.md) y
-  [programar con pantalla táctil y voz](../guides/voice-and-touch-workflow.md).
+- Guías: [preparar el entorno](../guides/dev-setup.md),
+  [programar con pantalla táctil y voz](../guides/voice-and-touch-workflow.md),
+  [publicar una versión](../guides/release.md) y el
+  [guion de aceptación manual](../guides/aceptacion-manual.md).
+- Para quien usa Clícalo: la [guía de usuario](../guides/guia-de-usuario.md).
 - Diseño: [qué es vinculante del paquete de diseño](../design/handoff/LEEME-VINCULANTE.md).
 - Para agentes: [AGENTS.md](../../AGENTS.md).
 

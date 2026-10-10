@@ -2,7 +2,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using Clicalo.Domain.Catalog;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
@@ -20,7 +19,7 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 public sealed class ShortcutGridView : Border
 {
     private readonly PanelViewModel _viewModel;
-    private readonly UniformGrid _grid = new() { VerticalAlignment = VerticalAlignment.Top };
+    private readonly ReadingOrderGrid _grid = new() { VerticalAlignment = VerticalAlignment.Top };
     private readonly List<(PanelTileControl Tile, PropertyChangedEventHandler Handler)> _tiles = [];
     private readonly List<TileCell> _cells = [];
     private PanelLayerModels? _layers;

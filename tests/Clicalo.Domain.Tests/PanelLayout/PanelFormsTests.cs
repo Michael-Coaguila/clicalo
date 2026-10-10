@@ -44,6 +44,61 @@ public sealed class PanelFormsTests
         PanelForms.IsDock(form).ShouldBe(form is PanelForm.DockClosed or PanelForm.DockOpen);
     }
 
+    [Theory]
+    [InlineData(PanelDensity.Dock, false, PanelForm.Full)]
+    [InlineData(PanelDensity.Dock, true, PanelForm.Full)]
+    [InlineData(PanelDensity.Full, false, PanelForm.Full)]
+    [InlineData(PanelDensity.Compact, false, PanelForm.Compact)]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "BUS-006")]
+    public void A_search_from_the_bar_shows_the_Full_view_for_a_while_without_changing_the_view(
+        PanelDensity density,
+        bool dockOpen,
+        PanelForm expected
+    )
+    {
+        PanelForms.Of(true, density, false, dockOpen, searchPeek: true).ShouldBe(expected);
+
+        // Hidden from the tray stays hidden, and once the search ends the Tab view is back as it was.
+        PanelForms
+            .Of(false, density, false, dockOpen, searchPeek: true)
+            .ShouldBe(PanelForm.Hidden);
+        PanelForms
+            .Of(true, PanelDensity.Dock, false, dockOpen)
+            .ShouldBe(dockOpen ? PanelForm.DockOpen : PanelForm.DockClosed);
+    }
+
+    [Theory]
+    [InlineData(PanelForm.DockOpen, true, false, false, true)]
+    [InlineData(PanelForm.DockClosed, true, false, false, true)]
+    [InlineData(PanelForm.DockClosed, false, true, false, true)]
+    [InlineData(PanelForm.DockOpen, false, false, true, true)]
+    [InlineData(PanelForm.DockOpen, false, false, false, false)]
+    [InlineData(PanelForm.Full, true, true, true, false)]
+    [InlineData(PanelForm.Bubble, true, false, false, false)]
+    [InlineData(PanelForm.Hidden, true, false, false, false)]
+    [Trait("Req", "PES-014")]
+    public void The_notice_surface_shows_in_the_Tab_view_while_there_is_something_to_tell(
+        PanelForm form,
+        bool notice,
+        bool adminNotice,
+        bool testMode,
+        bool expected
+    ) => DockRules.ShowsNotices(form, notice, adminNotice, testMode).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(PanelForm.DockOpen, true, true)]
+    [InlineData(PanelForm.DockOpen, false, false)]
+    [InlineData(PanelForm.DockClosed, true, false)]
+    [InlineData(PanelForm.Full, true, false)]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "CUA-014")]
+    public void Quick_settings_and_the_menu_show_beside_the_bar_only_while_it_is_open(
+        PanelForm form,
+        bool open,
+        bool expected
+    ) => DockRules.ShowsBesideBar(form, open).ShouldBe(expected);
+
     /// <summary>What a button did, the lock of the bar, and whether the bar collapses after it.</summary>
     public static TheoryData<DockUse, bool, bool> Collapses =>
         new()

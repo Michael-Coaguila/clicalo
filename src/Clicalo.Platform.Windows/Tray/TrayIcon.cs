@@ -11,7 +11,8 @@ namespace Clicalo.Platform.Windows.Tray;
 /// The notification area icon (blueprint §8.1): <c>Shell_NotifyIcon</c> with <c>NOTIFYICON_VERSION_4</c> and its
 /// callback message on the <see cref="SysEventsThread"/>. Clicking it never activates a window by itself: the click
 /// only gives foreground rights (<c>LeaseOrigin.Tray</c>); showing the panel is passive and the menu goes through
-/// <see cref="TrayMenuHost"/> inside a <c>TrayMenu</c> lease. It is re-added after <c>TaskbarCreated</c>.
+/// <see cref="TrayMenuHost"/> inside a <c>TrayMenu</c> lease. It is re-added after <c>TaskbarCreated</c>. It shows the
+/// icon of Clícalo, at 55 % while the panel is hidden or Clícalo is paused (BUR-003, BUR-004).
 /// </summary>
 /// <remarks>
 /// The callback window is a hidden top-level window of the SysEvents thread, not its message-only window, because
@@ -23,8 +24,10 @@ public sealed class TrayIcon : IDisposable
     private const uint IconId = 1;
     private const int MaxTooltip = 127;
 
+    private readonly TrayIconImages _images = new();
     private SysEventsWindow? _window;
     private string _tooltip = string.Empty;
+    private bool _dimmed;
     private bool _added;
     private bool _wanted;
     private int _disposed;
@@ -49,13 +52,16 @@ public sealed class TrayIcon : IDisposable
     public bool IsShown => Volatile.Read(ref _added);
 
     /// <summary>Adds the icon with the localized <paramref name="tooltip"/>.</summary>
-    public Task ShowAsync(string tooltip)
+    /// <param name="tooltip">The accessible text of the icon.</param>
+    /// <param name="dimmed">Whether the icon shows at 55 %: the panel is hidden or Clícalo is paused (BUR-003).</param>
+    public Task ShowAsync(string tooltip, bool dimmed = false)
     {
         ArgumentNullException.ThrowIfNull(tooltip);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         return Thread.InvokeAsync(() =>
         {
             _tooltip = tooltip;
+            _dimmed = dimmed;
             _wanted = true;
             if (_window is null)
             {
@@ -92,7 +98,7 @@ public sealed class TrayIcon : IDisposable
         });
     }
 
-    /// <summary>Changes the localized tooltip (language change, paused state).</summary>
+    /// <summary>Changes the localized tooltip (language change).</summary>
     public Task SetTooltipAsync(string tooltip)
     {
         ArgumentNullException.ThrowIfNull(tooltip);
@@ -100,6 +106,27 @@ public sealed class TrayIcon : IDisposable
         return Thread.InvokeAsync(() =>
         {
             _tooltip = tooltip;
+            if (_added)
+            {
+                Modify();
+            }
+        });
+    }
+
+    /// <summary>
+    /// Changes the text and the look of the icon together: the hidden panel and the pause are said in the text and
+    /// shown at 55 % (BUR-003, BUR-004).
+    /// </summary>
+    /// <param name="tooltip">The accessible text of the icon.</param>
+    /// <param name="dimmed">Whether the icon shows at 55 %.</param>
+    public Task SetAppearanceAsync(string tooltip, bool dimmed)
+    {
+        ArgumentNullException.ThrowIfNull(tooltip);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        return Thread.InvokeAsync(() =>
+        {
+            _tooltip = tooltip;
+            _dimmed = dimmed;
             if (_added)
             {
                 Modify();
@@ -129,11 +156,13 @@ public sealed class TrayIcon : IDisposable
 
                 _window?.Dispose();
                 _window = null;
+                _images.Dispose();
             });
         }
         catch (ObjectDisposedException)
         {
             // The SysEvents loop has ended; the shell removes the icon of a destroyed window by itself.
+            _images.Dispose();
         }
     }
 
@@ -162,7 +191,7 @@ public sealed class TrayIcon : IDisposable
             | NOTIFY_ICON_DATA_FLAGS.NIF_SHOWTIP
         );
         data.CallbackMessage = CallbackMessage;
-        data.Icon = (nint)PInvoke.LoadIcon(default, PInvoke.IDI_APPLICATION).Value;
+        data.Icon = _images.Handle(_dimmed);
         CopyTooltip(ref data);
         if (!ShellNotifyIcon.Send(NOTIFY_ICON_MESSAGE.NIM_ADD, ref data))
         {
@@ -177,7 +206,12 @@ public sealed class TrayIcon : IDisposable
     private void Modify()
     {
         var data = Data();
-        data.Flags = (uint)(NOTIFY_ICON_DATA_FLAGS.NIF_TIP | NOTIFY_ICON_DATA_FLAGS.NIF_SHOWTIP);
+        data.Flags = (uint)(
+            NOTIFY_ICON_DATA_FLAGS.NIF_ICON
+            | NOTIFY_ICON_DATA_FLAGS.NIF_TIP
+            | NOTIFY_ICON_DATA_FLAGS.NIF_SHOWTIP
+        );
+        data.Icon = _images.Handle(_dimmed);
         CopyTooltip(ref data);
         _ = ShellNotifyIcon.Send(NOTIFY_ICON_MESSAGE.NIM_MODIFY, ref data);
     }

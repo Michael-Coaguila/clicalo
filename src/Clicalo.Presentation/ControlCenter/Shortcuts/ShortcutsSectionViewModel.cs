@@ -182,6 +182,41 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
         Invalidate();
     }
 
+    /// <summary>
+    /// [Compartir] of the profile card (DAT-007): saves <c>clicalo-perfil-&lt;id&gt;.json</c> where the person chooses.
+    /// The texts are left out, with a notice, unless the person chose [shareWithTexts] (PQ-37).
+    /// </summary>
+    /// <param name="withTexts">Whether to include the texts in clear.</param>
+    public async Task ShareAsync(bool withTexts)
+    {
+        if (_s.Templates is not { } templates || Profiles.Current is not { } profile)
+        {
+            return;
+        }
+
+        var file = templates.Sharing.Export(profile, withTexts);
+        var saved = await templates
+            .SaveShare(file.FileName, file.Content, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (saved is null)
+        {
+            return;
+        }
+
+        templates.Notify(
+            saved.Value
+                ? new WorkspaceNotice(
+                    file.ExcludedTexts > 0
+                        ? L.SharedTextsExcluded(file.ExcludedTexts)
+                        : L.ProfShared(name: file.FileName),
+                    "share",
+                    false,
+                    file.ExcludedTexts > 0
+                )
+                : new WorkspaceNotice(L.SaveFailT, "warning", false, true)
+        );
+    }
+
     /// <summary>🎤 of a field of the section (ACC-011).</summary>
     public void Dictate() => Editor.Dictate();
 
@@ -278,6 +313,12 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
 
     private string T(Message message) => _s.Localization.Current.Format(message);
 
+    private static bool HasTexts(Profile profile) =>
+        profile.Shortcuts.Items.Any(s =>
+            s.Action is TextAction
+            || (s.Action is MacroAction macro && macro.Steps.Items.Any(step => step is TextStep))
+        );
+
     private async Task LoadAppsAsync()
     {
         var apps = await _s.OpenApps(CancellationToken.None).ConfigureAwait(true);
@@ -362,19 +403,11 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 new LayerChip(
                     active?.Icon.Name ?? "apps",
                     active?.Name.Get(Language, LangCode.Es) ?? T(L.NoProf),
-                    (active?.Shortcuts.Count ?? 0).ToString(CultureInfo.InvariantCulture)
-                        + " · "
-                        + T(L.ActiveApp)
+                    T(L.ActiveCount(active?.Shortcuts.Count ?? 0))
                 ),
                 new LayerChip("star", T(L.Freq), T(L.AutoW)),
             ],
-            count > 0
-                ? count.ToString(CultureInfo.InvariantCulture)
-                    + " "
-                    + T(L.DupSummary)
-                    + " · "
-                    + T(L.Review)
-                : null
+            count > 0 ? T(L.DupReviewN(count)) : null
         );
     }
 
@@ -398,7 +431,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             profile.Icon.Name,
             profile.Name.Get(Language, LangCode.Es),
             processes.Count > 0
-                ? T(L.OpensWith) + " " + string.Join(", ", processes.Select(p => p.Value))
+                ? T(L.OpensWithApps(process: string.Join(", ", processes.Select(p => p.Value))))
                 : T(L.ManualSub),
             true,
             _profileEditOpen,
@@ -436,7 +469,9 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             T(L.ShareProf),
             T(L.Done),
             profile.Id == ProfileId.General ? null : T(armed ? L.DelConfirm : L.DelProf),
-            armed
+            armed,
+            _s.Templates is not null,
+            _s.Templates is not null && HasTexts(profile) ? T(L.ShareWithTexts) : null
         );
     }
 
@@ -491,11 +526,15 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             _linkOpen && state != LinkState.General && state != LinkState.Waiting,
             T(L.LinkOpenApps),
             [
-                .. _apps.Select(a => new AppChip(
-                    a.Process.Value,
-                    a.Name,
-                    processes.Contains(a.Process)
-                )),
+                // ATJ-008: the app that is in front behind the Control Center goes first, marked «activa».
+                .. _apps
+                    .OrderByDescending(a => a.Process == _s.LastApp())
+                    .Select(a => new AppChip(
+                        a.Process.Value,
+                        a.Name,
+                        processes.Contains(a.Process),
+                        a.Process == _s.LastApp() ? T(L.ActiveShort) : null
+                    )),
             ],
             T(L.LinkDetect),
             T(L.LinkNone),

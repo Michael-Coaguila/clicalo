@@ -68,7 +68,19 @@ public sealed class LiveAnnouncer
     /// <summary>Shows and announces <paramref name="text"/> with <paramref name="urgency"/>.</summary>
     /// <param name="text">The localized notice text.</param>
     /// <param name="urgency">Polite or assertive.</param>
-    public void Announce(string text, AnnouncementUrgency urgency)
+    public void Announce(string text, AnnouncementUrgency urgency) =>
+        Raise(text, urgency, show: true);
+
+    /// <summary>
+    /// Announces <paramref name="text"/> with <paramref name="urgency"/> without changing what the region shows: for a
+    /// region whose own content already says what to do (the «Release all» pill), while the announcement says why it
+    /// appeared.
+    /// </summary>
+    /// <param name="text">The localized text to say.</param>
+    /// <param name="urgency">Polite or assertive.</param>
+    public void Say(string text, AnnouncementUrgency urgency) => Raise(text, urgency, show: false);
+
+    private void Raise(string text, AnnouncementUrgency urgency, bool show)
     {
         ArgumentNullException.ThrowIfNull(text);
         Region.VerifyAccess();
@@ -86,7 +98,11 @@ public sealed class LiveAnnouncer
         };
 
         AutomationProperties.SetLiveSetting(Region, liveSetting);
-        Show(text);
+        if (show)
+        {
+            Show(text);
+        }
+
         LastText = text;
         LastUrgency = urgency;
         if (text.Length == 0)

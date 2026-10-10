@@ -20,7 +20,7 @@ namespace Clicalo.Presentation.Dock;
 /// <summary>
 /// The handle and the bar of the Tab view (docs/04 «Vista pestaña», PES-001 to PES-015) and the floating «Release all»
 /// beside them: the shortcuts of the view, paged by what fits whole (PES-007), «What to see» (PES-006), the tools
-/// (PES-008), the «Pinned» window (PES-010) and the first-time guide (PES-015). Every rule comes from the domain
+/// (PES-008, PES-009), the «Pinned» window (PES-010) and the first-time guide (PES-015). Every rule comes from the domain
 /// (<see cref="DockRules"/>, <see cref="DockGeometry"/>, <see cref="Paging"/>); every text from <c>data/i18n</c>,
 /// formatted when applied. What the buttons do goes to <see cref="IDockIntents"/>.
 /// </summary>
@@ -44,6 +44,7 @@ public sealed class DockBarViewModel : ObservableObject
     private PageWindow _window = Paging.Window(0, 1, 0);
     private int _page;
     private double _tileSpace = double.NaN;
+    private int _textScalePercent = (int)SettingsSchema.TextScalePercent.Min;
     private int _perPage = 1;
     private bool _isVertical = true;
     private string _pageLabel = string.Empty;
@@ -64,10 +65,15 @@ public sealed class DockBarViewModel : ObservableObject
     /// <param name="controller">Where the gestures of its shortcuts go.</param>
     /// <param name="localization">The interface language.</param>
     /// <param name="intents">What its buttons ask for.</param>
+    /// <param name="layers">
+    /// Test mode and the menu of a shortcut, shared with the panel (PES-010, PES-014); <see langword="null"/> for a bar
+    /// without them.
+    /// </param>
     public DockBarViewModel(
         PanelInteractionController controller,
         ILocalizationContext localization,
-        IDockIntents intents
+        IDockIntents intents,
+        PanelLayerModels? layers = null
     )
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -89,7 +95,16 @@ public sealed class DockBarViewModel : ObservableObject
             localization.Current.Format(L.DockScrollDown)
         );
         Labels = new DockLabels(localization);
+        Modes = layers is null
+            ? null
+            : new DockTileModes(layers.TestMode, layers.Menu, layers.InFrequents);
     }
+
+    /// <summary>
+    /// What a gesture on a shortcut does before it runs: test mode and the menu (PES-010, PES-014); <see langword="null"/>
+    /// for a bar without them.
+    /// </summary>
+    public DockTileModes? Modes { get; }
 
     /// <summary>The texts of the handle and the bar in the interface language.</summary>
     public DockLabels Labels { get; }
@@ -277,7 +292,10 @@ public sealed class DockBarViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsPinned));
     }
 
-    /// <summary>Applies what the engine holds: the state of every shortcut (PES-007) and the dot of the handle.</summary>
+    /// <summary>
+    /// Applies what the engine holds: the state of every shortcut (PES-007), the shortcut armed for its confirmation tap
+    /// (EJE-002) and the dot of the handle.
+    /// </summary>
     /// <param name="snapshot">The engine snapshot.</param>
     public void ApplyEngine(EngineSnapshot snapshot)
     {
@@ -296,10 +314,14 @@ public sealed class DockBarViewModel : ObservableObject
         foreach (var tile in _list.Concat(_pinned).Append(ScrollUp).Append(ScrollDown))
         {
             var isHeld = held.TryGetValue(tile.Id, out var item);
+
+            // EJE-002: the armed shortcut shows its warn outline and says «Toca otra vez para confirmar», as on the panel.
+            var armed = snapshot.Armed?.Shortcut == tile.Id;
             tile.ApplyState(
                 isHeld,
-                isHeld
-                    ? localizer.Format(item!.ContactId is null ? L.Latched : L.Holding)
+                armed,
+                isHeld ? localizer.Format(item!.ContactId is null ? L.Latched : L.Holding)
+                    : armed ? localizer.Format(L.ConfirmClose)
                     : string.Empty,
                 localizer.Format(
                     tile.Behavior switch
@@ -361,9 +383,36 @@ public sealed class DockBarViewModel : ObservableObject
         ApplyEngine(_engine);
     }
 
-    /// <summary>The length of one shortcut along the bar: 50/58/70 high (vertical) or 62/72/88 wide (PES-007).</summary>
+    /// <summary>
+    /// The length of one shortcut along the bar: 62/72/88 wide (horizontal) or 50/58/70 high (vertical, PES-007), and
+    /// then as much higher as a tile of the panel gets with the text scale, (scale − 1) × name × 1.6 (CUA-011), so its
+    /// name, which follows the scale, still has its line.
+    /// </summary>
     public double TileLength =>
-        IsVertical ? Metrics.DockVerticalTileHeightPx : Metrics.DockHorizontalTileWidthPx;
+        IsVertical
+            ? Metrics.DockVerticalTileHeightPx
+                + (
+                    (_textScalePercent - 100)
+                    / 100d
+                    * Math.Max(PanelSizes.Layout.MinTextPx, Metrics.DockTileLabelPx)
+                    * PanelSizes.Layout.TextScaleTileGrowth
+                )
+            : Metrics.DockHorizontalTileWidthPx;
+
+    /// <summary>The text scale of the person, 100 to 150 % (CUA-011): the shortcuts of a side bar grow with it.</summary>
+    /// <param name="percent">The text scale.</param>
+    public void ApplyTextScale(int percent)
+    {
+        var scale = (int)SettingsSchema.TextScalePercent.Clamp(percent);
+        if (scale == _textScalePercent)
+        {
+            return;
+        }
+
+        _textScalePercent = scale;
+        OnPropertyChanged(nameof(TileLength));
+        Repage();
+    }
 
     /// <summary>The handle was tapped.</summary>
     public void OpenBar() => _intents.OpenBar();
@@ -401,6 +450,9 @@ public sealed class DockBarViewModel : ObservableObject
 
     /// <summary>The lock of the bar.</summary>
     public void TogglePinOpen() => _intents.TogglePinOpen();
+
+    /// <summary>The <c>tune</c> button: Quick settings beside the bar (PES-009).</summary>
+    public void QuickSettings() => _intents.QuickSettings();
 
     /// <summary>[next] or [understood].</summary>
     public void CoachNext() => _intents.CoachNext();

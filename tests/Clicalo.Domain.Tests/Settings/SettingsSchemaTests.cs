@@ -16,6 +16,7 @@ public sealed class SettingsSchemaTests
 {
     [Fact]
     [Trait("Req", "DAT-001")]
+    [Trait("Req", "NFR-015")]
     public void Every_leaf_of_the_settings_has_one_descriptor()
     {
         var paths = SettingsSchema.All.Select(d => d.Path).ToArray();

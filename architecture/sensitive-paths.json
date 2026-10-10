@@ -23,6 +23,21 @@
       "reason": "Elevated relaunch after the signature check (ADR-0009)."
     },
     {
+      "pattern": "src/Clicalo.Platform.Windows/Launch/**",
+      "category": "trust-boundary",
+      "reason": "What the Shell thread may start: apps and http or https addresses without a command interpreter, the feedback email only towards the project address, and the uninstaller of the installed copy (LOG-008, ADR-0029)."
+    },
+    {
+      "pattern": "src/Clicalo.Domain/Execution/LaunchSafety.cs",
+      "category": "trust-boundary",
+      "reason": "The rule of what may be started: http and https only, no interpreters, and mailto only for the fixed project address (LOG-008, ADR-0029)."
+    },
+    {
+      "pattern": "src/Clicalo.App/Lifecycle/SystemUninstall.cs",
+      "category": "trust-boundary",
+      "reason": "The only code that asks to delete the user's data when uninstalling, and the uninstaller's hook that honours it (NFR-010, REG-08, ADR-0029)."
+    },
+    {
       "pattern": "src/Clicalo.Platform.Windows/SingleInstance/**",
       "category": "trust-boundary",
       "reason": "Named pipe with DACL, integrity label and two-way verification (ADR-0010)."

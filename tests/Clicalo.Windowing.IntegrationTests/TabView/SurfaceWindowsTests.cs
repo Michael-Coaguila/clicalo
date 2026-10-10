@@ -124,6 +124,7 @@ public sealed class SurfaceWindowsTests
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-007")]
     [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
     public void The_bar_shows_its_zones_and_the_shortcuts_of_its_page()
     {
         using var lab = SurfaceLab.Create();
@@ -146,7 +147,14 @@ public sealed class SurfaceWindowsTests
                 bar.Look.ShouldBe(SurfaceLook.Panel);
                 bar.TileControls.Select(static t => t.AccessibleName)
                     .ShouldBe(["Copiar", "Mantener Ctrl", "Mayús fija", "Web"]);
-                bar.Buttons.Count.ShouldBe(10);
+                bar.Buttons.Count.ShouldBe(11);
+
+                // PES-009: tune, the last of the tools, opens Quick settings beside the bar.
+                bar.Buttons[^1].ShouldBeSameAs(bar.TuneButton);
+                bar.TuneButton.Symbol.ShouldBe("tune");
+                System
+                    .Windows.Automation.AutomationProperties.GetName(bar.TuneButton)
+                    .ShouldBe("Ajustes rápidos");
 
                 dock.ApplyTileSpace(130);
                 bar.TileControls.Count.ShouldBe(2);
@@ -277,6 +285,8 @@ public sealed class SurfaceWindowsTests
         public void ToggleSticky() { }
 
         public void TogglePinOpen() { }
+
+        public void QuickSettings() { }
 
         public void CoachNext() { }
 

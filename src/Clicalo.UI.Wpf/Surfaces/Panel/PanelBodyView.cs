@@ -44,7 +44,8 @@ public sealed class PanelBodyView : StackPanel
         CompactRow = new CompactRowView(
             viewModel.Selector,
             viewModel.Pager,
-            () => _viewModel.Layers.EmptyProfile
+            // CUA-010: either empty card (a profile without shortcuts, Frequents without anything used yet).
+            () => _viewModel.Empty.IsVisible
         );
         Notices = new NoticeBarView(viewModel.Notices);
         NoResults = new TextBlock
@@ -74,6 +75,7 @@ public sealed class PanelBodyView : StackPanel
         Children.Add(Notices);
 
         viewModel.PropertyChanged += OnPanelChanged;
+        viewModel.Empty.PropertyChanged += OnEmptyChanged;
         ApplyWidth();
     }
 
@@ -232,6 +234,7 @@ public sealed class PanelBodyView : StackPanel
     public void Detach()
     {
         _viewModel.PropertyChanged -= OnPanelChanged;
+        _viewModel.Empty.PropertyChanged -= OnEmptyChanged;
         AdminNotice.Detach();
         Strip.Detach();
         Sticky.Detach();
@@ -244,6 +247,20 @@ public sealed class PanelBodyView : StackPanel
         Notices.Detach();
         TileMenu?.Detach();
         TestModeIndicator?.Detach();
+    }
+
+    private void OnEmptyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (
+            string.Equals(
+                e.PropertyName,
+                nameof(EmptyStateViewModel.IsVisible),
+                StringComparison.Ordinal
+            )
+        )
+        {
+            ApplyWidth();
+        }
     }
 
     private void OnPanelChanged(object? sender, PropertyChangedEventArgs e)
@@ -265,7 +282,7 @@ public sealed class PanelBodyView : StackPanel
         Width = GridMetrics.PanelWidth(_viewModel.Layout);
         var noResults = _viewModel.ShowsNoResults;
         ShortcutGrid.Visibility =
-            _viewModel.Layers.EmptyProfile || noResults ? Visibility.Collapsed : Visibility.Visible;
+            _viewModel.Empty.IsVisible || noResults ? Visibility.Collapsed : Visibility.Visible;
         NoResults.Text = _viewModel.NoResultsText;
         NoResults.Visibility = noResults ? Visibility.Visible : Visibility.Collapsed;
     }

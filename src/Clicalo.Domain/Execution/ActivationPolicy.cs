@@ -111,7 +111,11 @@ public static class ActivationPolicy
             return new ActivationOutcome(
                 new ActivationDecision.Armed(
                     shortcut.Id,
-                    request.At + Timings.Confirmation.ExecuteConfirmWindow
+                    request.At
+                        + InteractionTime.Scale(
+                            Timings.Confirmation.ExecuteConfirmWindow,
+                            context.TimeMultiplier
+                        )
                 ),
                 filter
             );

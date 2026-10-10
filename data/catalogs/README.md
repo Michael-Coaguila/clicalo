@@ -12,6 +12,7 @@ Datos versionados que describen teclas, acciones, iconos, tiempos y medidas de C
 | `combo-icons.es.json`, `combo-icons.en.json` | Icono sugerido para una combinación según el idioma de los programas | Datos en tiempo de ejecución |
 | `blocked-combos.json` | Combinaciones bloqueadas o especiales, con su alternativa | Datos en tiempo de ejecución |
 | `common-actions.json` | Acciones comunes adaptativas (decisión D4, EJE-018): combinación estándar de Guardar, Buscar, Seleccionar todo, Negrita… y sus excepciones por familia de apps e idioma de los programas, con la fuente oficial de cada una | Datos en tiempo de ejecución |
+| `global-hotkeys.json` | Lista cerrada de combinaciones del atajo global opcional para mostrar u ocultar el panel (BUR-005, decisión D10, ADR-0028), con el criterio de elección en `criteria`; los ids se guardan en el documento y nunca se renombran | Lista escrita a mano en `GlobalHotkeys` (`Clicalo.Domain.Settings`); `GlobalHotkeysTests` comprueba que coincide |
 | `system-commands.json` | Acciones que no se pueden enviar como teclas (bloquear, brillo) | Datos en tiempo de ejecución |
 | `touch-presets.json` | Presets del filtro táctil | Código generado: `TouchPresets` (`Clicalo.Domain.Catalog`) |
 | `sizes.json` | Medidas de los tamaños S, M y L y del resto del panel (docs/04) | Código generado: `PanelSizes`, `PanelSize` (`Clicalo.Domain.Catalog`) |

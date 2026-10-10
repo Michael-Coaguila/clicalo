@@ -135,7 +135,7 @@ public sealed class ShortcutsWorkspace
             return;
         }
 
-        SetPane(FirstOf(List));
+        ShowFirstOf(List);
     }
 
     /// <summary>A row of the profiles column: the list and its first shortcut (ATJ-002).</summary>
@@ -150,7 +150,7 @@ public sealed class ShortcutsWorkspace
 
         Leave();
         List = list;
-        SetPane(FirstOf(list));
+        ShowFirstOf(list);
     }
 
     /// <summary>A tile of the grid, a row of a repeated card or a search: the shortcut in the editor.</summary>
@@ -414,6 +414,37 @@ public sealed class ShortcutsWorkspace
         EditChord(static _ => KeyChord.Empty);
         _store.SealCoalescing();
         Notify(L.ComboCleared, "restart_alt", undo: true);
+    }
+
+    /// <summary>
+    /// «Grabar con teclado» closed (EDI-010): the recorded combination replaces the one of the box, as its own undo
+    /// step, with the notice «[recorded]: {teclas}».
+    /// </summary>
+    /// <param name="chord">The modifiers in the order they were pressed, with their side, and the key.</param>
+    public void RecordChord(KeyChord chord)
+    {
+        ArgumentNullException.ThrowIfNull(chord);
+        if (chord.IsEmpty || ChordInBox() is not { } current || current.Equals(chord))
+        {
+            return;
+        }
+
+        _store.SealCoalescing();
+        EditChord(_ => chord);
+        _store.SealCoalescing();
+        Notify(
+            L.RecordedKeys(
+                keys: KeyChordFormatter.Format(
+                    chord,
+                    Catalogs.KeyLabels,
+                    KeyLabelStyle.Full,
+                    UiLanguage(),
+                    LangCode.Es
+                )
+            ),
+            "keyboard",
+            undo: true
+        );
     }
 
     /// <summary>The combination of the box: the macro step being edited, or the shortcut's.</summary>
@@ -927,6 +958,23 @@ public sealed class ShortcutsWorkspace
     private string Display(LocalizedText name) => name.Get(UiLanguage(), LangCode.Es);
 
     private LangCode UiLanguage() => new(_localization.Current.Locale.Code);
+
+    /// <summary>
+    /// The first shortcut of the list. For whoever said «No puedo usar el teclado», an empty list opens «Añadir atajo»
+    /// in the place of the empty editor, so creating starts from the library and not from typing (BIE-005).
+    /// </summary>
+    private void ShowFirstOf(ListRef list)
+    {
+        var first = FirstOf(list);
+        if (first is EditorPane.Empty && _store.Current.Settings.NoKeyboardUser)
+        {
+            _beforeLibrary = first;
+            SetPane(new EditorPane.Library());
+            return;
+        }
+
+        SetPane(first);
+    }
 
     private EditorPane FirstOf(ListRef list) =>
         _store.Current.Library.TryGetList(list, out var shortcuts) && !shortcuts.IsEmpty

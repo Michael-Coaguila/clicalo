@@ -27,6 +27,8 @@ public sealed class DockLabels : ObservableObject
     private string _releaseAll = string.Empty;
     private string _coachSkip = string.Empty;
     private string _activeApp = string.Empty;
+    private string _quickSettings = string.Empty;
+    private string _notices = string.Empty;
 
     /// <summary>Creates the texts in the current language.</summary>
     /// <param name="localization">The interface language.</param>
@@ -35,6 +37,20 @@ public sealed class DockLabels : ObservableObject
         ArgumentNullException.ThrowIfNull(localization);
         _localization = localization;
         Relocalize();
+    }
+
+    /// <summary>[quick]: the <c>tune</c> button of the bar and its window (PES-009).</summary>
+    public string QuickSettings
+    {
+        get => _quickSettings;
+        private set => SetProperty(ref _quickSettings, value);
+    }
+
+    /// <summary>[dockNotices]: the notice surface of the Tab view (PES-014).</summary>
+    public string Notices
+    {
+        get => _notices;
+        private set => SetProperty(ref _notices, value);
     }
 
     /// <summary>[openBar]: the handle.</summary>
@@ -169,5 +185,7 @@ public sealed class DockLabels : ObservableObject
         ReleaseAll = l.Format(L.ReleaseAll);
         CoachSkip = l.Format(L.CoachSkip);
         ActiveApp = l.Format(L.ActiveApp);
+        QuickSettings = l.Format(L.Quick);
+        Notices = l.Format(L.DockNotices);
     }
 }

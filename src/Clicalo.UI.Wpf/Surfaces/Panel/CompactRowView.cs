@@ -61,6 +61,9 @@ public sealed class CompactRowView : DockPanel
     };
 
     private readonly List<(ShortcutTile Control, PageDotViewModel Dot)> _dotControls = [];
+
+    // SEL-005: the yellow dot of a pending profile suggestion, as on the selector of the Full view.
+    private readonly Border _suggestionDot = SelectorRowView.SuggestionDot(8, 4);
     private bool _shown;
 
     /// <summary>Creates the row.</summary>
@@ -104,8 +107,10 @@ public sealed class CompactRowView : DockPanel
         var content = new DockPanel { LastChildFill = true };
         SetDock(_profileIcon, Dock.Left);
         SetDock(_caret, Dock.Right);
+        SetDock(_suggestionDot, Dock.Right);
         content.Children.Add(_profileIcon);
         content.Children.Add(_caret);
+        content.Children.Add(_suggestionDot);
         content.Children.Add(_profileName);
         _profile.Tag = content;
         _profile.Invoked += (_, _) => _selector.ProfileButton();
@@ -207,7 +212,10 @@ public sealed class CompactRowView : DockPanel
 
         _profile.AccessibleName = _selector.ProfileName;
         _profile.AccessibleHelpText = _selector.ButtonHelp;
-        _profile.AccessibleState = _selector.IsActiveApp ? _selector.ActiveAppName : string.Empty;
+        _profile.AccessibleState = _selector.ButtonState;
+        _suggestionDot.Visibility = _selector.HasSuggestion
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         _profile.IsExpanded = _selector.IsExpanded;
         _profileName.Text = _selector.ProfileName;
         _profileIcon.Symbol = _selector.ProfileIcon.Length == 0 ? null : _selector.ProfileIcon;

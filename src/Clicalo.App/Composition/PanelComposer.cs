@@ -37,11 +37,13 @@ namespace Clicalo.App.Composition;
 /// Wires the full panel to the real document, session, engine and foreground (docs/04 §1–§11), on the UI thread of the
 /// Surfaces role. It owns no rule: the view in front is the <see cref="ProfileViewCoordinator"/>'s, the profile grid is
 /// the <see cref="SessionStore"/>'s, the search and the suggestion are their view models', and every product decision
-/// is a call to the domain. It implements the intentions of the body (<see cref="IPanelBodyIntents"/>), keeps the notice
-/// on show for its duration (AVI-002) and projects everything again, once per dispatcher turn, whenever an input
-/// changes; while a finger rests on the panel the projection waits for it (PAN-009). It also owns the layers above
+/// is a call to the domain. It implements the intentions of the body (<see cref="IPanelBodyIntents"/>), sends every
+/// notice to the <see cref="NoticeQueue"/> of the interaction state and ticks it when the one on show ends (AVI-002),
+/// and projects everything again, once per dispatcher turn, whenever an input changes; while a finger rests on the panel the projection waits for it (PAN-009). It also owns the layers above
 /// the tiles (Quick settings, edit mode, the tile menu and test mode): it is their notice sink, keeps one primary layer
 /// open at a time (PAN-008) and passes the intentions for the control center on to <see cref="ControlCenter"/>.
+/// While Clícalo is paused from the tray (BUR-004) it hides the panel and stops following the app in front; it keeps
+/// the optional global shortcut of the tray on the combination of the settings (BUR-005).
 /// </summary>
 internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, IControlCenterIntents
 {
@@ -50,6 +52,12 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private const string UndoIcon = "undo";
     private const string LockedIcon = "lock";
     private const string FollowingIcon = "autorenew";
+    private const string AdminIcon = "admin_panel_settings";
+
+    /// <summary>The ids of ⏶ and ⏷ of the Tab bar (<c>DockBarViewModel</c>): the panic strip names them (SEG-001).</summary>
+    private const string DockScrollUpId = "dock.scrollUp";
+
+    private const string DockScrollDownId = "dock.scrollDown";
 
     private readonly DocumentStore _store;
     private readonly SessionStore _session;
@@ -64,14 +72,18 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private readonly Dispatcher _ui;
     private readonly bool _selfElevated;
     private PanelWindow? _window;
-    private PanelNotice? _notice;
-    private object? _stickyOwner;
     private readonly object _captureOwner = new();
+    private readonly object _holdOwner = new();
+    private readonly object _macroOwner = new();
     private ITimer? _noticeTimer;
 
     // Kept referenced until they fire, so the collector cannot drop a flash before it ends.
     private readonly HashSet<ITimer> _flashTimers = [];
     private string? _elevatedApp;
+    private IForegroundMonitor? _monitor;
+    private Func<ExternalForeground, ForegroundDetails>? _describe;
+    private Func<KeyChord?, Task<bool>>? _setHotkey;
+    private bool _relaunching;
     private bool _refreshQueued;
     private bool _resultsChanged = true;
 
@@ -136,7 +148,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         TestMode = new TestModeViewModel(engine, localization, this, time, Post);
         EditMode = new EditModeViewModel(
             store,
-            new TwoStepConfirm(time),
+            // ACC-006: the two-tap window lasts ×1, ×2 or ×3, as the settings say when the first tap arms it.
+            new TwoStepConfirm(time, () => _store.Current.Settings.TimeMultiplier),
             localization,
             this,
             this,
@@ -157,7 +170,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             EditMode,
             Menu,
             TestMode,
-            new TileInteractionModes(EditMode, TestMode, Menu),
+            new TileInteractionModes(EditMode, TestMode, Menu)
+            {
+                IgnoredFeedback = tile => ShowIgnored(tile.ShowIgnored),
+            },
             () => _profiles.State.View is ViewTarget.Frequents
         );
 
@@ -166,7 +182,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             localization,
             () => _window?.SurfaceWindow ?? default,
             shortcut => KeyLines(forSearch: true).For(shortcut).Line,
-            message => Notify(message, NoticeTone.Warning, WarningIcon)
+            message => Notify(message, NoticeTone.Warning, WarningIcon),
+            AppMode
         );
         Suggestion = new SuggestionViewModel(
             store,
@@ -200,17 +217,33 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                     _ = _interaction.Dispatch(new InteractionAction.Minimize());
                 }
             )
+            {
+                // SEL-006: without the selector row, the title opens the profile grid, with ★ Frequents in it.
+                Title = TogglePicker,
+            }
         );
 
         _profiles.Changed += OnProfileViewChanged;
         _session.Changed += (_, _) => Invalidate();
+        _interaction.Changed += OnInteractionChanged;
+        _relay.SnapshotChanged += (_, change) => OnEngineState(change.Snapshot);
         Search.PropertyChanged += OnSearchChanged;
         Search.Results.CollectionChanged += OnResultsChanged;
         Suggestion.PropertyChanged += (_, _) => Invalidate();
         EditMode.PropertyChanged += (_, _) => Invalidate();
         QuickSettings.PropertyChanged += (_, _) => Invalidate();
         Menu.PropertyChanged += (_, _) => Invalidate();
-        TestMode.PropertyChanged += (_, _) => Invalidate();
+        TestMode.PropertyChanged += (_, _) =>
+        {
+            if (!TestMode.IsOn)
+            {
+                // AVI-002: a fixed notice lasts while its state lasts; test mode also ends by itself after 30 s.
+                ClearSticky(TestMode);
+            }
+
+            Invalidate();
+        };
+        Panel.PropertyChanged += OnPanelChanged;
         Search.ApplyLibrary(store.Current.Library);
         Refresh();
     }
@@ -251,6 +284,15 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     /// <summary>Raised after every projection, on the UI thread: the Tab view follows the same shortcuts.</summary>
     public event EventHandler? Refreshed;
 
+    /// <summary>
+    /// Raised on the UI thread whenever the notice on show changes (AVI-002): the notice the panel, the Tab view
+    /// (PES-014) and the status bar of the control center (CCM-003) show, or none when they rest.
+    /// </summary>
+    public event EventHandler<NoticePublishedEventArgs>? NoticePublished;
+
+    /// <summary>The notice on show now, or <see langword="null"/> at rest (AVI-002).</summary>
+    public PanelNotice? CurrentNotice => ToPanel(_interaction.Current.Notices.Shown);
+
     /// <summary>The last projection of the view in front: the shortcuts of the grid and of Always visible.</summary>
     public PanelModel LastModel { get; private set; } = PanelModel.Empty;
 
@@ -284,26 +326,44 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         ArgumentNullException.ThrowIfNull(monitor);
         ArgumentNullException.ThrowIfNull(describe);
+        _monitor = monitor;
+        _describe = describe;
         monitor.ExternalForegroundChanged += (_, change) => Report(change.Foreground);
         if (monitor.Current is { } current)
         {
             Report(current);
         }
+    }
 
-        void Report(ExternalForeground foreground)
+    /// <summary>
+    /// The global shortcut of the tray, once the tray shows (BUR-005, user decision D10): it follows the settings from
+    /// here on, off by default; when Windows refuses the combination because another program owns it, the panel says
+    /// so.
+    /// </summary>
+    /// <param name="setHotkey">
+    /// Turns the global shortcut on with a combination, or off with <see langword="null"/>; completes with
+    /// <see langword="false"/> when it could not be registered (<c>TrayController.SetHotkeyAsync</c>).
+    /// </param>
+    public void AttachHotkey(Func<KeyChord?, Task<bool>> setHotkey)
+    {
+        ArgumentNullException.ThrowIfNull(setHotkey);
+        _setHotkey = setHotkey;
+        ApplyHotkey(_store.Current.Settings.GlobalHotkey);
+    }
+
+    private void Report(ExternalForeground foreground)
+    {
+        // PRB-006: the app «Probar ahora» brings to the front does not change the profile of the panel.
+        if (ControlCenter?.IsTrying == true || _describe is not { } describe)
         {
-            // PRB-006: the app «Probar ahora» brings to the front does not change the panel's profile.
-            if (ControlCenter?.IsTrying == true)
-            {
-                return;
-            }
-
-            var process = describe(foreground).Process;
-            var elevated =
-                ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)
-                == ElevationState.TargetElevated;
-            _ = _ui.BeginInvoke(() => OnForeground(process, elevated));
+            return;
         }
+
+        var process = describe(foreground).Process;
+        var elevated =
+            ForegroundChangeCoordinator.ElevationOf(foreground.Elevation, _selfElevated)
+            == ElevationState.TargetElevated;
+        _ = _ui.BeginInvoke(() => OnForeground(process, elevated));
     }
 
     /// <summary>The document changed (on the UI thread): profiles, search, suggestion and layout follow it.</summary>
@@ -324,6 +384,11 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             {
                 // FIJ-005: turning the row off releases every sticky modifier.
                 _ = _engine.Post(new EngineEvent.ClearSticky());
+            }
+
+            if (before.GlobalHotkey != after.GlobalHotkey)
+            {
+                ApplyHotkey(after.GlobalHotkey);
             }
         }
 
@@ -346,8 +411,9 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <summary>
-    /// Shows a notice in the notice bar for <c>Timings.Notices.NoticeDuration</c> (or the undo duration when it offers
-    /// [undo]), the newest replacing the one on show (AVI-001, AVI-002, AVI-003).
+    /// Posts a notice (AVI-001, AVI-002, AVI-003): it shows at once, for <c>Timings.Notices.NoticeDuration</c> or the
+    /// undo duration when it offers [undo], times the multiplier of General (ACC-006). A notice with [undo] and a
+    /// safety notice are never lost: when another arrives they wait and show again.
     /// </summary>
     /// <param name="text">The text.</param>
     /// <param name="tone">Notice (polite) or warning (assertive).</param>
@@ -356,16 +422,17 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     public void Notify(Message text, NoticeTone tone, string icon, bool canUndo = false)
     {
         ArgumentNullException.ThrowIfNull(text);
-        _stickyOwner = null;
-        _notice = new PanelNotice(text, new IconRef(icon), tone, canUndo && _store.CanUndo);
-        _noticeTimer?.Dispose();
-        _noticeTimer = _time.CreateTimer(
-            static state => ((PanelComposer)state!).QueueNoticeEnd(),
-            this,
-            canUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration,
-            Timeout.InfiniteTimeSpan
+        Post(
+            new Notice(
+                text,
+                new IconRef(icon),
+                tone == NoticeTone.Warning,
+                // A safety notice is one whoever posts it («not sent: elevated app» also comes from «Probar ahora»).
+                canUndo && _store.CanUndo
+                    ? NoticeKind.Undo
+                    : EngineNoticeRules.KindOf(text)
+            )
         );
-        Invalidate();
     }
 
     /// <inheritdoc />
@@ -380,25 +447,22 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(notice);
-        _noticeTimer?.Dispose();
-        _noticeTimer = null;
-        _notice = notice;
-        _stickyOwner = owner;
-        Invalidate();
+        _ = _interaction.Dispatch(
+            new InteractionAction.ShowStickyNotice(
+                owner,
+                new Notice(
+                    notice.Text,
+                    notice.Icon,
+                    notice.Tone == NoticeTone.Warning,
+                    CanCancel: notice.CanCancel
+                )
+            )
+        );
     }
 
     /// <inheritdoc />
-    public void ClearSticky(object owner)
-    {
-        if (!ReferenceEquals(_stickyOwner, owner))
-        {
-            return;
-        }
-
-        _stickyOwner = null;
-        _notice = null;
-        Invalidate();
-    }
+    public void ClearSticky(object owner) =>
+        _ = _interaction.Dispatch(new InteractionAction.ClearStickyNotice(owner));
 
     /// <summary>
     /// The capture mode of a binding started or ended in the control center (ATJ-008): the panel shows the fixed notice
@@ -428,7 +492,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     /// <inheritdoc />
     public void CancelNotice()
     {
-        if (ReferenceEquals(_stickyOwner, _captureOwner))
+        if (ReferenceEquals(_interaction.Current.Notices.ShownOwner, _captureOwner))
         {
             ControlCenter?.CancelCapture();
         }
@@ -446,19 +510,28 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     public void OpenControlCenter(ProfileId profile) =>
         _ = ControlCenter?.OpenProfileAsync(profile, LeaseOrigin.Touch);
 
-    /// <summary>A notice of the engine (AVI-001): assertive ones are warnings.</summary>
+    /// <summary>
+    /// A notice of the engine (AVI-001, AVI-002): assertive ones are warnings, the reasons keys were released are safety
+    /// notices, and «Manteniendo…» and «Ejecutando…» are left to the fixed notices of <see cref="OnEngineState"/>.
+    /// </summary>
     /// <param name="notice">The notice.</param>
     public void OnEngineNotice(EngineNoticeEventArgs notice)
     {
         ArgumentNullException.ThrowIfNull(notice);
-        if (notice.Urgency == NoticeUrgency.Polite)
+        if (EngineNoticeRules.IsProgress(notice.Text))
         {
-            Notify(notice.Text, NoticeTone.Notice, NoticeIcon);
+            return;
         }
-        else
-        {
-            Notify(notice.Text, NoticeTone.Warning, WarningIcon);
-        }
+
+        var warning = notice.Urgency != NoticeUrgency.Polite;
+        Post(
+            new Notice(
+                notice.Text,
+                new IconRef(warning ? WarningIcon : NoticeIcon),
+                warning,
+                EngineNoticeRules.KindOf(notice.Text)
+            )
+        );
     }
 
     /// <summary>Something ran: Frequents and ↻ Repeat may change (FRE-002, AVI-004).</summary>
@@ -562,6 +635,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         if (_store.Undo().IsSuccess)
         {
+            // AVI-003: the operation is undone, so its notice no longer offers anything.
+            _ = _interaction.Dispatch(new InteractionAction.DismissNotices(NoticeKind.Undo));
             Notify(L.RestoredU, NoticeTone.Notice, UndoIcon);
         }
     }
@@ -580,11 +655,188 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         _ = ControlCenter?.OpenLibraryAsync(profile, LeaseOrigin.Touch);
 
     /// <inheritdoc />
-    /// <remarks>The verified elevated relaunch (D-11) is not built yet; the notice still explains why nothing is sent.</remarks>
-    public void RelaunchElevated() { }
+    /// <remarks>
+    /// «Reabrir como administrador» of the system package (user decision D7, ADR-0027): Windows asks with its UAC and
+    /// only the installed, verified executable is started. Once the elevated instance started, the panel says
+    /// [adminRestarting] and this instance ends cleanly (release all, flush); the document on disk is the state the
+    /// new one starts from. Cancelling or failing leaves everything as it was, with the reason.
+    /// </remarks>
+    public void RelaunchElevated()
+    {
+        if (_relaunching || ControlCenter?.System is not { } system)
+        {
+            return;
+        }
+
+        if (system.Elevation.IsElevated)
+        {
+            Notify(L.AdminActive, NoticeTone.Notice, AdminIcon);
+            return;
+        }
+
+        _relaunching = true;
+        _ = RelaunchAsync(system);
+    }
+
+    private async Task RelaunchAsync(
+        Clicalo.Presentation.ControlCenter.SystemSection.SystemServices system
+    )
+    {
+        try
+        {
+            var outcome = await system
+                .Elevation.RelaunchAsync(CancellationToken.None)
+                .ConfigureAwait(true);
+            switch (outcome)
+            {
+                case ElevationOutcome.Started:
+                    Notify(L.AdminRestarting, NoticeTone.Notice, AdminIcon);
+                    await system.EndForHandover().ConfigureAwait(true);
+                    return;
+                case ElevationOutcome.Cancelled:
+                    Notify(L.AdminCancelled, NoticeTone.Warning, AdminIcon);
+                    break;
+                case ElevationOutcome.NotInstalled:
+                    Notify(L.AdminNotInstalled, NoticeTone.Warning, AdminIcon);
+                    break;
+                default:
+                    Notify(L.AdminFailed, NoticeTone.Warning, WarningIcon);
+                    break;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            Notify(L.AdminFailed, NoticeTone.Warning, WarningIcon);
+        }
+        finally
+        {
+            _relaunching = false;
+        }
+    }
+
+    /// <summary>
+    /// The discreet answer to an ignored touch (TAC-003): a slight outline on the tile for
+    /// <c>Timings.Touch.IgnoredTouchFeedback</c>, without sound. It follows the flash setting, so it can be turned off.
+    /// The shortcuts of the Tab view use it too.
+    /// </summary>
+    /// <param name="show">Starts (<see langword="true"/>) and ends the outline of the touched tile.</param>
+    internal void ShowIgnored(Action<bool> show)
+    {
+        if (!_store.Current.Settings.Feedback.Flash)
+        {
+            return;
+        }
+
+        show(true);
+        ITimer? timer = null;
+        timer = _time.CreateTimer(
+            _ =>
+                _ = _ui.BeginInvoke(() =>
+                {
+                    show(false);
+                    if (timer is not null && _flashTimers.Remove(timer))
+                    {
+                        timer.Dispose();
+                    }
+                }),
+            null,
+            Timeout.InfiniteTimeSpan,
+            Timeout.InfiniteTimeSpan
+        );
+        _ = _flashTimers.Add(timer);
+        _ = timer.Change(Timings.Touch.IgnoredTouchFeedback, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// Pause and resume (BUR-004): paused, the panel hides and the profile no longer follows the app in front; when
+    /// Clícalo resumes, the panel comes back and catches up with the app that is in front by then.
+    /// </summary>
+    private void OnPanelChanged(object? sender, PropertyChangedEventArgs change)
+    {
+        if (
+            !string.Equals(
+                change.PropertyName,
+                nameof(PanelViewModel.IsPaused),
+                StringComparison.Ordinal
+            )
+        )
+        {
+            return;
+        }
+
+        // BUR-004: the Control Center says the pause in its status bar and in «Probar ahora».
+        ControlCenter?.OnPaused(Panel.IsPaused);
+        if (Panel.IsPaused)
+        {
+            CloseLayers();
+            _ = Search.CloseAsync();
+            _ = _session.Dispatch(new SessionAction.ClosePicker());
+            _ = _session.Dispatch(new SessionAction.Hide());
+            return;
+        }
+
+        // «Reanudar», a click on the icon and the global shortcut all bring the panel back (BUR-005).
+        _ = _session.Dispatch(new SessionAction.Show());
+        if (_monitor?.Current is { } current)
+        {
+            Report(current);
+        }
+    }
+
+    /// <summary>Puts the global shortcut of the tray on the combination of the settings, or turns it off (BUR-005).</summary>
+    private void ApplyHotkey(GlobalHotkeySettings settings)
+    {
+        if (_setHotkey is not { } setHotkey)
+        {
+            return;
+        }
+
+        var hotkey = settings.Enabled ? GlobalHotkeys.Find(settings.Combo) : null;
+        _ = ApplyAsync();
+
+        async Task ApplyAsync()
+        {
+            try
+            {
+                var registered = await setHotkey(hotkey?.Keys).ConfigureAwait(true);
+                if (!registered && hotkey is not null)
+                {
+                    // Another program owns the combination: say so, and the person picks another one of the list.
+                    Notify(
+                        L.GlobalHotkeyTaken(keys: KeysText(hotkey.Keys)),
+                        NoticeTone.Warning,
+                        WarningIcon
+                    );
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // Exiting.
+            }
+        }
+    }
+
+    private string KeysText(KeyChord chord) =>
+        KeyChordFormatter.Format(
+            chord,
+            _catalogs.KeyLabels,
+            KeyLabelStyle.Full,
+            Language(),
+            LangCode.Es
+        );
+
+    /// <summary>The mode of the profile of the app in front, which General, Always visible and Frequents inherit (D24).</summary>
+    private InjectionMode? AppMode() =>
+        PanelProjector.AppMode(_store.Current.Library, _profiles.ActiveAppProfile);
 
     private void OnForeground(ProcessName process, bool elevated)
     {
+        // BUR-004: paused, the profile does not change with the app; resuming reports the app in front again.
+        if (Panel.IsPaused)
+        {
+            return;
+        }
+
         var name = process.IsEmpty ? null : DisplayName(process);
         var elevatedApp = elevated ? name : null;
         if (!string.Equals(elevatedApp, _elevatedApp, StringComparison.Ordinal))
@@ -690,12 +942,98 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         Notify(accepted.Notice, NoticeTone.Notice, NoticeIcon, canUndo: true);
     }
 
+    private void Post(Notice notice)
+    {
+        var duration = notice.CanUndo
+            ? Timings.Notices.UndoNoticeDuration
+            : Timings.Notices.NoticeDuration;
+
+        // ACC-006: the notices last ×1, ×2 or ×3, as the settings say; [undo] stays for as long (AVI-003).
+        _ = _interaction.Dispatch(
+            new InteractionAction.PostNotice(
+                notice,
+                InteractionTime.Scale(duration, _store.Current.Settings.TimeMultiplier)
+            )
+        );
+    }
+
+    /// <summary>
+    /// The state of the engine (AVI-002): a Mantener under a finger and a running macro keep their notice fixed for as
+    /// long as the snapshot says they last.
+    /// </summary>
+    private void OnEngineState(Clicalo.Application.Engine.EngineSnapshot snapshot)
+    {
+        Fixed(_holdOwner, EngineNoticeRules.HoldInProgress(snapshot));
+        Fixed(_macroOwner, EngineNoticeRules.MacroInProgress(snapshot));
+
+        void Fixed(object owner, Message? text) =>
+            _ = _interaction.Dispatch(
+                text is null
+                    ? new InteractionAction.ClearStickyNotice(owner)
+                    : new InteractionAction.ShowStickyNotice(
+                        owner,
+                        new Notice(text, new IconRef(NoticeIcon))
+                    )
+            );
+    }
+
+    private void OnInteractionChanged(object? sender, InteractionChangedEventArgs change)
+    {
+        var before = change.Previous.Notices;
+        var after = change.Current.Notices;
+        if (ReferenceEquals(before, after))
+        {
+            return;
+        }
+
+        ScheduleNoticeEnd();
+        if (before.Shown != after.Shown)
+        {
+            NoticePublished?.Invoke(this, new NoticePublishedEventArgs(ToPanel(after.Shown)));
+            Invalidate();
+        }
+    }
+
+    /// <summary>Ticks the queue when the notice on show ends (AVI-002).</summary>
+    private void ScheduleNoticeEnd()
+    {
+        _noticeTimer?.Dispose();
+        _noticeTimer = null;
+        if (_interaction.Current.Notices.EndsAt is not { } end)
+        {
+            return;
+        }
+
+        var wait = end - _time.GetUtcNow();
+        _noticeTimer = _time.CreateTimer(
+            static state => ((PanelComposer)state!).QueueNoticeEnd(),
+            this,
+            wait > TimeSpan.Zero ? wait : TimeSpan.Zero,
+            Timeout.InfiniteTimeSpan
+        );
+    }
+
     private void QueueNoticeEnd() =>
         _ = _ui.BeginInvoke(() =>
         {
-            _notice = null;
-            Invalidate();
+            // A tick that came early changes nothing: wait for the rest.
+            if (!_interaction.Dispatch(new InteractionAction.NoticeTick()))
+            {
+                ScheduleNoticeEnd();
+            }
         });
+
+    /// <summary>The notice as the bars paint it: [undo] only while the stack has something to undo (AVI-003).</summary>
+    private PanelNotice? ToPanel(Notice? notice) =>
+        notice is null
+            ? null
+            : new PanelNotice(
+                notice.Text,
+                notice.Icon,
+                notice.Warning ? NoticeTone.Warning : NoticeTone.Notice,
+                notice.CanUndo && _store.CanUndo,
+                notice.CanCancel
+            );
 
     /// <summary>Projects again once the current work of the dispatcher is done.</summary>
     private void Invalidate()
@@ -754,12 +1092,13 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 ActiveAppProfile: _profiles.ActiveAppProfile,
                 SuggestionApp: Suggestion.IsVisible ? Suggestion.AppName : null,
                 ElevatedApp: _elevatedApp,
-                Notice: _notice,
+                Notice: CurrentNotice,
                 CanRepeat: RepeatBinding() is not null,
                 EditMode: EditMode.IsOn,
                 AddTile: EditMode.ShowsAdd
             )
         );
+        Header.ApplyPicker(Panel.TitleOpensPicker, _session.Current.PickerOpen);
         Refreshed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -779,7 +1118,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 _profiles.ProfileButtonTarget,
                 _localization.Current.Format(L.Always),
                 language,
-                LangCode.Es
+                LangCode.Es,
+                AppMode()
             );
         }
 
@@ -789,7 +1129,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             _profiles.ProfileButtonTarget,
             language,
             LangCode.Es,
-            keys.For
+            keys.For,
+            AppMode()
         );
     }
 
@@ -828,13 +1169,22 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             location.List is ListRef.InProfile list && library.TryGetProfile(list.Id, out var owner)
                 ? owner
                 : null;
-        return new TileBinding(shortcut, origin?.Id, (origin ?? library.General).Injection);
+        return new TileBinding(
+            shortcut,
+            origin?.Id,
+            PanelProjector.InheritedMode(library, origin, AppMode())
+        );
     }
 
     private string? NameOf(ShortcutId id) =>
         _store.Current.Library.TryGetShortcut(id, out var shortcut)
             ? shortcut.Name.Get(Language(), LangCode.Es)
-            : null;
+        // SEG-001: ⏶ and ⏷ of the Tab bar are held like any Hold; the panic strip says their name.
+        : string.Equals(id.Value, DockScrollUpId, StringComparison.Ordinal)
+            ? _localization.Current.Format(L.DockScrollUp)
+        : string.Equals(id.Value, DockScrollDownId, StringComparison.Ordinal)
+            ? _localization.Current.Format(L.DockScrollDown)
+        : null;
 
     private string KeyLabelOf(ModifierKind modifier) =>
         KeyChordFormatter.KeyText(

@@ -27,10 +27,16 @@ internal static class EngineNotices
     public static Message Incomplete => L.IncompleteTap;
 
     /// <summary>
-    /// A key of the shortcut does not exist in the layout of the app in front (EC-EJE-10); the key is not named until
-    /// the resolver reports which one.
+    /// A key of the shortcut does not exist in the layout of the app in front (EC-EJE-10): «{key} no está en la
+    /// distribución de teclado de {app}» ([keyMissing]); nothing was sent.
     /// </summary>
-    public static Message NotInLayout => L.Incomplete;
+    /// <param name="step">The step, for the key labels and the app in front.</param>
+    /// <param name="missing">The key the layout lacks, when the resolver knows it.</param>
+    public static Message NotInLayout(EngineStep step, Keys.KeyStroke? missing) =>
+        L.KeyMissing(
+            key: missing is { } stroke ? step.KeysText([stroke]) : string.Empty,
+            app: step.AppName()
+        );
 
     /// <summary>The combination is blocked in the panel (EJE-014).</summary>
     public static Message Blocked => L.BlockedB;
@@ -43,8 +49,11 @@ internal static class EngineNotices
     /// <param name="app">The app's process name.</param>
     public static Message ElevatedRefused(string app) => L.ElevatedRefused(app);
 
-    /// <summary>The first tap armed a shortcut that asks for confirmation (EJE-002).</summary>
-    public static Message ConfirmArmed => L.ConfirmClose;
+    /// <summary>
+    /// The first tap armed a shortcut that asks for confirmation (EJE-002): «Toca otra vez para confirmar — {nombre}».
+    /// </summary>
+    /// <param name="name">The name of the armed shortcut in the interface language.</param>
+    public static Message ConfirmArmed(string name) => L.ConfirmCloseName(name: name);
 
     /// <summary>A Hold was released (EJE-004).</summary>
     public static Message Released => L.Released;

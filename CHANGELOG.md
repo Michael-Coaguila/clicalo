@@ -9,12 +9,52 @@ Spanish and English are published with each release.
 
 ## [Unreleased]
 
-Milestone M0 · Foundations and harness, milestone M1 · blocking spikes S1, S3 and S4 (closed by the maintainer's
-decision on real evidence, see `docs/testing/spikes/M1-closure.md`), and milestone M2 · Walking skeleton (in
-progress).
+Milestones M0 to M6, towards 2.0.0. M6 comes first and M0 to M5 follow in the order they were built; the reasons
+behind each difference from the blueprint are in `docs/architecture/deviations.md`. User-facing news live in
+`changes/unreleased/`.
 
 ### Added
 
+- Milestone M6, closing what the audit marked as partial or missing (catalog §6.1, R-30 and R-31; deviation D-30):
+  - A pure notice queue in the interaction state (AVI-002): one notice at a time, safety and undo notices wait
+    instead of being lost, fixed notices last as long as their state, and the durations follow the ×1, ×2 or ×3
+    multiplier of General (ACC-006). The same notice shows in the panel, beside the Tab view bar (PES-014) and in
+    the status bar of the control center (CCM-003).
+  - Tab view: Quick settings and the shortcut menu beside the bar, the handle shadow, the handle position per
+    monitor and side (D9), finger scrolling in the side windows, a temporary search from the bar and a panel that
+    moves away from the touch keyboard.
+  - Tray: Pause and Resume, and an optional global shortcut that comes off and is picked from a closed list (D10).
+    Store apps hosted by `ApplicationFrameHost.exe` are looked up again, and only folder windows of `explorer.exe`
+    count as an app. The held scroll is in the pressed ledger.
+  - Control center: the window remembers its size, place and monitor and never covers the panel; recording a
+    combination with the keyboard; installed programs in «Elegir programa»; the AI card in General; keys editable
+    in the template preview and the update to the other language variant; plural forms for every count; a focus
+    ring on text fields and focus kept across redraws.
+  - System: «Desinstalar Clícalo» keeps the data by default and deletes them only after two taps and a copy saved
+    outside the data folders; a reinstall asks whether to keep the data; imported and restored backups list their
+    Web, App and Macro shortcuts unticked for review; the feedback email opens only towards the project address
+    (ADR-0029). The start announces a recovered or unreadable document. `cl package --runtime win-arm64` packs
+    ARM64 in a feed of its own.
+  - Welcome: a repeated welcome says what changes and keeps the settings changed by hand; the answers are
+    persisted (document 1.1, ADR-0028).
+  - Tooling and docs: `cl trace` (requirements against test traits), the six quarantined tests back in the pull
+    request tier, the user guide, the manual acceptance script and the 2.0.0 news. `cl states`, `cl accept` and
+    `cl pr` are dropped (D-29).
+  - Closing round (R-31): Clícalo's own icon on the executable, the installer and the tray, where it shows at
+    55 % while the panel is hidden or Clícalo is paused (BUR-003; `app-icon` of `Clicalo.DevCli` draws
+    `assets/icons` from the logo); the menu of a shortcut of the Tab view is cancelled with Esc (a hotkey held
+    only while the menu shows) and with a finger on another app, with no keyboard or mouse hook (CUA-014); the
+    armed shortcut is named in its warning and outlined on the Tab view, as is an ignored touch (EJE-002,
+    TAC-003); a Hold in a scrolling zone waits `Timings.Touch.HoldInScrollDelay` (150 ms) so a scroll never
+    presses keys (TAC-004); paused, the control center says so and «Probar» offers to resume (BUR-004);
+    «Elegir programa» says when it is reading and filters by typed or dictated words (EDI-014); UI Automation
+    reads the panel header from left to right.
+  - Text that was drawn cut: the name of a tile takes up to two lines and its key line hides when it has no
+    room (CUA-011), long button and switch labels wrap, the horizontal bar of the Tab view is its padding around
+    its 58/66/78 tiles (74/82/94 high, PES-005, pending ratification in R-31) and the narrowest control center
+    stacks its switch rows. The 44 × 44 and UI Automation audit now also runs with the text at 150 %, the light
+    theme and high contrast and fails on any cut text, and the composition of the panel, the tray and the
+    control center is tested without launching the app (`PanelLinks`).
 - Solution skeleton (`Clicalo.slnx` and the `Core.slnf` filter): the eight main-process assemblies (Domain,
   Application, Presentation, UI.Wpf, Platform.Core, Platform.Windows, Infrastructure and App), the Native AOT
   hosts `Clicalo.Sentinel` and `Clicalo.Launcher`, the Roslyn generator and analyzer projects, the test
@@ -145,6 +185,54 @@ progress).
   §6.1 of the catalog, ratified by the user on 2026-10-03).
 - `docs/architecture/contracts.md`: the command-line contracts between `Clicalo.exe` and Sentinel (protocol 2, the
   relaunch and Sentinel's exit codes).
+- Milestone M3.1, the visual base (ADR-0025, R-16): the prototype fonts shipped as resources (Atkinson
+  Hyperlegible, JetBrains Mono and Material Symbols Rounded cut down to the icons in use, with sources pinned by
+  commit and SHA-256 and their licences); `ThemeService` with Dark, Light, High contrast and Auto, which follows
+  Windows live, the type scale and the user's text scale (100 to 150 %); the base controls with the prototype
+  look, 44 px targets and a UI Automation peer each (button, icon button, 48 × 28 switch with the whole row
+  tappable, slider with − and +, segmented control, chip and card), and `ShortcutTile` with its category icon,
+  name, keys, badges and voice number; the window look from spike S6 (corners, a shadow in a window of its own
+  that takes no touches, opacity from 30 to 100 % and `DimPolicy` with its exceptions; no backdrop blur); and the
+  reference captures of the prototype in `docs/design/reference/`.
+- Milestone M3.2, the full view of the panel: automatic profiles that follow the app in front, with Auto or Fixed
+  and the last profile remembered; the header; the paged grid with rows and columns by size, swipe, arrows and
+  dots; the «Always visible» row; sticky modifier keys; the profile selector with Frequent and the profile grid;
+  the live notice bar with Undo and Repeat; the empty state, the administrator warning and voice numbers; key
+  labels in full, short and spoken forms; the search with the `TextInput` lease and dictation; and the profile
+  suggestion for apps that have a template (R-17, R-18).
+- Adaptive common actions (user decision D4, ADR-0026): `data/catalogs/common-actions.json` sends Save, Find,
+  Select all, Bold, Italic, Underline, Open and New as each family of apps and language expects them (Office in
+  Spanish, from Microsoft's documentation), and the tile always shows what will be sent.
+- Milestone M3.3 to M3.6, the rest of the panel (D-26, D-27; R-19 to R-24): the Compact view, the Tab view on
+  any edge (a draggable handle, the bar with its four zones, the side windows, folding and a first-time guide),
+  the 64 px bubble and dragging with a position per monitor; dimming with every exception in `InteractionStore`;
+  Quick settings; edit mode (× with two taps and undo); the long-press menu, also by right click and the
+  accessible secondary action; test mode; and the language changed live. Every action kind runs: text typed as
+  Unicode or pasted and kept encrypted, mouse actions at the last real pointer position, cancellable macros that
+  say «Paso i/n», web and app launches without elevation, system commands, sticky keys, Repeat, confirmation by
+  a second tap, and blocked or special combinations. Every target of the panel answers in 44 × 44 through an
+  invisible touch margin (REG-02).
+- Milestone M4.1, the control center and its Shortcuts section: a window with its own title bar, a side menu of
+  six sections and a status bar, opened with the `ControlCenter` lease and giving the foreground back when it
+  closes; profiles, binding to apps and capture, the reorderable grid, the library, and the shortcut editor
+  (identity and automatic icon, kinds, the combination in press order, fields by kind with macro steps,
+  duplicates, «Probar» and «Probar ahora», D-28). Edit mode, «+ Más», «+ Añadir» and the Quick settings card
+  open it (R-22, R-23).
+- Milestone M4.2 to M4.5, the other sections and the welcome (R-25 to R-29): Templates, with «Crear con IA» on
+  the user's own key only (user decision D5: Claude Haiku 5.5 through the official Anthropic SDK behind
+  `IChatClient`, the key in the Credential Manager, consent first, and only the app, the keyboard layout and the
+  languages sent), the detected keyboard line, the empty profile, open apps without a profile, the bundled
+  templates and an import with a preview where risky rows start unticked and nothing runs on import; sharing a
+  profile as a file, without its texts unless asked; «General y panel» and «Precisión táctil», each setting with
+  its own undo step; «Acerca de y contacto»; and the five-step welcome on a first start, where «Omitir» installs
+  only «Básicos» (D2).
+- Milestone M5, the System section and the local distribution (user decisions D6 and D7, ADR-0027): backups with
+  their history, export and an import that merges or replaces; updates with Velopack, the `stable` and `beta`
+  channels and «Volver» to the kept version; «Iniciar con Windows», always without elevation; and «Reabrir como
+  administrador» on demand, with the UAC prompt every time and only for the installed executable. `cl package`
+  builds `Setup.exe`, the package and the portable ZIP locally in `artifacts/package` and publishes nothing. An
+  elevated instance never updates, a version left with «Volver» is not reinstalled by itself, and only the
+  installer's folder counts as the installed copy.
 
 ### Changed
 
@@ -166,6 +254,14 @@ progress).
   engine.
 - `ActivationGuard` asks for one restore per unleased activation, joined while it is queued, and the violation restore
   retries once and then flashes the app (ADR-0024); `Windowing.ActivationRecheck` is removed.
+- Version 2.0 ships without code signing (user decision D6, ADR-0027, which replaces ADR-0009 and parts of
+  ADR-0012 and ADR-0013): no Authenticode and no signed manifest, per-user install and updates with Velopack, and
+  everything left ready to sign later. There is no system component and no elevated start without UAC (D7): SIS-002
+  is met by «Reabrir como administrador».
+- «Crear con IA» has no server of Clícalo's and no free quota (D5): the quota texts stay unused and a missing or
+  rejected key has its own error card.
+- The minimal panel of M2 gives way to the full panel, and the long-press menu and Quick settings are drawn
+  inside the panel instead of in child windows (D-27); in the Tab view they open beside the bar.
 - Test tiers: `cl check`, `cl test` and `cl fast` run only deterministic tests; the desktop, chaos, performance and
   quarantined tests (`cl quarantine`) run in `nightly.yml` and must pass before every release. The `desk (x64)` and
   `perf (x64)` jobs leave `pr.yml`.

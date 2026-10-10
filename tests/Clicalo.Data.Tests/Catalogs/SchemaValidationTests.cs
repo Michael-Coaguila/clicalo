@@ -13,14 +13,16 @@ public sealed class SchemaValidationTests
     public static TheoryData<string> SchemaFiles() => [.. CatalogSchemas.SchemaFileNames()];
 
     /// <summary>
-    /// The persisted formats (ADR-0007, ADR-0018): no catalog or content file uses them; the immutable 1.0 fixtures of
-    /// the Infrastructure tests (blueprint §6.6) do.
+    /// The persisted formats (ADR-0007, ADR-0018, ADR-0028): no catalog or content file uses them; the immutable 1.0 and
+    /// 1.1 fixtures of the Infrastructure tests (blueprint §6.6) do.
     /// </summary>
-    public static TheoryData<string, string> PersistedFixtures() =>
+    public static TheoryData<string, string, string> PersistedFixtures() =>
         new()
         {
-            { "document.json", "document.schema.json" },
-            { "usage.json", "usage.schema.json" },
+            { "1.0", "document.json", "document.schema.json" },
+            { "1.0", "usage.json", "usage.schema.json" },
+            { "1.0", "ai-template.json", "ai-template.v1.schema.json" },
+            { "1.1", "document.json", "document.schema.json" },
         };
 
     [Theory]
@@ -90,7 +92,7 @@ public sealed class SchemaValidationTests
             .DataFiles()
             .Select(DeclaredSchema)
             .Concat(["common.schema.json", "shortcut.schema.json"])
-            .Concat(PersistedFixtures().Select(row => row.Data.Item2))
+            .Concat(PersistedFixtures().Select(row => row.Data.Item3))
             .ToHashSet(StringComparer.Ordinal);
 
         CatalogSchemas.SchemaFileNames().Where(name => !used.Contains(name)).ShouldBeEmpty();
@@ -99,7 +101,8 @@ public sealed class SchemaValidationTests
     [Theory]
     [MemberData(nameof(PersistedFixtures))]
     [Trait("Req", "DAT-001")]
-    public void The_persisted_1_0_fixtures_are_valid_against_their_format(
+    public void The_persisted_fixtures_are_valid_against_their_format(
+        string version,
         string fixture,
         string schemaFile
     )
@@ -109,7 +112,7 @@ public sealed class SchemaValidationTests
             "Clicalo.Infrastructure.Tests",
             "Fixtures",
             "schema",
-            "1.0",
+            version,
             fixture
         );
 

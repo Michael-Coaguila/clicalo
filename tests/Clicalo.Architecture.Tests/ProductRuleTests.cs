@@ -91,7 +91,7 @@ public sealed class ProductRuleTests
             "RollbackVersionUseCase is in destructive-operations.json but is not marked",
             Case.Sensitive
         );
-        violations.ShouldNotContain("UninstallSystemComponentUseCase", Case.Sensitive);
+        violations.ShouldNotContain("UninstallKeepOrDeleteDataUseCase", Case.Sensitive);
     }
 
     [Fact]

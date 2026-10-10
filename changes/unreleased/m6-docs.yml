@@ -1,0 +1,5 @@
+# Novedad para usuarios (ACT-004, blueprint §11): la app la muestra y viaja en el manifiesto firmado.
+# Una frase por idioma, en palabras de usuario, sin jerga ni nombres internos.
+type: feat # feat, fix, a11y o perf
+es: "Guía de usuario paso a paso, con frases cortas, para instalar y usar Clícalo con el dedo o con la voz."
+en: "A step-by-step user guide, in short sentences, to install and use Clícalo by touch or by voice (in Spanish for now)."

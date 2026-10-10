@@ -19,6 +19,12 @@ public sealed record SurfaceTarget(
     DockTileViewModel? Tile = null
 )
 {
+    /// <summary>
+    /// Whether the target lies in a zone of the surface that scrolls now (TAC-004): a Mantener there waits until the
+    /// finger shows that it is not scrolling before it holds anything (<see cref="TouchTarget.InScrollZone"/>).
+    /// </summary>
+    public bool InScrollZone { get; init; }
+
     /// <summary>A button.</summary>
     /// <param name="element">The button.</param>
     /// <param name="tap">What a tap does.</param>
@@ -28,13 +34,21 @@ public sealed record SurfaceTarget(
     /// <summary>A shortcut of the bar or of a window beside it.</summary>
     /// <param name="element">The tile.</param>
     /// <param name="tile">The shortcut.</param>
-    public static SurfaceTarget For(FrameworkElement element, DockTileViewModel tile)
+    /// <param name="longPress">
+    /// Whether a long press opens its menu (CUA-014, PES-010): every shortcut but a Mantener, which holds instead.
+    /// </param>
+    public static SurfaceTarget For(
+        FrameworkElement element,
+        DockTileViewModel tile,
+        bool longPress = false
+    )
     {
         ArgumentNullException.ThrowIfNull(tile);
         return new SurfaceTarget(
             element,
-            tile.Behavior == Clicalo.Presentation.Panel.TileBehavior.Hold
-                ? TouchTargetKind.Hold
+            longPress ? DockTileModes.KindOf(tile)
+                : tile.Behavior == Clicalo.Presentation.Panel.TileBehavior.Hold
+                    ? TouchTargetKind.Hold
                 : TouchTargetKind.Tap,
             null,
             tile

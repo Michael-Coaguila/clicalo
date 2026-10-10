@@ -136,7 +136,7 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.VoiceNumbers,
                 Presentation,
-                L.VoiceNums,
+                L.VoiceNumsT,
                 null,
                 s => s.VoiceNumbers,
                 (s, v) => s with { VoiceNumbers = v }
@@ -535,6 +535,52 @@ internal static class SettingsRegistry
                 null,
                 s => s.NoKeyboardUser,
                 (s, v) => s with { NoKeyboardUser = v }
+            ),
+            Leaf(
+                SettingPaths.HandlePositionsByMonitor,
+                Placement,
+                L.HandlePos,
+                L.HandlePosD,
+                s => s.HandlePositionsByMonitor,
+                (s, v) => s with { HandlePositionsByMonitor = v },
+                static (value, _) => MonitorHandlePositions.Repair(value)
+            ),
+            Leaf(
+                SettingPaths.ControlCenter,
+                Placement,
+                L.Cc,
+                null,
+                s => s.ControlCenter,
+                (s, v) => s with { ControlCenter = v },
+                static (value, _) => value is { IsUsable: true } ? value : null,
+                nullable: true
+            ),
+            Leaf(
+                SettingPaths.GlobalHotkeyEnabled,
+                Behavior,
+                L.GlobalHotkeyT,
+                L.GlobalHotkeyD,
+                s => s.GlobalHotkey.Enabled,
+                (s, v) => s with { GlobalHotkey = s.GlobalHotkey with { Enabled = v } }
+            ),
+            Leaf(
+                SettingPaths.GlobalHotkeyCombo,
+                Behavior,
+                L.Keys,
+                null,
+                s => s.GlobalHotkey.Combo,
+                (s, v) => s with { GlobalHotkey = s.GlobalHotkey with { Combo = v } },
+                static (value, fallback) => GlobalHotkeys.Find(value) is null ? fallback : value
+            ),
+            Leaf(
+                SettingPaths.TimeMultiplier,
+                Behavior,
+                L.TimeMultiplierT,
+                L.TimeMultiplierD,
+                s => s.TimeMultiplier,
+                (s, v) => s with { TimeMultiplier = v },
+                In(SettingsSchema.TimeMultiplier),
+                SettingsSchema.TimeMultiplier
             ),
         ];
 

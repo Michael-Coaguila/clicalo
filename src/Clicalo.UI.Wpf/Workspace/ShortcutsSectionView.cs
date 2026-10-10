@@ -25,6 +25,9 @@ public sealed class ShortcutsSectionView : Grid
     private const double NarrowProfiles = 150;
     private const double WideEditor = 400;
     private const double NarrowEditor = 340;
+
+    /// <summary>Below this width of the list column, [Añadir] goes under the name of the list.</summary>
+    private const double HeaderStackWidth = 300;
     private static readonly TimeSpan LongPress = TimeSpan.FromMilliseconds(450);
 
     private readonly ShortcutsSectionViewModel _viewModel;
@@ -256,7 +259,7 @@ public sealed class ShortcutsSectionView : Grid
             var layer = model.Layers[i];
             if (i > 0)
             {
-                layers.Add(Ui.Text("+", 14, bold: true, ink: ColorToken.Muted));
+                layers.Add(Ui.Separator("+", 14, bold: true));
             }
 
             var chip = Ui.Card(
@@ -335,7 +338,8 @@ public sealed class ShortcutsSectionView : Grid
                 () => _viewModel.SelectList(row.List),
                 52,
                 10,
-                offFill: null
+                offFill: null,
+                role: CcToggleRole.Option
             );
             if (row.Selected)
             {
@@ -405,7 +409,12 @@ public sealed class ShortcutsSectionView : Grid
         );
         icon.Width = 40;
         icon.Height = 40;
-        var title = Ui.Row(4, Ui.Text(model.Title, 18, bold: true));
+        // The pencil is docked first, so a long name is trimmed with «…» and never pushes it out of the row (REG-02).
+        var title = new DockPanel
+        {
+            LastChildFill = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
         if (model.CanEdit)
         {
             var edit = Ui.Choice(
@@ -415,7 +424,8 @@ public sealed class ShortcutsSectionView : Grid
                 _viewModel.ToggleProfileEdit,
                 44,
                 10,
-                offFill: null
+                offFill: null,
+                role: CcToggleRole.Expander
             );
             edit.Width = 44;
             edit.Padding = new Thickness(0);
@@ -424,8 +434,12 @@ public sealed class ShortcutsSectionView : Grid
                 edit.BorderThickness = new Thickness(0);
             }
 
+            edit.Margin = new Thickness(4, 0, 0, 0);
+            DockPanel.SetDock(edit, Dock.Right);
             title.Children.Add(edit);
         }
+
+        title.Children.Add(Ui.Text(model.Title, 18, bold: true));
 
         var subtitle = Ui.Text(model.Subtitle, 12, ink: ColorToken.Muted, wrap: true);
         var add = Ui.Button(
@@ -436,16 +450,27 @@ public sealed class ShortcutsSectionView : Grid
             ColorToken.OnAccent
         );
         var dock = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(add, Dock.Right);
         add.VerticalAlignment = VerticalAlignment.Top;
-        add.Margin = new Thickness(10, 0, 0, 0);
         dock.Children.Add(add);
         DockPanel.SetDock(icon, Dock.Left);
         icon.VerticalAlignment = VerticalAlignment.Top;
         icon.Margin = new Thickness(0, 0, 10, 0);
         dock.Children.Add(icon);
         dock.Children.Add(Ui.Column(2, title, subtitle));
+        PlaceAdd(add, double.PositiveInfinity);
+        dock.SizeChanged += (_, e) => PlaceAdd(add, e.NewSize.Width);
         return dock;
+    }
+
+    /// <summary>
+    /// [Añadir] goes beside the name of the list; where the column is too narrow for both (the smallest window,
+    /// CCM-005), it goes under it at full width, so the name and its pencil keep their 44 (REG-02).
+    /// </summary>
+    private static void PlaceAdd(CcButton add, double width)
+    {
+        var below = width < HeaderStackWidth;
+        DockPanel.SetDock(add, below ? Dock.Bottom : Dock.Right);
+        add.Margin = below ? new Thickness(0, 10, 0, 0) : new Thickness(10, 0, 0, 0);
     }
 
     private Border ProfileEdit(ProfileEditModel model)
@@ -481,7 +506,8 @@ public sealed class ShortcutsSectionView : Grid
                 option.Selected,
                 () => _viewModel.SetProfileIcon(option.Icon),
                 44,
-                8
+                8,
+                role: CcToggleRole.Option
             );
             button.Padding = new Thickness(0);
             icons.Children.Add(button);
@@ -498,11 +524,11 @@ public sealed class ShortcutsSectionView : Grid
         var share = Ui.Button(
             Ui.IconLabel("share", model.ShareText),
             model.ShareText,
-            () => { },
+            () => _ = _viewModel.ShareAsync(withTexts: false),
             ColorToken.Card,
             stroke: ColorToken.Border
         );
-        share.IsEnabled = false;
+        share.IsEnabled = model.CanShare;
         var done = Ui.Button(
             Ui.Text(model.DoneText, 14, bold: true, ink: ColorToken.OnAccent),
             model.DoneText,
@@ -530,6 +556,20 @@ public sealed class ShortcutsSectionView : Grid
 
         share.Padding = new Thickness(6, 0, 6, 0);
         var buttons = Ui.Column(6, done, Ui.Columns(actions.Count, 6, actions));
+        if (model.ShareTextsText is { } shareTexts)
+        {
+            // DAT-007, PQ-37: the texts travel in clear only when the person chooses so.
+            buttons.Children.Add(
+                Ui.Button(
+                    Ui.IconLabel("lock_open", shareTexts),
+                    shareTexts,
+                    () => _ = _viewModel.ShareAsync(withTexts: true),
+                    ColorToken.Card,
+                    stroke: ColorToken.Border
+                )
+            );
+        }
+
         return Ui.Card(
             Ui.Column(
                 10,
@@ -637,18 +677,47 @@ public sealed class ShortcutsSectionView : Grid
         {
             var apps = model.Apps.Select(app =>
             {
-                var chip = Ui.Choice(
-                    Ui.Row(
-                        6,
+                var mark = app.Mark is { } active
+                    ? Ui.Card(
+                        Ui.Text(active, 11, bold: true, ink: ColorToken.Accent),
+                        ColorToken.AccentWash,
+                        null,
+                        8,
+                        new Thickness(6, 1, 6, 1)
+                    )
+                    : null;
+                // The name, the process and the mark go on one line and, where the column is narrower than them (the
+                // smallest window, CCM-005), on the next ones: the chip grows and nothing of it is cut.
+                var parts = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
+                foreach (
+                    var part in new FrameworkElement?[]
+                    {
                         Ui.Text(app.Name, 13, bold: true),
-                        Ui.Text(app.Process, 11, ink: ColorToken.Muted, mono: true)
-                    ),
-                    app.Name + " " + app.Process,
+                        Ui.Text(app.Process, 11, ink: ColorToken.Muted, mono: true),
+                        mark,
+                    }
+                )
+                {
+                    if (part is not null)
+                    {
+                        part.Margin = new Thickness(3, 1, 3, 1);
+                        parts.Children.Add(part);
+                    }
+                }
+
+                var chip = Ui.Choice(
+                    parts,
+                    app.Mark is null
+                        ? app.Name + " " + app.Process
+                        : app.Name + " " + app.Process + ", " + app.Mark,
                     app.Selected,
                     () => _viewModel.BindApp(app.Process),
-                    44,
-                    22
+                    double.NaN,
+                    22,
+                    role: CcToggleRole.Option
                 );
+                chip.MinHeight = 44;
+                chip.Padding = new Thickness(9, 4, 9, 4);
                 return (UIElement)chip;
             });
             var detect = Ui.Button(
@@ -765,7 +834,15 @@ public sealed class ShortcutsSectionView : Grid
             layers.Children.Add(Corner(badge, HorizontalAlignment.Right, VerticalAlignment.Bottom));
         }
 
-        var button = Ui.Choice(layers, tile.AccessibleName, tile.Selected, () => { }, 88, 12);
+        var button = Ui.Choice(
+            layers,
+            tile.AccessibleName,
+            tile.Selected,
+            () => { },
+            88,
+            12,
+            role: CcToggleRole.Option
+        );
         button.Padding = new Thickness(4);
         button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         button.VerticalContentAlignment = VerticalAlignment.Stretch;
@@ -966,7 +1043,8 @@ public sealed class ShortcutsSectionView : Grid
                 chip.Selected,
                 () => _viewModel.ChooseCategory(chip.Id),
                 44,
-                22
+                22,
+                role: CcToggleRole.Option
             );
             if (chip.Selected)
             {

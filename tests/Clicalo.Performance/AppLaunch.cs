@@ -7,7 +7,9 @@ namespace Clicalo.Performance;
 /// One start of a published <c>Clicalo.exe</c> with its own empty data folder (<c>--data</c>), measured from the
 /// creation of the process to the first frame of the panel: the app sets the event named by
 /// <c>CLICALO_FIRST_FRAME_EVENT</c> when the panel's content is rendered. Without key sending unless the measurement
-/// runs in continuous integration (<c>--no-input</c>). Disposing it ends the process and its children (Sentinel).
+/// runs in continuous integration (<c>--no-input</c>). Disposing it ends the process and its children (Sentinel). A
+/// start waits until the instance a previous measurement ended is gone, and fails with what to do when another
+/// Clícalo of the session is running (<see cref="RunningInstance"/>).
 /// </summary>
 internal sealed class AppLaunch : IDisposable
 {
@@ -44,6 +46,9 @@ internal sealed class AppLaunch : IDisposable
     )
     {
         ArgumentNullException.ThrowIfNull(variant);
+
+        // A start is a first start only when no other Clícalo of this session is alive (RunningInstance).
+        RunningInstance.WaitUntilGone(RunningInstance.GoneTimeout);
         var data = Path.Combine(
             Path.GetTempPath(),
             "clicalo-perf-data",
@@ -87,7 +92,7 @@ internal sealed class AppLaunch : IDisposable
                 throw new InvalidOperationException(
                     string.Create(
                         CultureInfo.InvariantCulture,
-                        $"Clicalo.exe ({variant.Name}) ended with code {code} before its first frame: 70 is a failed start (its log says why), 0 means another Clícalo of this session was already running."
+                        $"Clicalo.exe ({variant.Name}) ended with code {code} before its first frame: {ExitCodeMeaning(code)}"
                     )
                 );
             }
@@ -98,6 +103,17 @@ internal sealed class AppLaunch : IDisposable
             "Clicalo.exe (" + variant.Name + ") showed no frame within " + FirstFrameTimeout + "."
         );
     }
+
+    /// <summary>What an exit code of <c>Clicalo.exe</c> before its first frame means (App/AppExitCode).</summary>
+    internal static string ExitCodeMeaning(int code) =>
+        code switch
+        {
+            70 => "the start failed (its log says why).",
+            0 => "another Clícalo of this session was already running, and it was shown.",
+            2 => "another Clícalo of this session was starting or ending, and it did not answer.",
+            3 => "another program holds the pipe of Clícalo (ipc.squat_detected).",
+            _ => "an exit code Clícalo does not use.",
+        };
 
     /// <summary>The working set and private bytes after <paramref name="settle"/>.</summary>
     /// <param name="settle">How long to let the start settle.</param>

@@ -34,8 +34,10 @@ se puede desactivar. No hay telemetría ni informes de fallo automáticos** (LOG
 
 ### Actualizaciones
 
-- La comprobación descarga el manifiesto firmado del canal (estable o beta) y, si hay versión nueva, el
-  paquete. No envía ningún identificador ni dato de uso.
+- La comprobación descarga de las GitHub Releases la lista de versiones del canal (estable o beta) y, si hay
+  versión nueva, el paquete, cuya suma comprueba Velopack. La 2.0 no lleva firma de código ni manifiesto
+  firmado ([ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)). No envía ningún
+  identificador ni dato de uso.
 
 ## Qué se guarda en el equipo
 

@@ -21,6 +21,9 @@ public static class DockGeometry
     /// <summary>A horizontal bar stays this far from its edge (PES-005).</summary>
     public const int HorizontalBarInsetPx = 12;
 
+    /// <summary>The padding of the open bar around what it shows (PES-005).</summary>
+    public const int BarPaddingPx = 8;
+
     /// <summary>The floating «Release all» of the open bar stays this far from a side edge or the top (PES-013).</summary>
     public const int PanicInsetPx = 110;
 
@@ -157,9 +160,10 @@ public static class DockGeometry
     }
 
     /// <summary>
-    /// The open bar (PES-005): as thick as the size says (76/88/108 wide on a vertical edge, 58/66/78 high on a
-    /// horizontal one), as long as its content up to <see cref="MaxBarLength"/>, centered along its edge; against a
-    /// vertical edge (18 px away on the right with <paramref name="gutter"/>), 12 px away from a horizontal one.
+    /// The open bar (PES-005): as thick as the size says (76/88/108 wide on a vertical edge; on a horizontal one, its
+    /// padding around what it shows, which is 58/66/78 high as its shortcuts are, PES-007), as long as its content up
+    /// to <see cref="MaxBarLength"/>, centered along its edge; against a vertical edge (18 px away on the right with
+    /// <paramref name="gutter"/>), 12 px away from a horizontal one.
     /// </summary>
     /// <param name="side">The edge.</param>
     /// <param name="length">The length its content asks for, in physical pixels.</param>
@@ -189,7 +193,7 @@ public static class DockGeometry
             return new PhysicalRect(left, top, width, along);
         }
 
-        var height = monitor.ToPhysical(size.DockBarHeightPx);
+        var height = monitor.ToPhysical(size.DockBarHeightPx + (2 * BarPaddingPx));
         var inset = monitor.ToPhysical(HorizontalBarInsetPx);
         var x = work.Left + ((work.Width - along) / 2);
         var y = side == DockSide.Top ? work.Top + inset : work.Bottom - inset - height;
@@ -247,6 +251,61 @@ public static class DockGeometry
             monitor.WorkArea,
             0
         );
+    }
+
+    /// <summary>
+    /// <see cref="Beside"/>, clear of the surfaces already placed there (PES-014): while the place is taken by one of
+    /// <paramref name="taken"/>, the surface goes further from the edge, beside that one too. The notice surface of the
+    /// Tab view uses it, so it never covers a window beside the bar nor the floating «Release all».
+    /// </summary>
+    /// <param name="side">The edge of the Tab view.</param>
+    /// <param name="anchor">The bar, the handle or a button, in physical pixels.</param>
+    /// <param name="width">The width of the surface.</param>
+    /// <param name="height">The height of the surface.</param>
+    /// <param name="gap">The gap between the anchor and the surface.</param>
+    /// <param name="align">How it lines up along the edge.</param>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="taken">The surfaces already placed beside the anchor.</param>
+    public static PhysicalRect BesideClear(
+        DockSide side,
+        PhysicalRect anchor,
+        int width,
+        int height,
+        int gap,
+        DockAlign align,
+        DisplayMonitor monitor,
+        IReadOnlyList<PhysicalRect> taken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(taken);
+        var rect = Beside(side, anchor, width, height, gap, align, monitor);
+        for (var pass = 0; pass < taken.Count; pass++)
+        {
+            PhysicalRect? hit = null;
+            foreach (var other in taken)
+            {
+                if (Overlap(rect, other))
+                {
+                    hit = other;
+                    break;
+                }
+            }
+
+            if (hit is not { } covered)
+            {
+                break;
+            }
+
+            anchor = PhysicalRect.FromEdges(
+                Math.Min(anchor.Left, covered.Left),
+                Math.Min(anchor.Top, covered.Top),
+                Math.Max(anchor.Right, covered.Right),
+                Math.Max(anchor.Bottom, covered.Bottom)
+            );
+            rect = Beside(side, anchor, width, height, gap, align, monitor);
+        }
+
+        return rect;
     }
 
     /// <summary>
@@ -320,6 +379,14 @@ public static class DockGeometry
             : (int)Math.Floor((Math.Max(0, availablePx) + gapPx) / (tilePx + gapPx));
         return Math.Max(1, Math.Min(preference, fit));
     }
+
+    private static bool Overlap(PhysicalRect a, PhysicalRect b) =>
+        !a.IsEmpty
+        && !b.IsEmpty
+        && a.Left < b.Right
+        && b.Left < a.Right
+        && a.Top < b.Bottom
+        && b.Top < a.Bottom;
 
     private static int GutterPx(DockSide side, bool gutter, DisplayMonitor monitor) =>
         side == DockSide.Right && gutter

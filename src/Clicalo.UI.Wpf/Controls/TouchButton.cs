@@ -8,8 +8,10 @@ namespace Clicalo.UI.Wpf.Controls;
 /// <summary>
 /// The text button of the prototype (docs/07 «Formas»: radius 10; bold 14 px text; optional icon before it), filled
 /// as <see cref="Appearance"/> says. It responds on at least 44 × 44 (REG-02): a smaller <c>Width</c> or
-/// <c>Height</c> only shrinks the drawing, centered in the target. UI Automation sees a Button with the Invoke
-/// pattern whose name is the text (<see cref="TouchButtonAutomationPeer"/>, ACC-001).
+/// <c>Height</c> only shrinks the drawing, centered in the target. UI Automation sees a Button whose name is the text,
+/// with exactly one pattern (<see cref="TouchButtonAutomationPeer"/>, ACC-001): Invoke; ExpandCollapse when the button
+/// opens and closes something and says so with <see cref="IsExpanded"/>; Toggle when it switches a state and says so
+/// with <see cref="IsOn"/>.
 /// </summary>
 /// <remarks>The content is product text, already localized by the view model (CLC0006).</remarks>
 public class TouchButton : Button
@@ -36,6 +38,22 @@ public class TouchButton : Button
         typeof(ButtonAppearance),
         typeof(TouchButton),
         new FrameworkPropertyMetadata(ButtonAppearance.Accent, OnAppearanceChanged)
+    );
+
+    /// <summary>Identifies <see cref="IsExpanded"/>.</summary>
+    public static readonly DependencyProperty IsExpandedProperty = DependencyProperty.Register(
+        nameof(IsExpanded),
+        typeof(bool?),
+        typeof(TouchButton),
+        new FrameworkPropertyMetadata(null, OnIsExpandedChanged)
+    );
+
+    /// <summary>Identifies <see cref="IsOn"/>.</summary>
+    public static readonly DependencyProperty IsOnProperty = DependencyProperty.Register(
+        nameof(IsOn),
+        typeof(bool?),
+        typeof(TouchButton),
+        new FrameworkPropertyMetadata(null, OnIsOnChanged)
     );
 
     /// <summary>Default font size of the text (prototype: 14 px).</summary>
@@ -99,9 +117,65 @@ public class TouchButton : Button
         set => SetValue(AppearanceProperty, value);
     }
 
+    /// <summary>
+    /// Whether what the button opens is open, for a button that opens and closes a sheet, a menu or a window beside it
+    /// (Quick settings, the profile button of the Tab view): UI Automation then sees the ExpandCollapse pattern with
+    /// this state instead of Invoke (ACC-001). <see langword="null"/>, the default, for any other button. The state is
+    /// the view model's: expanding or collapsing through UI Automation clicks the button.
+    /// </summary>
+    public bool? IsExpanded
+    {
+        get => (bool?)GetValue(IsExpandedProperty);
+        set => SetValue(IsExpandedProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the state the button switches is on (Auto/Fixed, the lock of the Tab view): UI Automation then sees the
+    /// Toggle pattern with this state instead of Invoke, so it is not told by color alone (ACC-001, ACC-003).
+    /// <see langword="null"/>, the default, for any other button. The state is the view model's: toggling through UI
+    /// Automation clicks the button.
+    /// </summary>
+    public bool? IsOn
+    {
+        get => (bool?)GetValue(IsOnProperty);
+        set => SetValue(IsOnProperty, value);
+    }
+
+    /// <inheritdoc />
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        if (GetTemplateChild(ButtonChrome.ContentPart) is ContentPresenter presenter)
+        {
+            WrappedText.Apply(
+                presenter,
+                centered: HorizontalContentAlignment == HorizontalAlignment.Center
+            );
+        }
+    }
+
+    /// <summary>Clicks the button as a tap does; UI Automation's Expand, Collapse and Toggle end here.</summary>
+    internal void ClickFromAutomation() => OnClick();
+
     /// <inheritdoc />
     protected override AutomationPeer OnCreateAutomationPeer() =>
         new TouchButtonAutomationPeer(this);
+
+    private static void OnIsExpandedChanged(
+        DependencyObject button,
+        DependencyPropertyChangedEventArgs e
+    ) =>
+        (
+            UIElementAutomationPeer.FromElement((UIElement)button) as TouchButtonAutomationPeer
+        )?.RaiseExpandedChanged((bool?)e.OldValue, (bool?)e.NewValue);
+
+    private static void OnIsOnChanged(
+        DependencyObject button,
+        DependencyPropertyChangedEventArgs e
+    ) =>
+        (
+            UIElementAutomationPeer.FromElement((UIElement)button) as TouchButtonAutomationPeer
+        )?.RaiseOnChanged((bool?)e.OldValue, (bool?)e.NewValue);
 
     private static void OnAppearanceChanged(
         DependencyObject button,

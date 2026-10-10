@@ -105,6 +105,14 @@ internal static class MousePlanner
             return;
         }
 
+        // One repeating scroll at a time, and one item per contact: the finger that holds keeps what it holds until it
+        // lifts (INV-9), so a second scroll waits for the first to end.
+        var holder = HolderId.ForContact(contactId);
+        if (step.State.Scroll is not null || KeyPlanner.IsHeld(step, holder))
+        {
+            return;
+        }
+
         step.Emit(
             new EngineEffect.MouseAction(
                 mouse.Op,
@@ -113,9 +121,22 @@ internal static class MousePlanner
                 origin.Epoch
             )
         );
-        var (deadline, _) = step.GlobalDeadline();
+        var (deadline, inherits) = step.GlobalDeadline();
+
+        // SEG-001: the held scroll is in the ledger like any Hold, with no key and no button, so the panic strip shows
+        // it and «Release all», the limit and every terminal event end it.
+        var item = KeyPlanner.Template(
+            step,
+            holder,
+            HoldOrigin.Dock,
+            origin,
+            contactId,
+            deadline,
+            inherits
+        );
         step.State = step.State with
         {
+            Keys = step.State.Keys.Acquire(item).Ledger,
             Scroll = new ScrollRepeat(
                 contactId,
                 mouse.Op,
@@ -139,12 +160,19 @@ internal static class MousePlanner
             return;
         }
 
-        if (
-            (scroll.DeadlineTicks is { } deadline && deadline <= step.Now)
-            || !step.CanPress(scroll.Origin)
-        )
+        if (scroll.DeadlineTicks is { } deadline && deadline <= step.Now)
         {
-            step.State = step.State with { Scroll = null };
+            // SEG-004: the global limit ends it and says so, like any other held item.
+            var seconds =
+                (deadline - scroll.SinceTicks) / Math.Max(1, step.Config.TimestampFrequency);
+            StopScroll(step);
+            step.Notice(EngineNotices.ReleasedAutomatically(seconds), NoticeUrgency.Assertive);
+            return;
+        }
+
+        if (!step.CanPress(scroll.Origin))
+        {
+            StopScroll(step);
             return;
         }
 
@@ -165,6 +193,45 @@ internal static class MousePlanner
                 NextTicks = step.Now + step.Ticks(Interval(scroll.Speed, steps)),
             },
         };
+    }
+
+    /// <summary>Ends the repeating scroll and takes its item out of the ledger (SEG-001); it sends nothing.</summary>
+    public static void StopScroll(EngineStep step)
+    {
+        if (step.State.Scroll is not { } scroll)
+        {
+            return;
+        }
+
+        step.State = step.State with { Scroll = null };
+        var holder = HolderId.ForContact(scroll.ContactId);
+        if (
+            step.State.Keys.Items.TryGetValue(holder, out var item)
+            && item.Origin == HoldOrigin.Dock
+        )
+        {
+            step.Release(step.State.Keys.Release(holder), holder);
+        }
+    }
+
+    /// <summary>
+    /// The scroll ends with its ledger item: its deadline or a cancelled holder took the item away (SEG-001, SEG-004).
+    /// </summary>
+    public static void SyncScroll(EngineStep step)
+    {
+        if (
+            step.State.Scroll is { } scroll
+            && !(
+                step.State.Keys.Items.TryGetValue(
+                    HolderId.ForContact(scroll.ContactId),
+                    out var item
+                )
+                && item.Origin == HoldOrigin.Dock
+            )
+        )
+        {
+            step.State = step.State with { Scroll = null };
+        }
     }
 
     /// <summary>

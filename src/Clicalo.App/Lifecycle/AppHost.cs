@@ -14,13 +14,17 @@ using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
+using Clicalo.Application.UseCases.Welcome;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
+using Clicalo.Infrastructure.Persistence;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.Input;
+using Clicalo.Platform.Windows.Launch;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
@@ -57,9 +61,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private readonly InstanceMutex _mutex;
     private readonly ILoggerFactory _logs;
     private readonly ILogger _logger;
+    private readonly bool _firstRunAfterInstall;
     private readonly CancellationTokenSource _stop = new();
     private readonly TimeProvider _time = TimeProvider.System;
     private readonly List<Action> _teardown = [];
+    private readonly object _recoveryNotice = new();
     private System.Windows.Application? _application;
     private ServiceProvider? _services;
     private EngineThread? _engine;
@@ -67,17 +73,30 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private TrayController? _tray;
     private ShowPipeServer? _pipe;
     private ControlCenterComposer? _controlCenter;
+    private WelcomeComposer? _welcome;
+    private DocumentStore? _store;
     private Task _persistence = Task.CompletedTask;
     private Task _guardian = Task.CompletedTask;
     private Task? _exit;
     private bool _firstFrame;
+    private bool _askReinstall;
+    private Action? _beforeEnd;
 
     /// <summary>Creates the host of the instance that owns <paramref name="mutex"/>.</summary>
+    /// <param name="options">The command line.</param>
+    /// <param name="identity">The session and user of this instance.</param>
+    /// <param name="mutex">The single-instance mutex, owned.</param>
+    /// <param name="logs">The product log.</param>
+    /// <param name="firstRunAfterInstall">
+    /// The installer started this process right after installing (Velopack's first-run hook): with data from before,
+    /// the welcome asks whether to keep it or start from scratch (NFR-010, P6).
+    /// </param>
     public AppHost(
         AppOptions options,
         InstanceIdentity identity,
         InstanceMutex mutex,
-        ILoggerFactory logs
+        ILoggerFactory logs,
+        bool firstRunAfterInstall = false
     )
     {
         _options = options;
@@ -85,6 +104,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         _mutex = mutex;
         _logs = logs;
         _logger = logs.CreateLogger<AppHost>();
+        // A start Sentinel relaunched, or one with isolated data, is never the first run of an installation.
+        _firstRunAfterInstall =
+            firstRunAfterInstall && options.AfterCrash is null && !options.IsolatedData;
     }
 
     /// <summary>Whether the first frame of the panel is on screen.</summary>
@@ -109,6 +131,24 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     {
         _application?.Dispatcher.VerifyAccess();
         return _exit ??= ExitCoreAsync(AppExitCode.Ok);
+    }
+
+    /// <summary>
+    /// <see cref="ExitAsync"/> with one last action once every key is released and the document flushed, right before
+    /// the process leaves: «Desinstalar Clícalo» starts the uninstaller there (NFR-010, ADR-0029). Ignored when the
+    /// exit had already begun.
+    /// </summary>
+    /// <param name="last">The action; a failure in it never keeps the process alive.</param>
+    internal Task ExitThenAsync(Action last)
+    {
+        ArgumentNullException.ThrowIfNull(last);
+        _application?.Dispatcher.VerifyAccess();
+        if (_exit is null)
+        {
+            _beforeEnd = last;
+        }
+
+        return ExitAsync();
     }
 
     /// <inheritdoc />
@@ -174,6 +214,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             )
             .ConfigureAwait(true);
         slot.Load = read.Documents.Load;
+        _askReinstall = WelcomeFreshStart.ShouldAsk(
+            _firstRunAfterInstall,
+            newData: read.Documents.Load.Outcome == DocumentLoadOutcome.FirstRun,
+            read.Documents.Load.Document
+        );
         slot.Localization = read.Localization;
         slot.Catalogs = read.Catalogs;
         var loadTime = _time.GetElapsedTime(started);
@@ -191,6 +236,25 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         // 3. Autosave, and the engine on its own thread.
         var store = services.GetRequiredService<DocumentStore>();
         _scheduler = services.GetRequiredService<PersistenceScheduler>();
+        var repository = services.GetRequiredService<DocumentRepository>();
+        var awaitingAcceptance = repository.IsAwaitingAcceptance;
+        if (awaitingAcceptance)
+        {
+            // DAT-003: the default document shown when nothing could be read is only written once the person uses
+            // it. Subscribed before the autosave, so the change that accepts it is the first one saved.
+            store.Changed += (_, change) =>
+            {
+                if (repository.IsAwaitingAcceptance && StartupRecovery.Accepts(change))
+                {
+                    repository.AcceptDefaultDocument();
+                    LogDefaultAccepted(_logger);
+                    _ = ui.BeginInvoke(() =>
+                        services.GetRequiredService<PanelComposer>().ClearSticky(_recoveryNotice)
+                    );
+                }
+            };
+        }
+
         store.Changed += _scheduler.OnDocumentChanged;
         var scheduler = _scheduler;
         if (read.Documents.SavePending)
@@ -258,8 +322,57 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         window.ContentRendered += (_, _) => OnFirstFrame(adapters.Guardian);
         window.Present();
+        if (StartupRecovery.NoticeFor(slot.Load.Outcome, awaitingAcceptance) is { } recovery)
+        {
+            // SIS-004, DAT-003: said in the panel and kept there until another notice takes its place.
+            services
+                .GetRequiredService<PanelComposer>()
+                .ShowSticky(
+                    _recoveryNotice,
+                    new PanelNotice(
+                        recovery,
+                        new Domain.Catalog.IconRef("warning"),
+                        NoticeTone.Warning
+                    )
+                );
+        }
+
         _controlCenter = BuildControlCenter(services, store, slot, ui, foreground, monitor, window);
         Track(_controlCenter.Dispose);
+        var system = SystemLifecycle.Start(services, this, _options, ui, _time, ExitThenAsync);
+        Track(system.Dispose);
+        _controlCenter.System = system.Services;
+        _controlCenter.About = (dictate, notify) =>
+            AboutServicesFactory.Create(
+                slot.Localization,
+                services.GetRequiredService<DataLocations>(),
+                _options.SendInput
+                    ? services.GetRequiredService<ShellExecutor>()
+                    : new DeferredShellExecutor(),
+                services.GetRequiredService<IAtomicFileWriter>(),
+                ui,
+                dictate,
+                notify,
+                // ACE-004, ADR-0029: the email app opens only towards the contact address of the project.
+                _options.SendInput
+                    ? (address, cancellationToken) =>
+                        services
+                            .GetRequiredService<ShellExecutor>()
+                            .OpenMailAsync(
+                                address,
+                                Presentation.ControlCenter.About.AboutLinks.Current.Email,
+                                cancellationToken
+                            )
+                    : null
+            );
+        _store = store;
+        _welcome = BuildWelcome(services, store, slot, ui, _time);
+        Track(_welcome.Dispose);
+        _controlCenter.OpenWelcome = () => _ = OpenWelcomeAgainAsync();
+        if (_firstFrame)
+        {
+            OpenWelcomeIfPending();
+        }
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);
@@ -387,25 +500,116 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             services.GetRequiredService<ITouchKeyboard>(),
             new ControlCenterOpenApps(),
             () => new Rect(window.Left, window.Top, window.ActualWidth, window.ActualHeight),
-            Environment.IsPrivilegedProcess
+            Environment.IsPrivilegedProcess,
+            new TemplatesComposition(
+                store,
+                slot.Localization,
+                _time,
+                services.GetRequiredService<IIdGenerator>(),
+                services.GetRequiredService<IAtomicFileWriter>(),
+                _options.IsolatedData
+            )
         );
         var describer = services.GetRequiredService<ForegroundDescriber>();
         monitor.ExternalForegroundChanged += (_, change) =>
             controlCenter.OnExternalForeground(describer.Describe(change.Foreground).Process);
-        var panel = services.GetRequiredService<PanelComposer>();
-        panel.ControlCenter = controlCenter;
-        var interaction = services.GetRequiredService<InteractionStore>();
-        // CCM-004: nothing dims while the control center is open; ATJ-008: the capture notice shows in the panel.
-        controlCenter.StateChanged += (_, _) =>
-        {
-            _ = interaction.Dispatch(
-                new InteractionAction.SetOpen(DimExceptions.ControlCenterOpen, controlCenter.IsOpen)
-            );
-            panel.ShowCapture(controlCenter.IsCapturing);
-        };
+        // CCM-003, CCM-004, ATJ-008, PRB-004: the notices, the dimming and the capture are shared with the panel.
+        PanelLinks.Connect(
+            services.GetRequiredService<PanelComposer>(),
+            controlCenter,
+            services.GetRequiredService<InteractionStore>()
+        );
         // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
         foreground.IsTrying = () => controlCenter.IsTrying;
         return controlCenter;
+    }
+
+    /// <summary>
+    /// The welcome (docs/06): it opens after the first frame while the document has not finished it (BIE-001), and again
+    /// from General › Ver la bienvenida otra vez (GEN-014). Nothing dims while it is open; when it ends the panel shows
+    /// unminimized, with the notice [welcome] after [Empezar] (BIE-009).
+    /// </summary>
+    private static WelcomeComposer BuildWelcome(
+        IServiceProvider services,
+        DocumentStore store,
+        StartupSlot slot,
+        Dispatcher ui,
+        TimeProvider time
+    )
+    {
+        var welcome = new WelcomeComposer(
+            store,
+            slot.Localization,
+            services.GetRequiredService<IForegroundOrchestrator>(),
+            services.GetRequiredService<ThemeService>(),
+            ui,
+            () => slot.Catalogs.Content,
+            // BIE-006: the keyboard Windows reports, as Plantillas shows it (PLA-009).
+            () =>
+                Domain.Templates.KeyboardLayouts.Detect(
+                    System.Windows.Input.InputLanguageManager.Current?.CurrentInputLanguage?.Name
+                ),
+            WelcomeFreshStart.Of(
+                () => slot.Catalogs.Content,
+                services.GetRequiredService<IIdGenerator>(),
+                time
+            ),
+            time
+        );
+        var interaction = services.GetRequiredService<InteractionStore>();
+        var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
+        var panel = services.GetRequiredService<PanelComposer>();
+        welcome.StateChanged += (_, _) =>
+            _ = interaction.Dispatch(
+                new InteractionAction.SetOpen(DimExceptions.WelcomeOpen, welcome.IsOpen)
+            );
+        welcome.Ended += (_, e) =>
+        {
+            if (interaction.Current.Minimized)
+            {
+                _ = interaction.Dispatch(new InteractionAction.Restore());
+            }
+
+            visibility.Show();
+            if (e.End == WelcomeEnd.Finished)
+            {
+                panel.Notify(L.Welcome, NoticeTone.Notice, "celebration");
+            }
+        };
+        return welcome;
+    }
+
+    private void OpenWelcomeIfPending()
+    {
+        if (_welcome is not { } welcome || _store is not { } store)
+        {
+            return;
+        }
+
+        if (WelcomeComposer.IsPending(store.Current))
+        {
+            _ = welcome.OpenAsync(repeat: false, LeaseOrigin.Internal);
+        }
+        else if (_askReinstall)
+        {
+            // NFR-010, P6: a reinstallation that found data from before asks once; keeping it is the default.
+            _askReinstall = false;
+            _ = welcome.OpenAsync(repeat: true, LeaseOrigin.Internal, reinstall: true);
+        }
+    }
+
+    /// <summary>«Ver la bienvenida otra vez» (GEN-014): the Control Center closes, then the welcome opens on step 0.</summary>
+    private async Task OpenWelcomeAgainAsync()
+    {
+        if (_controlCenter is { } controlCenter)
+        {
+            await controlCenter.CloseAsync().ConfigureAwait(true);
+        }
+
+        if (_welcome is { } welcome)
+        {
+            await welcome.OpenAsync(repeat: true, LeaseOrigin.Touch).ConfigureAwait(true);
+        }
     }
 
     private void UpdateTray(PanelViewModel viewModel) =>
@@ -420,6 +624,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         _firstFrame = true;
         FirstFrameSignal.Raise();
+        OpenWelcomeIfPending();
         using (var process = Process.GetCurrentProcess())
         {
             var sinceStart = _time.GetUtcNow() - new DateTimeOffset(process.StartTime);
@@ -494,19 +699,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
         var ui = _application!.Dispatcher;
         var interaction = services.GetRequiredService<InteractionStore>();
+        // BUR-003, BUR-005: a click on the tray and the global shortcut show or hide the panel.
         tray.ShowHideRequested += (_, _) =>
-            _ = ui.BeginInvoke(() =>
-            {
-                // BUR-003: a click on the tray with the bubble on screen brings the panel back.
-                if (visibility.IsVisible && interaction.Current.Minimized)
-                {
-                    _ = interaction.Dispatch(new InteractionAction.Restore());
-                }
-                else
-                {
-                    visibility.Toggle();
-                }
-            });
+            _ = ui.BeginInvoke(() => PanelLinks.ToggleFromTray(visibility, interaction));
         tray.ExitRequested += (_, _) => _ = ui.BeginInvoke(() => _ = ExitAsync());
         tray.ControlCenterRequested += (_, _) =>
             _ = ui.BeginInvoke(() => _ = _controlCenter?.OpenAsync(LeaseOrigin.Tray));
@@ -516,6 +711,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Track(tray.Dispose);
         await tray.StartAsync().ConfigureAwait(true);
         _tray = tray;
+        // BUR-005: the optional global shortcut follows the settings from here on (off by default, D10).
+        services.GetRequiredService<PanelComposer>().AttachHotkey(tray.SetHotkeyAsync);
         UpdateTray(services.GetRequiredService<PanelViewModel>());
     }
 
@@ -546,6 +743,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         await WaitQuietlyAsync(Task.WhenAll(_persistence, _guardian)).ConfigureAwait(true);
         _mutex.Dispose();
+        if (_beforeEnd is { } last)
+        {
+            DisposeQuietly(last);
+        }
+
         EndApplication(code);
     }
 
@@ -693,4 +895,11 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         Message = "suspend.flush_late: the flush did not finish before the computer suspended"
     )]
     private static partial void LogSuspendFlushLate(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 16,
+        Level = LogLevel.Information,
+        Message = "doc.default_accepted: the default document is saved from now on"
+    )]
+    private static partial void LogDefaultAccepted(ILogger logger);
 }

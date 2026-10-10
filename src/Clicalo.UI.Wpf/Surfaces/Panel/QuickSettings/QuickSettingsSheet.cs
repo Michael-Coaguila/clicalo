@@ -40,12 +40,19 @@ public sealed class QuickSettingsSheet : Border
     private const double OptionHeight = 40;
     private const double HeadingPx = 12;
 
+    /// <summary>The text of the options of Vista and Tema (prototype: 12 px); the sizes keep the 13 of the control.</summary>
+    private const double SmallOptionPx = 12;
+
     /// <summary>The sheet never gets lower than this to fit the work area: the rest scrolls inside.</summary>
     private const double MinimumFitHeight = 120;
 
     private readonly QuickSettingsViewModel _viewModel;
     private readonly TouchButton _controlCenter;
-    private readonly TextBlock _ccTitle = new() { FontWeight = FontWeights.Bold };
+    private readonly TextBlock _ccTitle = new()
+    {
+        FontWeight = FontWeights.Bold,
+        TextWrapping = TextWrapping.Wrap,
+    };
     private readonly TextBlock _ccSubtitle = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _viewHeading = Heading();
     private readonly TextBlock _opacityHeading = Heading();
@@ -122,20 +129,18 @@ public sealed class QuickSettingsSheet : Border
         _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionHeight));
         var layout = new StackPanel();
         layout.Children.Add(_controlCenter);
-        layout.Children.Add(Section(_viewHeading, Group(viewModel.Views, 3, ViewOptionHeight)));
+        layout.Children.Add(
+            Section(_viewHeading, Group(viewModel.Views, 3, ViewOptionHeight, SmallOptionPx))
+        );
         layout.Children.Add(Section(opacityTitle, _opacity));
         layout.Children.Add(Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionHeight)));
         layout.Children.Add(_sideSection);
-        layout.Children.Add(Section(_themeHeading, Group(viewModel.Themes, 2, OptionHeight)));
+        layout.Children.Add(
+            Section(_themeHeading, Group(viewModel.Themes, 2, OptionHeight, SmallOptionPx))
+        );
         layout.Children.Add(Switches(viewModel.Switches));
 
-        _scroller = new ScrollViewer
-        {
-            Content = layout,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Focusable = false,
-        };
+        _scroller = new SurfaceScrollViewer { Content = layout };
         Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
@@ -415,7 +420,8 @@ public sealed class QuickSettingsSheet : Border
     private SegmentedControl Group(
         IReadOnlyList<QuickOptionViewModel> options,
         int columns,
-        double height
+        double height,
+        double textPx = 0
     )
     {
         var group = new SegmentedControl { Columns = columns };
@@ -427,6 +433,14 @@ public sealed class QuickSettingsSheet : Border
                 Focusable = false,
                 IsTabStop = false,
             };
+            if (textPx > 0)
+            {
+                // Three options share the width of the smallest panel: their names fit whole, also with the thicker
+                // borders of high contrast.
+                item.FontSize = textPx;
+                item.Padding = new Thickness(2, 4, 2, 4);
+            }
+
             if (option.Icon.Length > 0)
             {
                 item.Symbol = option.Icon;

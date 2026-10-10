@@ -382,8 +382,9 @@ public sealed class PanelBodyViewModelTests
         panel.Empty.Add();
         _intents.Calls.ShouldBe(["AddShortcut:p-excel"]);
 
+        // In Frequents the card of the empty profile gives way to the one of Frequents (M6PanelTests).
         panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
-        panel.Empty.IsVisible.ShouldBeFalse();
+        panel.Empty.IsFrequents.ShouldBeTrue();
     }
 
     [Fact]

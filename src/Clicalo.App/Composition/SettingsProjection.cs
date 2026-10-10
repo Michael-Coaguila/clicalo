@@ -51,6 +51,7 @@ internal static class SettingsProjection
             KeyLabels = keyLabels ?? KeyLabelCatalog.Empty,
             InterfaceLanguage = settings.Language,
             FeedbackSound = settings.Feedback.Sound,
+            TimeMultiplier = settings.TimeMultiplier,
         };
     }
 

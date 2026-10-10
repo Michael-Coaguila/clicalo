@@ -2,7 +2,10 @@ namespace Clicalo.Build.Tests;
 
 public sealed class VerbCatalogTests
 {
-    /// <summary>The flow of blueprint §13: every dictable verb, one word each.</summary>
+    /// <summary>
+    /// The flow of blueprint §13: every dictable verb, one word each. <c>states</c>, <c>accept</c> and <c>pr</c> are
+    /// not built (deviations D-29).
+    /// </summary>
     private static readonly string[] BlueprintVerbs =
     [
         "setup",
@@ -13,11 +16,8 @@ public sealed class VerbCatalogTests
         "fix",
         "check",
         "run",
-        "states",
-        "accept",
         "trace",
         "note",
-        "pr",
         "beta",
         "perf",
         "sign-manifest",
@@ -57,10 +57,12 @@ public sealed class VerbCatalogTests
             "i18n-check",
             "i18n-import",
             "adr-check",
+            "trace",
             "run",
             "note",
             "perf",
             "quarantine",
+            "package",
         ]);
 
     [Fact]
@@ -112,5 +114,17 @@ public sealed class VerbCatalogTests
 
     [Fact]
     public void The_developer_cli_verbs_are_the_verbs_of_tools_Clicalo_DevCli() =>
-        VerbCatalog.DevCli.ShouldBe(["i18n-check", "i18n-import", "adr-check"]);
+        VerbCatalog.DevCli.ShouldBe(["i18n-check", "i18n-import", "adr-check", "trace"]);
+
+    [Theory]
+    [InlineData("states")]
+    [InlineData("accept")]
+    [InlineData("pr")]
+    public void The_verbs_that_are_not_built_are_unknown(string verb)
+    {
+        // Deviations D-29: the headless previews cover the states and the manual script covers the acceptance; a
+        // pull request is opened from GitHub, so «cl pr» no longer answers «available in M1».
+        VerbCatalog.IsAvailable(verb).ShouldBeFalse();
+        VerbCatalog.FindFuture(verb).ShouldBeNull();
+    }
 }

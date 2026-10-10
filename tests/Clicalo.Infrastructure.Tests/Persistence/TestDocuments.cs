@@ -71,7 +71,26 @@ internal static class TestDocuments
             Reliability = new ReliabilitySettings(true, true, true, true, false),
             Updates = new UpdateSettings(true, true, true, UpdateChannel.Stable),
             NoKeyboardUser = true,
+            HandlePositionsByMonitor =
+            [
+                new MonitorHandlePosition(Monitor, DockSide.Right, 30),
+                new MonitorHandlePosition(Monitor, DockSide.Bottom, 72),
+            ],
+            ControlCenter = new ControlCenterPlacement(
+                Monitor,
+                120,
+                80.5,
+                1180,
+                720,
+                Maximized: false
+            ),
+            GlobalHotkey = new GlobalHotkeySettings(Enabled: true, "ctrl-alt-f10"),
+            TimeMultiplier = 2,
         };
+
+    /// <summary>A made-up stable monitor identifier (a DisplayConfig monitor device path).</summary>
+    public const string Monitor =
+        @"\\?\DISPLAY#GSM5B7F#5&2c8a1e3f&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}";
 
     /// <summary>A chord in press order.</summary>
     /// <param name="keys">Key ids, optionally with <c>@left</c>/<c>@right</c>.</param>

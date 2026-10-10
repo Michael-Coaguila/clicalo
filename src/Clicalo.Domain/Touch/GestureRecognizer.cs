@@ -31,7 +31,9 @@ namespace Clicalo.Domain.Touch;
 /// <item><see cref="TouchTargetKind.Hold"/>: <see cref="GestureKind.HoldStart"/> after the minimum contact if the
 /// debounce allows it (<see cref="TouchFilter.CanStartHold"/>), then exactly one <see cref="GestureKind.HoldEnd"/>
 /// when the contact lifts, is cancelled, leaves the extra hit area or the recognizer is reset (EJE-004, REG-03). No
-/// long press.</item>
+/// long press. On a target that lies in a zone that scrolls (<see cref="TouchTarget.InScrollZone"/>, TAC-004) the hold
+/// waits at least <c>HoldInScrollDelay</c>, and a contact that moves past the drag threshold before that is a scroll:
+/// it is ignored with <see cref="IgnoreReason.Moved"/> and nothing is ever pressed.</item>
 /// </list>
 /// <para>
 /// A contact that lifts after moving more than <c>SwipeMinDistancePx</c> horizontally with
@@ -410,6 +412,12 @@ public sealed class GestureRecognizer
         else if (contact.Target.Kind == TouchTargetKind.Hold)
         {
             var minContact = _thresholds.Settings.MinContact;
+            if (contact.Target.InScrollZone && minContact < Timings.Touch.HoldInScrollDelay)
+            {
+                // TAC-004: in a zone that scrolls, wait until the finger shows that it is not scrolling.
+                minContact = Timings.Touch.HoldInScrollDelay;
+            }
+
             if (minContact > TimeSpan.Zero)
             {
                 contact.Stage = ContactStage.HoldPending;
@@ -483,7 +491,12 @@ public sealed class GestureRecognizer
                     Ignore(ref contact, IgnoreReason.Palm);
                 }
                 else if (
-                    contact.LeftTarget || thresholds.ExceedsCancelMove(contact.MaxDisplacement)
+                    contact.LeftTarget
+                    || thresholds.ExceedsCancelMove(contact.MaxDisplacement)
+                    // TAC-004: past the drag threshold the surface scrolls; that contact never holds.
+                    || (
+                        contact.Target.InScrollZone && contact.MaxDisplacement > thresholds.MoveSlop
+                    )
                 )
                 {
                     Ignore(ref contact, IgnoreReason.Moved);

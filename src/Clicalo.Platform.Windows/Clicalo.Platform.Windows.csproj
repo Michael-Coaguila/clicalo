@@ -11,6 +11,16 @@
     <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
   </ItemGroup>
+  <ItemGroup Label="The tray icon (BUR-003), drawn by app-icon of tools/Clicalo.DevCli">
+    <EmbeddedResource
+      Include="$(RepoRoot)assets\icons\clicalo.ico"
+      LogicalName="Clicalo.Platform.Windows.Tray.clicalo.ico"
+    />
+    <EmbeddedResource
+      Include="$(RepoRoot)assets\icons\clicalo-dim.ico"
+      LogicalName="Clicalo.Platform.Windows.Tray.clicalo-dim.ico"
+    />
+  </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Clicalo.Platform.IntegrationTests" />
   </ItemGroup>

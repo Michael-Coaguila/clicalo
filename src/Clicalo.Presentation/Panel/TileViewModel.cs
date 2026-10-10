@@ -12,7 +12,7 @@ namespace Clicalo.Presentation.Panel;
 /// as intentions; the <see cref="PanelInteractionController"/> turns them into engine events. It decides nothing.
 /// Every gesture has an equivalent without gesture (§8.6): a hold is a latched toggle when invoked (EJE-005).
 /// </summary>
-public sealed class TileViewModel : ObservableObject
+public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
 {
     private readonly PanelInteractionController _controller;
     private readonly SearchResultViewModel? _result;
@@ -22,6 +22,8 @@ public sealed class TileViewModel : ObservableObject
     private string _badge = string.Empty;
     private bool _isLatched;
     private bool _isFlashing;
+    private bool _isArmed;
+    private bool _isIgnored;
     private int? _voiceNumber;
 
     /// <summary>Creates the tile.</summary>
@@ -116,6 +118,30 @@ public sealed class TileViewModel : ObservableObject
     /// <summary>Starts or ends the flash of the tile (the composition times it, EJE-012).</summary>
     /// <param name="flashing">Whether it flashes.</param>
     public void Flash(bool flashing) => IsFlashing = flashing;
+
+    /// <summary>
+    /// Whether the first tap armed the tile and it waits for the confirmation tap (EJE-002): it shows a warn outline
+    /// and <see cref="AccessibleState"/> says so.
+    /// </summary>
+    public bool IsArmed
+    {
+        get => _isArmed;
+        private set => SetProperty(ref _isArmed, value);
+    }
+
+    /// <summary>
+    /// Whether the touch filter just ignored a touch on the tile (TAC-003): a slight outline shows for
+    /// <c>Timings.Touch.IgnoredTouchFeedback</c>, so the person knows nothing was sent.
+    /// </summary>
+    public bool IsIgnored
+    {
+        get => _isIgnored;
+        private set => SetProperty(ref _isIgnored, value);
+    }
+
+    /// <summary>Starts or ends the outline of an ignored touch (the composition times it, TAC-003).</summary>
+    /// <param name="ignored">Whether it shows.</param>
+    public void ShowIgnored(bool ignored) => IsIgnored = ignored;
 
     /// <summary>
     /// Its voice number while «Numbers for voice» is on (ACC-009, ACC-010), shown in yellow at the top left; the UI
@@ -235,4 +261,8 @@ public sealed class TileViewModel : ObservableObject
         AccessibleHelpText = helpText;
         Badge = badge;
     }
+
+    /// <summary>Applies whether the engine has the tile armed (EJE-002).</summary>
+    /// <param name="armed">Whether it waits for its confirmation tap.</param>
+    internal void ApplyArmed(bool armed) => IsArmed = armed;
 }

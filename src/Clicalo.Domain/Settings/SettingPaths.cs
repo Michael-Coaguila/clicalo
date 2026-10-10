@@ -63,4 +63,9 @@ public static class SettingPaths
     public const string UpdatesBackupBefore = "updates.backupBefore";
     public const string UpdatesChannel = "updates.channel";
     public const string NoKeyboardUser = "noKeyboardUser";
+    public const string HandlePositionsByMonitor = "handlePosByMonitor";
+    public const string ControlCenter = "controlCenter";
+    public const string GlobalHotkeyEnabled = "globalHotkey.enabled";
+    public const string GlobalHotkeyCombo = "globalHotkey.combo";
+    public const string TimeMultiplier = "timeMultiplier";
 }

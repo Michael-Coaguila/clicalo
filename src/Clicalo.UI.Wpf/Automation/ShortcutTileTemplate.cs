@@ -94,7 +94,7 @@ public static class ShortcutTileTemplate
 
     private static FrameworkElementFactory Body()
     {
-        var body = new FrameworkElementFactory(typeof(StackPanel));
+        var body = new FrameworkElementFactory(typeof(ShortcutTileBody));
         body.SetValue(FrameworkElement.MarginProperty, Bind(Control.PaddingProperty));
         body.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         body.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);

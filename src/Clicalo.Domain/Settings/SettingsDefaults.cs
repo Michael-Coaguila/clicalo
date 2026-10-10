@@ -82,5 +82,10 @@ internal static class SettingsDefaults
             ),
             // Nothing is preselected for a new user (BIE-005, PQ-39).
             NoKeyboardUser = false,
+            // Schema 1.1 (ADR-0028): nothing remembered yet, the global shortcut off (D10) and the times as they are.
+            HandlePositionsByMonitor = [],
+            ControlCenter = null,
+            GlobalHotkey = new GlobalHotkeySettings(Enabled: false, GlobalHotkeys.Default.Id),
+            TimeMultiplier = 1,
         };
 }
