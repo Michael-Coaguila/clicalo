@@ -150,12 +150,16 @@ internal sealed class SystemTestWorld
 
         public int Exported { get; private set; }
 
+        public bool? ExportedOutsideData { get; private set; }
+
         public Task<ExportOutcome> ExportAsync(
             UserDocument document,
+            bool outsideData,
             CancellationToken cancellationToken
         )
         {
             Exported++;
+            ExportedOutsideData = outsideData;
             return Task.FromResult(Export);
         }
 

@@ -31,8 +31,16 @@ public interface ISystemBackups
 
     /// <summary>[Exportar]: asks where, then writes a copy of <paramref name="document"/> there.</summary>
     /// <param name="document">The current document.</param>
+    /// <param name="outsideData">
+    /// The copy comes before deleting the data when uninstalling (NFR-010): a place inside the data folders is refused
+    /// with <see cref="ExportOutcome.InsideData"/>, because the copy would be deleted with them (REG-08).
+    /// </param>
     /// <param name="cancellationToken">Cancels before the write.</param>
-    Task<ExportOutcome> ExportAsync(UserDocument document, CancellationToken cancellationToken);
+    Task<ExportOutcome> ExportAsync(
+        UserDocument document,
+        bool outsideData,
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// [Importar], first step (COP-002): asks for the file, reads it as untrusted content (size, schema, LOG-006) and

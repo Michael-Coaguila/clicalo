@@ -117,6 +117,30 @@ public sealed class UninstallDataWipeTests : IDisposable
     }
 
     [Fact]
+    public void A_copy_inside_the_data_folders_would_be_deleted_with_them()
+    {
+        UninstallDataWipe
+            .WouldDelete(_locations, Path.Combine(_locations.Backups, "manual", "copia.json"))
+            .ShouldBeTrue();
+        UninstallDataWipe
+            .WouldDelete(_locations, Path.Combine(_locations.Root.ToUpperInvariant(), "c.json"))
+            .ShouldBeTrue("Windows paths do not tell case apart");
+        UninstallDataWipe
+            .WouldDelete(_locations, Path.Combine(_locations.LocalRoot!, "copia.json"))
+            .ShouldBeTrue();
+        UninstallDataWipe
+            .WouldDelete(_locations, Path.Combine(_locations.Root, "..", "Clicalo", "c.json"))
+            .ShouldBeTrue("the path is resolved first");
+
+        UninstallDataWipe
+            .WouldDelete(_locations, Path.Combine(_root, "roaming", "copia.json"))
+            .ShouldBeFalse();
+        UninstallDataWipe
+            .WouldDelete(_locations, Path.Combine(_root, "roaming", "Clicalo-copias", "c.json"))
+            .ShouldBeFalse("a sibling folder whose name only starts the same is another folder");
+    }
+
+    [Fact]
     public void The_marker_lives_in_the_local_folder_with_a_fixed_name()
     {
         UninstallDataWipe

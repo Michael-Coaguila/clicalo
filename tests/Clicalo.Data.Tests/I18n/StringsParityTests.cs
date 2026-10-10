@@ -258,6 +258,7 @@ public sealed class StringsParityTests
                 "uNokbD",
                 "undoEditsIn",
                 "uninstallBtn",
+                "uninstallCopyInside",
                 "uninstallD",
                 "uninstallFailed",
                 "uninstallNeedsCopy",

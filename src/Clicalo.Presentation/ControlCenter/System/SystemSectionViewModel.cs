@@ -227,7 +227,7 @@ public sealed class SystemSectionViewModel : ObservableObject
         _ = Busy(async () =>
         {
             var outcome = await _sys
-                .Backups.ExportAsync(_s.Store.Current, CancellationToken.None)
+                .Backups.ExportAsync(_s.Store.Current, outsideData: false, CancellationToken.None)
                 .ConfigureAwait(true);
             switch (outcome)
             {
@@ -448,14 +448,25 @@ public sealed class SystemSectionViewModel : ObservableObject
             case TwoStepResult.Confirmed confirmed:
                 _ = Busy(async () =>
                 {
-                    if (
-                        deleteData
-                        && await _sys
-                            .Backups.ExportAsync(_s.Store.Current, CancellationToken.None)
-                            .ConfigureAwait(true) != ExportOutcome.Done
-                    )
+                    var copy = deleteData
+                        ? await _sys
+                            .Backups.ExportAsync(
+                                _s.Store.Current,
+                                outsideData: true,
+                                CancellationToken.None
+                            )
+                            .ConfigureAwait(true)
+                        : ExportOutcome.Done;
+                    if (copy != ExportOutcome.Done)
                     {
-                        Notify(L.UninstallNeedsCopy, "warning", warning: true);
+                        // REG-08: without a copy that survives the uninstaller, nothing is uninstalled nor deleted.
+                        Notify(
+                            copy == ExportOutcome.InsideData
+                                ? L.UninstallCopyInside
+                                : L.UninstallNeedsCopy,
+                            "warning",
+                            warning: true
+                        );
                         return;
                     }
 

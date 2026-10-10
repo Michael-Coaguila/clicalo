@@ -29,6 +29,30 @@ public static class UninstallDataWipe
     public static bool IsRequested(DataLocations locations) => File.Exists(MarkerPath(locations));
 
     /// <summary>
+    /// Whether <paramref name="path"/> is inside the folders <see cref="RunIfRequested"/> deletes: the copy the person
+    /// saves before asking to delete the data must not go there, or it would be deleted with them (REG-08). A path that
+    /// cannot be resolved counts as inside.
+    /// </summary>
+    /// <param name="locations">The data folders.</param>
+    /// <param name="path">A file or folder.</param>
+    public static bool WouldDelete(DataLocations locations, string path)
+    {
+        ArgumentNullException.ThrowIfNull(locations);
+        ArgumentNullException.ThrowIfNull(path);
+        try
+        {
+            var full = Path.GetFullPath(path);
+            return IsUnder(full, locations.Root)
+                || (locations.LocalRoot is { } local && IsUnder(full, local));
+        }
+        catch (Exception ex)
+            when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Takes the request back (the uninstaller did not start, or a normal start found a stale marker): from then on
     /// uninstalling keeps the data again. Never throws.
     /// </summary>
@@ -67,6 +91,16 @@ public static class UninstallDataWipe
 
         Withdraw(locations);
         return true;
+    }
+
+    private static bool IsUnder(string full, string folder)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        return full.Equals(root, StringComparison.OrdinalIgnoreCase)
+            || full.StartsWith(
+                root + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            );
     }
 
     /// <summary>

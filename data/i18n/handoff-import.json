@@ -1261,6 +1261,11 @@
       "notes": "Aviso cuando Windows no pudo iniciar la desinstalación (NFR-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "uninstallNeedsCopy",
       "text": { "es": "Windows no pudo iniciar la desinstalación. Nada se borró.", "en": "Windows couldn't start the uninstaller. Nothing was deleted." }
+    },
+    "uninstallCopyInside": {
+      "notes": "Aviso cuando la copia previa a borrar los datos se quiso guardar dentro de la carpeta de datos, que el desinstalador borra (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "uninstallFailed",
+      "text": { "es": "No se desinstaló: esa carpeta se borra con tus datos. Guarda la copia en otro sitio.", "en": "Not uninstalled: that folder is deleted with your data. Save the copy somewhere else." }
     }
   },
   "retired": {

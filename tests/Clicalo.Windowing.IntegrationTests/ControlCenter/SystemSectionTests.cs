@@ -326,6 +326,7 @@ public sealed class SystemSectionTests
     [InlineData(ExportOutcome.Done, true)]
     [InlineData(ExportOutcome.Cancelled, false)]
     [InlineData(ExportOutcome.Failed, false)]
+    [InlineData(ExportOutcome.InsideData, false)]
     public void Deleting_the_data_needs_a_saved_copy_first(ExportOutcome copy, bool uninstalls)
     {
         var world = new SystemTestWorld();
@@ -345,12 +346,20 @@ public sealed class SystemSectionTests
             WpfThread.DrainPendingWork();
 
             world.Backups.Exported.ShouldBe(1);
+            world.Backups.ExportedOutsideData.ShouldBe(
+                true,
+                "the copy must survive the uninstaller"
+            );
             world.Uninstaller.Calls.ShouldBe(uninstalls ? [true] : []);
             if (!uninstalls)
             {
                 notices
                     .ShouldHaveSingleItem()
-                    .Text.ShouldBe(Clicalo.Domain.Messages.L.UninstallNeedsCopy);
+                    .Text.ShouldBe(
+                        copy == ExportOutcome.InsideData
+                            ? Clicalo.Domain.Messages.L.UninstallCopyInside
+                            : Clicalo.Domain.Messages.L.UninstallNeedsCopy
+                    );
             }
         });
     }

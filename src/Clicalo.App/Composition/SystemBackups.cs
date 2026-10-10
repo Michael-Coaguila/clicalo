@@ -73,6 +73,7 @@ internal sealed class SystemBackups(
     /// <inheritdoc />
     public async Task<ExportOutcome> ExportAsync(
         UserDocument document,
+        bool outsideData,
         CancellationToken cancellationToken
     )
     {
@@ -95,6 +96,12 @@ internal sealed class SystemBackups(
         }
 
         var target = picker.FileName;
+        if (outsideData && UninstallDataWipe.WouldDelete(locations, target))
+        {
+            // REG-08: the copy that allows deleting the data must survive the uninstaller.
+            return ExportOutcome.InsideData;
+        }
+
         var started = time.GetUtcNow();
         if (!await CreateAsync(document, cancellationToken).ConfigureAwait(true))
         {

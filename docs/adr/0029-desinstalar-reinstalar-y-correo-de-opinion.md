@@ -57,7 +57,8 @@ iniciar o borrar queda detrás de una comprobación propia y de una prueba.
 
 - Dos toques. **Por defecto los datos se conservan**; «Borrar también mis atajos y ajustes» viene apagado.
 - Con esa opción encendida, antes se abre el mismo diálogo de Exportar: la persona guarda una copia donde
-  elija. Si cancela o falla, **no se desinstala ni se borra nada**.
+  elija. Si cancela o falla, **no se desinstala ni se borra nada**. Tampoco si elige un sitio dentro de las
+  carpetas de datos, que se borran: la copia tiene que sobrevivir al desinstalador (REG-08).
 - La instancia nunca borra datos por sí misma. Escribe un marcador (`delete-data-on-uninstall`, en
   `%LocalAppData%\Clicalo`), sale por `IAppLifetime.ExitAsync` (suelta todo y guarda) y, justo antes de terminar,
   inicia `%LocalAppData%\Clicalo.App\Update.exe --uninstall`: el mismo comando que ejecuta Configuración de
