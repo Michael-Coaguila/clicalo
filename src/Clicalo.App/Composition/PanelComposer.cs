@@ -367,8 +367,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
     /// <summary>
     /// Posts a notice (AVI-001, AVI-002, AVI-003): it shows at once, for <c>Timings.Notices.NoticeDuration</c> or the
-    /// undo duration when it offers [undo], times the multiplier of General (ACC-006). A notice with [undo] is never
-    /// lost: when another arrives it waits and shows again.
+    /// undo duration when it offers [undo], times the multiplier of General (ACC-006). A notice with [undo] and a
+    /// safety notice are never lost: when another arrives they wait and show again.
     /// </summary>
     /// <param name="text">The text.</param>
     /// <param name="tone">Notice (polite) or warning (assertive).</param>
@@ -382,7 +382,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 text,
                 new IconRef(icon),
                 tone == NoticeTone.Warning,
-                canUndo && _store.CanUndo ? NoticeKind.Undo : NoticeKind.Normal
+                // A safety notice is one whoever posts it («not sent: elevated app» also comes from «Probar ahora»).
+                canUndo && _store.CanUndo
+                    ? NoticeKind.Undo
+                    : EngineNoticeRules.KindOf(text)
             )
         );
     }
