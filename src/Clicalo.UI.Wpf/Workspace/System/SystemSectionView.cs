@@ -12,7 +12,8 @@ namespace Clicalo.UI.Wpf.Workspace.SystemSection;
 /// «Sistema» (docs/05 §5, SIS-001): the title, then one card with the three tabs joined to their content. The active
 /// tab has the background of the content, a 3 px accent line under it, the filled icon and ▴; the others have the
 /// side background, a bottom border and ▾. It only draws <see cref="SystemSectionViewModel.Screen"/> and forwards
-/// taps; every target is at least 44 × 44 (REG-02) and every control has its name for UI Automation (REG-06).
+/// taps; every target is at least 44 × 44 (REG-02) and every control has its name for UI Automation (REG-06). The
+/// tabs are a Tab control with three TabItems for UI Automation (ACC-001).
 /// </summary>
 public sealed class SystemSectionView : Border
 {
@@ -74,9 +75,12 @@ public sealed class SystemSectionView : Border
         _content.Content = Ui.Column(20, heading, card);
     }
 
-    private Grid Tabs(SystemScreen screen)
+    private SystemTabStrip Tabs(SystemScreen screen)
     {
-        var tabs = new List<UIElement>();
+        var strip = new SystemTabStrip();
+        AutomationProperties.SetName(strip, screen.Title);
+        AutomationProperties.SetAutomationId(strip, "system.tabs");
+        Ui.Ink(strip, Panel.BackgroundProperty, ColorToken.Side);
         foreach (var tab in screen.Tabs)
         {
             var iconFill =
@@ -135,7 +139,7 @@ public sealed class SystemSectionView : Border
             var layers = new Grid();
             layers.Children.Add(new Border { Child = row, Padding = new Thickness(16) });
             layers.Children.Add(bar);
-            var button = new CcToggle
+            var button = new SystemTabItem
             {
                 Content = layers,
                 IsChecked = tab.Selected,
@@ -154,14 +158,19 @@ public sealed class SystemSectionView : Border
             button.SetValue(CcChrome.RadiusProperty, new CornerRadius(0));
             AutomationProperties.SetName(button, tab.Label);
             AutomationProperties.SetItemStatus(button, tab.Status);
+            AutomationProperties.SetAutomationId(button, "system.tab." + tab.Tab);
+            AutomationProperties.SetPositionInSet(button, strip.Children.Count + 1);
+            AutomationProperties.SetSizeOfSet(button, screen.Tabs.Count);
             var target = tab.Tab;
             button.Click += (_, _) => _viewModel.SelectTab(target);
-            tabs.Add(button);
+            strip.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            Grid.SetColumn(button, strip.Children.Count);
+            strip.Children.Add(button);
         }
 
-        var grid = Ui.Columns(3, 0, tabs);
-        Ui.Ink(grid, Panel.BackgroundProperty, ColorToken.Side);
-        return grid;
+        return strip;
     }
 
     private StackPanel Updates(UpdatesModel model)
@@ -505,11 +514,15 @@ public sealed class SystemSectionView : Border
             height: 52
         );
         AutomationProperties.SetHelpText(replace, import.ReplaceDescription);
-        var choices = Ui.Columns(2, 6, [merge, replace]);
+        AutomationProperties.SetAutomationId(merge, "system.import.merge");
+        AutomationProperties.SetAutomationId(replace, "system.import.replace");
+        var choices = import.CanMerge ? Ui.Columns(2, 6, [merge, replace]) : (UIElement)replace;
         var column = Ui.Column(
             8,
             Ui.Text(import.Title, 14, bold: true),
-            Ui.Text(import.Summary, 13, ink: ColorToken.Muted, wrap: true),
+            import.Summary.Length == 0
+                ? null
+                : Ui.Text(import.Summary, 13, ink: ColorToken.Muted, wrap: true),
             import.Warning.Length == 0
                 ? null
                 : Ui.Row(
@@ -517,9 +530,68 @@ public sealed class SystemSectionView : Border
                     Ui.Icon("warning", 16, ColorToken.Warn),
                     Ui.Text(import.Warning, 13, wrap: true)
                 ),
+            import.Review.IsEmpty ? null : Review(import),
             choices
         );
         return Ui.Card(column, ColorToken.Card, ColorToken.Accent, 12, new Thickness(12));
+    }
+
+    /// <summary>
+    /// The Web, App and Macro shortcuts of the backup that the document does not have yet (LOG-008): one row of 48 or
+    /// more each, unticked by default, with what it opens or runs.
+    /// </summary>
+    private StackPanel Review(ImportCardModel import)
+    {
+        var note = Ui.Row(
+            6,
+            Ui.Icon("gpp_maybe", 16, ColorToken.Warn),
+            Ui.Text(import.ReviewNote, 13, wrap: true)
+        );
+        var rows = Ui.Column(6, note);
+        foreach (var row in import.Review)
+        {
+            var box = Ui.Icon(
+                row.Checked ? "check_box" : "check_box_outline_blank",
+                22,
+                row.Checked ? ColorToken.Accent : ColorToken.Muted
+            );
+            var texts = Ui.Column(
+                2,
+                Ui.Text(row.Name, 14, bold: true, wrap: true),
+                row.Detail.Length == 0
+                    ? null
+                    : Ui.Text(row.Detail, 12, ink: ColorToken.Muted, mono: true, wrap: true)
+            );
+            var line = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(box, Dock.Left);
+            line.Children.Add(box);
+            var icon = Ui.Icon(row.Icon, 20, ColorToken.Accent);
+            icon.Margin = new Thickness(10, 0, 0, 0);
+            DockPanel.SetDock(icon, Dock.Left);
+            line.Children.Add(icon);
+            texts.Margin = new Thickness(10, 0, 0, 0);
+            texts.VerticalAlignment = VerticalAlignment.Center;
+            line.Children.Add(texts);
+            var id = row.Id;
+            var toggle = Ui.Choice(
+                line,
+                row.Name,
+                row.Checked,
+                () => _viewModel.ToggleReview(id),
+                48,
+                10,
+                offFill: ColorToken.Field
+            );
+            toggle.Height = double.NaN;
+            toggle.MinHeight = 48;
+            toggle.Padding = new Thickness(12, 6, 12, 6);
+            toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            AutomationProperties.SetHelpText(toggle, row.Detail);
+            AutomationProperties.SetAutomationId(toggle, "system.review." + row.Id.Value);
+            rows.Children.Add(Spaced(toggle, 6));
+        }
+
+        return rows;
     }
 
     private Border History(BackupRowModel row, bool last)
@@ -600,7 +672,53 @@ public sealed class SystemSectionView : Border
         column.Children.Add(
             Spaced(Row("healing", model.Crash, model.CrashDescription, status, null))
         );
+        column.Children.Add(Spaced(Uninstall(model.Uninstall)));
         return column;
+    }
+
+    /// <summary>
+    /// «Desinstalar Clícalo» (NFR-010, P6): the data is kept unless the switch is on, and the button takes two taps
+    /// (REG-04); armed, it is drawn in the warning color like the other destructive buttons.
+    /// </summary>
+    private Border Uninstall(UninstallModel model)
+    {
+        var button = Ui.Button(
+            Ui.Text(
+                model.Button,
+                13,
+                bold: true,
+                ink: model.Armed ? ColorToken.OnWarn : ColorToken.Text
+            ),
+            model.Title,
+            _viewModel.Uninstall,
+            model.Armed ? ColorToken.Warn : ColorToken.CardHi,
+            model.Armed ? ColorToken.OnWarn : ColorToken.Text
+        );
+        button.BorderThickness = new Thickness(0);
+        button.IsEnabled = model.Available;
+        AutomationProperties.SetAutomationId(button, "system.uninstall");
+        AutomationProperties.SetHelpText(button, model.Description);
+        var head = Row("delete", model.Title, model.Description, button, null);
+        head.Padding = new Thickness(0);
+        head.Background = null;
+        var wipe = Ui.SwitchRow(
+            model.DeleteData.Icon,
+            model.DeleteData.Label,
+            model.DeleteData.Description,
+            model.DeleteData.On,
+            _viewModel.ToggleDeleteData
+        );
+        wipe.IsEnabled = model.Available;
+        AutomationProperties.SetAutomationId(wipe, "system.uninstall.deleteData");
+        var card = Ui.Card(
+            Ui.Column(10, head, wipe),
+            null,
+            ColorToken.Border,
+            12,
+            new Thickness(14)
+        );
+        AutomationProperties.SetName(card, model.Title);
+        return card;
     }
 
     private static Border Row(
@@ -655,11 +773,11 @@ public sealed class SystemSectionView : Border
     }
 
     /// <summary>The gap of 10 of the content (children added after the column was built get no gap of their own).</summary>
-    private static T Spaced<T>(T element)
+    private static T Spaced<T>(T element, double gap = 10)
         where T : FrameworkElement
     {
         var margin = element.Margin;
-        element.Margin = new Thickness(margin.Left, margin.Top + 10, margin.Right, margin.Bottom);
+        element.Margin = new Thickness(margin.Left, margin.Top + gap, margin.Right, margin.Bottom);
         return element;
     }
 

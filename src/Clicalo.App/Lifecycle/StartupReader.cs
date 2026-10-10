@@ -43,6 +43,10 @@ internal sealed partial class StartupReader(
             await RecordCrashAsync(crash, cancellationToken).ConfigureAwait(false);
         }
 
+        // A request to delete the data that no uninstaller honoured (it did not start) never waits for a later
+        // uninstall from Windows Settings, which must always keep the data (NFR-010, ADR-0029).
+        UninstallDataWipe.Withdraw(locations);
+
         var i18n =
             LanguageFiles.Find(request.BaseDirectory)
             ?? throw new FileNotFoundException("i18n was not found next to Clicalo.exe.");

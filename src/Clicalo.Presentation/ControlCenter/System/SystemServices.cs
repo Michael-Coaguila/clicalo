@@ -10,11 +10,13 @@ namespace Clicalo.Presentation.ControlCenter.SystemSection;
 /// <param name="Elevation">«Reabrir como administrador».</param>
 /// <param name="Ids">New ids for what an import merges (DAT-004).</param>
 /// <param name="EndForHandover">Ends this instance cleanly once the elevated one started (release all, flush).</param>
+/// <param name="Uninstall">«Desinstalar Clícalo» (NFR-010, P6).</param>
 public sealed record SystemServices(
     IUpdateService Updates,
     ISystemBackups Backups,
     IStartupRegistration Startup,
     IElevatedRelaunch Elevation,
     IIdGenerator Ids,
-    Func<Task> EndForHandover
+    Func<Task> EndForHandover,
+    ISystemUninstall Uninstall
 );

@@ -3,10 +3,13 @@ using System.Globalization;
 using Clicalo.Application.Confirmation;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
+using Clicalo.Application.UseCases.Backups;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Document;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -15,8 +18,11 @@ namespace Clicalo.Presentation.ControlCenter.SystemSection;
 /// <summary>
 /// «Sistema» of the Control Center (docs/05 §5, SIS-001, SIS-002 as modified by D7, ACT-001 to ACT-005, COP-002 to
 /// COP-005): three tabs joined to their content, each with its state. It forwards every intention to the updates, the
-/// backups, the startup and the elevation; the rules live there and in the Application (import plans, two taps).
-/// Projections are coalesced to one per dispatcher turn.
+/// backups, the startup, the elevation and the uninstaller; the rules live there and in the Application (import plans,
+/// the review of imported content, two taps). A backup that is imported or restored is imported content: its Web, App
+/// and Macro shortcuts that the document does not have yet are confirmed one by one first (LOG-008,
+/// <see cref="ImportReview"/>). «Desinstalar Clícalo» keeps the data unless the person asks to delete it, and then
+/// only after a copy saved where they choose (NFR-010, P6). Projections are coalesced to one per dispatcher turn.
 /// </summary>
 public sealed class SystemSectionViewModel : ObservableObject
 {
@@ -26,6 +32,10 @@ public sealed class SystemSectionViewModel : ObservableObject
     private SystemScreen _screen;
     private ImmutableArray<BackupInfo> _backups = [];
     private ImportPick? _pick;
+    private RestoreReview? _restore;
+    private ValueList<Shortcut> _pending = [];
+    private readonly HashSet<ShortcutId> _confirmed = [];
+    private bool _deleteData;
     private bool _queued;
     private bool _busy;
     private bool _elevating;
@@ -94,12 +104,12 @@ public sealed class SystemSectionViewModel : ObservableObject
     /// <summary>Esc with the question of Importar open (CCM-001): closes it and says whether there was one.</summary>
     public bool CloseMenu()
     {
-        if (_pick is null)
+        if (_pick is null && _restore is null)
         {
             return false;
         }
 
-        _pick = null;
+        ClearReview();
         _s.Confirm.Disarm();
         Invalidate();
         return true;
@@ -110,7 +120,7 @@ public sealed class SystemSectionViewModel : ObservableObject
     public void SelectTab(SystemTab tab)
     {
         _tab = tab;
-        _pick = null;
+        ClearReview();
         _s.Confirm.Disarm();
         if (tab == SystemTab.Backups)
         {
@@ -238,7 +248,7 @@ public sealed class SystemSectionViewModel : ObservableObject
     /// </summary>
     public void Import()
     {
-        if (_pick is not null)
+        if (_pick is not null || _restore is not null)
         {
             _ = CloseMenu();
             return;
@@ -256,7 +266,9 @@ public sealed class SystemSectionViewModel : ObservableObject
 
             if (result.TryGetValue(out var pick))
             {
+                ClearReview();
                 _pick = pick;
+                _pending = ImportReview.Pending(_s.Store.Current, pick.Document);
             }
             else
             {
@@ -273,9 +285,12 @@ public sealed class SystemSectionViewModel : ObservableObject
             return;
         }
 
-        var plan = ImportPlanner.Merge(_s.Store.Current, pick.Document, _sys.Ids);
+        var current = _s.Store.Current;
+        var plan = ImportReview
+            .Confirmed(current, pick.Document, _confirmed)
+            .Bind(reviewed => ImportPlanner.Merge(current, reviewed, _sys.Ids));
         var applied = plan.Bind(p => _s.Store.Dispatch(new MergeOnImport(p.Next.Library)));
-        _pick = null;
+        ClearReview();
         Notify(
             applied.IsSuccess ? L.ImpMerged : applied.Failure.Message,
             applied.IsSuccess ? "merge" : "warning",
@@ -288,6 +303,12 @@ public sealed class SystemSectionViewModel : ObservableObject
     /// <summary>[impReplace] (COP-002, REG-04): two taps, with undo and a backup before.</summary>
     public void ImportReplace()
     {
+        if (_restore is { } restore)
+        {
+            RestoreReviewed(restore);
+            return;
+        }
+
         if (_pick is not { } pick)
         {
             return;
@@ -296,11 +317,14 @@ public sealed class SystemSectionViewModel : ObservableObject
         switch (_s.Confirm.Tap(new ConfirmationSubject(nameof(ReplaceOnImport), pick.Version)))
         {
             case TwoStepResult.Confirmed confirmed:
-                var plan = ImportPlanner.Replace(_s.Store.Current, pick.Document);
+                var current = _s.Store.Current;
+                var plan = ImportReview
+                    .Confirmed(current, pick.Document, _confirmed)
+                    .Bind(reviewed => ImportPlanner.Replace(current, reviewed));
                 var applied = plan.Bind(p =>
                     _s.Store.Dispatch(new ReplaceOnImport(p.Next.Library), confirmed.Token)
                 );
-                _pick = null;
+                ClearReview();
                 Notify(
                     applied.IsSuccess ? L.ImpReplaced : applied.Failure.Message,
                     applied.IsSuccess ? "swap_horiz" : "warning",
@@ -313,6 +337,27 @@ public sealed class SystemSectionViewModel : ObservableObject
                 break;
         }
 
+        Invalidate();
+    }
+
+    /// <summary>
+    /// A row of the review of an import or a restore (LOG-008): ticks or unticks a Web, App or Macro shortcut. Only the
+    /// ticked ones are installed.
+    /// </summary>
+    /// <param name="id">The shortcut.</param>
+    public void ToggleReview(ShortcutId id)
+    {
+        if (_pick is null && _restore is null)
+        {
+            return;
+        }
+
+        if (!_confirmed.Remove(id))
+        {
+            _ = _confirmed.Add(id);
+        }
+
+        _s.Confirm.Disarm();
         Invalidate();
     }
 
@@ -337,16 +382,93 @@ public sealed class SystemSectionViewModel : ObservableObject
                     var read = await _sys
                         .Backups.ReadAsync(id, CancellationToken.None)
                         .ConfigureAwait(true);
+                    if (
+                        read.TryGetValue(out var backup)
+                        && ImportReview.Pending(_s.Store.Current, backup)
+                            is { IsEmpty: false } pending
+                    )
+                    {
+                        // LOG-008: a backup is imported content. What it would add that opens or runs something
+                        // is confirmed one by one first; [Restaurar] of that review asks for its own two taps.
+                        ClearReview();
+                        _restore = new RestoreReview(id, backup);
+                        _pending = pending;
+                        return;
+                    }
+
                     var restored = read.Bind(document =>
                         _s.Store.Dispatch(new RestoreBackup(document), confirmed.Token)
                     );
                     Notify(
-                        restored.IsSuccess ? L.RestoredT : restored.Failure.Message,
+                        restored.IsSuccess ? RestoredNotice(id) : restored.Failure.Message,
                         restored.IsSuccess ? "restore" : "warning",
                         warning: restored.IsFailure,
                         undo: restored.IsSuccess
                     );
                     await LoadBackupsAsync().ConfigureAwait(true);
+                });
+                break;
+            case TwoStepResult.Armed armed:
+                Rearm(armed);
+                break;
+        }
+
+        Invalidate();
+    }
+
+    /// <summary>«Borrar también mis atajos y ajustes» of «Desinstalar Clícalo» (NFR-010, P6): off by default.</summary>
+    public void ToggleDeleteData()
+    {
+        _deleteData = !_deleteData;
+        _s.Confirm.Disarm();
+        Invalidate();
+    }
+
+    /// <summary>
+    /// [Desinstalar] (NFR-010, P6, REG-04): two taps. The data is kept unless «Borrar también mis atajos y ajustes» is
+    /// on; then the person first saves a copy where they choose, and without that copy nothing is uninstalled nor
+    /// deleted (REG-08). When the uninstaller starts, this instance ends cleanly.
+    /// </summary>
+    public void Uninstall()
+    {
+        if (!_sys.Uninstall.IsAvailable)
+        {
+            Notify(L.UninstallNotInstalled, "info", warning: true);
+            return;
+        }
+
+        var deleteData = _deleteData;
+        switch (
+            _s.Confirm.Tap(
+                new ConfirmationSubject(ISystemUninstall.Operation, UninstallTarget(deleteData))
+            )
+        )
+        {
+            case TwoStepResult.Confirmed confirmed:
+                _ = Busy(async () =>
+                {
+                    if (
+                        deleteData
+                        && await _sys
+                            .Backups.ExportAsync(_s.Store.Current, CancellationToken.None)
+                            .ConfigureAwait(true) != ExportOutcome.Done
+                    )
+                    {
+                        Notify(L.UninstallNeedsCopy, "warning", warning: true);
+                        return;
+                    }
+
+                    var started = await _sys
+                        .Uninstall.UninstallAsync(
+                            deleteData,
+                            confirmed.Token,
+                            CancellationToken.None
+                        )
+                        .ConfigureAwait(true);
+                    if (!started)
+                    {
+                        Notify(L.UninstallFailed, "warning", warning: true);
+                    }
                 });
                 break;
             case TwoStepResult.Armed armed:
@@ -429,11 +551,70 @@ public sealed class SystemSectionViewModel : ObservableObject
 
     private string T(Message message) => _s.Localization.Current.Format(message);
 
+    /// <summary>«Copia restaurada: {fecha}» (COP-004), with the date of the backup as the history shows it.</summary>
+    private Message RestoredNotice(BackupId id)
+    {
+        foreach (var backup in _backups)
+        {
+            if (backup.Id == id)
+            {
+                return L.RestoredAt(date: When(backup.CreatedAt));
+            }
+        }
+
+        return L.RestoredT;
+    }
+
     private void Notify(Message text, string icon, bool warning, bool undo = false) =>
         Noticed?.Invoke(
             this,
             new WorkspaceNoticeEventArgs(new WorkspaceNotice(text, icon, undo, warning))
         );
+
+    private static string UninstallTarget(bool deleteData) =>
+        deleteData ? "delete-data" : "keep-data";
+
+    private static string ReviewTarget(BackupId id) => "review:" + id.Value;
+
+    private void ClearReview()
+    {
+        _pick = null;
+        _restore = null;
+        _pending = [];
+        _confirmed.Clear();
+    }
+
+    /// <summary>[Restaurar] of the review of a backup (LOG-008, REG-04): two taps; only what was ticked comes back.</summary>
+    private void RestoreReviewed(RestoreReview restore)
+    {
+        switch (
+            _s.Confirm.Tap(
+                new ConfirmationSubject(nameof(RestoreBackup), ReviewTarget(restore.Id))
+            )
+        )
+        {
+            case TwoStepResult.Confirmed confirmed:
+                var restored = ImportReview
+                    .Confirmed(_s.Store.Current, restore.Document, _confirmed)
+                    .Bind(document =>
+                        _s.Store.Dispatch(new RestoreBackup(document), confirmed.Token)
+                    );
+                ClearReview();
+                Notify(
+                    restored.IsSuccess ? RestoredNotice(restore.Id) : restored.Failure.Message,
+                    restored.IsSuccess ? "restore" : "warning",
+                    warning: restored.IsFailure,
+                    undo: restored.IsSuccess
+                );
+                _ = Guard(LoadBackupsAsync);
+                break;
+            case TwoStepResult.Armed armed:
+                Rearm(armed);
+                break;
+        }
+
+        Invalidate();
+    }
 
     private void Rearm(TwoStepResult.Armed armed) =>
         _ = _s.Time.CreateTimer(
@@ -687,28 +868,7 @@ public sealed class SystemSectionViewModel : ObservableObject
             T(L.Export),
             T(L.Import),
             _busy,
-            _pick is { } pick
-                ? new ImportCardModel(
-                    T(L.ImpT),
-                    T(
-                        L.ImpSummary(
-                            version: pick.Version,
-                            count: pick.Profiles,
-                            total: pick.Shortcuts
-                        )
-                    ),
-                    pick.UnavailableTexts > 0
-                        ? T(L.ImpTextsLost(count: pick.UnavailableTexts))
-                        : string.Empty,
-                    T(L.ImpMerge),
-                    T(L.ImpMergeD),
-                    IsArmed(nameof(ReplaceOnImport), pick.Version)
-                        ? T(L.ConfirmB)
-                        : T(L.ImpReplace),
-                    T(L.ImpReplaceD),
-                    IsArmed(nameof(ReplaceOnImport), pick.Version)
-                )
-                : null,
+            ReviewCard(),
             new SwitchModel(
                 "backup",
                 T(L.RAuto),
@@ -738,9 +898,88 @@ public sealed class SystemSectionViewModel : ObservableObject
             T(L.BackupNone)
         );
 
+    /// <summary>The question of Importar, or the review of a backup being restored (LOG-008); null when closed.</summary>
+    private ImportCardModel? ReviewCard()
+    {
+        var note = _pending.IsEmpty ? string.Empty : T(L.RiskyReviewT);
+        var language = Settings.Language;
+        ValueList<ReviewRowModel> rows =
+        [
+            .. _pending.Items.Select(shortcut => new ReviewRowModel(
+                shortcut.Id,
+                shortcut.Icon.Name,
+                shortcut.Name.Get(language, LangCode.Es),
+                shortcut.Action switch
+                {
+                    UrlAction url => Targets.Text(url.Target),
+                    AppAction app => Targets.Text(app.Target),
+                    MacroAction macro => T(L.StepsN(count: macro.Steps.Count)),
+                    _ => string.Empty,
+                },
+                _confirmed.Contains(shortcut.Id)
+            )),
+        ];
+        if (_restore is { } restore)
+        {
+            var armed = IsArmed(nameof(RestoreBackup), ReviewTarget(restore.Id));
+            var info = _backups.FirstOrDefault(b => b.Id == restore.Id);
+            return new ImportCardModel(
+                info is null ? T(L.RestoreB) : T(When(info.CreatedAt)),
+                info is null
+                    ? string.Empty
+                    : T(
+                        L.BakMeta(
+                            name: KindName(info.Kind),
+                            count: info.Profiles,
+                            total: info.Shortcuts
+                        )
+                    ),
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                armed ? T(L.ConfirmB) : T(L.RestoreB),
+                T(L.ImpReplaceD),
+                armed,
+                false,
+                note,
+                rows
+            );
+        }
+
+        if (_pick is not { } pick)
+        {
+            return null;
+        }
+
+        var replaceArmed = IsArmed(nameof(ReplaceOnImport), pick.Version);
+        return new ImportCardModel(
+            T(L.ImpT),
+            T(
+                L.ImpSummary(
+                    version: pick.Version,
+                    count: pick.Profiles,
+                    total: pick.Shortcuts
+                )
+            ),
+            pick.UnavailableTexts > 0
+                ? T(L.ImpTextsLost(count: pick.UnavailableTexts))
+                : string.Empty,
+            T(L.ImpMerge),
+            T(L.ImpMergeD),
+            replaceArmed ? T(L.ConfirmB) : T(L.ImpReplace),
+            T(L.ImpReplaceD),
+            replaceArmed,
+            true,
+            note,
+            rows
+        );
+    }
+
     private StartModel Start()
     {
         var elevated = _sys.Elevation.IsElevated;
+        var canUninstall = _sys.Uninstall.IsAvailable;
+        var uninstallArmed = IsArmed(ISystemUninstall.Operation, UninstallTarget(_deleteData));
         return new StartModel(
             new SwitchModel("power_settings_new", T(L.RStart), T(L.RStartD), _startEnabled),
             new AdminRowModel(
@@ -751,7 +990,20 @@ public sealed class SystemSectionViewModel : ObservableObject
             ),
             T(L.RCrash),
             T(L.CrashRecoveryD),
-            T(L.AlwaysOn)
+            T(L.AlwaysOn),
+            new UninstallModel(
+                T(L.UninstallT),
+                canUninstall ? T(L.UninstallD) : T(L.UninstallNotInstalled),
+                new SwitchModel(
+                    "delete_forever",
+                    T(L.UninstallWipe),
+                    T(L.UninstallWipeD),
+                    _deleteData
+                ),
+                uninstallArmed ? T(L.ConfirmB) : T(L.UninstallBtn),
+                uninstallArmed,
+                canUninstall && !_busy
+            )
         );
     }
 
