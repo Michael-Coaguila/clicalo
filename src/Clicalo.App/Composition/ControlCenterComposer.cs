@@ -475,6 +475,16 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         }
     }
 
+    /// <summary>
+    /// Builds the window and its view model without showing them, as <see cref="OpenAsync(LeaseOrigin)"/> does first:
+    /// from then on the status bar follows the notices. For the tests of the composition.
+    /// </summary>
+    internal ControlCenterViewModel Prepare()
+    {
+        _ = EnsureWindow();
+        return _viewModel!;
+    }
+
     private ControlCenterWindow EnsureWindow()
     {
         if (_window is not null)
@@ -538,7 +548,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         _keyboard is not null
         && await _keyboard.StartDictationAsync(cancellationToken).ConfigureAwait(true);
 
-    private async ValueTask<TryNowOutcome> TryNowAsync(
+    internal async ValueTask<TryNowOutcome> TryNowAsync(
         Shortcut shortcut,
         OpenApp target,
         CancellationToken cancellationToken

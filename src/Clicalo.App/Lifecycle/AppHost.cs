@@ -513,40 +513,12 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var describer = services.GetRequiredService<ForegroundDescriber>();
         monitor.ExternalForegroundChanged += (_, change) =>
             controlCenter.OnExternalForeground(describer.Describe(change.Foreground).Process);
-        var panel = services.GetRequiredService<PanelComposer>();
-        panel.ControlCenter = controlCenter;
-        var interaction = services.GetRequiredService<InteractionStore>();
-        // CCM-004: nothing dims while the control center is open; ATJ-008: the capture notice shows in the panel.
-        controlCenter.StateChanged += (_, _) =>
-        {
-            _ = interaction.Dispatch(
-                new InteractionAction.SetOpen(DimExceptions.ControlCenterOpen, controlCenter.IsOpen)
-            );
-            panel.ShowCapture(controlCenter.IsCapturing);
-        };
-        // CCM-003: the notices are one shared state, so the status bar shows what the panel shows.
-        panel.NoticePublished += (_, published) => controlCenter.OnPanelNotice(published.Notice);
-        controlCenter.OnPanelNotice(panel.CurrentNotice);
-        // PRB-004: «Probar ahora» says [switching] in the panel, fixed, while the Control Center is hidden.
-        var switching = new object();
-        controlCenter.PanelNotice = message =>
-        {
-            if (message is null)
-            {
-                panel.ClearSticky(switching);
-            }
-            else
-            {
-                panel.ShowSticky(
-                    switching,
-                    new PanelNotice(
-                        message,
-                        new Domain.Catalog.IconRef("swap_horiz"),
-                        NoticeTone.Notice
-                    )
-                );
-            }
-        };
+        // CCM-003, CCM-004, ATJ-008, PRB-004: the notices, the dimming and the capture are shared with the panel.
+        PanelLinks.Connect(
+            services.GetRequiredService<PanelComposer>(),
+            controlCenter,
+            services.GetRequiredService<InteractionStore>()
+        );
         // PRB-006: the switches of «Probar ahora» never release what is held (SEG-005).
         foreground.IsTrying = () => controlCenter.IsTrying;
         return controlCenter;
@@ -727,19 +699,9 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
         var ui = _application!.Dispatcher;
         var interaction = services.GetRequiredService<InteractionStore>();
+        // BUR-003, BUR-005: a click on the tray and the global shortcut show or hide the panel.
         tray.ShowHideRequested += (_, _) =>
-            _ = ui.BeginInvoke(() =>
-            {
-                // BUR-003: a click on the tray with the bubble on screen brings the panel back.
-                if (visibility.IsVisible && interaction.Current.Minimized)
-                {
-                    _ = interaction.Dispatch(new InteractionAction.Restore());
-                }
-                else
-                {
-                    visibility.Toggle();
-                }
-            });
+            _ = ui.BeginInvoke(() => PanelLinks.ToggleFromTray(visibility, interaction));
         tray.ExitRequested += (_, _) => _ = ui.BeginInvoke(() => _ = ExitAsync());
         tray.ControlCenterRequested += (_, _) =>
             _ = ui.BeginInvoke(() => _ = _controlCenter?.OpenAsync(LeaseOrigin.Tray));
@@ -750,7 +712,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         await tray.StartAsync().ConfigureAwait(true);
         _tray = tray;
         // BUR-005: the optional global shortcut follows the settings from here on (off by default, D10).
-        services.GetRequiredService<PanelComposer>().AttachTray(tray);
+        services.GetRequiredService<PanelComposer>().AttachHotkey(tray.SetHotkeyAsync);
         UpdateTray(services.GetRequiredService<PanelViewModel>());
     }
 

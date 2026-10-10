@@ -22,7 +22,6 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.ProfileResolution;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
-using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.ContextMenu;
 using Clicalo.Presentation.Panel.EditMode;
@@ -83,7 +82,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private string? _elevatedApp;
     private IForegroundMonitor? _monitor;
     private Func<ExternalForeground, ForegroundDetails>? _describe;
-    private TrayController? _tray;
+    private Func<KeyChord?, Task<bool>>? _setHotkey;
     private bool _relaunching;
     private bool _refreshQueued;
     private bool _resultsChanged = true;
@@ -337,14 +336,18 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <summary>
-    /// The tray, once it shows (BUR-005, user decision D10): its optional global shortcut follows the settings from here
-    /// on, off by default; when Windows refuses the combination because another program owns it, the panel says so.
+    /// The global shortcut of the tray, once the tray shows (BUR-005, user decision D10): it follows the settings from
+    /// here on, off by default; when Windows refuses the combination because another program owns it, the panel says
+    /// so.
     /// </summary>
-    /// <param name="tray">The tray.</param>
-    public void AttachTray(TrayController tray)
+    /// <param name="setHotkey">
+    /// Turns the global shortcut on with a combination, or off with <see langword="null"/>; completes with
+    /// <see langword="false"/> when it could not be registered (<c>TrayController.SetHotkeyAsync</c>).
+    /// </param>
+    public void AttachHotkey(Func<KeyChord?, Task<bool>> setHotkey)
     {
-        ArgumentNullException.ThrowIfNull(tray);
-        _tray = tray;
+        ArgumentNullException.ThrowIfNull(setHotkey);
+        _setHotkey = setHotkey;
         ApplyHotkey(_store.Current.Settings.GlobalHotkey);
     }
 
@@ -783,7 +786,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     /// <summary>Puts the global shortcut of the tray on the combination of the settings, or turns it off (BUR-005).</summary>
     private void ApplyHotkey(GlobalHotkeySettings settings)
     {
-        if (_tray is not { } tray)
+        if (_setHotkey is not { } setHotkey)
         {
             return;
         }
@@ -795,7 +798,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         {
             try
             {
-                var registered = await tray.SetHotkeyAsync(hotkey?.Keys).ConfigureAwait(true);
+                var registered = await setHotkey(hotkey?.Keys).ConfigureAwait(true);
                 if (!registered && hotkey is not null)
                 {
                     // Another program owns the combination: say so, and the person picks another one of the list.
