@@ -98,6 +98,7 @@ public sealed class ShortcutsWorkspaceTests
 
     [Fact]
     [Trait("Req", "ATJ-011")]
+    [Trait("Req", "EDI-002")]
     [Trait("Req", "EDI-003")]
     public void The_first_edit_creates_the_draft_and_a_draft_blank_again_is_discarded_without_trace()
     {
