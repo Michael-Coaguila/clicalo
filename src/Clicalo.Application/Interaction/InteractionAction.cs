@@ -61,4 +61,25 @@ public abstract record InteractionAction
 
     /// <summary>A surface appeared: it is awake and dims a while later unless a finger comes onto it (GEN-009).</summary>
     public sealed record SurfaceShown : InteractionAction;
+
+    /// <summary>A notice to show now, for <paramref name="Duration"/> (AVI-002).</summary>
+    /// <param name="Notice">The notice.</param>
+    /// <param name="Duration">How long it shows.</param>
+    public sealed record PostNotice(Notice Notice, TimeSpan Duration) : InteractionAction;
+
+    /// <summary>A fixed notice that lasts while the state of <paramref name="Owner"/> lasts (AVI-002).</summary>
+    /// <param name="Owner">Whose state it tells; compared by reference.</param>
+    /// <param name="Notice">The notice.</param>
+    public sealed record ShowStickyNotice(object Owner, Notice Notice) : InteractionAction;
+
+    /// <summary>The state of <paramref name="Owner"/> ended: its fixed notice goes away (AVI-002).</summary>
+    /// <param name="Owner">The owner given to <see cref="ShowStickyNotice"/>.</param>
+    public sealed record ClearStickyNotice(object Owner) : InteractionAction;
+
+    /// <summary>The notices of <paramref name="Kind"/> no longer apply: the operation was undone (AVI-003).</summary>
+    /// <param name="Kind">The kind to drop.</param>
+    public sealed record DismissNotices(NoticeKind Kind) : InteractionAction;
+
+    /// <summary>The notice on show reached its end: the next one shows (AVI-002).</summary>
+    public sealed record NoticeTick : InteractionAction;
 }

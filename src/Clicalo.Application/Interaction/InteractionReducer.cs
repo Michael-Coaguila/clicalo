@@ -62,6 +62,23 @@ public static class InteractionReducer
                 {
                     LastLeave = now,
                 },
+            InteractionAction.PostNotice post => state with
+            {
+                Notices = state.Notices.Post(post.Notice, post.Duration, now),
+            },
+            InteractionAction.ShowStickyNotice sticky => state with
+            {
+                Notices = state.Notices.ShowSticky(sticky.Owner, sticky.Notice),
+            },
+            InteractionAction.ClearStickyNotice clear => state with
+            {
+                Notices = state.Notices.ClearSticky(clear.Owner),
+            },
+            InteractionAction.DismissNotices dismiss => state with
+            {
+                Notices = state.Notices.Dismiss(dismiss.Kind, now),
+            },
+            InteractionAction.NoticeTick => state with { Notices = state.Notices.Advance(now) },
             _ => throw new ArgumentOutOfRangeException(
                 nameof(action),
                 action.GetType().Name,
