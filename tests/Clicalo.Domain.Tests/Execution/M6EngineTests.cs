@@ -116,8 +116,8 @@ public sealed class M6EngineTests
     }
 
     [Fact]
+    // INV-9 of the blueprint: one holder per held input; it is an invariant, not a requirement of the catalog.
     [Trait("Req", "SEG-001")]
-    [Trait("Req", "INV-9")]
     public void A_second_finger_never_takes_a_held_scroll_from_the_first()
     {
         var engine = Engine();
