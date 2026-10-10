@@ -23,7 +23,9 @@ namespace Clicalo.Platform.Windows.SysEvents;
 /// <para>
 /// Shell, touch keyboard and Voice access windows are skipped (<see cref="NonAppWindows"/>). A Store app frame
 /// (<c>ApplicationFrameHost.exe</c>) is resolved to the hosted app's process, and the elevation of that process is
-/// read without failing (<see cref="ProcessElevation.Unknown"/>, EC-PER-03). No window title is ever read (LOG-001).
+/// read without failing (<see cref="ProcessElevation.Unknown"/>, EC-PER-03). While the app behind a frame is still
+/// starting, the frame is published with its own process and a <see cref="HostedAppWatch"/> publishes it again as
+/// soon as the app is there (PER-002). No window title is ever read (LOG-001).
 /// </para>
 /// </remarks>
 public sealed class ForegroundMonitor : IForegroundMonitor, IDisposable
@@ -31,6 +33,7 @@ public sealed class ForegroundMonitor : IForegroundMonitor, IDisposable
     private static readonly ConcurrentDictionary<nint, ForegroundMonitor> Hooks = new();
 
     private readonly uint _ownProcessId = (uint)Environment.ProcessId;
+    private readonly HostedAppWatch _hostedApp;
     private ExternalForeground? _current;
     private HWINEVENTHOOK _hook;
     private bool _ownInFront;
@@ -43,6 +46,22 @@ public sealed class ForegroundMonitor : IForegroundMonitor, IDisposable
         ArgumentNullException.ThrowIfNull(timeProvider);
         Thread = thread;
         Clock = timeProvider;
+        _hostedApp = new HostedAppWatch(
+            timeProvider,
+            thread.Post,
+            static frame =>
+            {
+                uint frameProcess = 0;
+                unsafe
+                {
+                    _ = PInvoke.GetWindowThreadProcessId((HWND)frame, &frameProcess);
+                }
+
+                return ProcessInspector.HostedAppProcess(new WindowToken(frame), frameProcess);
+            },
+            static () => PInvoke.GetForegroundWindow(),
+            OnHostedAppFound
+        );
     }
 
     /// <inheritdoc />
@@ -72,6 +91,7 @@ public sealed class ForegroundMonitor : IForegroundMonitor, IDisposable
             return;
         }
 
+        _hostedApp.Dispose();
         try
         {
             Thread.Post(Uninstall);
@@ -179,13 +199,43 @@ public sealed class ForegroundMonitor : IForegroundMonitor, IDisposable
         var appProcessId = ProcessInspector.IsFrameHost(image)
             ? ProcessInspector.HostedAppProcess(window, processId)
             : processId;
-        var appOrFrame = appProcessId != 0 ? appProcessId : processId;
+        if (appProcessId == 0)
+        {
+            // PER-002: the Store app behind the frame is not there yet; ask again while the frame stays in front.
+            _hostedApp.Watch(foreground);
+        }
+        else
+        {
+            _hostedApp.Cancel();
+        }
+
+        _ownInFront = false;
+        Publish(window, processId, threadId, appProcessId != 0 ? appProcessId : processId);
+    }
+
+    /// <summary>The app behind the frame in front showed up (PER-002): the same window, now with its real process.</summary>
+    private void OnHostedAppFound(nint frame, uint appProcessId)
+    {
+        if (
+            Volatile.Read(ref _disposed) != 0
+            || _ownInFront
+            || _current is not { } last
+            || last.Window.Handle != frame
+        )
+        {
+            return;
+        }
+
+        Publish(last.Window, last.ProcessId, last.ThreadId, appProcessId);
+    }
+
+    private void Publish(WindowToken window, uint processId, uint threadId, uint appProcessId)
+    {
         var foregroundApp = new ExternalForeground(window, processId, threadId, Clock.GetUtcNow())
         {
-            AppProcessId = appOrFrame,
-            Elevation = ProcessInspector.Elevation(appOrFrame),
+            AppProcessId = appProcessId,
+            Elevation = ProcessInspector.Elevation(appProcessId),
         };
-        _ownInFront = false;
         Volatile.Write(ref _current, foregroundApp);
         ExternalForegroundChanged?.Invoke(
             this,

@@ -9,17 +9,26 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
 /// A tile with what the layers of the panel draw over it (docs/04 «Anatomía de un botón»): the test mode mark over the
-/// whole tile (TAC-008) and, on the grid, the red × of edit mode at its top right corner (CUA-012). Without layers it is
-/// the tile alone.
+/// whole tile (TAC-008), the slight outline of an ignored touch (TAC-003) and, on the grid, the red × of edit mode at
+/// its top right corner (CUA-012). Without layers it is the tile alone.
 /// </summary>
 internal sealed class TileCell
 {
-    private TileCell(FrameworkElement element, TestMarkBadge? badge, TileRemoveButton? remove)
+    private TileCell(
+        FrameworkElement element,
+        TestMarkBadge? badge,
+        TileRemoveButton? remove,
+        IgnoredTouchOutline? ignored = null
+    )
     {
         Element = element;
         Badge = badge;
         Remove = remove;
+        Ignored = ignored;
     }
+
+    /// <summary>The outline of an ignored touch, with layers (TAC-003).</summary>
+    public IgnoredTouchOutline? Ignored { get; }
 
     /// <summary>What goes into the grid or the row.</summary>
     public FrameworkElement Element { get; }
@@ -53,6 +62,8 @@ internal sealed class TileCell
 
         var cell = new Grid();
         cell.Children.Add(control);
+        var ignored = new IgnoredTouchOutline(viewModel) { Margin = control.Margin };
+        cell.Children.Add(ignored);
         var badge = new TestMarkBadge(layers.TestMode, viewModel.Id) { Margin = control.Margin };
         cell.Children.Add(badge);
         TileRemoveButton? remove = null;
@@ -69,7 +80,7 @@ internal sealed class TileCell
             cell.Children.Add(remove);
         }
 
-        return new TileCell(cell, badge, remove);
+        return new TileCell(cell, badge, remove, ignored);
     }
 
     /// <summary>Stops following the layers when the tile goes away.</summary>
@@ -77,5 +88,6 @@ internal sealed class TileCell
     {
         Badge?.Detach();
         Remove?.Detach();
+        Ignored?.Detach();
     }
 }

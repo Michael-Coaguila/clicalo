@@ -130,6 +130,9 @@ internal static class TileFactory
         control.Badge = viewModel.Badge;
         control.IsFlashing = viewModel.IsFlashing;
 
+        // EJE-002: the armed tile keeps a warn outline until its confirmation tap or the end of its window.
+        control.IsArmed = viewModel.IsArmed;
+
         // CUA-009: a Mantener tile held down shrinks with its outline; a latched toggle shows ACTIVO and its wash.
         control.IsHeld = viewModel.IsLatched && viewModel.Behavior == TileBehavior.Hold;
     }

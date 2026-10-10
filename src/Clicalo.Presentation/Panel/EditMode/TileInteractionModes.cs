@@ -74,15 +74,34 @@ public sealed class TileInteractionModes
         return _edit.OnTap(tile.Id) || _test.OnCounted(tile.Id);
     }
 
-    /// <summary>The recognizer ignored a touch on the tile (TAC-002): test mode marks it ⊘ (not in edit mode).</summary>
+    /// <summary>
+    /// Shows the discreet answer to an ignored touch on a tile in normal use (TAC-003); the composition times it and
+    /// leaves it out when the person turned the flash off. Unset, an ignored touch shows nothing.
+    /// </summary>
+    public Action<TileViewModel>? IgnoredFeedback { get; set; }
+
+    /// <summary>
+    /// The recognizer ignored a touch on the tile (TAC-002): test mode marks it ⊘ (not in edit mode); in normal use the
+    /// tile answers with a slight outline (TAC-003), so a person with tremor knows nothing was sent. A resting palm
+    /// gets no answer: it is not an attempt to press.
+    /// </summary>
     /// <param name="tile">The tile.</param>
     /// <param name="reason">Why it was ignored.</param>
     public void Ignored(TileViewModel tile, IgnoreReason reason)
     {
         ArgumentNullException.ThrowIfNull(tile);
-        if (!_edit.IsOn)
+        if (_edit.IsOn)
+        {
+            return;
+        }
+
+        if (_test.IsOn)
         {
             _test.OnIgnored(tile.Id, reason);
+        }
+        else if (reason != IgnoreReason.Palm)
+        {
+            IgnoredFeedback?.Invoke(tile);
         }
     }
 

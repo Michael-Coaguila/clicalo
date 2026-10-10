@@ -395,6 +395,12 @@
           "description": "While Clícalo has shown the touch keyboard, its covered area is sampled this often so the panel can move above it. Provisional until spike S4 measures it.",
           "req": ["BUS-002"],
           "source": "blueprint §3.6"
+        },
+        "HostedAppRecheck": {
+          "durations": ["100ms", "250ms", "500ms", "1s", "2s"],
+          "description": "When a Store app frame (ApplicationFrameHost.exe) comes to the front before its app has a window in it, the app is looked for again after each of these waits while the frame stays in front; the first time it is there, the foreground is published again with the real process. After the last wait the monitor waits for the next foreground change.",
+          "req": ["PER-002"],
+          "source": "blueprint §7.9"
         }
       }
     },

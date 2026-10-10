@@ -81,6 +81,12 @@ public sealed record EngineState(
     public ValueList<InjectedEvent> BlockedReleases { get; init; }
 
     /// <summary>
+    /// Whether a lock or a suspend released something (SEG-006): the notice that says so is raised again when the
+    /// session comes back (<see cref="EngineEvent.SessionResumed"/>), since nobody could read it behind the lock screen.
+    /// </summary>
+    public bool ReleasedOnLock { get; init; }
+
+    /// <summary>
     /// Whether nothing is held or about to be pressed: no holder, no queued step, no macro and no repeating scroll
     /// (INV-3 after a terminal event).
     /// </summary>

@@ -434,8 +434,10 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
 
         // The releases the secure desktop refused stay to be sent again (INV-3): the reset forgets what was held, not
         // what is still down.
+        // BUR-004: a fault never resumes by itself; paused, nothing is sent until «Reanudar».
         _state = EngineState.Empty with
         {
+            Paused = before.Paused,
             Foreground = before.Foreground,
             Sequence = before.Sequence,
             BlockedReleases = [.. before.BlockedReleases, .. refused],

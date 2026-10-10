@@ -13,9 +13,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// <summary>
 /// The profile selector of the Full view (SEL-001): two columns of the same width and 44 high with a gap of 6. ★
 /// Frequents is filled with accent while Frequents is in view and outlined otherwise. The profile button shows the icon
-/// (20), the name (15, bold, cut with «…»), the 8 px dot of the active app and ▾, ▴ or ↶; it is accent while its
-/// profile is in view, cardHi while the profile grid is open and card with a border in Frequents, and it is an
-/// ExpandCollapse for UI Automation. It only projects <see cref="SelectorRowViewModel"/>.
+/// (20), the name (15, bold, cut with «…»), the 8 px dot of the active app, the 8 px yellow dot of a pending profile
+/// suggestion (SEL-005) and ▾, ▴ or ↶; it is accent while its profile is in view, cardHi while the profile grid is open
+/// and card with a border in Frequents, and it is an ExpandCollapse for UI Automation. Both dots are said in its item
+/// status, never by color alone. It only projects <see cref="SelectorRowViewModel"/>.
 /// </summary>
 public sealed class SelectorRowView : Grid
 {
@@ -56,6 +57,8 @@ public sealed class SelectorRowView : Grid
         VerticalAlignment = VerticalAlignment.Center,
         Margin = new Thickness(0, 0, Gap, 0),
     };
+
+    private readonly Border _suggestionDot = SuggestionDot(DotPx, Gap);
 
     private readonly SymbolIcon _caret = new()
     {
@@ -111,8 +114,10 @@ public sealed class SelectorRowView : Grid
         DockPanel.SetDock(_profileIcon, Dock.Left);
         DockPanel.SetDock(_caret, Dock.Right);
         DockPanel.SetDock(_dot, Dock.Right);
+        DockPanel.SetDock(_suggestionDot, Dock.Right);
         content.Children.Add(_profileIcon);
         content.Children.Add(_caret);
+        content.Children.Add(_suggestionDot);
         content.Children.Add(_dot);
         _profileName.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(NamePx));
         content.Children.Add(_profileName);
@@ -145,6 +150,30 @@ public sealed class SelectorRowView : Grid
     /// <summary>The ★ Frequents button.</summary>
     public ShortcutTile FrequentsButton => _frequents;
 
+    /// <summary>The yellow dot of a pending profile suggestion (SEL-005).</summary>
+    public Border SuggestionMark => _suggestionDot;
+
+    /// <summary>
+    /// A dot of the warn color for the profile button, shown while a profile suggestion waits for the active app
+    /// (SEL-005). It is drawn only: the button says it in its item status.
+    /// </summary>
+    /// <param name="size">Its diameter.</param>
+    /// <param name="gap">The space after it.</param>
+    internal static Border SuggestionDot(double size, double gap)
+    {
+        var dot = new Border
+        {
+            Width = size,
+            Height = size,
+            CornerRadius = new CornerRadius(size / 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, gap, 0),
+            Visibility = Visibility.Collapsed,
+        };
+        PanelChrome.SetBrush(dot, Border.BackgroundProperty, ColorToken.Warn);
+        return dot;
+    }
+
     /// <summary>The profile button.</summary>
     public ShortcutTile ProfileButton => _profile;
 
@@ -170,7 +199,10 @@ public sealed class SelectorRowView : Grid
 
         _profile.AccessibleName = _viewModel.ProfileName;
         _profile.AccessibleHelpText = _viewModel.ButtonHelp;
-        _profile.AccessibleState = _viewModel.IsActiveApp ? _viewModel.ActiveAppName : string.Empty;
+        _profile.AccessibleState = _viewModel.ButtonState;
+        _suggestionDot.Visibility = _viewModel.HasSuggestion
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         _profile.IsExpanded = _viewModel.IsExpanded;
         _profileName.Text = _viewModel.ProfileName;
         _profileIcon.Symbol = _viewModel.ProfileIcon.Length == 0 ? null : _viewModel.ProfileIcon;

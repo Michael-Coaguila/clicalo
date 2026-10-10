@@ -21,8 +21,26 @@ internal static class KeyResolver
         InjectionMode mode,
         KeyboardLayoutSnapshot layout,
         out ImmutableArray<InjectedKey> keys
+    ) => TryResolve(strokes, mode, layout, out keys, out _);
+
+    /// <summary>
+    /// Resolves <paramref name="strokes"/>; <see langword="false"/> when a key does not exist in the layout, with that key
+    /// in <paramref name="missing"/> (EC-EJE-10: the notice names it).
+    /// </summary>
+    /// <param name="strokes">The combination, in press order.</param>
+    /// <param name="mode">The injection mode of the plan.</param>
+    /// <param name="layout">The foreground layout.</param>
+    /// <param name="keys">The physical keys in press order.</param>
+    /// <param name="missing">The stroke that does not exist in the layout, when it fails.</param>
+    public static bool TryResolve(
+        ValueList<KeyStroke> strokes,
+        InjectionMode mode,
+        KeyboardLayoutSnapshot layout,
+        out ImmutableArray<InjectedKey> keys,
+        out KeyStroke? missing
     )
     {
+        missing = null;
         var resolved = ImmutableArray.CreateBuilder<InjectedKey>(strokes.Count + 2);
         foreach (var stroke in strokes)
         {
@@ -30,6 +48,7 @@ internal static class KeyResolver
             {
                 if (!layout.TryGetCharacter(stroke.Key, out var character))
                 {
+                    missing = stroke;
                     keys = [];
                     return false;
                 }
@@ -39,6 +58,7 @@ internal static class KeyResolver
                     && !TryAdd(resolved, new KeyStroke(KeyIds.Alt, KeySide.Right), mode, layout)
                 )
                 {
+                    missing = stroke;
                     keys = [];
                     return false;
                 }
@@ -48,6 +68,7 @@ internal static class KeyResolver
                     && !TryAdd(resolved, new KeyStroke(KeyIds.Shift), mode, layout)
                 )
                 {
+                    missing = stroke;
                     keys = [];
                     return false;
                 }
@@ -55,6 +76,7 @@ internal static class KeyResolver
 
             if (!TryAdd(resolved, stroke, mode, layout))
             {
+                missing = stroke;
                 keys = [];
                 return false;
             }
