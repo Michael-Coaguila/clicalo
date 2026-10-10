@@ -89,7 +89,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **PAN-002 · MUST · Ancho y posición.** Ancho = max(288, cols·w + (cols−1)·gap + 24), con w y gap de 72/6 en S, 92/8 en M y 116/10 en L. Por ejemplo, M con 3 columnas mide 316. Posición inicial arriba a la derecha: x = ancho útil − panel − 72; y = 40. El panel queda siempre **completo** dentro del área de trabajo del monitor, sin la barra de tareas y con un margen de 8 px. El alto máximo llega hasta 16 px por encima del borde inferior del área de trabajo. **Acepta:** en cualquier monitor, escala o posición de la barra de tareas, ningún píxel del panel sale del área de trabajo. ‹P4:43; script 1519-1521,1725; d04›
 - **PAN-003 · SHOULD · Estilo.** Radio 18, sombra 0 18 50 al 45 %, fondo del token `panel` semitransparente y desenfoque del fondo de unos 14 px, adaptado a los controles nativos (fidelidad visual media). En alto contraste no hay transparencia ni desenfoque (TEM-004). ‹P4:43›
 - **PAN-004 · MUST · Mover el panel.** El asa ⋮⋮ (visual 26, táctil 44, [move] «Mover panel») y la zona de icono y nombre del perfil arrastran el panel. Un gesto cuenta como arrastre cuando supera max(6 px, cancelMovePx). **Decisión:** es el mismo umbral que usan la burbuja y el asa de la Pestaña (§5 DIS-40). Un gesto que se convirtió en arrastre no cuenta como toque. La posición se guarda por monitor. ‹P4:45-46,374; script 1507-1513; AUD-11›
-- **PAN-005 · SHOULD · Mover sin arrastrar.** Hay una forma de recolocar el panel sin arrastrar, para voz y conmutador: una opción «Mover panel» con posiciones predefinidas (las 4 esquinas y el centro de cada borde) o con flechas por pasos. ‹Hueco; §6 PQ-21›
+- **PAN-005 · SHOULD · Mover sin arrastrar.** **Aplazado a después de la 2.0 por decisión del usuario del 2026-10-09** (D8). Justificación (§0.2): el panel ya se recoloca arrastrándolo con el dedo o con el puntero y recuerda su posición por monitor; con voz, Acceso por voz de Windows puede arrastrarlo con su cuadrícula. Las posiciones predefinidas quedan para una versión posterior. Hay una forma de recolocar el panel sin arrastrar, para voz y conmutador: una opción «Mover panel» con posiciones predefinidas (las 4 esquinas y el centro de cada borde) o con flechas por pasos. ‹Hueco; §6 PQ-21›
 - **PAN-006 · MUST · Posición por monitor y recolocación.** La posición del panel, la burbuja y la pestaña se guarda por monitor, con un identificador de monitor que se mantenga entre arranques. Ante cualquier cambio de tamaño, vista, escala, resolución, orientación, monitor o posición y autoocultado de la barra de tareas, todas las superficies se recolocan dentro del área de trabajo. Si el monitor guardado no existe, pasan al principal. **Acepta:** al desconectar el monitor que contiene el panel, el panel aparece completo en el principal. ‹d04:102-104; AUD-07; AUD-55›
 - **PAN-007 · MUST · Orden vertical fijo de las capas.** De arriba abajo: cabecera, pánico, aviso de administrador, búsqueda, Ajustes rápidos, sugerencia, fila Siempre visible, Teclas fijas, selector de perfil, cuadrícula de perfiles, cuadrícula de atajos (con el menú contextual y los estados vacíos), fila inferior de Compacta o paginador, barra de avisos. ‹P4:44-269; d04 Estructura›
 - **PAN-008 · MUST · Exclusión y precedencia de capas.**
@@ -232,7 +232,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - (c) Mantener y Alternar: se añaden mientras el botón está pulsado.
   - (d) Texto, Web, App y Macro: **no** se aplican y siguen pendientes.
   Después, las de estado 1 se sueltan y las bloqueadas siguen. ‹d03 §6; [modOnce]; §5 DIS-12›
-- **FIJ-007 · SHOULD · Teclas fijas con un clic físico.** Un clic físico fuera del panel con teclas fijas en estado 1 las consume y las suelta. Requiere observar el clic del sistema solo mientras haya alguna tecla en estado 1. ‹d03 §6; §6 PQ-15›
+- **FIJ-007 · SHOULD · Teclas fijas con un clic físico.** **Aplazado a después de la 2.0 por decisión del usuario del 2026-10-09** (D8). Justificación (§0.2): observar el clic del sistema exige un gancho global de mouse de bajo nivel, que añade riesgo y verificación al cierre de la 2.0; mientras tanto, una tecla fija en estado 1 se aplica al siguiente atajo del panel y siempre se suelta desde su fila o con «Soltar todo» (REG-03). Un clic físico fuera del panel con teclas fijas en estado 1 las consume y las suelta. Requiere observar el clic del sistema solo mientras haya alguna tecla en estado 1. ‹d03 §6; §6 PQ-15›
 
 ### 2.6 AVI · Barra de avisos, Repetir y Deshacer (panel)
 
@@ -362,7 +362,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Al terminar u omitir:** coachDone = verdadero.
   - Se puede volver a ver desde General › Primeros pasos, con el texto nuevo «Ver la guía de la pestaña».
   ‹P4:344-351; AUD-12›
-- **PES-016 · MUST · Varios monitores.** La barra vive en el monitor donde está el panel. La posición del asa se guarda por monitor y por lado. ‹§6 PQ-18›
+- **PES-016 · MUST · Varios monitores.** La barra vive en el monitor donde está el panel. La posición del asa se guarda por monitor y por lado. **Confirmado por decisión del usuario del 2026-10-09** (D9, [ADR-0028](../adr/0028-ajustes-persistidos-de-m6.md)): se recuerda entre reinicios, y un monitor que no se reconoce usa la posición por lado. ‹§6 PQ-18›
 
 ### 2.10 BUR · Burbuja y bandeja
 
@@ -376,7 +376,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - **Salir:** suelta todo.
   ‹P4:385-387; d01:62; DIS-36›
 - **BUR-004 · SHOULD · Pausar.** Pausar oculta el panel, suspende el cambio automático de perfil y bloquea todo envío hasta «Reanudar». Al pausar se suelta todo, y el icono de bandeja muestra el estado. Hacen falta textos nuevos. ‹d01:62; §6 PQ-19›
-- **BUR-005 · MUST · Recuperar el panel sin teclado.** Cualquier forma de ocultar el panel se puede deshacer con el dedo y por voz: desde el icono de bandeja o con la orden «clic Clícalo». Existe un atajo global opcional, que no está en conflicto con Ctrl+Shift+M (Silenciar en Teams). ‹v1 lección; §6 PQ-22›
+- **BUR-005 · MUST · Recuperar el panel sin teclado.** Cualquier forma de ocultar el panel se puede deshacer con el dedo y por voz: desde el icono de bandeja o con la orden «clic Clícalo». Existe un atajo global opcional, que no está en conflicto con Ctrl+Shift+M (Silenciar en Teams). **Modificado por decisión del usuario del 2026-10-09** (D10, [ADR-0028](../adr/0028-ajustes-persistidos-de-m6.md)): viene apagado y la persona elige la combinación de una lista cerrada (`data/catalogs/global-hotkeys.json`). ‹v1 lección; §6 PQ-22›
 
 ### 2.11 AJR · Ajustes rápidos
 
@@ -613,7 +613,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 
 ### 2.18 CCM · Centro de control: marco
 
-- **CCM-001 · MUST · Ventana.** Ventana normal que se puede activar, mover y redimensionar: 1120×680 por defecto, mínimo 760×520, y recuerda su tamaño.
+- **CCM-001 · MUST · Ventana.** Ventana normal que se puede activar, mover y redimensionar: 1120×680 por defecto, mínimo 760×520, y recuerda su tamaño. **Modificado por decisión del usuario del 2026-10-09** (D9, [ADR-0028](../adr/0028-ajustes-persistidos-de-m6.md)): recuerda entre reinicios su tamaño y su monitor.
   - **Barra de título** (52, fondo side): logotipo, «Clícalo › [cc] › {sección}» (la sección se oculta por debajo de 1240 de ancho), selector ES/EN siempre visible y ✕ (visual 44×40, táctil 44; [close]; tooltip [closeEsc]).
   - **Al cerrar:** se descarta el borrador vacío.
   - **Pantallas pequeñas:** al 150 % en 1366×768, el mínimo efectivo baja al área de trabajo disponible y el contenido se desplaza verticalmente, nunca en horizontal.
@@ -915,7 +915,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   ‹P4:1159-1167; d08:56-62; AUD-49; D7›
 - **SIS-003 · MUST · Instancia única.** Una sola instancia por **sesión de usuario**. Una segunda ejecución entrega sus argumentos a la instancia en marcha, que se muestra. Ver PQ-35 sobre desactivarlo. ‹d01:64-65; EC›
 - **SIS-004 · MUST · Recuperación automática.** Tras un fallo, la app se vuelve a abrir, suelta las teclas y, si el documento está dañado, restaura la última copia válida con un aviso. ‹d08:8-10›
-- **SIS-005 · SHOULD · Convivencia con Macro Quick Access.** Si detecta Macro Quick Access en ejecución o en el inicio de Windows, ofrece cerrarlo y desactivar su inicio, para evitar doble inyección. ‹§6 PQ-36›
+- **SIS-005 · SHOULD · Convivencia con Macro Quick Access.** **Aplazado a después de la 2.0 por decisión del usuario del 2026-10-09** (D8). Justificación (§0.2): Clícalo no se basa en la app anterior (D1); quien aún la tenga puede cerrarla y quitarla del inicio desde Windows. Detectarla y ofrecer cerrarla queda para una versión posterior. Si detecta Macro Quick Access en ejecución o en el inicio de Windows, ofrece cerrarlo y desactivar su inicio, para evitar doble inyección. ‹§6 PQ-36›
 
 ### 2.25 ACT · Actualizaciones
 
@@ -930,7 +930,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **ACT-002 · SHOULD · Preferencias.** [updAuto/D], [updAsk/D] y [updBackup/D], activas por defecto. Canal Estable (por defecto) o Beta, con [channelD]. ‹P4:1093-1104›
 - **ACT-003 · MUST · Actualización segura.** **Modificado por decisión del usuario del 2026-10-09** (D6, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)): en la 2.0 no hay firma de código ni manifiesto firmado; el paquete llega por HTTPS desde las GitHub Releases y se verifica su suma con la comprobación de Velopack antes de instalar. Nunca se instala con algo pulsado ni con el panel en uso (se espera a 5 min sin uso): se sale soltando todo. Se hace una copia antes. ‹d08:13-16,66; D6›
 - **ACT-004 · SHOULD · Novedades.** Lista por versión: número, fecha, [newBadge] en la última y los cambios con ✓ en el idioma de la interfaz, servidos por el manifiesto y no escritos en el código. ‹P4:1106-1112›
-- **ACT-005 · SHOULD · Volver a la versión anterior.** Solo en los 7 días siguientes a una actualización y si se conserva la versión anterior. Si no, la fila se oculta. Muestra [rollbackT] y [rollbackD] con [Volver] y dos toques (en color de aviso). La reversión se completa al reiniciar. **Decisión:** si la versión nueva migró el esquema, se restaura la copia previa a la actualización y se informa de qué cambios posteriores se perderían antes de confirmar. ‹P4:1115-1121; d08:67; DIS-65›
+- **ACT-005 · SHOULD · Volver a la versión anterior.** **Aplazado a después de la 2.0 por decisión del usuario del 2026-10-09** (D8). Justificación (§0.2): la 2.0 es la primera versión que se distribuye, así que no hay una versión anterior de Clícalo a la que volver hasta la siguiente; mientras tanto, la copia previa a cada actualización (ACT-002, COP-004) permite recuperar los datos. Solo en los 7 días siguientes a una actualización y si se conserva la versión anterior. Si no, la fila se oculta. Muestra [rollbackT] y [rollbackD] con [Volver] y dos toques (en color de aviso). La reversión se completa al reiniciar. **Decisión:** si la versión nueva migró el esquema, se restaura la copia previa a la actualización y se informa de qué cambios posteriores se perderían antes de confirmar. ‹P4:1115-1121; d08:67; DIS-65›
 
 ### 2.26 COP · Copias de seguridad
 
@@ -947,7 +947,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 
 ### 2.27 ACE · Acerca de y opinión
 
-- **ACE-001 · MUST · Historia y tarjeta de la app.** [aboutTitle] y [aboutSub]; [story1] de 18, [story2] y la firma (MC, «Michael Coaguila», [creator] corregido a «Creador de Clícalo»). Tarjeta de la app: logotipo, «Clícalo», «v{versión} · MIT · código abierto», [GitHub] y [LinkedIn], que abren el navegador, y [shareShort], que copia la URL del repositorio y avisa [shared]. Dos columnas (1,4 : 1) desde 1240. ‹P4:1176-1191; DIS-70›
+- **ACE-001 · MUST · Historia y tarjeta de la app.** [aboutTitle] y [aboutSub]; [story1] de 18, [story2] y la firma (MC, «Michael Coaguila», [creator] corregido a «Creador de Clícalo»). Tarjeta de la app: logotipo, «Clícalo», «v{versión} · MIT · código abierto», [GitHub] y [LinkedIn], que abren el navegador (**modificado por decisión del usuario del 2026-10-09**, D11: el botón de LinkedIn se oculta mientras su dirección esté vacía), y [shareShort], que copia la URL del repositorio y avisa [shared]. Dos columnas (1,4 : 1) desde 1240. ‹P4:1176-1191; DIS-70›
 - **ACE-002 · MUST · Opinión.** [fbTitle]; 4 tipos en 2×2 (Sugerencia por defecto, Algo falla, Nueva función, Agradecimiento); área de 5 líneas con [fbPh] y 🎤 de 44. ‹P4:1192-1198›
 - **ACE-003 · MUST · Opciones del envío.** [fbLog/D], con el nombre del registro corregido a clicalo.log, y [fbSys/D]. [logPvT] despliega el registro **exacto** que se enviaría, ya depurado. ‹P4:1199-1207›
 - **ACE-004 · MUST · Enviar.** [Enviar por correo] (52) abre el correo con asunto «[Clícalo] {tipo}» y un cuerpo con el mensaje, «—», la versión de la app y de Windows reales. Como un enlace de correo no adjunta archivos, **decisión**:
@@ -955,7 +955,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
   - [fbSendD] indica que hay que adjuntarlo;
   - alternativa: «Reportar en GitHub».
   Si no hay app de correo, se copia el mensaje al portapapeles y se avisa. ‹P4:1208-1209; DIS-71; §6 PQ-38›
-- **ACE-005 · MUST · Escríbeme directamente.** [fbDirect], el correo con botón para copiarlo ([copiedEmail], táctil 44), [fbPromise], [fbGh/D] y [fbContrib/D]. Las URL y el correo son configurables y se verifican antes de publicar. ‹P4:1211-1219; AUD-44-45›
+- **ACE-005 · MUST · Escríbeme directamente.** [fbDirect], el correo con botón para copiarlo ([copiedEmail], táctil 44; **modificado por decisión del usuario del 2026-10-09**, D11: se oculta mientras el correo esté vacío, sin valores inventados), [fbPromise], [fbGh/D] y [fbContrib/D]. Las URL y el correo son configurables y se verifican antes de publicar. ‹P4:1211-1219; AUD-44-45›
 
 ### 2.28 BIE · Bienvenida
 
@@ -992,7 +992,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **DAT-005 · MUST · Pertenencia.** Un botón vive en una sola lista. General y Siempre visible no se pueden borrar. General no tiene proceso. Un perfil puede tener varios procesos y cada proceso pertenece a un solo perfil (ATJ-007). **Modificado por decisión del usuario del 2026-10-03** (D2, [ADR-0021](../adr/0021-kit-inicial-y-perfiles-con-varios-procesos.md)): antes, un proceso por perfil; la unicidad pasa a ser por proceso (PQ-45). ‹d02:76-79; D2›
 - **DAT-006 · MUST · Deshacer.** Pila de 20 estados que abarca **todo el documento**, incluidos Frecuentes y dupIgnored. Las ediciones seguidas de un mismo botón forman un paso. Los ajustes de presentación (tema, tamaño, opacidad) **no** entran en la pila, porque se revierten con el mismo control. Las operaciones masivas (Reemplazar, Restaurar, Reiniciar Frecuentes) dejan además una copia persistente para sobrevivir a un reinicio. ‹d02:81; DIS-78›
 - **DAT-007 · MUST · Compartir un perfil.** Exportar genera `clicalo-perfil-<id>.json` con un solo perfil y `"type":"profile-share"`, con versión de esquema. Los textos cifrados se excluyen, con aviso, salvo que el usuario elija incluirlos en claro. Se importa desde Plantillas con vista previa. ‹d02:98; DIS-79›
-- **DAT-008 · COULD · Compartir con enlace.** Enlace `clicalo://perfil/...` que **contenga** el perfil codificado y se valide como no confiable. Si no puede transportar el contenido, no se ofrece. ‹P4 script 1866; DIS-79›
+- **DAT-008 · COULD · Compartir con enlace.** **Aplazado a después de la 2.0 por decisión del usuario del 2026-10-09** (D8). Compartir un perfil como archivo (DAT-007) ya cubre el caso; el enlace que contiene el perfil queda para una versión posterior. Enlace `clicalo://perfil/...` que **contenga** el perfil codificado y se valide como no confiable. Si no puede transportar el contenido, no se ofrece. ‹P4 script 1866; DIS-79›
 
 ### 2.30 MIG · Migración desde la v1 (retirada)
 
@@ -1480,6 +1480,10 @@ Decisiones que el usuario, dueño del producto, toma y ratifica sobre el propio 
 | D5 | 2026-10-09 | **IA solo con la clave propia del usuario.** «Crear con IA» funciona únicamente con una clave de API del propio usuario, guardada en el Administrador de credenciales de Windows y nunca mostrada después; no hay servidor propio ni cuota gratuita («IA gratis: n de 5 hoy»). Las plantillas locales, el perfil vacío y compartir perfiles funcionan siempre sin IA. Se envían solo los 4 datos de PLA-008, con consentimiento la primera vez. **Motivo:** sin servidor no hay coste ni operación para una sola persona, y ningún dato sale del equipo salvo los 4 de PLA-008. | Modificado: PLA-003. Resuelta: P3. | [ADR-0014](../adr/0014-ia-con-clave-propia.md) (actualización del 2026-10-09); R-26 |
 | D6 | 2026-10-09 | **Versión 2.0 sin firma de código.** Se publica sin Authenticode ni manifiesto ECDSA (sin llave de hardware ni `cl sign-manifest`), con todo preparado para firmar más adelante con SignPath Foundation. Instalador y actualizaciones con Velopack por usuario, canales `stable` y `beta`, origen en las GitHub Releases del repositorio público por HTTPS y la verificación de paquetes de Velopack; empaquetado local con `cl package` y publicación manual con `gh release`, sin GitHub Actions. | Modificados: ACT-003 y NFR-009. | [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md), [guía de publicación](../guides/release.md) |
 | D7 | 2026-10-09 | **«Reabrir como administrador» bajo demanda.** Con la confirmación de UAC cada vez, sin componente de sistema ni inicio elevado sin UAC; solo se eleva el ejecutable instalado. «Iniciar con Windows» arranca siempre sin elevación. | Modificado: SIS-002. | [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md) (sustituye ADR-0009) |
+| D8 | 2026-10-09 | **Aplazados a después de la 2.0.** FIJ-007 (teclas fijas con un clic físico), PAN-005 (mover sin arrastrar), SIS-005 (convivencia con Macro Quick Access), DAT-008 (compartir con enlace) y ACT-005 (volver a la versión anterior) no se implementan en la 2.0. Conservan su prioridad, su texto y su identificador, y cada uno lleva la justificación escrita que pide §0.2. **Motivo:** cerrar la 2.0 con lo imprescindible; ninguno es MUST y cada uno tiene una alternativa o no aporta valor en la primera versión distribuida. | Aplazados: FIJ-007, PAN-005, SIS-005, DAT-008 y ACT-005. | Este catálogo |
+| D9 | 2026-10-09 | **Colocación recordada.** Clícalo recuerda entre reinicios la posición del asa de la Pestaña por monitor y por lado, y el tamaño y el monitor del centro de control. Un monitor que no se reconoce usa la posición por lado. | Confirmado: PES-016. Modificado: CCM-001. | [ADR-0028](../adr/0028-ajustes-persistidos-de-m6.md) (documento 1.1) |
+| D10 | 2026-10-09 | **Atajo global apagado y de lista cerrada.** El atajo global para mostrar u ocultar el panel viene apagado, y la persona elige la combinación de una lista cerrada que es un dato versionado con su criterio (sin la tecla Windows, sin Ctrl+Alt con un carácter, sin Ctrl+Shift+M ni combinaciones de Windows, Escritorio remoto u Office). | Modificado: BUR-005. Precisa: PQ-22. | [ADR-0028](../adr/0028-ajustes-persistidos-de-m6.md), `data/catalogs/global-hotkeys.json` |
+| D11 | 2026-10-09 | **Sin contactos inventados.** El correo del proyecto y el LinkedIn aún no existen: sus botones se ocultan mientras estén vacíos y nunca se muestra un valor inventado. | Modificados: ACE-001 y ACE-005. Sustituye el punto (3) de R-28 en lo que muestra el correo pendiente. | — |
 
 ---
 

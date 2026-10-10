@@ -70,6 +70,7 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0025](0025-fuentes-de-terceros-empaquetadas.md) | Fuentes de terceros (OFL 1.1 y Apache 2.0) empaquetadas como recursos de `Clicalo.UI.Wpf`, generadas por un script fijado por hash | Propuesto | 2026-10-05 |
 | [0026](0026-acciones-comunes-adaptativas.md) | Acciones comunes adaptativas: tabla de datos «acción → combinación estándar + excepciones por familia de apps e idioma de los programas» (decisión D4) | Aceptado | 2026-10-05 |
 | [0027](0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md) | Versión 2.0 sin firma de código (Velopack y GitHub Releases con la verificación de Velopack) y «Reabrir como administrador» bajo demanda con UAC (decisiones D6 y D7; sustituye ADR-0009 y partes de ADR-0012 y ADR-0013) | Aceptado | 2026-10-09 |
+| [0028](0028-ajustes-persistidos-de-m6.md) | Ajustes persistidos de M6: documento 1.1 con campos opcionales para la posición del asa por monitor, el centro de control, el atajo global (lista cerrada, apagado), los tiempos ×1/×2/×3 y las respuestas de la bienvenida (decisiones D9 y D10) | Aceptado | 2026-10-09 |
 
 El hito M0 exige expresamente los ADR 0001, 0002 y 0015
 ([§14 del plano](../architecture/blueprint.md#14-hoja-de-ruta-por-hitos)); el resto recoge las demás
