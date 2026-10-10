@@ -34,10 +34,19 @@ public abstract record InteractionAction
     public sealed record CloseFlyout : InteractionAction;
 
     /// <summary>
-    /// The view changed (Quick settings › View, Expand or Search on the bar): out of the bubble, the bar folded and no
-    /// side window (PAN-001 c, d).
+    /// The view changed (Quick settings › View or Expand on the bar): out of the bubble, the bar folded and no side
+    /// window (PAN-001 c, d).
     /// </summary>
     public sealed record ViewChanged : InteractionAction;
+
+    /// <summary>
+    /// 🔍 on the bar (BUS-006): the Full view with the search, for a while; the side windows close and the bar is
+    /// where it was when the search ends.
+    /// </summary>
+    public sealed record PeekSearch : InteractionAction;
+
+    /// <summary>The search opened from the bar closed, or one of its results ran: back to the Tab view (BUS-006).</summary>
+    public sealed record EndSearchPeek : InteractionAction;
 
     /// <summary>[next] in the guide: the next step (PES-015); after the last one it is back at 0 for another time.</summary>
     public sealed record CoachNext : InteractionAction;
@@ -61,4 +70,25 @@ public abstract record InteractionAction
 
     /// <summary>A surface appeared: it is awake and dims a while later unless a finger comes onto it (GEN-009).</summary>
     public sealed record SurfaceShown : InteractionAction;
+
+    /// <summary>A notice to show now, for <paramref name="Duration"/> (AVI-002).</summary>
+    /// <param name="Notice">The notice.</param>
+    /// <param name="Duration">How long it shows.</param>
+    public sealed record PostNotice(Notice Notice, TimeSpan Duration) : InteractionAction;
+
+    /// <summary>A fixed notice that lasts while the state of <paramref name="Owner"/> lasts (AVI-002).</summary>
+    /// <param name="Owner">Whose state it tells; compared by reference.</param>
+    /// <param name="Notice">The notice.</param>
+    public sealed record ShowStickyNotice(object Owner, Notice Notice) : InteractionAction;
+
+    /// <summary>The state of <paramref name="Owner"/> ended: its fixed notice goes away (AVI-002).</summary>
+    /// <param name="Owner">The owner given to <see cref="ShowStickyNotice"/>.</param>
+    public sealed record ClearStickyNotice(object Owner) : InteractionAction;
+
+    /// <summary>The notices of <paramref name="Kind"/> no longer apply: the operation was undone (AVI-003).</summary>
+    /// <param name="Kind">The kind to drop.</param>
+    public sealed record DismissNotices(NoticeKind Kind) : InteractionAction;
+
+    /// <summary>The notice on show reached its end: the next one shows (AVI-002).</summary>
+    public sealed record NoticeTick : InteractionAction;
 }

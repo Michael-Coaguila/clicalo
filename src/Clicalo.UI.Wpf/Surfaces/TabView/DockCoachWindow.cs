@@ -60,6 +60,7 @@ public sealed class DockCoachWindow : TouchSurface
         _viewModel = viewModel;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Accent));
         Width = CardWidth;
+        FixedWidth = CardWidth;
         SizeToContent = SizeToContent.Height;
         _step = Wrapped(StepPx, bold: true);
         _step.Opacity = 0.85;

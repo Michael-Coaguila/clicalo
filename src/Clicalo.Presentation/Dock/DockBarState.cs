@@ -39,4 +39,8 @@ public sealed record DockBarState(
     int CoachStep,
     bool BarOpen,
     bool AnythingHeld
-);
+)
+{
+    /// <summary>Quick settings are open beside the bar (PES-009).</summary>
+    public bool QuickOpen { get; init; }
+}

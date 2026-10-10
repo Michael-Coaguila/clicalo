@@ -37,9 +37,9 @@ namespace Clicalo.App.Composition;
 /// Wires the full panel to the real document, session, engine and foreground (docs/04 §1–§11), on the UI thread of the
 /// Surfaces role. It owns no rule: the view in front is the <see cref="ProfileViewCoordinator"/>'s, the profile grid is
 /// the <see cref="SessionStore"/>'s, the search and the suggestion are their view models', and every product decision
-/// is a call to the domain. It implements the intentions of the body (<see cref="IPanelBodyIntents"/>), keeps the notice
-/// on show for its duration (AVI-002) and projects everything again, once per dispatcher turn, whenever an input
-/// changes; while a finger rests on the panel the projection waits for it (PAN-009). It also owns the layers above
+/// is a call to the domain. It implements the intentions of the body (<see cref="IPanelBodyIntents"/>), sends every
+/// notice to the <see cref="NoticeQueue"/> of the interaction state and ticks it when the one on show ends (AVI-002),
+/// and projects everything again, once per dispatcher turn, whenever an input changes; while a finger rests on the panel the projection waits for it (PAN-009). It also owns the layers above
 /// the tiles (Quick settings, edit mode, the tile menu and test mode): it is their notice sink, keeps one primary layer
 /// open at a time (PAN-008) and passes the intentions for the control center on to <see cref="ControlCenter"/>.
 /// </summary>
@@ -64,9 +64,9 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private readonly Dispatcher _ui;
     private readonly bool _selfElevated;
     private PanelWindow? _window;
-    private PanelNotice? _notice;
-    private object? _stickyOwner;
     private readonly object _captureOwner = new();
+    private readonly object _holdOwner = new();
+    private readonly object _macroOwner = new();
     private ITimer? _noticeTimer;
 
     // Kept referenced until they fire, so the collector cannot drop a flash before it ends.
@@ -204,13 +204,24 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
         _profiles.Changed += OnProfileViewChanged;
         _session.Changed += (_, _) => Invalidate();
+        _interaction.Changed += OnInteractionChanged;
+        _relay.SnapshotChanged += (_, change) => OnEngineState(change.Snapshot);
         Search.PropertyChanged += OnSearchChanged;
         Search.Results.CollectionChanged += OnResultsChanged;
         Suggestion.PropertyChanged += (_, _) => Invalidate();
         EditMode.PropertyChanged += (_, _) => Invalidate();
         QuickSettings.PropertyChanged += (_, _) => Invalidate();
         Menu.PropertyChanged += (_, _) => Invalidate();
-        TestMode.PropertyChanged += (_, _) => Invalidate();
+        TestMode.PropertyChanged += (_, _) =>
+        {
+            if (!TestMode.IsOn)
+            {
+                // AVI-002: a fixed notice lasts while its state lasts; test mode also ends by itself after 30 s.
+                ClearSticky(TestMode);
+            }
+
+            Invalidate();
+        };
         Search.ApplyLibrary(store.Current.Library);
         Refresh();
     }
@@ -250,6 +261,15 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
     /// <summary>Raised after every projection, on the UI thread: the Tab view follows the same shortcuts.</summary>
     public event EventHandler? Refreshed;
+
+    /// <summary>
+    /// Raised on the UI thread whenever the notice on show changes (AVI-002): the notice the panel, the Tab view
+    /// (PES-014) and the status bar of the control center (CCM-003) show, or none when they rest.
+    /// </summary>
+    public event EventHandler<NoticePublishedEventArgs>? NoticePublished;
+
+    /// <summary>The notice on show now, or <see langword="null"/> at rest (AVI-002).</summary>
+    public PanelNotice? CurrentNotice => ToPanel(_interaction.Current.Notices.Shown);
 
     /// <summary>The last projection of the view in front: the shortcuts of the grid and of Always visible.</summary>
     public PanelModel LastModel { get; private set; } = PanelModel.Empty;
@@ -346,8 +366,9 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     }
 
     /// <summary>
-    /// Shows a notice in the notice bar for <c>Timings.Notices.NoticeDuration</c> (or the undo duration when it offers
-    /// [undo]), the newest replacing the one on show (AVI-001, AVI-002, AVI-003).
+    /// Posts a notice (AVI-001, AVI-002, AVI-003): it shows at once, for <c>Timings.Notices.NoticeDuration</c> or the
+    /// undo duration when it offers [undo], times the multiplier of General (ACC-006). A notice with [undo] and a
+    /// safety notice are never lost: when another arrives they wait and show again.
     /// </summary>
     /// <param name="text">The text.</param>
     /// <param name="tone">Notice (polite) or warning (assertive).</param>
@@ -356,16 +377,17 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     public void Notify(Message text, NoticeTone tone, string icon, bool canUndo = false)
     {
         ArgumentNullException.ThrowIfNull(text);
-        _stickyOwner = null;
-        _notice = new PanelNotice(text, new IconRef(icon), tone, canUndo && _store.CanUndo);
-        _noticeTimer?.Dispose();
-        _noticeTimer = _time.CreateTimer(
-            static state => ((PanelComposer)state!).QueueNoticeEnd(),
-            this,
-            canUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration,
-            Timeout.InfiniteTimeSpan
+        Post(
+            new Notice(
+                text,
+                new IconRef(icon),
+                tone == NoticeTone.Warning,
+                // A safety notice is one whoever posts it («not sent: elevated app» also comes from «Probar ahora»).
+                canUndo && _store.CanUndo
+                    ? NoticeKind.Undo
+                    : EngineNoticeRules.KindOf(text)
+            )
         );
-        Invalidate();
     }
 
     /// <inheritdoc />
@@ -380,25 +402,22 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(notice);
-        _noticeTimer?.Dispose();
-        _noticeTimer = null;
-        _notice = notice;
-        _stickyOwner = owner;
-        Invalidate();
+        _ = _interaction.Dispatch(
+            new InteractionAction.ShowStickyNotice(
+                owner,
+                new Notice(
+                    notice.Text,
+                    notice.Icon,
+                    notice.Tone == NoticeTone.Warning,
+                    CanCancel: notice.CanCancel
+                )
+            )
+        );
     }
 
     /// <inheritdoc />
-    public void ClearSticky(object owner)
-    {
-        if (!ReferenceEquals(_stickyOwner, owner))
-        {
-            return;
-        }
-
-        _stickyOwner = null;
-        _notice = null;
-        Invalidate();
-    }
+    public void ClearSticky(object owner) =>
+        _ = _interaction.Dispatch(new InteractionAction.ClearStickyNotice(owner));
 
     /// <summary>
     /// The capture mode of a binding started or ended in the control center (ATJ-008): the panel shows the fixed notice
@@ -428,7 +447,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     /// <inheritdoc />
     public void CancelNotice()
     {
-        if (ReferenceEquals(_stickyOwner, _captureOwner))
+        if (ReferenceEquals(_interaction.Current.Notices.ShownOwner, _captureOwner))
         {
             ControlCenter?.CancelCapture();
         }
@@ -446,19 +465,28 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     public void OpenControlCenter(ProfileId profile) =>
         _ = ControlCenter?.OpenProfileAsync(profile, LeaseOrigin.Touch);
 
-    /// <summary>A notice of the engine (AVI-001): assertive ones are warnings.</summary>
+    /// <summary>
+    /// A notice of the engine (AVI-001, AVI-002): assertive ones are warnings, the reasons keys were released are safety
+    /// notices, and «Manteniendo…» and «Ejecutando…» are left to the fixed notices of <see cref="OnEngineState"/>.
+    /// </summary>
     /// <param name="notice">The notice.</param>
     public void OnEngineNotice(EngineNoticeEventArgs notice)
     {
         ArgumentNullException.ThrowIfNull(notice);
-        if (notice.Urgency == NoticeUrgency.Polite)
+        if (EngineNoticeRules.IsProgress(notice.Text))
         {
-            Notify(notice.Text, NoticeTone.Notice, NoticeIcon);
+            return;
         }
-        else
-        {
-            Notify(notice.Text, NoticeTone.Warning, WarningIcon);
-        }
+
+        var warning = notice.Urgency != NoticeUrgency.Polite;
+        Post(
+            new Notice(
+                notice.Text,
+                new IconRef(warning ? WarningIcon : NoticeIcon),
+                warning,
+                EngineNoticeRules.KindOf(notice.Text)
+            )
+        );
     }
 
     /// <summary>Something ran: Frequents and ↻ Repeat may change (FRE-002, AVI-004).</summary>
@@ -562,6 +590,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         if (_store.Undo().IsSuccess)
         {
+            // AVI-003: the operation is undone, so its notice no longer offers anything.
+            _ = _interaction.Dispatch(new InteractionAction.DismissNotices(NoticeKind.Undo));
             Notify(L.RestoredU, NoticeTone.Notice, UndoIcon);
         }
     }
@@ -690,12 +720,98 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         Notify(accepted.Notice, NoticeTone.Notice, NoticeIcon, canUndo: true);
     }
 
+    private void Post(Notice notice)
+    {
+        var duration = notice.CanUndo
+            ? Timings.Notices.UndoNoticeDuration
+            : Timings.Notices.NoticeDuration;
+
+        // ACC-006: General can make the notices last two or three times as long.
+        _ = _interaction.Dispatch(
+            new InteractionAction.PostNotice(
+                notice,
+                duration * _store.Current.Settings.TimeMultiplier
+            )
+        );
+    }
+
+    /// <summary>
+    /// The state of the engine (AVI-002): a Mantener under a finger and a running macro keep their notice fixed for as
+    /// long as the snapshot says they last.
+    /// </summary>
+    private void OnEngineState(Clicalo.Application.Engine.EngineSnapshot snapshot)
+    {
+        Fixed(_holdOwner, EngineNoticeRules.HoldInProgress(snapshot));
+        Fixed(_macroOwner, EngineNoticeRules.MacroInProgress(snapshot));
+
+        void Fixed(object owner, Message? text) =>
+            _ = _interaction.Dispatch(
+                text is null
+                    ? new InteractionAction.ClearStickyNotice(owner)
+                    : new InteractionAction.ShowStickyNotice(
+                        owner,
+                        new Notice(text, new IconRef(NoticeIcon))
+                    )
+            );
+    }
+
+    private void OnInteractionChanged(object? sender, InteractionChangedEventArgs change)
+    {
+        var before = change.Previous.Notices;
+        var after = change.Current.Notices;
+        if (ReferenceEquals(before, after))
+        {
+            return;
+        }
+
+        ScheduleNoticeEnd();
+        if (before.Shown != after.Shown)
+        {
+            NoticePublished?.Invoke(this, new NoticePublishedEventArgs(ToPanel(after.Shown)));
+            Invalidate();
+        }
+    }
+
+    /// <summary>Ticks the queue when the notice on show ends (AVI-002).</summary>
+    private void ScheduleNoticeEnd()
+    {
+        _noticeTimer?.Dispose();
+        _noticeTimer = null;
+        if (_interaction.Current.Notices.EndsAt is not { } end)
+        {
+            return;
+        }
+
+        var wait = end - _time.GetUtcNow();
+        _noticeTimer = _time.CreateTimer(
+            static state => ((PanelComposer)state!).QueueNoticeEnd(),
+            this,
+            wait > TimeSpan.Zero ? wait : TimeSpan.Zero,
+            Timeout.InfiniteTimeSpan
+        );
+    }
+
     private void QueueNoticeEnd() =>
         _ = _ui.BeginInvoke(() =>
         {
-            _notice = null;
-            Invalidate();
+            // A tick that came early changes nothing: wait for the rest.
+            if (!_interaction.Dispatch(new InteractionAction.NoticeTick()))
+            {
+                ScheduleNoticeEnd();
+            }
         });
+
+    /// <summary>The notice as the bars paint it: [undo] only while the stack has something to undo (AVI-003).</summary>
+    private PanelNotice? ToPanel(Notice? notice) =>
+        notice is null
+            ? null
+            : new PanelNotice(
+                notice.Text,
+                notice.Icon,
+                notice.Warning ? NoticeTone.Warning : NoticeTone.Notice,
+                notice.CanUndo && _store.CanUndo,
+                notice.CanCancel
+            );
 
     /// <summary>Projects again once the current work of the dispatcher is done.</summary>
     private void Invalidate()
@@ -754,7 +870,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 ActiveAppProfile: _profiles.ActiveAppProfile,
                 SuggestionApp: Suggestion.IsVisible ? Suggestion.AppName : null,
                 ElevatedApp: _elevatedApp,
-                Notice: _notice,
+                Notice: CurrentNotice,
                 CanRepeat: RepeatBinding() is not null,
                 EditMode: EditMode.IsOn,
                 AddTile: EditMode.ShowsAdd

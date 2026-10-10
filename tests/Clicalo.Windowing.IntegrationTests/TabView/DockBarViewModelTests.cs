@@ -135,6 +135,7 @@ public sealed class DockBarViewModelTests
     [Fact]
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
     public void Every_button_forwards_its_intent()
     {
         _dock.OpenBar();
@@ -148,6 +149,7 @@ public sealed class DockBarViewModelTests
         _dock.TogglePinned();
         _dock.ToggleSticky();
         _dock.TogglePinOpen();
+        _dock.QuickSettings();
         _dock.CoachNext();
         _dock.CoachSkip();
         _dock.ReleaseAll();
@@ -165,6 +167,7 @@ public sealed class DockBarViewModelTests
             "TogglePinned",
             "ToggleSticky",
             "TogglePinOpen",
+            "QuickSettings",
             "CoachNext",
             "CoachSkip",
             "ReleaseAll",
@@ -230,6 +233,8 @@ public sealed class DockBarViewModelTests
         public void ToggleSticky() => Calls.Add(nameof(ToggleSticky));
 
         public void TogglePinOpen() => Calls.Add(nameof(TogglePinOpen));
+
+        public void QuickSettings() => Calls.Add(nameof(QuickSettings));
 
         public void CoachNext() => Calls.Add(nameof(CoachNext));
 

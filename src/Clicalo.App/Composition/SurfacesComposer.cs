@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Interaction;
 using Clicalo.Application.Localization;
+using Clicalo.Application.Ports;
 using Clicalo.Application.Profiles;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
@@ -25,7 +26,9 @@ namespace Clicalo.App.Composition;
 /// <summary>
 /// Wires the forms of the panel (docs/04 «Vista compacta», «Vista pestaña», «Burbuja minimizada», «Opacidad y
 /// atenuado», «Posición») on the UI thread of the Surfaces role: the bubble, the handle and the bar of the Tab view with
-/// the windows beside it, the floating «Release all», the dimming of every surface and the positions. It owns no rule:
+/// the windows beside it (Quick settings, the menu of a shortcut and the notices among them: PES-009, PES-010,
+/// PES-014), the floating «Release all», the dimming of every surface and the positions, the handle's per monitor
+/// (PES-016) and the panel's away from the touch keyboard (BUS-002). It owns no rule:
 /// the form is <see cref="PanelForms"/>', the collapse and the guide <see cref="DockRules"/>', the places
 /// <see cref="PanelGeometry"/>' and <see cref="DockGeometry"/>', the opacity <see cref="DimPolicy"/>'s through the
 /// <see cref="InteractionStore"/>. It implements what the handle and the bar ask for (<see cref="IDockIntents"/>) by
@@ -47,6 +50,7 @@ internal sealed class SurfacesComposer : IDockIntents
     private readonly EngineObserverRelay _relay;
     private readonly TimeProvider _time;
     private readonly Dispatcher _ui;
+    private readonly ITouchKeyboard? _keyboard;
     private SurfaceSet? _surfaces;
     private ITimer? _collapseTimer;
     private bool _refreshQueued;
@@ -62,6 +66,7 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <param name="localization">The interface language.</param>
     /// <param name="time">The clock of the collapse.</param>
     /// <param name="ui">The dispatcher of the UI thread.</param>
+    /// <param name="keyboard">The touch keyboard: the panel moves out of its way (BUS-002); null without one.</param>
     public SurfacesComposer(
         DocumentStore store,
         SessionStore session,
@@ -72,7 +77,8 @@ internal sealed class SurfacesComposer : IDockIntents
         EngineObserverRelay relay,
         ILocalizationContext localization,
         TimeProvider time,
-        Dispatcher ui
+        Dispatcher ui,
+        ITouchKeyboard? keyboard = null
     )
     {
         _store = store;
@@ -84,7 +90,8 @@ internal sealed class SurfacesComposer : IDockIntents
         _relay = relay;
         _time = time;
         _ui = ui;
-        Dock = new DockBarViewModel(controller, localization, this);
+        _keyboard = keyboard;
+        Dock = new DockBarViewModel(controller, localization, this, panel.Layers);
         Bubble = new BubbleViewModel(
             localization,
             () => _ = _interaction.Dispatch(new InteractionAction.Restore()),
@@ -103,9 +110,16 @@ internal sealed class SurfacesComposer : IDockIntents
                 || before.DockOpen != after.DockOpen
                 || before.Flyout != after.Flyout
                 || before.CoachStep != after.CoachStep
+                || before.SearchPeek != after.SearchPeek
             )
             {
                 Invalidate();
+            }
+
+            if (before.SearchPeek && !after.SearchPeek && _panel.Search.IsOpen)
+            {
+                // BUS-006: the Full view of the search went away («−», another view): the search closes with it.
+                _ = _panel.Search.CloseAsync();
             }
         };
         _profiles.Changed += (_, change) =>
@@ -167,8 +181,20 @@ internal sealed class SurfacesComposer : IDockIntents
                 SaveHandle,
                 OnTileUsed,
                 OnHoldReleased
-            )
+            ),
+            _panel.Layers
         );
+        if (_keyboard is { } keyboard)
+        {
+            // BUS-002, EC-BUS-01: raised on any thread while the keyboard Clícalo showed is open, and once more when
+            // it closes; the area is read there and applied here.
+            keyboard.OccludedAreaChanged += (_, _) =>
+            {
+                var area = keyboard.OccludedArea;
+                _ = _ui.BeginInvoke(() => _surfaces?.ApplyOccluded(area));
+            };
+        }
+
         Refresh();
     }
 
@@ -176,12 +202,18 @@ internal sealed class SurfacesComposer : IDockIntents
     public void OpenBar() => _ = _interaction.Dispatch(new InteractionAction.OpenDock());
 
     /// <inheritdoc />
-    public void MoveHandle(int percent) => SaveHandle(_store.Current.Settings.Dock.Side, percent);
+    public void MoveHandle(int percent) =>
+        SaveHandle(
+            _surfaces?.MonitorId ?? string.Empty,
+            _store.Current.Settings.Dock.Side,
+            percent
+        );
 
     /// <inheritdoc />
     public void CloseBar()
     {
         CancelCollapse();
+        CloseLayers();
         _ = _interaction.Dispatch(new InteractionAction.CloseDock());
         _ = _session.Dispatch(new SessionAction.ClosePicker());
     }
@@ -209,6 +241,7 @@ internal sealed class SurfacesComposer : IDockIntents
             return;
         }
 
+        CloseLayers();
         _ = _interaction.Dispatch(new InteractionAction.ToggleFlyout(DockFlyout.Profiles));
         SyncPicker();
     }
@@ -217,21 +250,19 @@ internal sealed class SurfacesComposer : IDockIntents
     public void ToggleLock() => _panel.Header.ToggleLock();
 
     /// <inheritdoc />
+    /// <remarks>
+    /// BUS-006 (decision DIS-42): the Full view shows only for the search; the saved view stays the Tab view, and when
+    /// the search closes or one of its results runs the Tab view is back. Expand is what changes the saved view.
+    /// </remarks>
     public void Search()
     {
-        ChangeView(PanelDensity.Full);
+        CancelCollapse();
+        CloseLayers();
+        _ = _session.Dispatch(new SessionAction.ClosePicker());
+        _ = _interaction.Dispatch(new InteractionAction.PeekSearch());
 
-        // PAN-001 d: the Full view with an empty search, once the panel is on screen to take the keyboard.
-        _ = _ui.BeginInvoke(
-            DispatcherPriority.Background,
-            () =>
-            {
-                if (!_panel.Search.IsOpen)
-                {
-                    _ = _panel.Search.OpenAsync(SearchTrigger.Touch);
-                }
-            }
-        );
+        // The empty search, once the panel is on screen to take the keyboard.
+        _ = _ui.BeginInvoke(DispatcherPriority.Background, () => _ = OpenPeekedSearchAsync());
     }
 
     /// <inheritdoc />
@@ -240,6 +271,7 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <inheritdoc />
     public void TogglePinned()
     {
+        CloseLayers();
         _ = _interaction.Dispatch(new InteractionAction.ToggleFlyout(DockFlyout.Pinned));
         SyncPicker();
     }
@@ -247,6 +279,7 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <inheritdoc />
     public void ToggleSticky()
     {
+        CloseLayers();
         _ = _interaction.Dispatch(new InteractionAction.ToggleFlyout(DockFlyout.Sticky));
         SyncPicker();
     }
@@ -258,6 +291,16 @@ internal sealed class SurfacesComposer : IDockIntents
         _ = _store.Dispatch(
             new SetSetting(SettingPaths.DockPinOpen, !_store.Current.Settings.Dock.PinOpen)
         );
+    }
+
+    /// <inheritdoc />
+    public void QuickSettings()
+    {
+        // PES-009: one window beside the bar at a time; the panel keeps Quick settings the only primary layer (PAN-008).
+        CancelCollapse();
+        _ = _interaction.Dispatch(new InteractionAction.CloseFlyout());
+        SyncPicker();
+        _panel.Header.QuickSettings();
     }
 
     /// <inheritdoc />
@@ -290,16 +333,101 @@ internal sealed class SurfacesComposer : IDockIntents
         _ = _store.Dispatch(new SetSetting(SettingPaths.Density, density));
     }
 
-    private void SaveHandle(DockSide side, int percent)
+    /// <summary>Quick settings and the menu of a shortcut close: another window beside the bar opens, or the bar folds.</summary>
+    private void CloseLayers()
     {
-        var path = side switch
+        _panel.QuickSettings.Close();
+        _panel.Menu.Close();
+    }
+
+    /// <summary>BUS-006: the search of the bar; when Windows does not let it open, the Tab view is back at once.</summary>
+    private async Task OpenPeekedSearchAsync()
+    {
+        if (!_interaction.Current.SearchPeek)
+        {
+            return;
+        }
+
+        if (!_panel.Search.IsOpen)
+        {
+            await _panel.Search.OpenAsync(SearchTrigger.Touch).ConfigureAwait(true);
+        }
+
+        if (!_panel.Search.IsOpen)
+        {
+            _ = _interaction.Dispatch(new InteractionAction.EndSearchPeek());
+        }
+    }
+
+    /// <summary>
+    /// PES-016 (decision D9): the position of the handle is remembered for the monitor it is on and its edge; the
+    /// position per edge follows it, and is what a monitor that is not known yet starts from.
+    /// </summary>
+    private void SaveHandle(string monitorId, DockSide side, int percent)
+    {
+        var position = DockGeometry.ClampPercent(percent);
+        if (monitorId.Length > 0)
+        {
+            _ = _store.Dispatch(
+                new SetSetting(
+                    SettingPaths.HandlePositionsByMonitor,
+                    MonitorHandlePositions.With(
+                        _store.Current.Settings.HandlePositionsByMonitor,
+                        monitorId,
+                        side,
+                        position
+                    )
+                )
+            );
+        }
+
+        _ = _store.Dispatch(new SetSetting(SidePath(side), position));
+    }
+
+    private static string SidePath(DockSide side) =>
+        side switch
         {
             DockSide.Left => SettingPaths.DockHandleLeft,
             DockSide.Top => SettingPaths.DockHandleTop,
             DockSide.Bottom => SettingPaths.DockHandleBottom,
             _ => SettingPaths.DockHandleRight,
         };
-        _ = _store.Dispatch(new SetSetting(path, DockGeometry.ClampPercent(percent)));
+
+    /// <summary>
+    /// PES-016, PES-003: General moves the handle by its position per edge (without dragging, REG-05). The monitor the
+    /// Tab view is on follows it, so the two never disagree there.
+    /// </summary>
+    private void FollowSidePosition(UserSettings before, UserSettings after)
+    {
+        if (
+            before.Dock.HandlePositions == after.Dock.HandlePositions
+            || _surfaces?.MonitorId is not { Length: > 0 } monitor
+        )
+        {
+            return;
+        }
+
+        foreach (var side in Enum.GetValues<DockSide>())
+        {
+            var position = MonitorHandlePositions.PositionFor(after, null, side);
+            if (
+                MonitorHandlePositions.PositionFor(before, null, side) != position
+                && MonitorHandlePositions.PositionFor(after, monitor, side) != position
+            )
+            {
+                _ = _store.Dispatch(
+                    new SetSetting(
+                        SettingPaths.HandlePositionsByMonitor,
+                        MonitorHandlePositions.With(
+                            _store.Current.Settings.HandlePositionsByMonitor,
+                            monitor,
+                            side,
+                            position
+                        )
+                    )
+                );
+            }
+        }
     }
 
     /// <summary>
@@ -358,6 +486,8 @@ internal sealed class SurfacesComposer : IDockIntents
             _surfaces?.ApplyTouch(SettingsProjection.Touch(after));
         }
 
+        FollowSidePosition(before, after);
+
         Invalidate();
     }
 
@@ -371,6 +501,12 @@ internal sealed class SurfacesComposer : IDockIntents
             )
         )
         {
+            if (!_panel.Search.IsOpen)
+            {
+                // BUS-006: the search of the bar closed: back to the Tab view.
+                _ = _interaction.Dispatch(new InteractionAction.EndSearchPeek());
+            }
+
             Invalidate();
         }
     }
@@ -378,7 +514,12 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <summary>A shortcut ran (FRE-002): the open bar collapses after it, as PES-012 says.</summary>
     private void OnUsage(Clicalo.Domain.Primitives.ShortcutId shortcut)
     {
-        if (CurrentForm() != PanelForm.DockOpen)
+        if (_interaction.Current.SearchPeek)
+        {
+            // BUS-006: a result of the search of the bar ran: the search closes and the Tab view is back.
+            _ = _panel.Search.CloseAsync();
+        }
+        else if (CurrentForm() != PanelForm.DockOpen)
         {
             return;
         }
@@ -441,7 +582,12 @@ internal sealed class SurfacesComposer : IDockIntents
         {
             _collapseTimer?.Dispose();
             _collapseTimer = null;
-            if (CurrentForm() == PanelForm.DockOpen && !_store.Current.Settings.Dock.PinOpen)
+            if (
+                CurrentForm() == PanelForm.DockOpen
+                && !_store.Current.Settings.Dock.PinOpen
+                && !_panel.QuickSettings.IsOpen
+                && !_panel.Menu.IsOpen
+            )
             {
                 CloseBar();
             }
@@ -460,7 +606,8 @@ internal sealed class SurfacesComposer : IDockIntents
             _session.Current.Presence == PanelPresence.Visible,
             _store.Current.Settings.Density,
             interaction.Minimized,
-            interaction.DockOpen
+            interaction.DockOpen,
+            interaction.SearchPeek
         );
     }
 
@@ -526,7 +673,11 @@ internal sealed class SurfacesComposer : IDockIntents
                 form == PanelForm.DockOpen,
                 held
             )
+            {
+                QuickOpen = DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen),
+            }
         );
+        var showsMenu = DockRules.ShowsBesideBar(form, _panel.Menu.IsOpen);
         _surfaces?.Apply(
             new SurfaceLayout(
                 form,
@@ -537,6 +688,20 @@ internal sealed class SurfacesComposer : IDockIntents
                 form == PanelForm.DockOpen ? interaction.Flyout : DockFlyout.None,
                 form == PanelForm.DockOpen && Dock.ShowsCoach
             )
+            {
+                Settings = settings,
+                ShowsNotice = DockRules.ShowsNotices(
+                    form,
+                    _panel.CurrentNotice is not null,
+                    panel.Admin.IsVisible,
+                    _panel.TestMode.IsOn
+                ),
+                ShowsMenu = showsMenu,
+
+                // One window at a time: the menu of a shortcut covers Quick settings while it is open.
+                ShowsQuick =
+                    !showsMenu && DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen),
+            }
         );
     }
 }

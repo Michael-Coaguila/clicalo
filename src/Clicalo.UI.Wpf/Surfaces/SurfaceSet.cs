@@ -19,12 +19,13 @@ namespace Clicalo.UI.Wpf.Surfaces;
 
 /// <summary>
 /// Every surface of the panel on the UI thread of the Surfaces role (blueprint §8.1): the panel, the bubble, the handle
-/// and the bar of the Tab view with the windows beside it, and the floating «Release all». It shows exactly the form the
+/// and the bar of the Tab view with the windows beside it (Pinned, the profile grid, sticky keys, Quick settings, the
+/// menu of a shortcut and the notice surface), and the floating «Release all». It shows exactly the form the
 /// composition decides (PAN-001), places each surface in physical pixels inside the work area of its monitor (PAN-002,
 /// PAN-006, <see cref="PanelGeometry"/>, <see cref="DockGeometry"/>), moves the panel, the bubble and the handle when
 /// they are dragged and reports where they end, places everything again on any change of size, display, scale or work
-/// area, follows the finger and the pointer on every surface and gives each its opacity
-/// (<see cref="SurfaceDimmer"/>, GEN-009). It decides no rule of the product.
+/// area, moves the panel away from the touch keyboard (BUS-002), follows the finger and the pointer on every surface
+/// and gives each its opacity (<see cref="SurfaceDimmer"/>, GEN-009). It decides no rule of the product.
 /// </summary>
 [SuppressMessage(
     "Design",
@@ -42,13 +43,16 @@ public sealed class SurfaceSet : IDisposable
     private readonly PanelViewModel _panelModel;
     private readonly Action<uint, ContactSummary, HoldEndReason> _holdEnded;
     private readonly Action<MonitorPosition> _savePosition;
-    private readonly Action<DockSide, int> _saveHandle;
+    private readonly Action<string, DockSide, int> _saveHandle;
     private readonly Action<DockTileViewModel, bool> _tileUsed;
     private readonly Action _holdReleased;
     private readonly BubbleWindow _bubble;
     private readonly PanicPillWindow _panicPill;
     private readonly Dictionary<DockFlyout, DockFlyoutWindow> _flyouts = [];
     private readonly DockCoachWindow _coach;
+    private readonly DockNoticeWindow _notice;
+    private readonly DockMenuWindow? _menu;
+    private readonly DockQuickWindow? _quick;
     private readonly Dictionary<DockSide, DockHandleWindow> _handles = [];
     private readonly Dictionary<DockSide, DockBarWindow> _bars = [];
     private readonly List<TouchSurface> _surfaces = [];
@@ -57,6 +61,8 @@ public sealed class SurfaceSet : IDisposable
     private TouchSettings _touch;
     private string? _monitorId;
     private PhysicalPoint? _topLeft;
+    private PhysicalPoint? _beforeKeyboard;
+    private PhysicalRect _occluded;
     private PhysicalRect _dragOrigin;
     private int _handleStart;
     private int? _handleDrag;
@@ -76,6 +82,10 @@ public sealed class SurfaceSet : IDisposable
     /// <param name="time">The clock of the pointer layer and of the dimming.</param>
     /// <param name="touch">The touch filter.</param>
     /// <param name="callbacks">Where releases, holds, uses and positions go.</param>
+    /// <param name="layers">
+    /// Quick settings, the menu of a shortcut and test mode, shared with the panel: beside the bar they get windows of
+    /// their own (PES-009, PES-010, PES-014). <see langword="null"/> for a set without them.
+    /// </param>
     public SurfaceSet(
         PanelWindow panel,
         PanelViewModel panelModel,
@@ -86,7 +96,8 @@ public sealed class SurfaceSet : IDisposable
         ThemeService theme,
         TimeProvider time,
         TouchSettings touch,
-        SurfaceCallbacks callbacks
+        SurfaceCallbacks callbacks,
+        PanelLayerModels? layers = null
     )
     {
         ArgumentNullException.ThrowIfNull(panel);
@@ -145,6 +156,34 @@ public sealed class SurfaceSet : IDisposable
         _coach = Track(new DockCoachWindow(dock, registry, time, theme, touch), DimSurface.Dock);
         _coach.SizeChanged += (_, _) => Reflow();
 
+        // PES-014: the notices of the Tab view never dim, like the floating «Release all».
+        _notice = Track(
+            new DockNoticeWindow(
+                panelModel,
+                layers?.TestMode,
+                dock.Labels,
+                registry,
+                time,
+                theme,
+                touch
+            ),
+            kind: null
+        );
+        _notice.SizeChanged += (_, _) => Reflow();
+        if (layers is not null)
+        {
+            _menu = Track(
+                new DockMenuWindow(layers.Menu, registry, time, theme, touch),
+                DimSurface.Dock
+            );
+            _menu.SizeChanged += (_, _) => Reflow();
+            _quick = Track(
+                new DockQuickWindow(layers.QuickSettings, registry, time, theme, touch),
+                DimSurface.Dock
+            );
+            _quick.SizeChanged += (_, _) => Reflow();
+        }
+
         panel.Placer = PlacePanel;
         _dimmer.Follow(panel);
         panel.DragStarted += (_, _) => _dragOrigin = _panel.ScreenBounds;
@@ -173,6 +212,18 @@ public sealed class SurfaceSet : IDisposable
     /// <summary>The guide of the Tab view.</summary>
     public DockCoachWindow Coach => _coach;
 
+    /// <summary>The notice surface of the Tab view (PES-014).</summary>
+    public DockNoticeWindow Notice => _notice;
+
+    /// <summary>The menu of a shortcut beside the bar (CUA-014); <see langword="null"/> without the layers.</summary>
+    public DockMenuWindow? Menu => _menu;
+
+    /// <summary>Quick settings beside the bar (PES-009); <see langword="null"/> without the layers.</summary>
+    public DockQuickWindow? Quick => _quick;
+
+    /// <summary>The monitor the panel and the Tab view are on (PES-016).</summary>
+    public string MonitorId => CurrentMonitor().Id;
+
     /// <summary>The monitors as last read.</summary>
     public ImmutableArray<DisplayMonitor> Monitors => _monitors;
 
@@ -196,7 +247,7 @@ public sealed class SurfaceSet : IDisposable
             {
                 if (_handleDrag is { } percent)
                 {
-                    _saveHandle(side, percent);
+                    _saveHandle(CurrentMonitor().Id, side, percent);
                 }
             };
             _handles[side] = handle;
@@ -237,7 +288,11 @@ public sealed class SurfaceSet : IDisposable
 
         var previous = _layout;
         _layout = layout;
-        if (previous?.Dock.HandlePositions != layout.Dock.HandlePositions)
+        if (
+            previous?.Dock.HandlePositions != layout.Dock.HandlePositions
+            || previous?.Settings?.HandlePositionsByMonitor
+                != layout.Settings?.HandlePositionsByMonitor
+        )
         {
             _handleDrag = null;
         }
@@ -247,6 +302,23 @@ public sealed class SurfaceSet : IDisposable
         {
             Awake();
         }
+    }
+
+    /// <summary>
+    /// The touch keyboard appeared, moved or went away (BUS-002, EC-BUS-01): a panel it covers moves right above it,
+    /// passively, and goes back where it was when the keyboard hides. Nothing is saved: it is not the user's position.
+    /// </summary>
+    /// <param name="occluded">What the keyboard covers, in physical pixels; empty when it is hidden.</param>
+    public void ApplyOccluded(PhysicalRect occluded)
+    {
+        _panel.VerifyAccess();
+        if (_disposed || _occluded == occluded)
+        {
+            return;
+        }
+
+        _occluded = occluded;
+        AvoidKeyboard();
     }
 
     /// <summary>Takes new touch filter values for every surface (TAC-002).</summary>
@@ -345,7 +417,9 @@ public sealed class SurfaceSet : IDisposable
         var monitor = CurrentMonitor();
         var side = layout.Dock.Side;
         var shown = new HashSet<TouchSurface>();
+        var taken = new List<PhysicalRect>();
         PhysicalRect? panicAnchor = null;
+        PhysicalRect? noticeAnchor = null;
 
         switch (form)
         {
@@ -378,6 +452,7 @@ public sealed class SurfaceSet : IDisposable
                 );
                 Present(handle, handleRect, shown);
                 panicAnchor = handleRect;
+                noticeAnchor = handleRect;
                 break;
 
             case PanelForm.DockOpen:
@@ -393,7 +468,8 @@ public sealed class SurfaceSet : IDisposable
                 );
                 Present(bar, barRect, shown);
                 bar.UpdateLayout();
-                PlaceFlyouts(layout, bar, monitor, shown);
+                PlaceFlyouts(layout, bar, monitor, shown, taken);
+                noticeAnchor = barRect;
                 break;
         }
 
@@ -412,6 +488,27 @@ public sealed class SurfaceSet : IDisposable
                 )
                 : DockGeometry.Panic(side, pillWidth, pillHeight, monitor);
             Present(_panicPill, pillRect, shown);
+            taken.Add(pillRect);
+        }
+
+        if (layout.ShowsNotice && noticeAnchor is { } beside)
+        {
+            // PES-014: beside the bar, or the handle when it is closed, clear of whatever is already there.
+            var (noticeWidth, noticeHeight) = _notice.MeasurePhysical(monitor.Scale);
+            Present(
+                _notice,
+                DockGeometry.BesideClear(
+                    side,
+                    beside,
+                    noticeWidth,
+                    noticeHeight,
+                    monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                    DockAlign.End,
+                    monitor,
+                    taken
+                ),
+                shown
+            );
         }
 
         foreach (var surface in _surfaces)
@@ -430,7 +527,8 @@ public sealed class SurfaceSet : IDisposable
         SurfaceLayout layout,
         DockBarWindow bar,
         DisplayMonitor monitor,
-        HashSet<TouchSurface> shown
+        HashSet<TouchSurface> shown,
+        List<PhysicalRect> taken
     )
     {
         var side = layout.Dock.Side;
@@ -460,6 +558,7 @@ public sealed class SurfaceSet : IDisposable
                 monitor
             );
             Present(flyout, rect, shown);
+            taken.Add(rect);
         }
 
         if (layout.ShowsCoach)
@@ -475,6 +574,48 @@ public sealed class SurfaceSet : IDisposable
                 monitor
             );
             Present(_coach, rect, shown);
+            taken.Add(rect);
+        }
+
+        if (layout.ShowsMenu && _menu is { } menu)
+        {
+            // CUA-014, PES-010: the menu of a shortcut beside the bar, or beside «Pinned» when it is open.
+            var (width, height) = menu.MeasurePhysical(monitor.Scale);
+            var rect = DockGeometry.BesideClear(
+                side,
+                barRect,
+                width,
+                height,
+                monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                DockAlign.Start,
+                monitor,
+                taken
+            );
+            Present(menu, rect, shown);
+            taken.Add(rect);
+        }
+
+        if (layout.ShowsQuick && _quick is { } quick)
+        {
+            // PES-009: Quick settings beside the tune button, as «Pinned» is beside its button.
+            quick.FitHeight(maxHeight);
+            var (width, height) = quick.MeasurePhysical(monitor.Scale);
+            var anchor = bar.TuneButtonBounds;
+            var byButton = !anchor.IsEmpty;
+            var rect = DockGeometry.BesideClear(
+                side,
+                byButton ? anchor : barRect,
+                width,
+                Math.Min(height, monitor.ToPhysical(maxHeight)),
+                monitor.ToPhysical(
+                    byButton ? DockGeometry.ButtonWindowGapPx : DockGeometry.BarWindowGapPx
+                ),
+                byButton ? DockAlign.End : DockAlign.Start,
+                monitor,
+                taken
+            );
+            Present(quick, rect, shown);
+            taken.Add(rect);
         }
     }
 
@@ -510,6 +651,13 @@ public sealed class SurfaceSet : IDisposable
     /// <summary>The panel, each time it appears: where it was, or where it was saved for its monitor (PAN-006).</summary>
     private void PlacePanel()
     {
+        if (_occluded.IsEmpty && _beforeKeyboard is { } back)
+        {
+            // The keyboard went away while the panel was hidden: back where it was (BUS-002).
+            _beforeKeyboard = null;
+            _topLeft = back;
+        }
+
         var monitor = CurrentMonitor();
         var (width, height) = _panel.MeasurePhysical(monitor.Scale);
         var rect = _topLeft is { } topLeft
@@ -519,9 +667,57 @@ public sealed class SurfaceSet : IDisposable
                 .Bounds;
         _topLeft = new PhysicalPoint(rect.Left, rect.Top);
         _panel.WorkAreaBottom = monitor.WorkArea.Bottom / monitor.Scale;
+
+        // BUS-002: never under the touch keyboard; where it was is kept for when the keyboard hides.
+        var clear = PanelGeometry.Avoid(rect, _occluded, monitor);
+        if (clear != rect)
+        {
+            _beforeKeyboard ??= _topLeft;
+            _topLeft = new PhysicalPoint(clear.Left, clear.Top);
+            rect = clear;
+        }
+
         if (_panel.ScreenBounds != rect)
         {
             _panel.MovePassive(rect);
+        }
+    }
+
+    /// <summary>
+    /// BUS-002, EC-BUS-01: moves the panel clear of the touch keyboard, or back where it was once the keyboard is gone.
+    /// Never under a finger (PAN-009): it waits for the contacts to end.
+    /// </summary>
+    private void AvoidKeyboard()
+    {
+        if (_disposed || !_panel.IsVisible || _panel.IsTouching)
+        {
+            return;
+        }
+
+        if (_occluded.IsEmpty)
+        {
+            if (_beforeKeyboard is { } back)
+            {
+                _beforeKeyboard = null;
+                _topLeft = back;
+                PlacePanel();
+            }
+
+            return;
+        }
+
+        var bounds = _panel.ScreenBounds;
+        if (bounds.IsEmpty)
+        {
+            return;
+        }
+
+        var clear = PanelGeometry.Avoid(bounds, _occluded, CurrentMonitor());
+        if (clear != bounds)
+        {
+            _beforeKeyboard ??= new PhysicalPoint(bounds.Left, bounds.Top);
+            _topLeft = new PhysicalPoint(clear.Left, clear.Top);
+            _panel.MovePassive(clear);
         }
     }
 
@@ -546,6 +742,8 @@ public sealed class SurfaceSet : IDisposable
             _panel.MovePassive(clamped);
             _topLeft = new PhysicalPoint(clamped.Left, clamped.Top);
         }
+
+        AvoidKeyboard();
     }
 
     private void MoveDragged(Window surface, PhysicalOffset offset)
@@ -584,6 +782,9 @@ public sealed class SurfaceSet : IDisposable
         var monitor = PanelGeometry.MonitorOf(bounds, _monitors);
         _monitorId = monitor.Id;
         _topLeft = new PhysicalPoint(bounds.Left, bounds.Top);
+
+        // The user chose this place, keyboard or not: there is nowhere to go back to (BUS-002).
+        _beforeKeyboard = null;
         _panel.WorkAreaBottom = monitor.WorkArea.Bottom / monitor.Scale;
         if (monitor.Id.Length > 0)
         {
@@ -609,6 +810,12 @@ public sealed class SurfaceSet : IDisposable
         if (_handleDrag is { } dragged)
         {
             return dragged;
+        }
+
+        // PES-016: the position saved for this monitor and edge; an unknown monitor uses the one per edge.
+        if (_layout?.Settings is { } settings)
+        {
+            return MonitorHandlePositions.PositionFor(settings, CurrentMonitor().Id, side);
         }
 
         var positions = _layout?.Dock.HandlePositions;

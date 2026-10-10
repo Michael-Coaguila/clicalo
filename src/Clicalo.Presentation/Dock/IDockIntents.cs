@@ -46,6 +46,9 @@ public interface IDockIntents
     /// <summary>The lock of the bar: «Collapses» or «Open» (PES-008, PES-012).</summary>
     void TogglePinOpen();
 
+    /// <summary>The <c>tune</c> button: Quick settings beside the bar, with the side of the Tab view (PES-009).</summary>
+    void QuickSettings();
+
     /// <summary>[next] or [understood] in the guide (PES-015).</summary>
     void CoachNext();
 

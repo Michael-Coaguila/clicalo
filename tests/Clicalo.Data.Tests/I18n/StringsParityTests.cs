@@ -95,6 +95,7 @@ public sealed class StringsParityTests
                 "dangerMark",
                 "dataUnreadable",
                 "delA",
+                "dockNotices",
                 "dockPageOf",
                 "dockScrollDown",
                 "dockScrollUp",

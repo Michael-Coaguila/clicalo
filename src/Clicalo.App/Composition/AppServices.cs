@@ -320,7 +320,8 @@ internal static class AppServices
             sp.Get<EngineObserverRelay>(),
             sp.Get<ILocalizationContext>(),
             sp.Time(),
-            sp.Get<Dispatcher>()
+            sp.Get<Dispatcher>(),
+            sp.Get<ITouchKeyboard>()
         ));
         // One theme service for the UI thread (blueprint §8.4): every surface of the thread attaches to it. The
         // container disposes both at the end, after the surfaces are closed.

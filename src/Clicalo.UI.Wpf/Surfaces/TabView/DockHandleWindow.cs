@@ -26,8 +26,9 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// <remarks>
 /// REG-02, ACC-002: the window is 44 deep (<see cref="DockGeometry.Handle"/>) and the handle is drawn 32 deep against
 /// the screen edge inside it; the rest of the window is filled with an almost transparent brush (alpha 1), so a touch
-/// there still reaches the handle instead of going through the per-pixel transparent window. The handle has no
-/// shadow: a shadow window would follow the whole 44-deep window.
+/// there still reaches the handle instead of going through the per-pixel transparent window. Its shadow (0 6 20 at
+/// 35 %, PES-001) follows the drawn handle, not the 44-deep window: the window gives the shadow the shape of the handle
+/// and the depth of the touch band as an inset (<see cref="NonActivatingWindow.ShadowInset"/>).
 /// </remarks>
 public sealed class DockHandleWindow : TouchSurface
 {
@@ -75,6 +76,15 @@ public sealed class DockHandleWindow : TouchSurface
         _viewModel = viewModel;
         var layout = PanelSizes.Layout;
         var vertical = DockGeometry.IsVertical(side);
+        var band = Math.Max(0, layout.MinTouchTargetPx - layout.DockHandleThicknessPx);
+        ShadowShape = SurfaceLook.DockHandle(side);
+        ShadowInset = side switch
+        {
+            DockSide.Left => new Thickness(0, 0, band, 0),
+            DockSide.Top => new Thickness(0, 0, 0, band),
+            DockSide.Bottom => new Thickness(0, band, 0, 0),
+            _ => new Thickness(band, 0, 0, 0),
+        };
         Background = TouchBand;
         BorderThickness = new Thickness(0);
         var face = new Border

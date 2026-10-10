@@ -127,6 +127,47 @@ public static class PanelGeometry
     }
 
     /// <summary>
+    /// BUS-002, EC-BUS-01: the touch keyboard must not cover the panel. A panel that <paramref name="occluded"/> covers
+    /// goes right above it; when it does not fit there, right below it; and when it fits nowhere, to the top of the work
+    /// area, where its header and its search field still show. A panel the keyboard does not touch stays where it is.
+    /// </summary>
+    /// <param name="bounds">The panel, in physical pixels, already inside the work area.</param>
+    /// <param name="occluded">What the touch keyboard covers, in physical pixels; empty when it is hidden.</param>
+    /// <param name="monitor">The panel's monitor.</param>
+    public static PhysicalRect Avoid(
+        PhysicalRect bounds,
+        PhysicalRect occluded,
+        DisplayMonitor monitor
+    )
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+        if (bounds.IsEmpty || OverlapArea(bounds, occluded) == 0)
+        {
+            return bounds;
+        }
+
+        var margin = monitor.ToPhysical(PanelSizes.Layout.PanelWorkAreaMarginPx);
+        var work = monitor.WorkArea;
+        var top = work.Top + margin;
+        var above = occluded.Top - margin - bounds.Height;
+        if (above >= top)
+        {
+            return bounds with { Top = above };
+        }
+
+        var below = occluded.Bottom + margin;
+        return below + bounds.Height <= work.Bottom - margin
+            ? bounds with
+            {
+                Top = below,
+            }
+            : bounds with
+            {
+                Top = top,
+            };
+    }
+
+    /// <summary>
     /// The first position of the panel on <paramref name="monitor"/> (PAN-002): top right, with x = right edge of the
     /// work area − 72 − width and y = top + 40, then kept inside the work area.
     /// </summary>

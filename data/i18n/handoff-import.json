@@ -1131,6 +1131,11 @@
         "es": "Alarga la confirmación de dos toques y lo que duran los avisos: ×1, ×2 o ×3.",
         "en": "Lengthens the two-tap confirmation and how long notices stay: ×1, ×2 or ×3."
       }
+    },
+    "dockNotices": {
+      "notes": "Nombre accesible de la superficie de avisos de la vista Pestaña (PES-014, REG-06). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "timeMultiplierD",
+      "text": { "es": "Avisos", "en": "Notices" }
     }
   },
   "retired": {

@@ -827,6 +827,7 @@
   "globalHotkeyD": "Works from any app. It comes off: turn it on and pick a combination from the list.",
   "timeMultiplierT": "More time to confirm and read notices",
   "timeMultiplierD": "Lengthens the two-tap confirmation and how long notices stay: ×1, ×2 or ×3.",
+  "dockNotices": "Notices",
   "behind": "your document",
   "panelShows": "Your panel shows:",
   "activeApp": "active app",

@@ -250,6 +250,61 @@ public static class DockGeometry
     }
 
     /// <summary>
+    /// <see cref="Beside"/>, clear of the surfaces already placed there (PES-014): while the place is taken by one of
+    /// <paramref name="taken"/>, the surface goes further from the edge, beside that one too. The notice surface of the
+    /// Tab view uses it, so it never covers a window beside the bar nor the floating «Release all».
+    /// </summary>
+    /// <param name="side">The edge of the Tab view.</param>
+    /// <param name="anchor">The bar, the handle or a button, in physical pixels.</param>
+    /// <param name="width">The width of the surface.</param>
+    /// <param name="height">The height of the surface.</param>
+    /// <param name="gap">The gap between the anchor and the surface.</param>
+    /// <param name="align">How it lines up along the edge.</param>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="taken">The surfaces already placed beside the anchor.</param>
+    public static PhysicalRect BesideClear(
+        DockSide side,
+        PhysicalRect anchor,
+        int width,
+        int height,
+        int gap,
+        DockAlign align,
+        DisplayMonitor monitor,
+        IReadOnlyList<PhysicalRect> taken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(taken);
+        var rect = Beside(side, anchor, width, height, gap, align, monitor);
+        for (var pass = 0; pass < taken.Count; pass++)
+        {
+            PhysicalRect? hit = null;
+            foreach (var other in taken)
+            {
+                if (Overlap(rect, other))
+                {
+                    hit = other;
+                    break;
+                }
+            }
+
+            if (hit is not { } covered)
+            {
+                break;
+            }
+
+            anchor = PhysicalRect.FromEdges(
+                Math.Min(anchor.Left, covered.Left),
+                Math.Min(anchor.Top, covered.Top),
+                Math.Max(anchor.Right, covered.Right),
+                Math.Max(anchor.Bottom, covered.Bottom)
+            );
+            rect = Beside(side, anchor, width, height, gap, align, monitor);
+        }
+
+        return rect;
+    }
+
+    /// <summary>
     /// The floating «Release all» of the open bar (PES-013): 110 px from a side edge or the top (180 from the bottom),
     /// centered along the edge.
     /// </summary>
@@ -320,6 +375,14 @@ public static class DockGeometry
             : (int)Math.Floor((Math.Max(0, availablePx) + gapPx) / (tilePx + gapPx));
         return Math.Max(1, Math.Min(preference, fit));
     }
+
+    private static bool Overlap(PhysicalRect a, PhysicalRect b) =>
+        !a.IsEmpty
+        && !b.IsEmpty
+        && a.Left < b.Right
+        && b.Left < a.Right
+        && a.Top < b.Bottom
+        && b.Top < a.Bottom;
 
     private static int GutterPx(DockSide side, bool gutter, DisplayMonitor monitor) =>
         side == DockSide.Right && gutter
