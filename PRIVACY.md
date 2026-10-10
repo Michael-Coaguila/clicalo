@@ -4,8 +4,8 @@
 
 ## Español
 
-Esta política describe cómo trata tus datos Clícalo 2. Todavía no hay versiones publicadas (hito M0); se
-revisará antes de la primera beta.
+Esta política describe cómo trata tus datos Clícalo 2. Todavía no hay versiones publicadas: la 2.0.0 está en
+preparación y esta política se revisará antes de publicarla.
 
 ### En pocas palabras
 
@@ -53,8 +53,8 @@ La versión técnica de esta política, con los controles y las pruebas que la g
 
 ## English
 
-This policy describes how Clícalo 2 handles your data. There are no releases yet (milestone M0); it will be
-reviewed before the first beta.
+This policy describes how Clícalo 2 handles your data. There are no releases yet: 2.0.0 is being
+prepared and this policy will be reviewed before it is published.
 
 ### In short
 

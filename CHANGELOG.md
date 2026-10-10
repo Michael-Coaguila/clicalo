@@ -9,12 +9,37 @@ Spanish and English are published with each release.
 
 ## [Unreleased]
 
-Milestone M0 · Foundations and harness, milestone M1 · blocking spikes S1, S3 and S4 (closed by the maintainer's
-decision on real evidence, see `docs/testing/spikes/M1-closure.md`), and milestone M2 · Walking skeleton (in
-progress).
+Milestones M0 to M6, towards 2.0.0. The entries below are detailed up to M2; M3 to M5 (the panel and its views, the
+control center with its six sections, the welcome and the local Velopack distribution) are described in their pull
+requests and in `docs/architecture/deviations.md`. User-facing news live in `changes/unreleased/`.
 
 ### Added
 
+- Milestone M6, closing what the audit marked as partial or missing (catalog §6.1, R-30; deviation D-30):
+  - A pure notice queue in the interaction state (AVI-002): one notice at a time, safety and undo notices wait
+    instead of being lost, fixed notices last as long as their state, and the durations follow the ×1, ×2 or ×3
+    multiplier of General (ACC-006). The same notice shows in the panel, beside the Tab view bar (PES-014) and in
+    the status bar of the control center (CCM-003).
+  - Tab view: Quick settings and the shortcut menu beside the bar, the handle shadow, the handle position per
+    monitor and side (D9), finger scrolling in the side windows, a temporary search from the bar and a panel that
+    moves away from the touch keyboard.
+  - Tray: Pause and Resume, and an optional global shortcut that comes off and is picked from a closed list (D10).
+    Store apps hosted by `ApplicationFrameHost.exe` are looked up again, and only folder windows of `explorer.exe`
+    count as an app. The held scroll is in the pressed ledger.
+  - Control center: the window remembers its size, place and monitor and never covers the panel; recording a
+    combination with the keyboard; installed programs in «Elegir programa»; the AI card in General; keys editable
+    in the template preview and the update to the other language variant; plural forms for every count; a focus
+    ring on text fields and focus kept across redraws.
+  - System: «Desinstalar Clícalo» keeps the data by default and deletes them only after two taps and a copy saved
+    outside the data folders; a reinstall asks whether to keep the data; imported and restored backups list their
+    Web, App and Macro shortcuts unticked for review; the feedback email opens only towards the project address
+    (ADR-0029). The start announces a recovered or unreadable document. `cl package --runtime win-arm64` packs
+    ARM64 in a feed of its own.
+  - Welcome: a repeated welcome says what changes and keeps the settings changed by hand; the answers are
+    persisted (document 1.1, ADR-0028).
+  - Tooling and docs: `cl trace` (requirements against test traits), the six quarantined tests back in the pull
+    request tier, the user guide, the manual acceptance script and the 2.0.0 news. `cl states` and `cl accept` are
+    dropped (D-29).
 - Solution skeleton (`Clicalo.slnx` and the `Core.slnf` filter): the eight main-process assemblies (Domain,
   Application, Presentation, UI.Wpf, Platform.Core, Platform.Windows, Infrastructure and App), the Native AOT
   hosts `Clicalo.Sentinel` and `Clicalo.Launcher`, the Roslyn generator and analyzer projects, the test

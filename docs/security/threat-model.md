@@ -18,7 +18,7 @@ La 2.0 es más pequeña que la que describe §12 del plano. Cuatro decisiones de
 | D7 · «Reabrir como administrador» bajo demanda | No hay componente de sistema, lanzador elevado ni tarea programada: T3 desaparece | [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md) |
 | D8 · Aplazados | No hay enlace `clicalo://` (DAT-008) ni gancho global de mouse (FIJ-007) | Catálogo §6.2 |
 
-Y dos caminos nuevos hacia fuera de Clícalo, los dos en ADR-0029 ([índice de ADR](../adr/README.md)): abrir la
+Y dos caminos nuevos hacia fuera de Clícalo, los dos en [ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md): abrir la
 app de correo para «Enviar por correo» (T16) e iniciar el desinstalador desde Sistema (T17).
 
 ## Por qué importa

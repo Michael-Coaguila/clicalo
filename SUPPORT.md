@@ -4,8 +4,9 @@
 
 ## Español
 
-Clícalo está en el hito M0 de su reconstrucción: **todavía no hay versiones para usuarios**. Esta página
-explica dónde pedir ayuda mientras tanto y cuando haya versiones publicadas.
+Clícalo prepara su versión 2.0.0: **todavía no hay versiones para usuarios**. Esta página
+explica dónde pedir ayuda mientras tanto y cuando haya versiones publicadas. La
+[guía de usuario](docs/guides/guia-de-usuario.md) explica cómo usarlo paso a paso.
 
 ### Dónde preguntar
 
@@ -42,7 +43,8 @@ preguntas generales; las vulnerabilidades tienen los plazos de [SECURITY.md](SEC
 
 ## English
 
-Clícalo is at milestone M0 of its rebuild: **there are no user releases yet**.
+Clícalo is preparing its 2.0.0 release: **there are no user releases yet**. The
+[user guide](docs/guides/guia-de-usuario.md) (in Spanish for now) explains how to use it step by step.
 
 - **Bugs, accessibility barriers, feature ideas, templates and translations:** open an issue with the
   matching form: «Error · Bug», «Barrera de accesibilidad · Accessibility barrier», «Idea o mejora · Feature

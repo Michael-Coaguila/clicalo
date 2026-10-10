@@ -16,7 +16,13 @@ código**; la última sección explica cómo añadirla más adelante con SignPat
 - **Novedades.** Viajan dentro del paquete y la app las muestra en Sistema › Actualizaciones. Salen de los fragmentos
   de `changes/unreleased/*.yml` que crea `cl note` (una frase en `es:` y otra en `en:`).
 - **Datos.** El instalador es por usuario y sin UAC (`%LocalAppData%\Clicalo.App`). Los datos viven en
-  `%AppData%\Clicalo` y desinstalar **los conserva**.
+  `%AppData%\Clicalo` y desinstalar **los conserva**, salvo que la persona pida borrarlos en Sistema › Inicio y
+  estabilidad › «Desinstalar Clícalo», con dos toques y tras guardar una copia
+  ([ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md)).
+- **ARM64.** `cl package --runtime win-arm64` crea el paquete de ARM64 en un canal propio (`stable-arm64` o
+  `beta-arm64`), que es el que lee un Clícalo de ARM64; así los paquetes de las dos arquitecturas no comparten
+  archivos. **No está probado en un equipo ARM64**: mientras no lo esté, solo se publica en Beta (propuesta P5 del
+  catálogo).
 
 ## Pasos
 
@@ -52,6 +58,18 @@ código**; la última sección explica cómo añadirla más adelante con SignPat
 4. **Pruébalo en un equipo de pruebas o una máquina virtual**, nunca sobre la instalación que usas a diario:
    instala `Setup.exe`, abre Sistema y comprueba la versión, «Iniciar con Windows» y «Reabrir como administrador».
    Windows avisará de que el instalador no está firmado (SmartScreen): «Más información» › «Ejecutar de todas formas».
+   Comprueba también, porque ninguna prueba automática lo hace con el instalador real:
+   - **Desinstalar conservando los datos:** «Desinstalar Clícalo» con dos toques; `%AppData%\Clicalo` sigue ahí.
+   - **Reinstalar con datos:** al instalar de nuevo, la bienvenida pregunta «Conservar mis datos» o «Empezar de
+     cero»; «Empezar de cero» pide dos toques y deja una copia en Sistema › Copias de seguridad.
+   - **Desinstalar borrando los datos:** marca «Borrar también mis atajos y ajustes», guarda la copia fuera de las
+     carpetas de datos y comprueba que se borran `%AppData%\Clicalo`, `%LocalAppData%\Clicalo` y la clave de IA.
+     Si cancelas la copia, no se desinstala nada.
+   - **Copia dentro de los datos:** repite lo anterior eligiendo una carpeta dentro de `%AppData%\Clicalo`: debe
+     negarse con su aviso y no desinstalar.
+   - **Desde Configuración de Windows:** desinstalar ahí conserva siempre los datos.
+   - **Enviar por correo** (cuando exista el correo del proyecto): abre la app de correo con el asunto y el cuerpo;
+     mientras no exista, copia el mensaje.
 
 5. **Etiqueta la versión** sobre el commit empaquetado:
 
