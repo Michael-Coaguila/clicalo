@@ -75,6 +75,24 @@ public sealed class TemplatePreviewKeysTests
 
     [Fact]
     [Trait("Req", "PLA-016")]
+    public void A_row_left_without_keys_installs_as_a_shortcut_to_complete()
+    {
+        var harness = Harness();
+        var session = new TemplatePreviewSession(harness.Store);
+        session.ShowTemplate(Word);
+
+        session.EditChord(0, static _ => KeyChord.Empty);
+
+        session.Install(LangCode.Es).IsSuccess.ShouldBeTrue();
+        var profile = harness.Store.Current.Library.ProfileFor(WordProcess).ShouldNotBeNull();
+        profile.Shortcuts.Count.ShouldBe(3);
+        ShortcutCompleteness
+            .Evaluate(profile.Shortcuts[0])
+            .ShouldBe(CompletenessIssue.MissingKeys, "the editor asks for its keys; it never runs");
+    }
+
+    [Fact]
+    [Trait("Req", "PLA-016")]
     public void A_row_that_is_already_in_keeps_its_keys_and_another_preview_starts_clean()
     {
         var harness = Harness();
