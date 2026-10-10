@@ -1131,6 +1131,246 @@
         "es": "Alarga la confirmación de dos toques y lo que duran los avisos: ×1, ×2 o ×3.",
         "en": "Lengthens the two-tap confirmation and how long notices stay: ×1, ×2 or ×3."
       }
+    },
+    "shortcutsN": {
+      "notes": "Número de atajos de una plantilla o de un perfil, con plural, sin concatenar el número y [shortcutsW] (PLA-012, PLA-014, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "timeMultiplierD",
+      "plural": {
+        "es": { "one": "{count} atajo", "other": "{count} atajos" },
+        "en": { "one": "{count} shortcut", "other": "{count} shortcuts" }
+      }
+    },
+    "installSelN": {
+      "notes": "Botón final de la vista previa, «Instalar N atajos», con plural y sin concatenar [installSel], el número y [shortcutsW] (PLA-017, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "shortcutsN",
+      "plural": {
+        "es": { "one": "Instalar {count} atajo", "other": "Instalar {count} atajos" },
+        "en": { "one": "Install {count} shortcut", "other": "Install {count} shortcuts" }
+      }
+    },
+    "createWithN": {
+      "notes": "Botón final de la vista previa de una propuesta de la IA, con plural y sin concatenar [createWith], el número y [shortcutsW] (PLA-017, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "installSelN",
+      "plural": {
+        "es": { "one": "Crear perfil con {count} atajo", "other": "Crear perfil con {count} atajos" },
+        "en": { "one": "Create profile with {count} shortcut", "other": "Create profile with {count} shortcuts" }
+      }
+    },
+    "dupSummaryN": {
+      "notes": "Nombre accesible del contador de repetidos del menú, con plural y sin concatenar el número y [dupSummary] (CCM-002, REP-003, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "createWithN",
+      "plural": {
+        "es": { "one": "{count} combinación repetida entre perfiles", "other": "{count} combinaciones repetidas entre perfiles" },
+        "en": { "one": "{count} combo repeated across profiles", "other": "{count} combos repeated across profiles" }
+      }
+    },
+    "dupReviewN": {
+      "notes": "Chip de repetidos de «Tu panel muestra», con plural y sin concatenar el número, [dupSummary] y [review] (ATJ-001, REP-003, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "dupSummaryN",
+      "plural": {
+        "es": { "one": "{count} combinación repetida entre perfiles · Revisar", "other": "{count} combinaciones repetidas entre perfiles · Revisar" },
+        "en": { "one": "{count} combo repeated across profiles · Review", "other": "{count} combos repeated across profiles · Review" }
+      }
+    },
+    "activeCount": {
+      "notes": "Detalle del chip del perfil de la app activa en «Tu panel muestra», «n · [activeApp]» sin concatenar (ATJ-001, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "dupReviewN",
+      "text": {
+        "es": "{count} · app activa",
+        "en": "{count} · active app"
+      }
+    },
+    "opensWithApps": {
+      "notes": "Subtítulo del perfil en Atajos, «[opensWith] {procesos}» sin concatenar (ATJ-003, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "activeCount",
+      "text": {
+        "es": "Se activa solo al abrir {process}",
+        "en": "Switches on when you open {process}"
+      }
+    },
+    "addedCountToProf": {
+      "notes": "Aviso al añadir los atajos que faltan de una plantilla, con plural (PLA-013, PLA-017, IDI-004). Antes usaba [addedToProf] con el número en lugar del nombre. Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "opensWithApps",
+      "plural": {
+        "es": { "one": "Añadido {count} atajo a {profile}", "other": "Añadidos {count} atajos a {profile}" },
+        "en": { "one": "Added {count} shortcut to {profile}", "other": "Added {count} shortcuts to {profile}" }
+      }
+    },
+    "columnsN": {
+      "notes": "Tarjeta de «Columnas» en General, con plural y sin concatenar el número y [columns] (GEN-008, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "addedCountToProf",
+      "plural": {
+        "es": { "one": "{count} columna", "other": "{count} columnas" },
+        "en": { "one": "{count} column", "other": "{count} columns" }
+      }
+    },
+    "settingOption": {
+      "notes": "Nombre accesible de una opción de un ajuste, «{ajuste}: {opción}», sin concatenar (GEN-006, GEN-010, ACC-001, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "columnsN",
+      "text": {
+        "es": "{setting}: {name}",
+        "en": "{setting}: {name}"
+      }
+    },
+    "recordedKeys": {
+      "notes": "Aviso al terminar de grabar con teclado, «[recorded]: {teclas}» sin concatenar (EDI-010, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "settingOption",
+      "text": {
+        "es": "Combinación grabada: {keys}",
+        "en": "Combo recorded: {keys}"
+      }
+    },
+    "blockedAltLock": {
+      "notes": "Aviso de combinación bloqueada con alternativa: un Pulsar de Win+L ejecuta la acción de sistema «Bloquear equipo» (EDI-007, EJE-014, `blocked-combos.json`). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "recordedKeys",
+      "text": {
+        "es": "Windows no permite enviar esta combinación desde una app. En su lugar, al tocar el botón Clícalo bloquea el equipo con la acción de sistema.",
+        "en": "Windows won’t let an app send this combo. Instead, tapping the button makes Clícalo lock the computer with the system action."
+      }
+    },
+    "programsInstalled": {
+      "notes": "Título de la lista de programas instalados de «Elegir programa», bajo las apps abiertas (EDI-014). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "blockedAltLock",
+      "text": {
+        "es": "Programas instalados",
+        "en": "Installed programs"
+      }
+    },
+    "changeKeys": {
+      "notes": "Botón de una fila de la vista previa que abre el recuadro de combinación para cambiar sus teclas antes de instalar (PLA-016). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "programsInstalled",
+      "text": {
+        "es": "Cambiar teclas",
+        "en": "Change keys"
+      }
+    },
+    "updateVariantEs": {
+      "notes": "Botón de la vista previa de una plantilla instalada: pone en los atajos instalados las teclas de la variante en español (EC-PLA-04). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "changeKeys",
+      "text": {
+        "es": "Actualizar a la variante en español",
+        "en": "Update to the Spanish variant"
+      }
+    },
+    "updateVariantEn": {
+      "notes": "Botón de la vista previa de una plantilla instalada: pone en los atajos instalados las teclas de la variante en inglés (EC-PLA-04). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updateVariantEs",
+      "text": {
+        "es": "Actualizar a la variante en inglés",
+        "en": "Update to the English variant"
+      }
+    },
+    "variantUpdatedN": {
+      "notes": "Aviso tras «Actualizar a la variante», con deshacer (EC-PLA-04, IDI-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "updateVariantEn",
+      "plural": {
+        "es": { "one": "Actualizado {count} atajo de {profile}", "other": "Actualizados {count} atajos de {profile}" },
+        "en": { "one": "Updated {count} shortcut in {profile}", "other": "Updated {count} shortcuts in {profile}" }
+      }
+    },
+    "secAi": {
+      "notes": "Título de la tarjeta de IA de General (GEN-015). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "variantUpdatedN",
+      "text": {
+        "es": "Inteligencia artificial",
+        "en": "Artificial intelligence"
+      }
+    },
+    "aiUse": {
+      "notes": "Interruptor de la tarjeta de IA de General: activar o desactivar la IA (GEN-015, PLA-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "secAi",
+      "text": {
+        "es": "Usar la IA para crear atajos",
+        "en": "Use AI to create shortcuts"
+      }
+    },
+    "aiUseD": {
+      "notes": "Descripción del interruptor de IA de General (GEN-015, PLA-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "aiUse",
+      "text": {
+        "es": "Es «Crear con IA», en Plantillas. Si la desactivas, no se envía nada.",
+        "en": "It’s “Create with AI”, in Templates. When it’s off, nothing is sent."
+      }
+    },
+    "consentGiven": {
+      "notes": "Estado del consentimiento de la IA en General: dado (GEN-015, PLA-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "aiUseD",
+      "text": {
+        "es": "Consentimiento dado",
+        "en": "Consent given"
+      }
+    },
+    "consentNotGiven": {
+      "notes": "Estado del consentimiento de la IA en General: sin dar (GEN-015, PLA-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "consentGiven",
+      "text": {
+        "es": "Sin consentimiento: se te pedirá antes de generar",
+        "en": "No consent: you’ll be asked before generating"
+      }
+    },
+    "consentRevoke": {
+      "notes": "Botón que revoca el consentimiento de la IA en General (GEN-015, PLA-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "consentNotGiven",
+      "text": {
+        "es": "Revocar consentimiento",
+        "en": "Withdraw consent"
+      }
+    },
+    "consentGive": {
+      "notes": "Botón que da el consentimiento de la IA en General (GEN-015, PLA-004). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "consentRevoke",
+      "text": {
+        "es": "Dar consentimiento",
+        "en": "Give consent"
+      }
+    },
+    "timesN": {
+      "notes": "Opción de los tiempos ajustables, «×1», «×2» o «×3» (ACC-006, IDI-002). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "consentGive",
+      "text": {
+        "es": "×{count}",
+        "en": "×{count}"
+      }
+    },
+    "autoReleaseTimed": {
+      "notes": "Explicación de [autoRelease] cuando el atajo se suelta solo al pasar el tiempo. Sustituye a [autoReleaseD], que prometía soltar siempre al cambiar de app (EDI-016, catálogo §9). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "timesN",
+      "text": {
+        "es": "Por seguridad, si la olvidas pulsada se suelta sola al pasar ese tiempo.",
+        "en": "For safety, if you forget it held it releases by itself after that time."
+      }
+    },
+    "autoReleaseNever": {
+      "notes": "Explicación de [autoRelease] cuando el tiempo es «Nunca»: no se suelta sola (EDI-016, GEN-012, catálogo §9). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "autoReleaseTimed",
+      "text": {
+        "es": "Con «Nunca» no se suelta sola al pasar el tiempo: suéltala tú o usa «Soltar todo».",
+        "en": "With “Never” it doesn’t release by itself over time: release it yourself or use “Release all”."
+      }
+    },
+    "autoReleaseSwitchOn": {
+      "notes": "Segunda línea de [autoRelease] con «Soltar al cambiar de app» activado en General (EDI-016, GEN-012, catálogo §9). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "autoReleaseNever",
+      "text": {
+        "es": "También se suelta al cambiar de app.",
+        "en": "It also releases when you switch apps."
+      }
+    },
+    "autoReleaseSwitchOff": {
+      "notes": "Segunda línea de [autoRelease] con «Soltar al cambiar de app» desactivado en General (EDI-016, GEN-012, catálogo §9). Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "autoReleaseSwitchOn",
+      "text": {
+        "es": "No se suelta al cambiar de app: «Soltar al cambiar de app» está desactivado en General.",
+        "en": "It doesn’t release when you switch apps: “Release when switching apps” is off in General."
+      }
+    },
+    "voiceNumsT": {
+      "notes": "Nombre único del ajuste de números de voz, «Números para voz», como [vh3], [voiceSay] y [voiceOff] (DIS-37, catálogo §9). Sustituye a [voiceNums]. Texto nuevo de M6 (centro de control), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "autoReleaseSwitchOff",
+      "text": {
+        "es": "Números para voz",
+        "en": "Numbers for voice"
+      }
     }
   },
   "retired": {
