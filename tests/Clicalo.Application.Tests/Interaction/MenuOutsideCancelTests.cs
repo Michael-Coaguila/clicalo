@@ -67,6 +67,9 @@ public sealed class MenuOutsideCancelTests
         _cancel.Apply(menuOpen: true, openedByFinger: false);
 
         _signals.MovePointerOutside();
+
+        // Every move of a mouse over another app raises the signal: nothing is queued for it.
+        _posted.ShouldBeEmpty();
         Run();
 
         _closed.ShouldBe(0);

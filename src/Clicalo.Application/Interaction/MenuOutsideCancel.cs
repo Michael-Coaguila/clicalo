@@ -19,7 +19,7 @@ public sealed class MenuOutsideCancel
     private readonly Action<Action> _post;
     private readonly Action _close;
     private bool _open;
-    private bool _pointerCancels;
+    private volatile bool _pointerCancels;
 
     /// <summary>Starts listening; nothing is watched until a menu opens.</summary>
     /// <param name="signals">Esc and the pointer outside Clícalo.</param>
@@ -61,7 +61,14 @@ public sealed class MenuOutsideCancel
             }
         });
 
-    private void OnPointerOutside(object? sender, EventArgs e) =>
+    private void OnPointerOutside(object? sender, EventArgs e)
+    {
+        // Raised for every move of the pointer over another app: nothing is posted unless a menu waits for it.
+        if (!_pointerCancels)
+        {
+            return;
+        }
+
         _post(() =>
         {
             if (_open && _pointerCancels)
@@ -69,4 +76,5 @@ public sealed class MenuOutsideCancel
                 _close();
             }
         });
+    }
 }
