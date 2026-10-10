@@ -8,15 +8,19 @@ using Clicalo.Application.Ports;
 using Clicalo.Application.Profiles;
 using Clicalo.Application.Store;
 using Clicalo.Application.UseCases.Editor;
+using Clicalo.Domain.Commands;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
 using Clicalo.Infrastructure.Catalogs;
+using Clicalo.Platform.Windows.Launch.InstalledApps;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.About;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Windowing;
 using Clicalo.UI.Wpf.Workspace;
 
 namespace Clicalo.App.Composition;
@@ -26,7 +30,9 @@ namespace Clicalo.App.Composition;
 /// the window is created the first time and then hidden and shown again; it comes to the front through a
 /// <see cref="LeaseKind.ControlCenter"/> lease and, when it closes, the foreground goes back to the app that was in
 /// front before it opened (CCM-004). It wires «Atajos» to the document, the language, the foreground and «Probar
-/// ahora», and keeps the status bar's message on show for its time (AVI-002, CCM-003).
+/// ahora», and keeps the status bar's message on show for its time (AVI-002, CCM-003). It opens where
+/// <see cref="ControlCenterPlacer"/> says: beside the panel on any monitor, and where it was left the last time,
+/// which it remembers in the document between restarts (CCM-001, D9).
 /// </summary>
 internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 {
@@ -52,7 +58,7 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
     private ForegroundLease? _lease;
     private ITimer? _noticeTimer;
     private ProcessName? _lastApp;
-    private Size? _size;
+    private bool _maximize;
     private bool _open;
     private bool _capturing;
 
@@ -137,6 +143,12 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 
     /// <summary>«Ver la bienvenida otra vez» of General (GEN-014), set before the window is first opened.</summary>
     public Action? OpenWelcome { get; set; }
+
+    /// <summary>
+    /// Shows a fixed notice in the panel, or clears it with null: «Probar ahora» says [switching] there while the
+    /// Control Center is hidden (PRB-004). Set before the window is first opened.
+    /// </summary>
+    public Action<Message?>? PanelNotice { get; set; }
 
     /// <summary>Whether «Probar ahora» is running: its app switches are not the user's (PRB-006). Any thread.</summary>
     public bool IsTrying => _tryNow.IsRunning;
@@ -229,9 +241,10 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 
         _open = false;
         StateChanged?.Invoke(this, EventArgs.Empty);
+        _viewModel?.Shortcuts.Editor.StopRecording();
         _shortcuts.Close();
         _profiles.CancelCapture();
-        _size = new Size(_window.ActualWidth, _window.ActualHeight);
+        RememberPlacement(_window);
         _window.Hide();
         var lease = _lease;
         _lease = null;
@@ -283,7 +296,21 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         if (!_open)
         {
             _open = true;
-            window.Place(SystemParameters.WorkArea, _panel(), _size);
+            var monitors = DisplayMonitors.Snapshot();
+            var panel = _panel();
+            var spot = ControlCenterPlacer.Plan(
+                monitors,
+                ControlCenterPlacer.FromWindowUnits(
+                    monitors,
+                    panel.IsEmpty ? 0 : panel.Left,
+                    panel.IsEmpty ? 0 : panel.Top,
+                    panel.IsEmpty ? 0 : panel.Width,
+                    panel.IsEmpty ? 0 : panel.Height
+                ),
+                _store.Current.Settings.ControlCenter
+            );
+            window.Place(spot);
+            _maximize = spot.Maximized;
             window.Show();
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -297,6 +324,29 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
                 )
                 .ConfigureAwait(true);
             _lease = result is LeaseResult.Granted granted ? granted.Lease : null;
+        }
+
+        if (_maximize && _lease is { IsActive: true })
+        {
+            // D9: it was left maximized. Maximizing activates the window, so it waits for the lease.
+            _maximize = false;
+            window.Maximize();
+        }
+    }
+
+    // CCM-001, D9: the size, the place and the monitor are remembered between restarts (document 1.1, ADR-0028).
+    private void RememberPlacement(ControlCenterWindow window)
+    {
+        var (bounds, maximized) = window.ReadPlacement();
+        if (bounds.IsEmpty)
+        {
+            return;
+        }
+
+        var placement = ControlCenterPlacer.Remember(DisplayMonitors.Snapshot(), bounds, maximized);
+        if (_store.Current.Settings.ControlCenter != placement)
+        {
+            _ = _store.Dispatch(new SetSetting(SettingPaths.ControlCenter, placement));
         }
     }
 
@@ -346,7 +396,9 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             System,
             _templates?.Services(Notify, () => _window),
             About?.Invoke(DictateAsync, Notify),
-            OpenWelcome
+            OpenWelcome,
+            Notify,
+            InstalledAppsReader.ListAsync
         );
         _viewModel = new ControlCenterViewModel(services, () => _ = CloseAsync());
         if (_viewModel.System is { } system)
@@ -385,16 +437,28 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             && library.TryGetProfile(list.Id, out var profile)
                 ? profile
                 : null;
-        var (outcome, lease) = await _tryNow
-            .RunAsync(
-                shortcut,
-                origin?.Id,
-                (origin ?? library.General).Injection,
-                target,
-                this,
-                cancellationToken
-            )
-            .ConfigureAwait(true);
+        // PRB-004: the fixed notice [switching] shows in the panel while the Control Center is hidden.
+        PanelNotice?.Invoke(L.Switching(app: target.Name));
+        TryNowOutcome outcome;
+        ForegroundLease? lease;
+        try
+        {
+            (outcome, lease) = await _tryNow
+                .RunAsync(
+                    shortcut,
+                    origin?.Id,
+                    (origin ?? library.General).Injection,
+                    target,
+                    this,
+                    cancellationToken
+                )
+                .ConfigureAwait(true);
+        }
+        finally
+        {
+            PanelNotice?.Invoke(null);
+        }
+
         if (lease is not null)
         {
             _lease = lease;
@@ -442,7 +506,13 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
                 _ = composer._ui.BeginInvoke(() => composer._viewModel?.ClearNotice());
             },
             this,
-            notice.CanUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration,
+            // ACC-006: the notices stay ×1, ×2 or ×3 as long, as General says.
+            (notice.CanUndo ? Timings.Notices.UndoNoticeDuration : Timings.Notices.NoticeDuration)
+                * Math.Clamp(
+                    _store.Current.Settings.TimeMultiplier,
+                    (int)SettingsSchema.TimeMultiplier.Min,
+                    (int)SettingsSchema.TimeMultiplier.Max
+                ),
             Timeout.InfiniteTimeSpan
         );
     }

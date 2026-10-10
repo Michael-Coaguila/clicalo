@@ -114,6 +114,12 @@ TOKEN_USER
 // actions
 // ---- Launch: apps and webs on the Shell thread, unelevated through the desktop shell when Clicalo is elevated ----
 ShellExecute
+SHCreateItemFromParsingName
+IShellItem
+IEnumShellItems
+BHID_EnumItems
+SIGDN
+CoTaskMemFree
 IShellWindows
 ShellWindows
 IShellFolderViewDual

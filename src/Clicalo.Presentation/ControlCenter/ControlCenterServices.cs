@@ -34,6 +34,10 @@ namespace Clicalo.Presentation.ControlCenter;
 /// <param name="Templates">The services of Plantillas and of sharing a profile; null where there are none.</param>
 /// <param name="About">The services of «Acerca de y contacto» (docs/05 §6); null shows its marker.</param>
 /// <param name="OpenWelcome">«Ver la bienvenida otra vez» of General (GEN-014); null where there is no welcome.</param>
+/// <param name="Notify">Shows a message in the status bar for its time (CCM-003); null where there is no bar.</param>
+/// <param name="InstalledPrograms">
+/// Reads the programs installed, Store apps included, for «Elegir programa» (EDI-014); null where they cannot be read.
+/// </param>
 public sealed record ControlCenterServices(
     DocumentStore Store,
     ShortcutsWorkspace Shortcuts,
@@ -52,5 +56,7 @@ public sealed record ControlCenterServices(
     SystemServices? System = null,
     TemplatesServices? Templates = null,
     AboutServices? About = null,
-    Action? OpenWelcome = null
+    Action? OpenWelcome = null,
+    Action<WorkspaceNotice>? Notify = null,
+    Func<CancellationToken, ValueTask<ImmutableArray<InstalledProgram>>>? InstalledPrograms = null
 );

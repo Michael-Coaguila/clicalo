@@ -385,9 +385,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
 
     private LayoutModel Layout(UserSettings settings)
     {
-        var culture = _s.Localization.Current.Locale.Culture;
         var rowsTitle = T(L.RowsVis);
-        var columnsWord = T(L.Columns).ToLower(culture);
         var autoRows = settings.Size == PanelSize.Small ? 2 : 3;
         return new LayoutModel(
             T(L.SecLayout),
@@ -403,7 +401,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                         return new SettingOption<int>(
                             rows,
                             label,
-                            rowsTitle + ": " + label,
+                            T(L.SettingOption(setting: rowsTitle, name: label)),
                             settings.RowsPreference == rows,
                             rows == 0 ? autoRows : rows
                         );
@@ -419,8 +417,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                     .Range((int)SettingsSchema.Columns.Min, 3)
                     .Select(columns =>
                     {
-                        var label =
-                            columns.ToString(CultureInfo.InvariantCulture) + " " + columnsWord;
+                        var label = T(L.ColumnsN(columns));
                         return new SettingOption<int>(
                             columns,
                             label,
@@ -495,7 +492,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                     return new SettingOption<int>(
                         count,
                         label,
-                        perPageTitle + ": " + label,
+                        T(L.SettingOption(setting: perPageTitle, name: label)),
                         dock.PerPage == count
                     );
                 }),
