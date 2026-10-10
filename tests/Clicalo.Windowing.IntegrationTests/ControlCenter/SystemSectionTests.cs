@@ -262,7 +262,12 @@ public sealed class SystemSectionTests
             card.Title.ShouldBe("Hoy, 11:00");
             card.Replace.ShouldBe("Restaurar");
             card.Review.Select(r => r.Name).ShouldBe(["Clima", "Bloc"]);
-            notices.Select(n => n.Icon).ShouldBe(["backup"], "nothing was restored yet");
+            notices
+                .Select(n => n.Icon)
+                .ShouldBe(
+                    ["backup", "shield"],
+                    "nothing was restored yet: the review is announced"
+                );
 
             system.ImportReplace();
             WpfThread.DrainPendingWork();

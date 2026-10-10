@@ -393,6 +393,7 @@ public sealed class SystemSectionViewModel : ObservableObject
                         ClearReview();
                         _restore = new RestoreReview(id, backup);
                         _pending = pending;
+                        Notify(L.RiskyReviewT, "shield", warning: true);
                         return;
                     }
 
@@ -986,12 +987,7 @@ public sealed class SystemSectionViewModel : ObservableObject
             new UninstallModel(
                 T(L.UninstallT),
                 canUninstall ? T(L.UninstallD) : T(L.UninstallNotInstalled),
-                new SwitchModel(
-                    "delete_forever",
-                    T(L.UninstallWipe),
-                    T(L.UninstallWipeD),
-                    _deleteData
-                ),
+                new SwitchModel("warning", T(L.UninstallWipe), T(L.UninstallWipeD), _deleteData),
                 uninstallArmed ? T(L.ConfirmB) : T(L.UninstallBtn),
                 uninstallArmed,
                 canUninstall && !_busy

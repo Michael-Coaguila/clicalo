@@ -397,7 +397,7 @@ public sealed class AboutSectionView : Border
             Ui.Caption(screen.DirectTitle),
             card,
             LinkRow(
-                "menu_book",
+                "help",
                 screen.GuideTitle,
                 screen.GuideDescription,
                 "about.guide",

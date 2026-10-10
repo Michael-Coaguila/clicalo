@@ -338,7 +338,7 @@ public sealed class WelcomeWindow : Window
             }
         }
 
-        Add(note.ChangesTitle, note.Changes, "sync_alt", ColorToken.Accent);
+        Add(note.ChangesTitle, note.Changes, "swap_horiz", ColorToken.Accent);
         Add(note.KeptTitle, note.Kept, "lock", ColorToken.Muted);
         var card = Ui.Card(column, ColorToken.Card, null, 12, new Thickness(14, 12, 14, 12));
         AutomationProperties.SetLiveSetting(card, AutomationLiveSetting.Polite);

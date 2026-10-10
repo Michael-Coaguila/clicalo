@@ -374,7 +374,7 @@ public sealed class SystemSectionView : Border
             Ui.Text("· " + model.Format, 12, ink: ColorToken.Muted)
         );
         var column = Ui.Column(10, folder);
-        if (model.ImportCard is { } import)
+        if (model.ImportCard is { CanMerge: true } import)
         {
             column.Children.Add(Spaced(Import(import)));
         }
@@ -407,8 +407,8 @@ public sealed class SystemSectionView : Border
             Ui.IconLabel("download", model.Import, 18, 14, bold: false),
             model.Import,
             _viewModel.Import,
-            model.ImportCard is null ? null : ColorToken.AccentWash,
-            stroke: model.ImportCard is null ? ColorToken.Border : ColorToken.Accent,
+            model.ImportCard is { CanMerge: true } ? ColorToken.AccentWash : null,
+            stroke: model.ImportCard is { CanMerge: true } ? ColorToken.Accent : ColorToken.Border,
             height: 48
         );
         foreach (var button in new[] { now, export, importButton })
@@ -443,6 +443,14 @@ public sealed class SystemSectionView : Border
             )
         );
         column.Children.Add(Spaced(Caption(model.History)));
+        if (model.ImportCard is { CanMerge: false } review)
+        {
+            // LOG-008: the review of the backup being restored opens next to the history it belongs to, in view.
+            var card = Import(review);
+            card.Loaded += (_, _) => card.BringIntoView();
+            column.Children.Add(Spaced(card));
+        }
+
         if (model.Rows.IsEmpty)
         {
             column.Children.Add(
@@ -544,7 +552,7 @@ public sealed class SystemSectionView : Border
     {
         var note = Ui.Row(
             6,
-            Ui.Icon("gpp_maybe", 16, ColorToken.Warn),
+            Ui.Icon("shield", 16, ColorToken.Warn),
             Ui.Text(import.ReviewNote, 13, wrap: true)
         );
         var rows = Ui.Column(6, note);
