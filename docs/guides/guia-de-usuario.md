@@ -150,7 +150,8 @@ Clícalo tiene un icono en la bandeja de Windows, junto al reloj. Su menú tiene
 - Pausar y reanudar. Al pausar, el panel se oculta, se suelta todo y no se envía nada.
 - «Salir». Antes de salir, suelta todo.
 
-Un toque en el icono, sin abrir el menú, muestra u oculta el panel.
+Un toque en el icono, sin abrir el menú, muestra u oculta el panel. Con el panel oculto o en pausa, el icono se
+ve atenuado.
 
 ### Recuperar el panel
 

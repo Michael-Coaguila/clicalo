@@ -38,8 +38,8 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
 | D-26 | Formas del panel, Pestaña, burbuja y atenuado | Burbuja y Pestaña en `PanelSession`, `InteractionState` en Domain, monitor por `monitorDevicePath` (§6.4, §3.7) | `InteractionStore` en Application con la burbuja, la barra, la guía, la cola de avisos y la búsqueda temporal; `PanelForms` puro; monitor por nombre de dispositivo; asa por monitor y lado desde M6 | M3 |
 | D-27 | Capas del panel e integración de M3 | Menú de toque largo y Ajustes rápidos como ventanas hijas (§8.1) | Dibujados dentro del panel; una capa primaria en `PanelComposer`; asa de la Pestaña con margen táctil (con su sombra desde M6) | M3 |
 | D-28 | Efectos laterales de «Probar ahora» | `SuppressSwitchHandling(3 s, token)` en el motor y `ForegroundClassifier` (§3.6, §7.9) | `ActivationOrigin.TryNow` en la activación y `ForegroundChangeCoordinator.IsTrying` mientras dura la prueba | M4 |
-| D-29 | Verbos `cl states` y `cl accept` | Dos verbos de `cl`: instantáneas de todos los estados y acompañamiento de la aceptación en hardware (§10.1, §13) | No se construyen: las vistas previas sin pantalla cubren los estados y `docs/guides/aceptacion-manual.md` es el guion; `cl trace` sí existe y escribe `artifacts/cl/trace.md` | M6 |
-| D-30 | Integración de M6 | Avisos en `Domain.Interaction` (§6.4); menú de la ficha con Esc y «tocar fuera»; Shell y WMI solo en el hilo Shell (§3.2); copia `pre-reset` y componente de sistema al desinstalar (§9.3); menú de bandeja sin Pausar (§8.1) | Cola de avisos en `Application.Interaction` y publicada por `PanelComposer`; el menú de la Pestaña se cierra sin Esc ni «tocar fuera»; programas instalados en un hilo STA propio; «Empezar de cero» guarda `pre-restore`; desinstalación según ADR-0029; Pausar y atajo global en `TrayController` | M6 |
+| D-29 | Verbos `cl states`, `cl accept` y `cl pr` | Tres verbos de `cl`: instantáneas de todos los estados, acompañamiento de la aceptación en hardware y abrir el PR (§10.1, §13) | No se construyen: las vistas previas sin pantalla cubren los estados, `docs/guides/aceptacion-manual.md` es el guion y el PR se abre desde GitHub; `cl trace` sí existe y escribe `artifacts/cl/trace.md` | M6 |
+| D-30 | Integración de M6 | Avisos en `Domain.Interaction` (§6.4); menú de la ficha con Esc y «tocar fuera»; Shell y WMI solo en el hilo Shell (§3.2); copia `pre-reset` y componente de sistema al desinstalar (§9.3); menú de bandeja sin Pausar (§8.1) | Cola de avisos en `Application.Interaction` y publicada por `PanelComposer`; el menú de la Pestaña se cancela con Esc (`RegisterHotKey` temporal) y con un toque de dedo en otra app, sin ganchos; programas instalados en un hilo STA propio; «Empezar de cero» guarda `pre-restore`; desinstalación según ADR-0029; Pausar y atajo global en `TrayController` | M6 |
 
 ## D-01 · Verify sustituido por un comparador propio en TestKit
 
@@ -825,6 +825,9 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     vez de sus resultados (no necesita compilar ni ejecutar, y da lo mismo en cualquier equipo) y escribe en
     `artifacts/cl/trace.md` en vez de en `docs/requirements/traceability.md` (un archivo generado no se versiona ni
     se edita). Un MUST sin prueba que el guion manual nombra figura como «solo en el guion manual».
+  - `cl pr`, que §13 lista entre los verbos, **tampoco se construye** y ya no figura como previsto: responde
+    «orden desconocida». El PR se abre desde GitHub, cuyo formulario ya trae la plantilla, y `cl check` y
+    `cl note` cubren lo que el verbo habría encadenado.
 - **Motivo.** Simplicidad (decisión del usuario del 2026-10-09 para cerrar la 2.0): una matriz de instantáneas
   aprobadas y un asistente interactivo de aceptación son dos herramientas más que mantener para una sola persona, y
   lo que aportan ya lo dan las vistas previas y un guion que se lee con Narrador.
@@ -842,7 +845,8 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   [§8.1](blueprint.md#81-superficies-y-ventanas) describe el menú de bandeja sin Pausar ni atajo global;
   [§7.9](blueprint.md#79-cambio-de-app-de-extremo-a-extremo-per-003) no prevé volver a mirar una app de la Tienda;
   [§9.3](blueprint.md#93-actualizaciones) desinstala el componente de sistema y guarda una copia `pre-reset` al
-  empezar de cero. El catálogo (CUA-014) cancela el menú de la ficha con Esc o al tocar fuera.
+  empezar de cero. El catálogo (CUA-014) cancela el menú de la ficha con Esc o al tocar fuera, y §8.1 cierra las
+  ventanas al costado al tocar fuera con un `WH_MOUSE_LL` temporal.
 - **Repositorio.**
   - **Avisos.** `NoticeQueue` vive en `Application.Interaction` (dentro de `InteractionState`, como en D-26) y solo
     cambia con `InteractionReducer`. `PanelComposer` publica el aviso en curso con `NoticePublished`; el panel, la
@@ -850,9 +854,19 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     `ControlCenterComposer.OnPanelNotice`) pintan ese mismo aviso. Los avisos propios del Centro de control no entran
     en la cola: duran su tiempo en la barra de estado y después vuelve el aviso del panel.
   - **Menú de la ficha en la Pestaña (CUA-014).** Se abre en `DockMenuWindow`, al costado de la barra, y se cierra con
-    una fila, [cancel], un toque en otro atajo, un cambio de perfil, página o app, o al cerrar la barra. No hay Esc
-    ni «tocar fuera»: esas ventanas nunca toman el foco (REG-01) y no reciben teclas ni los toques sobre otras apps.
-    En Completa y Compacta el menú no cambia (D-27).
+    una fila, [cancel], un toque en otro atajo o en otro botón de la barra o de «Fijos», un cambio de perfil, página
+    o app, o al cerrar la barra. Esas ventanas nunca toman el foco (REG-01) y no reciben teclas ni los toques sobre
+    otras apps, así que Esc y «tocar fuera» llegan por la plataforma (`Application.Interaction.MenuOutsideCancel`
+    sobre el puerto `IMenuCancelSignals`), sin ningún gancho de teclado ni de mouse (D8 aplazó FIJ-007 por el riesgo
+    de un gancho global, y no existe el hilo Hook):
+    - **Esc** es un `RegisterHotKey` de la tecla sola en el hilo SysEvents (`MenuEscapeHotkey`), registrado solo
+      mientras el menú se ve. Mientras tanto Esc no llega a la app de delante, como en cualquier menú. Si otro
+      programa ya lo tiene, el registro falla y el menú conserva sus otras salidas.
+    - **Tocar fuera** es el evento `MovedOutside` del `PointerPositionTracker` de EJE-009 (WinEvent del cursor): el
+      puntero fue a otro punto fuera de las ventanas de Clícalo. Solo cancela un menú abierto con un toque largo de
+      dedo, porque un mouse o un lápiz pasan sobre otras apps al ir del atajo al menú.
+    En Completa y Compacta el menú no cambia (D-27): se dibuja dentro del panel, y allí «tocar fuera» es tocar el
+    resto del panel.
   - **Programas instalados (EDI-014).** `Platform.Windows/Launch/InstalledApps` lee `shell:AppsFolder` en un hilo STA
     propio y corto, no en el hilo Shell; resuelve las carpetas conocidas con `SHGetKnownFolderPath`, descarta con
     `File.Exists` las entradas sin archivo y solo ofrece lo que `LaunchSafety` permite abrir. No lee el contenido de
@@ -862,7 +876,17 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
   - **Bandeja (BUR-003 a BUR-005).** El menú tiene Pausar/Reanudar; la pausa es el evento terminal
     `TerminalReason.Pause`, sobrevive a un fallo del motor y se quita cuando el panel vuelve a mostrarse. El atajo
     global opcional (`RegisterHotKey`) vive en `TrayController`, en el hilo SysEvents, y pide lo mismo que un clic en
-    el icono: nunca el primer plano. `AppHost` lo conecta con `PanelComposer.AttachTray`.
+    el icono: nunca el primer plano. `AppHost` lo conecta con `PanelComposer.AttachHotkey`, y lo que une el panel
+    con la bandeja y con el Centro de control está en `App/Composition/PanelLinks`, para probarlo sin lanzar la app.
+    El icono es el de Clícalo (`assets/icons`, dibujado por `app-icon` de `tools/Clicalo.DevCli` y embebido en
+    `Platform.Windows`), y se muestra al 55 % con el panel oculto o en pausa (BUR-003, BUR-004); si no se pudiera
+    crear, queda el icono genérico de Windows. El mismo archivo es el icono del ejecutable y del instalador.
+  - **Atajo armado y toque ignorado en la Pestaña (EJE-002, TAC-003).** El aviso al armar lleva el nombre del
+    atajo, y la barra y «Fijos» muestran el borde de aviso del atajo armado y el contorno del toque ignorado con
+    las reglas del panel (`DockTileModes`, `IIgnoredTouchState`).
+  - **Mantener en una zona que se desplaza (TAC-004, REG-03).** `TouchTarget.InScrollZone` hace que un Mantener
+    espere `Timings.Touch.HoldInScrollDelay` sin pasar el umbral de arrastre antes de pulsar; el plano no lo
+    distinguía. Solo «Fijos» lo marca, cuando se desplaza.
   - **Primer plano (PER-002, CAT-007).** Si el marco `ApplicationFrameHost.exe` llega al frente antes que su app, se
     vuelve a buscar la app con el sondeo acotado `Timings.Foreground.HostedAppRecheck` (3,85 s en total) y se publica
     de nuevo como un cambio de app. De `explorer.exe` solo cuentan como app las ventanas de carpeta.
@@ -874,11 +898,15 @@ Cada entrada dice qué pide el plano, qué hace el repositorio, por qué, qué c
     previa queda en `pre-restore` («Antes de un cambio grande») y no en `pre-reset`.
 - **Motivo.** Lo más simple que cumple el catálogo sin un formato persistido ni un comando de dominio nuevos, y sin
   que ninguna superficie del panel tome el foco.
-- **Coste.** En la Pestaña, quien abre el menú de una ficha por error tiene que tocar [cancel] u otro atajo. Un aviso
-  propio del Centro de control no se ve en el panel. Tras «Empezar de cero», la copia anterior aparece entre las
-  copias «Antes de un cambio grande».
-- **Revisión.** Tras la 2.0: cerrar el menú de la Pestaña al tocar cualquier otra superficie de Clícalo, y recoger en
-  el plano (§7.3, §7.9, §8.1 y §9.3) lo que aquí se describe.
+- **Coste.** En la Pestaña, un menú abierto con mouse, lápiz o voz no se cancela con un clic en otra app: solo con
+  Esc, [cancel] u otro botón. El toque fuera depende de que Windows lleve el cursor al punto tocado (la premisa de
+  §7.11, la misma de EJE-009); si en alguna app no ocurre, el menú se queda abierto, sin cierres falsos. Con el menú
+  abierto, Esc no llega a la app de delante, tampoco el que envíe una macro en curso. El menú del panel en Completa
+  y Compacta sigue sin Esc ni toque en otra app. Un aviso propio del Centro de control no se ve en el panel. Tras
+  «Empezar de cero», la copia anterior aparece entre las copias «Antes de un cambio grande». La geometría del
+  logotipo está en dos sitios (`BrandMark` y `app-icon`): si cambia, se cambian los dos.
+- **Revisión.** Tras la 2.0: decidir con FIJ-007 si un gancho temporal de mouse cierra también el menú abierto con
+  mouse o lápiz, y recoger en el plano (§7.3, §7.9, §8.1 y §9.3) lo que aquí se describe.
 
 ## Puntos del plano pendientes de resolver
 

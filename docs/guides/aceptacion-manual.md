@@ -135,6 +135,12 @@ Con el dedo, en el equipo táctil. Estas cosas no se pueden simular bien.
 | 8.10 | Con un temblor o un toque impreciso reales, prueba «Temblor leve» y «Temblor fuerte» en la «Zona de prueba» y en el panel | El filtro perdona lo que promete: no hay dobles toques ni toques perdidos | TAC-001, TAC-005 |
 | 8.11 | Abre una carpeta en el Explorador, y después toca el escritorio y la barra de tareas | El perfil del Explorador solo aparece con la ventana de carpeta | CAT-007 |
 | 8.12 | Si hay un teclado a mano: Esc con un menú del panel abierto, con el foco en un campo y con el Centro de control abierto | Cierra el menú, sale del campo y cierra el Centro de control, en ese orden. En la bienvenida, Esc no la cierra | PAN-010 |
+| 8.13 | Vista «Pestaña»: abre el menú de un botón con un toque largo y toca otra app. Ábrelo otra vez y, si hay un teclado a mano, pulsa Esc. Después pulsa Esc en la app de delante | El menú se cierra las dos veces y la app de delante sigue delante. Con el menú ya cerrado, Esc vuelve a llegar a la app | CUA-014, REG-01 |
+| 8.14 | Mira el icono de Clícalo junto al reloj con el panel visible, con el panel oculto y en pausa. Si puedes, con la pantalla al 100 % y al 150 o 200 % | Es el icono de Clícalo, nítido. Con el panel oculto o en pausa se ve atenuado y su texto lo dice | BUR-003, BUR-004 |
+| 8.15 | Mira el icono de `Setup.exe`, el de Clícalo en el menú Inicio y el de Configuración › Aplicaciones | Es el icono de Clícalo en los tres | BUR-003, NFR-010 |
+| 8.16 | Vista «Pestaña» con tantos «Fijos» que su ventana se desplace: desliza empezando sobre un «Mantener». Después deja el dedo quieto sobre él | Al deslizar se desplaza y no se pulsa nada. Con el dedo quieto, mantiene; al levantar, suelta | TAC-004, EJE-004, REG-03 |
+| 8.17 | Vista «Pestaña» arriba y abajo, en S, M y L: mira la barra, el candado, «Auto» y «Fijos». Repite en los lados | Nada se corta. La barra queda a 12 px del borde y se ve entera | PES-005, PES-007, PES-008 |
+| 8.18 | En pausa, abre el Centro de control desde el icono junto al reloj y entra en «Probar» de un atajo | El Centro de control se abre y Clícalo sigue en pausa. La tarjeta lo explica y su botón es «Reanudar»; al tocarlo vuelve el panel | BUR-004 |
 
 ## 9. Alto contraste, pantallas y escala
 
