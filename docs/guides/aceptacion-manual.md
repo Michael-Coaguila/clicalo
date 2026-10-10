@@ -100,7 +100,7 @@ en toda esta parte.**
 |---|---|---|---|
 | 6.1 | Di «mostrar números» con el panel visible | Cada botón del panel tiene su número de Windows | REG-06 |
 | 6.2 | Di «clic» y el nombre de un botón, por ejemplo «clic Negrita», con Word delante | El atajo llega a Word. Word sigue delante | REG-06, REG-01 |
-| 6.3 | Activa «Números para control por voz» y di «clic 4» | Se ejecuta el botón que muestra el 4. La numeración sigue en la página siguiente | ACC-009, ACC-010 |
+| 6.3 | Activa «Números para voz» y di «clic 4» | Se ejecuta el botón que muestra el 4. La numeración sigue en la página siguiente | ACC-009, ACC-010 |
 | 6.4 | Oculta el panel y di «clic Clícalo» | El panel vuelve | BUR-005 |
 | 6.5 | Minimiza a burbuja y recupéralo con la voz y, otra vez, con el dedo | Vuelve las dos veces | BUR-001, BUR-005 |
 | 6.6 | Recorrido completo, solo con dedo y voz: repite la bienvenida, crea un perfil vacío, crea un atajo de cada uno de los ocho tipos, vincula el perfil a una app y prueba un atajo con «Probar ahora en…» | Todo se puede hacer. En ningún paso hace falta un teclado | REG-05 |

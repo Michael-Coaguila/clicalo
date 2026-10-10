@@ -136,7 +136,7 @@ Clícalo recuerda dónde dejaste el panel y la pestaña en cada pantalla.
 
 El engranaje abre una hoja corta con lo que más se cambia: «Centro de control», «Vista», «Opacidad», «Tamaño»
 (S, M o L), «Lado de la pestaña», «Tema» (Auto, Oscuro, Claro y Alto contraste) y cuatro interruptores: «Modo
-prueba (30 s)», atenuar el panel cuando no lo usas, «Teclas fijas» y «Números para control por voz».
+prueba (30 s)», atenuar el panel cuando no lo usas, «Teclas fijas» y «Números para voz».
 
 En «Modo prueba» tocas botones para ver si el toque cuenta. No se envía nada.
 
@@ -394,7 +394,7 @@ clave».
 Acceso por voz viene con Windows 11. En Windows 10 se usa el Reconocimiento de voz de Windows.
 
 - **Por nombre.** Di «clic» y el nombre del botón: «clic Copiar», «clic Negrita», «clic Soltar todo».
-- **Por número.** Activa «Números para control por voz» en «Ajustes rápidos». Cada botón muestra un número. Di
+- **Por número.** Activa «Números para voz» en «Ajustes rápidos». Cada botón muestra un número. Di
   «clic 4».
 - **Con los números de Windows.** Di «mostrar números» y después el número.
 - **Para traer el panel.** Di «clic Clícalo».
