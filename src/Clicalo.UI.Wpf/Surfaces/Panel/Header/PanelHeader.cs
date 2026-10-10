@@ -287,6 +287,8 @@ public sealed class PanelHeader : Border
             vm.QuickSettingsName,
             vm.IsQuickSettingsOpen ? ButtonAppearance.Neutral : ButtonAppearance.Ghost
         );
+        // ACC-001: «Ajustes rápidos» opens and closes its sheet, and says which.
+        _quick.IsExpanded = vm.IsQuickSettingsOpen;
         Configure(_minimize, vm.HasMinimize, vm.MinimizeName, ButtonAppearance.Ghost);
     }
 

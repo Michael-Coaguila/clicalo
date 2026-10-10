@@ -603,6 +603,15 @@ public sealed class DockBarWindow : TouchSurface
             : state?.Frequents == true ? ButtonAppearance.Ghost
             : ButtonAppearance.Accent;
         SurfaceParts.Name(_profile, labels.SwitchProfile);
+
+        // ACC-001: what opens a window beside the bar is an ExpandCollapse with its state, and what switches a state
+        // (Auto/Fixed, the lock) a Toggle, so UI Automation hears it and not only the color tells it.
+        _profile.IsExpanded = pickerOpen;
+        _pinned.IsExpanded = state?.Flyout == DockFlyout.Pinned;
+        _sticky.IsExpanded = state?.Flyout == DockFlyout.Sticky;
+        _tune.IsExpanded = state?.QuickOpen == true;
+        _pill.IsOn = state?.IsFixed == true;
+        _lock.IsOn = state?.Dock.PinOpen == true;
         _pill.Symbol = vm.AutoFixedIcon;
         _pill.Content = vm.AutoFixedLabel;
         _pill.Appearance =
