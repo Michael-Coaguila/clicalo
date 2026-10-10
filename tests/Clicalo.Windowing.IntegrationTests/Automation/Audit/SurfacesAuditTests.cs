@@ -459,6 +459,71 @@ public sealed class SurfacesAuditTests
         });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "CAB-001")]
+    public void The_header_of_the_panel_is_read_from_left_to_right(bool titleOpensPicker)
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var world = new PanelWorld("es", time);
+            world.Header.ApplyPicker(titleOpensPicker, pickerOpen: false);
+            var window = new PanelWindow(
+                world.Panel,
+                lab.Registry,
+                time,
+                theme,
+                NoDim,
+                world.Header,
+                world.Search,
+                world.Suggestion,
+                world.Layers
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                var header = world.Header;
+                header.ShowsAutoFixed.ShouldBeTrue();
+                string[] expected =
+                [
+                    header.Title,
+                    header.AutoFixedName,
+                    header.SearchName,
+                    header.EditName,
+                    header.QuickSettingsName,
+                    header.MinimizeName,
+                ];
+                expected.ShouldAllBe(static name => name.Length > 0);
+                expected.Distinct(StringComparer.Ordinal).Count().ShouldBe(expected.Length);
+
+                // The names of the header as a screen reader meets them, each one once (the title is a text and,
+                // while it opens the profile grid, a button over it too).
+                var read = new List<string>();
+                foreach (var node in host.Snapshot("panel").DescendantsAndSelf())
+                {
+                    if (
+                        expected.Contains(node.Name, StringComparer.Ordinal)
+                        && !read.Contains(node.Name, StringComparer.Ordinal)
+                    )
+                    {
+                        read.Add(node.Name);
+                    }
+                }
+
+                read.ShouldBe(expected);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     [Fact]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-009")]

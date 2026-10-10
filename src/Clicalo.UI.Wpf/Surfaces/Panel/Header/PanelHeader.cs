@@ -155,21 +155,37 @@ public sealed class PanelHeader : Border
         _quick = HeaderButton("tune", width, height, () => _viewModel.QuickSettings());
         _minimize = HeaderButton("remove", width, height, () => _viewModel.Minimize());
 
-        var row = new DockPanel { LastChildFill = true };
-        foreach (
-            var right in new FrameworkElement[] { _minimize, _quick, _edit, _search, _autoFixed }
-        )
-        {
-            DockPanel.SetDock(right, Dock.Right);
-            row.Children.Add(right);
-        }
-
-        DockPanel.SetDock(_grip, Dock.Left);
-        row.Children.Add(_grip);
         var titleArea = new Grid();
         titleArea.Children.Add(_title);
         titleArea.Children.Add(_titleButton);
-        row.Children.Add(titleArea);
+
+        // REG-06: one column each, added from left to right, so UI Automation reads the header as it is seen: the
+        // title, Auto/Fixed, Search, Edit, Quick settings and Minimize. The title takes the width that is left.
+        var row = new Grid();
+        FrameworkElement[] cells =
+        [
+            _grip,
+            titleArea,
+            _autoFixed,
+            _search,
+            _edit,
+            _quick,
+            _minimize,
+        ];
+        for (var column = 0; column < cells.Length; column++)
+        {
+            row.ColumnDefinitions.Add(
+                new ColumnDefinition
+                {
+                    Width = ReferenceEquals(cells[column], titleArea)
+                        ? new GridLength(1, GridUnitType.Star)
+                        : GridLength.Auto,
+                }
+            );
+            Grid.SetColumn(cells[column], column);
+            row.Children.Add(cells[column]);
+        }
+
         Child = row;
 
         _viewModel.PropertyChanged += OnViewModelChanged;
