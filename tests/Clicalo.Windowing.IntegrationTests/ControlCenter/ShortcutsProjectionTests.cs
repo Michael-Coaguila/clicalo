@@ -94,6 +94,88 @@ public sealed class ShortcutsProjectionTests
     }
 
     [Fact]
+    [Trait("Req", "EDI-001")]
+    public void The_identity_shows_the_preview_tile_the_name_with_dictation_and_how_the_icon_is_chosen()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                var identity = section.Editor.Model.ShouldNotBeNull().Identity;
+                identity.Icon.ShouldBe("format_bold");
+                identity.TileName.ShouldBe("Negrita");
+                identity.Name.ShouldBe("Negrita");
+                identity.Placeholder.ShouldNotBeNullOrWhiteSpace();
+                identity.DictateName.ShouldBe("Dictar nombre");
+                identity.HintIcon.ShouldBe("auto_awesome", "the icon follows the name");
+                identity.PickerOpen.ShouldBeFalse();
+
+                section.Editor.TogglePicker();
+                section.Editor.PickIcon("save");
+                section.Refresh();
+
+                var model = section.Editor.Model.ShouldNotBeNull();
+                model.Picker.ShouldNotBeNull("touching the preview tile opens the icon picker");
+                model.Identity.PickerOpen.ShouldBeTrue();
+                model.Identity.Icon.ShouldBe("save");
+                model.Identity.HintIcon.ShouldBe("edit", "an icon chosen by hand");
+                string.Equals(model.Identity.Hint, identity.Hint, StringComparison.Ordinal)
+                    .ShouldBeFalse();
+
+                section.SelectTile(new ShortcutId("empty"));
+                section.Refresh();
+
+                var unnamed = section.Editor.Model.ShouldNotBeNull().Identity;
+                unnamed.Name.ShouldBeEmpty();
+                unnamed.TileName.ShouldNotBeNullOrWhiteSpace("the tile shows a placeholder");
+            }
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "REP-004")]
+    public void A_repeated_combination_shows_its_card_folded_with_how_many_places_repeat_it()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                section
+                    .Editor.Model.ShouldNotBeNull()
+                    .Duplicate.ShouldBeNull("Ctrl + N is only here");
+
+                section.SelectTile(new ShortcutId("ccopy"));
+                section.Refresh();
+
+                var card = section.Editor.Model.ShouldNotBeNull().Duplicate.ShouldNotBeNull();
+                card.Head.ShouldBe("Combinación repetida en 2 sitios · 1 de 1");
+                card.Expanded.ShouldBeFalse("the card starts folded");
+                card.PrevName.ShouldNotBeNullOrWhiteSpace();
+                card.NextName.ShouldNotBeNullOrWhiteSpace();
+                card.Rows.Count.ShouldBe(2, "Always visible and Navegador");
+
+                section.Editor.ShowRepeated(1);
+                section.Refresh();
+                section
+                    .Editor.Model.ShouldNotBeNull()
+                    .Duplicate.ShouldNotBeNull()
+                    .Head.ShouldEndWith(
+                        "1 de 1",
+                        Case.Sensitive,
+                        "the only repeated one: it goes round"
+                    );
+
+                section.Editor.ToggleDuplicates();
+                section.Refresh();
+                section
+                    .Editor.Model.ShouldNotBeNull()
+                    .Duplicate.ShouldNotBeNull()
+                    .Expanded.ShouldBeTrue();
+            }
+        );
+    }
+
+    [Fact]
     [Trait("Req", "EDI-011")]
     public void A_text_shortcut_has_its_field_with_dictation_and_the_privacy_note()
     {
