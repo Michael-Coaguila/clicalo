@@ -62,7 +62,7 @@ internal static class ComboView
         {
             if (chip.Index > 0)
             {
-                chips.Add(Ui.Text("+", 13, ink: ColorToken.Muted));
+                chips.Add(Ui.Separator("+", 13));
             }
 
             var key = Ui.Button(
@@ -162,13 +162,15 @@ internal static class ComboView
             );
         }
 
-        column.Children.Add(
-            Ui.Columns(
-                4,
-                6,
-                [.. model.Modifiers.Select(cell => (UIElement)KeyButton(cell, editor))]
-            )
-        );
+        // Four across, as in the prototype; in the narrow preview of a template they would be under 44, so the grid
+        // wraps them (REG-02).
+        var modifiers = new AutoFillGrid { Columns = 4, Gap = 6 };
+        foreach (var cell in model.Modifiers)
+        {
+            modifiers.Children.Add(KeyButton(cell, editor));
+        }
+
+        column.Children.Add(modifiers);
         var groups = model.Groups.Select(group =>
         {
             var tab = Ui.Choice(
@@ -183,7 +185,8 @@ internal static class ComboView
                 () => editor.ChooseGroup(group.Group),
                 44,
                 8,
-                offFill: null
+                offFill: null,
+                role: CcToggleRole.Option
             );
             if (group.Selected)
             {

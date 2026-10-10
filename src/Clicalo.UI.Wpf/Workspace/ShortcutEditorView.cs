@@ -215,7 +215,8 @@ public sealed class ShortcutEditorView : StackPanel
             headContent,
             model.Head,
             _viewModel.ToggleDuplicates,
-            height: double.NaN
+            height: double.NaN,
+            expanded: model.Expanded
         );
         head.MinHeight = 44;
         head.BorderThickness = new Thickness(0);
@@ -362,7 +363,8 @@ public sealed class ShortcutEditorView : StackPanel
             model.PickerOpen,
             _viewModel.TogglePicker,
             84,
-            14
+            14,
+            role: CcToggleRole.Expander
         );
         tile.Width = 84;
         tile.Padding = new Thickness(4);
@@ -472,7 +474,8 @@ public sealed class ShortcutEditorView : StackPanel
             selected,
             () => _viewModel.PickIcon(icon),
             size,
-            8
+            8,
+            role: CcToggleRole.Option
         );
         button.Width = size;
         button.Padding = new Thickness(0);
@@ -490,7 +493,8 @@ public sealed class ShortcutEditorView : StackPanel
                     option.Selected,
                     () => _viewModel.SetKind(option.Kind),
                     56,
-                    10
+                    10,
+                    role: CcToggleRole.Option
                 );
                 button.Padding = new Thickness(2);
                 return (UIElement)button;
@@ -549,7 +553,8 @@ public sealed class ShortcutEditorView : StackPanel
                         option.Selected,
                         () => _viewModel.SetMouse(option.Op),
                         48,
-                        10
+                        10,
+                        role: CcToggleRole.Option
                     );
                     button.HorizontalContentAlignment = HorizontalAlignment.Left;
                     return (UIElement)button;
@@ -655,7 +660,8 @@ public sealed class ShortcutEditorView : StackPanel
                                 ),
                                 () => _viewModel.PickInstalled(program.Target),
                                 44,
-                                22
+                                22,
+                                role: CcToggleRole.Option
                             )
                     )
                 );
@@ -694,7 +700,8 @@ public sealed class ShortcutEditorView : StackPanel
                 ),
                 model.EditName + " " + step.Text,
                 () => _viewModel.ToggleStep(step.Index),
-                height: double.NaN
+                height: double.NaN,
+                expanded: step.Editor != StepEditorKind.None
             );
             edit.MinHeight = 44;
             edit.BorderThickness = new Thickness(0);
@@ -799,7 +806,8 @@ public sealed class ShortcutEditorView : StackPanel
                                     option.Selected,
                                     () => _viewModel.SetStepMouse(step.Index, option.Op),
                                     44,
-                                    8
+                                    8,
+                                    role: CcToggleRole.Option
                                 )
                         )
                     );
@@ -901,7 +909,8 @@ public sealed class ShortcutEditorView : StackPanel
             },
             model.Title,
             _viewModel.ToggleMore,
-            height: 48
+            height: 48,
+            expanded: model.Expanded
         );
         head.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         head.BorderThickness = new Thickness(0);
@@ -1013,7 +1022,8 @@ public sealed class ShortcutEditorView : StackPanel
                 },
                 model.VoiceHowTitle,
                 _viewModel.ToggleVoiceHow,
-                stroke: ColorToken.Border
+                stroke: ColorToken.Border,
+                expanded: model.VoiceHowOpen
             );
             how.HorizontalContentAlignment = HorizontalAlignment.Stretch;
             inner.Children.Add(how);
@@ -1089,7 +1099,16 @@ public sealed class ShortcutEditorView : StackPanel
             wrap: true
         );
         text.TextAlignment = TextAlignment.Center;
-        var button = Ui.Choice(text, label, selected, click, 44, 8, offFill: null);
+        var button = Ui.Choice(
+            text,
+            label,
+            selected,
+            click,
+            44,
+            8,
+            offFill: null,
+            role: CcToggleRole.Option
+        );
         if (selected)
         {
             CcChrome.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
@@ -1116,7 +1135,7 @@ public sealed class ShortcutEditorView : StackPanel
         {
             if (item.Separator is { } separator)
             {
-                sequence.Add(Ui.Text(separator, 13, ink: ColorToken.Muted));
+                sequence.Add(Ui.Separator(separator, 13));
             }
 
             var chip = Ui.Card(
@@ -1190,7 +1209,8 @@ public sealed class ShortcutEditorView : StackPanel
                                 target.Selected,
                                 () => _viewModel.ChooseTarget(target.Process),
                                 44,
-                                22
+                                22,
+                                role: CcToggleRole.Option
                             )
                     )
                 )
@@ -1292,7 +1312,8 @@ public sealed class ShortcutEditorView : StackPanel
             model.TestOpen,
             _viewModel.ToggleTest,
             48,
-            10
+            10,
+            role: CcToggleRole.Expander
         );
         CcChrome.Paint(test, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
         var duplicate = Ui.Button(

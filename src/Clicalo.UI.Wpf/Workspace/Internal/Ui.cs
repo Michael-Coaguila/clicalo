@@ -22,16 +22,34 @@ internal static class Ui
         ColorToken ink = ColorToken.Text,
         bool mono = false,
         bool wrap = false
+    ) => Fill(new TextBlock(), text, px, bold, ink, mono, wrap);
+
+    /// <summary>
+    /// A separator drawn as text (the «+» between two keys), on the type scale: UI Automation does not see it
+    /// (<see cref="DecorativeText"/>, UIA008).
+    /// </summary>
+    public static TextBlock Separator(
+        string text,
+        double px,
+        bool bold = false,
+        ColorToken ink = ColorToken.Muted
+    ) => Fill(new DecorativeText(), text, px, bold, ink, mono: false, wrap: false);
+
+    private static TextBlock Fill(
+        TextBlock block,
+        string text,
+        double px,
+        bool bold,
+        ColorToken ink,
+        bool mono,
+        bool wrap
     )
     {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontWeight = bold ? FontWeights.Bold : FontWeights.Normal,
-            TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
-            TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        block.Text = text;
+        block.FontWeight = bold ? FontWeights.Bold : FontWeights.Normal;
+        block.TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
+        block.TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis;
+        block.VerticalAlignment = VerticalAlignment.Center;
         block.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(px));
         Ink(block, TextBlock.ForegroundProperty, ink);
         if (mono)
@@ -244,7 +262,11 @@ internal static class Ui
         return row;
     }
 
-    /// <summary>A button with <paramref name="content"/>, named <paramref name="name"/> for UI Automation.</summary>
+    /// <summary>
+    /// A button with <paramref name="content"/>, named <paramref name="name"/> for UI Automation. With
+    /// <paramref name="expanded"/> it is the header of a collapsible: ExpandCollapse with that state instead of Invoke
+    /// (ACC-001).
+    /// </summary>
     public static CcButton Button(
         object content,
         string name,
@@ -253,11 +275,17 @@ internal static class Ui
         ColorToken ink = ColorToken.Text,
         ColorToken? stroke = null,
         double height = 44,
-        double radius = 10
+        double radius = 10,
+        bool? expanded = null
     )
     {
         ArgumentNullException.ThrowIfNull(click);
-        var button = new CcButton { Content = content, Height = height };
+        var button = new CcButton
+        {
+            Content = content,
+            Height = height,
+            IsExpanded = expanded,
+        };
         CcChrome.Paint(button, fill, ink, stroke);
         button.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
         AutomationProperties.SetName(button, name);
@@ -266,8 +294,9 @@ internal static class Ui
     }
 
     /// <summary>
-    /// A button that shows a choice: accentWash with a 2 px accent outline when <paramref name="on"/>, card with a
-    /// border otherwise, and the Toggle state for UI Automation.
+    /// A button that shows a state: accentWash with a 2 px accent outline when <paramref name="on"/>, card with a
+    /// border otherwise. For UI Automation it is what <paramref name="role"/> says (ACC-001): a switch with Toggle (the
+    /// default), a choice of a group with SelectionItem, or the header of a collapsible with ExpandCollapse.
     /// </summary>
     public static CcToggle Choice(
         object content,
@@ -276,7 +305,8 @@ internal static class Ui
         Action click,
         double height = 44,
         double radius = 10,
-        ColorToken? offFill = ColorToken.Card
+        ColorToken? offFill = ColorToken.Card,
+        CcToggleRole role = CcToggleRole.Toggle
     )
     {
         ArgumentNullException.ThrowIfNull(click);
@@ -285,6 +315,7 @@ internal static class Ui
             Content = content,
             Height = height,
             IsChecked = on,
+            Role = role,
         };
         if (on)
         {
@@ -326,6 +357,7 @@ internal static class Ui
             IsChecked = on,
             IsHitTestVisible = false,
             Focusable = false,
+            IsDrawingOnly = true,
             VerticalAlignment = VerticalAlignment.Center,
         };
         var layout = new DockPanel { LastChildFill = true };

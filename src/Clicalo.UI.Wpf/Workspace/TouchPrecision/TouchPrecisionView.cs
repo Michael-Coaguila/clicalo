@@ -330,7 +330,8 @@ public sealed class TouchPrecisionView : ContentControl
                 preset.Selected,
                 () => _viewModel.ChoosePreset(preset.Id),
                 76,
-                12
+                12,
+                role: CcToggleRole.Option
             );
             card.Height = double.NaN;
             card.MinHeight = 76;

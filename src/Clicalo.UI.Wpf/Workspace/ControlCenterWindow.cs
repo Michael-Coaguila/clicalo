@@ -274,9 +274,17 @@ public sealed class ControlCenterWindow : Window
         MinHeight = Math.Min(LeastHeight, area.Height);
     }
 
-    private void ApplyWidth()
+    private void ApplyWidth() => ApplyWidth(ActualWidth);
+
+    /// <summary>
+    /// Arranges the window for <paramref name="width"/> (CCM-005): below 1240 the menu shows only its icons and the
+    /// columns of «Atajos» and «Plantillas» narrow. The window calls it whenever its size changes; a preview or an
+    /// audit of a window that is never shown calls it with the width it lays the content out at.
+    /// </summary>
+    /// <param name="width">The width of the window, in device-independent pixels.</param>
+    public void ApplyWidth(double width)
     {
-        var narrow = ActualWidth < NarrowBelow;
+        var narrow = width < NarrowBelow;
         if (narrow == _narrow)
         {
             return;
@@ -433,7 +441,8 @@ public sealed class ControlCenterWindow : Window
                 () => _viewModel.SetLanguage(option.Code),
                 44,
                 7,
-                offFill: null
+                offFill: null,
+                role: CcToggleRole.Option
             );
             if (option.Selected)
             {
@@ -528,7 +537,8 @@ public sealed class ControlCenterWindow : Window
                 () => _viewModel.Select(item.Section),
                 46,
                 10,
-                offFill: null
+                offFill: null,
+                role: CcToggleRole.Option
             );
             if (item.Selected)
             {

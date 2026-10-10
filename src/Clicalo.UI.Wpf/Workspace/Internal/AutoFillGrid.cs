@@ -1,12 +1,15 @@
 using System.Windows;
 using System.Windows.Controls;
+using Clicalo.UI.Wpf.Controls;
 
 namespace Clicalo.UI.Wpf.Workspace.Internal;
 
 /// <summary>
 /// The CSS grid of the prototype, <c>repeat(auto-fill, minmax(min, 1fr))</c> or <c>repeat(n, 1fr)</c>: as many equal
 /// columns as fit with at least <see cref="MinItemWidth"/> (or exactly <see cref="Columns"/>), rows as tall as their
-/// tallest item (or <see cref="ItemHeight"/>), <see cref="Gap"/> apart. It never scrolls sideways (CCM-005).
+/// tallest item (or <see cref="ItemHeight"/>), <see cref="Gap"/> apart. It never scrolls sideways (CCM-005). Its items
+/// are touch targets: where the fixed number of columns would leave them narrower than 44, it uses as many as fit at
+/// 44 (REG-02), so a narrow column gets more rows instead of cut buttons.
 /// </summary>
 internal sealed class AutoFillGrid : Panel
 {
@@ -25,14 +28,15 @@ internal sealed class AutoFillGrid : Panel
     /// <summary>The number of columns for <paramref name="width"/>.</summary>
     public int ColumnsFor(double width)
     {
-        if (Columns > 0)
-        {
-            return Columns;
-        }
-
         if (double.IsInfinity(width) || width <= 0)
         {
-            return 1;
+            return Math.Max(1, Columns);
+        }
+
+        if (Columns > 0)
+        {
+            var fit = (int)Math.Floor((width + Gap) / (TouchTarget.MinimumSize + Gap));
+            return Math.Clamp(fit, 1, Columns);
         }
 
         return Math.Max(1, (int)Math.Floor((width + Gap) / (MinItemWidth + Gap)));

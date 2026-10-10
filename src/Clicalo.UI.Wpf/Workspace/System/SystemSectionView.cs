@@ -287,7 +287,8 @@ public sealed class SystemSectionView : Border
                 () => _viewModel.SetChannel(option.Channel),
                 44,
                 10,
-                offFill: ColorToken.CardHi
+                offFill: ColorToken.CardHi,
+                role: CcToggleRole.Option
             );
             if (option.Selected)
             {

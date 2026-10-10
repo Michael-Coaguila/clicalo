@@ -238,7 +238,8 @@ public sealed class GeneralSectionView : ContentControl
                 option.Selected,
                 () => _viewModel.SetLanguage(option.Code),
                 64,
-                12
+                12,
+                role: CcToggleRole.Option
             );
             if (option.Selected)
             {
@@ -713,7 +714,8 @@ public sealed class GeneralSectionView : ContentControl
                 () => _viewModel.SetPerPage(option.Value),
                 44,
                 10,
-                ColorToken.CardHi
+                ColorToken.CardHi,
+                role: CcToggleRole.Option
             );
             CcChrome.Paint(
                 button,
@@ -799,7 +801,8 @@ public sealed class GeneralSectionView : ContentControl
                 () => _viewModel.SetMaxHold(option.Value),
                 44,
                 8,
-                null
+                null,
+                role: CcToggleRole.Option
             );
             CcChrome.Paint(
                 button,
@@ -900,7 +903,8 @@ public sealed class GeneralSectionView : ContentControl
                             option.Selected,
                             () => _viewModel.SetGlobalHotkey(option.Value),
                             44,
-                            8
+                            8,
+                            role: CcToggleRole.Option
                         )
                 )
             );
@@ -991,7 +995,8 @@ public sealed class GeneralSectionView : ContentControl
                 click,
                 44,
                 8,
-                null
+                null,
+                role: CcToggleRole.Option
             );
             CcChrome.Paint(
                 button,
@@ -1110,7 +1115,7 @@ public sealed class GeneralSectionView : ContentControl
         Thickness padding
     )
     {
-        var card = Ui.Choice(content, name, selected, click, 44, 12);
+        var card = Ui.Choice(content, name, selected, click, 44, 12, role: CcToggleRole.Option);
         card.Height = double.NaN;
         card.MinHeight = 44;
         card.Padding = padding;

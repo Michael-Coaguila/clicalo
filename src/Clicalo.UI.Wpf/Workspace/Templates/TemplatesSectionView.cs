@@ -342,6 +342,9 @@ public sealed class TemplatesSectionView : Grid
             Ui.Text(model.Privacy, 12, ink: ColorToken.Muted, wrap: true)
         );
         var keyButton = Secondary(null, model.KeyButton, _viewModel.ToggleKey);
+
+        // ACC-001: the button opens and closes the field of the key under it.
+        keyButton.IsExpanded = model.KeyFieldOpen;
         var keyLine = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(keyButton, Dock.Right);
         keyButton.Margin = new Thickness(8, 0, 0, 0);
@@ -517,7 +520,8 @@ public sealed class TemplatesSectionView : Grid
             _viewModel.ToggleKeyboard,
             height: double.NaN,
             radius: 12,
-            offFill: ColorToken.Field
+            offFill: ColorToken.Field,
+            role: CcToggleRole.Expander
         );
         toggle.MinHeight = 48;
         toggle.Padding = new Thickness(12, 6, 12, 6);
@@ -570,7 +574,8 @@ public sealed class TemplatesSectionView : Grid
                 option.Selected,
                 () => choose(option.Id),
                 radius: 9,
-                offFill: null
+                offFill: null,
+                role: CcToggleRole.Option
             );
             button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
             button.Padding = new Thickness(10, 0, 10, 0);
@@ -607,7 +612,8 @@ public sealed class TemplatesSectionView : Grid
             _viewModel.ToggleBlank,
             height: double.NaN,
             radius: 14,
-            offFill: null
+            offFill: null,
+            role: CcToggleRole.Expander
         );
         toggle.MinHeight = 60;
         toggle.Padding = new Thickness(14, 8, 14, 8);
@@ -634,7 +640,8 @@ public sealed class TemplatesSectionView : Grid
             _viewModel.ToggleBlankIcons,
             48,
             12,
-            ColorToken.Side
+            ColorToken.Side,
+            role: CcToggleRole.Expander
         );
         icon.Width = 48;
         icon.Padding = new Thickness(0);
@@ -677,7 +684,8 @@ public sealed class TemplatesSectionView : Grid
                     option.Selected,
                     () => _viewModel.SetBlankIcon(option.Icon),
                     44,
-                    8
+                    8,
+                    role: CcToggleRole.Option
                 );
                 button.Padding = new Thickness(0);
                 grid.Children.Add(button);
@@ -698,7 +706,8 @@ public sealed class TemplatesSectionView : Grid
                             link.Selected,
                             () => _viewModel.SetBlankLink(link.Id),
                             radius: 22,
-                            offFill: ColorToken.Side
+                            offFill: ColorToken.Side,
+                            role: CcToggleRole.Option
                         )
                 )
             )
@@ -726,6 +735,7 @@ public sealed class TemplatesSectionView : Grid
             IsChecked = model.DetectOn,
             IsHitTestVisible = false,
             Focusable = false,
+            IsDrawingOnly = true,
             Margin = new Thickness(10, 0, 0, 0),
         };
         var detect = Ui.Choice(
@@ -834,7 +844,8 @@ public sealed class TemplatesSectionView : Grid
                 card.Selected,
                 () => _viewModel.PreviewTemplate(card.Id),
                 height: double.NaN,
-                radius: 14
+                radius: 14,
+                role: CcToggleRole.Option
             );
             open.Padding = new Thickness(14, 14, 14, 8);
             open.HorizontalContentAlignment = HorizontalAlignment.Stretch;

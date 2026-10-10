@@ -224,7 +224,8 @@ public sealed class AboutSectionView : Border
                 option.Selected,
                 () => _viewModel.SetKind(option.Kind),
                 52,
-                12
+                12,
+                role: CcToggleRole.Option
             );
             kind.Height = double.NaN;
             kind.MinHeight = 52;
@@ -290,6 +291,7 @@ public sealed class AboutSectionView : Border
         {
             Content = previewRow,
             IsChecked = screen.PreviewOpen,
+            Role = CcToggleRole.Expander,
             MinHeight = 44,
             Padding = new Thickness(12, 0, 12, 0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,

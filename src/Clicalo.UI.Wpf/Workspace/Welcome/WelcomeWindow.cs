@@ -476,7 +476,8 @@ public sealed class WelcomeWindow : Window
                 view.Selected,
                 () => _viewModel.SetDensity(view.Density),
                 44,
-                14
+                14,
+                role: CcToggleRole.Option
             );
             card.Height = double.NaN;
             card.Padding = new Thickness(8, 12, 8, 12);
@@ -527,7 +528,8 @@ public sealed class WelcomeWindow : Window
                 size.Selected,
                 () => _viewModel.SetSize(size.Size),
                 44,
-                14
+                14,
+                role: CcToggleRole.Option
             );
             card.Height = double.NaN;
             card.Padding = new Thickness(8, 14, 8, 14);
@@ -631,7 +633,15 @@ public sealed class WelcomeWindow : Window
             ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
         );
         text.HorizontalAlignment = HorizontalAlignment.Center;
-        var segment = Ui.Choice(text, option.Label, option.Selected, click, height, radius);
+        var segment = Ui.Choice(
+            text,
+            option.Label,
+            option.Selected,
+            click,
+            height,
+            radius,
+            role: CcToggleRole.Option
+        );
         if (option.Selected)
         {
             CcChrome.Paint(segment, ColorToken.Accent, ColorToken.OnAccent, null);
