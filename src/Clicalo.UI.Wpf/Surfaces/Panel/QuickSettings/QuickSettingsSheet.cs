@@ -129,13 +129,7 @@ public sealed class QuickSettingsSheet : Border
         layout.Children.Add(Section(_themeHeading, Group(viewModel.Themes, 2, OptionHeight)));
         layout.Children.Add(Switches(viewModel.Switches));
 
-        _scroller = new ScrollViewer
-        {
-            Content = layout,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Focusable = false,
-        };
+        _scroller = new SurfaceScrollViewer { Content = layout };
         Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
