@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -21,6 +22,7 @@ using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.Windowing.IntegrationTests.Automation.Rules;
 using Clicalo.Windowing.IntegrationTests.Interactions;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.SearchPanel;
@@ -455,6 +457,62 @@ public sealed class SurfacesAuditTests
                 pill.Close();
             }
         });
+    }
+
+    [Fact]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-009")]
+    public void The_tiles_of_the_grid_are_read_in_their_order_even_in_edit_mode()
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var world = new PanelWorld("es", time);
+            world.Panel.ApplyLayout(PanelLayoutSettings.Default with { VoiceNumbers = true });
+            var window = new PanelWindow(
+                world.Panel,
+                lab.Registry,
+                time,
+                theme,
+                NoDim,
+                world.Header,
+                world.Search,
+                world.Suggestion,
+                world.Layers
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                var page = world.Panel.Tiles.Count;
+                page.ShouldBeGreaterThan(3);
+
+                // The tiles are drawn each above the next one; a screen reader still walks them from the first.
+                GridTiles(host.Snapshot("panel")).ShouldBe(InOrder(page));
+
+                world.Layers.EditMode.Enter();
+                world.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true });
+                GridTiles(host.Snapshot("panel")).ShouldBe(InOrder(page));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        static IEnumerable<string> InOrder(int count) =>
+            Enumerable
+                .Range(0, count)
+                .Select(static i =>
+                    string.Create(CultureInfo.InvariantCulture, $"{i + 1} Atajo {i}")
+                );
+
+        static IEnumerable<string> GridTiles(UiaNode tree) =>
+            tree.DescendantsAndSelf()
+                .Select(static node => node.Name)
+                .Where(static name => name.Contains(" Atajo ", StringComparison.Ordinal))
+                .Where(static name => char.IsDigit(name[0]));
     }
 
     [Fact]
