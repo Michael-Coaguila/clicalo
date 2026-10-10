@@ -59,6 +59,7 @@ public sealed class DockMenuWindow : TouchSurface
             BorderThickness = new Thickness(0),
         };
         Width = MenuWidth;
+        FixedWidth = MenuWidth;
         SizeToContent = SizeToContent.Height;
         Content = _view;
         viewModel.PropertyChanged += OnChanged;

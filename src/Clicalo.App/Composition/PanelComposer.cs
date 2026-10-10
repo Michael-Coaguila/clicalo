@@ -212,7 +212,16 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         EditMode.PropertyChanged += (_, _) => Invalidate();
         QuickSettings.PropertyChanged += (_, _) => Invalidate();
         Menu.PropertyChanged += (_, _) => Invalidate();
-        TestMode.PropertyChanged += (_, _) => Invalidate();
+        TestMode.PropertyChanged += (_, _) =>
+        {
+            if (!TestMode.IsOn)
+            {
+                // AVI-002: a fixed notice lasts while its state lasts; test mode also ends by itself after 30 s.
+                ClearSticky(TestMode);
+            }
+
+            Invalidate();
+        };
         Search.ApplyLibrary(store.Current.Library);
         Refresh();
     }

@@ -135,6 +135,7 @@ public sealed class DockFlyoutWindow : TouchSurface
         }
 
         SizeToContent = SizeToContent.Height;
+        FixedWidth = Width;
         _scroller = new ScrollViewer
         {
             Content = body,

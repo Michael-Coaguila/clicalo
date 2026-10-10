@@ -106,6 +106,12 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     /// </summary>
     protected DockTileModes? Modes { get; set; }
 
+    /// <summary>
+    /// The width the surface keeps, in logical pixels, while its height follows its content: text wraps inside it
+    /// (PES-010, PES-011, PES-014, PES-015). <see cref="double.NaN"/>, the default: both follow the content.
+    /// </summary>
+    protected double FixedWidth { get; set; } = double.NaN;
+
     /// <summary>The distance past which a contact drags or scrolls instead of tapping, in physical pixels (PAN-004).</summary>
     protected double DragThresholdPx => _drag.ThresholdPx;
 
@@ -172,9 +178,19 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
             return (1, 1);
         }
 
-        content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var border = BorderThickness;
-        var width = content.DesiredSize.Width + border.Left + border.Right;
+        var fixedWidth = FixedWidth is > 0 and < double.PositiveInfinity;
+        content.Measure(
+            new Size(
+                fixedWidth
+                    ? Math.Max(0, FixedWidth - border.Left - border.Right)
+                    : double.PositiveInfinity,
+                double.PositiveInfinity
+            )
+        );
+        var width = fixedWidth
+            ? FixedWidth
+            : content.DesiredSize.Width + border.Left + border.Right;
         var height = content.DesiredSize.Height + border.Top + border.Bottom;
         return (
             Math.Max(1, (int)Math.Ceiling(width * scale)),

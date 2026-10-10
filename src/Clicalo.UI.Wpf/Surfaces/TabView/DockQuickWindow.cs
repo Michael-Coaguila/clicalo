@@ -62,6 +62,7 @@ public sealed class DockQuickWindow : TouchSurface
             BorderThickness = new Thickness(0),
         };
         Width = SheetWidth;
+        FixedWidth = SheetWidth;
         SizeToContent = SizeToContent.Height;
         Content = _sheet;
         viewModel.PropertyChanged += OnChanged;

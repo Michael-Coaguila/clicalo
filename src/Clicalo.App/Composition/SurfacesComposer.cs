@@ -186,13 +186,13 @@ internal sealed class SurfacesComposer : IDockIntents
         );
         if (_keyboard is { } keyboard)
         {
-            // BUS-002, EC-BUS-01: raised on any thread; the area is read there and applied here.
+            // BUS-002, EC-BUS-01: raised on any thread while the keyboard Clícalo showed is open, and once more when
+            // it closes; the area is read there and applied here.
             keyboard.OccludedAreaChanged += (_, _) =>
             {
                 var area = keyboard.OccludedArea;
                 _ = _ui.BeginInvoke(() => _surfaces?.ApplyOccluded(area));
             };
-            _surfaces.ApplyOccluded(keyboard.OccludedArea);
         }
 
         Refresh();

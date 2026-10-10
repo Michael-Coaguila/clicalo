@@ -130,6 +130,7 @@ public sealed class DockNoticeWindow : TouchSurface
         _ = stack.Children.Add(_admin);
         _ = stack.Children.Add(_notice);
         Width = SurfaceWidth;
+        FixedWidth = SurfaceWidth;
         SizeToContent = SizeToContent.Height;
         Content = stack;
 
