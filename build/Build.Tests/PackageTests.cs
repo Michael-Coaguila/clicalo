@@ -113,6 +113,8 @@ public sealed class PackageTests
                 "pub",
                 "--mainExe",
                 "Clicalo.exe",
+                "--icon",
+                "assets/icons/clicalo.ico",
                 "--packTitle",
                 "Clícalo",
                 "--packAuthors",

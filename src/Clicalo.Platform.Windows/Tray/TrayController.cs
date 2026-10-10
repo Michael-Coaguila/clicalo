@@ -116,7 +116,7 @@ public sealed class TrayController : IDisposable
         await _menu.StartAsync().ConfigureAwait(false);
         _icon.Invoked += OnIconInvoked;
         _icon.MenuRequested += OnMenuRequested;
-        await _icon.ShowAsync(Tooltip()).ConfigureAwait(false);
+        await _icon.ShowAsync(Tooltip(), TrayMenuModel.IsDimmed(State)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -275,7 +275,8 @@ public sealed class TrayController : IDisposable
 
     private Task RefreshTooltipAsync(Message before) =>
         before != TrayMenuModel.Tooltip(State) && _icon.IsShown
-            ? _icon.SetTooltipAsync(Tooltip())
+            // BUR-003, BUR-004: the text and the look change together; hidden or paused, the icon shows at 55 %.
+            ? _icon.SetAppearanceAsync(Tooltip(), TrayMenuModel.IsDimmed(State))
             : Task.CompletedTask;
 
     /// <summary>

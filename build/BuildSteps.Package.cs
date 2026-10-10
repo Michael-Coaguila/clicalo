@@ -149,6 +149,9 @@ internal sealed partial class BuildSteps
         return properties;
     }
 
+    /// <summary>The icon of Clícalo, relative to the repository root (<c>app-icon</c> of tools/Clicalo.DevCli).</summary>
+    internal const string AppIcon = "assets/icons/clicalo.ico";
+
     /// <summary>The <c>dotnet vpk pack</c> arguments (Velopack, ADR-0012 and ADR-0027).</summary>
     /// <param name="options">The channel and the version.</param>
     /// <param name="publish">The published folder.</param>
@@ -171,6 +174,9 @@ internal sealed partial class BuildSteps
             publish,
             "--mainExe",
             "Clicalo.exe",
+            // BUR-003: the installer shows the icon of Clícalo too.
+            "--icon",
+            AppIcon,
             "--packTitle",
             "Clícalo",
             "--packAuthors",

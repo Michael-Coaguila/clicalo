@@ -7,6 +7,8 @@
     <AssemblyName>Clicalo</AssemblyName>
     <RootNamespace>Clicalo.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- BUR-003: the icon of the executable, drawn by app-icon of tools/Clicalo.DevCli. -->
+    <ApplicationIcon>$(RepoRoot)assets\icons\clicalo.ico</ApplicationIcon>
     <StartupObject>Clicalo.App.Program</StartupObject>
   </PropertyGroup>
   <PropertyGroup Label="Shipped runtimes (Directory.Build.props)">

@@ -1,5 +1,6 @@
 using Clicalo.DevCli.Adr;
 using Clicalo.DevCli.I18n;
+using Clicalo.DevCli.Icon;
 using Clicalo.DevCli.Trace;
 
 namespace Clicalo.DevCli;
@@ -11,6 +12,7 @@ internal static class Cli
     private const string ImportVerb = "i18n-import";
     private const string AdrVerb = "adr-check";
     private const string TraceVerb = "trace";
+    private const string IconVerb = "app-icon";
 
     private const string Help = """
         Clicalo developer CLI (behind `cl`).
@@ -29,6 +31,9 @@ internal static class Cli
           trace         Write artifacts/cl/trace.md: every requirement of docs/requirements/catalog.md with the
                         tests that name it in a requirement trait, and the MUST requirements without a test.
                         Fails only when a trait names an identifier that is not in the catalog.
+          app-icon      Draw the icon of Clícalo from the logo and data/tokens into assets/icons
+                        (clicalo.ico and clicalo-dim.ico, the tray icon at 55 %).
+                        --check          do not write; fail when assets/icons is not what it draws.
           help          Show this help.
 
         Common options:
@@ -58,7 +63,7 @@ internal static class Cli
             return ExitCodes.Success;
         }
 
-        if (verb is not (CheckVerb or ImportVerb or AdrVerb or TraceVerb))
+        if (verb is not (CheckVerb or ImportVerb or AdrVerb or TraceVerb or IconVerb))
         {
             error.WriteLine(Help);
             error.WriteLine("Unknown verb '" + verb + "'.");
@@ -88,6 +93,7 @@ internal static class Cli
             CheckVerb => I18nCheckCommand.Run(root, options.StrictUnused, output),
             ImportVerb => I18nImportCommand.Run(root, options.Check, output),
             TraceVerb => TraceCommand.Run(root, output),
+            IconVerb => AppIconCommand.Run(root, options.Check, output),
             _ => AdrCheckCommand.Run(root, options.Base!, output),
         };
     }
@@ -108,7 +114,7 @@ internal static class Cli
                 case "--repo" when i + 1 < args.Count:
                     options = options with { Repo = args[++i] };
                     break;
-                case "--check" when string.Equals(verb, ImportVerb, StringComparison.Ordinal):
+                case "--check" when verb is ImportVerb or IconVerb:
                     options = options with { Check = true };
                     break;
                 case "--strict-unused"

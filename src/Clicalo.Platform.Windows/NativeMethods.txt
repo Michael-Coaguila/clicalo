@@ -76,6 +76,9 @@ RegisterWindowMessage
 ChangeWindowMessageFilterEx
 LoadIcon
 IDI_APPLICATION
+CreateIconFromResourceEx
+DestroyIcon
+GetSystemMetrics
 CreatePopupMenu
 AppendMenu
 DestroyMenu

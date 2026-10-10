@@ -33,4 +33,11 @@ public static class TrayMenuModel
         state.Paused ? L.TrayPaused
         : state.PanelVisible ? L.AppName
         : L.TrayHidden;
+
+    /// <summary>
+    /// Whether the icon shows at 55 % (BUR-003: the hidden panel is told visually too; BUR-004: so is the pause).
+    /// It changes exactly when <see cref="Tooltip"/> does.
+    /// </summary>
+    /// <param name="state">What the tray shows.</param>
+    public static bool IsDimmed(TrayState state) => state.Paused || !state.PanelVisible;
 }
