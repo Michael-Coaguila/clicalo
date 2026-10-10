@@ -3,8 +3,8 @@ using System.Text;
 namespace Clicalo.Build;
 
 /// <summary>
-/// <c>cl package</c> (ADR-0027, docs/guides/release.md): a local, reproducible package of this machine's runtime that is
-/// never published by the verb.
+/// <c>cl package</c> (ADR-0027, docs/guides/release.md): a local, reproducible package of this machine's runtime, or of
+/// <c>--runtime win-arm64</c>, that is never published by the verb.
 /// </summary>
 internal sealed partial class BuildSteps
 {
@@ -14,7 +14,7 @@ internal sealed partial class BuildSteps
     /// <summary>
     /// Publishes Clícalo self-contained with ReadyToRun and Sentinel self-contained next to it (without Native AOT: the
     /// package does not need the C++ linker), writes the release notes and runs <c>vpk pack</c> into
-    /// <c>artifacts/package/&lt;channel&gt;</c>, emptied first: the same commit and options always give the same
+    /// <c>artifacts/package/&lt;channel&gt;</c> (<c>&lt;channel&gt;-arm64</c> for ARM64), emptied first: the same commit and options always give the same
     /// files, full packages only (no deltas; Velopack downloads the full package).
     /// </summary>
     /// <param name="args">The words after <c>cl package</c>.</param>
@@ -32,15 +32,23 @@ internal sealed partial class BuildSteps
                 var prefix = PackageOptions.VersionPrefixOf(
                     await File.ReadAllTextAsync(Path.Combine(layout.Root, "Directory.Build.props"))
                 );
-                if (!PackageOptions.TryParse(args, prefix, out options, out var error))
+                if (
+                    !PackageOptions.TryParse(
+                        args,
+                        prefix,
+                        RuntimeIdentifier,
+                        out options,
+                        out var error
+                    )
+                )
                 {
                     throw new StepFailedException(
                         new FailureDetails { Summary = error, Hint = Messages.PackageUsage }
                     );
                 }
 
-                output = Path.Combine(root, options.Channel);
-                publish = Path.Combine(root, "publish", options.Channel);
+                output = Path.Combine(root, options.PackChannel);
+                publish = Path.Combine(root, "publish", options.PackChannel);
                 foreach (var folder in new[] { output, publish })
                 {
                     if (Directory.Exists(folder))
@@ -55,12 +63,14 @@ internal sealed partial class BuildSteps
                 await PublishProjectAsync(
                     SentinelProject,
                     publish,
-                    PackageProperties(options, aot: false)
+                    PackageProperties(options, aot: false),
+                    options.Runtime
                 );
                 await PublishProjectAsync(
                     AppProject,
                     publish,
-                    PackageProperties(options, aot: null)
+                    PackageProperties(options, aot: null),
+                    options.Runtime
                 );
             }
         );
@@ -69,7 +79,7 @@ internal sealed partial class BuildSteps
             Messages.PackagePurpose,
             async () =>
             {
-                var notes = Path.Combine(root, "notes-" + options!.Channel + ".md");
+                var notes = Path.Combine(root, "notes-" + options!.PackChannel + ".md");
                 await File.WriteAllTextAsync(
                     notes,
                     ReleaseNotesWriter.Write(options.Version, await CommitDateAsync(), Fragments()),
@@ -106,12 +116,12 @@ internal sealed partial class BuildSteps
                     .EnumerateFiles(output, "*Setup.exe")
                     .Where(file =>
                         file.Contains(
-                            "-" + options.Channel + "-",
+                            "-" + options.PackChannel + "-",
                             StringComparison.OrdinalIgnoreCase
                         )
                     )
                     .DefaultIfEmpty(
-                        Path.Combine(output, PackId + "-" + options.Channel + "-Setup.exe")
+                        Path.Combine(output, PackId + "-" + options.PackChannel + "-Setup.exe")
                     )
                     .First();
                 context.AddNote(Messages.PackageDone(layout.Relative(setup)));
@@ -166,9 +176,9 @@ internal sealed partial class BuildSteps
             "--packAuthors",
             "Michael Coaguila",
             "--channel",
-            options.Channel,
+            options.PackChannel,
             "--runtime",
-            RuntimeIdentifier,
+            options.Runtime,
             "--releaseNotes",
             notes,
             "--delta",

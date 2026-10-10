@@ -9,21 +9,41 @@ public sealed class PackageTests
     [Fact]
     public void The_defaults_are_the_stable_channel_and_the_version_of_the_repository()
     {
-        Parse([]).ShouldBe(new PackageOptions("stable", "2.0.0"));
-        Parse(["--channel", "beta"]).ShouldBe(new PackageOptions("beta", "2.0.0-beta.1"));
+        Parse([]).ShouldBe(new PackageOptions("stable", "2.0.0", "win-x64"));
+        Parse(["--channel", "beta"])
+            .ShouldBe(new PackageOptions("beta", "2.0.0-beta.1", "win-x64"));
         Parse(["--channel", "BETA", "--version", "2.0.0-beta.3"])
-            .ShouldBe(new PackageOptions("beta", "2.0.0-beta.3"));
+            .ShouldBe(new PackageOptions("beta", "2.0.0-beta.3", "win-x64"));
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-011")]
+    public void Arm64_is_packaged_on_request_in_a_channel_of_its_own()
+    {
+        var options = Parse(["--runtime", "WIN-ARM64"]);
+
+        options.ShouldBe(new PackageOptions("stable", "2.0.0", "win-arm64"));
+        options.PackChannel.ShouldBe("stable-arm64");
+        Parse(["--channel", "beta", "--runtime", "win-arm64"]).PackChannel.ShouldBe("beta-arm64");
+        Parse(["--runtime", "win-x64"]).PackChannel.ShouldBe("stable");
+        BuildSteps
+            .PublishArguments(BuildSteps.AppProject, "out", [], options.Runtime)
+            .ShouldContain("-p:ClicaloRuntimeIdentifier=win-arm64", StringComparer.Ordinal);
+        var pack = BuildSteps.PackArguments(options, "pub", "out", "notes.md");
+        pack[pack.IndexOf("--channel") + 1].ShouldBe("stable-arm64");
+        pack[pack.IndexOf("--runtime") + 1].ShouldBe("win-arm64");
     }
 
     [Theory]
     [InlineData("--channel", "nightly")]
     [InlineData("--version", "2.0")]
     [InlineData("--version", "v2.0.0")]
+    [InlineData("--runtime", "linux-x64")]
     [InlineData("--sign", "yes")]
     public void Wrong_options_are_refused_with_the_usage(string option, string value)
     {
         PackageOptions
-            .TryParse([option, value], "2.0.0", out var options, out var error)
+            .TryParse([option, value], "2.0.0", "win-x64", out var options, out var error)
             .ShouldBeFalse();
         options.ShouldBeNull();
         error.ShouldContain("cl package");
@@ -31,7 +51,9 @@ public sealed class PackageTests
 
     private static PackageOptions Parse(string[] args)
     {
-        PackageOptions.TryParse(args, "2.0.0", out var options, out var error).ShouldBeTrue(error);
+        PackageOptions
+            .TryParse(args, "2.0.0", "win-x64", out var options, out var error)
+            .ShouldBeTrue(error);
         return options!;
     }
 
@@ -46,7 +68,7 @@ public sealed class PackageTests
     [Fact]
     public void Clicalo_and_Sentinel_are_published_self_contained_and_Sentinel_without_Native_AOT()
     {
-        var options = new PackageOptions("beta", "2.0.0-beta.1");
+        var options = new PackageOptions("beta", "2.0.0-beta.1", "win-x64");
 
         BuildSteps
             .PackageProperties(options, aot: null)
@@ -74,7 +96,12 @@ public sealed class PackageTests
     [Fact]
     public void Velopack_packs_the_channel_with_the_package_id_of_the_installation() =>
         BuildSteps
-            .PackArguments(new PackageOptions("beta", "2.0.0-beta.1"), "pub", "out", "notes.md")
+            .PackArguments(
+                new PackageOptions("beta", "2.0.0-beta.1", "win-x64"),
+                "pub",
+                "out",
+                "notes.md"
+            )
             .ShouldBe([
                 "vpk",
                 "pack",
@@ -93,7 +120,7 @@ public sealed class PackageTests
                 "--channel",
                 "beta",
                 "--runtime",
-                BuildSteps.RuntimeIdentifier,
+                "win-x64",
                 "--releaseNotes",
                 "notes.md",
                 "--delta",

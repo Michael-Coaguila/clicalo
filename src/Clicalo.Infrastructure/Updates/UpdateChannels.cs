@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Clicalo.Domain.Settings;
 
 namespace Clicalo.Infrastructure.Updates;
@@ -17,8 +18,19 @@ public static class UpdateChannels
     /// <summary>The executable inside the package.</summary>
     public const string MainExe = "Clicalo.exe";
 
-    /// <summary>The name of <paramref name="channel"/> in the packages (<c>stable</c> or <c>beta</c>).</summary>
+    /// <summary>
+    /// The name of <paramref name="channel"/> in the packages of this process: <c>stable</c> or <c>beta</c> on x64 and
+    /// <c>stable-arm64</c> or <c>beta-arm64</c> in an ARM64 process, whose packages <c>cl package --runtime
+    /// win-arm64</c> writes in a feed of their own.
+    /// </summary>
     /// <param name="channel">The channel of the settings.</param>
     public static string NameOf(UpdateChannel channel) =>
-        channel == UpdateChannel.Beta ? "beta" : "stable";
+        NameOf(channel, RuntimeInformation.ProcessArchitecture);
+
+    /// <summary>The name of <paramref name="channel"/> in the packages of <paramref name="architecture"/>.</summary>
+    /// <param name="channel">The channel of the settings.</param>
+    /// <param name="architecture">The architecture of the process.</param>
+    public static string NameOf(UpdateChannel channel, Architecture architecture) =>
+        (channel == UpdateChannel.Beta ? "beta" : "stable")
+        + (architecture == Architecture.Arm64 ? "-arm64" : string.Empty);
 }

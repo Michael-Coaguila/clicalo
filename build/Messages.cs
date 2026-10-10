@@ -42,7 +42,7 @@ internal static class Messages
     public const string QuarantineDescription =
         "Compila y ejecuta solo las pruebas en cuarentena (Category=Quarantine), con CLICALO_DESKTOP_TESTS=1.";
     public const string PackageDescription =
-        "Empaqueta Clícalo con Velopack en artifacts/package (Setup.exe y paquetes) sin publicarlo; con --channel y --version.";
+        "Empaqueta Clícalo con Velopack en artifacts/package (Setup.exe y paquetes) sin publicarlo; con --channel, --version y --runtime.";
     public const string PerfDescription =
         "Publica las variantes de S5 y mide el arranque, la memoria y, en la CI, del toque al envío.";
 
@@ -220,7 +220,10 @@ internal static class Messages
         "Revisa el error; la publicación con Native AOT de Sentinel necesita las herramientas de C++ de Visual Studio.";
 
     public const string PackageUsage =
-        "Uso: cl package [--channel stable|beta] [--version X.Y.Z o X.Y.Z-beta.N].";
+        "Uso: cl package [--channel stable|beta] [--version X.Y.Z o X.Y.Z-beta.N] [--runtime win-x64|win-arm64].";
+
+    public static string PackageBadRuntime(string runtime) =>
+        "El runtime «" + runtime + "» no se publica: usa win-x64 o win-arm64.";
 
     public static string PackageBadChannel(string channel) =>
         "El canal «" + channel + "» no existe: usa stable o beta.";
