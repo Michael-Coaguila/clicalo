@@ -26,7 +26,6 @@ using Clicalo.Windowing.IntegrationTests.Automation.Rules;
 using Clicalo.Windowing.IntegrationTests.Interactions;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.SearchPanel;
-using Clicalo.Windowing.IntegrationTests.Theming;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
 using Microsoft.Extensions.Time.Testing;
 using SizeId = Clicalo.Domain.Catalog.PanelSize;
@@ -39,7 +38,9 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 /// sizes and its states (the profile grid, the search, the suggestion, Quick settings, edit mode, the menu of a
 /// shortcut, the panic strip, the administrator notice…), the bubble, the panic pill, and the Tab view (handle, bar and
 /// the windows beside it) on its four sides. Each surface is the product's own window, built but never shown; its
-/// content is hosted on a hidden presentation source (<see cref="AuditHost"/>).
+/// content is hosted on a hidden presentation source (<see cref="AuditHost"/>). Besides the design as drawn (dark,
+/// text at 100 %), the surfaces are audited with the largest text (150 %) in the light theme and in high contrast
+/// (<see cref="AuditLook"/>), and no text of theirs may be drawn cut (CUA-011).
 /// </summary>
 public sealed class SurfacesAuditTests
 {
@@ -98,15 +99,50 @@ public sealed class SurfacesAuditTests
         ["test-mode"] = static w => w.Layers.TestMode.Start(),
     };
 
-    public static TheoryData<string, SizeSetting, bool, string> PanelCases()
+    /// <summary>
+    /// Every state as it is drawn (dark, text at 100 %) in four shapes of the panel. With the largest text, which only
+    /// makes the tiles grow (CUA-011), not every combination: with high contrast, whose thicker borders leave the least
+    /// room, in the two shapes of the smallest panel; with the light theme, which only changes colors, in one.
+    /// </summary>
+    public static TheoryData<string, SizeSetting, bool, string, AuditLook> PanelCases()
     {
-        var cases = new TheoryData<string, SizeSetting, bool, string>();
+        var cases = new TheoryData<string, SizeSetting, bool, string, AuditLook>();
         foreach (var state in PanelStates.Keys)
         {
-            cases.Add(state, SizeSetting.Small, false, "es");
-            cases.Add(state, SizeSetting.Medium, true, "en");
-            cases.Add(state, SizeSetting.Small, true, "es");
-            cases.Add(state, SizeSetting.Large, false, "en");
+            cases.Add(state, SizeSetting.Small, false, "es", AuditLook.Dark);
+            cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.Dark);
+            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark);
+            cases.Add(state, SizeSetting.Large, false, "en", AuditLook.Dark);
+            cases.Add(state, SizeSetting.Small, false, "es", AuditLook.ContrastLargeText);
+            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.ContrastLargeText);
+            cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.LightLargeText);
+        }
+
+        return cases;
+    }
+
+    public static TheoryData<DockSide, SizeId, AuditLook> BarCases()
+    {
+        var cases = new TheoryData<DockSide, SizeId, AuditLook>();
+        foreach (var look in Enum.GetValues<AuditLook>())
+        {
+            cases.Add(DockSide.Right, SizeId.S, look);
+            cases.Add(DockSide.Left, SizeId.M, look);
+            cases.Add(DockSide.Top, SizeId.S, look);
+            cases.Add(DockSide.Bottom, SizeId.L, look);
+        }
+
+        return cases;
+    }
+
+    public static TheoryData<DockFlyout, int, AuditLook> FlyoutCases()
+    {
+        var cases = new TheoryData<DockFlyout, int, AuditLook>();
+        foreach (var look in Enum.GetValues<AuditLook>())
+        {
+            cases.Add(DockFlyout.Pinned, 3, look);
+            cases.Add(DockFlyout.Profiles, 3, look);
+            cases.Add(DockFlyout.Sticky, 4, look);
         }
 
         return cases;
@@ -122,14 +158,15 @@ public sealed class SurfacesAuditTests
         string state,
         SizeSetting size,
         bool compact,
-        string language
+        string language,
+        AuditLook look
     )
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
         WpfThread.Invoke(() =>
         {
-            using var theme = Theme();
+            using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld(language, time);
             world.Panel.ApplyLayout(
                 PanelLayoutSettings.Default with
@@ -138,6 +175,7 @@ public sealed class SurfacesAuditTests
                     Compact = compact,
                     StickyRow = true,
                     VoiceNumbers = true,
+                    TextScalePercent = AuditLooks.TextScalePercent(look),
                 }
             );
             var window = new PanelWindow(
@@ -159,7 +197,7 @@ public sealed class SurfacesAuditTests
 
                 SurfaceAudit.ShouldPass(
                     host,
-                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language})",
+                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})",
                     atLeast: 8,
                     TouchInput.PointerLayer
                 );
@@ -175,20 +213,18 @@ public sealed class SurfacesAuditTests
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
-    [InlineData(DockSide.Right, SizeId.S)]
-    [InlineData(DockSide.Left, SizeId.M)]
-    [InlineData(DockSide.Top, SizeId.S)]
-    [InlineData(DockSide.Bottom, SizeId.L)]
+    [MemberData(nameof(BarCases))]
     public void The_handle_and_the_bar_of_the_Tab_view_follow_the_UIA_rules_and_keep_44(
         DockSide side,
-        SizeId size
+        SizeId size,
+        AuditLook look
     )
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
         WpfThread.Invoke(() =>
         {
-            using var theme = Theme();
+            using var theme = AuditLooks.Theme(look);
             var dock = Dock(time, side, size, DockFlyout.None, coachStep: 0);
             var handle = new DockHandleWindow(
                 side,
@@ -213,7 +249,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"handle ({side})",
+                        $"handle ({side}, {look})",
                         atLeast: 1,
                         TouchInput.PointerLayer
                     );
@@ -223,7 +259,24 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"bar ({side}, {size})",
+                        $"bar ({side}, {size}, {look})",
+                        atLeast: 10,
+                        TouchInput.PointerLayer
+                    );
+
+                    // The other texts of the pill and of the lock: «Fijo» and «Abierta».
+                    var state = State(side, size, DockFlyout.None, coachStep: 0);
+                    dock.Apply(
+                        state with
+                        {
+                            IsFixed = true,
+                            Dock = state.Dock with { PinOpen = true },
+                        }
+                    );
+                    host.LayOut();
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"bar fixed and open ({side}, {size}, {look})",
                         atLeast: 10,
                         TouchInput.PointerLayer
                     );
@@ -241,19 +294,18 @@ public sealed class SurfacesAuditTests
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
-    [InlineData(DockFlyout.Pinned, 3)]
-    [InlineData(DockFlyout.Profiles, 3)]
-    [InlineData(DockFlyout.Sticky, 4)]
+    [MemberData(nameof(FlyoutCases))]
     public void The_windows_beside_the_bar_follow_the_UIA_rules_and_keep_44(
         DockFlyout flyout,
-        int atLeast
+        int atLeast,
+        AuditLook look
     )
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
         WpfThread.Invoke(() =>
         {
-            using var theme = Theme();
+            using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld("es", time);
             world.Panel.ApplyLayout(PanelLayoutSettings.Default with { StickyRow = true });
             world.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true });
@@ -271,7 +323,12 @@ public sealed class SurfacesAuditTests
             try
             {
                 using var host = AuditHost.OfWindow(window, theme);
-                SurfaceAudit.ShouldPass(host, $"flyout {flyout}", atLeast, TouchInput.PointerLayer);
+                SurfaceAudit.ShouldPass(
+                    host,
+                    $"flyout {flyout} ({look})",
+                    atLeast,
+                    TouchInput.PointerLayer
+                );
             }
             finally
             {
@@ -280,17 +337,22 @@ public sealed class SurfacesAuditTests
         });
     }
 
-    [Fact]
+    [Theory]
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
-    public void The_coach_the_notices_the_menu_and_Quick_settings_of_the_Tab_view_keep_44()
+    [InlineData(AuditLook.Dark)]
+    [InlineData(AuditLook.LightLargeText)]
+    [InlineData(AuditLook.ContrastLargeText)]
+    public void The_coach_the_notices_the_menu_and_Quick_settings_of_the_Tab_view_keep_44(
+        AuditLook look
+    )
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
         WpfThread.Invoke(() =>
         {
-            using var theme = Theme();
+            using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld("es", time);
             var dock = Dock(time, DockSide.Right, SizeId.M, DockFlyout.None, coachStep: 1);
             var coach = new DockCoachWindow(
@@ -407,17 +469,20 @@ public sealed class SurfacesAuditTests
         });
     }
 
-    [Fact]
+    [Theory]
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
-    public void The_bubble_and_the_panic_pill_follow_the_UIA_rules_and_keep_44()
+    [InlineData(AuditLook.Dark)]
+    [InlineData(AuditLook.LightLargeText)]
+    [InlineData(AuditLook.ContrastLargeText)]
+    public void The_bubble_and_the_panic_pill_follow_the_UIA_rules_and_keep_44(AuditLook look)
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
         WpfThread.Invoke(() =>
         {
-            using var theme = Theme();
+            using var theme = AuditLooks.Theme(look);
             var localization = PanelTestData.Localization("es");
             var bubble = new BubbleWindow(
                 new BubbleViewModel(localization, static () => { }, static () => { }),
@@ -769,8 +834,7 @@ public sealed class SurfacesAuditTests
             .ShouldBeAssignableTo<IToggleProvider>()!
             .ToggleState;
 
-    private static ThemeService Theme() =>
-        new(new FakeSystemTheme(), ThemeChoice.Dark, 100, reduceMotion: true);
+    private static ThemeService Theme() => AuditLooks.Theme(AuditLook.Dark);
 
     private static DockBarViewModel Dock(
         TimeProvider time,

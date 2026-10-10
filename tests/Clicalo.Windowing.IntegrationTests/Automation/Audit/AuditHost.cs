@@ -60,8 +60,8 @@ internal sealed class AuditHost : IDisposable
     /// </summary>
     /// <param name="window">A window of the product, built but not shown.</param>
     /// <param name="theme">The theme service of the window.</param>
-    /// <param name="width">Width in device-independent pixels; <see langword="null"/> is the width the content asks for.</param>
-    /// <param name="height">Height in device-independent pixels; <see langword="null"/> is the height it asks for.</param>
+    /// <param name="width">Width in device-independent pixels; <see langword="null"/> is the width the window fixes or, when it fixes none, the one its content asks for.</param>
+    /// <param name="height">Height in device-independent pixels; <see langword="null"/> is the height the window fixes or, when it fixes none, the one its content asks for.</param>
     public static AuditHost OfWindow(
         Window window,
         ThemeService theme,
@@ -74,7 +74,7 @@ internal sealed class AuditHost : IDisposable
         var content = (FrameworkElement)window.Content;
         window.Content = null;
         theme.Attach(content);
-        return new AuditHost(content, width, height)
+        return new AuditHost(content, width ?? Own(window.Width), height ?? Own(window.Height))
         {
             _restore = () =>
             {
@@ -83,6 +83,9 @@ internal sealed class AuditHost : IDisposable
             },
         };
     }
+
+    /// <summary>The size a window fixes for itself; <see langword="null"/> when it takes the size of its content.</summary>
+    private static double? Own(double size) => double.IsNaN(size) ? null : size;
 
     /// <summary>Physical pixels per device-independent pixel of the source.</summary>
     public double Scale => VisualTreeHelper.GetDpi(_frame).DpiScaleX;

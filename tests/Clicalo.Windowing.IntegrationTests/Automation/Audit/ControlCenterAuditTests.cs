@@ -5,15 +5,12 @@ using System.Windows.Automation.Provider;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
-using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.TestKit.Windows.Rendering;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Workspace;
 using Clicalo.Windowing.IntegrationTests.About;
 using Clicalo.Windowing.IntegrationTests.ControlCenter;
-using Clicalo.Windowing.IntegrationTests.Theming;
 
 namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 
@@ -21,7 +18,9 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 /// REG-02 and REG-06 on the real Control Center (docs/05): its window with each of the six sections and their open
 /// states (the editor of each kind of shortcut, the library, the review of repeated combinations, the preview of a
 /// template, the three tabs of «Sistema»…), at its default size and at its smallest, in Spanish and in English. The
-/// content of the window is hosted on a hidden presentation source (<see cref="AuditHost"/>); nothing is shown.
+/// content of the window is hosted on a hidden presentation source (<see cref="AuditHost"/>); nothing is shown. Also
+/// with the largest text in the light theme and in high contrast (<see cref="AuditLook"/>), and with no text drawn
+/// cut (CCM-005).
 /// </summary>
 public sealed class ControlCenterAuditTests
 {
@@ -115,20 +114,49 @@ public sealed class ControlCenterAuditTests
         },
     };
 
-    /// <summary>Wide (the menu with its names), the default size and the smallest window (CCM-005).</summary>
-    public static TheoryData<string, string, double, double> Cases()
+    /// <summary>The first state of each section: where the light theme, which only changes colors, is audited.</summary>
+    private static readonly string[] Sections =
+    [
+        "shortcuts",
+        "templates",
+        "general",
+        "touch",
+        "system-updates",
+        "about",
+    ];
+
+    /// <summary>
+    /// Wide (the menu with its names), the default size and the smallest window (CCM-005), as drawn (dark, text at
+    /// 100 %). The text size of the person does not reach the Control Center (CUA-011: it is the tiles of the panel
+    /// that grow), so the other looks are not repeated on every width: high contrast, whose thicker borders leave the
+    /// least room, on every state in the smallest window, and the light theme on the first state of each section.
+    /// </summary>
+    public static TheoryData<string, string, double, double, AuditLook> Cases()
     {
-        var cases = new TheoryData<string, string, double, double>();
+        var cases = new TheoryData<string, string, double, double, AuditLook>();
         foreach (var state in States.Keys)
         {
-            cases.Add(state, "es", 1300, 760);
+            cases.Add(state, "es", 1300, 760, AuditLook.Dark);
             cases.Add(
                 state,
                 "es",
                 ControlCenterWindow.DefaultWidth,
-                ControlCenterWindow.DefaultHeight
+                ControlCenterWindow.DefaultHeight,
+                AuditLook.Dark
             );
-            cases.Add(state, "en", 760, 520);
+            cases.Add(state, "en", 760, 520, AuditLook.Dark);
+            cases.Add(state, "en", 760, 520, AuditLook.ContrastLargeText);
+        }
+
+        foreach (var section in Sections)
+        {
+            cases.Add(
+                section,
+                "es",
+                ControlCenterWindow.DefaultWidth,
+                ControlCenterWindow.DefaultHeight,
+                AuditLook.LightLargeText
+            );
         }
 
         return cases;
@@ -145,12 +173,14 @@ public sealed class ControlCenterAuditTests
         string state,
         string language,
         double width,
-        double height
+        double height,
+        AuditLook look
     ) =>
         Run(
             language,
             width,
             height,
+            look,
             (viewModel, host) =>
             {
                 States[state](viewModel);
@@ -160,7 +190,7 @@ public sealed class ControlCenterAuditTests
                     host,
                     string.Create(
                         CultureInfo.InvariantCulture,
-                        $"{state} ({language}, {width:0} × {height:0})"
+                        $"{state} ({language}, {width:0} × {height:0}, {look})"
                     ),
                     atLeast: 12,
                     TouchInput.Wpf
@@ -178,6 +208,7 @@ public sealed class ControlCenterAuditTests
             "es",
             1300,
             760,
+            AuditLook.Dark,
             (viewModel, host) =>
             {
                 // The sections of the menu are one group of choices: radio buttons with SelectionItem, not toggles.
@@ -240,6 +271,7 @@ public sealed class ControlCenterAuditTests
         string language,
         double width,
         double height,
+        AuditLook look,
         Action<ControlCenterViewModel, AuditHost> audit
     )
     {
@@ -264,12 +296,7 @@ public sealed class ControlCenterAuditTests
 
         WpfThread.Invoke(() =>
         {
-            using var theme = new ThemeService(
-                new FakeSystemTheme(),
-                ThemeChoice.Dark,
-                100,
-                reduceMotion: true
-            );
+            using var theme = AuditLooks.Theme(look);
             setup.World.Shortcuts.Open(
                 new ListRef.InProfile(ControlCenterTestWorld.Word),
                 null,

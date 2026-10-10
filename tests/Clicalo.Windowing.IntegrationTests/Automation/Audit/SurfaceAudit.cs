@@ -12,8 +12,9 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 /// <summary>
 /// The accessibility audit of one real view in one state (REG-02, REG-06): the UIA rules of
 /// <see cref="UiaVerifier"/> on its control view (name, role, patterns, states, 44 × 44 bounds, no glyph as a name, a
-/// dictation button next to every free text field) and, besides, that every touch target really answers on 44 × 44,
-/// which UI Automation's rectangle alone does not tell (<see cref="TouchInput"/>):
+/// dictation button next to every free text field), that no text is drawn cut (<see cref="CutTexts"/>) and that
+/// every touch target really answers on 44 × 44, which UI Automation's rectangle alone does not tell
+/// (<see cref="TouchInput"/>):
 /// <list type="bullet">
 /// <item>in the windows that take WPF input (Control Center, welcome), a target is hit only where it is drawn: its
 /// box, after the clips of its containers, must keep 44 × 44 (a row lower than its button leaves less to
@@ -26,7 +27,9 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 internal static class SurfaceAudit
 {
     private const string TouchRule = "REG-02";
+    private const string TextRule = "CUA-011";
     private const double Rounding = 0.5;
+    private const int MaxLabel = 40;
 
     private static readonly PatternInterface[] Actionable =
     [
@@ -64,6 +67,7 @@ internal static class SurfaceAudit
         [
             .. UiaVerifier.Verify(host.Snapshot(name), Expectations),
             .. SmallTargets(host.Root, Expectations.MinimumTargetSize, input),
+            .. CutTexts(host.Root),
         ];
     }
 
@@ -153,6 +157,62 @@ internal static class SurfaceAudit
         }
     }
 
+    /// <summary>
+    /// The texts and glyphs under <paramref name="root"/> that are drawn cut: their box is larger than what the clips
+    /// of their containers leave of it. A line that says it is trimmed («…», CUA-011) is not cut at its end, and what
+    /// a scroll area has out of view is not cut.
+    /// </summary>
+    public static IReadOnlyList<UiaViolation> CutTexts(FrameworkElement root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        var violations = new List<UiaViolation>();
+        Walk(root);
+        return violations;
+
+        void Walk(DependencyObject node)
+        {
+            // What is not shown (collapsed, hidden or fully transparent, as the key line of a tile with no room for it)
+            // is not cut.
+            if (node is UIElement { IsVisible: false } or UIElement { Opacity: 0 })
+            {
+                return;
+            }
+
+            if (
+                node is TextBlock { Text.Length: > 0 } text
+                && text.RenderSize is { Width: > 0, Height: > 0 }
+            )
+            {
+                // A trimmed text ends in «…» where its line ends, but its lines can still lose their top or bottom.
+                var (full, visible) = Boxes(text, root);
+                if (
+                    (
+                        text.TextTrimming == TextTrimming.None
+                        && visible.Width + Rounding < full.Width
+                    )
+                    || visible.Height + Rounding < full.Height
+                )
+                {
+                    violations.Add(
+                        new UiaViolation(
+                            TextRule,
+                            text.Text.Length > MaxLabel ? text.Text[..MaxLabel] + "…" : text.Text,
+                            string.Create(
+                                CultureInfo.InvariantCulture,
+                                $"is cut: {visible.Width:0.#} × {visible.Height:0.#} is seen of its {full.Width:0.#} × {full.Height:0.#}."
+                            )
+                        )
+                    );
+                }
+            }
+
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+            {
+                Walk(VisualTreeHelper.GetChild(node, i));
+            }
+        }
+    }
+
     private static string What(TouchInput input) =>
         input == TouchInput.PointerLayer
             ? "its bounds grown to the minimum, inside the window"
@@ -189,11 +249,19 @@ internal static class SurfaceAudit
         return grown;
     }
 
-    private static Rect VisibleBox(UIElement element, FrameworkElement root)
+    private static Rect VisibleBox(UIElement element, FrameworkElement root) =>
+        Boxes(element, root).Visible;
+
+    /// <summary>
+    /// The box of <paramref name="element"/> and what the clips of its containers leave of it, both in the coordinates
+    /// of <paramref name="root"/> or of the scroll area the element is in.
+    /// </summary>
+    private static (Rect Full, Rect Visible) Boxes(UIElement element, FrameworkElement root)
     {
-        var box = new Rect(element.RenderSize);
+        var full = new Rect(element.RenderSize);
+        var box = full;
         Visual current = element;
-        while (!box.IsEmpty)
+        while (true)
         {
             if (current is FrameworkElement framework)
             {
@@ -212,16 +280,17 @@ internal static class SurfaceAudit
                 ReferenceEquals(current, root)
                 || VisualTreeHelper.GetParent(current) is not Visual parent
                 || parent is ScrollContentPresenter
-                || box.IsEmpty
             )
             {
                 break;
             }
 
-            box = current.TransformToAncestor(parent).TransformBounds(box);
+            var toParent = current.TransformToAncestor(parent);
+            full = toParent.TransformBounds(full);
+            box = box.IsEmpty ? box : toParent.TransformBounds(box);
             current = parent;
         }
 
-        return box.IsEmpty ? new Rect(0, 0, 0, 0) : box;
+        return (full, box.IsEmpty ? new Rect(0, 0, 0, 0) : box);
     }
 }
