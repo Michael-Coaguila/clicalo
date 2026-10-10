@@ -199,6 +199,10 @@ public sealed class SurfaceSet : IDisposable
         };
         dock.Labels.PropertyChanged += OnLabelsChanged;
         _panicPill.ApplyLabel(dock.Labels.ReleaseAll);
+
+        // ACC-001: the floating «Release all» says what is held, as the panic strip of the panel does.
+        panelModel.Panic.PropertyChanged += OnPanicChanged;
+        _panicPill.ApplyHeld(panelModel.Panic.HeldMessage);
         SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
         SystemParameters.StaticPropertyChanged += OnSystemParameterChanged;
     }
@@ -343,6 +347,7 @@ public sealed class SurfaceSet : IDisposable
         _disposed = true;
         _dimmer.Dispose();
         _dock.Labels.PropertyChanged -= OnLabelsChanged;
+        _panelModel.Panic.PropertyChanged -= OnPanicChanged;
         SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
         SystemParameters.StaticPropertyChanged -= OnSystemParameterChanged;
         foreach (var surface in _surfaces)
@@ -840,6 +845,9 @@ public sealed class SurfaceSet : IDisposable
 
     private void OnLabelsChanged(object? sender, PropertyChangedEventArgs e) =>
         _panicPill.ApplyLabel(_dock.Labels.ReleaseAll);
+
+    private void OnPanicChanged(object? sender, PropertyChangedEventArgs e) =>
+        _panicPill.ApplyHeld(_panelModel.Panic.HeldMessage);
 
     /// <summary>A monitor was connected, removed or changed resolution (PAN-006): read them again and place everything.</summary>
     private void OnDisplayChanged(object? sender, EventArgs e) =>
