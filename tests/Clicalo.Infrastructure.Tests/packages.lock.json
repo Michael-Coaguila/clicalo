@@ -459,6 +459,7 @@
       "clicalo.infrastructure": {
         "type": "Project",
         "dependencies": {
+          "Anthropic": "[12.50.0, )",
           "Clicalo.Application": "[2.0.0-dev, )",
           "Clicalo.Domain": "[2.0.0-dev, )",
           "Clicalo.Platform.Core": "[2.0.0-dev, )",
@@ -476,6 +477,15 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.TimeProvider.Testing": "[10.10.0, )"
+        }
+      },
+      "Anthropic": {
+        "type": "CentralTransitive",
+        "requested": "[12.50.0, )",
+        "resolved": "12.50.0",
+        "contentHash": "BBtKetn0gsVeaFfRHcqW5hhUwWdNuIp4lTCvrd4roN6HivnJqrKBbEhPWjA/a5eypg2rvGdUr/Z5qzV6Fr7+Bg==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.5.1"
         }
       },
       "Microsoft.Extensions.AI": {

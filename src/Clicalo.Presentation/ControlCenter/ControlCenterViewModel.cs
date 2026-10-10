@@ -1,17 +1,24 @@
 using System.Globalization;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Presentation.ControlCenter.About;
+using Clicalo.Presentation.ControlCenter.General;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
+using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.Presentation.ControlCenter.Templates;
+using Clicalo.Presentation.ControlCenter.TouchPrecision;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter;
 
 /// <summary>
 /// The frame of the Control Center (CCM-001 to CCM-003): the title bar with the path and the ES/EN selector, the side
-/// menu with its six sections and the status bar with [undo]. Sections 2 to 6 show a marker until their part arrives.
+/// menu with its six sections and the status bar with [undo]. A section whose services are not composed (tests) shows a
+/// marker.
 /// </summary>
 public sealed class ControlCenterViewModel : ObservableObject
 {
@@ -60,11 +67,72 @@ public sealed class ControlCenterViewModel : ObservableObject
                 Refresh();
             }
         };
+        if (services.System is { } system)
+        {
+            System = new SystemSectionViewModel(services, system);
+            System.PropertyChanged += (_, e) =>
+            {
+                if (
+                    string.Equals(
+                        e.PropertyName,
+                        nameof(SystemSectionViewModel.UpdateCount),
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    Refresh();
+                }
+            };
+        }
+
+        Templates = services.Templates is { } templates
+            ? new TemplatesSectionViewModel(services, templates, OpenProfile)
+            : null;
+        General = new GeneralSectionViewModel(
+            new GeneralServices(
+                services.Store,
+                services.Localization,
+                services.Confirm,
+                services.Time,
+                services.Post,
+                services.OpenWelcome ?? (static () => { })
+            )
+        );
+        TouchPrecision = new TouchPrecisionViewModel(
+            new TouchPrecisionServices(
+                services.Store,
+                services.Localization,
+                services.Time,
+                services.Post
+            )
+        );
+        if (services.About is { } about)
+        {
+            var aboutSection = new AboutViewModel(about);
+            About = aboutSection;
+            services.Localization.LanguageChanged += (_, _) => services.Post(aboutSection.Refresh);
+        }
+
         Refresh();
     }
 
+    /// <summary>The «General y panel» section (docs/05 §3).</summary>
+    public GeneralSectionViewModel General { get; }
+
+    /// <summary>The «Precisión táctil» section (docs/05 §4).</summary>
+    public TouchPrecisionViewModel TouchPrecision { get; }
+
+    /// <summary>The «Acerca de y contacto» section (docs/05 §6); null while its services are not composed.</summary>
+    public AboutViewModel? About { get; }
+
+    /// <summary>The «Plantillas» section; null without its services.</summary>
+    public TemplatesSectionViewModel? Templates { get; }
+
     /// <summary>The «Atajos» section.</summary>
     public ShortcutsSectionViewModel Shortcuts { get; }
+
+    /// <summary>The «Sistema» section (docs/05 §5); null while its services are not composed.</summary>
+    public SystemSectionViewModel? System { get; }
 
     /// <summary>The section in view.</summary>
     public ControlCenterSection Section
@@ -148,6 +216,17 @@ public sealed class ControlCenterViewModel : ObservableObject
     public void Select(ControlCenterSection section)
     {
         Section = section;
+        if (section == ControlCenterSection.System)
+        {
+            System?.OnShown();
+        }
+
+        if (section == ControlCenterSection.Templates)
+        {
+            // The open apps and the key are read again each time the section shows (PLA-011, PLA-003).
+            Templates?.OnOpened();
+        }
+
         Refresh();
     }
 
@@ -181,6 +260,16 @@ public sealed class ControlCenterViewModel : ObservableObject
             return;
         }
 
+        if (Section == ControlCenterSection.System && (System?.CloseMenu() ?? false))
+        {
+            return;
+        }
+
+        if (Section == ControlCenterSection.Templates && Templates?.CloseMenu() == true)
+        {
+            return;
+        }
+
         _close();
     }
 
@@ -205,6 +294,7 @@ public sealed class ControlCenterViewModel : ObservableObject
     /// <summary>Projects the frame again (language, counts, undo).</summary>
     public void Refresh()
     {
+        Templates?.Invalidate();
         var localizer = _s.Localization.Current;
         AppName = T(L.AppName);
         Title = T(L.Cc);
@@ -219,7 +309,14 @@ public sealed class ControlCenterViewModel : ObservableObject
             Item(ControlCenterSection.Templates, "auto_awesome", L.NavTpl, 0, false),
             Item(ControlCenterSection.Panel, "display_settings", L.NavPanel, 0, false),
             Item(ControlCenterSection.Touch, "touch_app", L.NavTouch, 0, false),
-            Item(ControlCenterSection.System, "verified_user", L.NavSys, 0, true),
+            Item(
+                ControlCenterSection.System,
+                "verified_user",
+                L.NavSys,
+                System?.UpdateCount ?? 0,
+                true,
+                L.UpdAvail
+            ),
             Item(ControlCenterSection.About, "favorite", L.NavAbout2, 0, false),
         ];
         SectionTitle = Nav.Items.First(n => n.Section == Section).Label;
@@ -247,12 +344,21 @@ public sealed class ControlCenterViewModel : ObservableObject
 
     private string T(Message message) => _s.Localization.Current.Format(message);
 
+    // A profile created or chosen in Plantillas: «Atajos» on it, with the library when it is new (PLA-010, PLA-014).
+    private void OpenProfile(ProfileId profile, bool library)
+    {
+        _s.Shortcuts.Open(new ListRef.InProfile(profile), null, library);
+        Shortcuts.OnOpened();
+        Select(ControlCenterSection.Shortcuts);
+    }
+
     private NavItem Item(
         ControlCenterSection section,
         string icon,
         Message label,
         int count,
-        bool separator
+        bool separator,
+        Message? countName = null
     ) =>
         new(
             section,
@@ -260,7 +366,9 @@ public sealed class ControlCenterViewModel : ObservableObject
             T(label),
             count,
             count > 0
-                ? count.ToString(CultureInfo.InvariantCulture) + " " + T(L.DupSummary)
+                ? countName is { } name
+                    ? T(name)
+                    : count.ToString(CultureInfo.InvariantCulture) + " " + T(L.DupSummary)
                 : string.Empty,
             section == Section,
             separator

@@ -116,4 +116,15 @@ internal sealed class ClVerbs(
         );
         steps.NotePerfResults(output);
     }
+
+    /// <summary>
+    /// <c>cl package [--channel stable|beta] [--version X.Y.Z[-beta.N]]</c>: publishes Clícalo and Sentinel
+    /// self-contained for this machine's runtime and packs them with Velopack into <c>artifacts/package</c>
+    /// (<c>Setup.exe</c>, the packages and the release feed). It never publishes anything (docs/guides/release.md).
+    /// </summary>
+    public async Task PackageAsync()
+    {
+        await steps.ToolRestoreAsync();
+        await steps.PackageAsync(devCliArguments);
+    }
 }

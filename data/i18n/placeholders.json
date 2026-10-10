@@ -46,5 +46,13 @@
   "seconds": {
     "type": "number",
     "description": "Duración en segundos con decimales, por ejemplo «0,5»; con coma en español y punto en inglés."
+  },
+  "date": {
+    "type": "text",
+    "description": "Fecha ya escrita en el idioma, por ejemplo «22 sep», o un mensaje como «Hoy, 09:12»."
+  },
+  "time": {
+    "type": "text",
+    "description": "Hora ya escrita en el idioma, por ejemplo «09:12»."
   }
 }

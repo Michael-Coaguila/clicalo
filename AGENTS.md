@@ -133,7 +133,7 @@ con las opciones que se escriban detrás (`cl i18n-import --check`, `cl adr-chec
 `run` (la app sin envío de teclas y con datos aislados), `note`, `perf` y `quarantine`. `check`, `test` y `fast`
 solo ejecutan las pruebas deterministas: dejan fuera las de escritorio, caos, rendimiento y cuarentena, que se lanzan
 a mano (`nightly.yml` o `cl desk` en local) y son obligatorias antes de cada versión. Llegan después: `pr` (M1); `states`,
-`accept` y `trace` (M3); `beta` y `sign-manifest` (M5). Cada orden termina en una línea legible por Narrador. Detalle, pasos de `cl check` y
+`accept` y `trace` (M3); `package` (M5; la 2.0 sale sin firma y `beta` y `sign-manifest` esperan a la firma, ADR-0027). Cada orden termina en una línea legible por Narrador. Detalle, pasos de `cl check` y
 variables de entorno: [tooling.md](docs/architecture/tooling.md#verbos-de-cl).
 
 ## Dónde está cada cosa

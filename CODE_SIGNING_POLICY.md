@@ -10,8 +10,8 @@ requisitos de [SignPath Foundation](https://signpath.org/), la vía de firma ele
 
 ### Estado
 
-Clícalo todavía **no publica binarios firmados**. Esta política entra en vigor con la primera beta firmada
-(hito M5). La admisión en SignPath Foundation se solicitará cuando el repositorio sea público. Una vez
+Clícalo todavía **no publica binarios firmados**. La versión 2.0 se publica sin firma (decisión D6 del
+usuario, [ADR-0027](docs/adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)); esta política entra en vigor con la primera versión firmada. La admisión en SignPath Foundation se solicitará cuando el repositorio sea público. Una vez
 admitido, cada página de descarga y de versión mostrará:
 
 > Free code signing provided by [SignPath.io](https://signpath.io/), certificate by
@@ -101,8 +101,8 @@ ADR-0013.
 
 ### Status
 
-Clícalo does **not ship signed binaries yet**. This policy takes effect with the first signed beta
-(milestone M5). The SignPath Foundation application will be filed once the repository is public. After
+Clícalo does **not ship signed binaries yet**. Version 2.0 ships unsigned (user decision D6,
+[ADR-0027](docs/adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)); this policy takes effect with the first signed release. The SignPath Foundation application will be filed once the repository is public. After
 admission, every download and release page will show:
 
 > Free code signing provided by [SignPath.io](https://signpath.io/), certificate by

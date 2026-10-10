@@ -37,6 +37,7 @@ internal static class CommandFactory
         typeof(BindProcess),
         typeof(UnbindProcess),
         typeof(SetSetting),
+        typeof(SetTouchFilter),
         typeof(SetPanelPosition),
         typeof(RecordUsage),
         typeof(PinToFrequents),
@@ -48,8 +49,10 @@ internal static class CommandFactory
         typeof(KeepOnlyInAlwaysVisible),
         typeof(DeleteMacroStep),
         typeof(ReplaceOnImport),
+        typeof(MergeOnImport),
         typeof(RestoreBackup),
         typeof(FinishOnboarding),
+        typeof(AddShortcuts),
     ];
 
     /// <summary>Any seed.</summary>
@@ -120,6 +123,7 @@ internal static class CommandFactory
             nameof(BindProcess) => new BindProcess(PickProfile(library, a), Process(b), flag),
             nameof(UnbindProcess) => Unbind(library, a, b),
             nameof(SetSetting) => Setting(document, a, b, flag && c % 3 == 0),
+            nameof(SetTouchFilter) => Touch(a, b, flag && c % 3 == 0),
             nameof(SetPanelPosition) => new SetPanelPosition(
                 new MonitorPosition(
                     a % 3 == 0
@@ -139,7 +143,13 @@ internal static class CommandFactory
             nameof(KeepOnlyInAlwaysVisible) => new KeepOnlyInAlwaysVisible(target),
             nameof(DeleteMacroStep) => new DeleteMacroStep(target, (c % 4) - 1),
             nameof(ReplaceOnImport) => new ReplaceOnImport(Imported(library, b)),
+            nameof(MergeOnImport) => new MergeOnImport(Imported(library, b)),
             nameof(RestoreBackup) => new RestoreBackup(Backup(document, b, c % 5 == 0)),
+            nameof(AddShortcuts) => new AddShortcuts(
+                PickProfile(library, a),
+                [TemplateAt(b), TemplateAt(c)],
+                "Perfil"
+            ),
             _ => new FinishOnboarding(),
         };
     }
@@ -310,6 +320,17 @@ internal static class CommandFactory
                 };
         return invalid ? backup with { Settings = backup.Settings with { Columns = 9 } } : backup;
     }
+
+    private static SetTouchFilter Touch(int a, int n, bool invalid) =>
+        new(
+            new TouchFilterSettings(
+                new[] { "standard", "strong-tremor", SettingsSchema.PersonalTouchPreset }[a % 3],
+                TimeSpan.FromMilliseconds(invalid ? 1050 : (n % 21) * 50),
+                (n % 21) * 2,
+                n % 81,
+                TimeSpan.FromMilliseconds((n % 31) * 10)
+            )
+        );
 
     private static SetSetting Setting(UserDocument document, int a, int n, bool invalid)
     {

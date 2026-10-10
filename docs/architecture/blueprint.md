@@ -289,6 +289,8 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 
 ### 3.3 Elevación, uiAccess y componente de sistema
 
+> **Modificado en la 2.0 por la decisión D7 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** no hay componente de sistema ni inicio elevado sin UAC. «Reabrir como administrador» es un botón de Sistema › Inicio que pide la confirmación de UAC cada vez y solo eleva el `Clicalo.exe` instalado en `%LocalAppData%\Clicalo.App\current`; «Iniciar con Windows» arranca siempre sin elevación. Lo que sigue describe el diseño original.
+
 Hay **una sola instalación por usuario** (Velopack, sin UAC) y un **componente de sistema opcional** que se instala una vez con UAC desde Sistema › Inicio. El componente cumple SIS-002 en la 2.0 y es la base de uiAccess en M7.
 
 | Capacidad | Solo instalación por usuario (predeterminada) | Con componente de sistema (2.0, opcional) | uiAccess (M7, sobre el componente) |
@@ -1546,6 +1548,8 @@ public sealed record TemplateRequest(string AppName, KeyboardLayoutKind Layout, 
 
 ### 9.3 Actualizaciones
 
+> **Modificado en la 2.0 por la decisión D6 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** sin manifiesto firmado ni `.sig`. Velopack lee las GitHub Releases del repositorio por HTTPS y verifica cada paquete; nunca baja de versión por sí solo, «Volver» descarga la versión anterior durante 7 días y una instancia elevada no actualiza. Lo que sigue describe el diseño original, que vuelve con la firma de SignPath.
+
 ```
 UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
  1 GET releases.{channel}.json + .sig (GitHub Releases) mediante SignedManifestSource : Velopack IUpdateSource
@@ -1780,6 +1784,8 @@ Se guardan en `tests/Clicalo.Performance/budgets.json`, que está versionado.
 ---
 
 ## 11. Distribución, versionado y publicación
+
+> **Modificado en la 2.0 por la decisión D6 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** la 2.0 sale sin firma de código, sin `cl beta` ni `cl sign-manifest` y sin GitHub Actions de publicación. `cl package [--channel stable|beta]` empaqueta en local con Velopack y la publicación es manual ([guía de publicación](../guides/release.md)).
 
 - **Instalador:** Velopack `Setup.exe` por usuario y sin UAC, con `packId Clicalo.App`.
   - Autocontenido para `win-x64` (beta y estable) y `win-arm64` (beta; estable según P5).
