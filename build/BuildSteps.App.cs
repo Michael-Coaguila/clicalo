@@ -133,9 +133,11 @@ internal sealed partial class BuildSteps
         );
 
     /// <summary>
-    /// <c>cl perf</c>, first step: publishes every <see cref="PublishVariant"/> of Clicalo.exe (and Sentinel next to it)
-    /// in Release under <paramref name="output"/>, with the same restore as any build: the lock files hold the graphs of
-    /// both shipped runtimes, and in CI the restore is locked (<see cref="PublishArguments"/>).
+    /// <c>cl perf</c>, first step: publishes every <see cref="PublishVariant"/> of Clicalo.exe in Release under
+    /// <paramref name="output"/>, with the same restore as any build: the lock files hold the graphs of both shipped
+    /// runtimes, and in CI the restore is locked (<see cref="PublishArguments"/>). Sentinel (Native AOT) is published
+    /// next to it only in continuous integration: only a start that sends keys launches it, and outside the CI every
+    /// measured start carries <c>--no-input</c>, so the maintainer's machine measures the start without the C++ linker.
     /// </summary>
     public Task PublishAsync(IReadOnlyList<PublishVariant> variants, string output) =>
         context.Steps.RunAsync(
@@ -152,7 +154,10 @@ internal sealed partial class BuildSteps
                     }
 
                     await PublishProjectAsync(AppProject, folder, variant.Properties);
-                    await PublishProjectAsync(SentinelProject, folder, []);
+                    if (context.Mode.Ci)
+                    {
+                        await PublishProjectAsync(SentinelProject, folder, []);
+                    }
                 }
             }
         );
