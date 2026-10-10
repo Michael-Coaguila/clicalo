@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Windows.Input;
 using Clicalo.Domain.Keys;
 
-namespace Clicalo.UI.Wpf.Workspace.Internal;
+namespace Clicalo.UI.Wpf.Workspace;
 
 /// <summary>
 /// The catalog key of a key the Control Center window receives while «Grabar con teclado» is on (EDI-010): letters,
@@ -10,7 +10,7 @@ namespace Clicalo.UI.Wpf.Workspace.Internal;
 /// keys depend on the layout and are not recorded: like Esc and the combinations Windows intercepts, they are chosen
 /// in the key picker.
 /// </summary>
-internal static class RecordedKeys
+public static class RecordedKeys
 {
     /// <summary>The catalog key of <paramref name="e"/>, or null when the catalog has none for it.</summary>
     /// <param name="e">The key event; with Alt held, WPF reports the key as the system key.</param>

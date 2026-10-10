@@ -19,6 +19,10 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="ButtonIcon">Its icon.</param>
 /// <param name="ButtonEnabled">Whether it works (N greater than 0, or Editar atajos).</param>
 /// <param name="ButtonSecondary">Whether it is the secondary [editShortcuts].</param>
+/// <param name="VariantText">
+/// «Actualizar a la variante {idioma}» when installed shortcuts still have the keys of another programs language
+/// (EC-PLA-04); null otherwise.
+/// </param>
 public sealed record PreviewModel(
     bool HasContent,
     string EmptyText,
@@ -35,5 +39,6 @@ public sealed record PreviewModel(
     string ButtonText,
     string ButtonIcon,
     bool ButtonEnabled,
-    bool ButtonSecondary
+    bool ButtonSecondary,
+    string? VariantText = null
 );

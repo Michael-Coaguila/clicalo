@@ -5,7 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace Clicalo.UI.Wpf.Workspace.Internal;
+namespace Clicalo.UI.Wpf.Workspace;
 
 /// <summary>
 /// Keeps the keyboard focus when a section draws itself again (ACC-004): the views of the Control Center rebuild a
@@ -13,7 +13,7 @@ namespace Clicalo.UI.Wpf.Workspace.Internal;
 /// was (its kind, its accessible name and its place in the tab order) and, once the new region is in the window, gives
 /// the keyboard to the control that took its place, so keyboard and switch users keep going where they were.
 /// </summary>
-internal sealed class FocusKeeper
+public sealed class FocusKeeper
 {
     private readonly Window _window;
     private DependencyObject? _last;
@@ -41,7 +41,7 @@ internal sealed class FocusKeeper
 
     /// <summary>The focusable controls under <paramref name="root"/>, in the order of the tree.</summary>
     /// <param name="root">The window or a part of it.</param>
-    public static List<Control> Stops(DependencyObject root)
+    public static IReadOnlyList<Control> Stops(DependencyObject root)
     {
         ArgumentNullException.ThrowIfNull(root);
         var stops = new List<Control>();
@@ -58,7 +58,7 @@ internal sealed class FocusKeeper
         return new FocusMark(
             control.GetType(),
             AutomationProperties.GetName(control) ?? string.Empty,
-            Stops(root).IndexOf(control)
+            Stops(root).ToList().IndexOf(control)
         );
     }
 

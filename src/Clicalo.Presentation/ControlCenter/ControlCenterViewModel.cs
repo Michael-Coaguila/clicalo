@@ -94,7 +94,9 @@ public sealed class ControlCenterViewModel : ObservableObject
                 services.Confirm,
                 services.Time,
                 services.Post,
-                services.OpenWelcome ?? (static () => { })
+                services.OpenWelcome ?? (static () => { }),
+                services.Templates?.Ai,
+                () => services.Catalogs().KeyLabels
             )
         );
         TouchPrecision = new TouchPrecisionViewModel(
@@ -218,6 +220,11 @@ public sealed class ControlCenterViewModel : ObservableObject
         if (section == ControlCenterSection.System)
         {
             System?.OnShown();
+        }
+
+        if (section == ControlCenterSection.Panel)
+        {
+            General.OnShown();
         }
 
         if (section == ControlCenterSection.Templates)

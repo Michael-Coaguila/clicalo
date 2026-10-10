@@ -44,6 +44,7 @@ public sealed class GeneralSectionView : ContentControl
     private readonly ContentControl _safety = Region();
     private readonly ContentControl _access = Region();
     private readonly ContentControl _start = Region();
+    private readonly ContentControl _ai = Region();
     private readonly Grid _columns = new();
     private readonly StackPanel _left;
     private readonly StackPanel _right;
@@ -74,7 +75,7 @@ public sealed class GeneralSectionView : ContentControl
 
         _top.Margin = new Thickness(0, 0, -12, -12);
         _left = Ui.Column(10, _layout, _transparency);
-        _right = Ui.Column(10, _dock, _feedback, _safety, _access, _start);
+        _right = Ui.Column(10, _dock, _feedback, _safety, _access, _ai, _start);
         var page = Ui.Column(Gap, Ui.Column(4, _title, _subtitle), _top, _columns);
         page.Margin = new Thickness(Gap);
         var root = new Border { Child = new TouchPanScrollViewer { Content = page } };
@@ -196,6 +197,12 @@ public sealed class GeneralSectionView : ContentControl
         if (shown?.Start != screen.Start)
         {
             _start.Content = StartSection(screen.Start);
+        }
+
+        if (shown?.Ai != screen.Ai)
+        {
+            _ai.Content = screen.Ai is { } ai ? AiSection(ai) : null;
+            _ai.Visibility = screen.Ai is null ? Visibility.Collapsed : Visibility.Visible;
         }
     }
 
@@ -852,11 +859,150 @@ public sealed class GeneralSectionView : ContentControl
         );
         StretchButton(reset, 52);
         AutomationProperties.SetHelpText(reset, access.ResetDescription);
-        return Section(
+        var times = Segments(
+            access.TimesTitle,
+            access.Times.Select(option =>
+                (option.Label, option.Name, option.Selected, (Action)(() => _viewModel.SetTimeMultiplier(option.Value)))
+            )
+        );
+        var section = Section(
             access.Caption,
             SwitchRow(access.ReduceMotion, _viewModel.ToggleReduceMotion),
-            reset
+            Ui.Card(
+                Ui.Column(
+                    8,
+                    Ui.Text(access.TimesTitle, 15, bold: true, wrap: true),
+                    times,
+                    Ui.Text(access.TimesDescription, 13, ink: ColorToken.Muted, wrap: true)
+                ),
+                ColorToken.Card,
+                null,
+                12,
+                new Thickness(14)
+            ),
+            SwitchRow(access.Hotkey, _viewModel.ToggleGlobalHotkey)
         );
+        if (!access.Hotkeys.IsEmpty)
+        {
+            // BUR-005, D10: the combination comes from a closed list; chips, never a combo box.
+            var chips = Ui.Wrap(
+                6,
+                access.Hotkeys.Select(option =>
+                    (UIElement)
+                        Ui.Choice(
+                            Ui.Text(option.Label, 13, mono: true),
+                            option.Name,
+                            option.Selected,
+                            () => _viewModel.SetGlobalHotkey(option.Value),
+                            44,
+                            8
+                        )
+                )
+            );
+            AutomationProperties.SetName(chips, access.HotkeyChoicesName);
+            section.Children.Add(
+                Ui.Card(
+                    Ui.Column(8, Ui.Text(access.HotkeyChoicesName, 13, bold: true), chips),
+                    ColorToken.Card,
+                    null,
+                    12,
+                    new Thickness(14)
+                )
+            );
+        }
+
+        section.Children.Add(reset);
+        return section;
+    }
+
+    // GEN-015: the state of the consent, the AI on or off and the saved key.
+    private StackPanel AiSection(AiModel ai)
+    {
+        var consent = Ui.Button(
+            Ui.Text(ai.ConsentAction, 13, bold: true),
+            ai.ConsentAction,
+            _viewModel.ToggleAiConsent,
+            ColorToken.CardHi,
+            radius: 10
+        );
+        var consentText = Ui.Column(
+            2,
+            Ui.Text(ai.ConsentState, 15, bold: true, wrap: true),
+            Ui.Text(ai.ConsentDetail, 13, ink: ColorToken.Muted, wrap: true)
+        );
+        var keyText = Ui.Text(ai.KeyState, 15, bold: true, wrap: true);
+        keyText.VerticalAlignment = VerticalAlignment.Center;
+        UIElement keyEnd = new Border();
+        if (ai.DeleteKeyText is { } delete)
+        {
+            var button = Ui.Button(
+                Ui.IconLabel(
+                    ai.DeleteKeyArmed ? "warning" : "delete",
+                    delete,
+                    18,
+                    13,
+                    ink: ai.DeleteKeyArmed ? ColorToken.OnDanger : ColorToken.DangerText,
+                    iconInk: ai.DeleteKeyArmed ? ColorToken.OnDanger : ColorToken.DangerText
+                ),
+                delete,
+                _viewModel.DeleteAiKey,
+                ai.DeleteKeyArmed ? ColorToken.Danger : null,
+                stroke: ai.DeleteKeyArmed ? ColorToken.Danger : ColorToken.Border,
+                radius: 10
+            );
+            if (ai.DeleteKeyArmed)
+            {
+                AutomationProperties.SetLiveSetting(button, AutomationLiveSetting.Polite);
+            }
+
+            keyEnd = button;
+        }
+
+        return Section(
+            ai.Caption,
+            SwitchRow(ai.Use, _viewModel.ToggleAi),
+            CardRow(ai.Consent ? "verified_user" : "gpp_maybe", consentText, consent),
+            CardRow("key", keyText, keyEnd)
+        );
+    }
+
+    private static Border Segments(
+        string name,
+        IEnumerable<(string Label, string Name, bool Selected, Action Click)> choices
+    )
+    {
+        var options = new List<UIElement>();
+        foreach (var (label, optionName, selected, click) in choices)
+        {
+            var button = Ui.Choice(
+                Ui.Text(label, 12, bold: true, ink: selected ? ColorToken.OnAccent : ColorToken.Text),
+                optionName,
+                selected,
+                click,
+                44,
+                8,
+                null
+            );
+            CcChrome.Paint(
+                button,
+                selected ? ColorToken.Accent : null,
+                selected ? ColorToken.OnAccent : ColorToken.Text,
+                null
+            );
+            button.BorderThickness = new Thickness(0);
+            button.Padding = new Thickness(6, 0, 6, 0);
+            options.Add(button);
+        }
+
+        var segments = Ui.Card(
+            Ui.Columns(options.Count, 2, options),
+            ColorToken.Side,
+            null,
+            10,
+            new Thickness(3)
+        );
+        AutomationProperties.SetName(segments, name);
+        return segments;
     }
 
     private StackPanel StartSection(StartModel start)

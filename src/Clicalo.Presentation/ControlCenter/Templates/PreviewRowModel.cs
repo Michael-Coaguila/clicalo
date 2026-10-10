@@ -1,3 +1,5 @@
+using Clicalo.Presentation.ControlCenter.Editor;
+
 namespace Clicalo.Presentation.ControlCenter.Templates;
 
 /// <summary>A row of the preview (PLA-015).</summary>
@@ -10,6 +12,9 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="Editing">Whether its name field is open.</param>
 /// <param name="Warning">[riskyMark] or [dangerMark].</param>
 /// <param name="RenameName">[rename].</param>
+/// <param name="DictateName">The accessible name of the dictation button of the name field (PLA-015, ACC-011).</param>
+/// <param name="KeysName">[changeKeys]; null when the row has no combination to change (PLA-016).</param>
+/// <param name="Combo">The combination box of the row while its keys are being changed (PLA-016).</param>
 public sealed record PreviewRowModel(
     int Index,
     string Icon,
@@ -19,5 +24,8 @@ public sealed record PreviewRowModel(
     bool Checked,
     bool Editing,
     string? Warning,
-    string RenameName
+    string RenameName,
+    string DictateName,
+    string? KeysName,
+    ComboModel? Combo
 );

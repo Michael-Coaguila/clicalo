@@ -526,11 +526,15 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             _linkOpen && state != LinkState.General && state != LinkState.Waiting,
             T(L.LinkOpenApps),
             [
-                .. _apps.Select(a => new AppChip(
-                    a.Process.Value,
-                    a.Name,
-                    processes.Contains(a.Process)
-                )),
+                // ATJ-008: the app that is in front behind the Control Center goes first, marked «activa».
+                .. _apps
+                    .OrderByDescending(a => a.Process == _s.LastApp())
+                    .Select(a => new AppChip(
+                        a.Process.Value,
+                        a.Name,
+                        processes.Contains(a.Process),
+                        a.Process == _s.LastApp() ? T(L.ActiveShort) : null
+                    )),
             ],
             T(L.LinkDetect),
             T(L.LinkNone),
