@@ -217,6 +217,12 @@ public sealed class ControlCenterViewModel : ObservableObject
     public void Select(ControlCenterSection section)
     {
         Section = section;
+        if (section != ControlCenterSection.Shortcuts)
+        {
+            // EDI-010: «Grabar con teclado» belongs to the editor; in another section the keyboard is free again.
+            Shortcuts.Editor.StopRecording();
+        }
+
         if (section == ControlCenterSection.System)
         {
             System?.OnShown();

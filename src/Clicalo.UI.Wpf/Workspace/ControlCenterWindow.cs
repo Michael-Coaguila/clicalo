@@ -164,6 +164,9 @@ public sealed class ControlCenterWindow : Window
         SizeChanged += (_, _) => ApplyWidth();
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewKeyUp += OnPreviewKeyUp;
+        // EDI-010: the recording only lives while the window has the keyboard. Once another window takes it, the
+        // keys that were held are released out of sight, and a stale modifier would slip into the next combination.
+        Deactivated += (_, _) => viewModel.Shortcuts.Editor.StopRecording();
         // ACC-004: a section that draws itself again does not take the keyboard away.
         _ = FocusKeeper.Attach(this);
         Render();
