@@ -11,9 +11,12 @@ using Clicalo.Application.Ports;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.About;
+using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
 using Clicalo.UI.Wpf.Workspace.SystemSection;
 using Clicalo.UI.Wpf.Workspace.Templates;
+using Clicalo.UI.Wpf.Workspace.TouchPrecision;
 
 namespace Clicalo.UI.Wpf.Workspace;
 
@@ -55,6 +58,9 @@ public sealed class ControlCenterWindow : Window
     private readonly ShortcutsSectionView _shortcuts;
     private readonly SystemSectionView? _system;
     private readonly TemplatesSectionView? _templates;
+    private readonly GeneralSectionView _general;
+    private readonly TouchPrecisionView _touch;
+    private readonly AboutSectionView? _about;
     private readonly CcButton _close;
     private bool _narrow;
     private bool _closing;
@@ -95,6 +101,9 @@ public sealed class ControlCenterWindow : Window
         _templates = viewModel.Templates is { } templates
             ? new TemplatesSectionView(templates)
             : null;
+        _general = new GeneralSectionView(viewModel.General);
+        _touch = new TouchPrecisionView(viewModel.TouchPrecision);
+        _about = viewModel.About is { } about ? new AboutSectionView(about) : null;
         _close = Ui.Button(Ui.Icon("close", 24), string.Empty, viewModel.Close, height: 40);
         _close.Width = 44;
         _close.Padding = new Thickness(0);
@@ -164,6 +173,9 @@ public sealed class ControlCenterWindow : Window
         _viewModel.PropertyChanged -= OnChanged;
         _shortcuts.Detach();
         _system?.Detach();
+        _general.Detach();
+        _touch.Detach();
+        _about?.Detach();
         Close();
     }
 
@@ -390,6 +402,9 @@ public sealed class ControlCenterWindow : Window
             ControlCenterSection.Shortcuts => _shortcuts,
             ControlCenterSection.System when _system is not null => _system,
             ControlCenterSection.Templates when _templates is not null => _templates,
+            ControlCenterSection.Panel => _general,
+            ControlCenterSection.Touch => _touch,
+            ControlCenterSection.About when _about is not null => _about,
             _ => Soon(),
         };
         _status.Content = Status();

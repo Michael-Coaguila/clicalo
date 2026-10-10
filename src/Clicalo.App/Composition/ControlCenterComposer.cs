@@ -14,6 +14,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
 using Clicalo.Infrastructure.Catalogs;
 using Clicalo.Presentation.ControlCenter;
+using Clicalo.Presentation.ControlCenter.About;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Workspace;
@@ -123,6 +124,19 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
 
     /// <summary>The services of «Sistema» (docs/05 §5), set before the window is first opened.</summary>
     public SystemServices? System { get; set; }
+
+    /// <summary>
+    /// Builds the services of «Acerca de y contacto» (docs/05 §6) from dictation and the status bar; set before the window
+    /// is first opened.
+    /// </summary>
+    public Func<
+        Func<CancellationToken, ValueTask<bool>>,
+        Action<WorkspaceNotice>,
+        AboutServices
+    >? About { get; set; }
+
+    /// <summary>«Ver la bienvenida otra vez» of General (GEN-014), set before the window is first opened.</summary>
+    public Action? OpenWelcome { get; set; }
 
     /// <summary>Whether «Probar ahora» is running: its app switches are not the user's (PRB-006). Any thread.</summary>
     public bool IsTrying => _tryNow.IsRunning;
@@ -330,13 +344,18 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             TryNowAsync,
             () => _viewModel?.Select(ControlCenterSection.Templates),
             System,
-            _templates?.Services(Notify, () => _window)
+            _templates?.Services(Notify, () => _window),
+            About?.Invoke(DictateAsync, Notify),
+            OpenWelcome
         );
         _viewModel = new ControlCenterViewModel(services, () => _ = CloseAsync());
         if (_viewModel.System is { } system)
         {
             system.Noticed += (_, e) => Notify(e.Notice);
         }
+
+        _viewModel.General.Noticed += (_, e) => Notify(e.Notice);
+        _viewModel.TouchPrecision.Noticed += (_, e) => Notify(e.Notice);
 
         _window = new ControlCenterWindow(_viewModel, _theme);
         _window.CloseRequested += (_, _) => _ = CloseAsync();

@@ -5,16 +5,20 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Presentation.ControlCenter.About;
+using Clicalo.Presentation.ControlCenter.General;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.Presentation.ControlCenter.Templates;
+using Clicalo.Presentation.ControlCenter.TouchPrecision;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter;
 
 /// <summary>
 /// The frame of the Control Center (CCM-001 to CCM-003): the title bar with the path and the ES/EN selector, the side
-/// menu with its six sections and the status bar with [undo]. Sections 2 to 6 show a marker until their part arrives.
+/// menu with its six sections and the status bar with [undo]. A section whose services are not composed (tests) shows a
+/// marker.
 /// </summary>
 public sealed class ControlCenterViewModel : ObservableObject
 {
@@ -84,8 +88,42 @@ public sealed class ControlCenterViewModel : ObservableObject
         Templates = services.Templates is { } templates
             ? new TemplatesSectionViewModel(services, templates, OpenProfile)
             : null;
+        General = new GeneralSectionViewModel(
+            new GeneralServices(
+                services.Store,
+                services.Localization,
+                services.Confirm,
+                services.Time,
+                services.Post,
+                services.OpenWelcome ?? (static () => { })
+            )
+        );
+        TouchPrecision = new TouchPrecisionViewModel(
+            new TouchPrecisionServices(
+                services.Store,
+                services.Localization,
+                services.Time,
+                services.Post
+            )
+        );
+        if (services.About is { } about)
+        {
+            var aboutSection = new AboutViewModel(about);
+            About = aboutSection;
+            services.Localization.LanguageChanged += (_, _) => services.Post(aboutSection.Refresh);
+        }
+
         Refresh();
     }
+
+    /// <summary>The «General y panel» section (docs/05 §3).</summary>
+    public GeneralSectionViewModel General { get; }
+
+    /// <summary>The «Precisión táctil» section (docs/05 §4).</summary>
+    public TouchPrecisionViewModel TouchPrecision { get; }
+
+    /// <summary>The «Acerca de y contacto» section (docs/05 §6); null while its services are not composed.</summary>
+    public AboutViewModel? About { get; }
 
     /// <summary>The «Plantillas» section; null without its services.</summary>
     public TemplatesSectionViewModel? Templates { get; }

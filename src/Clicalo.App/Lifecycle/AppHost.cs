@@ -14,14 +14,17 @@ using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
 using Clicalo.Application.Session;
 using Clicalo.Application.Store;
+using Clicalo.Application.UseCases.Welcome;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Timing;
+using Clicalo.Infrastructure.Persistence;
 using Clicalo.Platform.Windows.Foreground;
 using Clicalo.Platform.Windows.Input;
+using Clicalo.Platform.Windows.Launch;
 using Clicalo.Platform.Windows.SysEvents;
 using Clicalo.Platform.Windows.Tray;
 using Clicalo.Presentation.Panel;
@@ -68,6 +71,8 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
     private TrayController? _tray;
     private ShowPipeServer? _pipe;
     private ControlCenterComposer? _controlCenter;
+    private WelcomeComposer? _welcome;
+    private DocumentStore? _store;
     private Task _persistence = Task.CompletedTask;
     private Task _guardian = Task.CompletedTask;
     private Task? _exit;
@@ -264,6 +269,26 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         var system = SystemLifecycle.Start(services, this, _options, ui, _time);
         Track(system.Dispose);
         _controlCenter.System = system.Services;
+        _controlCenter.About = (dictate, notify) =>
+            AboutServicesFactory.Create(
+                slot.Localization,
+                services.GetRequiredService<DataLocations>(),
+                _options.SendInput
+                    ? services.GetRequiredService<ShellExecutor>()
+                    : new DeferredShellExecutor(),
+                services.GetRequiredService<IAtomicFileWriter>(),
+                ui,
+                dictate,
+                notify
+            );
+        _store = store;
+        _welcome = BuildWelcome(services, store, slot, ui);
+        Track(_welcome.Dispose);
+        _controlCenter.OpenWelcome = () => _ = OpenWelcomeAgainAsync();
+        if (_firstFrame)
+        {
+            OpenWelcomeIfPending();
+        }
 
         // 6. The rest once the panel is up.
         _ = await registered.ConfigureAwait(true);
@@ -420,6 +445,75 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         return controlCenter;
     }
 
+    /// <summary>
+    /// The welcome (docs/06): it opens after the first frame while the document has not finished it (BIE-001), and again
+    /// from General › Ver la bienvenida otra vez (GEN-014). Nothing dims while it is open; when it ends the panel shows
+    /// unminimized, with the notice [welcome] after [Empezar] (BIE-009).
+    /// </summary>
+    private static WelcomeComposer BuildWelcome(
+        IServiceProvider services,
+        DocumentStore store,
+        StartupSlot slot,
+        Dispatcher ui
+    )
+    {
+        var welcome = new WelcomeComposer(
+            store,
+            slot.Localization,
+            services.GetRequiredService<IForegroundOrchestrator>(),
+            services.GetRequiredService<ThemeService>(),
+            ui,
+            () => slot.Catalogs.Content
+        );
+        var interaction = services.GetRequiredService<InteractionStore>();
+        var visibility = services.GetRequiredService<PanelVisibilityCoordinator>();
+        var panel = services.GetRequiredService<PanelComposer>();
+        welcome.StateChanged += (_, _) =>
+            _ = interaction.Dispatch(
+                new InteractionAction.SetOpen(DimExceptions.WelcomeOpen, welcome.IsOpen)
+            );
+        welcome.Ended += (_, e) =>
+        {
+            if (interaction.Current.Minimized)
+            {
+                _ = interaction.Dispatch(new InteractionAction.Restore());
+            }
+
+            visibility.Show();
+            if (e.End == WelcomeEnd.Finished)
+            {
+                panel.Notify(L.Welcome, NoticeTone.Notice, "celebration");
+            }
+        };
+        return welcome;
+    }
+
+    private void OpenWelcomeIfPending()
+    {
+        if (
+            _welcome is { } welcome
+            && _store is { } store
+            && WelcomeComposer.IsPending(store.Current)
+        )
+        {
+            _ = welcome.OpenAsync(repeat: false, LeaseOrigin.Internal);
+        }
+    }
+
+    /// <summary>«Ver la bienvenida otra vez» (GEN-014): the Control Center closes, then the welcome opens on step 0.</summary>
+    private async Task OpenWelcomeAgainAsync()
+    {
+        if (_controlCenter is { } controlCenter)
+        {
+            await controlCenter.CloseAsync().ConfigureAwait(true);
+        }
+
+        if (_welcome is { } welcome)
+        {
+            await welcome.OpenAsync(repeat: true, LeaseOrigin.Touch).ConfigureAwait(true);
+        }
+    }
+
     private void UpdateTray(PanelViewModel viewModel) =>
         _ = _tray?.UpdateStateAsync(viewModel.IsVisible, !viewModel.Engine.Held.IsEmpty);
 
@@ -432,6 +526,7 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
 
         _firstFrame = true;
         FirstFrameSignal.Raise();
+        OpenWelcomeIfPending();
         using (var process = Process.GetCurrentProcess())
         {
             var sinceStart = _time.GetUtcNow() - new DateTimeOffset(process.StartTime);
