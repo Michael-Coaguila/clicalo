@@ -15,9 +15,15 @@ namespace Clicalo.Presentation.Welcome;
 /// <param name="CreatorName">[creatorName].</param>
 /// <param name="CreatorInitials">[creatorInitials].</param>
 /// <param name="CreatorRole">[creatorRole].</param>
+/// <param name="Reinstall">
+/// The question of a reinstallation that found data from before (step 0, P6), or <see langword="null"/>.
+/// </param>
 /// <param name="Languages">Español and English (step 0).</param>
 /// <param name="Uses">The five options of step 1.</param>
-/// <param name="KeyboardLine">The programs language line of step 2.</param>
+/// <param name="Changes">
+/// What [Siguiente] of step 1 changes and keeps on a repeated welcome (BIE-010), or <see langword="null"/>.
+/// </param>
+/// <param name="KeyboardLine">The detected keyboard and the programs language of step 2 (BIE-006).</param>
 /// <param name="Kit">«Basics» and the templates of step 2, in the order of the kit.</param>
 /// <param name="Views">The three views of step 3.</param>
 /// <param name="Sizes">The three sizes of step 4.</param>
@@ -40,8 +46,10 @@ public sealed record WelcomeScreen(
     string CreatorName,
     string CreatorInitials,
     string CreatorRole,
+    WelcomeReinstallCard? Reinstall,
     ValueList<WelcomeOption> Languages,
     ValueList<WelcomeOption> Uses,
+    WelcomeChangesNote? Changes,
     string KeyboardLine,
     ValueList<WelcomeOption> Kit,
     ValueList<WelcomeViewCard> Views,

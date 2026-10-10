@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.Welcome;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -246,8 +247,113 @@ public sealed class WelcomeWindow : Window
             Heading(screen.Title, 30),
             Paragraph(screen.Body, 16, ColorToken.Muted),
             story,
+            screen.Reinstall is { } reinstall ? Reinstall(reinstall) : null,
             Ui.Columns(languages.Count, 8, languages)
         );
+    }
+
+    /// <summary>
+    /// The question of a reinstallation that found data from before (P6): «Conservar mis datos» is the option in force
+    /// and «Empezar de cero» takes two taps (REG-04), both 52 high (REG-02).
+    /// </summary>
+    private Border Reinstall(WelcomeReinstallCard card)
+    {
+        var title = Ui.Text(card.Title, 16, bold: true, wrap: true);
+        AutomationProperties.SetLiveSetting(title, AutomationLiveSetting.Polite);
+        if (card.Done.Length > 0)
+        {
+            var done = Ui.Text(card.Done, 14, wrap: true);
+            AutomationProperties.SetLiveSetting(done, AutomationLiveSetting.Polite);
+            return Ui.Card(
+                Ui.Row(8, Ui.Icon("check_circle", 20, ColorToken.Accent), done),
+                ColorToken.AccentWash,
+                null,
+                14,
+                new Thickness(16)
+            );
+        }
+
+        var keep = Ui.Choice(
+            Centered(Ui.Text(card.KeepText, 15, bold: true, ink: ColorToken.OnAccent)),
+            card.KeepText,
+            true,
+            () => { },
+            52,
+            12
+        );
+        CcChrome.Paint(keep, ColorToken.Accent, ColorToken.OnAccent, null);
+        keep.BorderThickness = new Thickness(0);
+        keep.HorizontalContentAlignment = HorizontalAlignment.Center;
+        AutomationProperties.SetAutomationId(keep, "reinstall.keep");
+        var fresh = Ui.Button(
+            Centered(
+                Ui.Text(
+                    card.FreshText,
+                    15,
+                    bold: true,
+                    ink: card.FreshArmed ? ColorToken.OnWarn : ColorToken.Text
+                )
+            ),
+            card.FreshText,
+            _viewModel.StartFromScratch,
+            card.FreshArmed ? ColorToken.Warn : null,
+            card.FreshArmed ? ColorToken.OnWarn : ColorToken.Text,
+            card.FreshArmed ? null : ColorToken.Border,
+            52,
+            12
+        );
+        AutomationProperties.SetAutomationId(fresh, "reinstall.fresh");
+        AutomationProperties.SetHelpText(fresh, card.Description);
+        return Ui.Card(
+            Ui.Column(
+                10,
+                title,
+                Ui.Text(card.Description, 13, ink: ColorToken.Muted, wrap: true),
+                Ui.Columns(2, 8, [keep, fresh])
+            ),
+            ColorToken.Card,
+            ColorToken.Accent,
+            14,
+            new Thickness(16)
+        );
+    }
+
+    /// <summary>What [Siguiente] changes and what it leaves as the person set it (BIE-010), read out when it changes.</summary>
+    private static Border Changes(WelcomeChangesNote note)
+    {
+        var column = Ui.Column(6);
+        void Add(string title, ValueList<string> lines, string icon, ColorToken ink)
+        {
+            if (lines.IsEmpty)
+            {
+                return;
+            }
+
+            column.Children.Add(Ui.Text(title, 13, bold: true, wrap: true));
+            foreach (var line in lines)
+            {
+                column.Children.Add(
+                    Ui.Row(8, Ui.Icon(icon, 16, ink), Ui.Text(line, 13, wrap: true))
+                );
+            }
+        }
+
+        Add(note.ChangesTitle, note.Changes, "sync_alt", ColorToken.Accent);
+        Add(note.KeptTitle, note.Kept, "lock", ColorToken.Muted);
+        var card = Ui.Card(column, ColorToken.Card, null, 12, new Thickness(14, 12, 14, 12));
+        AutomationProperties.SetLiveSetting(card, AutomationLiveSetting.Polite);
+        AutomationProperties.SetName(
+            card,
+            string.Join(
+                ". ",
+                new[] { note.Changes.IsEmpty ? null : note.ChangesTitle }
+                    .Concat(note.Changes)
+                    .Concat([note.Kept.IsEmpty ? null : note.KeptTitle])
+                    .Concat(note.Kept)
+                    .Where(text => !string.IsNullOrEmpty(text))
+            )
+        );
+        return card;
     }
 
     private StackPanel Step1(WelcomeScreen screen)
@@ -282,7 +388,8 @@ public sealed class WelcomeWindow : Window
             22,
             Heading(screen.Title, 28),
             Paragraph(screen.Body, 16, ColorToken.Muted),
-            Ui.Columns(2, 10, chips)
+            Ui.Columns(2, 10, chips),
+            screen.Changes is { } changes ? Changes(changes) : null
         );
     }
 

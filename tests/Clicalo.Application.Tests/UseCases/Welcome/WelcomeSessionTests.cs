@@ -1,8 +1,11 @@
 using Clicalo.Application.UseCases.Welcome;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Document;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
+using Clicalo.Domain.Tests.Generators;
+using Microsoft.Extensions.Time.Testing;
 using PanelSize = Clicalo.Domain.Settings.PanelSize;
 
 namespace Clicalo.Application.Tests.UseCases.Welcome;
@@ -84,6 +87,10 @@ public sealed class WelcomeSessionTests
 
         store.Current.Settings.Touch.Preset.ShouldBe(TouchPresets.MildTremor.Id);
         store.Current.Settings.NoKeyboardUser.ShouldBeTrue();
+        store.Current.Settings.Size.ShouldBe(
+            SettingsSchema.Defaults.Size,
+            "without tremor the size the welcome had made L goes back (EC-BIE-01)"
+        );
         store.Undo().IsSuccess.ShouldBeTrue();
         store.CanUndo.ShouldBeFalse("both passes are one undo step");
         store.Current.Settings.NoKeyboardUser.ShouldBeFalse();
@@ -214,13 +221,22 @@ public sealed class WelcomeSessionTests
 
     [Fact]
     [Trait("Req", "BIE-010")]
-    public void A_repeated_welcome_changes_the_settings_only_when_the_answers_change()
+    public void A_repeated_welcome_starts_from_the_recorded_answers_and_keeps_what_was_changed_by_hand()
     {
         var first = WelcomeTestData.Store(WelcomeTestData.FirstStart());
         var firstSession = new WelcomeSession(first, WelcomeTestData.Content, repeat: false);
         firstSession.Next();
         firstSession.ToggleUse(WelcomeUse.Tremor);
+        firstSession.ToggleUse(WelcomeUse.Touch);
         Finish(firstSession);
+        var recorded = first.Current.Onboarding.Answers.ShouldNotBeNull();
+        recorded.Uses.ShouldBe([WelcomeAnswer.Touch, WelcomeAnswer.Tremor]);
+        recorded.Kit.ShouldBe(["basics"]);
+        recorded.Baseline.ShouldBe(
+            new WelcomeBaseline(TouchPresets.StrongTremor.Id, PanelSize.Large, false, false)
+        );
+
+        // Afterwards the person makes the panel M by hand.
         var store = WelcomeTestData.Store(
             first.Current with
             {
@@ -228,17 +244,172 @@ public sealed class WelcomeSessionTests
             }
         );
         var session = new WelcomeSession(store, WelcomeTestData.Content, repeat: true);
-        session.Uses.ShouldBe([WelcomeUse.Tremor]);
+        session.Uses.ShouldBe(
+            [WelcomeUse.Touch, WelcomeUse.Tremor],
+            ignoreOrder: true,
+            "touch leaves no trace in the settings: it comes from the recorded answers"
+        );
 
         session.Next();
+        session.PendingChanges.ShouldBeNull("the same answers change nothing");
+        session.Next();
+        store.Current.Settings.Size.ShouldBe(PanelSize.Medium);
+
+        session.Back();
+        session.ToggleUse(WelcomeUse.Voice);
+        var plan = session.PendingChanges.ShouldNotBeNull();
+        plan.Changes.ShouldBe([WelcomeSetting.VoiceNumbers]);
+        plan.Kept.ShouldBe([WelcomeSetting.Size], "the size was changed by hand");
         session.Next();
 
-        store.Current.Settings.Size.ShouldBe(PanelSize.Medium, "the same answers change nothing");
+        store.Current.Settings.VoiceNumbers.ShouldBeTrue();
+        store.Current.Settings.Size.ShouldBe(PanelSize.Medium, "what was changed by hand stays");
+        Finish(session);
+        var again = store.Current.Onboarding.Answers.ShouldNotBeNull();
+        again.Uses.ShouldBe([WelcomeAnswer.Touch, WelcomeAnswer.Voice, WelcomeAnswer.Tremor]);
+        again.Baseline.Size.ShouldBe(
+            PanelSize.Large,
+            "the baseline keeps what the welcome set, so the hand change is still recognized"
+        );
+        again.Baseline.VoiceNumbers.ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    [Trait("Req", "EC-BIE-01")]
+    public void Going_back_to_the_answers_it_opened_with_recalculates_the_effects_too()
+    {
+        var first = WelcomeTestData.Store(WelcomeTestData.FirstStart());
+        var firstSession = new WelcomeSession(first, WelcomeTestData.Content, repeat: false);
+        firstSession.Next();
+        firstSession.ToggleUse(WelcomeUse.Voice);
+        Finish(firstSession);
+        var store = WelcomeTestData.Store(first.Current);
+        var session = new WelcomeSession(store, WelcomeTestData.Content, repeat: true);
+        session.Next();
+
+        session.ToggleUse(WelcomeUse.Voice);
+        session.Next();
+        store.Current.Settings.VoiceNumbers.ShouldBeFalse();
         session.Back();
         session.ToggleUse(WelcomeUse.Voice);
         session.Next();
-        store.Current.Settings.VoiceNumbers.ShouldBeTrue();
-        store.Current.Settings.Size.ShouldBe(PanelSize.Large);
+
+        store.Current.Settings.VoiceNumbers.ShouldBeTrue(
+            "the answers it opened with apply again after another pass changed them"
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    public void A_document_without_recorded_answers_shows_what_its_settings_reflect()
+    {
+        // A document written before schema 1.1: the welcome finished, no answers.
+        var old = WelcomeTestData.FirstStart() with
+        {
+            Onboarding = new OnboardingState(true),
+            Settings = WelcomeEffects.Apply(
+                SettingsSchema.Defaults,
+                new HashSet<WelcomeUse> { WelcomeUse.Voice }
+            ),
+        };
+        var store = WelcomeTestData.Store(old);
+        var session = new WelcomeSession(store, WelcomeTestData.Content, repeat: true);
+
+        session.Uses.ShouldBe([WelcomeUse.Voice]);
+        session.Skip();
+
+        var answers = store.Current.Onboarding.Answers.ShouldNotBeNull();
+        answers.Uses.ShouldBe([WelcomeAnswer.Voice]);
+        answers.Baseline.ShouldBe(WelcomeBaseline.Of(store.Current.Settings));
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-003")]
+    [Trait("Req", "BIE-010")]
+    public void Skipping_records_the_default_kit_and_the_settings_as_they_are()
+    {
+        var store = WelcomeTestData.Store(WelcomeTestData.FirstStart());
+        var session = new WelcomeSession(store, WelcomeTestData.Content, repeat: false);
+
+        session.Skip();
+
+        var answers = store.Current.Onboarding.Answers.ShouldNotBeNull();
+        answers.Uses.ShouldBeEmpty();
+        answers.Kit.ShouldBe(["basics"]);
+        answers.Baseline.ShouldBe(WelcomeBaseline.Of(store.Current.Settings));
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-010")]
+    [Trait("Req", "REG-04")]
+    public void A_reinstallation_keeps_the_data_unless_starting_from_scratch_is_tapped_twice()
+    {
+        var first = WelcomeTestData.Store(WelcomeTestData.FirstStart());
+        var firstSession = new WelcomeSession(first, WelcomeTestData.Content, repeat: false);
+        firstSession.ToggleKit("word");
+        firstSession.Next();
+        firstSession.ToggleUse(WelcomeUse.Tremor);
+        Finish(firstSession);
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 10, 9, 10, 0, 0, TimeSpan.Zero));
+        var fresh = WelcomeFreshStart.Of(() => WelcomeTestData.Content, new SequentialIds(), time);
+
+        // Kept: the default. Finishing changes nothing of what was there.
+        var kept = WelcomeTestData.Store(first.Current);
+        var keeping = new WelcomeSession(kept, WelcomeTestData.Content, repeat: true, fresh);
+        keeping.OffersFreshStart.ShouldBeTrue();
+        keeping.StartFromScratch();
+        keeping.FreshStartArmedUntil.ShouldNotBeNull("the first tap only arms");
+        kept.Current.ShouldBeSameAs(first.Current);
+        time.Advance(TimeSpan.FromSeconds(10));
+        keeping.FreshStartArmedUntil.ShouldBeNull("the window passed");
+        Finish(keeping);
+        kept.Current.Library.Profiles.Count.ShouldBe(2, "General and Word are still there");
+
+        // From scratch: two taps, the document of a new installation, and the welcome goes on as a first one.
+        var store = WelcomeTestData.Store(first.Current);
+        var session = new WelcomeSession(store, WelcomeTestData.Content, repeat: true, fresh);
+        session.SetLanguage(LangCode.En);
+        session.StartFromScratch();
+        session.StartFromScratch();
+
+        session.StartedFresh.ShouldBeTrue();
+        session.OffersFreshStart.ShouldBeFalse();
+        session.Repeat.ShouldBeFalse();
+        session.Uses.ShouldBeEmpty();
+        session.Kit.Chosen.ShouldBe(["basics"]);
+        var empty = store.Current;
+        empty.Onboarding.Completed.ShouldBeFalse();
+        empty.Library.AlwaysVisible.ShouldBeEmpty();
+        empty.Library.Profiles.ShouldHaveSingleItem().Shortcuts.ShouldBeEmpty();
+        empty.Settings.Language.ShouldBe(LangCode.En, "the language in use is kept");
+        empty.Settings.Size.ShouldBe(SettingsSchema.Defaults.Size);
+        empty.Validate().ShouldBeEmpty();
+        store.CanUndo.ShouldBeTrue("starting from scratch can be undone");
+        Finish(session);
+        store.Current.Onboarding.Completed.ShouldBeTrue();
+        store.Current.Library.AlwaysVisible.Count.ShouldBe(2, "Basics, as on a first start");
+    }
+
+    [Theory]
+    [Trait("Req", "NFR-010")]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(true, false, false, false)]
+    public void Only_the_first_start_of_an_installation_that_found_finished_data_asks(
+        bool firstRunAfterInstall,
+        bool newData,
+        bool welcomed,
+        bool asks
+    )
+    {
+        var document = WelcomeTestData.FirstStart() with
+        {
+            Onboarding = new OnboardingState(welcomed),
+        };
+
+        WelcomeFreshStart.ShouldAsk(firstRunAfterInstall, newData, document).ShouldBe(asks);
     }
 
     [Fact]
