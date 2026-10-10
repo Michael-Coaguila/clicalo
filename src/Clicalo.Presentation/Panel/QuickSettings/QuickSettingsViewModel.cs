@@ -359,7 +359,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
         TestModeSwitch.Label = l.Format(L.TmLabel);
         AutoDimSwitch.Label = l.Format(L.AutoDim);
         StickySwitch.Label = l.Format(L.StickyMods);
-        VoiceNumbersSwitch.Label = l.Format(L.VoiceNums);
+        VoiceNumbersSwitch.Label = l.Format(L.VoiceNumsT);
     }
 
     private static int Percent(double fraction) =>

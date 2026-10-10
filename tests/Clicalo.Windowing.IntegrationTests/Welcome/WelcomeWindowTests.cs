@@ -167,7 +167,7 @@ public sealed class WelcomeWindowTests
                 note.ChangesTitle.ShouldBe("Al continuar, esto cambia:");
                 note.Changes.ShouldBe([
                     "Precisión táctil: Estándar",
-                    "Números para control por voz: activados",
+                    "Números para voz: activados",
                 ]);
                 note.KeptTitle.ShouldBe("Esto se queda como lo dejaste:");
                 note.Kept.ShouldBe(["Tamaño del panel: Pequeño"]);

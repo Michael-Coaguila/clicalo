@@ -136,7 +136,7 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.VoiceNumbers,
                 Presentation,
-                L.VoiceNums,
+                L.VoiceNumsT,
                 null,
                 s => s.VoiceNumbers,
                 (s, v) => s with { VoiceNumbers = v }

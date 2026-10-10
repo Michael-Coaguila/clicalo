@@ -1466,14 +1466,14 @@
       "text": { "es": "Tamaño del panel: {name}", "en": "Panel size: {name}" }
     },
     "obChVoiceOn": {
-      "notes": "Línea del aviso de BIE-010: los números para control por voz quedan activados. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Línea del aviso de BIE-010: los números para voz quedan activados (mismo nombre que [voiceNumsT], DIS-37). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "obChSize",
-      "text": { "es": "Números para control por voz: activados", "en": "Numbers for voice control: on" }
+      "text": { "es": "Números para voz: activados", "en": "Numbers for voice: on" }
     },
     "obChVoiceOff": {
-      "notes": "Línea del aviso de BIE-010: los números para control por voz quedan desactivados. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Línea del aviso de BIE-010: los números para voz quedan desactivados (mismo nombre que [voiceNumsT], DIS-37). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "obChVoiceOn",
-      "text": { "es": "Números para control por voz: desactivados", "en": "Numbers for voice control: off" }
+      "text": { "es": "Números para voz: desactivados", "en": "Numbers for voice: off" }
     },
     "obChNoKbOn": {
       "notes": "Línea del aviso de BIE-010: «No puedo usar el teclado» queda activado. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",

@@ -43,7 +43,7 @@ public sealed class QuickSettingsViewModelTests
                 "Modo prueba (30 s)",
                 "Atenuar cuando no lo uso",
                 "Teclas fijas",
-                "Números para control por voz",
+                "Números para voz",
             ]);
         sheet.Views.Single(static o => o.IsSelected).Value.ShouldBe(PanelDensity.Full);
         sheet.Themes.Count(static o => o.IsSelected).ShouldBe(1);

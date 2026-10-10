@@ -91,9 +91,9 @@ opensWith
 # sustituye por [recordedKeys], que lleva las teclas sin concatenar (EDI-010, IDI-004).
 autoReleaseD
 recorded
-# DIS-37 y catálogo §9: el ajuste de números de voz se llama «Números para voz» en todas las claves. [voiceNumsT] lo
-# dice así y espera a que el panel y el registro de ajustes dejen de usar [voiceNums] (cambio compartido de M6).
-voiceNumsT
+# DIS-37 y catálogo §9: el ajuste de números de voz se llama «Números para voz» en todas las claves. El panel y el
+# registro de ajustes muestran [voiceNumsT]; [voiceNums] «…control por voz» se conserva por paridad con el paquete.
+voiceNums
 
 # Catálogo §9 (correcciones de ACE-001 y ACE-003): Acerca de y la bienvenida muestran [creatorRole] «Creador de
 # Clícalo» y [fbLogFile] «… clicalo.log …» en lugar de [creator] y [fbLogD], que se conservan por paridad con el paquete.

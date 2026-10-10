@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Globalization;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Errors;
 using Clicalo.Domain.Library;
@@ -59,10 +58,8 @@ public sealed record AddShortcuts(
             {
                 Library = library,
             },
-            L.AddedToProf(
-                profile: ProfileName ?? string.Empty,
-                name: events.Count.ToString(CultureInfo.InvariantCulture)
-            ),
+            // IDI-004: the count is an argument with its plural forms, never a number in the place of a name.
+            L.AddedCountToProf(profile: ProfileName ?? string.Empty, count: events.Count),
             null,
             events.ToImmutable()
         );
