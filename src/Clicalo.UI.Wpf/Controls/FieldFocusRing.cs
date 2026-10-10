@@ -22,12 +22,7 @@ public static class FieldFocusRing
     /// <param name="fieldRadius">The corner radius of the field.</param>
     /// <param name="fieldBorder">The thickness of the field's own border, which the ring leaves inside.</param>
     /// <returns>The ring, collapsed until the box takes the keyboard.</returns>
-    public static Border Attach(
-        Panel layers,
-        UIElement box,
-        double fieldRadius,
-        double fieldBorder
-    )
+    public static Border Attach(Panel layers, UIElement box, double fieldRadius, double fieldBorder)
     {
         ArgumentNullException.ThrowIfNull(layers);
         ArgumentNullException.ThrowIfNull(box);

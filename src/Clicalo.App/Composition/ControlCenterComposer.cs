@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Clicalo.Application.Confirmation;
 using Clicalo.Application.Foreground;
@@ -9,6 +10,7 @@ using Clicalo.Application.Profiles;
 using Clicalo.Application.Store;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
@@ -297,16 +299,9 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
         {
             _open = true;
             var monitors = DisplayMonitors.Snapshot();
-            var panel = _panel();
             var spot = ControlCenterPlacer.Plan(
                 monitors,
-                ControlCenterPlacer.FromWindowUnits(
-                    monitors,
-                    panel.IsEmpty ? 0 : panel.Left,
-                    panel.IsEmpty ? 0 : panel.Top,
-                    panel.IsEmpty ? 0 : panel.Width,
-                    panel.IsEmpty ? 0 : panel.Height
-                ),
+                SurfaceToAvoid(monitors),
                 _store.Current.Settings.ControlCenter
             );
             window.Place(spot);
@@ -332,6 +327,61 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             _maximize = false;
             window.Maximize();
         }
+    }
+
+    /// <summary>
+    /// What the Control Center must not cover (CCM-004): the largest surface of Clícalo on screen now, which is the
+    /// panel or, in the tab view, the open bar. Its rectangle is read from the window itself, in physical pixels, so
+    /// it is right on any monitor and scale; a hidden panel is not avoided.
+    /// </summary>
+    private PhysicalRect? SurfaceToAvoid(IReadOnlyList<DisplayMonitor> monitors)
+    {
+        if (global::System.Windows.Application.Current is not { } app)
+        {
+            // No WPF application (a host that only passes the rectangle): the rectangle of the panel, as given.
+            var panel = _panel();
+            return panel.IsEmpty
+                ? null
+                : ControlCenterPlacer.FromWindowUnits(
+                    monitors,
+                    panel.Left,
+                    panel.Top,
+                    panel.Width,
+                    panel.Height
+                );
+        }
+
+        PhysicalRect? largest = null;
+        foreach (var window in app.Windows.OfType<NonActivatingWindow>())
+        {
+            if (
+                !window.IsVisible
+                || window.ActualWidth <= 0
+                || window.ActualHeight <= 0
+                || PresentationSource.FromVisual(window) is null
+            )
+            {
+                continue;
+            }
+
+            var origin = window.PointToScreen(new Point(0, 0));
+            var dpi = VisualTreeHelper.GetDpi(window);
+            var rect = new PhysicalRect(
+                (int)Math.Round(origin.X),
+                (int)Math.Round(origin.Y),
+                (int)Math.Round(window.ActualWidth * dpi.DpiScaleX),
+                (int)Math.Round(window.ActualHeight * dpi.DpiScaleY)
+            );
+            if (
+                largest is not { } chosen
+                || (long)rect.Width * rect.Height > (long)chosen.Width * chosen.Height
+            )
+            {
+                largest = rect;
+            }
+        }
+
+        return largest;
     }
 
     // CCM-001, D9: the size, the place and the monitor are remembered between restarts (document 1.1, ADR-0028).

@@ -37,6 +37,70 @@ public sealed class GeneralSectionViewModelTests
     private UserSettings Settings => _world.Store.Current.Settings;
 
     [Fact]
+    [Trait("Req", "ACC-006")]
+    public void The_times_can_be_made_two_or_three_times_longer_with_undo()
+    {
+        var section = Create();
+        var access = section.Screen.Access;
+
+        access.TimesTitle.ShouldBe("Más tiempo para confirmar y leer avisos");
+        access.Times.Select(static t => t.Label).ShouldBe(["×1", "×2", "×3"]);
+        access.Times.Single(static t => t.Selected).Value.ShouldBe(1);
+
+        section.SetTimeMultiplier(3);
+
+        Settings.TimeMultiplier.ShouldBe(3);
+        section.Screen.Access.Times.Single(static t => t.Selected).Label.ShouldBe("×3");
+        _notices[^1].CanUndo.ShouldBeTrue();
+        _world.Store.Undo().IsSuccess.ShouldBeTrue();
+        Settings.TimeMultiplier.ShouldBe(1);
+    }
+
+    [Fact]
+    [Trait("Req", "BUR-005")]
+    public void The_global_shortcut_comes_off_and_its_combination_is_one_of_the_closed_list()
+    {
+        var section = Create();
+        var access = section.Screen.Access;
+
+        access.Hotkey.On.ShouldBeFalse("D10: it comes off");
+        access.Hotkey.Title.ShouldBe("Atajo de teclado para mostrar u ocultar el panel");
+        access.Hotkeys.ShouldBeEmpty("the list shows once it is on");
+
+        section.ToggleGlobalHotkey();
+
+        Settings.GlobalHotkey.Enabled.ShouldBeTrue();
+        var choices = section.Screen.Access.Hotkeys;
+        choices.Select(static c => c.Value).ShouldBe(GlobalHotkeys.All.Select(static h => h.Id));
+        choices.Single(static c => c.Selected).Value.ShouldBe(GlobalHotkeys.Default.Id);
+        choices.ShouldAllBe(c => !c.Label.Contains("Win", StringComparison.Ordinal));
+        choices.ShouldNotContain(
+            c => string.Equals(c.Value, "ctrl-shift-m", StringComparison.Ordinal),
+            "never Ctrl+Shift+M (Teams)"
+        );
+
+        section.SetGlobalHotkey("ctrl-alt-f10");
+        Settings.GlobalHotkey.Combo.ShouldBe("ctrl-alt-f10");
+        section.SetGlobalHotkey("ctrl-shift-m");
+        Settings.GlobalHotkey.Combo.ShouldBe("ctrl-alt-f10", "only the list");
+    }
+
+    [Fact]
+    [Trait("Req", "IDI-004")]
+    [Trait("Req", "GEN-008")]
+    public void Counts_and_option_names_are_whole_messages()
+    {
+        var section = Create();
+        var layout = section.Screen.Layout;
+
+        layout
+            .Columns.Select(static c => c.Label)
+            .ShouldBe(["2 columnas", "3 columnas", "4 columnas"]);
+        layout.Rows[1].Name.ShouldBe("Filas visibles: 1");
+        section.Screen.Ai.ShouldBeNull("the AI card needs the AI services");
+    }
+
+    [Fact]
     [Trait("Req", "GEN-001")]
     [Trait("Req", "GEN-002")]
     [Trait("Req", "GEN-003")]

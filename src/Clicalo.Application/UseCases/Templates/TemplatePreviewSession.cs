@@ -264,17 +264,14 @@ public sealed class TemplatePreviewSession
             return Results.Fail<InstallOutcome>(TemplateFailures.NothingToInstall());
         }
 
-        var profile = installed with
-        {
-            Shortcuts =
-            [
-                .. installed.Shortcuts.Items.Select(s =>
-                    updates.TryGetValue(s.Id, out var action) ? s with { Action = action } : s
-                ),
-            ],
-        };
+        ImmutableArray<Shortcut> updated =
+        [
+            .. installed
+                .Shortcuts.Items.Where(s => updates.ContainsKey(s.Id))
+                .Select(s => s with { Action = updates[s.Id] }),
+        ];
         return _store
-            .Dispatch(new EditProfile(profile))
+            .Dispatch(new UpdateTemplateVariant(updated))
             .Map(_ => new InstallOutcome(
                 installed.Id,
                 L.VariantUpdatedN(

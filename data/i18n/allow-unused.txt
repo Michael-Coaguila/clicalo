@@ -57,7 +57,6 @@ libTitle
 fromScratch
 repeated
 lockOn
-activeShort
 install
 bSteps
 tplSub
@@ -79,6 +78,23 @@ quotaFree
 errLimT
 errLimD
 sharedProf
+# IDI-004 (M6): estas claves se mostraban uniendo un número y una palabra («1 atajos»). Las sustituyen mensajes
+# completos con plural ([shortcutsN], [installSelN], [createWithN], [dupReviewN], [opensWithApps]) y se conservan por
+# paridad con el paquete.
+shortcutsW
+installSel
+createWith
+review
+opensWith
+# Catálogo §9: [autoReleaseD] prometía soltar siempre al cambiar de app; el editor muestra [autoReleaseTimed] o
+# [autoReleaseNever] y [autoReleaseSwitchOn] o [autoReleaseSwitchOff], según lo que hace el atajo. [recorded] se
+# sustituye por [recordedKeys], que lleva las teclas sin concatenar (EDI-010, IDI-004).
+autoReleaseD
+recorded
+# DIS-37 y catálogo §9: el ajuste de números de voz se llama «Números para voz» en todas las claves. [voiceNumsT] lo
+# dice así y espera a que el panel y el registro de ajustes dejen de usar [voiceNums] (cambio compartido de M6).
+voiceNumsT
+
 # Catálogo §9 (correcciones de ACE-001 y ACE-003): Acerca de y la bienvenida muestran [creatorRole] «Creador de
 # Clícalo» y [fbLogFile] «… clicalo.log …» en lugar de [creator] y [fbLogD], que se conservan por paridad con el paquete.
 creator

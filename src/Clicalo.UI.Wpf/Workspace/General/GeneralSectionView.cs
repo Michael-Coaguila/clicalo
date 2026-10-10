@@ -862,7 +862,12 @@ public sealed class GeneralSectionView : ContentControl
         var times = Segments(
             access.TimesTitle,
             access.Times.Select(option =>
-                (option.Label, option.Name, option.Selected, (Action)(() => _viewModel.SetTimeMultiplier(option.Value)))
+                (
+                    option.Label,
+                    option.Name,
+                    option.Selected,
+                    (Action)(() => _viewModel.SetTimeMultiplier(option.Value))
+                )
             )
         );
         var section = Section(
@@ -975,7 +980,12 @@ public sealed class GeneralSectionView : ContentControl
         foreach (var (label, optionName, selected, click) in choices)
         {
             var button = Ui.Choice(
-                Ui.Text(label, 12, bold: true, ink: selected ? ColorToken.OnAccent : ColorToken.Text),
+                Ui.Text(
+                    label,
+                    12,
+                    bold: true,
+                    ink: selected ? ColorToken.OnAccent : ColorToken.Text
+                ),
                 optionName,
                 selected,
                 click,

@@ -1090,7 +1090,11 @@ public sealed class TemplatesSectionView : Grid
             {
                 // PLA-016: the keys of the row can change before installing.
                 var keys = Ui.Button(
-                    Ui.Icon("keyboard", 18, row.Combo is null ? ColorToken.Muted : ColorToken.Accent),
+                    Ui.Icon(
+                        "keyboard",
+                        18,
+                        row.Combo is null ? ColorToken.Muted : ColorToken.Accent
+                    ),
                     keysName + ": " + row.Name,
                     () => _viewModel.EditRowKeys(row.Index),
                     null

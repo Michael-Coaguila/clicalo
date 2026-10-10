@@ -74,6 +74,52 @@ public sealed class TryNowRunTests
         window.Shown.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task A_shortcut_that_asks_for_confirmation_is_sent_already_confirmed()
+    {
+        using var world = new ForegroundWorld();
+        var time = new FakeTimeProvider(TestTime.Epoch);
+        var inbox = new RecordingEngineInbox();
+        var run = new TryNowRun(
+            new GrantingForeground(world.Orchestrator),
+            inbox,
+            () => 0,
+            time,
+            selfElevated: false
+        );
+        var window = new ControlCenterWindow();
+        var tap = TestTiles.Shortcut(
+            "copy",
+            new TapAction(KeyChord.FromKeys(KeyIds.Ctrl, KeyIds.C), [])
+        );
+        var asksFirst = tap with { Options = tap.Options with { Confirm = true } };
+
+        var pending = run.RunAsync(
+                asksFirst,
+                null,
+                InjectionMode.VirtualKey,
+                Notepad,
+                window,
+                TestContext.Current.CancellationToken
+            )
+            .AsTask();
+        time.Advance(Timings.TryNow.TryNowSendDelay);
+        await Eventually.WaitUntilAsync(() => inbox.Events.Count == 1, "the tap was sent");
+        time.Advance(Timings.TryNow.TryNowReturnDelay);
+        var (outcome, _) = await pending.WaitAsync(
+            Eventually.Liveness,
+            TestContext.Current.CancellationToken
+        );
+
+        // PRB-004: the person confirmed it in the Control Center, so the engine runs it instead of arming it.
+        outcome.ShouldBe(TryNowOutcome.Asked);
+        inbox
+            .Events[0]
+            .ShouldBeOfType<EngineEvent.Activation>()
+            .Shortcut.Options.Confirm.ShouldBeFalse();
+        inbox.Events.Count.ShouldBe(1);
+    }
+
     private sealed class ControlCenterWindow : ITryNowWindow
     {
         public WindowToken Window => ForegroundWorld.ControlCenter;

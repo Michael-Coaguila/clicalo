@@ -411,12 +411,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
                 T(L.TimeMultiplierT),
                 T(L.TimeMultiplierD),
                 Times(settings),
-                Switch(
-                    "keyboard",
-                    L.GlobalHotkeyT,
-                    L.GlobalHotkeyD,
-                    settings.GlobalHotkey.Enabled
-                ),
+                Switch("keyboard", L.GlobalHotkeyT, L.GlobalHotkeyD, settings.GlobalHotkey.Enabled),
                 T(L.Keys),
                 settings.GlobalHotkey.Enabled ? Hotkeys(settings) : []
             ),
