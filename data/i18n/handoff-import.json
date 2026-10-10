@@ -1105,6 +1105,32 @@
       "notes": "Aviso al guardar el archivo de un perfil compartido, que sustituye al enlace del prototipo (DAT-007, PQ-26). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
       "after": "shareWithTexts",
       "text": { "es": "Perfil guardado para compartir: {name}", "en": "Profile saved to share: {name}" }
+    },
+    "globalHotkeyT": {
+      "notes": "Ajuste del atajo global para mostrar u ocultar el panel (BUR-005, decisión D10 del usuario: apagado por defecto y combinación de una lista cerrada). Texto nuevo de M6 (ADR-0028), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "fbFlashD",
+      "text": { "es": "Atajo de teclado para mostrar u ocultar el panel", "en": "Keyboard shortcut to show or hide the panel" }
+    },
+    "globalHotkeyD": {
+      "notes": "Descripción del atajo global (BUR-005, D10). Texto nuevo de M6 (ADR-0028), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "globalHotkeyT",
+      "text": {
+        "es": "Funciona desde cualquier app. Viene apagado: actívalo y elige una combinación de la lista.",
+        "en": "Works from any app. It comes off: turn it on and pick a combination from the list."
+      }
+    },
+    "timeMultiplierT": {
+      "notes": "Ajuste de los tiempos ×1, ×2 y ×3 de la confirmación y de los avisos (ACC-006). Texto nuevo de M6 (ADR-0028), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "globalHotkeyD",
+      "text": { "es": "Más tiempo para confirmar y leer avisos", "en": "More time to confirm and read notices" }
+    },
+    "timeMultiplierD": {
+      "notes": "Descripción de los tiempos ajustables (ACC-006). Texto nuevo de M6 (ADR-0028), pendiente de ratificar en §6.1 del catálogo.",
+      "after": "timeMultiplierT",
+      "text": {
+        "es": "Alarga la confirmación de dos toques y lo que duran los avisos: ×1, ×2 o ×3.",
+        "en": "Lengthens the two-tap confirmation and how long notices stay: ×1, ×2 or ×3."
+      }
     }
   },
   "retired": {

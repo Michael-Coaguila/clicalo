@@ -47,6 +47,12 @@ public static class SettingsSchema
     /// <summary>Touch minimum contact: 0 to 300 ms in steps of 10 (TAC-005).</summary>
     public static SettingRange TouchMinContactMs { get; } = new(0, 300, 10);
 
+    /// <summary>
+    /// Multiplier of the confirmation window and of the duration of notices: ×1, ×2 or ×3 (ACC-006); also the choices
+    /// of its control.
+    /// </summary>
+    public static SettingRange TimeMultiplier { get; } = new(1, 3, 1);
+
     /// <summary>Free AI requests left today: 0 to the daily quota (PLA-003).</summary>
     public static SettingRange AiFreeLeftToday { get; } = new(0, Timings.Ai.AiFreeDailyQuota, 1);
 
@@ -227,6 +233,12 @@ public static class SettingsSchema
         {
             result = result with { Updates = defaults.Updates };
             changed.Add("updates");
+        }
+
+        if (result.GlobalHotkey is null)
+        {
+            result = result with { GlobalHotkey = defaults.GlobalHotkey };
+            changed.Add("globalHotkey");
         }
 
         return result;

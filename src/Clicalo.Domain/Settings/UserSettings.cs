@@ -96,4 +96,25 @@ public sealed record UserSettings
 
     /// <summary>The user cannot use the keyboard (BIE-005): library, AI and dictation first.</summary>
     public required bool NoKeyboardUser { get; init; }
+
+    /// <summary>
+    /// Handle position per monitor and side (PES-016, D9, schema 1.1); placement, never undoable. Read it with
+    /// <see cref="MonitorHandlePositions.PositionFor"/>, which falls back to <see cref="DockSettings.HandlePositions"/>.
+    /// </summary>
+    public required ValueList<MonitorHandlePosition> HandlePositionsByMonitor { get; init; }
+
+    /// <summary>
+    /// Size, position and monitor of the Control Center (CCM-001, D9, schema 1.1); <see langword="null"/> until it is
+    /// first moved or resized (it then opens at 1120 × 680). Placement, never undoable.
+    /// </summary>
+    public required ControlCenterPlacement? ControlCenter { get; init; }
+
+    /// <summary>The global shortcut that shows or hides the panel (BUR-005, D10, schema 1.1): off by default.</summary>
+    public required GlobalHotkeySettings GlobalHotkey { get; init; }
+
+    /// <summary>
+    /// Multiplier of the two-tap confirmation window and of how long notices stay (ACC-006, schema 1.1): 1, 2 or 3,
+    /// inside <see cref="SettingsSchema.TimeMultiplier"/>; 1 by default.
+    /// </summary>
+    public required int TimeMultiplier { get; init; }
 }
