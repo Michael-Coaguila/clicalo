@@ -235,10 +235,7 @@ public sealed class TemplatePreviewSession
                 .Dispatch(new AddShortcuts(installed.Id, chosen, name))
                 .Map(_ => new InstallOutcome(
                     installed.Id,
-                    L.AddedToProf(
-                        profile: name,
-                        name: chosen.Length.ToString(CultureInfo.InvariantCulture)
-                    )
+                    L.AddedCountToProf(profile: name, count: chosen.Length)
                 ));
         }
 

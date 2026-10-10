@@ -230,7 +230,7 @@ public sealed class TemplatesSectionTests
                 templates.Screen.Suggested.Cards.ShouldHaveSingleItem().Selected.ShouldBeTrue();
                 templates.ToggleRow(1);
                 WpfThread.DrainPendingWork();
-                templates.Screen.Preview.ButtonText.ShouldBe("Instalar 1 atajos");
+                templates.Screen.Preview.ButtonText.ShouldBe("Instalar 1 atajo");
 
                 templates.InstallPreview();
                 WpfThread.DrainPendingWork();

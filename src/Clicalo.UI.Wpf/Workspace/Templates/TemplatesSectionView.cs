@@ -872,7 +872,7 @@ public sealed class TemplatesSectionView : Grid
                     );
                     var button = Ui.Button(
                         content,
-                        profile.Name + ", " + profile.Count,
+                        profile.Name + ", " + profile.CountName,
                         () => _viewModel.OpenInstalled(profile.Id),
                         ColorToken.Card,
                         stroke: ColorToken.Border,

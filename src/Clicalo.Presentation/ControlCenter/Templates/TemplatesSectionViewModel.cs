@@ -612,7 +612,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                         p.Id,
                         p.Icon.Name,
                         p.Name.Get(Language, LangCode.Es),
-                        Count(p.Shortcuts.Count)
+                        Count(p.Shortcuts.Count),
+                        T(L.ShortcutsN(p.Shortcuts.Count))
                     )),
                 ],
                 T(L.ImportProf),
@@ -662,7 +663,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                 TemplatePreviewRules.InstalledFrom(library, t.Id) is null
                 && !(detect && shown.Contains(t.Id))
             )
-            .Select(t => Card(t, Count(t.Shortcuts.Count) + " " + T(L.ShortcutsW)))
+            .Select(t => Card(t, T(L.ShortcutsN(t.Shortcuts.Count))))
             .ToList();
         return ([.. suggested], [.. available]);
     }
@@ -866,11 +867,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
         {
             PreviewAction.AddMissing => (T(L.AddMissing(count)), "add"),
             PreviewAction.EditShortcuts => (T(L.EditShortcuts), "edit"),
-            PreviewAction.CreateWith => (
-                T(L.CreateWith) + " " + Count(count) + " " + T(L.ShortcutsW),
-                "auto_awesome"
-            ),
-            _ => (T(L.InstallSel) + " " + Count(count) + " " + T(L.ShortcutsW), "download"),
+            PreviewAction.CreateWith => (T(L.CreateWithN(count)), "auto_awesome"),
+            _ => (T(L.InstallSelN(count)), "download"),
         };
         return new PreviewModel(
             true,

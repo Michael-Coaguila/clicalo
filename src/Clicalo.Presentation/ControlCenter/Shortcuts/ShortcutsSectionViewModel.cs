@@ -403,19 +403,11 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 new LayerChip(
                     active?.Icon.Name ?? "apps",
                     active?.Name.Get(Language, LangCode.Es) ?? T(L.NoProf),
-                    (active?.Shortcuts.Count ?? 0).ToString(CultureInfo.InvariantCulture)
-                        + " · "
-                        + T(L.ActiveApp)
+                    T(L.ActiveCount(active?.Shortcuts.Count ?? 0))
                 ),
                 new LayerChip("star", T(L.Freq), T(L.AutoW)),
             ],
-            count > 0
-                ? count.ToString(CultureInfo.InvariantCulture)
-                    + " "
-                    + T(L.DupSummary)
-                    + " · "
-                    + T(L.Review)
-                : null
+            count > 0 ? T(L.DupReviewN(count)) : null
         );
     }
 
@@ -439,7 +431,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             profile.Icon.Name,
             profile.Name.Get(Language, LangCode.Es),
             processes.Count > 0
-                ? T(L.OpensWith) + " " + string.Join(", ", processes.Select(p => p.Value))
+                ? T(L.OpensWithApps(process: string.Join(", ", processes.Select(p => p.Value))))
                 : T(L.ManualSub),
             true,
             _profileEditOpen,
