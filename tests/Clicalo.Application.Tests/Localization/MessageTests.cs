@@ -1,4 +1,4 @@
-using Clicalo.Domain.Messages;
+﻿using Clicalo.Domain.Messages;
 
 namespace Clicalo.Application.Tests.Localization;
 
@@ -64,7 +64,7 @@ public sealed class MessageTests
     [Trait("Req", "IDI-001")]
     public void The_catalog_lists_every_key_with_its_expected_arguments()
     {
-        MessageCatalog.All.Length.ShouldBe(946);
+        MessageCatalog.All.Length.ShouldBe(947);
         MessageCatalog.TryGet("migT", out _).ShouldBeFalse("retired by the user (ADR-0020)");
         MessageCatalog.TryGet("processTaken", out var processTaken).ShouldBeTrue();
         processTaken.Parameters.ShouldBe([

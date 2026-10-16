@@ -21,6 +21,7 @@
   "hc": "High contrast",
   "lang": "Language",
   "langBoth": "Language · Idioma",
+  "langBarNote": "It is also always at the top, in the window bar.",
   "showKeys": "Show keys",
   "keysWith": "With keys",
   "keysNameOnly": "Name only",

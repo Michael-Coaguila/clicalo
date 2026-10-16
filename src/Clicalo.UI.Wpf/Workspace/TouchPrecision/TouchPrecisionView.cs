@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -17,9 +16,11 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.TouchPrecision;
 
 /// <summary>
-/// «Precisión táctil» (docs/05 §4, TAC-005, TAC-006): on the left the four presets and the four sliders; on the right,
-/// in a column of 340 on the <c>side</c> background (stacked below when the window is narrower than 1240), the test
-/// zone with two «Toca aquí» targets separated by a gap, the counters and the last touch. Every contact of the zone goes
+/// Â«PrecisiÃ³n tÃ¡ctilÂ» (docs/05 Â§4, TAC-005, TAC-006) in direction C (D12): on the left the four presets (option tiles
+/// with their icon, name and description) and the four values, each one in the same outlined frame with its title, its
+/// value, its slider with âˆ’ / + of 44 and its explanation; on the right, in a column of 340 on the <c>side</c>
+/// background (stacked below when the window is narrower than 1240), the test zone with two Â«Toca aquÃ­Â» targets
+/// separated by a gap, the counters and the last touch. Every contact of the zone goes
 /// to <see cref="TouchPrecisionViewModel.TestContact"/>, which judges it with the panel's own recognizer and filter.
 /// </summary>
 /// <remarks>
@@ -29,47 +30,52 @@ namespace Clicalo.UI.Wpf.Workspace.TouchPrecision;
 /// </remarks>
 public sealed class TouchPrecisionView : ContentControl
 {
-    private const double NarrowBelow = 1240;
+    /// <summary>The width of this view from which the test zone is a column (1240 of window width, TAC-006).</summary>
+    private const double WideFrom = 1000;
+
     private const double ZoneWidth = 340;
-    private const double TargetGap = 24;
     private const uint MousePointer = 1;
 
     private readonly TouchPrecisionViewModel _viewModel;
-    private readonly TextBlock _title = Ui.Text(string.Empty, 24, bold: true);
-    private readonly TextBlock _subtitle = Ui.Text(
-        string.Empty,
-        14,
-        ink: ColorToken.Muted,
-        wrap: true
-    );
+    private readonly StyledText _title;
+    private readonly StyledText _subtitle;
     private readonly ContentControl _presets = new() { Focusable = false };
     private readonly SettingSlider[] _sliders;
     private readonly StackPanel _left;
     private readonly Border _root = new();
-    private readonly Border _right = new() { Padding = new Thickness(20) };
-    private readonly TextBlock _caption = Ui.Text(
-        string.Empty,
-        12,
-        bold: true,
-        ink: ColorToken.Muted
-    );
-    private readonly Grid _zone = new() { MinHeight = 200, Background = Brushes.Transparent };
+    private readonly Border _right = new() { Padding = new Thickness(Space.S6) };
+    private readonly Overline _caption = new();
+
+    // TAC-006: at least 200 high.
+    private readonly Grid _zone = new()
+    {
+        MinHeight = (ControlHeight.Large * 3) + Space.S2,
+        Background = Brushes.Transparent,
+    };
     private readonly Rectangle[] _targetFaces = new Rectangle[TouchTestZone.TargetCount];
     private readonly Grid[] _targets = new Grid[TouchTestZone.TargetCount];
-    private readonly TextBlock[] _targetLabels = new TextBlock[TouchTestZone.TargetCount];
-    private readonly TextBlock _registered = Ui.Text(string.Empty, 28, bold: true);
-    private readonly TextBlock _registeredLabel = Ui.Text(string.Empty, 12, ink: ColorToken.Muted);
-    private readonly TextBlock _ignored = Ui.Text(string.Empty, 28, bold: true);
-    private readonly TextBlock _ignoredLabel = Ui.Text(string.Empty, 12, ink: ColorToken.Muted);
-    private readonly TextBlock _message = Ui.Text(
+    private readonly StyledText[] _targetLabels = new StyledText[TouchTestZone.TargetCount];
+    private readonly StyledText _registered = SettingsUi.Styled(string.Empty, TextStyleToken.Title);
+    private readonly StyledText _registeredLabel = SettingsUi.Styled(
         string.Empty,
-        13,
-        ink: ColorToken.Muted,
-        wrap: true
+        TextStyleToken.Caption,
+        ColorToken.Muted
+    );
+    private readonly StyledText _ignored = SettingsUi.Styled(string.Empty, TextStyleToken.Title);
+    private readonly StyledText _ignoredLabel = SettingsUi.Styled(
+        string.Empty,
+        TextStyleToken.Caption,
+        ColorToken.Muted
+    );
+    private readonly StyledText _message = SettingsUi.Styled(
+        string.Empty,
+        TextStyleToken.BodySmall,
+        ColorToken.Muted,
+        lines: 2
     );
     private readonly ContentControl _reset = new() { Focusable = false };
     private TouchScreen? _shown;
-    private bool _narrow;
+    private bool? _narrow;
     private bool _pressed;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
@@ -79,6 +85,7 @@ public sealed class TouchPrecisionView : ContentControl
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         Focusable = false;
+        (_title, _subtitle) = SettingsUi.NewHeader();
         Ui.Ink(_root, Border.BackgroundProperty, ColorToken.Win);
         Content = _root;
         _sliders =
@@ -90,12 +97,15 @@ public sealed class TouchPrecisionView : ContentControl
                 )),
         ];
         _left = Ui.Column(
-            20,
-            Ui.Column(4, _title, _subtitle),
+            Space.S6,
+            SettingsUi.PageHeader(_title, _subtitle),
             _presets,
-            Ui.Column(20, [.. _sliders.Select(slider => slider.Element)])
+            Ui.Column(
+                Space.S4,
+                [.. _sliders.Select(slider => SettingsUi.Frame(slider.Element, string.Empty))]
+            )
         );
-        _left.Margin = new Thickness(24);
+        _left.Margin = new Thickness(Space.S6);
 
         for (var i = 0; i < TouchTestZone.TargetCount; i++)
         {
@@ -112,10 +122,10 @@ public sealed class TouchPrecisionView : ContentControl
         _zone.MouseLeftButtonUp += OnUp;
         _zone.LostMouseCapture += OnLostCapture;
         AutomationProperties.SetLiveSetting(_message, AutomationLiveSetting.Polite);
-        _message.MinHeight = 36;
-        var counters = Ui.Columns(
+        // Two lines are kept for the message: the counters and the button never move under the finger.
+        _message.MinHeight = TextStyles.Get(TextStyleToken.BodySmall).LineHeight * 2;
+        var counters = SettingsUi.Options(
             2,
-            8,
             [Counter(_registered, _registeredLabel), Counter(_ignored, _ignoredLabel)]
         );
         var column = new DockPanel { LastChildFill = true };
@@ -123,7 +133,12 @@ public sealed class TouchPrecisionView : ContentControl
         {
             if (part is FrameworkElement element)
             {
-                element.Margin = new Thickness(0, ReferenceEquals(part, _caption) ? 0 : 14, 0, 0);
+                element.Margin = new Thickness(
+                    0,
+                    ReferenceEquals(part, _caption) ? 0 : Space.S4,
+                    0,
+                    0
+                );
             }
 
             DockPanel.SetDock(part, ReferenceEquals(part, _caption) ? Dock.Top : Dock.Bottom);
@@ -133,7 +148,7 @@ public sealed class TouchPrecisionView : ContentControl
         column.Children.Add(_reset);
         column.Children.Add(_message);
         column.Children.Add(counters);
-        _zone.Margin = new Thickness(0, 14, 0, 0);
+        _zone.Margin = new Thickness(0, Space.S4, 0, 0);
         column.Children.Add(_zone);
         _right.Child = column;
         Ui.Ink(_right, Border.BackgroundProperty, ColorToken.Side);
@@ -148,33 +163,47 @@ public sealed class TouchPrecisionView : ContentControl
     /// <summary>Stops following the view model (the window is closing for good).</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
 
-    private static Border Counter(TextBlock value, TextBlock label) =>
-        Ui.Card(Ui.Column(0, value, label), ColorToken.Card, null, 10, new Thickness(12));
+    /// <summary>A counter of the zone: the number in <c>title</c> over its name, on a card with its line.</summary>
+    private static Border Counter(StyledText value, StyledText label)
+    {
+        var counter = Ui.Card(
+            Ui.Column(0, value, label),
+            ColorToken.Card,
+            ColorToken.Border,
+            Radii.Medium,
+            new Thickness(Space.S3)
+        );
+        counter.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        return counter;
+    }
 
     private Grid Target(int index)
     {
+        // The dashed line of a place to touch, as the tile Â«BibliotecaÂ» of the mockup: dashes of 4 in stroke units.
         var face = new Rectangle
         {
-            RadiusX = 16,
-            RadiusY = 16,
-            StrokeThickness = 2,
-            StrokeDashArray = [4, 3],
+            RadiusX = Radii.Large,
+            RadiusY = Radii.Large,
+            StrokeThickness = Stroke.Selected,
+            StrokeDashArray = [Space.S1 / Stroke.Selected, Space.S1 / Stroke.Selected],
         };
         Ui.Ink(face, Shape.StrokeProperty, ColorToken.Accent);
         Ui.Ink(face, Shape.FillProperty, ColorToken.Card);
-        var label = Ui.Text(string.Empty, 20, bold: true, wrap: true);
+        var label = SettingsUi.Styled(string.Empty, TextStyleToken.Heading, lines: 2);
         label.TextAlignment = TextAlignment.Center;
-        var content = Ui.Column(8, Ui.Icon("touch_app", 40, ColorToken.AccentInk), label);
+        var icon = Ui.Icon("touch_app", IconBox.Large, ColorToken.AccentInk);
+        var content = Ui.Column(Space.S2, icon, label);
         content.VerticalAlignment = VerticalAlignment.Center;
         content.HorizontalAlignment = HorizontalAlignment.Center;
-        content.Margin = new Thickness(8);
+        content.Margin = new Thickness(Space.S2);
         content.IsHitTestVisible = false;
         var target = new Grid
         {
+            // The gap between the targets checks the extra area too (TAC-006).
             Margin = new Thickness(
-                index == 0 ? 0 : TargetGap / 2,
+                index == 0 ? 0 : Space.S6 / 2,
                 0,
-                index == TouchTestZone.TargetCount - 1 ? 0 : TargetGap / 2,
+                index == TouchTestZone.TargetCount - 1 ? 0 : Space.S6 / 2,
                 0
             ),
         };
@@ -189,8 +218,13 @@ public sealed class TouchPrecisionView : ContentControl
 
     private void ApplyWidth()
     {
-        var width = Window.GetWindow(this)?.ActualWidth ?? ActualWidth;
-        var narrow = width > 0 && width < NarrowBelow;
+        // The view's own width: 1240 of window width leaves about 1020 beside the wide menu and its line.
+        if (ActualWidth <= 0)
+        {
+            return;
+        }
+
+        var narrow = ActualWidth < WideFrom;
         if (narrow != _narrow)
         {
             Arrange(narrow);
@@ -205,13 +239,13 @@ public sealed class TouchPrecisionView : ContentControl
         Release(_right);
         if (narrow)
         {
-            _right.BorderThickness = new Thickness(0, 1, 0, 0);
+            _right.BorderThickness = new Thickness(0, Stroke.Line, 0, 0);
             _right.Margin = new Thickness(0);
             _root.Child = new ThemedScrollViewer { Content = Ui.Column(0, _left, _right) };
             return;
         }
 
-        _right.BorderThickness = new Thickness(1, 0, 0, 0);
+        _right.BorderThickness = new Thickness(Stroke.Line, 0, 0, 0);
         var layout = new Grid();
         layout.ColumnDefinitions.Add(
             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
@@ -271,7 +305,7 @@ public sealed class TouchPrecisionView : ContentControl
         }
 
         var test = screen.Test;
-        _caption.Text = test.Caption.ToUpperInvariant();
+        _caption.Text = test.Caption;
         for (var i = 0; i < _targets.Length; i++)
         {
             var face = _targetFaces[i];
@@ -297,55 +331,60 @@ public sealed class TouchPrecisionView : ContentControl
         _ignored.Text = test.Ignored.ToString(System.Globalization.CultureInfo.CurrentCulture);
         _ignoredLabel.Text = test.IgnoredLabel;
         _message.Text = test.Message;
-        Ui.Ink(
-            _message,
-            TextBlock.ForegroundProperty,
-            test.IsWarning ? ColorToken.Text : ColorToken.Muted
-        );
+        _message.Ink = test.IsWarning ? ColorToken.WarnText : ColorToken.Muted;
         if (!string.Equals(shown?.Test.ResetLabel, test.ResetLabel, StringComparison.Ordinal))
         {
-            var reset = Ui.Button(
-                Ui.IconLabel("restart_alt", test.ResetLabel, 18, 13),
+            var reset = SettingsUi.Button(
                 test.ResetLabel,
+                ButtonVariant.Secondary,
                 _viewModel.ResetCounters,
-                ColorToken.Card,
-                stroke: ColorToken.Border
+                "restart_alt"
             );
             reset.HorizontalAlignment = HorizontalAlignment.Left;
             _reset.Content = reset;
         }
     }
 
-    private UniformGrid Presets(TouchScreen screen)
+    /// <summary>
+    /// The four presets (TAC-005): option tiles with their icon, name and description, as many in a row as fit with
+    /// their whole names; the one in use has the single look of Â«elegidoÂ», with its icon filled (not only color).
+    /// </summary>
+    private AutoFillGrid Presets(TouchScreen screen)
     {
-        var grid = new UniformGrid { Columns = 4, Margin = new Thickness(0, 0, -8, 0) };
+        var grid = new AutoFillGrid { MinItemWidth = ControlHeight.Large * 3, Gap = Space.S2 };
         foreach (var preset in screen.Presets)
         {
-            var card = Ui.Choice(
-                Ui.Column(
-                    4,
-                    Ui.Text(preset.Label, 15, bold: true, wrap: true),
-                    Ui.Text(preset.Description, 12, ink: ColorToken.Muted, wrap: true)
-                ),
-                preset.Label,
-                preset.Selected,
-                () => _viewModel.ChoosePreset(preset.Id),
-                76,
-                12,
-                role: OptionRole.Option
+            var texts = Ui.Column(
+                0,
+                SettingsUi.Styled(preset.Label, TextStyleToken.Label),
+                SettingsUi.Styled(preset.Description, TextStyleToken.Caption, ColorToken.Muted)
             );
-            card.Height = double.NaN;
-            card.MinHeight = 76;
-            card.Padding = new Thickness(10);
-            card.Margin = new Thickness(0, 0, 8, 0);
+            var card = SettingsUi.Tall(
+                SettingsUi.Option(
+                    OptionKind.Tile,
+                    texts,
+                    preset.Label,
+                    preset.Selected,
+                    () => _viewModel.ChoosePreset(preset.Id),
+                    PresetIcon(preset.Id)
+                )
+            );
             card.HorizontalContentAlignment = HorizontalAlignment.Left;
-            card.VerticalContentAlignment = VerticalAlignment.Top;
             AutomationProperties.SetHelpText(card, preset.Description);
             grid.Children.Add(card);
         }
 
         return grid;
     }
+
+    private static string PresetIcon(string id) =>
+        id switch
+        {
+            "standard" => "touch_app",
+            "mild-tremor" => "pan_tool_alt",
+            "strong-tremor" => "front_hand",
+            _ => "tune",
+        };
 
     // ---- The test zone (TAC-006) ---------------------------------------------------------------------------------
 

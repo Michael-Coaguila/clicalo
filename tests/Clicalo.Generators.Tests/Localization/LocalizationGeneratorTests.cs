@@ -1,4 +1,4 @@
-using Clicalo.Generators.Localization;
+﻿using Clicalo.Generators.Localization;
 using Clicalo.TestKit;
 using Microsoft.CodeAnalysis;
 
@@ -51,7 +51,7 @@ public sealed class LocalizationGeneratorTests
                     );
             """.Replace("\r\n", "\n", StringComparison.Ordinal)
         );
-        messages.ShouldContain("/// <summary>Importado: {profiles} &amp; &lt;más&gt;</summary>");
+        messages.ShouldContain("/// <summary>Importado: {profiles} &amp; &lt;mÃ¡s&gt;</summary>");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class LocalizationGeneratorTests
         output.Diagnostics.Select(GeneratorOutput.Describe).ShouldBeEmpty();
         output.CompilationErrors.ShouldBeEmpty();
         var messages = output.Source(".L.g.cs");
-        CountOccurrences(messages, "    public static Message ").ShouldBe(946);
+        CountOccurrences(messages, "    public static Message ").ShouldBe(947);
         messages.ShouldContain(
             "public static Message ProcessTaken(MessageText profile, MessageText process) =>"
         );
