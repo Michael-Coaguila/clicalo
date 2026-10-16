@@ -3,7 +3,6 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Controls.Internal;
 
 namespace Clicalo.UI.Wpf.Workspace.SystemSection;
 
@@ -24,14 +23,7 @@ internal sealed class SystemTabItem : ToggleButton
         TemplateProperty.OverrideMetadata(
             typeof(SystemTabItem),
             new FrameworkPropertyMetadata(
-                OptionChrome.For(
-                    typeof(SystemTabItem),
-                    OptionKind.Segment,
-                    IsCheckedProperty,
-                    OptionButton.SymbolProperty,
-                    OptionButton.CaptionProperty,
-                    OptionButton.CountProperty
-                )
+                OptionTemplates.For(typeof(SystemTabItem), OptionKind.Segment, IsCheckedProperty)
             )
         );
         FocusVisualStyleProperty.OverrideMetadata(

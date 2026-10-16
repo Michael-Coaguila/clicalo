@@ -328,6 +328,9 @@ public sealed class StringsParityTests
                 "whenDate",
                 "whenToday",
                 "whenYesterday",
+                // The title bar of the Control Center (D13, catalog §6.1, R-32).
+                "winMaximize",
+                "winRestore",
             ]);
         entries
             .Where(static e => I18nData.Category(e.Key) is not null)

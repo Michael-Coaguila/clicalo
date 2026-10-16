@@ -1,4 +1,4 @@
-namespace Clicalo.UI.Wpf.Windowing;
+namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>The three buttons of a window's title bar (D13).</summary>
 public enum CaptionKind

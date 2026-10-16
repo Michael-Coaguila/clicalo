@@ -70,7 +70,7 @@ public sealed class LooseMeasureTests
             .Keys.Where(file =>
                 file.StartsWith(Folder + "/Controls/", StringComparison.Ordinal)
                 || file.StartsWith(Folder + "/Windowing/TitleBar", StringComparison.Ordinal)
-                || file.StartsWith(Folder + "/Windowing/Caption", StringComparison.Ordinal)
+                || file.StartsWith(Folder + "/Controls/Caption", StringComparison.Ordinal)
             )
             .ShouldBeEmpty("the base controls of direction C are built only with tokens");
     }

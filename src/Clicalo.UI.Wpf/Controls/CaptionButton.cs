@@ -3,14 +3,13 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
-using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Controls.Internal;
 using Clicalo.UI.Wpf.Theming.Generated;
 
-namespace Clicalo.UI.Wpf.Windowing;
+namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// One of the three buttons of a <see cref="TitleBar"/> (D13): a zone of <see cref="ComponentSize.CaptionButton"/> ×
+/// One of the three buttons of a <see cref="Windowing.TitleBar"/> (D13): a zone of <see cref="ComponentSize.CaptionButton"/> ×
 /// <see cref="ComponentSize.CaptionButton"/>, as in every window of Windows, with its icon in a box of
 /// <see cref="IconBox.Small"/>. Under the pointer the zone takes <c>cardHi</c>; the close button takes
 /// <c>danger</c> with its icon in <c>onDanger</c>. UI Automation sees a Button with Invoke named by the view

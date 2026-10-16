@@ -1,6 +1,6 @@
 using System.Windows.Automation.Peers;
 
-namespace Clicalo.UI.Wpf.Windowing;
+namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
 /// UI Automation peer of <see cref="CaptionButton"/>: a Button with Invoke, named with <c>AutomationProperties.Name</c>

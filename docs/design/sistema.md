@@ -156,7 +156,7 @@ los pares se comprueba al compilar (`contrast-pairs.json`, CLCT002).
 
 ## 3. Componentes base
 
-Todos viven en `Clicalo.UI.Wpf.Controls` (salvo la barra de título, en `Clicalo.UI.Wpf.Windowing`), se construyen solo
+Todos viven en `Clicalo.UI.Wpf.Controls` (salvo `TitleBar`, en `Clicalo.UI.Wpf.Windowing`; `OptionTemplates.For` da la plantilla de una opción a un control con su propio par de UI Automation), se construyen solo
 con tokens, responden al menos en 44 × 44, muestran el anillo de foco de 3 y se exponen a UI Automation con un solo
 patrón. Las plantillas son selladas y se crean en código. Un texto que se pasa como `Content` es texto de producto ya
 localizado.
@@ -277,7 +277,7 @@ en un hueco propio, nunca encima de un icono.
 nivel de elevación; nunca dentro de otra tarjeta. `StyledText` (`TextStyle`, `Ink`, `MaxLines`, `IsScaled`): todo texto
 de la escala con su regla de desbordamiento.
 
-### 3.14 Barra de título · `TitleBar` y `CaptionButton` (`Clicalo.UI.Wpf.Windowing`)
+### 3.14 Barra de título · `TitleBar` (`Clicalo.UI.Wpf.Windowing`) y `CaptionButton`
 
 `TitleBar` de `ComponentSize.TitleBar` en `Side`: `Leading` (logo y ruta, arrastra la ventana), `Trailing` (idioma) y
 los `CaptionButton` `Minimize`, `Maximize` y `Close` en zonas de 56 × 56 (cerrar en `Danger` encima). `Attach(window,
