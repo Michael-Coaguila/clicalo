@@ -1,4 +1,4 @@
-﻿using Clicalo.Domain.Messages;
+using Clicalo.Domain.Messages;
 
 namespace Clicalo.Application.Tests.Localization;
 

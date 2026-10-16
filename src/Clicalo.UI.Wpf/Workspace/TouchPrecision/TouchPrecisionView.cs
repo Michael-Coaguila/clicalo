@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -16,10 +17,10 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.TouchPrecision;
 
 /// <summary>
-/// Â«PrecisiÃ³n tÃ¡ctilÂ» (docs/05 Â§4, TAC-005, TAC-006) in direction C (D12): on the left the four presets (option tiles
+/// «Precisión táctil» (docs/05 §4, TAC-005, TAC-006) in direction C (D12): on the left the four presets (option tiles
 /// with their icon, name and description) and the four values, each one in the same outlined frame with its title, its
-/// value, its slider with âˆ’ / + of 44 and its explanation; on the right, in a column of 340 on the <c>side</c>
-/// background (stacked below when the window is narrower than 1240), the test zone with two Â«Toca aquÃ­Â» targets
+/// value, its slider with − / + of 44 and its explanation; on the right, in a column of 340 on the <c>side</c>
+/// background (stacked below when the window is narrower than 1240), the test zone with two «Toca aquí» targets
 /// separated by a gap, the counters and the last touch. Every contact of the zone goes
 /// to <see cref="TouchPrecisionViewModel.TestContact"/>, which judges it with the panel's own recognizer and filter.
 /// </summary>
@@ -30,10 +31,13 @@ namespace Clicalo.UI.Wpf.Workspace.TouchPrecision;
 /// </remarks>
 public sealed class TouchPrecisionView : ContentControl
 {
-    /// <summary>The width of this view from which the test zone is a column (1240 of window width, TAC-006).</summary>
-    private const double WideFrom = 1000;
+    /// <summary>The window width from which the test zone is a column beside the values (TAC-006).</summary>
+    private const double WideFrom = 1240;
 
     private const double ZoneWidth = 340;
+
+    /// <summary>The least width of a preset with its icon, its name and its description in one line each.</summary>
+    private const double PresetWidth = (ControlHeight.Large * 2) + Space.S8 + Space.S2;
     private const uint MousePointer = 1;
 
     private readonly TouchPrecisionViewModel _viewModel;
@@ -179,7 +183,7 @@ public sealed class TouchPrecisionView : ContentControl
 
     private Grid Target(int index)
     {
-        // The dashed line of a place to touch, as the tile Â«BibliotecaÂ» of the mockup: dashes of 4 in stroke units.
+        // The dashed line of a place to touch, as the tile «Biblioteca» of the mockup: dashes of 4 in stroke units.
         var face = new Rectangle
         {
             RadiusX = Radii.Large,
@@ -218,13 +222,12 @@ public sealed class TouchPrecisionView : ContentControl
 
     private void ApplyWidth()
     {
-        // The view's own width: 1240 of window width leaves about 1020 beside the wide menu and its line.
         if (ActualWidth <= 0)
         {
             return;
         }
 
-        var narrow = ActualWidth < WideFrom;
+        var narrow = SettingsUi.WindowWidth(this) < WideFrom;
         if (narrow != _narrow)
         {
             Arrange(narrow);
@@ -347,11 +350,13 @@ public sealed class TouchPrecisionView : ContentControl
 
     /// <summary>
     /// The four presets (TAC-005): option tiles with their icon, name and description, as many in a row as fit with
-    /// their whole names; the one in use has the single look of Â«elegidoÂ», with its icon filled (not only color).
+    /// their whole names; the one in use has the single look of «elegido», with its icon filled (not only color).
     /// </summary>
-    private AutoFillGrid Presets(TouchScreen screen)
+    private UniformGrid Presets(TouchScreen screen)
     {
-        var grid = new AutoFillGrid { MinItemWidth = ControlHeight.Large * 3, Gap = Space.S2 };
+        // Four in a row where each keeps its whole name, two by two otherwise: never three and one alone.
+        var grid = new UniformGrid { Columns = 4, Margin = new Thickness(-Space.S1) };
+        grid.SizeChanged += (_, e) => grid.Columns = e.NewSize.Width >= PresetWidth * 4 ? 4 : 2;
         foreach (var preset in screen.Presets)
         {
             var texts = Ui.Column(
@@ -370,6 +375,7 @@ public sealed class TouchPrecisionView : ContentControl
                 )
             );
             card.HorizontalContentAlignment = HorizontalAlignment.Left;
+            card.Margin = new Thickness(Space.S1);
             AutomationProperties.SetHelpText(card, preset.Description);
             grid.Children.Add(card);
         }

@@ -7,9 +7,9 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.General;
 
 /// <summary>
-/// A slider row of Â«General y panelÂ» and Â«PrecisiÃ³n tÃ¡ctilÂ» (GEN-009, TAC-005) in direction C: the name and, at the
+/// A slider row of «General y panel» and «Precisión táctil» (GEN-009, TAC-005) in direction C: the name and, at the
 /// end of its line, the value (both in <c>label</c>; monospace is only for keys), the <see cref="StepSlider"/> with its
-/// âˆ’ / + of 44 and, optionally, the explanation below. It lives across the
+/// − / + of 44 and, optionally, the explanation below. It lives across the
 /// rebuilds of its section, so a finger dragging the knob never loses it; the section only updates its texts and value.
 /// </summary>
 internal sealed class SettingSlider
@@ -30,7 +30,7 @@ internal sealed class SettingSlider
     private bool _applying;
 
     /// <summary>Creates the row.</summary>
-    /// <param name="moved">Receives the value the person chose (drag, track, âˆ’ / +, keyboard or UI Automation).</param>
+    /// <param name="moved">Receives the value the person chose (drag, track, − / +, keyboard or UI Automation).</param>
     /// <param name="withDescription">Whether the explanation shows under the slider.</param>
     public SettingSlider(Action<double> moved, bool withDescription)
     {
@@ -64,8 +64,8 @@ internal sealed class SettingSlider
     /// <param name="minimum">The lowest value.</param>
     /// <param name="maximum">The highest value.</param>
     /// <param name="tick">The grid of the track.</param>
-    /// <param name="buttonStep">How far âˆ’ and + move.</param>
-    /// <param name="lessName">The accessible name of âˆ’.</param>
+    /// <param name="buttonStep">How far − and + move.</param>
+    /// <param name="lessName">The accessible name of −.</param>
     /// <param name="moreName">The accessible name of +.</param>
     /// <param name="description">The explanation; empty for none.</param>
     public void Show(

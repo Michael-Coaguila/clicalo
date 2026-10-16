@@ -13,13 +13,37 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.General;
 
 /// <summary>
-/// The pieces of direction C (D12, docs/design/sistema.md) that Â«General y panelÂ», Â«PrecisiÃ³n tÃ¡ctilÂ», Â«SistemaÂ»,
-/// Â«Acerca deÂ» and the welcome share, so their groups, options, rows and texts have the same borders, baselines and
+/// The pieces of direction C (D12, docs/design/sistema.md) that «General y panel», «Precisión táctil», «Sistema»,
+/// «Acerca de» and the welcome share, so their groups, options, rows and texts have the same borders, baselines and
 /// paddings: a page title, a group (an outlined frame on the surface with its <see cref="Overline"/>), options with the
-/// single look of Â«elegidoÂ», theme swatches, setting rows and texts of the type scale. Only tokens: no loose measure.
+/// single look of «elegido», theme swatches, setting rows and texts of the type scale. Only tokens: no loose measure.
 /// </summary>
 internal static class SettingsUi
 {
+    /// <summary>
+    /// The width of the window that shows <paramref name="view"/>: the outermost element above it (the window itself,
+    /// or the root a host draws the window's content in), so a page follows the window's breakpoints (GEN-001,
+    /// CCM-005) wherever it is drawn; the view's own width when nothing holds it.
+    /// </summary>
+    public static double WindowWidth(FrameworkElement view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        var top = view;
+        for (
+            var node = VisualTreeHelper.GetParent(view) ?? view.Parent;
+            node is not null;
+            node = VisualTreeHelper.GetParent(node) ?? LogicalTreeHelper.GetParent(node)
+        )
+        {
+            if (node is FrameworkElement element)
+            {
+                top = element;
+            }
+        }
+
+        return top.ActualWidth;
+    }
+
     /// <summary>A text of the type scale in <paramref name="ink"/>, in <paramref name="lines"/> lines (0: no limit).</summary>
     public static StyledText Styled(
         string text,
@@ -80,7 +104,7 @@ internal static class SettingsUi
 
     /// <summary>
     /// An option of <paramref name="kind"/> that the view model chooses (a tap only raises <c>Click</c>), with the
-    /// single look of Â«elegidoÂ». A string content shows âœ“ when chosen; a view's own content brings its mark
+    /// single look of «elegido». A string content shows ✓ when chosen; a view's own content brings its mark
     /// (<see cref="CheckLabel"/>). UI Automation: a radio button with SelectionItem (<see cref="OptionRole.Option"/>).
     /// </summary>
     public static OptionButton Option(
@@ -125,8 +149,8 @@ internal static class SettingsUi
     }
 
     /// <summary>
-    /// The label of an option with its own content: âœ“ before the text while chosen, as a tile without icon shows it
-    /// (the same look of Â«elegidoÂ» everywhere), centered, in one line with Â«â€¦Â».
+    /// The label of an option with its own content: ✓ before the text while chosen, as a tile without icon shows it
+    /// (the same look of «elegido» everywhere), centered, in one line with «…».
     /// </summary>
     public static StackPanel CheckLabel(
         string text,
@@ -151,7 +175,7 @@ internal static class SettingsUi
     }
 
     /// <summary>
-    /// A theme option (GEN-003, BIE-008): a tile of 44 with the swatch of the theme, its name in one line and âœ“ at the
+    /// A theme option (GEN-003, BIE-008): a tile of 44 with the swatch of the theme, its name in one line and ✓ at the
     /// end while chosen, as in the quick settings of the mockup.
     /// </summary>
     public static OptionButton ThemeOption(
@@ -183,7 +207,7 @@ internal static class SettingsUi
 
     /// <summary>
     /// The swatch of a theme: a circle of <see cref="IconBox.Small"/> split between the background and the accent of
-    /// its palette (Â«Como WindowsÂ»: the light and the dark background), with the control line of the current theme.
+    /// its palette («Como Windows»: the light and the dark background), with the control line of the current theme.
     /// </summary>
     public static Ellipse Swatch(ThemeChoice theme)
     {
@@ -312,7 +336,7 @@ internal static class SettingsUi
         return button;
     }
 
-    /// <summary>A secondary icon button of 44 (âˆ’, +, â†, â†’, copy), named for UI Automation.</summary>
+    /// <summary>A secondary icon button of 44 (−, +, â†, →, copy), named for UI Automation.</summary>
     public static IconButton IconAction(
         string symbol,
         string name,

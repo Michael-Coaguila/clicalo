@@ -24,8 +24,8 @@ namespace Clicalo.UI.Wpf.Workspace.About;
 /// </summary>
 public sealed class AboutSectionView : Border
 {
-    /// <summary>The width of this view from which it has two columns (1240 of window width).</summary>
-    private const double WideFrom = 1000;
+    /// <summary>The window width from which the page has two columns (ACE-001).</summary>
+    private const double WideFrom = 1240;
 
     private const string MessageId = "about.message";
 
@@ -55,9 +55,9 @@ public sealed class AboutSectionView : Border
         AutomationProperties.SetAutomationId(_message.Dictate, "about.dictate");
         Child = _scroll;
         viewModel.PropertyChanged += OnChanged;
-        SizeChanged += (_, e) =>
+        SizeChanged += (_, _) =>
         {
-            var wide = e.NewSize.Width >= WideFrom;
+            var wide = SettingsUi.WindowWidth(this) >= WideFrom;
             if (wide != _wide)
             {
                 _wide = wide;

@@ -1,4 +1,4 @@
-﻿using Clicalo.Generators.Localization;
+using Clicalo.Generators.Localization;
 using Clicalo.TestKit;
 using Microsoft.CodeAnalysis;
 
@@ -51,7 +51,7 @@ public sealed class LocalizationGeneratorTests
                     );
             """.Replace("\r\n", "\n", StringComparison.Ordinal)
         );
-        messages.ShouldContain("/// <summary>Importado: {profiles} &amp; &lt;mÃ¡s&gt;</summary>");
+        messages.ShouldContain("/// <summary>Importado: {profiles} &amp; &lt;más&gt;</summary>");
     }
 
     [Fact]

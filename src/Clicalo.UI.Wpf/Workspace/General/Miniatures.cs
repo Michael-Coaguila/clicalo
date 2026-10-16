@@ -8,14 +8,14 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.General;
 
 /// <summary>
-/// The miniatures of Â«General y panelÂ» (GEN-006, GEN-008, GEN-010): every one is the same box of
-/// <see cref="ControlHeight.Large"/> Ã— <see cref="ControlHeight.Small"/> on the surface with its line, so the options
+/// The miniatures of «General y panel» (GEN-006, GEN-008, GEN-010): every one is the same box of
+/// <see cref="ControlHeight.Large"/> × <see cref="ControlHeight.Small"/> on the surface with its line, so the options
 /// that carry them line up. What they draw is in <c>muted</c> lines, and in the accent while their option is chosen.
 /// They are pictures: UI Automation reads the name of their option.
 /// </summary>
 internal static class Miniatures
 {
-    /// <summary>Â«Filas visiblesÂ»: <paramref name="rows"/> rows of tiles from the top.</summary>
+    /// <summary>«Filas visibles»: <paramref name="rows"/> rows of tiles from the top.</summary>
     public static Border Rows(int rows, bool selected)
     {
         var stack = new StackPanel();
@@ -30,7 +30,7 @@ internal static class Miniatures
         return Box(stack);
     }
 
-    /// <summary>Â«ColumnasÂ»: two rows of <paramref name="columns"/> tiles.</summary>
+    /// <summary>«Columnas»: two rows of <paramref name="columns"/> tiles.</summary>
     public static Border Columns(int columns, bool selected)
     {
         var grid = new UniformGrid { Columns = Math.Max(1, columns), Rows = 2 };
@@ -44,7 +44,7 @@ internal static class Miniatures
         return Box(grid);
     }
 
-    /// <summary>Â«Mostrar teclasÂ»: a tile with its name and, when <paramref name="keys"/> is set, its keys.</summary>
+    /// <summary>«Mostrar teclas»: a tile with its name and, when <paramref name="keys"/> is set, its keys.</summary>
     public static Border Tile(string name, string? keys)
     {
         var column = Ui.Column(
@@ -67,7 +67,7 @@ internal static class Miniatures
     }
 
     /// <summary>
-    /// Â«LadoÂ»: the bar on its edge of the screen and the scroll bar on the right, which the bar leaves free with
+    /// «Lado»: the bar on its edge of the screen and the scroll bar on the right, which the bar leaves free with
     /// [gutter] (GEN-010).
     /// </summary>
     public static Border Side(DockSide side, bool gutter, bool selected)

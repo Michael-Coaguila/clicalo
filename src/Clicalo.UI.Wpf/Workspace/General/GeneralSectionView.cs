@@ -14,21 +14,21 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.General;
 
 /// <summary>
-/// Â«General y panelÂ» (docs/05 Â§3, GEN-001) in direction C (D12): the title, the 2 Ã— 2 grid of groups of equal height
-/// (Idioma, Tema, TamaÃ±o, Vista; one column in a narrow window) and, below, two columns from 1240 of window width (one
-/// below): DisposiciÃ³n and Transparencia on the left; Modo pestaÃ±a, ConfirmaciÃ³n al tocar, Seguridad de teclas,
+/// «General y panel» (docs/05 §3, GEN-001) in direction C (D12): the title, the 2 × 2 grid of groups of equal height
+/// (Idioma, Tema, Tamaño, Vista; one column in a narrow window) and, below, two columns from 1240 of window width (one
+/// below): Disposición and Transparencia on the left; Modo pestaña, Confirmación al tocar, Seguridad de teclas,
 /// Accesibilidad y datos, Inteligencia artificial and Primeros pasos on the right. Every group is the same outlined
-/// frame with its overline (<see cref="SettingsUi.Group"/>); every choice has the single look of Â«elegidoÂ». It only
+/// frame with its overline (<see cref="SettingsUi.Group"/>); every choice has the single look of «elegido». It only
 /// draws <see cref="GeneralSectionViewModel.Screen"/> and forwards taps; each group is rebuilt only when its part
 /// changed, and the two sliders live across rebuilds so a drag is never cut.
 /// </summary>
 public sealed class GeneralSectionView : ContentControl
 {
-    /// <summary>The width of this view from which the groups below go in two columns (1240 of window width).</summary>
-    private const double WideFrom = 1000;
+    /// <summary>The window width from which the groups below go in two columns (GEN-001).</summary>
+    private const double WideFrom = 1240;
 
     /// <summary>
-    /// The width of this view from which the 2 Ã— 2 grid has two columns: below it, the four themes of a group no
+    /// The width of this view from which the 2 × 2 grid has two columns: below it, the four themes of a group no
     /// longer fit two per row with their whole names, so the groups go one under the other.
     /// </summary>
     private const double TwoGroupsFrom = 900;
@@ -102,14 +102,14 @@ public sealed class GeneralSectionView : ContentControl
 
     private void ApplyWidth()
     {
-        // The view's own width: 1240 of window width leaves about 1020 beside the wide menu and its line (GEN-001, as Â«Acerca deÂ»).
+        // The groups below follow the window (GEN-001); the 2 × 2 grid, the room this view has.
         var width = ActualWidth;
         if (width <= 0)
         {
             return;
         }
 
-        var narrow = width < WideFrom;
+        var narrow = SettingsUi.WindowWidth(this) < WideFrom;
         var narrowTop = width < TwoGroupsFrom;
         if (narrow != _narrow || narrowTop != _narrowTop)
         {
@@ -118,7 +118,7 @@ public sealed class GeneralSectionView : ContentControl
     }
 
     /// <summary>
-    /// The 2 Ã— 2 grid (one column below the default width) and the two columns below from 1240 of window width, one
+    /// The 2 × 2 grid (one column below the default width) and the two columns below from 1240 of window width, one
     /// below that (GEN-001, CCM-005).
     /// </summary>
     private void Arrange(bool narrow, bool narrowTop)
@@ -228,9 +228,9 @@ public sealed class GeneralSectionView : ContentControl
         }
     }
 
-    // ---- The 2 Ã— 2 grid ------------------------------------------------------------------------------------------
+    // ---- The 2 × 2 grid ------------------------------------------------------------------------------------------
 
-    /// <summary>GEN-002: Â«Idioma Â· LanguageÂ» with two options of 64; the title bar has the same choice.</summary>
+    /// <summary>GEN-002: «Idioma · Language» with two options of 64; the title bar has the same choice.</summary>
     private Border LanguageGroup(LookModel look)
     {
         var options = new List<UIElement>();
@@ -261,7 +261,7 @@ public sealed class GeneralSectionView : ContentControl
         );
     }
 
-    /// <summary>GEN-003: the four themes in 2 Ã— 2 tiles with the swatch of each one.</summary>
+    /// <summary>GEN-003: the four themes in 2 × 2 tiles with the swatch of each one.</summary>
     private Border ThemeGroup(LookModel look)
     {
         var options = new List<UIElement>();
@@ -281,7 +281,7 @@ public sealed class GeneralSectionView : ContentControl
         return SettingsUi.Group(look.ThemeTitle, SettingsUi.Options(2, options));
     }
 
-    /// <summary>GEN-004: S, M and L as option cards with their grid, and the text size with âˆ’ and + of 44.</summary>
+    /// <summary>GEN-004: S, M and L as option cards with their grid, and the text size with − and + of 44.</summary>
     private Border SizeGroup(LookModel look)
     {
         var options = new List<UIElement>();
@@ -484,7 +484,7 @@ public sealed class GeneralSectionView : ContentControl
         );
     }
 
-    /// <summary>The preview of the opacity over a Â«documentÂ» (GEN-009): light stripes and the panel on top.</summary>
+    /// <summary>The preview of the opacity over a «document» (GEN-009): light stripes and the panel on top.</summary>
     private Grid Document(string behind)
     {
         var paper = ThemeCatalog.GetPalette(ThemeId.Light);
@@ -802,7 +802,7 @@ public sealed class GeneralSectionView : ContentControl
     private static StackPanel Switches(params UIElement?[] rows) => Ui.Column(0, rows);
 
     /// <summary>
-    /// An option with a miniature (GEN-006, GEN-008, GEN-010): the miniature over its label, with âœ“ while chosen.
+    /// An option with a miniature (GEN-006, GEN-008, GEN-010): the miniature over its label, with ✓ while chosen.
     /// </summary>
     private static OptionButton Miniature<T>(
         UIElement miniature,
