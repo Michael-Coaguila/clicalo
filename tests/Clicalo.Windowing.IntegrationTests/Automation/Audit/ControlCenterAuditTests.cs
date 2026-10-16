@@ -91,7 +91,12 @@ public sealed class ControlCenterAuditTests
             templates.ToggleKey();
             templates.ToggleKeyboard();
             templates.ToggleBlank();
-            templates.ToggleBlankIcons();
+        },
+        ["templates-icons"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.ToggleBlank();
+            cc.Templates.ToggleBlankIcons();
         },
         ["templates-preview"] = static cc =>
         {

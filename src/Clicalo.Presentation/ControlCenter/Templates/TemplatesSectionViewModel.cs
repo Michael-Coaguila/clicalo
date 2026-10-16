@@ -16,7 +16,6 @@ using Clicalo.Domain.Privacy;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
 using Clicalo.Presentation.ControlCenter.Editor;
-using Clicalo.Presentation.ControlCenter.Shortcuts;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter.Templates;
@@ -27,7 +26,7 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <see cref="Screen"/>. It forwards every intention to <see cref="TemplatePreviewSession"/>,
 /// <see cref="AiAssistant"/> and the document; the rules are the Application's and the Domain's.
 /// </summary>
-public sealed class TemplatesSectionViewModel : ObservableObject
+public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
 {
     private const string Detect = "detect";
     private const string NoLink = "none";
@@ -50,6 +49,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     private bool _keyboardOpen;
     private bool _blankOpen;
     private bool _blankIconsOpen;
+    private string _iconQuery = string.Empty;
+    private string? _iconCategory;
     private bool _hasKey;
     private bool _queued;
 
@@ -313,6 +314,47 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     public void ToggleBlankIcons()
     {
         _blankIconsOpen = !_blankIconsOpen;
+        _iconQuery = string.Empty;
+        _iconCategory = null;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void PickIcon(string icon) => SetBlankIcon(icon);
+
+    /// <inheritdoc />
+    public void SearchIcons(string query)
+    {
+        _iconQuery = query ?? string.Empty;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void ChooseIconCategory(string? category)
+    {
+        _iconCategory = category;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void CloseIconPicker()
+    {
+        if (_blankIconsOpen)
+        {
+            ToggleBlankIcons();
+        }
+    }
+
+    /// <inheritdoc />
+    public void DictateIconSearch() => Dictate();
+
+    /// <summary>✕ or ← of the preview: nothing is in preview any more.</summary>
+    public void ClosePreview()
+    {
+        _t.Preview.Clear();
+        _selectedTemplate = null;
+        _editingRow = null;
+        _keysRow = null;
         Invalidate();
     }
 
@@ -831,12 +873,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject
     private BlankModel Blank()
     {
         var icon = BlankIcon();
-        var icons = new List<string> { icon };
-        icons.AddRange(
-            _s.Catalogs()
-                .Icons.ProfileFeatured.Select(i => i.Name)
-                .Where(i => !string.Equals(i, icon, StringComparison.Ordinal))
-        );
+        var catalog = _s.Catalogs().Icons;
         var links = _apps
             .Select(a => new BlankLink(a.Process.Value, "apps", a.Name, false))
             .Append(new BlankLink(Detect, "radar", T(L.LinkDetectShort), false))
@@ -854,12 +891,20 @@ public sealed class TemplatesSectionViewModel : ObservableObject
             icon,
             T(L.ChangeIcon),
             _blankIconsOpen,
-            [
-                .. icons.Select(i => new IconOption(
-                    i,
-                    string.Equals(i, icon, StringComparison.Ordinal)
-                )),
-            ],
+            _blankIconsOpen
+                ? IconPickerProjection.Build(
+                    catalog,
+                    icon,
+                    IconSuggestions
+                        .Suggest(_blankName, null, Language, catalog, ComboIconTable.Empty)
+                        .Items,
+                    _iconQuery,
+                    _iconCategory,
+                    Language,
+                    T,
+                    [new IconRef(icon), .. catalog.ProfileFeatured.Items]
+                )
+                : null,
             T(L.BlankPh),
             _blankName,
             T(L.DictName),
@@ -970,7 +1015,8 @@ public sealed class TemplatesSectionViewModel : ObservableObject
                         ? L.UpdateVariantEn
                         : L.UpdateVariantEs
                 )
-                : null
+                : null,
+            T(L.Close)
         );
     }
 

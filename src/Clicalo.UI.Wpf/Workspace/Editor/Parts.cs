@@ -13,6 +13,9 @@ namespace Clicalo.UI.Wpf.Workspace.Editor;
 /// </summary>
 internal static class Parts
 {
+    /// <summary>U+2060 WORD JOINER: no line breaks on either side of it.</summary>
+    private const char Joiner = '⁠';
+
     /// <summary>A section: its <see cref="Overline"/> (when it has a title) and its content, <see cref="Space.S2"/> apart.</summary>
     /// <param name="title">The title, or null for none.</param>
     /// <param name="children">The content; nulls are skipped.</param>
@@ -56,7 +59,42 @@ internal static class Parts
         string text,
         ColorToken ink = ColorToken.Muted,
         TextStyleToken style = TextStyleToken.BodySmall
-    ) => new(text, style, ink) { MaxLines = 0 };
+    ) => new(Unbroken(text), style, ink) { MaxLines = 0 };
+
+    /// <summary>
+    /// <paramref name="text"/> with its combinations of keys glued (§5: an identifier never breaks): «Ctrl+N» keeps
+    /// together at the end of a line, with a word joiner on each side of every «+» between two characters.
+    /// </summary>
+    /// <param name="text">A text that may name keys.</param>
+    public static string Unbroken(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (!text.Contains('+', StringComparison.Ordinal))
+        {
+            return text;
+        }
+
+        var result = new System.Text.StringBuilder(text.Length + 8);
+        for (var i = 0; i < text.Length; i++)
+        {
+            var glue =
+                text[i] == '+'
+                && i > 0
+                && i < text.Length - 1
+                && !char.IsWhiteSpace(text[i - 1])
+                && !char.IsWhiteSpace(text[i + 1]);
+            if (glue)
+            {
+                result.Append(Joiner).Append('+').Append(Joiner);
+            }
+            else
+            {
+                result.Append(text[i]);
+            }
+        }
+
+        return result.ToString();
+    }
 
     /// <summary>An icon of <see cref="IconBox.Small"/> followed by a text that wraps beside it.</summary>
     /// <param name="icon">The icon.</param>

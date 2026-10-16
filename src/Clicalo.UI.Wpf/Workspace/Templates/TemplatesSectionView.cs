@@ -17,28 +17,44 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.Templates;
 
 /// <summary>
-/// The section Plantillas (docs/05 §2): the content (flexible) and the preview (340, or 260 when narrow). It only draws
-/// <see cref="TemplatesSectionViewModel.Screen"/> and forwards taps; each region is rebuilt only when its part of the
-/// screen changed, and the text fields live across rebuilds so typing is never interrupted. The key field is a
-/// password box: the key is never shown, not even while it is pasted (PLA-003, ADR-0008).
+/// The section Plantillas (docs/05 §2) in direction C (D12): one column that scrolls with «Crea atajos con IA» (compact,
+/// so the templates are in view), the keyboard the shortcuts are made for, «Perfil vacío», the apps open without a
+/// profile, the templates and the installed profiles; and the preview (<see cref="PreviewWidth"/>) only while a
+/// template or a proposal is in it, with its install button fixed at its foot. Where both do not fit (the smallest
+/// window, CCM-005), the preview is a page of its own with ✕. The icon picker of «Perfil vacío» is a layer (D14).
 /// </summary>
+/// <remarks>
+/// It only draws <see cref="TemplatesSectionViewModel.Screen"/> and forwards taps; each region is rebuilt only when its
+/// part of the screen changed, and the text fields live across rebuilds so typing is never interrupted. The key field
+/// is a password box: the key is never shown, not even while it is pasted (PLA-003, ADR-0008).
+/// </remarks>
 public sealed class TemplatesSectionView : Grid
 {
-    private const double WidePreview = 340;
-    private const double NarrowPreview = 260;
+    /// <summary>The width of the preview: the width of the editor of «Atajos».</summary>
+    public const double PreviewWidth = ShortcutsSectionView.EditorWidth;
+
+    /// <summary>The least width of the content beside the preview: two templates side by side.</summary>
+    private const double ContentMinWidth = ShortcutsSectionView.ProfilesWidth * 2 + Space.S6 * 2;
 
     private readonly TemplatesSectionViewModel _viewModel;
     private readonly ContentControl _header = new() { Focusable = false };
     private readonly ContentControl _ai = new() { Focusable = false };
+    private readonly ContentControl _keyboard = new() { Focusable = false };
     private readonly ContentControl _blank = new() { Focusable = false };
     private readonly ContentControl _suggested = new() { Focusable = false };
     private readonly ContentControl _available = new() { Focusable = false };
     private readonly ContentControl _installed = new() { Focusable = false };
-    private readonly ContentControl _preview = new() { Focusable = false };
-    private readonly ColumnDefinition _previewColumn = new()
+    private readonly ContentControl _previewHead = new() { Focusable = false };
+    private readonly ContentControl _previewBody = new() { Focusable = false };
+    private readonly ContentControl _previewFoot = new() { Focusable = false };
+    private readonly ColumnDefinition _contentColumn = new()
     {
-        Width = new GridLength(WidePreview),
+        Width = new GridLength(1, GridUnitType.Star),
     };
+    private readonly ColumnDefinition _previewColumn = new() { Width = new GridLength(0) };
+    private readonly ThemedScrollViewer _content;
+    private readonly Border _preview;
+    private readonly IconPickerView _picker = new();
     private readonly TextInput _query;
     private readonly TextInput _blankName;
     private readonly TextInput _rowName;
@@ -46,14 +62,15 @@ public sealed class TemplatesSectionView : Grid
     {
         Background = Brushes.Transparent,
         BorderThickness = new Thickness(0),
-        Padding = new Thickness(10, 0, 10, 0),
+        Padding = new Thickness(Space.S3, 0, Space.S3, 0),
         VerticalContentAlignment = VerticalAlignment.Center,
-        MinHeight = 42,
+        MinHeight = ControlHeight.Medium - Theming.Generated.Stroke.Line * 2,
         FocusVisualStyle = null,
     };
     private readonly Grid _keyLayers = new();
     private readonly LiveAnnouncer _announcer;
     private TemplatesScreen? _shown;
+    private bool _narrow;
     private int? _renaming;
     private int? _renamingShown;
 
@@ -64,8 +81,9 @@ public sealed class TemplatesSectionView : Grid
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         _announcer = new LiveAnnouncer(this);
-        _query = new TextInput(string.Empty, string.Empty) { Height = 52 };
+        _query = new TextInput(string.Empty, string.Empty);
         _query.Changed += (_, _) => _viewModel.SetQuery(_query.Text);
+        _query.DictateRequested += (_, _) => _viewModel.Dictate();
         _query.Box.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Enter && _shown?.Ai.CanGenerate == true)
@@ -74,8 +92,9 @@ public sealed class TemplatesSectionView : Grid
                 _ = _viewModel.GenerateAsync();
             }
         };
-        _blankName = new TextInput(string.Empty, string.Empty) { Height = 48 };
+        _blankName = new TextInput(string.Empty, string.Empty);
         _blankName.Changed += (_, _) => _viewModel.SetBlankName(_blankName.Text);
+        _blankName.DictateRequested += (_, _) => _viewModel.Dictate();
         _rowName = new TextInput(string.Empty, string.Empty);
         _rowName.Changed += (_, _) =>
         {
@@ -84,35 +103,96 @@ public sealed class TemplatesSectionView : Grid
                 _viewModel.RenameRow(index, _rowName.Text);
             }
         };
-        _key.SetResourceReference(PasswordBox.FontSizeProperty, ThemeKeys.TextSize(15));
+        _rowName.DictateRequested += (_, _) => _viewModel.Dictate();
+        _key.SetResourceReference(
+            PasswordBox.FontSizeProperty,
+            ThemeKeys.FontSize(TextStyleToken.Body)
+        );
         _keyLayers.Children.Add(_key);
-        _ = FieldFocusRing.Attach(_keyLayers, _key, 10, 1);
+        _ = FieldFocusRing.Attach(_keyLayers, _key, Radii.Medium, Theming.Generated.Stroke.Line);
         Ui.Ink(_key, PasswordBox.ForegroundProperty, ColorToken.Text);
         Ui.Ink(_key, PasswordBox.CaretBrushProperty, ColorToken.Text);
 
-        ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 320 }
-        );
+        ColumnDefinitions.Add(_contentColumn);
         ColumnDefinitions.Add(_previewColumn);
-        var content = Ui.Column(24, _header, _ai, _blank, _suggested, _available, _installed);
-        Children.Add(new ThemedScrollViewer { Content = content, Padding = new Thickness(24) });
-        var preview = new Border
+        var sections = new StackPanel();
+        // The real templates right after the AI, so they are in view; the keyboard they are made for, after them.
+        foreach (
+            var region in new[]
+            {
+                _header,
+                _ai,
+                _suggested,
+                _available,
+                _blank,
+                _keyboard,
+                _installed,
+            }
+        )
         {
-            Child = new ThemedScrollViewer { Content = _preview, Padding = new Thickness(20) },
-            BorderThickness = new Thickness(1, 0, 0, 0),
+            region.Margin = new Thickness(0, 0, 0, Space.S6);
+            sections.Children.Add(region);
+        }
+
+        _content = new ThemedScrollViewer
+        {
+            Content = sections,
+            Padding = new Thickness(Space.S6, Space.S6, Space.S4, Space.S6),
         };
-        Ui.Ink(preview, Border.BackgroundProperty, ColorToken.Side);
-        Ui.Ink(preview, Border.BorderBrushProperty, ColorToken.Border);
-        SetColumn(preview, 1);
-        Children.Add(preview);
+        Children.Add(_content);
+
+        var preview = new DockPanel { LastChildFill = true };
+        var foot = new Border
+        {
+            Child = _previewFoot,
+            Padding = new Thickness(Space.S4, Space.S3, Space.S4, Space.S3),
+            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
+        };
+        Ui.Ink(foot, Border.BorderBrushProperty, ColorToken.Border);
+        _previewHead.Margin = new Thickness(Space.S4, Space.S4, Space.S2, Space.S3);
+        DockPanel.SetDock(_previewHead, Dock.Top);
+        DockPanel.SetDock(foot, Dock.Bottom);
+        preview.Children.Add(_previewHead);
+        preview.Children.Add(foot);
+        preview.Children.Add(
+            new ThemedScrollViewer
+            {
+                Content = _previewBody,
+                Padding = new Thickness(Space.S4, 0, Space.S2, Space.S6),
+            }
+        );
+        _preview = new Border
+        {
+            Child = preview,
+            BorderThickness = new Thickness(Theming.Generated.Stroke.Line, 0, 0, 0),
+            Visibility = Visibility.Collapsed,
+        };
+        Ui.Ink(_preview, Border.BackgroundProperty, ColorToken.Win);
+        Ui.Ink(_preview, Border.BorderBrushProperty, ColorToken.Border);
+        SetColumn(_preview, 1);
+        Children.Add(_preview);
+        SetColumnSpan(_picker, 2);
+        Children.Add(_picker);
         viewModel.PropertyChanged += OnChanged;
         Render();
     }
 
-    /// <summary>Below 1240 the preview narrows to 260 (PLA-001).</summary>
+    /// <summary>
+    /// Lays the section out for <paramref name="width"/>, the width beside the rail (CCM-005): the preview beside the
+    /// content where both fit; otherwise the preview is a page of its own.
+    /// </summary>
     /// <param name="width">The width of the section.</param>
-    public void ApplyWidth(double width) =>
-        _previewColumn.Width = new GridLength(width < 1152 ? NarrowPreview : WidePreview);
+    public void ApplyWidth(double width)
+    {
+        var narrow = width < ContentMinWidth + PreviewWidth;
+        if (narrow == _narrow)
+        {
+            return;
+        }
+
+        _narrow = narrow;
+        ApplyLayout();
+    }
 
     private static void Detach(FrameworkElement element)
     {
@@ -130,85 +210,78 @@ public sealed class TemplatesSectionView : Grid
         }
     }
 
-    private static TouchButton Primary(string? icon, string text, Action click, double height = 44)
+    /// <summary>A square of 44 with <paramref name="icon"/> in the ink of the accent on its wash.</summary>
+    private static Border IconBoxOf(string icon)
     {
-        var button = Ui.Button(
-            Ui.IconLabel(
-                icon,
-                text,
-                ink: ColorToken.OnAccent,
-                iconInk: ColorToken.OnAccent,
-                px: 14
-            ),
-            text,
-            click,
-            ColorToken.Accent,
-            ColorToken.OnAccent,
-            height: height
+        var box = Ui.Card(
+            Ui.Icon(icon, IconBox.Medium, ColorToken.AccentInk),
+            ColorToken.AccentWash,
+            null,
+            Radii.Small,
+            new Thickness(0)
         );
-        button.BorderThickness = new Thickness(0);
-        return button;
+        box.Width = ControlHeight.Small;
+        box.Height = ControlHeight.Small;
+        box.VerticalAlignment = VerticalAlignment.Top;
+        box.Margin = new Thickness(0, 0, Space.S3, 0);
+        return box;
     }
 
-    private static TouchButton Secondary(
-        string? icon,
-        string text,
-        Action click,
-        double height = 44
-    ) =>
-        Ui.Button(
-            Ui.IconLabel(icon, text, px: 13),
-            text,
-            click,
-            ColorToken.Card,
-            stroke: ColorToken.Border,
-            height: height
-        );
-
-    private static Border IconTile(string icon, double size, ColorToken fill, ColorToken ink)
+    /// <summary>The icons of a template, as they will be in the panel: plain, in a row, never in boxes of their own.</summary>
+    private static StackPanel MiniIcons(IEnumerable<string> icons)
     {
-        var tile = Ui.Card(Ui.Icon(icon, size * 0.55, ink), fill, null, 12, new Thickness(0));
-        tile.Width = size;
-        tile.Height = size;
-        return tile;
-    }
-
-    private static Panel MiniIcons(IEnumerable<string> icons, double size)
-    {
-        var row = Ui.Row(4);
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var icon in icons)
         {
-            var tile = Ui.Card(
-                Ui.Icon(icon, size * 0.6, ColorToken.Muted),
-                ColorToken.Side,
-                null,
-                6,
-                new Thickness(0)
-            );
-            tile.Width = size;
-            tile.Height = size;
-            row.Children.Add(tile);
+            var glyph = Ui.Icon(icon, IconBox.Small, ColorToken.Muted);
+            glyph.Margin = new Thickness(0, 0, Space.S2, 0);
+            row.Children.Add(glyph);
         }
 
         return row;
     }
 
-    private static DockPanel Leading(double gap, FrameworkElement lead, UIElement fill)
+    private static DockPanel Lead(UIElement lead, UIElement fill)
     {
         var dock = new DockPanel { LastChildFill = true };
-        lead.Margin = new Thickness(0, 0, gap, 0);
-        lead.VerticalAlignment = VerticalAlignment.Top;
         DockPanel.SetDock(lead, Dock.Left);
         dock.Children.Add(lead);
         dock.Children.Add(fill);
         return dock;
     }
 
-    private static TextBlock SectionTitle(string text)
+    private static FrameworkElement Spaced(FrameworkElement element, double above)
     {
-        var title = Ui.Text(text.ToUpperInvariant(), 13, bold: true, ink: ColorToken.Muted);
-        AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level3);
-        return title;
+        element.Margin = new Thickness(0, above, 0, 0);
+        return element;
+    }
+
+    /// <summary>A part of a card set apart by a line above it.</summary>
+    private static Border Divided(UIElement child)
+    {
+        var part = new Border
+        {
+            Child = child,
+            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
+            Padding = new Thickness(0, Space.S3, 0, 0),
+            Margin = new Thickness(0, Space.S2, 0, 0),
+        };
+        Ui.Ink(part, Border.BorderBrushProperty, ColorToken.Border);
+        return part;
+    }
+
+    private void ApplyLayout()
+    {
+        var has = _shown?.Preview.HasContent == true;
+        var page = _narrow && has;
+        _contentColumn.Width = page ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        _content.Visibility = page ? Visibility.Collapsed : Visibility.Visible;
+        _previewColumn.Width =
+            !has ? new GridLength(0)
+            : page ? new GridLength(1, GridUnitType.Star)
+            : new GridLength(PreviewWidth);
+        _preview.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
+        _preview.BorderThickness = new Thickness(page ? 0 : Theming.Generated.Stroke.Line, 0, 0, 0);
     }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Render();
@@ -224,18 +297,15 @@ public sealed class TemplatesSectionView : Grid
             || !string.Equals(before.Subtitle, screen.Subtitle, StringComparison.Ordinal)
         )
         {
-            var title = Ui.Text(screen.Title, 24, bold: true, wrap: true);
+            var title = new StyledText(screen.Title, TextStyleToken.Title) { MaxLines = 2 };
             AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level2);
-            _header.Content = Ui.Column(
-                4,
-                title,
-                Ui.Text(screen.Subtitle, 14, ink: ColorToken.Muted, wrap: true)
-            );
+            _header.Content = Parts.Section(null, title, Parts.Note(screen.Subtitle));
         }
 
         if (before?.Ai != screen.Ai)
         {
             _ai.Content = AiCard(screen.Ai);
+            _keyboard.Content = KeyboardLine(screen.Ai.Keyboard);
             if (screen.Ai.Error is { } error && before?.Ai.Error != error)
             {
                 _announcer.Announce(error.Title + ". " + error.Text, AnnouncementUrgency.Assertive);
@@ -247,6 +317,7 @@ public sealed class TemplatesSectionView : Grid
             _blank.Content = Blank(screen.Blank);
         }
 
+        _picker.Show(screen.Blank.Picker, _viewModel);
         if (before?.Suggested != screen.Suggested)
         {
             _suggested.Content = Suggested(screen.Suggested);
@@ -276,89 +347,90 @@ public sealed class TemplatesSectionView : Grid
 
         if (before?.Preview != screen.Preview)
         {
-            _preview.Content = Preview(screen.Preview);
+            _previewHead.Content = PreviewHead(screen.Preview);
+            _previewBody.Content = PreviewBody(screen.Preview);
+            _previewFoot.Content = PreviewFoot(screen.Preview);
         }
+
+        ApplyLayout();
     }
 
     // ---- Crear con IA ---------------------------------------------------------------------------------------
 
-    private Border AiCard(AiCardModel model)
+    /// <summary>
+    /// «Crea atajos para cualquier programa» (PLA-002 to PLA-009), compact: the field with 🎤 and «Generar con IA», the
+    /// examples, what is sent and the key. A consent or an error goes in the card after a line, never in a card of its
+    /// own (no more than two nested borders).
+    /// </summary>
+    private Card AiCard(AiCardModel model)
     {
-        var heading = Ui.Text(model.Title, 18, bold: true, wrap: true);
+        var heading = new StyledText(model.Title, TextStyleToken.Heading) { MaxLines = 2 };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level3);
-        var top = Leading(
-            12,
-            IconTile("auto_awesome", 44, ColorToken.Accent, ColorToken.OnAccent),
-            Ui.Column(2, heading, Ui.Text(model.Description, 13, ink: ColorToken.Muted, wrap: true))
+        var top = Lead(
+            IconBoxOf("auto_awesome"),
+            Parts.Section(null, heading, Parts.Note(model.Description))
         );
 
         Detach(_query);
         AutomationProperties.SetName(_query.Box, model.Placeholder);
+        _query.DictateName = model.DictateName;
         _query.Show(model.Query);
         _query.SetPlaceholder(model.Placeholder);
-        var mic = Ui.Button(
-            Ui.Icon("mic", 24, ColorToken.AccentInk),
-            model.DictateName,
-            () => FocusAndDictate(_query),
-            ColorToken.Field,
-            height: 52,
-            radius: 12
+        var generate = Parts.Button(
+            model.GenerateText,
+            "auto_awesome",
+            ButtonVariant.Primary,
+            () => _ = _viewModel.GenerateAsync()
         );
-        mic.Width = 52;
-        mic.Padding = new Thickness(0);
-        var generate = Primary(null, model.GenerateText, () => _ = _viewModel.GenerateAsync(), 52);
+        generate.Size = ControlSize.Medium;
         generate.IsEnabled = model.CanGenerate;
+        generate.Margin = new Thickness(Space.S2, 0, 0, 0);
         var field = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(generate, Dock.Right);
-        DockPanel.SetDock(mic, Dock.Right);
-        generate.Margin = new Thickness(8, 0, 0, 0);
-        mic.Margin = new Thickness(8, 0, 0, 0);
         field.Children.Add(generate);
-        field.Children.Add(mic);
         field.Children.Add(_query);
 
-        var examples = Ui.Wrap(
-            6,
-            model.Examples.Items.Select(name =>
-            {
-                var chip = Ui.Button(
-                    Ui.Text(name, 13),
-                    name,
-                    () =>
-                    {
-                        _query.Show(name, force: true);
-                        _viewModel.UseExample(name);
-                    },
-                    ColorToken.Field,
-                    stroke: ColorToken.Border,
-                    radius: 22
-                );
-                return (UIElement)chip;
-            })
-        );
+        var examples = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
+        foreach (var name in model.Examples.Items)
+        {
+            var chip = Parts.Button(
+                name,
+                null,
+                ButtonVariant.Secondary,
+                () =>
+                {
+                    _query.Show(name, force: true);
+                    _viewModel.UseExample(name);
+                }
+            );
+            chip.Margin = new Thickness(0, 0, Space.S2, Space.S2);
+            examples.Children.Add(chip);
+        }
 
-        var privacy = Ui.Row(
-            6,
-            Ui.Icon("shield", 16, ColorToken.Muted),
-            Ui.Text(model.Privacy, 12, ink: ColorToken.Muted, wrap: true)
+        var keyButton = Parts.Button(
+            model.KeyButton,
+            "key",
+            ButtonVariant.Tertiary,
+            _viewModel.ToggleKey
         );
-        var keyButton = Secondary(null, model.KeyButton, _viewModel.ToggleKey);
-
         // ACC-001: the button opens and closes the field of the key under it.
         keyButton.IsExpanded = model.KeyFieldOpen;
+        keyButton.Margin = new Thickness(Space.S2, 0, 0, 0);
         var keyLine = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(keyButton, Dock.Right);
-        keyButton.Margin = new Thickness(8, 0, 0, 0);
         keyLine.Children.Add(keyButton);
-        keyLine.Children.Add(
-            Ui.Row(
-                6,
-                Ui.Icon("bolt", 16, ColorToken.Muted),
-                Ui.Text(model.KeyStatus, 12, ink: ColorToken.Muted, wrap: true)
-            )
-        );
+        var status = Parts.IconLine("bolt", model.KeyStatus, style: TextStyleToken.Caption);
+        status.VerticalAlignment = VerticalAlignment.Center;
+        keyLine.Children.Add(status);
 
-        var column = Ui.Column(12, top, field, examples, privacy, keyLine);
+        var column = Parts.Section(
+            null,
+            top,
+            Spaced(field, Space.S2),
+            examples,
+            Parts.IconLine("shield", model.Privacy, style: TextStyleToken.Caption),
+            keyLine
+        );
         if (model.KeyFieldOpen)
         {
             column.Children.Add(KeyField(model));
@@ -378,24 +450,30 @@ public sealed class TemplatesSectionView : Grid
             column.Children.Add(Error(error));
         }
 
-        column.Children.Add(KeyboardLine(model.Keyboard));
-        foreach (var child in column.Children.OfType<FrameworkElement>().Skip(1))
-        {
-            child.Margin = new Thickness(0, 12, 0, 0);
-        }
-
-        return Ui.Card(column, ColorToken.AccentWash, ColorToken.Accent, 16, new Thickness(18));
+        return new Card { Content = column };
     }
 
     private StackPanel KeyField(AiCardModel model)
     {
         Detach(_keyLayers);
         AutomationProperties.SetName(_key, model.KeyPlaceholder);
-        var box = Ui.Card(_keyLayers, ColorToken.Field, ColorToken.Border, 10, new Thickness(0));
-        var paste = Secondary("content_paste", model.PasteText, PasteKey);
-        var done = Primary(
-            null,
+        var box = Ui.Card(
+            _keyLayers,
+            ColorToken.Field,
+            ColorToken.Line,
+            Radii.Medium,
+            new Thickness(0)
+        );
+        var paste = Parts.Button(
+            model.PasteText,
+            "content_paste",
+            ButtonVariant.Secondary,
+            PasteKey
+        );
+        var done = Parts.Button(
             model.DoneText,
+            null,
+            ButtonVariant.Primary,
             () =>
             {
                 var key = _key.Password;
@@ -406,28 +484,26 @@ public sealed class TemplatesSectionView : Grid
         var row = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(done, Dock.Right);
         DockPanel.SetDock(paste, Dock.Right);
-        done.Margin = new Thickness(6, 0, 0, 0);
-        paste.Margin = new Thickness(6, 0, 0, 0);
+        done.Margin = new Thickness(Space.S2, 0, 0, 0);
+        paste.Margin = new Thickness(Space.S2, 0, 0, 0);
         row.Children.Add(done);
         row.Children.Add(paste);
         row.Children.Add(box);
-        var hint = Ui.Text(model.KeyPlaceholder, 12, ink: ColorToken.Muted);
-        var column = Ui.Column(6, hint, row);
+        var column = Parts.Section(
+            null,
+            Parts.Note(model.KeyPlaceholder, style: TextStyleToken.Caption),
+            row
+        );
         if (model.DeleteKeyText is { } delete)
         {
-            var remove = Ui.Button(
-                Ui.IconLabel(
-                    "key_off",
-                    delete,
-                    ink: ColorToken.DangerText,
-                    iconInk: ColorToken.DangerText
-                ),
+            var remove = Parts.Button(
                 delete,
-                _viewModel.DeleteKey,
-                ColorToken.DangerWash
+                "key_off",
+                ButtonVariant.Danger,
+                _viewModel.DeleteKey
             );
             remove.HorizontalAlignment = HorizontalAlignment.Left;
-            column.Children.Add(remove);
+            column.Children.Add(Spaced(remove, Space.S2));
         }
 
         _ = Dispatcher.BeginInvoke(() => Keyboard.Focus(_key));
@@ -453,15 +529,26 @@ public sealed class TemplatesSectionView : Grid
 
     private Border Consent(ConsentModel model)
     {
-        var ok = Primary(null, model.AcceptText, () => _ = _viewModel.AcceptConsentAsync());
-        var no = Secondary(null, model.DeclineText, _viewModel.DeclineConsent);
-        var column = Ui.Column(
-            10,
-            Ui.Text(model.Title, 14, bold: true, wrap: true),
-            Ui.Text(model.Text, 13, ink: ColorToken.Muted, wrap: true),
-            Ui.Columns(2, 6, [ok, no])
+        var ok = Parts.Button(
+            model.AcceptText,
+            null,
+            ButtonVariant.Primary,
+            () => _ = _viewModel.AcceptConsentAsync()
         );
-        return Ui.Card(column, ColorToken.Field, ColorToken.Accent, 12, new Thickness(12));
+        var no = Parts.Button(
+            model.DeclineText,
+            null,
+            ButtonVariant.Secondary,
+            _viewModel.DeclineConsent
+        );
+        return Divided(
+            Parts.Section(
+                null,
+                new StyledText(model.Title, TextStyleToken.Label) { MaxLines = 0 },
+                Parts.Note(model.Text),
+                Ui.Columns(2, Space.S2, [ok, no])
+            )
+        );
     }
 
     private Border Error(AiErrorModel model)
@@ -469,85 +556,112 @@ public sealed class TemplatesSectionView : Grid
         var buttons = model
             .Actions.Items.Select(action =>
             {
-                var button = Ui.Button(
-                    Ui.Text(action.Label, 12, bold: true, wrap: true),
+                var button = Parts.Button(
                     action.Label,
-                    () => _ = _viewModel.ErrorActionAsync(action.Kind),
-                    ColorToken.Card,
-                    stroke: ColorToken.Border
+                    null,
+                    ButtonVariant.Secondary,
+                    () => _ = _viewModel.ErrorActionAsync(action.Kind)
                 );
+                button.MaxLines = 2;
                 button.Height = double.NaN;
-                button.MinHeight = 44;
+                button.MinHeight = ControlHeight.Small;
                 return (UIElement)button;
             })
             .ToList();
-        var column = Ui.Column(
-            10,
-            Ui.Row(
-                8,
-                Ui.Icon(model.Icon, 20, ColorToken.WarnText),
-                Ui.Text(model.Title, 14, bold: true, wrap: true)
-            ),
-            Ui.Text(model.Text, 13, wrap: true),
-            Ui.Columns(3, 6, buttons)
-        );
-        var card = Ui.Card(column, ColorToken.WarnWash, ColorToken.Warn, 12, new Thickness(12));
-        AutomationProperties.SetLiveSetting(card, AutomationLiveSetting.Assertive);
-        AutomationProperties.SetName(card, model.Title);
-        return card;
-    }
-
-    private UIElement KeyboardLine(KeyboardModel model)
-    {
-        var line = new DockPanel { LastChildFill = true };
-        var action = Ui.Text(model.ActionText, 12, bold: true, ink: ColorToken.AccentInk);
-        DockPanel.SetDock(action, Dock.Right);
-        var icon = Ui.Icon("keyboard", 22, ColorToken.AccentInk);
-        icon.Margin = new Thickness(0, 0, 10, 0);
-        DockPanel.SetDock(icon, Dock.Left);
-        line.Children.Add(action);
-        line.Children.Add(icon);
-        line.Children.Add(
-            Ui.Column(
-                1,
-                Ui.Text(model.Line, 13, bold: true, wrap: true),
-                Ui.Text(model.Why, 12, ink: ColorToken.Muted, wrap: true)
+        var body = Divided(
+            Parts.Section(
+                null,
+                Parts.IconLine(
+                    model.Icon,
+                    model.Title,
+                    ColorToken.WarnText,
+                    ColorToken.Text,
+                    TextStyleToken.Label
+                ),
+                Parts.Note(model.Text, ColorToken.Text),
+                Ui.Columns(Math.Max(1, buttons.Count), Space.S2, buttons)
             )
         );
-        var toggle = Ui.Choice(
-            line,
-            model.Line,
-            model.Open,
-            _viewModel.ToggleKeyboard,
-            height: double.NaN,
-            radius: 12,
-            offFill: ColorToken.Field,
-            role: OptionRole.Expander
-        );
-        toggle.MinHeight = 48;
-        toggle.Padding = new Thickness(12, 6, 12, 6);
-        toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        AutomationProperties.SetHelpText(toggle, model.Why);
-        if (!model.Open)
+        AutomationProperties.SetLiveSetting(body, AutomationLiveSetting.Assertive);
+        AutomationProperties.SetName(body, model.Title);
+        return body;
+    }
+
+    /// <summary>
+    /// The keyboard the shortcuts are made for (PLA-013): one row that unfolds the layouts and the languages of the
+    /// programs, side by side.
+    /// </summary>
+    private StackPanel KeyboardLine(KeyboardModel model)
+    {
+        var icon = Ui.Icon("keyboard", IconBox.Medium, ColorToken.AccentInk);
+        icon.Margin = new Thickness(0, 0, Space.S3, 0);
+        var action = new StyledText(model.ActionText, TextStyleToken.Label, ColorToken.AccentInk)
         {
-            return toggle;
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S2, 0, 0, 0),
+        };
+        var caret = Ui.Icon(
+            model.Open ? "expand_less" : "expand_more",
+            IconBox.Medium,
+            ColorToken.Muted
+        );
+        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        lines.Children.Add(new StyledText(model.Line, TextStyleToken.Label));
+        lines.Children.Add(
+            new StyledText(Parts.Unbroken(model.Why), TextStyleToken.Caption, ColorToken.Muted)
+            {
+                MaxLines = 2,
+            }
+        );
+        var content = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(caret, Dock.Right);
+        DockPanel.SetDock(action, Dock.Right);
+        content.Children.Add(icon);
+        content.Children.Add(caret);
+        content.Children.Add(action);
+        content.Children.Add(lines);
+        var toggle = new TouchButton
+        {
+            Content = content,
+            Variant = ButtonVariant.Secondary,
+            Size = ControlSize.Large,
+            IsExpanded = model.Open,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S3, Space.S2, Space.S3, Space.S2),
+        };
+        toggle.Height = double.NaN;
+        toggle.MinHeight = ControlHeight.Large;
+        AutomationProperties.SetName(toggle, model.Line);
+        AutomationProperties.SetHelpText(toggle, model.Why);
+        toggle.Click += (_, _) => _viewModel.ToggleKeyboard();
+        var column = new StackPanel();
+        column.Children.Add(toggle);
+        if (model.Open)
+        {
+            var options = Ui.Columns(
+                2,
+                Space.S4,
+                [
+                    Options(
+                        model.LayoutTitle,
+                        model.Layouts,
+                        model.DetectedText,
+                        _viewModel.SetLayout
+                    ),
+                    Options(
+                        model.AppsTitle,
+                        model.AppsLanguages,
+                        model.DetectedText,
+                        _viewModel.SetAppsLanguage
+                    ),
+                ]
+            );
+            options.Margin = new Thickness(0, Space.S4, 0, 0);
+            column.Children.Add(options);
         }
 
-        var options = Ui.Columns(
-            2,
-            10,
-            [
-                Options(model.LayoutTitle, model.Layouts, model.DetectedText, _viewModel.SetLayout),
-                Options(
-                    model.AppsTitle,
-                    model.AppsLanguages,
-                    model.DetectedText,
-                    _viewModel.SetAppsLanguage
-                ),
-            ]
-        );
-        var panel = Ui.Card(options, ColorToken.Field, ColorToken.Border, 12, new Thickness(12));
-        return Ui.Column(8, toggle, panel);
+        return column;
     }
 
     private static StackPanel Options(
@@ -557,34 +671,22 @@ public sealed class TemplatesSectionView : Grid
         Action<string> choose
     )
     {
-        var column = Ui.Column(6, Ui.Caption(title));
+        var column = Parts.Section(title);
         foreach (var option in options)
         {
-            var content = new DockPanel { LastChildFill = true };
-            if (option.Detected)
+            var button = new OptionButton
             {
-                var tag = Ui.Text(detected, 11, bold: true, ink: ColorToken.AccentInk);
-                DockPanel.SetDock(tag, Dock.Right);
-                content.Children.Add(tag);
-            }
-
-            content.Children.Add(Ui.Text(option.Label, 13, wrap: true));
-            var button = Ui.Choice(
-                content,
-                option.Detected ? option.Label + ", " + detected : option.Label,
-                option.Selected,
-                () => choose(option.Id),
-                height: double.NaN,
-                radius: 9,
-                offFill: null,
-                role: OptionRole.Option
+                Kind = OptionKind.ListRow,
+                Content = option.Label,
+                Caption = option.Detected ? detected : null,
+                IsSelected = option.Selected,
+                Margin = new Thickness(0, Space.S1, 0, 0),
+            };
+            AutomationProperties.SetName(
+                button,
+                option.Detected ? option.Label + ", " + detected : option.Label
             );
-
-            // In the narrowest window a name takes three lines: the option grows with it (CCM-005).
-            button.MinHeight = 44;
-            button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            button.Padding = new Thickness(10, 4, 10, 4);
-            button.Margin = new Thickness(0, 6, 0, 0);
+            button.Click += (_, _) => choose(option.Id);
             column.Children.Add(button);
         }
 
@@ -593,134 +695,114 @@ public sealed class TemplatesSectionView : Grid
 
     // ---- Perfil vacío ---------------------------------------------------------------------------------------
 
-    private Border Blank(BlankModel model)
+    /// <summary>
+    /// «Perfil vacío» (PLA-010): a row that unfolds the name with 🎤, its icon (which opens the icon picker, D14), where
+    /// it acts and «Crear perfil».
+    /// </summary>
+    private StackPanel Blank(BlankModel model)
     {
-        var header = new DockPanel { LastChildFill = true };
-        var caret = Ui.Icon(model.Open ? "expand_less" : "expand_more", 22, ColorToken.Muted);
+        var caret = Ui.Icon(
+            model.Open ? "expand_less" : "expand_more",
+            IconBox.Medium,
+            ColorToken.Muted
+        );
+        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        lines.Children.Add(new StyledText(model.Title, TextStyleToken.Label));
+        lines.Children.Add(
+            new StyledText(model.Subtitle, TextStyleToken.Caption, ColorToken.Muted)
+            {
+                MaxLines = 2,
+            }
+        );
+        var content = new DockPanel { LastChildFill = true };
+        var box = IconBoxOf("add_circle");
+        box.VerticalAlignment = VerticalAlignment.Center;
+        DockPanel.SetDock(box, Dock.Left);
         DockPanel.SetDock(caret, Dock.Right);
-        var tile = IconTile("add_circle", 40, ColorToken.Side, ColorToken.Accent);
-        tile.Margin = new Thickness(0, 0, 12, 0);
-        DockPanel.SetDock(tile, Dock.Left);
-        header.Children.Add(caret);
-        header.Children.Add(tile);
-        header.Children.Add(
-            Ui.Column(
-                2,
-                Ui.Text(model.Title, 15, bold: true, wrap: true),
-                Ui.Text(model.Subtitle, 12, ink: ColorToken.Muted, wrap: true)
-            )
-        );
-        var toggle = Ui.Choice(
-            header,
-            model.Title,
-            model.Open,
-            _viewModel.ToggleBlank,
-            height: double.NaN,
-            radius: 14,
-            offFill: null,
-            role: OptionRole.Expander
-        );
-        toggle.MinHeight = 60;
-        toggle.Padding = new Thickness(14, 8, 14, 8);
-        toggle.BorderThickness = new Thickness(0);
-        toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        Ui.Paint(toggle, null, ColorToken.Text, null);
+        content.Children.Add(box);
+        content.Children.Add(caret);
+        content.Children.Add(lines);
+        var toggle = new TouchButton
+        {
+            Content = content,
+            Variant = ButtonVariant.Secondary,
+            Size = ControlSize.Large,
+            IsExpanded = model.Open,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S2, Space.S2, Space.S3, Space.S2),
+        };
+        toggle.Height = double.NaN;
+        toggle.MinHeight = ControlHeight.Large;
+        AutomationProperties.SetName(toggle, model.Title);
         AutomationProperties.SetHelpText(toggle, model.Subtitle);
-
-        var column = Ui.Column(10, toggle);
+        toggle.Click += (_, _) => _viewModel.ToggleBlank();
+        var column = new StackPanel();
+        column.Children.Add(toggle);
         if (model.Open)
         {
-            column.Children.Add(BlankForm(model));
+            var form = BlankForm(model);
+            form.Margin = new Thickness(0, Space.S4, 0, 0);
+            column.Children.Add(form);
         }
 
-        return Ui.Card(column, ColorToken.Card, ColorToken.Border, 14, new Thickness(0));
+        return column;
     }
 
     private StackPanel BlankForm(BlankModel model)
     {
-        var icon = Ui.Choice(
-            Ui.Icon(model.Icon, 26, ColorToken.AccentInk),
-            model.ChangeIconName,
-            model.IconsOpen,
-            _viewModel.ToggleBlankIcons,
-            48,
-            12,
-            ColorToken.Side,
-            role: OptionRole.Expander
-        );
-        icon.Width = 48;
-        icon.Padding = new Thickness(0);
+        var icon = new OptionButton
+        {
+            Kind = OptionKind.Tile,
+            Content = Ui.Icon(model.Icon, IconBox.Medium, ColorToken.AccentInk),
+            Role = OptionRole.Expander,
+            IsSelected = model.IconsOpen,
+            Width = ControlHeight.Medium,
+            Height = ControlHeight.Medium,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(icon, model.ChangeIconName);
+        icon.Click += (_, _) => _viewModel.ToggleBlankIcons();
         Detach(_blankName);
         AutomationProperties.SetName(_blankName.Box, model.Placeholder);
+        _blankName.DictateName = model.DictateName;
         _blankName.SetPlaceholder(model.Placeholder);
         _blankName.Show(model.Name);
-        var mic = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.AccentInk),
-            model.DictateName,
-            () => FocusAndDictate(_blankName),
-            ColorToken.AccentWash,
-            height: 48
-        );
-        mic.Width = 48;
-        mic.Padding = new Thickness(0);
         var row = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(icon, Dock.Left);
-        DockPanel.SetDock(mic, Dock.Right);
-        icon.Margin = new Thickness(0, 0, 8, 0);
-        mic.Margin = new Thickness(8, 0, 0, 0);
         row.Children.Add(icon);
-        row.Children.Add(mic);
         row.Children.Add(_blankName);
 
-        var column = Ui.Column(10, row);
-        if (model.IconsOpen)
+        var links = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
+        foreach (var link in model.Links.Items)
         {
-            var grid = new AutoFillGrid
+            var chip = new OptionButton
             {
-                MinItemWidth = 44,
-                ItemHeight = 44,
-                Gap = 4,
+                Kind = OptionKind.Chip,
+                Content = link.Label,
+                Symbol = link.Icon,
+                IsSelected = link.Selected,
+                Margin = new Thickness(0, 0, Space.S2, Space.S2),
             };
-            foreach (var option in model.Icons)
-            {
-                var button = Ui.Choice(
-                    Ui.Icon(option.Icon, 20),
-                    option.Icon,
-                    option.Selected,
-                    () => _viewModel.SetBlankIcon(option.Icon),
-                    44,
-                    8,
-                    role: OptionRole.Option
-                );
-                button.Padding = new Thickness(0);
-                grid.Children.Add(button);
-            }
-
-            column.Children.Add(new ThemedScrollViewer { Content = grid, MaxHeight = 140 });
+            AutomationProperties.SetName(chip, link.Label);
+            chip.Click += (_, _) => _viewModel.SetBlankLink(link.Id);
+            links.Children.Add(chip);
         }
 
-        column.Children.Add(Ui.Caption(model.LinkTitle));
-        column.Children.Add(
-            Ui.Wrap(
-                6,
-                model.Links.Items.Select(link =>
-                    (UIElement)
-                        Ui.Choice(
-                            Ui.IconLabel(link.Icon, link.Label),
-                            link.Label,
-                            link.Selected,
-                            () => _viewModel.SetBlankLink(link.Id),
-                            radius: 22,
-                            offFill: ColorToken.Side,
-                            role: OptionRole.Option
-                        )
-                )
-            )
+        var create = Parts.Button(
+            model.CreateText,
+            "add",
+            ButtonVariant.Primary,
+            _viewModel.CreateBlank
         );
-        var create = Primary("add", model.CreateText, _viewModel.CreateBlank, 48);
         create.IsEnabled = model.CanCreate;
-        column.Children.Add(create);
-        column.Margin = new Thickness(14, 0, 14, 14);
+        create.HorizontalAlignment = HorizontalAlignment.Left;
+        var where = Parts.Section(model.LinkTitle, links);
+        where.Margin = new Thickness(0, Space.S4, 0, 0);
+        var column = new StackPanel();
+        column.Children.Add(row);
+        column.Children.Add(where);
+        column.Children.Add(Spaced(create, Space.S4));
         return column;
     }
 
@@ -728,144 +810,110 @@ public sealed class TemplatesSectionView : Grid
 
     private StackPanel Suggested(SuggestedModel model)
     {
-        var dot = new Border
-        {
-            Width = 8,
-            Height = 8,
-            CornerRadius = new CornerRadius(4),
-        };
-        Ui.Ink(dot, Border.BackgroundProperty, ColorToken.Warn);
-        var knob = new ToggleSwitch
-        {
-            IsChecked = model.DetectOn,
-            IsHitTestVisible = false,
-            Focusable = false,
-            IsDrawingOnly = true,
-            Margin = new Thickness(10, 0, 0, 0),
-        };
-        var detect = Ui.Choice(
-            Ui.Row(0, Ui.Text(model.DetectText, 13, ink: ColorToken.Muted), knob),
+        var detect = Ui.SwitchRow(
+            null,
             model.DetectText,
+            string.Empty,
             model.DetectOn,
-            _viewModel.ToggleDetect,
-            radius: 22,
-            offFill: null
+            _viewModel.ToggleDetect
         );
-        detect.BorderThickness = new Thickness(0);
-        detect.Padding = new Thickness(10, 0, 4, 0);
-        Ui.Paint(detect, null, ColorToken.Text, null);
-        var header = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(detect, Dock.Right);
-        header.Children.Add(detect);
-        header.Children.Add(Ui.Row(8, dot, SectionTitle(model.Title)));
-        var column = Ui.Column(10, header);
+        var column = Parts.Section(model.Title, detect);
         foreach (var card in model.Cards)
         {
-            var preview = Secondary(
-                null,
+            var preview = Parts.Button(
                 model.PreviewText,
+                "visibility",
+                ButtonVariant.Secondary,
                 () => _viewModel.PreviewTemplate(card.Id)
             );
-            var install = Primary(
-                "download",
+            var install = Parts.Button(
                 model.InstallText,
+                "download",
+                ButtonVariant.Primary,
                 () => _viewModel.InstallTemplate(card.Id)
             );
-            var info = Leading(
-                14,
-                IconTile(card.Icon, 48, ColorToken.Side, ColorToken.Accent),
-                Ui.Column(
-                    6,
-                    Ui.Text(card.Meta, 16, bold: true, wrap: true),
-                    MiniIcons(card.Icons.Items, 24)
+            AutomationProperties.SetName(install, model.InstallText + " " + card.Name);
+            AutomationProperties.SetName(preview, model.PreviewText + " " + card.Name);
+            var info = Lead(
+                IconBoxOf(card.Icon),
+                Parts.Section(
+                    null,
+                    new StyledText(card.Meta, TextStyleToken.Label) { MaxLines = 2 },
+                    MiniIcons(card.Icons.Items)
                 )
             );
-            var body = Ui.Column(12, info, Ui.Columns(2, 8, [preview, install]));
+            var actions = Ui.Columns(2, Space.S2, [preview, install]);
             column.Children.Add(
-                Ui.Card(
-                    body,
-                    ColorToken.WarnWash,
-                    ColorToken.Warn,
-                    14,
-                    new Thickness(16, 14, 16, 14)
+                Spaced(
+                    new Card
+                    {
+                        Tone = CardTone.Warn,
+                        Content = Parts.Section(null, info, Spaced(actions, Space.S2)),
+                    },
+                    Space.S3
                 )
             );
         }
 
         if (model.EmptyText is { } empty)
         {
-            column.Children.Add(
-                Ui.Card(
-                    Ui.Text(empty, 13, ink: ColorToken.Muted, wrap: true),
-                    ColorToken.Card,
-                    null,
-                    12,
-                    new Thickness(14, 12, 14, 12)
-                )
-            );
+            column.Children.Add(Parts.Note(empty));
         }
 
         return column;
     }
 
+    /// <summary>
+    /// The templates (PLA-011): a card per template, its icon, name, what it has and its icons as the panel shows them;
+    /// a tap shows it in the preview with the single look of «elegido», and «Instalar» under it installs it all.
+    /// </summary>
     private StackPanel Available(TemplatesScreen screen)
     {
-        var column = Ui.Column(10, SectionTitle(screen.AvailableTitle));
+        var column = Parts.Section(screen.AvailableTitle);
         if (screen.AllInstalledText is { } all)
         {
-            column.Children.Add(
-                Ui.Card(
-                    Ui.Text(all, 13, ink: ColorToken.Muted, wrap: true),
-                    ColorToken.Card,
-                    null,
-                    12,
-                    new Thickness(14, 12, 14, 12)
-                )
-            );
+            column.Children.Add(Parts.Note(all));
             return column;
         }
 
-        var grid = new AutoFillGrid { MinItemWidth = 200, Gap = 10 };
+        var grid = new AutoFillGrid
+        {
+            MinItemWidth = ShortcutsSectionView.ProfilesWidth,
+            Gap = Space.S3,
+        };
         foreach (var card in screen.Available)
         {
-            var install = Primary(
-                "download",
+            var install = Parts.Button(
                 screen.InstallText,
+                "download",
+                ButtonVariant.Secondary,
                 () => _viewModel.InstallTemplate(card.Id)
             );
             AutomationProperties.SetName(install, screen.InstallText + " " + card.Name);
-            var top = Leading(
-                10,
-                IconTile(card.Icon, 44, ColorToken.Side, ColorToken.Accent),
-                Ui.Column(
-                    2,
-                    Ui.Text(card.Name, 16, bold: true),
-                    Ui.Text(card.Meta, 12, ink: ColorToken.Muted)
-                )
+            var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            lines.Children.Add(new StyledText(card.Name, TextStyleToken.Label));
+            lines.Children.Add(new StyledText(card.Meta, TextStyleToken.Caption, ColorToken.Muted));
+            var body = Parts.Section(
+                null,
+                Lead(IconBoxOf(card.Icon), lines),
+                MiniIcons(card.Icons.Items)
             );
-            var open = Ui.Choice(
-                Ui.Column(12, top, MiniIcons(card.Icons.Items, 28)),
-                card.Name + ", " + card.Meta,
-                card.Selected,
-                () => _viewModel.PreviewTemplate(card.Id),
-                height: double.NaN,
-                radius: 14,
-                role: OptionRole.Option
-            );
-            open.Padding = new Thickness(14, 14, 14, 8);
-            open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            open.BorderThickness = new Thickness(card.Selected ? 2 : 0);
-            install.Margin = new Thickness(14, 4, 14, 14);
-            grid.Children.Add(
-                Ui.Card(
-                    Ui.Column(0, open, install),
-                    card.Selected ? ColorToken.CardHi : ColorToken.Card,
-                    card.Selected ? ColorToken.Accent : ColorToken.Border,
-                    14,
-                    new Thickness(0),
-                    card.Selected ? 2 : 1
-                )
-            );
+            body.Margin = new Thickness(0, Space.S3, 0, Space.S3);
+            var open = new OptionButton
+            {
+                Kind = OptionKind.Tile,
+                Content = body,
+                IsSelected = card.Selected,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            open.Height = double.NaN;
+            open.MinHeight = ControlHeight.Large;
+            AutomationProperties.SetName(open, card.Name + ", " + card.Meta);
+            open.Click += (_, _) => _viewModel.PreviewTemplate(card.Id);
+            var cell = new StackPanel();
+            cell.Children.Add(open);
+            cell.Children.Add(Spaced(install, Space.S2));
+            grid.Children.Add(cell);
         }
 
         column.Children.Add(grid);
@@ -874,283 +922,300 @@ public sealed class TemplatesSectionView : Grid
 
     private StackPanel Installed(InstalledModel model)
     {
-        var column = Ui.Column(
-            10,
-            Ui.Row(8, SectionTitle(model.Title), Ui.Text(model.Count, 13, ink: ColorToken.Muted))
-        );
-        column.Children.Add(
-            Ui.Wrap(
-                8,
-                model.Profiles.Items.Select(profile =>
+        var title = new Overline(model.Title + " · " + model.Count);
+        var profiles = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
+        foreach (var profile in model.Profiles.Items)
+        {
+            var icon = Ui.Icon(profile.Icon, IconBox.Small, ColorToken.AccentInk);
+            icon.Margin = new Thickness(0, 0, Space.S2, 0);
+            var count = new StyledText(profile.Count, TextStyleToken.BodySmall, ColorToken.Muted)
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(Space.S2, 0, Space.S1, 0),
+            };
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(icon);
+            row.Children.Add(
+                new StyledText(profile.Name, TextStyleToken.Label)
                 {
-                    var content = Ui.Row(
-                        8,
-                        Ui.Icon(profile.Icon, 20, ColorToken.AccentInk),
-                        Ui.Text(profile.Name, 14, bold: true),
-                        Ui.Text(profile.Count, 12, ink: ColorToken.Muted),
-                        Ui.Icon("chevron_right", 18, ColorToken.Muted)
-                    );
-                    var button = Ui.Button(
-                        content,
-                        profile.Name + ", " + profile.CountName,
-                        () => _viewModel.OpenInstalled(profile.Id),
-                        ColorToken.Card,
-                        stroke: ColorToken.Border,
-                        height: 48,
-                        radius: 12
-                    );
-                    button.Padding = new Thickness(10, 0, 8, 0);
-                    return (UIElement)button;
-                })
-            )
+                    VerticalAlignment = VerticalAlignment.Center,
+                }
+            );
+            row.Children.Add(count);
+            row.Children.Add(Ui.Icon("chevron_right", IconBox.Small, ColorToken.Muted));
+            var button = new TouchButton
+            {
+                Content = row,
+                Variant = ButtonVariant.Secondary,
+                Padding = new Thickness(Space.S3, 0, Space.S2, 0),
+                Margin = new Thickness(0, 0, Space.S2, Space.S2),
+            };
+            AutomationProperties.SetName(button, profile.Name + ", " + profile.CountName);
+            button.Click += (_, _) => _viewModel.OpenInstalled(profile.Id);
+            profiles.Children.Add(button);
+        }
+
+        var import = Parts.Button(
+            model.ImportText,
+            "download",
+            ButtonVariant.Secondary,
+            () => _ = _viewModel.ImportAsync()
         );
-        var import = Secondary("download", model.ImportText, () => _ = _viewModel.ImportAsync());
-        column.Children.Add(
-            Ui.Row(8, import, Ui.Text(model.ShareHint, 12, ink: ColorToken.Muted, wrap: true))
-        );
-        return column;
+        import.VerticalAlignment = VerticalAlignment.Top;
+        var hint = Parts.Note(model.ShareHint, style: TextStyleToken.Caption);
+        hint.Margin = new Thickness(Space.S3, 0, 0, 0);
+        hint.VerticalAlignment = VerticalAlignment.Center;
+        var line = Lead(import, hint);
+        line.Margin = new Thickness(0, Space.S2, 0, 0);
+        return Parts.Section(null, title, profiles, line);
     }
 
     // ---- Vista previa ---------------------------------------------------------------------------------------
 
-    private StackPanel Preview(PreviewModel model)
+    private DockPanel? PreviewHead(PreviewModel model)
+    {
+        if (!model.HasContent)
+        {
+            return null;
+        }
+
+        var close = Parts.Button(
+            string.Empty,
+            "close",
+            ButtonVariant.Tertiary,
+            _viewModel.ClosePreview,
+            model.CloseName
+        );
+        close.VerticalAlignment = VerticalAlignment.Top;
+        var heading = new StyledText(model.Name, TextStyleToken.Heading);
+        AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level3);
+        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        lines.Children.Add(heading);
+        if (model.Process.Length > 0)
+        {
+            lines.Children.Add(
+                new StyledText(model.Process, TextStyleToken.Caption, ColorToken.Muted)
+            );
+        }
+
+        var head = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(close, Dock.Right);
+        head.Children.Add(close);
+        var box = IconBoxOf(model.Icon);
+        box.VerticalAlignment = VerticalAlignment.Center;
+        DockPanel.SetDock(box, Dock.Left);
+        head.Children.Add(box);
+        head.Children.Add(lines);
+        return head;
+    }
+
+    private StackPanel? PreviewBody(PreviewModel model)
     {
         if (!model.HasContent)
         {
             _renaming = null;
-            var empty = Ui.Column(
-                10,
-                Ui.Icon("preview", 40, ColorToken.Muted),
-                Ui.Text(model.EmptyText, 14, ink: ColorToken.Muted, wrap: true)
-            );
-            empty.Margin = new Thickness(10, 80, 10, 0);
-            foreach (var child in empty.Children.OfType<FrameworkElement>())
-            {
-                child.HorizontalAlignment = HorizontalAlignment.Center;
-            }
-
-            ((TextBlock)empty.Children[1]).TextAlignment = TextAlignment.Center;
-            return empty;
+            return null;
         }
 
-        var heading = Ui.Text(model.Name, 18, bold: true);
-        AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level3);
-        var column = Ui.Column(
-            12,
-            Leading(
-                10,
-                IconTile(model.Icon, 44, ColorToken.Card, ColorToken.Accent),
-                Ui.Column(
-                    2,
-                    heading,
-                    model.Process.Length == 0
-                        ? null
-                        : Ui.Text(model.Process, 12, ink: ColorToken.Muted, mono: true)
-                )
-            )
-        );
+        var column = new StackPanel();
         if (model.UnknownText is { } unknown)
         {
-            var blank = Ui.Button(
-                Ui.Text(
-                    model.UnknownButton ?? string.Empty,
-                    14,
-                    bold: true,
-                    ink: ColorToken.OnWarn,
-                    wrap: true
-                ),
+            var blank = Parts.Button(
                 model.UnknownButton ?? string.Empty,
-                _viewModel.CreateFromUnknown,
-                ColorToken.Warn,
-                ColorToken.OnWarn
+                "add",
+                ButtonVariant.Secondary,
+                _viewModel.CreateFromUnknown
             );
+            blank.MaxLines = 2;
             blank.Height = double.NaN;
-            blank.MinHeight = 44;
+            blank.MinHeight = ControlHeight.Small;
             column.Children.Add(
-                Ui.Card(
-                    Ui.Column(
-                        8,
-                        Ui.Row(
-                            8,
-                            Ui.Icon("help", 20, ColorToken.WarnText),
-                            Ui.Text(unknown, 13, wrap: true)
-                        ),
+                new Card
+                {
+                    Tone = CardTone.Warn,
+                    Content = Parts.Section(
+                        null,
+                        Parts.IconLine("help", unknown, ColorToken.WarnText, ColorToken.Text),
                         blank
                     ),
-                    ColorToken.WarnWash,
-                    ColorToken.Warn,
-                    10,
-                    new Thickness(12)
-                )
+                    Margin = new Thickness(0, 0, 0, Space.S3),
+                }
             );
         }
 
         if (model.InstalledNote is { } note)
         {
             column.Children.Add(
-                Ui.Card(
-                    Ui.Row(
-                        8,
-                        Ui.Icon("check_circle", 20, ColorToken.AccentInk),
-                        Ui.Text(note, 13, wrap: true)
-                    ),
-                    ColorToken.AccentWash,
-                    null,
-                    10,
-                    new Thickness(12, 10, 12, 10)
-                )
+                Parts.IconLine("check_circle", note, ColorToken.Success, ColorToken.Text)
             );
         }
 
-        column.Children.Add(
-            Ui.Row(
-                6,
-                Ui.Icon("keyboard", 16, ColorToken.Muted),
-                Ui.Text(model.KeyboardLine, 12, ink: ColorToken.Muted, wrap: true)
-            )
-        );
-        foreach (var warning in new[] { model.OnlyEsNote, model.TextsNote }.OfType<string>())
+        var notes = new List<FrameworkElement>
         {
-            column.Children.Add(
-                Ui.Row(
-                    6,
-                    Ui.Icon("translate", 16, ColorToken.WarnText),
-                    Ui.Text(warning, 12, ink: ColorToken.WarnText, wrap: true)
+            Parts.IconLine("keyboard", model.KeyboardLine, style: TextStyleToken.Caption),
+        };
+        notes.AddRange(
+            new[] { model.OnlyEsNote, model.TextsNote }
+                .OfType<string>()
+                .Select(warning =>
+                    (FrameworkElement)
+                        Parts.IconLine(
+                            "translate",
+                            warning,
+                            ColorToken.WarnText,
+                            ColorToken.WarnText,
+                            TextStyleToken.Caption
+                        )
                 )
-            );
+        );
+        foreach (var line in notes)
+        {
+            column.Children.Add(Spaced(line, Space.S2));
         }
 
         _renaming = null;
         foreach (var row in model.Rows)
         {
-            column.Children.Add(Row(row));
+            column.Children.Add(Spaced(Row(row), Space.S2));
         }
 
         _renamingShown = _renaming;
-        if (model.VariantText is { } variant)
-        {
-            // EC-PLA-04: the installed shortcuts keep their keys when the programs language changes; this updates them.
-            column.Children.Add(Secondary("translate", variant, _viewModel.UpdateVariant, 48));
-        }
-
-        var finalButton = model.ButtonSecondary
-            ? Secondary(model.ButtonIcon, model.ButtonText, _viewModel.InstallPreview, 48)
-            : Primary(model.ButtonIcon, model.ButtonText, _viewModel.InstallPreview, 48);
-        finalButton.IsEnabled = model.ButtonEnabled;
-        column.Children.Add(finalButton);
         return column;
     }
 
-    private Border Row(PreviewRowModel row)
+    /// <summary>The fixed foot of the preview: «Instalar N atajos» (and the update of the variant), never under a row.</summary>
+    private StackPanel? PreviewFoot(PreviewModel model)
     {
-        var text = Ui.Column(
-            2,
-            Ui.Text(row.Name, 14, bold: true, wrap: true),
-            Ui.Text(row.Foot, 11, ink: ColorToken.Muted, mono: true, wrap: true),
-            row.Warning is null
-                ? null
-                : Ui.Row(
-                    4,
-                    Ui.Icon("warning", 14, ColorToken.WarnText),
-                    Ui.Text(row.Warning, 11, ink: ColorToken.WarnText, wrap: true)
-                )
+        if (!model.HasContent)
+        {
+            return null;
+        }
+
+        var column = new StackPanel();
+        if (model.VariantText is { } variant)
+        {
+            // EC-PLA-04: the installed shortcuts keep their keys when the programs language changes; this updates them.
+            var update = Parts.Button(
+                variant,
+                "translate",
+                ButtonVariant.Secondary,
+                _viewModel.UpdateVariant
+            );
+            update.Margin = new Thickness(0, 0, 0, Space.S2);
+            column.Children.Add(update);
+        }
+
+        var install = Parts.Button(
+            model.ButtonText,
+            model.ButtonIcon,
+            model.ButtonSecondary ? ButtonVariant.Secondary : ButtonVariant.Primary,
+            _viewModel.InstallPreview
         );
+        install.IsEnabled = model.ButtonEnabled;
+        column.Children.Add(install);
+        return column;
+    }
+
+    /// <summary>
+    /// A shortcut of the preview (PLA-015, PLA-016): the row itself is the switch that keeps it (✓ and the single look
+    /// of «elegido»), with its name and its keys; ⌨ and ✏ beside it change its keys and its name.
+    /// </summary>
+    private StackPanel Row(PreviewRowModel row)
+    {
         var check = Ui.Icon(
             row.AlreadyIn ? "check_circle"
                 : row.Checked ? "check_box"
                 : "check_box_outline_blank",
-            22,
-            row.AlreadyIn || row.Checked ? ColorToken.Accent : ColorToken.Muted
+            IconBox.Medium,
+            row.AlreadyIn ? ColorToken.Success
+                : row.Checked ? ColorToken.AccentInk
+                : ColorToken.Muted
         );
-        check.Margin = new Thickness(0, 0, 10, 0);
-        var icon = Ui.Icon(row.Icon, 18, ColorToken.Muted);
-        icon.Margin = new Thickness(0, 0, 10, 0);
+        check.IsFilled = row.Checked || row.AlreadyIn;
+        check.Margin = new Thickness(0, 0, Space.S3, 0);
+        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        lines.Children.Add(new StyledText(row.Name, TextStyleToken.Label));
+        lines.Children.Add(
+            row.AlreadyIn
+                ? new StyledText(row.Foot, TextStyleToken.Caption, ColorToken.Muted)
+                : new StyledText(row.Foot, TextStyleToken.Keys, ColorToken.Muted)
+        );
+        if (row.Warning is { } warning)
+        {
+            lines.Children.Add(
+                new StyledText(warning, TextStyleToken.Caption, ColorToken.WarnText)
+                {
+                    MaxLines = 2,
+                }
+            );
+        }
+
         var content = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(check, Dock.Left);
-        DockPanel.SetDock(icon, Dock.Left);
         content.Children.Add(check);
-        content.Children.Add(icon);
-        content.Children.Add(text);
-        var toggle = Ui.Choice(
-            content,
-            row.Name + ", " + row.Foot,
-            row.Checked,
-            () => _viewModel.ToggleRow(row.Index),
-            height: double.NaN,
-            radius: 10,
-            offFill: null
-        );
-        toggle.MinHeight = 48;
-        toggle.BorderThickness = new Thickness(0);
-        toggle.Padding = new Thickness(10, 6, 4, 6);
-        toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        Ui.Paint(toggle, null, ColorToken.Text, null);
-        toggle.IsEnabled = !row.AlreadyIn;
+        content.Children.Add(lines);
+        var toggle = new OptionButton
+        {
+            Kind = OptionKind.Tile,
+            Content = content,
+            Role = OptionRole.Toggle,
+            IsSelected = row.Checked && !row.AlreadyIn,
+            IsEnabled = !row.AlreadyIn,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S3, Space.S2, Space.S3, Space.S2),
+        };
+        toggle.Height = double.NaN;
+        toggle.MinHeight = ControlHeight.Medium;
+        AutomationProperties.SetName(toggle, row.Name + ", " + row.Foot);
         AutomationProperties.SetHelpText(toggle, row.Warning ?? string.Empty);
+        toggle.Click += (_, _) => _viewModel.ToggleRow(row.Index);
 
         var line = new DockPanel { LastChildFill = true };
         if (!row.AlreadyIn)
         {
-            var edit = Ui.Button(
-                Ui.Icon("edit", 18, ColorToken.Muted),
-                row.RenameName + ": " + row.Name,
+            var edit = Parts.Button(
+                string.Empty,
+                "edit",
+                ButtonVariant.Tertiary,
                 () => _viewModel.EditRow(row.Index),
-                null
+                row.RenameName + ": " + row.Name
             );
-            edit.Width = 44;
-            edit.Padding = new Thickness(0);
-            edit.BorderThickness = new Thickness(0);
+            edit.IsExpanded = row.Editing;
+            edit.IsActive = row.Editing;
+            edit.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(edit, Dock.Right);
             line.Children.Add(edit);
             if (row.KeysName is { } keysName)
             {
                 // PLA-016: the keys of the row can change before installing.
-                var keys = Ui.Button(
-                    Ui.Icon(
-                        "keyboard",
-                        18,
-                        row.Combo is null ? ColorToken.Muted : ColorToken.Accent
-                    ),
-                    keysName + ": " + row.Name,
+                var keys = Parts.Button(
+                    string.Empty,
+                    "keyboard",
+                    ButtonVariant.Tertiary,
                     () => _viewModel.EditRowKeys(row.Index),
-                    null
+                    keysName + ": " + row.Name
                 );
-                keys.Width = 44;
-                keys.Padding = new Thickness(0);
-                keys.BorderThickness = new Thickness(0);
+                keys.IsExpanded = row.Combo is not null;
+                keys.IsActive = row.Combo is not null;
+                keys.VerticalAlignment = VerticalAlignment.Center;
                 DockPanel.SetDock(keys, Dock.Right);
                 line.Children.Add(keys);
             }
         }
 
         line.Children.Add(toggle);
-        var column = Ui.Column(0, line);
+        var column = new StackPanel();
+        column.Children.Add(line);
         if (row.Editing)
         {
             _renaming = row.Index;
             Detach(_rowName);
             AutomationProperties.SetName(_rowName.Box, row.RenameName);
+            _rowName.DictateName = row.DictateName;
             var starting = _renamingShown != row.Index;
             _rowName.Show(row.Name, force: starting);
             // PLA-015, ACC-011: the name of a row is dictated like every other free text.
-            var dictate = Ui.Button(
-                Ui.Icon("mic", 22, ColorToken.AccentInk),
-                row.DictateName,
-                () => FocusAndDictate(_rowName),
-                ColorToken.AccentWash
-            );
-            dictate.Width = 44;
-            dictate.Padding = new Thickness(0);
-            dictate.Margin = new Thickness(6, 0, 0, 0);
-            var field = new DockPanel
-            {
-                LastChildFill = true,
-                Margin = new Thickness(10, 0, 10, 10),
-            };
-            DockPanel.SetDock(dictate, Dock.Right);
-            field.Children.Add(dictate);
-            field.Children.Add(_rowName);
-            column.Children.Add(field);
+            column.Children.Add(Spaced(_rowName, Space.S2));
             if (starting)
             {
                 // Only when the field opens: selecting again on every keystroke would replace what is being typed.
@@ -1164,22 +1229,9 @@ public sealed class TemplatesSectionView : Grid
 
         if (row.Combo is { } combo)
         {
-            var box = ComboView.Build(combo, _viewModel.RowKeys);
-            box.Margin = new Thickness(10, 0, 10, 10);
-            column.Children.Add(box);
+            column.Children.Add(Spaced(ComboView.Build(combo, _viewModel.RowKeys), Space.S3));
         }
 
-        var card = Ui.Card(column, ColorToken.Card, ColorToken.Border, 10, new Thickness(0));
-        card.Opacity =
-            row.AlreadyIn ? 0.55
-            : row.Checked ? 1
-            : 0.75;
-        return card;
-    }
-
-    private void FocusAndDictate(TextInput field)
-    {
-        _ = Keyboard.Focus(field.Box);
-        _viewModel.Dictate();
+        return column;
     }
 }
