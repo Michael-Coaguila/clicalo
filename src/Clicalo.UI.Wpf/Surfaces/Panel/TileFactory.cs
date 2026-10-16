@@ -103,6 +103,8 @@ internal static class TileFactory
         control.Margin = new Thickness(gap / 2);
         control.Padding = new Thickness(gap / 2);
         control.IconSize = iconSize;
+        // CUA-011: at the largest text a long name may take two lines before «…»; one when there is no room.
+        control.MaxNameLines = 2;
         control.SetResourceReference(
             Control.FontSizeProperty,
             ThemeKeys.ScaledTextSize(Math.Max(TypeScale.Minimum, labelPx))

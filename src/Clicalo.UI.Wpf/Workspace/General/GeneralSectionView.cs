@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter.General;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -78,7 +79,7 @@ public sealed class GeneralSectionView : ContentControl
         _right = Ui.Column(10, _dock, _feedback, _safety, _access, _ai, _start);
         var page = Ui.Column(Gap, Ui.Column(4, _title, _subtitle), _top, _columns);
         page.Margin = new Thickness(Gap);
-        var root = new Border { Child = new TouchPanScrollViewer { Content = page } };
+        var root = new Border { Child = new ThemedScrollViewer { Content = page } };
         Ui.Ink(root, Border.BackgroundProperty, ColorToken.Win);
         Content = root;
 
@@ -226,7 +227,7 @@ public sealed class GeneralSectionView : ContentControl
         var buttons = new List<UIElement>();
         foreach (var option in look.Languages)
         {
-            var ink = option.Selected ? ColorToken.OnAccent : ColorToken.Text;
+            var ink = ColorToken.Text;
             var label = Ui.Text(option.Label, 12, ink: ink, mono: true);
             label.Opacity = 0.8;
             label.HorizontalAlignment = HorizontalAlignment.Center;
@@ -239,11 +240,11 @@ public sealed class GeneralSectionView : ContentControl
                 () => _viewModel.SetLanguage(option.Code),
                 64,
                 12,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (option.Selected)
             {
-                CcChrome.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
+                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
                 button.BorderThickness = new Thickness(0);
             }
 
@@ -364,7 +365,7 @@ public sealed class GeneralSectionView : ContentControl
             _viewModel.TextBigger,
             ColorToken.Card
         );
-        var value = Ui.Text(look.TextSize, 14, ink: ColorToken.Accent, mono: true);
+        var value = Ui.Text(look.TextSize, 14, ink: ColorToken.AccentInk, mono: true);
         value.Width = 48;
         value.TextAlignment = TextAlignment.Center;
         AutomationProperties.SetName(value, look.TextSizeTitle);
@@ -429,7 +430,7 @@ public sealed class GeneralSectionView : ContentControl
     )
     {
         var box = Ui.Card(
-            Ui.Icon(icon, iconSize, ColorToken.Accent),
+            Ui.Icon(icon, iconSize, ColorToken.AccentInk),
             ColorToken.Side,
             ColorToken.Border,
             6,
@@ -498,7 +499,7 @@ public sealed class GeneralSectionView : ContentControl
             var tile = Ui.Card(
                 Ui.Column(
                     3,
-                    Centered(Ui.Icon("content_copy", 22, ColorToken.Accent)),
+                    Centered(Ui.Icon("content_copy", 22, ColorToken.AccentInk)),
                     Centered(Ui.Text(layout.SampleName, 12, bold: true)),
                     option.Value
                         ? Centered(
@@ -703,24 +704,19 @@ public sealed class GeneralSectionView : ContentControl
         foreach (var option in dock.PerPage)
         {
             var button = Ui.Choice(
-                Ui.Text(
-                    option.Label,
-                    14,
-                    bold: true,
-                    ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
-                ),
+                Ui.Text(option.Label, 14, bold: true, ink: ColorToken.Text),
                 option.Name,
                 option.Selected,
                 () => _viewModel.SetPerPage(option.Value),
                 44,
                 10,
                 ColorToken.CardHi,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
-            CcChrome.Paint(
+            Ui.Paint(
                 button,
                 option.Selected ? ColorToken.Accent : ColorToken.CardHi,
-                option.Selected ? ColorToken.OnAccent : ColorToken.Text,
+                ColorToken.Text,
                 null
             );
             button.BorderThickness = new Thickness(0);
@@ -790,26 +786,16 @@ public sealed class GeneralSectionView : ContentControl
         foreach (var option in safety.MaxHold)
         {
             var button = Ui.Choice(
-                Ui.Text(
-                    option.Label,
-                    12,
-                    bold: true,
-                    ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
-                ),
+                Ui.Text(option.Label, 12, bold: true, ink: ColorToken.Text),
                 option.Name,
                 option.Selected,
                 () => _viewModel.SetMaxHold(option.Value),
                 44,
                 8,
                 null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
-            CcChrome.Paint(
-                button,
-                option.Selected ? ColorToken.Accent : null,
-                option.Selected ? ColorToken.OnAccent : ColorToken.Text,
-                null
-            );
+            Ui.Paint(button, option.Selected ? ColorToken.Accent : null, ColorToken.Text, null);
             button.BorderThickness = new Thickness(0);
             button.Padding = new Thickness(6, 0, 6, 0);
             options.Add(button);
@@ -904,7 +890,7 @@ public sealed class GeneralSectionView : ContentControl
                             () => _viewModel.SetGlobalHotkey(option.Value),
                             44,
                             8,
-                            role: CcToggleRole.Option
+                            role: OptionRole.Option
                         )
                 )
             );
@@ -984,26 +970,16 @@ public sealed class GeneralSectionView : ContentControl
         foreach (var (label, optionName, selected, click) in choices)
         {
             var button = Ui.Choice(
-                Ui.Text(
-                    label,
-                    12,
-                    bold: true,
-                    ink: selected ? ColorToken.OnAccent : ColorToken.Text
-                ),
+                Ui.Text(label, 12, bold: true, ink: ColorToken.Text),
                 optionName,
                 selected,
                 click,
                 44,
                 8,
                 null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
-            CcChrome.Paint(
-                button,
-                selected ? ColorToken.Accent : null,
-                selected ? ColorToken.OnAccent : ColorToken.Text,
-                null
-            );
+            Ui.Paint(button, selected ? ColorToken.Accent : null, ColorToken.Text, null);
             button.BorderThickness = new Thickness(0);
             button.Padding = new Thickness(6, 0, 6, 0);
             options.Add(button);
@@ -1024,7 +1000,7 @@ public sealed class GeneralSectionView : ContentControl
     {
         var welcome = Ui.Button(
             ButtonRow(
-                Ui.Icon("waving_hand", 22, ColorToken.Accent),
+                Ui.Icon("waving_hand", 22, ColorToken.AccentInk),
                 start.WelcomeTitle,
                 start.WelcomeDescription,
                 ColorToken.Text,
@@ -1041,7 +1017,7 @@ public sealed class GeneralSectionView : ContentControl
         AutomationProperties.SetHelpText(welcome, start.WelcomeDescription);
         var coach = Ui.Button(
             ButtonRow(
-                Ui.Icon("help", 22, ColorToken.Accent),
+                Ui.Icon("help", 22, ColorToken.AccentInk),
                 start.CoachTitle,
                 start.CoachDescription,
                 ColorToken.Text,
@@ -1107,7 +1083,7 @@ public sealed class GeneralSectionView : ContentControl
         return cell;
     }
 
-    private static CcToggle OptionCard(
+    private static OptionButton OptionCard(
         UIElement content,
         string name,
         bool selected,
@@ -1115,7 +1091,7 @@ public sealed class GeneralSectionView : ContentControl
         Thickness padding
     )
     {
-        var card = Ui.Choice(content, name, selected, click, 44, 12, role: CcToggleRole.Option);
+        var card = Ui.Choice(content, name, selected, click, 44, 12, role: OptionRole.Option);
         card.Height = double.NaN;
         card.MinHeight = 44;
         card.Padding = padding;
@@ -1124,10 +1100,10 @@ public sealed class GeneralSectionView : ContentControl
         return card;
     }
 
-    private static CcToggle SwitchRow(SwitchItem item, Action click) =>
+    private static ToggleSwitch SwitchRow(SwitchItem item, Action click) =>
         Ui.SwitchRow(item.Icon, item.Title, item.Description, item.On, click);
 
-    private static CcButton StepButton(
+    private static TouchButton StepButton(
         string icon,
         string name,
         bool enabled,
@@ -1147,7 +1123,7 @@ public sealed class GeneralSectionView : ContentControl
     private static Border CardRow(string icon, UIElement text, UIElement end)
     {
         var row = new DockPanel { LastChildFill = true };
-        var symbol = Ui.Icon(icon, 22, ColorToken.Accent);
+        var symbol = Ui.Icon(icon, 22, ColorToken.AccentInk);
         symbol.Margin = new Thickness(0, 0, 10, 0);
         DockPanel.SetDock(symbol, Dock.Left);
         row.Children.Add(symbol);
@@ -1196,7 +1172,7 @@ public sealed class GeneralSectionView : ContentControl
         return row;
     }
 
-    private static void StretchButton(CcButton button, double minHeight)
+    private static void StretchButton(TouchButton button, double minHeight)
     {
         button.MinHeight = minHeight;
         button.Padding = new Thickness(14, 10, 14, 10);

@@ -8,6 +8,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -38,9 +39,9 @@ public sealed class ShortcutsSectionView : Grid
     private readonly ContentControl _link = new() { Focusable = false };
     private readonly ContentControl _grid = new() { Focusable = false };
     private readonly ContentControl _editorColumn = new() { Focusable = false };
-    private readonly TouchPanScrollViewer _listScroll = new();
+    private readonly ThemedScrollViewer _listScroll = new();
     private readonly ShortcutEditorView _editor;
-    private readonly TextField _profileName;
+    private readonly TextInput _profileName;
     private readonly ColumnDefinition _profilesColumn = new()
     {
         Width = new GridLength(WideProfiles),
@@ -63,7 +64,7 @@ public sealed class ShortcutsSectionView : Grid
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         _editor = new ShortcutEditorView(viewModel.Editor);
-        _profileName = new TextField(string.Empty, string.Empty);
+        _profileName = new TextInput(string.Empty, string.Empty);
         _profileName.Left += (_, _) =>
         {
             if (!_viewModel.RenameProfile(_profileName.Text))
@@ -104,7 +105,7 @@ public sealed class ShortcutsSectionView : Grid
         SetRow(columns, 1);
         Children.Add(columns);
 
-        var profilesScroll = new TouchPanScrollViewer
+        var profilesScroll = new ThemedScrollViewer
         {
             Content = _profiles,
             Padding = new Thickness(10, 16, 10, 16),
@@ -116,7 +117,7 @@ public sealed class ShortcutsSectionView : Grid
         _listScroll.Padding = new Thickness(16);
         columns.Children.Add(Bordered(_listScroll, 1));
 
-        var editorScroll = new TouchPanScrollViewer
+        var editorScroll = new ThemedScrollViewer
         {
             Content = _editorColumn,
             Padding = new Thickness(16),
@@ -265,7 +266,7 @@ public sealed class ShortcutsSectionView : Grid
             var chip = Ui.Card(
                 Ui.Row(
                     6,
-                    Ui.Icon(layer.Icon, 16, ColorToken.Accent),
+                    Ui.Icon(layer.Icon, 16, ColorToken.AccentInk),
                     Ui.Text(layer.Label, 13, bold: true),
                     Ui.Text(layer.Meta, 13, ink: ColorToken.Muted)
                 ),
@@ -324,7 +325,7 @@ public sealed class ShortcutsSectionView : Grid
         {
             var content = Ui.Row(
                 8,
-                Ui.Icon(row.Icon, 20, ColorToken.Accent),
+                Ui.Icon(row.Icon, 20, ColorToken.AccentInk),
                 Ui.Column(
                     0,
                     Ui.Text(row.Name, 14, bold: true),
@@ -339,16 +340,16 @@ public sealed class ShortcutsSectionView : Grid
                 52,
                 10,
                 offFill: null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (row.Selected)
             {
-                CcChrome.Paint(button, ColorToken.CardHi, ColorToken.Text, null);
+                Ui.Paint(button, ColorToken.CardHi, ColorToken.Text, null);
                 button.BorderThickness = new Thickness(0);
             }
             else
             {
-                CcChrome.Paint(button, null, ColorToken.Text, null);
+                Ui.Paint(button, null, ColorToken.Text, null);
             }
 
             button.HorizontalContentAlignment = HorizontalAlignment.Left;
@@ -370,7 +371,7 @@ public sealed class ShortcutsSectionView : Grid
         return column;
     }
 
-    private static CcButton Dashed(UIElement content, string name, Action click, double height)
+    private static TouchButton Dashed(UIElement content, string name, Action click, double height)
     {
         var frame = new Rectangle
         {
@@ -401,7 +402,7 @@ public sealed class ShortcutsSectionView : Grid
     private DockPanel Header(ListHeaderModel model)
     {
         var icon = Ui.Card(
-            Ui.Icon(model.Icon, 22, ColorToken.Accent),
+            Ui.Icon(model.Icon, 22, ColorToken.AccentInk),
             ColorToken.Card,
             null,
             11,
@@ -425,7 +426,7 @@ public sealed class ShortcutsSectionView : Grid
                 44,
                 10,
                 offFill: null,
-                role: CcToggleRole.Expander
+                role: OptionRole.Expander
             );
             edit.Width = 44;
             edit.Padding = new Thickness(0);
@@ -466,7 +467,7 @@ public sealed class ShortcutsSectionView : Grid
     /// [Añadir] goes beside the name of the list; where the column is too narrow for both (the smallest window,
     /// CCM-005), it goes under it at full width, so the name and its pencil keep their 44 (REG-02).
     /// </summary>
-    private static void PlaceAdd(CcButton add, double width)
+    private static void PlaceAdd(TouchButton add, double width)
     {
         var below = width < HeaderStackWidth;
         DockPanel.SetDock(add, below ? Dock.Bottom : Dock.Right);
@@ -479,7 +480,7 @@ public sealed class ShortcutsSectionView : Grid
         AutomationProperties.SetName(_profileName.Box, model.NameLabel);
         _profileName.Show(model.Name);
         var dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.Accent),
+            Ui.Icon("mic", 22, ColorToken.AccentInk),
             model.DictateName,
             () => FocusAndDictate(_profileName),
             ColorToken.AccentWash
@@ -507,13 +508,13 @@ public sealed class ShortcutsSectionView : Grid
                 () => _viewModel.SetProfileIcon(option.Icon),
                 44,
                 8,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             button.Padding = new Thickness(0);
             icons.Children.Add(button);
         }
 
-        var iconsScroll = new TouchPanScrollViewer { Content = icons, MaxHeight = 140 };
+        var iconsScroll = new ThemedScrollViewer { Content = icons, MaxHeight = 140 };
         var compat = Ui.SwitchRow(
             "sports_esports",
             model.CompatTitle,
@@ -610,7 +611,7 @@ public sealed class ShortcutsSectionView : Grid
         head.Children.Add(icon);
         if (model.Action is { } action)
         {
-            var label = Ui.Text(action, 12, bold: true, ink: ColorToken.Accent);
+            var label = Ui.Text(action, 12, bold: true, ink: ColorToken.AccentInk);
             label.Margin = new Thickness(10, 0, 0, 0);
             DockPanel.SetDock(label, Dock.Right);
             head.Children.Add(label);
@@ -679,7 +680,7 @@ public sealed class ShortcutsSectionView : Grid
             {
                 var mark = app.Mark is { } active
                     ? Ui.Card(
-                        Ui.Text(active, 11, bold: true, ink: ColorToken.Accent),
+                        Ui.Text(active, 11, bold: true, ink: ColorToken.AccentInk),
                         ColorToken.AccentWash,
                         null,
                         8,
@@ -714,7 +715,7 @@ public sealed class ShortcutsSectionView : Grid
                     () => _viewModel.BindApp(app.Process),
                     double.NaN,
                     22,
-                    role: CcToggleRole.Option
+                    role: OptionRole.Option
                 );
                 chip.MinHeight = 44;
                 chip.Padding = new Thickness(9, 4, 9, 4);
@@ -776,7 +777,7 @@ public sealed class ShortcutsSectionView : Grid
         return Ui.Column(8, grid, hint);
     }
 
-    private CcToggle Tile(GridTile tile, string incompleteText)
+    private OptionButton Tile(GridTile tile, string incompleteText)
     {
         var name = Ui.Text(tile.Name, 13, bold: true);
         name.TextAlignment = TextAlignment.Center;
@@ -792,7 +793,7 @@ public sealed class ShortcutsSectionView : Grid
         {
             layers.Children.Add(
                 Corner(
-                    Ui.Icon("warning", 16, ColorToken.Warn),
+                    Ui.Icon("warning", 16, ColorToken.WarnText),
                     HorizontalAlignment.Left,
                     VerticalAlignment.Top
                 )
@@ -841,7 +842,7 @@ public sealed class ShortcutsSectionView : Grid
             () => { },
             88,
             12,
-            role: CcToggleRole.Option
+            role: OptionRole.Option
         );
         button.Padding = new Thickness(4);
         button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
@@ -1044,11 +1045,11 @@ public sealed class ShortcutsSectionView : Grid
                 () => _viewModel.ChooseCategory(chip.Id),
                 44,
                 22,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (chip.Selected)
             {
-                CcChrome.Paint(button, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
+                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
                 button.Content = Ui.IconLabel(
                     chip.Icon,
                     chip.Label,
@@ -1102,7 +1103,7 @@ public sealed class ShortcutsSectionView : Grid
         return Ui.Column(16, head, create, or, Ui.Wrap(6, chips), rows);
     }
 
-    private void FocusAndDictate(TextField field)
+    private void FocusAndDictate(TextInput field)
     {
         _ = Keyboard.Focus(field.Box);
         _viewModel.Dictate();

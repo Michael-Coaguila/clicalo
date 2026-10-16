@@ -9,6 +9,7 @@ using System.Windows.Shapes;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.ControlCenter.TouchPrecision;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -163,7 +164,7 @@ public sealed class TouchPrecisionView : ContentControl
         Ui.Ink(face, Shape.FillProperty, ColorToken.Card);
         var label = Ui.Text(string.Empty, 20, bold: true, wrap: true);
         label.TextAlignment = TextAlignment.Center;
-        var content = Ui.Column(8, Ui.Icon("touch_app", 40, ColorToken.Accent), label);
+        var content = Ui.Column(8, Ui.Icon("touch_app", 40, ColorToken.AccentInk), label);
         content.VerticalAlignment = VerticalAlignment.Center;
         content.HorizontalAlignment = HorizontalAlignment.Center;
         content.Margin = new Thickness(8);
@@ -206,7 +207,7 @@ public sealed class TouchPrecisionView : ContentControl
         {
             _right.BorderThickness = new Thickness(0, 1, 0, 0);
             _right.Margin = new Thickness(0);
-            _root.Child = new TouchPanScrollViewer { Content = Ui.Column(0, _left, _right) };
+            _root.Child = new ThemedScrollViewer { Content = Ui.Column(0, _left, _right) };
             return;
         }
 
@@ -216,7 +217,7 @@ public sealed class TouchPrecisionView : ContentControl
             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
         );
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ZoneWidth) });
-        var scroll = new TouchPanScrollViewer { Content = _left };
+        var scroll = new ThemedScrollViewer { Content = _left };
         layout.Children.Add(scroll);
         Grid.SetColumn(_right, 1);
         layout.Children.Add(_right);
@@ -331,7 +332,7 @@ public sealed class TouchPrecisionView : ContentControl
                 () => _viewModel.ChoosePreset(preset.Id),
                 76,
                 12,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             card.Height = double.NaN;
             card.MinHeight = 76;

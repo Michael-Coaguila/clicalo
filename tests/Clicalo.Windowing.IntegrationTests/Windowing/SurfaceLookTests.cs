@@ -93,7 +93,7 @@ public sealed class SurfaceLookTests
     [Trait("Req", "BUR-001")]
     public void Corners_are_the_radii_of_the_prototype_in_physical_pixels()
     {
-        ShadowRaster.Corners(SurfaceLook.Panel, 700, 900, Scale).ShouldBe(new CornerRadius(31.5));
+        ShadowRaster.Corners(SurfaceLook.Panel, 700, 900, Scale).ShouldBe(new CornerRadius(28));
         ShadowRaster.Corners(SurfaceLook.Bubble, 112, 112, Scale).ShouldBe(new CornerRadius(56));
         ShadowRaster
             .Corners(SurfaceLook.DockHandle(DockSide.Right), 84, 200, Scale)

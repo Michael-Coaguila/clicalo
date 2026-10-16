@@ -210,6 +210,13 @@ public class TouchButton : Button
         ApplyTextStyle();
     }
 
+    /// <inheritdoc />
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+        ApplyTextStyle();
+    }
+
     /// <summary>Clicks the button as a tap does; UI Automation's Expand, Collapse and Toggle end here.</summary>
     internal void ClickFromAutomation() => OnClick();
 
@@ -219,10 +226,18 @@ public class TouchButton : Button
 
     private void ApplyTextStyle()
     {
+        // Only a string content takes the text style of the button; a view's own content keeps its texts.
         if (GetTemplateChild(ButtonChrome.TextPart) is ContentPresenter presenter)
         {
-            presenter.Resources[typeof(TextBlock)] =
-                MaxLines == 2 ? ButtonChrome.TwoLines : ButtonChrome.OneLine;
+            if (Content is string)
+            {
+                presenter.Resources[typeof(TextBlock)] =
+                    MaxLines == 2 ? ButtonChrome.TwoLines : ButtonChrome.OneLine;
+            }
+            else
+            {
+                presenter.Resources.Remove(typeof(TextBlock));
+            }
         }
     }
 

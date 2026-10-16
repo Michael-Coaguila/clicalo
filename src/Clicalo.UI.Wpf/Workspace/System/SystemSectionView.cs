@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -26,7 +27,7 @@ public sealed class SystemSectionView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Child = new TouchPanScrollViewer { Content = _content, Padding = new Thickness(24) };
+        Child = new ThemedScrollViewer { Content = _content, Padding = new Thickness(24) };
         viewModel.PropertyChanged += OnChanged;
         Render();
     }
@@ -149,13 +150,12 @@ public sealed class SystemSectionView : Border
                 VerticalContentAlignment = VerticalAlignment.Stretch,
                 MinHeight = 72,
             };
-            CcChrome.Paint(
+            Ui.Paint(
                 button,
                 tab.Selected ? ColorToken.Win : ColorToken.Side,
                 ColorToken.Text,
                 ColorToken.Border
             );
-            button.SetValue(CcChrome.RadiusProperty, new CornerRadius(0));
             AutomationProperties.SetName(button, tab.Label);
             AutomationProperties.SetItemStatus(button, tab.Status);
             AutomationProperties.SetAutomationId(button, "system.tab." + tab.Tab);
@@ -195,16 +195,11 @@ public sealed class SystemSectionView : Border
             Ui.Column(2, title, Ui.Text(card.Subtitle, 13, ink: ColorToken.Muted, wrap: true))
         );
         var button = Ui.Button(
-            Ui.Text(
-                card.Button,
-                15,
-                bold: true,
-                ink: card.Hot ? ColorToken.OnAccent : ColorToken.Text
-            ),
+            Ui.Text(card.Button, 15, bold: true, ink: ColorToken.Text),
             card.Button,
             _viewModel.UpdateAction,
             card.Hot ? ColorToken.Accent : ColorToken.CardHi,
-            card.Hot ? ColorToken.OnAccent : ColorToken.Text,
+            ColorToken.Text,
             height: 48
         );
         button.BorderThickness = new Thickness(0);
@@ -276,34 +271,29 @@ public sealed class SystemSectionView : Border
         foreach (var option in model.Channels)
         {
             var button = Ui.Choice(
-                Ui.Text(
-                    option.Label,
-                    14,
-                    bold: true,
-                    ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
-                ),
+                Ui.Text(option.Label, 14, bold: true, ink: ColorToken.Text),
                 model.Channel + ": " + option.Label,
                 option.Selected,
                 () => _viewModel.SetChannel(option.Channel),
                 44,
                 10,
                 offFill: ColorToken.CardHi,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (option.Selected)
             {
-                CcChrome.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
+                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
             }
             else
             {
-                CcChrome.Paint(button, ColorToken.CardHi, ColorToken.Text, null);
+                Ui.Paint(button, ColorToken.CardHi, ColorToken.Text, null);
             }
 
             button.BorderThickness = new Thickness(0);
             options.Children.Add(button);
         }
 
-        var icon = Ui.Icon("science", 22, ColorToken.Accent);
+        var icon = Ui.Icon("science", 22, ColorToken.AccentInk);
         var texts = Ui.Column(
             2,
             Ui.Text(model.Channel, 15, bold: true),
@@ -324,12 +314,12 @@ public sealed class SystemSectionView : Border
     {
         var top = Ui.Row(
             8,
-            Ui.Text(notes.Version, 14, ink: ColorToken.Accent, mono: true),
+            Ui.Text(notes.Version, 14, ink: ColorToken.AccentInk, mono: true),
             notes.Date.Length == 0 ? null : Ui.Text(notes.Date, 12, ink: ColorToken.Muted),
             notes.NewBadge.Length == 0
                 ? null
                 : Ui.Card(
-                    Ui.Text(notes.NewBadge, 11, bold: true, ink: ColorToken.Warn),
+                    Ui.Text(notes.NewBadge, 11, bold: true, ink: ColorToken.WarnText),
                     ColorToken.WarnWash,
                     null,
                     5,
@@ -536,7 +526,7 @@ public sealed class SystemSectionView : Border
                 ? null
                 : Ui.Row(
                     6,
-                    Ui.Icon("warning", 16, ColorToken.Warn),
+                    Ui.Icon("warning", 16, ColorToken.WarnText),
                     Ui.Text(import.Warning, 13, wrap: true)
                 ),
             import.Review.IsEmpty ? null : Review(import),
@@ -553,7 +543,7 @@ public sealed class SystemSectionView : Border
     {
         var note = Ui.Row(
             6,
-            Ui.Icon("shield", 16, ColorToken.Warn),
+            Ui.Icon("shield", 16, ColorToken.WarnText),
             Ui.Text(import.ReviewNote, 13, wrap: true)
         );
         var rows = Ui.Column(6, note);
@@ -574,7 +564,7 @@ public sealed class SystemSectionView : Border
             var line = new DockPanel { LastChildFill = true };
             DockPanel.SetDock(box, Dock.Left);
             line.Children.Add(box);
-            var icon = Ui.Icon(row.Icon, 20, ColorToken.Accent);
+            var icon = Ui.Icon(row.Icon, 20, ColorToken.AccentInk);
             icon.Margin = new Thickness(10, 0, 0, 0);
             DockPanel.SetDock(icon, Dock.Left);
             line.Children.Add(icon);
@@ -671,13 +661,13 @@ public sealed class SystemSectionView : Border
         }
         else
         {
-            trailing = Ui.Icon("check_circle", 22, ColorToken.Accent);
+            trailing = Ui.Icon("check_circle", 22, ColorToken.AccentInk);
         }
 
         column.Children.Add(
             Spaced(Row("admin_panel_settings", admin.Title, admin.Description, trailing, null))
         );
-        var status = Ui.Text(model.CrashStatus, 13, bold: true, ink: ColorToken.Accent);
+        var status = Ui.Text(model.CrashStatus, 13, bold: true, ink: ColorToken.AccentInk);
         column.Children.Add(
             Spaced(Row("healing", model.Crash, model.CrashDescription, status, null))
         );
@@ -738,7 +728,7 @@ public sealed class SystemSectionView : Border
         ColorToken? stroke
     )
     {
-        var symbol = Ui.Icon(icon, 22, ColorToken.Accent);
+        var symbol = Ui.Icon(icon, 22, ColorToken.AccentInk);
         var texts = Ui.Column(
             2,
             Ui.Text(title, 15, bold: true, wrap: true),

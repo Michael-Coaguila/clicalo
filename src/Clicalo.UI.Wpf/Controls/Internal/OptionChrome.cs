@@ -275,9 +275,12 @@ internal static class OptionChrome
                     .With(UIElement.VisibilityProperty, Visibility.Collapsed)
                     .Paint(SymbolIcon.ForegroundProperty, ColorToken.AccentInk);
                 icon.With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S2, 0));
+                // A dock, not a horizontal stack: the text gets the width that is left, so it can wrap or end in «…».
+                check.With(DockPanel.DockProperty, Dock.Left);
+                icon.With(DockPanel.DockProperty, Dock.Left);
                 body = Templates
-                    .Element<StackPanel>(ControlChrome.ContentPart)
-                    .With(StackPanel.OrientationProperty, Orientation.Horizontal)
+                    .Element<DockPanel>(ControlChrome.ContentPart)
+                    .With(DockPanel.LastChildFillProperty, true)
                     .Add(check, icon, text);
                 triggers.Add(Collapse(symbol, null, IconPart));
                 var bare = new MultiTrigger();

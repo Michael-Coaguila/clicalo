@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Clicalo.Presentation.ControlCenter.About;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 using Clicalo.UI.Wpf.Workspace.Welcome;
@@ -24,8 +25,8 @@ public sealed class AboutSectionView : Border
     private const string MessageId = "about.message";
 
     private readonly AboutViewModel _viewModel;
-    private readonly TouchPanScrollViewer _scroll = new() { Padding = new Thickness(24) };
-    private readonly TextField _message;
+    private readonly ThemedScrollViewer _scroll = new() { Padding = new Thickness(24) };
+    private readonly TextInput _message;
     private readonly Grid _messageBox = new();
     private AboutScreen? _shown;
     private bool _wide;
@@ -37,7 +38,7 @@ public sealed class AboutSectionView : Border
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         var screen = viewModel.Screen;
-        _message = new TextField(screen.MessageName, screen.MessagePlaceholder, multiline: true);
+        _message = new TextInput(screen.MessageName, screen.MessagePlaceholder, multiline: true);
         _message.Box.MinHeight = 130;
         _message.Box.Padding = new Thickness(14, 12, 56, 12);
         _message.Changed += (_, _) => _viewModel.SetMessage(_message.Text);
@@ -174,7 +175,7 @@ public sealed class AboutSectionView : Border
             ColorToken.Border
         );
         AutomationProperties.SetAutomationId(gitHub, "about.github");
-        CcButton? linkedIn = null;
+        TouchButton? linkedIn = null;
         if (screen.LinkedInText is { } linkedInText)
         {
             // ACE-001, D11: only while there is a real address.
@@ -225,7 +226,7 @@ public sealed class AboutSectionView : Border
                 () => _viewModel.SetKind(option.Kind),
                 52,
                 12,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             kind.Height = double.NaN;
             kind.MinHeight = 52;
@@ -236,7 +237,7 @@ public sealed class AboutSectionView : Border
         }
 
         var dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.Accent),
+            Ui.Icon("mic", 22, ColorToken.AccentInk),
             screen.DictateName,
             () =>
             {
@@ -287,17 +288,16 @@ public sealed class AboutSectionView : Border
         previewRow.Children.Add(
             Ui.IconLabel("visibility", screen.PreviewTitle, 18, 13, iconInk: ColorToken.Accent)
         );
-        var preview = new CcToggle
+        var preview = new OptionButton
         {
             Content = previewRow,
             IsChecked = screen.PreviewOpen,
-            Role = CcToggleRole.Expander,
+            Role = OptionRole.Expander,
             MinHeight = 44,
             Padding = new Thickness(12, 0, 12, 0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
-        CcChrome.Paint(preview, null, ColorToken.Text, ColorToken.Border);
-        preview.SetValue(CcChrome.RadiusProperty, new CornerRadius(10));
+        Ui.Paint(preview, null, ColorToken.Text, ColorToken.Border);
         AutomationProperties.SetName(preview, screen.PreviewTitle);
         AutomationProperties.SetAutomationId(preview, "about.preview");
         preview.Click += (_, _) => _ = _viewModel.TogglePreviewAsync();
@@ -360,7 +360,7 @@ public sealed class AboutSectionView : Border
         if (screen.Email is { } address)
         {
             var emailRow = new DockPanel { LastChildFill = true };
-            var mail = Ui.Icon("mail", 20, ColorToken.Accent);
+            var mail = Ui.Icon("mail", 20, ColorToken.AccentInk);
             mail.Margin = new Thickness(0, 0, 8, 0);
             DockPanel.SetDock(mail, Dock.Left);
             emailRow.Children.Add(mail);
@@ -422,7 +422,7 @@ public sealed class AboutSectionView : Border
         );
     }
 
-    private static CcButton LinkRow(
+    private static TouchButton LinkRow(
         string icon,
         string title,
         string description,
@@ -431,7 +431,7 @@ public sealed class AboutSectionView : Border
     )
     {
         var row = new DockPanel { LastChildFill = true };
-        var lead = Ui.Icon(icon, 22, ColorToken.Accent);
+        var lead = Ui.Icon(icon, 22, ColorToken.AccentInk);
         lead.Margin = new Thickness(0, 0, 12, 0);
         DockPanel.SetDock(lead, Dock.Left);
         row.Children.Add(lead);

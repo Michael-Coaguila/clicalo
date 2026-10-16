@@ -137,7 +137,7 @@ public sealed class PickerGridView : Border
         var stack = new StackPanel { Orientation = Orientation.Vertical };
         stack.Children.Add(_grid);
         stack.Children.Add(legend);
-        _scroller = new SurfaceScrollViewer { Content = stack };
+        _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = stack };
         Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;

@@ -18,8 +18,9 @@ public sealed class ShortcutTileBodyTests
     [Theory]
     [Trait("Req", "CUA-011")]
     [Trait("Req", "CUA-007")]
-    // S at 150 %: 66 + 0.5 × 12 × 1.6 high, the name in 18 px and the keys in 14: one line of the name.
-    [InlineData(72, 75.6, 20, 18, 14, 1, null)]
+    // S at 150 %: 66 + 0.5 × 12 × 1.6 high, the name in 18 px and the keys in 14: the two lines of the name fit, as
+    // the line of the tile is drawn over its edge and takes no room (direction C).
+    [InlineData(72, 75.6, 20, 18, 14, 2, null)]
     // S at 100 %: the two lines of the name and no room for the keys.
     [InlineData(72, 66, 20, 12, 11, 2, false)]
     // L at 150 %: the two lines of the name and no room for the keys.
@@ -52,6 +53,7 @@ public sealed class ShortcutTileBodyTests
                 Symbol = "keyboard",
                 AccessibleName = LongName,
                 Keys = "Ctrl+Alt+Shift+S",
+                MaxNameLines = 2,
             };
             theme.Attach(tile);
             using var host = new AuditHost(tile);

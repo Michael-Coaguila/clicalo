@@ -8,6 +8,7 @@ using System.Windows.Media;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.Welcome;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -267,7 +268,7 @@ public sealed class WelcomeWindow : Window
             var done = Ui.Text(card.Done, 14, wrap: true);
             AutomationProperties.SetLiveSetting(done, AutomationLiveSetting.Polite);
             return Ui.Card(
-                Ui.Row(8, Ui.Icon("check_circle", 20, ColorToken.Accent), done),
+                Ui.Row(8, Ui.Icon("check_circle", 20, ColorToken.AccentInk), done),
                 ColorToken.AccentWash,
                 null,
                 14,
@@ -283,7 +284,7 @@ public sealed class WelcomeWindow : Window
             52,
             12
         );
-        CcChrome.Paint(keep, ColorToken.Accent, ColorToken.OnAccent, null);
+        Ui.Paint(keep, ColorToken.Accent, ColorToken.OnAccent, null);
         keep.BorderThickness = new Thickness(0);
         keep.HorizontalContentAlignment = HorizontalAlignment.Center;
         AutomationProperties.SetAutomationId(keep, "reinstall.keep");
@@ -365,7 +366,7 @@ public sealed class WelcomeWindow : Window
         {
             var content = Ui.Column(
                 6,
-                Ui.Icon(option.Icon, 26, ColorToken.Accent),
+                Ui.Icon(option.Icon, 26, ColorToken.AccentInk),
                 Ui.Text(option.Label, 16, bold: true, wrap: true)
             );
             ((FrameworkElement)content.Children[0]).HorizontalAlignment = HorizontalAlignment.Left;
@@ -400,7 +401,7 @@ public sealed class WelcomeWindow : Window
         var keyboard = Ui.Card(
             Ui.Row(
                 8,
-                Ui.Icon("keyboard", 18, ColorToken.Accent),
+                Ui.Icon("keyboard", 18, ColorToken.AccentInk),
                 Ui.Text(screen.KeyboardLine, 13, wrap: true)
             ),
             ColorToken.Card,
@@ -456,7 +457,7 @@ public sealed class WelcomeWindow : Window
         foreach (var view in screen.Views)
         {
             var miniature = Ui.Card(
-                Ui.Icon(view.Icon, 18, ColorToken.Accent),
+                Ui.Icon(view.Icon, 18, ColorToken.AccentInk),
                 ColorToken.Card,
                 ColorToken.Border,
                 6,
@@ -477,7 +478,7 @@ public sealed class WelcomeWindow : Window
                 () => _viewModel.SetDensity(view.Density),
                 44,
                 14,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             card.Height = double.NaN;
             card.Padding = new Thickness(8, 12, 8, 12);
@@ -505,7 +506,7 @@ public sealed class WelcomeWindow : Window
             var sample = Ui.Card(
                 Ui.Column(
                     3,
-                    Ui.Icon("content_copy", size.IconSize, ColorToken.Accent),
+                    Ui.Icon("content_copy", size.IconSize, ColorToken.AccentInk),
                     Centered(Fixed(screen.CopyLabel, size.TextSize))
                 ),
                 ColorToken.Card,
@@ -529,7 +530,7 @@ public sealed class WelcomeWindow : Window
                 () => _viewModel.SetSize(size.Size),
                 44,
                 14,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             card.Height = double.NaN;
             card.Padding = new Thickness(8, 14, 8, 14);
@@ -617,7 +618,7 @@ public sealed class WelcomeWindow : Window
         return footer;
     }
 
-    private static CcToggle Segment(
+    private static OptionButton Segment(
         WelcomeOption option,
         double height,
         double radius,
@@ -626,12 +627,7 @@ public sealed class WelcomeWindow : Window
         Action click
     )
     {
-        var text = Ui.Text(
-            option.Label,
-            px,
-            bold: true,
-            ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
-        );
+        var text = Ui.Text(option.Label, px, bold: true, ink: ColorToken.Text);
         text.HorizontalAlignment = HorizontalAlignment.Center;
         var segment = Ui.Choice(
             text,
@@ -640,15 +636,15 @@ public sealed class WelcomeWindow : Window
             click,
             height,
             radius,
-            role: CcToggleRole.Option
+            role: OptionRole.Option
         );
         if (option.Selected)
         {
-            CcChrome.Paint(segment, ColorToken.Accent, ColorToken.OnAccent, null);
+            Ui.Paint(segment, ColorToken.Accent, ColorToken.OnAccent, null);
         }
         else
         {
-            CcChrome.Paint(segment, ColorToken.CardHi, ColorToken.Text, null);
+            Ui.Paint(segment, ColorToken.CardHi, ColorToken.Text, null);
         }
 
         segment.BorderThickness = new Thickness(0);

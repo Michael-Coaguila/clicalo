@@ -140,6 +140,36 @@ public sealed class ToggleSwitch : ToggleButton
         }
     }
 
+    /// <summary>
+    /// The state is the view model's (a row of settings): a tap, or Toggle from UI Automation, only raises
+    /// <c>Click</c> and the view sets <see cref="ToggleButton.IsChecked"/>. Set it before the switch is shown.
+    /// </summary>
+    public bool FollowsViewModel { get; init; }
+
+    /// <inheritdoc />
+    protected override void OnClick()
+    {
+        if (FollowsViewModel)
+        {
+            RaiseEvent(new RoutedEventArgs(ClickEvent, this));
+            return;
+        }
+
+        base.OnClick();
+    }
+
+    /// <inheritdoc />
+    protected override void OnToggle()
+    {
+        if (FollowsViewModel)
+        {
+            OnClick();
+            return;
+        }
+
+        base.OnToggle();
+    }
+
     /// <inheritdoc />
     protected override AutomationPeer? OnCreateAutomationPeer() =>
         IsDrawingOnly ? null : new TouchToggleAutomationPeer(this);

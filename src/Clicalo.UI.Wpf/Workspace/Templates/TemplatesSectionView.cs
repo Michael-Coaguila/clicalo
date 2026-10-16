@@ -38,9 +38,9 @@ public sealed class TemplatesSectionView : Grid
     {
         Width = new GridLength(WidePreview),
     };
-    private readonly TextField _query;
-    private readonly TextField _blankName;
-    private readonly TextField _rowName;
+    private readonly TextInput _query;
+    private readonly TextInput _blankName;
+    private readonly TextInput _rowName;
     private readonly PasswordBox _key = new()
     {
         Background = Brushes.Transparent,
@@ -63,7 +63,7 @@ public sealed class TemplatesSectionView : Grid
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         _announcer = new LiveAnnouncer(this);
-        _query = new TextField(string.Empty, string.Empty) { Height = 52 };
+        _query = new TextInput(string.Empty, string.Empty) { Height = 52 };
         _query.Changed += (_, _) => _viewModel.SetQuery(_query.Text);
         _query.Box.KeyDown += (_, e) =>
         {
@@ -73,9 +73,9 @@ public sealed class TemplatesSectionView : Grid
                 _ = _viewModel.GenerateAsync();
             }
         };
-        _blankName = new TextField(string.Empty, string.Empty) { Height = 48 };
+        _blankName = new TextInput(string.Empty, string.Empty) { Height = 48 };
         _blankName.Changed += (_, _) => _viewModel.SetBlankName(_blankName.Text);
-        _rowName = new TextField(string.Empty, string.Empty);
+        _rowName = new TextInput(string.Empty, string.Empty);
         _rowName.Changed += (_, _) =>
         {
             if (_renaming is { } index)
@@ -94,10 +94,10 @@ public sealed class TemplatesSectionView : Grid
         );
         ColumnDefinitions.Add(_previewColumn);
         var content = Ui.Column(24, _header, _ai, _blank, _suggested, _available, _installed);
-        Children.Add(new TouchPanScrollViewer { Content = content, Padding = new Thickness(24) });
+        Children.Add(new ThemedScrollViewer { Content = content, Padding = new Thickness(24) });
         var preview = new Border
         {
-            Child = new TouchPanScrollViewer { Content = _preview, Padding = new Thickness(20) },
+            Child = new ThemedScrollViewer { Content = _preview, Padding = new Thickness(20) },
             BorderThickness = new Thickness(1, 0, 0, 0),
         };
         Ui.Ink(preview, Border.BackgroundProperty, ColorToken.Side);
@@ -129,7 +129,7 @@ public sealed class TemplatesSectionView : Grid
         }
     }
 
-    private static CcButton Primary(string? icon, string text, Action click, double height = 44)
+    private static TouchButton Primary(string? icon, string text, Action click, double height = 44)
     {
         var button = Ui.Button(
             Ui.IconLabel(
@@ -149,7 +149,7 @@ public sealed class TemplatesSectionView : Grid
         return button;
     }
 
-    private static CcButton Secondary(
+    private static TouchButton Secondary(
         string? icon,
         string text,
         Action click,
@@ -296,7 +296,7 @@ public sealed class TemplatesSectionView : Grid
         _query.Show(model.Query);
         _query.SetPlaceholder(model.Placeholder);
         var mic = Ui.Button(
-            Ui.Icon("mic", 24, ColorToken.Accent),
+            Ui.Icon("mic", 24, ColorToken.AccentInk),
             model.DictateName,
             () => FocusAndDictate(_query),
             ColorToken.Field,
@@ -484,7 +484,7 @@ public sealed class TemplatesSectionView : Grid
             10,
             Ui.Row(
                 8,
-                Ui.Icon(model.Icon, 20, ColorToken.Warn),
+                Ui.Icon(model.Icon, 20, ColorToken.WarnText),
                 Ui.Text(model.Title, 14, bold: true, wrap: true)
             ),
             Ui.Text(model.Text, 13, wrap: true),
@@ -499,9 +499,9 @@ public sealed class TemplatesSectionView : Grid
     private UIElement KeyboardLine(KeyboardModel model)
     {
         var line = new DockPanel { LastChildFill = true };
-        var action = Ui.Text(model.ActionText, 12, bold: true, ink: ColorToken.Accent);
+        var action = Ui.Text(model.ActionText, 12, bold: true, ink: ColorToken.AccentInk);
         DockPanel.SetDock(action, Dock.Right);
-        var icon = Ui.Icon("keyboard", 22, ColorToken.Accent);
+        var icon = Ui.Icon("keyboard", 22, ColorToken.AccentInk);
         icon.Margin = new Thickness(0, 0, 10, 0);
         DockPanel.SetDock(icon, Dock.Left);
         line.Children.Add(action);
@@ -521,7 +521,7 @@ public sealed class TemplatesSectionView : Grid
             height: double.NaN,
             radius: 12,
             offFill: ColorToken.Field,
-            role: CcToggleRole.Expander
+            role: OptionRole.Expander
         );
         toggle.MinHeight = 48;
         toggle.Padding = new Thickness(12, 6, 12, 6);
@@ -562,7 +562,7 @@ public sealed class TemplatesSectionView : Grid
             var content = new DockPanel { LastChildFill = true };
             if (option.Detected)
             {
-                var tag = Ui.Text(detected, 11, bold: true, ink: ColorToken.Accent);
+                var tag = Ui.Text(detected, 11, bold: true, ink: ColorToken.AccentInk);
                 DockPanel.SetDock(tag, Dock.Right);
                 content.Children.Add(tag);
             }
@@ -576,7 +576,7 @@ public sealed class TemplatesSectionView : Grid
                 height: double.NaN,
                 radius: 9,
                 offFill: null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
 
             // In the narrowest window a name takes three lines: the option grows with it (CCM-005).
@@ -617,13 +617,13 @@ public sealed class TemplatesSectionView : Grid
             height: double.NaN,
             radius: 14,
             offFill: null,
-            role: CcToggleRole.Expander
+            role: OptionRole.Expander
         );
         toggle.MinHeight = 60;
         toggle.Padding = new Thickness(14, 8, 14, 8);
         toggle.BorderThickness = new Thickness(0);
         toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        CcChrome.Paint(toggle, null, ColorToken.Text, null);
+        Ui.Paint(toggle, null, ColorToken.Text, null);
         AutomationProperties.SetHelpText(toggle, model.Subtitle);
 
         var column = Ui.Column(10, toggle);
@@ -638,14 +638,14 @@ public sealed class TemplatesSectionView : Grid
     private StackPanel BlankForm(BlankModel model)
     {
         var icon = Ui.Choice(
-            Ui.Icon(model.Icon, 26, ColorToken.Accent),
+            Ui.Icon(model.Icon, 26, ColorToken.AccentInk),
             model.ChangeIconName,
             model.IconsOpen,
             _viewModel.ToggleBlankIcons,
             48,
             12,
             ColorToken.Side,
-            role: CcToggleRole.Expander
+            role: OptionRole.Expander
         );
         icon.Width = 48;
         icon.Padding = new Thickness(0);
@@ -654,7 +654,7 @@ public sealed class TemplatesSectionView : Grid
         _blankName.SetPlaceholder(model.Placeholder);
         _blankName.Show(model.Name);
         var mic = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.Accent),
+            Ui.Icon("mic", 22, ColorToken.AccentInk),
             model.DictateName,
             () => FocusAndDictate(_blankName),
             ColorToken.AccentWash,
@@ -689,13 +689,13 @@ public sealed class TemplatesSectionView : Grid
                     () => _viewModel.SetBlankIcon(option.Icon),
                     44,
                     8,
-                    role: CcToggleRole.Option
+                    role: OptionRole.Option
                 );
                 button.Padding = new Thickness(0);
                 grid.Children.Add(button);
             }
 
-            column.Children.Add(new TouchPanScrollViewer { Content = grid, MaxHeight = 140 });
+            column.Children.Add(new ThemedScrollViewer { Content = grid, MaxHeight = 140 });
         }
 
         column.Children.Add(Ui.Caption(model.LinkTitle));
@@ -711,7 +711,7 @@ public sealed class TemplatesSectionView : Grid
                             () => _viewModel.SetBlankLink(link.Id),
                             radius: 22,
                             offFill: ColorToken.Side,
-                            role: CcToggleRole.Option
+                            role: OptionRole.Option
                         )
                 )
             )
@@ -752,7 +752,7 @@ public sealed class TemplatesSectionView : Grid
         );
         detect.BorderThickness = new Thickness(0);
         detect.Padding = new Thickness(10, 0, 4, 0);
-        CcChrome.Paint(detect, null, ColorToken.Text, null);
+        Ui.Paint(detect, null, ColorToken.Text, null);
         var header = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(detect, Dock.Right);
         header.Children.Add(detect);
@@ -849,7 +849,7 @@ public sealed class TemplatesSectionView : Grid
                 () => _viewModel.PreviewTemplate(card.Id),
                 height: double.NaN,
                 radius: 14,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             open.Padding = new Thickness(14, 14, 14, 8);
             open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
@@ -884,7 +884,7 @@ public sealed class TemplatesSectionView : Grid
                 {
                     var content = Ui.Row(
                         8,
-                        Ui.Icon(profile.Icon, 20, ColorToken.Accent),
+                        Ui.Icon(profile.Icon, 20, ColorToken.AccentInk),
                         Ui.Text(profile.Name, 14, bold: true),
                         Ui.Text(profile.Count, 12, ink: ColorToken.Muted),
                         Ui.Icon("chevron_right", 18, ColorToken.Muted)
@@ -971,7 +971,7 @@ public sealed class TemplatesSectionView : Grid
                         8,
                         Ui.Row(
                             8,
-                            Ui.Icon("help", 20, ColorToken.Warn),
+                            Ui.Icon("help", 20, ColorToken.WarnText),
                             Ui.Text(unknown, 13, wrap: true)
                         ),
                         blank
@@ -990,7 +990,7 @@ public sealed class TemplatesSectionView : Grid
                 Ui.Card(
                     Ui.Row(
                         8,
-                        Ui.Icon("check_circle", 20, ColorToken.Accent),
+                        Ui.Icon("check_circle", 20, ColorToken.AccentInk),
                         Ui.Text(note, 13, wrap: true)
                     ),
                     ColorToken.AccentWash,
@@ -1083,7 +1083,7 @@ public sealed class TemplatesSectionView : Grid
         toggle.BorderThickness = new Thickness(0);
         toggle.Padding = new Thickness(10, 6, 4, 6);
         toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        CcChrome.Paint(toggle, null, ColorToken.Text, null);
+        Ui.Paint(toggle, null, ColorToken.Text, null);
         toggle.IsEnabled = !row.AlreadyIn;
         AutomationProperties.SetHelpText(toggle, row.Warning ?? string.Empty);
 
@@ -1133,7 +1133,7 @@ public sealed class TemplatesSectionView : Grid
             _rowName.Show(row.Name, force: starting);
             // PLA-015, ACC-011: the name of a row is dictated like every other free text.
             var dictate = Ui.Button(
-                Ui.Icon("mic", 22, ColorToken.Accent),
+                Ui.Icon("mic", 22, ColorToken.AccentInk),
                 row.DictateName,
                 () => FocusAndDictate(_rowName),
                 ColorToken.AccentWash
@@ -1176,7 +1176,7 @@ public sealed class TemplatesSectionView : Grid
         return card;
     }
 
-    private void FocusAndDictate(TextField field)
+    private void FocusAndDictate(TextInput field)
     {
         _ = Keyboard.Focus(field.Box);
         _viewModel.Dictate();

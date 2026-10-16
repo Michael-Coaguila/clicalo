@@ -3,7 +3,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Workspace.Internal;
+using Clicalo.UI.Wpf.Controls.Internal;
 
 namespace Clicalo.UI.Wpf.Workspace.SystemSection;
 
@@ -16,14 +16,23 @@ internal sealed class SystemTabItem : ToggleButton
 {
     static SystemTabItem()
     {
-        // Its own style key: no theme style of Windows replaces the template (as CcToggle does).
+        // Its own style key: no theme style of Windows replaces the template.
         DefaultStyleKeyProperty.OverrideMetadata(
             typeof(SystemTabItem),
             new FrameworkPropertyMetadata(typeof(SystemTabItem))
         );
         TemplateProperty.OverrideMetadata(
             typeof(SystemTabItem),
-            new FrameworkPropertyMetadata(CcChrome.ToggleTemplate)
+            new FrameworkPropertyMetadata(
+                OptionChrome.For(
+                    typeof(SystemTabItem),
+                    OptionKind.Segment,
+                    IsCheckedProperty,
+                    OptionButton.SymbolProperty,
+                    OptionButton.CaptionProperty,
+                    OptionButton.CountProperty
+                )
+            )
         );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(SystemTabItem),

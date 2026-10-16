@@ -97,7 +97,7 @@ internal static class BrandMark
     /// <param name="px">The type size of the initials.</param>
     public static Border Avatar(string initials, double size, double px)
     {
-        var text = Ui.Text(initials, px, bold: true, ink: ColorToken.Accent);
+        var text = Ui.Text(initials, px, bold: true, ink: ColorToken.AccentInk);
         text.HorizontalAlignment = HorizontalAlignment.Center;
         var avatar = new Border
         {

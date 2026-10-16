@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Clicalo.Presentation.ControlCenter.Editor;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -20,14 +21,14 @@ public sealed class ProgramListView : StackPanel
     private const double ListHeight = 196;
 
     private readonly Action<string> _pick;
-    private readonly TextField _search;
+    private readonly TextInput _search;
     private readonly DockPanel _searchRow;
-    private readonly CcButton _dictate;
+    private readonly TouchButton _dictate;
     private readonly TextBlock _label;
     private readonly TextBlock _note;
     private readonly WrapPanel _choices;
-    private readonly TouchPanScrollViewer _scroll;
-    private readonly List<(ProgramChip Program, CcToggle Button)> _buttons = [];
+    private readonly ThemedScrollViewer _scroll;
+    private readonly List<(ProgramChip Program, OptionButton Button)> _buttons = [];
     private int _version = -1;
 
     /// <summary>Creates the list, empty.</summary>
@@ -42,12 +43,12 @@ public sealed class ProgramListView : StackPanel
         _pick = pick;
         _label = Ui.Text(string.Empty, 12, ink: ColorToken.Muted);
         _label.Margin = new Thickness(0, 0, 0, Gap);
-        _search = new TextField(string.Empty, string.Empty);
+        _search = new TextInput(string.Empty, string.Empty);
         _search.Changed += (_, _) => filter(_search.Text);
         var glass = Ui.Icon("search", 20, ColorToken.Muted);
         glass.Margin = new Thickness(0, 0, Gap, 0);
         _dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.Accent),
+            Ui.Icon("mic", 22, ColorToken.AccentInk),
             string.Empty,
             () => dictate(_search.Box),
             ColorToken.AccentWash
@@ -64,7 +65,7 @@ public sealed class ProgramListView : StackPanel
         _note = Ui.Text(string.Empty, 13, ink: ColorToken.Muted, wrap: true);
         AutomationProperties.SetLiveSetting(_note, AutomationLiveSetting.Polite);
         _choices = new WrapPanel { Margin = new Thickness(0, 0, -Gap, -Gap) };
-        _scroll = new TouchPanScrollViewer { Content = _choices, MaxHeight = ListHeight };
+        _scroll = new ThemedScrollViewer { Content = _choices, MaxHeight = ListHeight };
         Children.Add(_label);
         Children.Add(_searchRow);
         Children.Add(_note);
@@ -145,7 +146,7 @@ public sealed class ProgramListView : StackPanel
                 () => _pick(program.Target),
                 44,
                 22,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             button.Margin = new Thickness(0, 0, Gap, Gap);
             _buttons.Add((program, button));

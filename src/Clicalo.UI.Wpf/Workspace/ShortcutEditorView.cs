@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Editor;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -31,12 +32,12 @@ public sealed class ShortcutEditorView : StackPanel
     private readonly ContentControl _more = Region();
     private readonly ContentControl _test = Region();
     private readonly ContentControl _footer = Region();
-    private readonly TextField _name;
-    private readonly TextField _iconSearch;
-    private readonly TextField _text;
-    private readonly TextField _target;
+    private readonly TextInput _name;
+    private readonly TextInput _iconSearch;
+    private readonly TextInput _text;
+    private readonly TextInput _target;
     private readonly ProgramListView _programs;
-    private readonly Dictionary<int, TextField> _stepTexts = [];
+    private readonly Dictionary<int, TextInput> _stepTexts = [];
     private EditorModel? _shown;
     private string _shownKey = string.Empty;
 
@@ -46,13 +47,13 @@ public sealed class ShortcutEditorView : StackPanel
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        _name = new TextField(string.Empty, string.Empty);
+        _name = new TextInput(string.Empty, string.Empty);
         _name.Changed += (_, _) => _viewModel.Rename(_name.Text);
-        _iconSearch = new TextField(string.Empty, string.Empty);
+        _iconSearch = new TextInput(string.Empty, string.Empty);
         _iconSearch.Changed += (_, _) => _viewModel.SearchIcons(_iconSearch.Text);
-        _text = new TextField(string.Empty, string.Empty, multiline: true);
+        _text = new TextInput(string.Empty, string.Empty, multiline: true);
         _text.Changed += (_, _) => _viewModel.SetText(_text.Text);
-        _target = new TextField(string.Empty, string.Empty, mono: true);
+        _target = new TextInput(string.Empty, string.Empty);
         _target.Changed += (_, _) => _viewModel.SetTarget(_target.Text);
         _programs = new ProgramListView(
             _viewModel.FilterPrograms,
@@ -219,7 +220,7 @@ public sealed class ShortcutEditorView : StackPanel
     private Border DuplicateCard(DuplicateCardModel model)
     {
         var headContent = new DockPanel { LastChildFill = true };
-        headContent.Children.Add(Docked(Ui.Icon("warning", 20, ColorToken.Warn), Dock.Left));
+        headContent.Children.Add(Docked(Ui.Icon("warning", 20, ColorToken.WarnText), Dock.Left));
         headContent.Children.Add(
             Docked(
                 Ui.Icon(model.Expanded ? "expand_less" : "expand_more", 20, ColorToken.Muted),
@@ -380,7 +381,7 @@ public sealed class ShortcutEditorView : StackPanel
             _viewModel.TogglePicker,
             84,
             14,
-            role: CcToggleRole.Expander
+            role: OptionRole.Expander
         );
         tile.Width = 84;
         tile.Padding = new Thickness(4);
@@ -392,7 +393,7 @@ public sealed class ShortcutEditorView : StackPanel
         AutomationProperties.SetName(_name.Box, model.NameLabel);
         _name.Show(model.Name, force: keyChanged);
         var dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.Accent),
+            Ui.Icon("mic", 22, ColorToken.AccentInk),
             model.DictateName,
             () =>
             {
@@ -411,7 +412,7 @@ public sealed class ShortcutEditorView : StackPanel
         SetPlaceholder(_name, model.Placeholder);
         var hint = Ui.Row(
             4,
-            Ui.Icon(model.HintIcon, 14, ColorToken.Accent),
+            Ui.Icon(model.HintIcon, 14, ColorToken.AccentInk),
             Ui.Text(model.Hint, 12, ink: ColorToken.Muted, wrap: true)
         );
         var right = Ui.Column(6, Ui.Caption(model.NameLabel), field, hint);
@@ -423,13 +424,8 @@ public sealed class ShortcutEditorView : StackPanel
         return row;
     }
 
-    private static void SetPlaceholder(TextField field, string placeholder)
-    {
-        if (field.Child is Grid grid && grid.Children[0] is TextBlock block)
-        {
-            block.Text = placeholder;
-        }
-    }
+    private static void SetPlaceholder(TextInput field, string placeholder) =>
+        field.SetPlaceholder(placeholder);
 
     private Border Picker(IconPickerModel model)
     {
@@ -455,7 +451,7 @@ public sealed class ShortcutEditorView : StackPanel
         DockPanel.SetDock(glass, Dock.Left);
         search.Children.Add(glass);
         var dictateIcon = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.Accent),
+            Ui.Icon("mic", 22, ColorToken.AccentInk),
             model.DictateName,
             () => Dictate(_iconSearch),
             ColorToken.AccentWash
@@ -478,11 +474,11 @@ public sealed class ShortcutEditorView : StackPanel
             grid.Children.Add(IconChoice(option.Icon, option.Selected, 44, 20));
         }
 
-        body.Children.Add(new TouchPanScrollViewer { Content = grid, MaxHeight = 180 });
+        body.Children.Add(new ThemedScrollViewer { Content = grid, MaxHeight = 180 });
         return Ui.Card(body, ColorToken.Card, ColorToken.Border, 12, new Thickness(10));
     }
 
-    private CcToggle IconChoice(string icon, bool selected, double size, double glyph)
+    private OptionButton IconChoice(string icon, bool selected, double size, double glyph)
     {
         var button = Ui.Choice(
             Ui.Icon(icon, glyph),
@@ -491,7 +487,7 @@ public sealed class ShortcutEditorView : StackPanel
             () => _viewModel.PickIcon(icon),
             size,
             8,
-            role: CcToggleRole.Option
+            role: OptionRole.Option
         );
         button.Width = size;
         button.Padding = new Thickness(0);
@@ -510,7 +506,7 @@ public sealed class ShortcutEditorView : StackPanel
                     () => _viewModel.SetKind(option.Kind),
                     56,
                     10,
-                    role: CcToggleRole.Option
+                    role: OptionRole.Option
                 );
                 button.Padding = new Thickness(2);
                 return (UIElement)button;
@@ -532,7 +528,7 @@ public sealed class ShortcutEditorView : StackPanel
             AutomationProperties.SetName(_text.Box, text.Label);
             _text.Show(_viewModel.RevealText(), force: keyChanged);
             var dictate = Ui.Button(
-                Ui.Icon("mic", 22, ColorToken.Accent),
+                Ui.Icon("mic", 22, ColorToken.AccentInk),
                 text.DictateName,
                 () => Dictate(_text),
                 ColorToken.AccentWash
@@ -570,7 +566,7 @@ public sealed class ShortcutEditorView : StackPanel
                         () => _viewModel.SetMouse(option.Op),
                         48,
                         10,
-                        role: CcToggleRole.Option
+                        role: OptionRole.Option
                     );
                     button.HorizontalContentAlignment = HorizontalAlignment.Left;
                     return (UIElement)button;
@@ -612,7 +608,7 @@ public sealed class ShortcutEditorView : StackPanel
             _target.Show(target.Value, force: keyChanged);
             _target.Warn(target.Invalid);
             var dictate = Ui.Button(
-                Ui.Icon("mic", 22, ColorToken.Accent),
+                Ui.Icon("mic", 22, ColorToken.AccentInk),
                 target.DictateName,
                 () => Dictate(_target),
                 ColorToken.AccentWash
@@ -679,7 +675,7 @@ public sealed class ShortcutEditorView : StackPanel
         foreach (var step in model.Steps)
         {
             var number = Ui.Card(
-                Ui.Text(step.Number, 12, bold: true, ink: ColorToken.Accent),
+                Ui.Text(step.Number, 12, bold: true, ink: ColorToken.AccentInk),
                 ColorToken.AccentWash,
                 null,
                 12,
@@ -773,7 +769,7 @@ public sealed class ShortcutEditorView : StackPanel
                 case StepEditorKind.Text:
                     var field = StepText(step.Index, model.Label);
                     var dictate = Ui.Button(
-                        Ui.Icon("mic", 22, ColorToken.Accent),
+                        Ui.Icon("mic", 22, ColorToken.AccentInk),
                         model.DictateName,
                         () => Dictate(field),
                         ColorToken.AccentWash
@@ -804,7 +800,7 @@ public sealed class ShortcutEditorView : StackPanel
                                     () => _viewModel.SetStepMouse(step.Index, option.Op),
                                     44,
                                     8,
-                                    role: CcToggleRole.Option
+                                    role: OptionRole.Option
                                 )
                         )
                     );
@@ -841,11 +837,11 @@ public sealed class ShortcutEditorView : StackPanel
         return column;
     }
 
-    private TextField StepText(int index, string name)
+    private TextInput StepText(int index, string name)
     {
         if (!_stepTexts.TryGetValue(index, out var field))
         {
-            field = new TextField(name, string.Empty, multiline: true);
+            field = new TextInput(name, string.Empty, multiline: true);
             field.Changed += (_, _) => _viewModel.SetStepText(index, field.Text);
             _stepTexts[index] = field;
         }
@@ -855,7 +851,7 @@ public sealed class ShortcutEditorView : StackPanel
         return field;
     }
 
-    private static CcButton Dashed(UIElement content, string name, Action click, double height)
+    private static TouchButton Dashed(UIElement content, string name, Action click, double height)
     {
         var frame = new System.Windows.Shapes.Rectangle
         {
@@ -1005,7 +1001,7 @@ public sealed class ShortcutEditorView : StackPanel
                     LastChildFill = true,
                     Children =
                     {
-                        Docked(Ui.Icon("record_voice_over", 20, ColorToken.Accent), Dock.Left),
+                        Docked(Ui.Icon("record_voice_over", 20, ColorToken.AccentInk), Dock.Left),
                         Docked(
                             Ui.Icon(
                                 model.VoiceHowOpen ? "expand_less" : "expand_more",
@@ -1086,15 +1082,9 @@ public sealed class ShortcutEditorView : StackPanel
             new Thickness(3)
         );
 
-    private static CcToggle Segment(string label, bool selected, Action click)
+    private static OptionButton Segment(string label, bool selected, Action click)
     {
-        var text = Ui.Text(
-            label,
-            12,
-            bold: true,
-            ink: selected ? ColorToken.OnAccent : ColorToken.Text,
-            wrap: true
-        );
+        var text = Ui.Text(label, 12, bold: true, ink: ColorToken.Text, wrap: true);
         text.TextAlignment = TextAlignment.Center;
         var button = Ui.Choice(
             text,
@@ -1104,15 +1094,15 @@ public sealed class ShortcutEditorView : StackPanel
             44,
             8,
             offFill: null,
-            role: CcToggleRole.Option
+            role: OptionRole.Option
         );
         if (selected)
         {
-            CcChrome.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
+            Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
         }
         else
         {
-            CcChrome.Paint(button, null, ColorToken.Text, null);
+            Ui.Paint(button, null, ColorToken.Text, null);
         }
 
         button.BorderThickness = new Thickness(0);
@@ -1142,8 +1132,8 @@ public sealed class ShortcutEditorView : StackPanel
                     16,
                     14,
                     bold: false,
-                    ink: item.Lit ? ColorToken.OnAccent : ColorToken.Text,
-                    iconInk: item.Lit ? ColorToken.OnAccent : ColorToken.Text
+                    ink: ColorToken.Text,
+                    iconInk: ColorToken.Text
                 ),
                 item.Lit ? ColorToken.Accent : ColorToken.Card,
                 item.Lit ? ColorToken.Accent : ColorToken.Border,
@@ -1175,7 +1165,7 @@ public sealed class ShortcutEditorView : StackPanel
             var phaseLine = Ui.Card(
                 Ui.Row(
                     8,
-                    Ui.Icon(model.PhaseIcon, 18, ColorToken.Accent),
+                    Ui.Icon(model.PhaseIcon, 18, ColorToken.AccentInk),
                     Ui.Text(phase, 13, bold: true, wrap: true)
                 ),
                 ColorToken.Win,
@@ -1207,7 +1197,7 @@ public sealed class ShortcutEditorView : StackPanel
                                 () => _viewModel.ChooseTarget(target.Process),
                                 44,
                                 22,
-                                role: CcToggleRole.Option
+                                role: OptionRole.Option
                             )
                     )
                 )
@@ -1291,7 +1281,7 @@ public sealed class ShortcutEditorView : StackPanel
         {
             var ok = Ui.Row(
                 6,
-                Ui.Icon("check_circle", 18, ColorToken.Accent),
+                Ui.Icon("check_circle", 18, ColorToken.AccentInk),
                 Ui.Text(answer, 13, bold: true, wrap: true)
             );
             AutomationProperties.SetLiveSetting(ok, AutomationLiveSetting.Polite);
@@ -1303,7 +1293,7 @@ public sealed class ShortcutEditorView : StackPanel
             var list = Ui.Column(6, Ui.Text(tips, 13, bold: true));
             foreach (var tip in model.Tips)
             {
-                var icon = Ui.Icon("lightbulb", 16, ColorToken.Warn);
+                var icon = Ui.Icon("lightbulb", 16, ColorToken.WarnText);
                 icon.VerticalAlignment = VerticalAlignment.Top;
                 list.Children.Add(Ui.Row(6, icon, Ui.Text(tip, 13, wrap: true)));
             }
@@ -1330,9 +1320,9 @@ public sealed class ShortcutEditorView : StackPanel
             _viewModel.ToggleTest,
             48,
             10,
-            role: CcToggleRole.Expander
+            role: OptionRole.Expander
         );
-        CcChrome.Paint(test, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
+        Ui.Paint(test, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
         var duplicate = Ui.Button(
             Ui.IconLabel("content_copy", model.DuplicateText, 18, 13),
             model.DuplicateText,
@@ -1388,7 +1378,7 @@ public sealed class ShortcutEditorView : StackPanel
         return grid;
     }
 
-    private static CcButton IconOnly(string icon, string name, Action click)
+    private static TouchButton IconOnly(string icon, string name, Action click)
     {
         var button = Ui.Button(Ui.Icon(icon, 22), name, click);
         button.Width = 44;
@@ -1397,7 +1387,7 @@ public sealed class ShortcutEditorView : StackPanel
         return button;
     }
 
-    private void Dictate(TextField field)
+    private void Dictate(TextInput field)
     {
         _ = Keyboard.Focus(field.Box);
         _viewModel.Dictate();

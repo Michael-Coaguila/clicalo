@@ -136,7 +136,32 @@ public sealed class OptionButton : ToggleButton
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
-        if (GetTemplateChild(OptionChrome.TextPart) is ContentPresenter presenter)
+        ApplyTextStyle();
+    }
+
+    /// <summary>Clicks it as a tap does; UI Automation's Select, Toggle, Expand and Collapse end here.</summary>
+    internal void ClickFromAutomation() => OnClick();
+
+    /// <inheritdoc />
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+        ApplyTextStyle();
+    }
+
+    // Only a string content takes the text style of the option; a view's own content keeps its texts.
+    private void ApplyTextStyle()
+    {
+        if (GetTemplateChild(OptionChrome.TextPart) is not ContentPresenter presenter)
+        {
+            return;
+        }
+
+        if (Content is not string)
+        {
+            presenter.Resources.Remove(typeof(TextBlock));
+        }
+        else
         {
             presenter.Resources[typeof(TextBlock)] = Kind switch
             {
@@ -147,9 +172,6 @@ public sealed class OptionButton : ToggleButton
             };
         }
     }
-
-    /// <summary>Clicks it as a tap does; UI Automation's Select, Toggle, Expand and Collapse end here.</summary>
-    internal void ClickFromAutomation() => OnClick();
 
     /// <inheritdoc />
     /// <remarks>The state follows the view model: a tap only raises <c>Click</c>.</remarks>

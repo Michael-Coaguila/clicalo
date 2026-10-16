@@ -11,9 +11,10 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.Windowing.IntegrationTests.Controls;
 
 /// <summary>
-/// The tile with the prototype's look (CUA-007, CUA-009, TEM-003): icon in the category tint, bold name, key line in
-/// JetBrains Mono, badge with the type or the state (ACC-003) and the visual states. The accessibility contract of
-/// the tile is <c>ShortcutTilePeerTests</c>.
+/// The tile of direction C (D12; CUA-007, CUA-009, TEM-003): icon in the category tint in its fixed box, bold name,
+/// key line in JetBrains Mono, reserved slots for the voice number and for the type or the state (ACC-003), and the
+/// visual states, with «elegido» drawn as everywhere else. The accessibility contract of the tile is
+/// <c>ShortcutTilePeerTests</c>.
 /// </summary>
 public sealed class ShortcutTileLookTests
 {
@@ -28,7 +29,7 @@ public sealed class ShortcutTileLookTests
             var icon = Part<SymbolIcon>(tile, ShortcutTileTemplate.IconPart);
 
             icon.Symbol.ShouldBe("content_copy");
-            icon.Size.ShouldBe(28);
+            icon.Size.ShouldBe(IconBox.Medium);
             Color(icon.Foreground).ShouldBe(ThemePalettes.Dark.GetCategoryTint(CategoryToken.Edit));
 
             tile.Category = CategoryToken.Voice;
@@ -67,15 +68,21 @@ public sealed class ShortcutTileLookTests
         {
             var tile = Tile();
             using var service = BaseControlTests.Host(tile);
-            var badge = Part<Border>(tile, ShortcutTileTemplate.BadgePart);
+            var type = Part<SymbolIcon>(tile, ShortcutTileTemplate.TypePart);
             var text = Part<TextBlock>(tile, ShortcutTileTemplate.StatePart);
 
-            badge.Visibility.ShouldBe(Visibility.Collapsed);
+            text.Visibility.ShouldBe(Visibility.Collapsed);
+            type.Visibility.ShouldBe(Visibility.Collapsed);
 
             tile.Badge = "ALTERNAR";
             tile.UpdateLayout();
-            badge.Visibility.ShouldBe(Visibility.Visible);
+            text.Visibility.ShouldBe(Visibility.Visible);
             text.Text.ShouldBe("ALTERNAR");
+
+            tile.TypeSymbol = "toggle_on";
+            tile.UpdateLayout();
+            type.Visibility.ShouldBe(Visibility.Visible, "the type icon takes the slot");
+            text.Visibility.ShouldBe(Visibility.Collapsed);
             text.FontSize.ShouldBeGreaterThanOrEqualTo(11, "TEM-007: no text below 11");
 
             tile.AccessibleState = "ACTIVO";
@@ -83,14 +90,16 @@ public sealed class ShortcutTileLookTests
             text.Text.ShouldBe("ACTIVO");
             AutomationProperties.GetItemStatus(tile).ShouldBeEmpty("the peer reads the state");
 
+            type.Visibility.ShouldBe(Visibility.Collapsed, "the state wins over the type");
+
             tile.AccessibleState = string.Empty;
             tile.UpdateLayout();
-            text.Text.ShouldBe("ALTERNAR");
+            type.Visibility.ShouldBe(Visibility.Visible);
         });
 
     [Fact]
     [Trait("Req", "CUA-009")]
-    public void An_active_tile_has_the_category_wash_and_a_2_px_tint_outline() =>
+    public void An_active_tile_is_chosen_as_every_option_without_changing_size() =>
         WpfThread.Invoke(() =>
         {
             var tile = Tile();
@@ -98,17 +107,21 @@ public sealed class ShortcutTileLookTests
             using var service = BaseControlTests.Host(tile);
             var chrome = Part<Border>(tile, ShortcutTileTemplate.ChromePart);
 
+            var ring = Part<System.Windows.Shapes.Rectangle>(tile, ShortcutTileTemplate.RingPart);
+            var size = chrome.RenderSize;
+
             Color(chrome.Background).ShouldBe(ThemePalettes.Dark.Card);
+            ring.Visibility.ShouldBe(Visibility.Collapsed);
 
             tile.ToggleState = ToggleState.On;
+            tile.UpdateLayout();
 
-            Color(chrome.Background)
-                .ShouldBe(ThemePalettes.Dark.GetCategoryWash(CategoryToken.Edit));
-            Color(chrome.BorderBrush)
-                .ShouldBe(ThemePalettes.Dark.GetCategoryTint(CategoryToken.Edit));
-            chrome.BorderThickness.ShouldBe(
-                new Thickness(ShortcutTileTemplate.ActiveBorderThickness)
-            );
+            Color(chrome.Background).ShouldBe(ThemePalettes.Dark.AccentWash);
+            ring.Visibility.ShouldBe(Visibility.Visible);
+            Color(ring.Stroke).ShouldBe(ThemePalettes.Dark.Accent);
+            ring.StrokeThickness.ShouldBe(ShortcutTileTemplate.ActiveBorderThickness);
+            Part<SymbolIcon>(tile, ShortcutTileTemplate.IconPart).IsFilled.ShouldBeTrue();
+            chrome.RenderSize.ShouldBe(size);
         });
 
     [Fact]
@@ -119,22 +132,24 @@ public sealed class ShortcutTileLookTests
             var tile = Tile();
             using var service = BaseControlTests.Host(tile);
             var chrome = Part<Border>(tile, ShortcutTileTemplate.ChromePart);
-            var wash = ThemePalettes.Dark.GetCategoryWash(CategoryToken.Edit);
+            var layers = Part<Grid>(tile, ShortcutTileTemplate.LayersPart);
+            var ring = Part<System.Windows.Shapes.Rectangle>(tile, ShortcutTileTemplate.RingPart);
+            var wash = ThemePalettes.Dark.AccentWash;
 
             tile.IsHeld = true;
-            var scale = chrome.RenderTransform.ShouldBeOfType<ScaleTransform>();
+            var scale = layers.RenderTransform.ShouldBeOfType<ScaleTransform>();
             scale.ScaleX.ShouldBe(ShortcutTileTemplate.HeldScale);
             Color(chrome.Background).ShouldBe(wash);
 
             tile.IsHeld = false;
             tile.IsArmed = true;
-            Color(chrome.BorderBrush).ShouldBe(ThemePalettes.Dark.Warn);
-            Color(chrome.Background).ShouldBe(wash);
+            Color(ring.Stroke).ShouldBe(ThemePalettes.Dark.WarnText);
+            Color(chrome.Background).ShouldBe(ThemePalettes.Dark.WarnWash);
 
             tile.IsArmed = false;
             tile.IsFlashing = true;
             Color(chrome.Background).ShouldBe(wash);
-            chrome.RenderTransform.ShouldNotBeOfType<ScaleTransform>();
+            layers.RenderTransform.ShouldNotBeOfType<ScaleTransform>();
         });
 
     [Fact]

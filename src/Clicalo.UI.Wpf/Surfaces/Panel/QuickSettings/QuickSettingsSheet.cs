@@ -15,8 +15,8 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
 /// <summary>
 /// The Quick settings sheet of the panel (AJR-001, docs/04 §5, prototype lines 77–126): a <c>card</c> sheet of radius
 /// 12 under the search, margin 0 12 10 12, padding 10, sections 14 apart, at most 62 % of the screen high with its own
-/// scroll. In order: the «Centro de control» card (56 high, accent outline on accentWash, a 36 px accent tile with the
-/// <c>settings</c> icon, [openCC] in 14 bold, [ccSub] in 11 muted and a chevron); Vista (three 52 px options with
+/// scroll. In order: the «Centro de control» navigation row (<see cref="NavRow"/>: the <c>settings</c> icon, [openCC]
+/// and [ccSub]); Vista (three 52 px options with
 /// icons); Opacidad with its value in accent (− · slider · +); Tamaño (S, M, L); Lado de la pestaña (four icons, only
 /// in the Tab view); Tema (2 × 2); and the four switch rows. It only projects <see cref="QuickSettingsViewModel"/>.
 /// </summary>
@@ -34,8 +34,6 @@ public sealed class QuickSettingsSheet : Border
 
     private const double SectionGap = 14;
     private const double HeadingGap = 6;
-    private const double CardHeight = 56;
-    private const double CardIconTile = 36;
     private const double ViewOptionHeight = 52;
     private const double OptionHeight = 40;
     private const double HeadingPx = 12;
@@ -44,13 +42,7 @@ public sealed class QuickSettingsSheet : Border
     private const double SmallOptionPx = 12;
 
     private readonly QuickSettingsViewModel _viewModel;
-    private readonly TouchButton _controlCenter;
-    private readonly TextBlock _ccTitle = new()
-    {
-        FontWeight = FontWeights.Bold,
-        TextWrapping = TextWrapping.Wrap,
-    };
-    private readonly TextBlock _ccSubtitle = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly NavRow _controlCenter;
     private readonly TextBlock _viewHeading = Heading();
     private readonly TextBlock _opacityHeading = Heading();
     private readonly TextBlock _opacityValue = new()
@@ -138,7 +130,7 @@ public sealed class QuickSettingsSheet : Border
         );
         layout.Children.Add(Switches(viewModel.Switches));
 
-        _scroller = new SurfaceScrollViewer { Content = layout };
+        _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = layout };
         Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
@@ -379,75 +371,15 @@ public sealed class QuickSettingsSheet : Border
         return section;
     }
 
-    private TouchButton ControlCenterCard()
-    {
-        var tile = new Border
+    // Direction C: the way to the Control Center is a navigation row, not a card inside the sheet.
+    private static NavRow ControlCenterCard() =>
+        new()
         {
-            Width = CardIconTile,
-            Height = CardIconTile,
-            CornerRadius = new CornerRadius(Radii.Small),
-            Child = new SymbolIcon
-            {
-                Symbol = "settings",
-                Size = 20,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
-        };
-        tile.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Accent));
-        ((SymbolIcon)tile.Child).SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.OnAccent)
-        );
-
-        _ccTitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(14));
-        _ccSubtitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(11));
-        _ccSubtitle.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
-        var texts = new StackPanel
-        {
-            Margin = new Thickness(10, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        texts.Children.Add(_ccTitle);
-        texts.Children.Add(_ccSubtitle);
-
-        var chevron = new SymbolIcon
-        {
-            Symbol = "chevron_right",
-            Size = 22,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        chevron.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Accent)
-        );
-
-        var row = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(tile, Dock.Left);
-        DockPanel.SetDock(chevron, Dock.Right);
-        row.Children.Add(tile);
-        row.Children.Add(chevron);
-        row.Children.Add(texts);
-
-        var card = new TouchButton
-        {
-            Variant = ButtonVariant.Secondary,
-            MinHeight = CardHeight,
-            Padding = new Thickness(8, 8, 10, 8),
+            Symbol = "settings",
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            FontWeight = FontWeights.Normal,
             Focusable = false,
             IsTabStop = false,
-            Content = row,
         };
-        card.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.AccentWash));
-        card.SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Accent));
-        return card;
-    }
 
     private SegmentedControl Group(
         IReadOnlyList<QuickOptionViewModel> options,
@@ -545,8 +477,8 @@ public sealed class QuickSettingsSheet : Border
             Visibility =
                 _showsAlways || _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
             AutomationProperties.SetName(this, _viewModel.Name);
-            _ccTitle.Text = _viewModel.ControlCenterTitle;
-            _ccSubtitle.Text = _viewModel.ControlCenterSubtitle;
+            _controlCenter.Content = _viewModel.ControlCenterTitle;
+            _controlCenter.Caption = _viewModel.ControlCenterSubtitle;
             AutomationProperties.SetName(_controlCenter, _viewModel.ControlCenterTitle);
             AutomationProperties.SetHelpText(_controlCenter, _viewModel.ControlCenterSubtitle);
             _viewHeading.Text = _viewModel.ViewHeading;

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Presentation.ControlCenter.Editor;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -36,7 +37,7 @@ internal static class ComboView
             strip.Children.Add(
                 Ui.Row(
                     8,
-                    Ui.Icon("swap_horiz", 18, ColorToken.Warn),
+                    Ui.Icon("swap_horiz", 18, ColorToken.WarnText),
                     Ui.Text(replacing, 12, wrap: true)
                 )
             );
@@ -48,7 +49,7 @@ internal static class ComboView
         var chips = new List<UIElement>();
         if (model.Recording is { } recording)
         {
-            var listening = Ui.Text(recording, 14, ink: ColorToken.Accent, wrap: true);
+            var listening = Ui.Text(recording, 14, ink: ColorToken.AccentInk, wrap: true);
             AutomationProperties.SetLiveSetting(listening, AutomationLiveSetting.Polite);
             chips.Add(listening);
         }
@@ -155,7 +156,7 @@ internal static class ComboView
             DockPanel.SetDock(done, Dock.Right);
             strip.Children.Add(done);
             strip.Children.Add(
-                Ui.Row(8, Ui.Icon("edit", 18, ColorToken.Accent), Ui.Text(step, 12, bold: true))
+                Ui.Row(8, Ui.Icon("edit", 18, ColorToken.AccentInk), Ui.Text(step, 12, bold: true))
             );
             column.Children.Add(
                 Ui.Card(strip, ColorToken.AccentWash, null, 10, new Thickness(10, 4, 4, 4))
@@ -186,15 +187,15 @@ internal static class ComboView
                 44,
                 8,
                 offFill: null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (group.Selected)
             {
-                CcChrome.Paint(tab, ColorToken.CardHi, ColorToken.Text, null);
+                Ui.Paint(tab, ColorToken.CardHi, ColorToken.Text, null);
             }
             else
             {
-                CcChrome.Paint(tab, null, ColorToken.Muted, null);
+                Ui.Paint(tab, null, ColorToken.Muted, null);
             }
 
             tab.BorderThickness = new Thickness(0);
@@ -250,7 +251,7 @@ internal static class ComboView
         return column;
     }
 
-    private static CcToggle KeyButton(KeyCell cell, IComboEditor editor)
+    private static OptionButton KeyButton(KeyCell cell, IComboEditor editor)
     {
         var label = Ui.Text(cell.Label, 12, mono: true, wrap: true);
         label.TextAlignment = TextAlignment.Center;

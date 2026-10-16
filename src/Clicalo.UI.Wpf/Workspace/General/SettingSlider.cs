@@ -17,7 +17,7 @@ internal sealed class SettingSlider
     private readonly TextBlock _value = Ui.Text(
         string.Empty,
         14,
-        ink: ColorToken.Accent,
+        ink: ColorToken.AccentInk,
         mono: true
     );
     private readonly TextBlock _description = Ui.Text(

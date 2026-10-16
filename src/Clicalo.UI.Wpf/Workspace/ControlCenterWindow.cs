@@ -11,6 +11,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.About;
@@ -47,7 +48,7 @@ public sealed class ControlCenterWindow : Window
     private const double TitleHeight = 52;
     private const double StatusHeight = 48;
     private const double WideNav = 220;
-    private const double NarrowNav = 72;
+    private const double NarrowNav = ControlHeight.Large + Space.S6;
 
     private readonly ControlCenterViewModel _viewModel;
     private readonly Border _root = new() { Focusable = true, FocusVisualStyle = null };
@@ -63,7 +64,7 @@ public sealed class ControlCenterWindow : Window
     private readonly GeneralSectionView _general;
     private readonly TouchPrecisionView _touch;
     private readonly AboutSectionView? _about;
-    private readonly CcButton _close;
+    private readonly TouchButton _close;
     private readonly TextBlock _statusText = Ui.Text(string.Empty, 13);
     private readonly LiveAnnouncer _statusAnnouncer;
     private string? _announced;
@@ -115,8 +116,8 @@ public sealed class ControlCenterWindow : Window
         _close.Padding = new Thickness(0);
         _close.BorderThickness = new Thickness(0);
         _close.MouseEnter += (_, _) =>
-            CcChrome.Paint(_close, ColorToken.Danger, ColorToken.OnDanger, null);
-        _close.MouseLeave += (_, _) => CcChrome.Paint(_close, null, ColorToken.Text, null);
+            Ui.Paint(_close, ColorToken.Danger, ColorToken.OnDanger, null);
+        _close.MouseLeave += (_, _) => Ui.Paint(_close, null, ColorToken.Text, null);
         WindowChrome.SetIsHitTestVisibleInChrome(_close, true);
 
         var layout = new Grid();
@@ -133,7 +134,7 @@ public sealed class ControlCenterWindow : Window
         );
         var nav = new Border
         {
-            Child = new TouchPanScrollViewer
+            Child = new ThemedScrollViewer
             {
                 Content = _nav,
                 Padding = new Thickness(10, 12, 10, 12),
@@ -430,27 +431,22 @@ public sealed class ControlCenterWindow : Window
         foreach (var option in _viewModel.Languages)
         {
             var button = Ui.Choice(
-                Ui.Text(
-                    option.Label,
-                    12,
-                    bold: true,
-                    ink: option.Selected ? ColorToken.OnAccent : ColorToken.Text
-                ),
+                Ui.Text(option.Label, 12, bold: true, ink: ColorToken.Text),
                 option.Name,
                 option.Selected,
                 () => _viewModel.SetLanguage(option.Code),
                 44,
                 7,
                 offFill: null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (option.Selected)
             {
-                CcChrome.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
+                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
             }
             else
             {
-                CcChrome.Paint(button, null, ColorToken.Text, null);
+                Ui.Paint(button, null, ColorToken.Text, null);
             }
 
             button.BorderThickness = new Thickness(0);
@@ -486,7 +482,11 @@ public sealed class ControlCenterWindow : Window
                 column.Children.Add(Ui.Line(8));
             }
 
-            var icon = Ui.Icon(item.Icon, 22, item.Selected ? ColorToken.Accent : ColorToken.Text);
+            var icon = Ui.Icon(
+                item.Icon,
+                22,
+                item.Selected ? ColorToken.AccentInk : ColorToken.Text
+            );
             UIElement content;
             if (_narrow)
             {
@@ -523,7 +523,7 @@ public sealed class ControlCenterWindow : Window
                         item.Label,
                         15,
                         bold: true,
-                        ink: item.Selected ? ColorToken.Accent : ColorToken.Text,
+                        ink: item.Selected ? ColorToken.AccentInk : ColorToken.Text,
                         wrap: true
                     )
                 );
@@ -538,15 +538,15 @@ public sealed class ControlCenterWindow : Window
                 46,
                 10,
                 offFill: null,
-                role: CcToggleRole.Option
+                role: OptionRole.Option
             );
             if (item.Selected)
             {
-                CcChrome.Paint(button, ColorToken.AccentWash, ColorToken.Accent, null);
+                Ui.Paint(button, ColorToken.AccentWash, ColorToken.Accent, null);
             }
             else
             {
-                CcChrome.Paint(button, null, ColorToken.Text, null);
+                Ui.Paint(button, null, ColorToken.Text, null);
             }
 
             button.BorderThickness = new Thickness(0);

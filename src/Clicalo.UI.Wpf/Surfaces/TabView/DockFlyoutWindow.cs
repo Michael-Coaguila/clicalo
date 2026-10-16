@@ -140,7 +140,12 @@ public sealed class DockFlyoutWindow : TouchSurface
 
         SizeToContent = SizeToContent.Height;
         FixedWidth = Width;
-        _scroller = new SurfaceScrollViewer { Content = body, Padding = new Thickness(8) };
+        _scroller = new ThemedScrollViewer
+        {
+            PansWithMouse = false,
+            Content = body,
+            Padding = new Thickness(8),
+        };
         Content = _scroller;
         viewModel.Labels.PropertyChanged += OnLabelsChanged;
         RebuildPinned();
