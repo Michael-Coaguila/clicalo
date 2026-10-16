@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
@@ -19,33 +20,32 @@ using Clicalo.UI.Wpf.Windowing;
 namespace Clicalo.UI.Wpf.Surfaces.TabView;
 
 /// <summary>
-/// A window beside the open bar (blueprint §8.1, a <see cref="NonActivatingWindow"/> child, never a <c>Popup</c>):
+/// A window beside the open bar (blueprint §8.1, a <see cref="NonActivatingWindow"/> child, never a <c>Popup</c>), in
+/// direction C (D12) with the same pieces as the panel: an <see cref="Overline"/> header that stays while the content
+/// scrolls in a <see cref="ThemedScrollViewer"/>, <see cref="Space.S3"/> inside, on <c>win</c> with its line.
 /// <list type="bullet">
-/// <item>📌 «Pinned» (PES-010): 230 wide, the header 📌 [always] and the shortcuts of Always visible in 2 columns of 68
-/// high; after using one it closes, unless it holds or latches;</item>
-/// <item>the profile grid (PES-011): 236 wide, the header [pickProfile] and the same grid as SEL-003;</item>
+/// <item>📌 «Pinned» (PES-010): 230 wide, the header 📌 [always] and the shortcuts of Always visible in 2 columns of
+/// <see cref="ControlHeight.Large"/>, as the row of Always visible of the panel; after using one it closes, unless it
+/// holds or latches;</item>
+/// <item>the profile grid (PES-011): 236 wide, the header [pickProfile] and the same grid as SEL-003, without a box of
+/// its own (two levels: the window and its tiles);</item>
 /// <item>sticky keys (PES-008, AUD-13): Ctrl, Alt, Shift and Win with their three states.</item>
 /// </list>
-/// It scrolls when taller than the work area less 140, with the finger: a contact that slides past the «cancel if
-/// you slide» distance scrolls and activates nothing (TAC-004), and what is scrolled out of sight is no target. The
-/// shortcuts of «Pinned» open their menu with a long press and show the marks of test mode (PES-010, PES-014). Where it
-/// goes is the surface set's (<c>DockGeometry.Beside</c>).
+/// Its size comes from what it shows when it opens, up to the work area less 140; taller content scrolls, with the
+/// finger: a contact that slides past the «cancel if you slide» distance scrolls and activates nothing (TAC-004), and
+/// what is scrolled out of sight is no target. The shortcuts of «Pinned» open their menu with a long press and show the
+/// marks of test mode (PES-010, PES-014). Where it goes is the surface set's (<c>DockGeometry.Beside</c>).
 /// </summary>
 public sealed class DockFlyoutWindow : TouchSurface
 {
     private const double PinnedWidth = 230;
     private const double ProfilesWidth = 236;
-    private const double HeaderPx = 12;
-    private const double PinnedTileHeight = 68;
-    private const double PinnedIconPx = 24;
-    private const double PinnedLabelPx = 12;
-    private const double Gap = 6;
 
     private readonly DockBarViewModel _viewModel;
     private readonly UniformGrid? _pinnedGrid;
     private readonly PickerGridView? _picker;
     private readonly StickyKeysRowView? _sticky;
-    private readonly TextBlock _header;
+    private readonly Overline _header;
     private readonly ScrollViewer _scroller;
     private readonly TouchSurfaceScroll _scroll = new();
     private readonly List<(
@@ -93,60 +93,85 @@ public sealed class DockFlyoutWindow : TouchSurface
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
-        _header = SurfaceParts.Text(HeaderPx, ColorToken.Muted, bold: true);
-        _header.HorizontalAlignment = HorizontalAlignment.Left;
-        var headerRow = new StackPanel
+        // One section label, as everywhere (D12): the Overline, with the icon of the button that opens the window.
+        _header = new Overline { VerticalAlignment = VerticalAlignment.Center };
+        var headerRow = new DockPanel
         {
-            Orientation = Orientation.Horizontal,
-            Margin = new Thickness(6, 4, 6, 2),
+            LastChildFill = true,
+            Margin = new Thickness(Space.S3, Space.S3, Space.S3, Space.S2),
         };
-        if (flyout == DockFlyout.Pinned)
+        var symbol = flyout switch
         {
-            var pin = SurfaceParts.Icon("push_pin", 16, ColorToken.Muted);
-            pin.Margin = new Thickness(0, 0, 6, 0);
-            _ = headerRow.Children.Add(pin);
+            DockFlyout.Pinned => "push_pin",
+            DockFlyout.Sticky => "keyboard_command_key",
+            _ => null,
+        };
+        if (symbol is not null)
+        {
+            var icon = new SymbolIcon
+            {
+                Symbol = symbol,
+                Size = IconBox.Badge,
+                Margin = new Thickness(0, 0, Space.S1, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            icon.SetResourceReference(
+                SymbolIcon.ForegroundProperty,
+                ThemeBrushKey.For(ColorToken.Muted)
+            );
+            DockPanel.SetDock(icon, Dock.Left);
+            _ = headerRow.Children.Add(icon);
         }
 
         _ = headerRow.Children.Add(_header);
-        var body = new StackPanel();
-        _ = body.Children.Add(headerRow);
+        FrameworkElement body;
         switch (flyout)
         {
             case DockFlyout.Pinned:
-                _pinnedGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, Gap, 0, 0) };
-                _ = body.Children.Add(_pinnedGrid);
+                _pinnedGrid = new UniformGrid { Columns = 2, Margin = new Thickness(-Space.S1) };
+                body = _pinnedGrid;
                 viewModel.PinnedTiles.CollectionChanged += OnPinnedChanged;
                 Width = PinnedWidth;
                 break;
             case DockFlyout.Profiles:
-                _picker = new PickerGridView(panel.Picker)
-                {
-                    Margin = new Thickness(0, Gap, 0, 0),
-                    ShowsAlways = true,
-                };
-                _ = body.Children.Add(_picker);
+                _picker = new PickerGridView(panel.Picker) { ShowsAlways = true };
+
+                // The window is the surface and the profiles its tiles: no third box between them (D12).
+                _picker.Margin = new Thickness(0);
+                _picker.Padding = new Thickness(0);
+                _picker.Background = Brushes.Transparent;
+                _picker.BorderThickness = new Thickness(0);
+                body = _picker;
                 Width = ProfilesWidth;
                 break;
             default:
+                // Two columns and as many rows as the keys need: the row of the panel is a single row of four.
                 _sticky = new StickyKeysRowView(panel.Sticky)
                 {
                     Columns = 2,
-                    Margin = new Thickness(0, Gap, 0, 0),
+                    Rows = 0,
+                    Margin = new Thickness(0),
                 };
-                _ = body.Children.Add(_sticky);
+                body = _sticky;
                 Width = PinnedWidth;
                 break;
         }
 
         SizeToContent = SizeToContent.Height;
         FixedWidth = Width;
+
+        // The channel of the thin bar sits in the right padding: the content is S3 from both edges.
         _scroller = new ThemedScrollViewer
         {
             PansWithMouse = false,
             Content = body,
-            Padding = new Thickness(8),
+            Margin = new Thickness(Space.S3, 0, Space.S1, Space.S3),
         };
-        Content = _scroller;
+        var root = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(headerRow, Dock.Top);
+        _ = root.Children.Add(headerRow);
+        _ = root.Children.Add(_scroller);
+        Content = root;
         viewModel.Labels.PropertyChanged += OnLabelsChanged;
         RebuildPinned();
         Relabel();
@@ -315,13 +340,13 @@ public sealed class DockFlyoutWindow : TouchSurface
             var (control, handler) = DockTileFactory.Create(
                 tile,
                 double.NaN,
-                PinnedTileHeight,
-                PinnedIconPx,
-                PinnedLabelPx,
+                ControlHeight.Large,
+                IconBox.Medium,
+                2,
                 Modes
             );
             var (cell, badge) = DockTileFactory.Cell(control, tile, Modes);
-            cell.Margin = new Thickness(Gap / 2);
+            cell.Margin = new Thickness(Space.S1);
             if (badge is not null)
             {
                 _badges.Add(badge);

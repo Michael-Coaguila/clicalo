@@ -53,7 +53,8 @@ public sealed class DockQuickWindow : TouchSurface
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
+        // The sheet is at the level of the panel (D12): the surface of the bar, its controls the second level.
+        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
         _sheet = new QuickSettingsSheet(viewModel)
@@ -62,6 +63,7 @@ public sealed class DockQuickWindow : TouchSurface
             BorderThickness = new Thickness(0),
             ShowsAlways = true,
         };
+        _sheet.Background = System.Windows.Media.Brushes.Transparent;
         Width = SheetWidth;
         FixedWidth = SheetWidth;
         SizeToContent = SizeToContent.Height;

@@ -83,7 +83,8 @@ public sealed class SurfaceWindowsTests
     [Trait("Req", "PES-001")]
     [Trait("Req", "REG-02")]
     [Trait("Req", "ACC-002")]
-    public void The_handle_is_drawn_32_deep_rounded_toward_the_screen_and_takes_a_touch_44_deep(
+    [Trait("Req", "TEM-002")]
+    public void The_handle_is_drawn_as_deep_as_its_touch_44_and_rounded_toward_the_screen(
         DockSide side,
         double width,
         double height
@@ -109,7 +110,8 @@ public sealed class SurfaceWindowsTests
                 handle.Button.Height.ShouldBe(height);
                 var face = handle.Button.Content.ShouldBeOfType<System.Windows.Controls.Border>();
                 face.CornerRadius.ShouldBe(SurfaceLook.DockHandle(side).Corners);
-                (DockGeometry.IsVertical(side) ? face.Width : face.Height).ShouldBe(32);
+                // D12: no control is drawn smaller than it answers; the dot of what is held has a slot of its own.
+                (DockGeometry.IsVertical(side) ? face.Width : face.Height).ShouldBe(44);
                 handle.Title.ShouldBe("Abrir barra");
             }
             finally

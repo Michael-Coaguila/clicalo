@@ -44,6 +44,7 @@ public sealed class DockBarViewModel : ObservableObject
     private PageWindow _window = Paging.Window(0, 1, 0);
     private int _page;
     private double _tileSpace = double.NaN;
+    private double _tileGap = double.NaN;
     private int _textScalePercent = (int)SettingsSchema.TextScalePercent.Min;
     private int _perPage = 1;
     private bool _isVertical = true;
@@ -233,6 +234,24 @@ public sealed class DockBarViewModel : ObservableObject
         private set => SetProperty(ref _coachText, value);
     }
 
+    /// <summary>
+    /// The title and the text of every step, in order, in the current language: the guide keeps the size of the
+    /// longest, so it never changes size from one step to the next (D12, PES-015).
+    /// </summary>
+    public IReadOnlyList<(string Title, string Text)> CoachSteps
+    {
+        get
+        {
+            var l = _localization.Current;
+            return
+            [
+                (l.Format(L.Co1t), l.Format(L.Co1d)),
+                (l.Format(L.Co2t), l.Format(L.Co2d)),
+                (l.Format(L.Co3t), l.Format(L.Co3d)),
+            ];
+        }
+    }
+
     /// <summary>[next], or [understood] on the last step.</summary>
     public string CoachNextLabel
     {
@@ -351,6 +370,22 @@ public sealed class DockBarViewModel : ObservableObject
         Repage();
     }
 
+    /// <summary>
+    /// The space the bar draws between two of its shortcuts, in logical pixels (direction C, D12: one gap of the
+    /// spacing scale for every size); until the bar says it, the gap of the panel size.
+    /// </summary>
+    /// <param name="gapPx">The gap.</param>
+    public void ApplyTileGap(double gapPx)
+    {
+        if (double.IsNaN(gapPx) || Math.Abs(gapPx - _tileGap) < 0.5)
+        {
+            return;
+        }
+
+        _tileGap = gapPx;
+        Repage();
+    }
+
     /// <summary>Back to the first page (a view change, a profile change: SEL-004).</summary>
     public void FirstPage()
     {
@@ -384,9 +419,9 @@ public sealed class DockBarViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The length of one shortcut along the bar: 62/72/88 wide (horizontal) or 50/58/70 high (vertical, PES-007), and
-    /// then as much higher as a tile of the panel gets with the text scale, (scale − 1) × name × 1.6 (CUA-011), so its
-    /// name, which follows the scale, still has its line.
+    /// The length of one shortcut along the bar: 80/88/96 wide (horizontal) or 52/52/64 high (vertical, PES-007 with
+    /// the measures of direction C, D12), and then as much higher as a tile of the panel gets with the text scale,
+    /// (scale − 1) × name × 1.6 (CUA-011), so its name, which follows the scale, still has its line.
     /// </summary>
     public double TileLength =>
         IsVertical
@@ -528,7 +563,7 @@ public sealed class DockBarViewModel : ObservableObject
             preference,
             double.IsNaN(_tileSpace) ? double.PositiveInfinity : _tileSpace,
             TileLength,
-            Metrics.GapPx
+            double.IsNaN(_tileGap) ? Metrics.GapPx : _tileGap
         );
         _window = Paging.Window(_list.Count, _perPage, _page);
         _page = _window.Page;

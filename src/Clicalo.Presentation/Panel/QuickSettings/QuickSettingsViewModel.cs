@@ -104,10 +104,10 @@ public sealed class QuickSettingsViewModel : ObservableObject
         ];
         Sides =
         [
-            Option(DockSide.Left, "align_horizontal_left", SettingPaths.DockSide, closes: true),
-            Option(DockSide.Top, "align_vertical_top", SettingPaths.DockSide, closes: true),
-            Option(DockSide.Bottom, "align_vertical_bottom", SettingPaths.DockSide, closes: true),
-            Option(DockSide.Right, "align_horizontal_right", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Left, "border_left", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Top, "border_top", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Bottom, "border_bottom", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Right, "border_right", SettingPaths.DockSide, closes: true),
         ];
         Themes =
         [

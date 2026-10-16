@@ -8,25 +8,31 @@ using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.Panel.TestMode;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.TabView;
 
 /// <summary>
 /// Turns a <see cref="DockTileViewModel"/> into a <see cref="ShortcutTile"/> without keys nor badges (PES-007, PES-010):
-/// icon, name, voice number and accessible state, kept in step with the view model until <see cref="Detach"/>. With
+/// icon, name (<see cref="TextStyleToken.LabelSmall"/>, which follows the text scale, CUA-011, in the lines the tile
+/// leaves it, two at most, with «…»), voice number and accessible state, kept in step with the view model until
+/// <see cref="Detach"/>. With
 /// the modes of the bar, UI Automation Invoke asks test mode first (PES-014), a right click or the accessible secondary
 /// action opens the menu of the shortcut (CUA-014, PES-010), and the tile shows the ✓ or ⊘ of test mode (TAC-008). As on
 /// the panel, an armed shortcut has its warn outline (EJE-002) and an ignored touch its slight one (TAC-003).
 /// </summary>
 internal static class DockTileFactory
 {
-    /// <summary>Creates the tile of <paramref name="viewModel"/>.</summary>
+    /// <summary>
+    /// Creates the tile of <paramref name="viewModel"/>, its name in <paramref name="nameLines"/> lines at most (one
+    /// along a side bar, where a word cut at the end of a first line would read worse than «…» after the name).
+    /// </summary>
     public static (ShortcutTile Control, PropertyChangedEventHandler Handler) Create(
         DockTileViewModel viewModel,
         double width,
         double height,
         double iconPx,
-        double labelPx,
+        int nameLines,
         DockTileModes? modes = null
     )
     {
@@ -42,12 +48,13 @@ internal static class DockTileFactory
             Width = width,
             Height = height,
             Margin = new Thickness(0),
-            Padding = new Thickness(4),
+            Padding = new Thickness(Space.S1),
             IconSize = iconPx,
+            MaxNameLines = nameLines,
         };
         control.SetResourceReference(
             Control.FontSizeProperty,
-            ThemeKeys.ScaledTextSize(Math.Max(TypeScale.Minimum, labelPx))
+            ThemeKeys.FontSize(TextStyleToken.LabelSmall, scaled: true)
         );
         control.Invoked += (_, _) => Invoke(viewModel, modes);
         control.Toggled += (_, _) => Invoke(viewModel, modes);

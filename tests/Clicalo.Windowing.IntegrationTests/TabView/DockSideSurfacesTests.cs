@@ -300,19 +300,13 @@ public sealed class DockSideSurfacesTests
     }
 
     [Theory]
-    [InlineData(DockSide.Right, 12, 0, 0, 0)]
-    [InlineData(DockSide.Left, 0, 0, 12, 0)]
-    [InlineData(DockSide.Top, 0, 0, 0, 12)]
-    [InlineData(DockSide.Bottom, 0, 12, 0, 0)]
+    [InlineData(DockSide.Right)]
+    [InlineData(DockSide.Left)]
+    [InlineData(DockSide.Top)]
+    [InlineData(DockSide.Bottom)]
     [Trait("Req", "PES-001")]
     [Trait("Req", "REG-02")]
-    public void The_shadow_of_the_handle_follows_the_drawn_handle_not_its_touch_band(
-        DockSide side,
-        double left,
-        double top,
-        double right,
-        double bottom
-    )
+    public void The_shadow_of_the_handle_follows_the_drawn_handle(DockSide side)
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
@@ -335,11 +329,11 @@ public sealed class DockSideSurfacesTests
             );
             try
             {
-                // The window stays a plain 44-deep rectangle (REG-02); the shadow gets the shape of the handle, 32 deep
-                // against the edge, with its shadow 0 6 20 at 35 %.
+                // The window is 44 deep (REG-02) and, in direction C (D12), the handle is drawn as deep: the shadow
+                // gets the shape of the handle, rounded toward the screen, with its shadow 0 6 20 at 35 %, and no inset.
                 handle.ShadowShape.ShouldBe(SurfaceLook.DockHandle(side));
                 handle.ShadowShape!.Shadow.ShouldNotBeNull();
-                handle.ShadowInset.ShouldBe(new Thickness(left, top, right, bottom));
+                handle.ShadowInset.ShouldBe(new Thickness(0));
             }
             finally
             {

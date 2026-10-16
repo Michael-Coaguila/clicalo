@@ -121,28 +121,47 @@ public sealed class SurfacesAuditTests
         return cases;
     }
 
-    public static TheoryData<DockSide, SizeId, AuditLook> BarCases()
+    /// <summary>The four sides of the Tab view, in Spanish and in English (D12: no label of the bar is cut).</summary>
+    public static TheoryData<DockSide, SizeId, string, AuditLook> BarCases()
     {
-        var cases = new TheoryData<DockSide, SizeId, AuditLook>();
+        var cases = new TheoryData<DockSide, SizeId, string, AuditLook>();
         foreach (var look in Enum.GetValues<AuditLook>())
         {
-            cases.Add(DockSide.Right, SizeId.S, look);
-            cases.Add(DockSide.Left, SizeId.M, look);
-            cases.Add(DockSide.Top, SizeId.S, look);
-            cases.Add(DockSide.Bottom, SizeId.L, look);
+            foreach (var language in new[] { "es", "en" })
+            {
+                cases.Add(DockSide.Right, SizeId.S, language, look);
+                cases.Add(DockSide.Left, SizeId.M, language, look);
+                cases.Add(DockSide.Top, SizeId.S, language, look);
+                cases.Add(DockSide.Bottom, SizeId.L, language, look);
+            }
         }
 
         return cases;
     }
 
-    public static TheoryData<DockFlyout, int, AuditLook> FlyoutCases()
+    public static TheoryData<DockFlyout, int, string, AuditLook> FlyoutCases()
     {
-        var cases = new TheoryData<DockFlyout, int, AuditLook>();
+        var cases = new TheoryData<DockFlyout, int, string, AuditLook>();
         foreach (var look in Enum.GetValues<AuditLook>())
         {
-            cases.Add(DockFlyout.Pinned, 3, look);
-            cases.Add(DockFlyout.Profiles, 3, look);
-            cases.Add(DockFlyout.Sticky, 4, look);
+            foreach (var language in new[] { "es", "en" })
+            {
+                cases.Add(DockFlyout.Pinned, 3, language, look);
+                cases.Add(DockFlyout.Profiles, 3, language, look);
+                cases.Add(DockFlyout.Sticky, 4, language, look);
+            }
+        }
+
+        return cases;
+    }
+
+    public static TheoryData<string, AuditLook> TabWindowCases()
+    {
+        var cases = new TheoryData<string, AuditLook>();
+        foreach (var look in Enum.GetValues<AuditLook>())
+        {
+            cases.Add("es", look);
+            cases.Add("en", look);
         }
 
         return cases;
@@ -218,6 +237,7 @@ public sealed class SurfacesAuditTests
     public void The_handle_and_the_bar_of_the_Tab_view_follow_the_UIA_rules_and_keep_44(
         DockSide side,
         SizeId size,
+        string language,
         AuditLook look
     )
     {
@@ -226,7 +246,7 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = AuditLooks.Theme(look);
-            var dock = Dock(time, side, size, DockFlyout.None, coachStep: 0);
+            var dock = Dock(time, side, size, DockFlyout.None, coachStep: 0, language);
             var handle = new DockHandleWindow(
                 side,
                 dock,
@@ -250,7 +270,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"handle ({side}, {look})",
+                        $"handle ({side}, {language}, {look})",
                         atLeast: 1,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -261,7 +281,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"bar ({side}, {size}, {look})",
+                        $"bar ({side}, {size}, {language}, {look})",
                         atLeast: 10,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -279,7 +299,7 @@ public sealed class SurfacesAuditTests
                     host.LayOut();
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"bar fixed and open ({side}, {size}, {look})",
+                        $"bar fixed and open ({side}, {size}, {language}, {look})",
                         atLeast: 10,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -302,6 +322,7 @@ public sealed class SurfacesAuditTests
     public void The_windows_beside_the_bar_follow_the_UIA_rules_and_keep_44(
         DockFlyout flyout,
         int atLeast,
+        string language,
         AuditLook look
     )
     {
@@ -310,10 +331,10 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = AuditLooks.Theme(look);
-            var world = new PanelWorld("es", time);
+            var world = new PanelWorld(language, time);
             world.Panel.ApplyLayout(PanelLayoutSettings.Default with { StickyRow = true });
             world.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true });
-            var dock = Dock(time, DockSide.Right, SizeId.M, flyout, coachStep: 0);
+            var dock = Dock(time, DockSide.Right, SizeId.M, flyout, coachStep: 0, language);
             var window = new DockFlyoutWindow(
                 flyout,
                 dock,
@@ -329,7 +350,7 @@ public sealed class SurfacesAuditTests
                 using var host = AuditHost.OfWindow(window, theme);
                 SurfaceAudit.ShouldPass(
                     host,
-                    $"flyout {flyout} ({look})",
+                    $"flyout {flyout} ({language}, {look})",
                     atLeast,
                     TouchInput.PointerLayer,
                     "Pestaña"
@@ -346,10 +367,9 @@ public sealed class SurfacesAuditTests
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
-    [InlineData(AuditLook.Dark)]
-    [InlineData(AuditLook.LightLargeText)]
-    [InlineData(AuditLook.ContrastLargeText)]
+    [MemberData(nameof(TabWindowCases))]
     public void The_coach_the_notices_the_menu_and_Quick_settings_of_the_Tab_view_keep_44(
+        string language,
         AuditLook look
     )
     {
@@ -358,8 +378,15 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = AuditLooks.Theme(look);
-            var world = new PanelWorld("es", time);
-            var dock = Dock(time, DockSide.Right, SizeId.M, DockFlyout.None, coachStep: 1);
+            var world = new PanelWorld(language, time);
+            var dock = Dock(
+                time,
+                DockSide.Right,
+                SizeId.M,
+                DockFlyout.None,
+                coachStep: 1,
+                language
+            );
             var coach = new DockCoachWindow(
                 dock,
                 lab.Registry,
@@ -396,7 +423,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        "coach",
+                        $"coach ({language}, {look})",
                         atLeast: 2,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -418,7 +445,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        "notices with undo",
+                        $"notices with undo ({language}, {look})",
                         atLeast: 2,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -437,7 +464,7 @@ public sealed class SurfacesAuditTests
                     host.LayOut();
                     SurfaceAudit.ShouldPass(
                         host,
-                        "notices with cancel in test mode",
+                        $"notices with cancel in test mode ({language}, {look})",
                         atLeast: 1,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -454,7 +481,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        "menu of a shortcut",
+                        $"menu of a shortcut ({language}, {look})",
                         atLeast: 4,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -467,7 +494,7 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        "Quick settings beside the bar",
+                        $"Quick settings beside the bar ({language}, {look})",
                         atLeast: 17,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -863,16 +890,21 @@ public sealed class SurfacesAuditTests
         DockSide side,
         SizeId size,
         DockFlyout flyout,
-        int coachStep
+        int coachStep,
+        string language = "es"
     )
     {
         var controller = new PanelInteractionController(new PanelEngineInbox(), () => 1, time);
         var dock = new DockBarViewModel(
             controller,
-            PanelTestData.Localization("es"),
+            PanelTestData.Localization(language),
             new NoDockIntents()
         );
-        var model = PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es);
+        var model = PanelProjector.Project(
+            PanelTestData.Profile(),
+            new LangCode(language),
+            LangCode.Es
+        );
         dock.ApplyTiles(model.Tiles, model.Tiles);
         dock.Apply(State(side, size, flyout, coachStep));
         return dock;

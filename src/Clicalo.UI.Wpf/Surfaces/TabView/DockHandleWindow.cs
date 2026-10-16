@@ -18,24 +18,22 @@ using Clicalo.UI.Wpf.Windowing;
 namespace Clicalo.UI.Wpf.Surfaces.TabView;
 
 /// <summary>
-/// The closed handle of the Tab view (PES-001, PES-002, PES-004): 32 × 116 on a side edge or 128 × 32 on the top and
-/// bottom ones, rounded only toward the screen, with a chevron of 22 pointing inside, the icon of the profile in view
-/// and a <c>warn</c> dot of 9 when anything is held. A tap opens the bar; a drag along the edge moves it, without opening
+/// The closed handle of the Tab view (PES-001, PES-002, PES-004) in direction C (D12): 44 × 116 on a side edge or
+/// 128 × 44 on the top and bottom ones, so it is drawn as deep as it answers, rounded only toward the screen
+/// (<see cref="Radii.Medium"/>), with its shadow; a chevron pointing inside in <c>accentInk</c>, the icon of the profile
+/// in view (boxes of <see cref="IconBox.Medium"/>) and, in a slot of its own after them, a <c>warn</c> dot of
+/// <see cref="Space.S2"/> while anything is held. A tap opens the bar; a drag along the edge moves it, without opening
 /// it (PAN-004). One window per edge, since the shape of its corners is fixed when it is created.
 /// </summary>
 /// <remarks>
-/// REG-02, ACC-002: the window is 44 deep (<see cref="DockGeometry.Handle"/>) and the handle is drawn 32 deep against
-/// the screen edge inside it; the rest of the window is filled with an almost transparent brush (alpha 1), so a touch
-/// there still reaches the handle instead of going through the per-pixel transparent window. Its shadow (0 6 20 at
-/// 35 %, PES-001) follows the drawn handle, not the 44-deep window: the window gives the shadow the shape of the handle
-/// and the depth of the touch band as an inset (<see cref="NonActivatingWindow.ShadowInset"/>).
+/// REG-02, ACC-002: the window is 44 deep (<see cref="DockGeometry.Handle"/>) and the handle is drawn as deep as the
+/// window (<c>sizes.json</c> dock.handleThicknessPx). Should the drawing ever be thinner than the touch, the rest of the
+/// window is filled with an almost transparent brush (alpha 1), so a touch there still reaches the handle instead of
+/// going through the per-pixel transparent window, and the shadow (0 6 20 at 35 %, PES-001) follows the drawn handle
+/// with the depth of that band as an inset (<see cref="NonActivatingWindow.ShadowInset"/>).
 /// </remarks>
 public sealed class DockHandleWindow : TouchSurface
 {
-    private const double ChevronPx = 22;
-    private const double IconPx = 20;
-    private const double DotPx = 9;
-
     /// <summary>Paints the touch band around the drawn handle without showing it: alpha 0 would let touches through.</summary>
     private static readonly Brush TouchBand = Frozen(
         new SolidColorBrush(AlmostTransparent(ThemeCatalog.GetPalette(ThemeId.Dark).Shadow))
@@ -109,6 +107,8 @@ public sealed class DockHandleWindow : TouchSurface
         face.SetResourceReference(Border.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         face.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
+        // The chevron says what a tap does (open, toward the screen) and the icon what the bar shows; the warn dot of
+        // anything held has a slot of its own after them, so it is never cut by the edge nor drawn over an icon (D12).
         var chevron = SurfaceParts.Icon(
             side switch
             {
@@ -117,31 +117,30 @@ public sealed class DockHandleWindow : TouchSurface
                 DockSide.Bottom => "expand_less",
                 _ => "chevron_left",
             },
-            ChevronPx,
-            ColorToken.Accent
+            IconBox.Medium,
+            ColorToken.AccentInk
         );
-        _icon = SurfaceParts.Icon(viewModel.HandleIcon, IconPx, ColorToken.Text);
+        _icon = SurfaceParts.Icon(viewModel.HandleIcon, IconBox.Medium, ColorToken.Text);
         _dot = new Ellipse
         {
-            Width = DotPx,
-            Height = DotPx,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, -4, -5, 0),
+            Width = Space.S2,
+            Height = Space.S2,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         _dot.SetResourceReference(Shape.FillProperty, ThemeBrushKey.For(ColorToken.Warn));
-        var iconBox = new Grid { VerticalAlignment = VerticalAlignment.Center };
-        iconBox.Children.Add(_icon);
-        iconBox.Children.Add(_dot);
         var stack = new StackPanel
         {
             Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        var gap = vertical ? new Thickness(0, Space.S1, 0, 0) : new Thickness(Space.S1, 0, 0, 0);
+        _icon.Margin = gap;
+        _dot.Margin = gap;
         _ = stack.Children.Add(chevron);
-        iconBox.Margin = vertical ? new Thickness(0, 6, 0, 0) : new Thickness(6, 0, 0, 0);
-        _ = stack.Children.Add(iconBox);
+        _ = stack.Children.Add(_icon);
+        _ = stack.Children.Add(_dot);
         face.Child = stack;
         var depth = Math.Max(layout.DockHandleThicknessPx, layout.MinTouchTargetPx);
         _button = new TouchButton
@@ -229,7 +228,9 @@ public sealed class DockHandleWindow : TouchSurface
     private void Refresh()
     {
         _icon.Symbol = _viewModel.HandleIcon;
-        _dot.Visibility = SurfaceParts.Shown(_viewModel.State?.AnythingHeld == true);
+        // The slot of the dot stays when it is off: nothing moves when it appears.
+        _dot.Visibility =
+            _viewModel.State?.AnythingHeld == true ? Visibility.Visible : Visibility.Hidden;
         SurfaceParts.Name(_button, _viewModel.Labels.OpenBar);
         Title = _viewModel.Labels.OpenBar;
     }

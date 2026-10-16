@@ -52,7 +52,8 @@ public sealed class DockMenuWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
-        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Accent));
+        // A side window like the others (D12): accent says «interactive or chosen», not «menu».
+        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
         _view = new TileContextMenuView(viewModel)
         {

@@ -25,6 +25,9 @@ internal static class AuditGallery
     /// <summary>The environment variable with the folder of the gallery.</summary>
     public const string Variable = "CLICALO_GALLERY";
 
+    /// <summary>With <see cref="Variable"/>, also saves the states audited with the largest text (any value).</summary>
+    public const string LargeTextVariable = "CLICALO_GALLERY_LARGE_TEXT";
+
     /// <summary>The scale of the person's screen (2400 × 1600 at 175 %).</summary>
     public const double Scale = 1.75;
 
@@ -55,6 +58,7 @@ internal static class AuditGallery
     public static void Save(AuditHost host, string group, string name)
     {
         ArgumentNullException.ThrowIfNull(host);
+        SaveLargeText(host, group, name);
         if (
             Folder is not { } folder
             || host.Theme is not { } theme
@@ -92,6 +96,41 @@ internal static class AuditGallery
             }
 
             Record(folder, group, name, file);
+        }
+    }
+
+    /// <summary>
+    /// With <see cref="LargeTextVariable"/> also set, a state audited with the largest text (150 %, CUA-011) is saved as
+    /// it is, in its own theme, as <c>{name}.150-light.png</c> or <c>{name}.150-contrast.png</c>, outside the index:
+    /// the look of a redesign is checked with the text the person may choose too.
+    /// </summary>
+    private static void SaveLargeText(AuditHost host, string group, string name)
+    {
+        if (
+            Folder is not { } folder
+            || Environment.GetEnvironmentVariable(LargeTextVariable) is not { Length: > 0 }
+            || host.Theme is not { } theme
+            || theme.TextScalePercent != TypeScale.MaxScalePercent
+            || host.Root.ActualWidth <= 0
+            || host.Root.ActualHeight <= 0
+        )
+        {
+            return;
+        }
+
+        var look = theme.Preference == ThemeChoice.HighContrast ? "contrast" : "light";
+        name = name.Replace(", LightLargeText)", ")", StringComparison.Ordinal)
+            .Replace(", ContrastLargeText)", ")", StringComparison.Ordinal)
+            .Replace(" (LightLargeText)", string.Empty, StringComparison.Ordinal)
+            .Replace(" (ContrastLargeText)", string.Empty, StringComparison.Ordinal);
+        lock (Gate)
+        {
+            Directory.CreateDirectory(folder);
+            host.LayOut();
+            File.WriteAllBytes(
+                Path.Combine(folder, Slug(group) + "--" + Slug(name) + ".150-" + look + ".png"),
+                Render(host)
+            );
         }
     }
 
