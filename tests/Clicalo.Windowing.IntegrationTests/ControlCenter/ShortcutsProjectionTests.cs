@@ -52,7 +52,8 @@ public sealed class ShortcutsProjectionTests
                         CanEdit: true,
                         Editing: false,
                         "Editar perfil",
-                        "Añadir"
+                        "Añadir",
+                        "Volver a Word"
                     )
                 );
 

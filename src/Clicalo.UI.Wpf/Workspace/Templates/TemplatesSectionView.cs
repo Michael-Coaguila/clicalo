@@ -11,6 +11,7 @@ using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.Editor;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
 namespace Clicalo.UI.Wpf.Workspace.Templates;
@@ -109,9 +110,9 @@ public sealed class TemplatesSectionView : Grid
     }
 
     /// <summary>Below 1240 the preview narrows to 260 (PLA-001).</summary>
-    /// <param name="narrow">Whether the window is narrow.</param>
-    public void SetNarrow(bool narrow) =>
-        _previewColumn.Width = new GridLength(narrow ? NarrowPreview : WidePreview);
+    /// <param name="width">The width of the section.</param>
+    public void ApplyWidth(double width) =>
+        _previewColumn.Width = new GridLength(width < 1152 ? NarrowPreview : WidePreview);
 
     private static void Detach(FrameworkElement element)
     {

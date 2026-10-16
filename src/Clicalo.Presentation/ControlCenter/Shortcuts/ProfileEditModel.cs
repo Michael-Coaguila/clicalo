@@ -1,4 +1,4 @@
-using Clicalo.Domain.Primitives;
+using Clicalo.Presentation.ControlCenter.Editor;
 
 namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 
@@ -7,7 +7,12 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <param name="Name">The name.</param>
 /// <param name="DictateName">The accessible name of the dictation button.</param>
 /// <param name="IconLabel">[icon].</param>
-/// <param name="Icons">The current icon and the 28 of a profile.</param>
+/// <param name="Icon">The icon of the profile.</param>
+/// <param name="ChangeIconName">[changeIcon]: the button that opens the icon picker.</param>
+/// <param name="Picker">
+/// The icon picker (D14), when open: the whole collection by category, with the 28 icons of a profile as its
+/// suggestions (ATJ-004).
+/// </param>
 /// <param name="CompatTitle">[compatT].</param>
 /// <param name="CompatText">[compatD].</param>
 /// <param name="Compatible">The switch.</param>
@@ -22,7 +27,9 @@ public sealed record ProfileEditModel(
     string Name,
     string DictateName,
     string IconLabel,
-    ValueList<IconOption> Icons,
+    string Icon,
+    string ChangeIconName,
+    IconPickerModel? Picker,
     string CompatTitle,
     string CompatText,
     bool Compatible,

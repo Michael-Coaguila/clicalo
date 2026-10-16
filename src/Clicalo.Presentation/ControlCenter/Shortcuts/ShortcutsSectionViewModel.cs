@@ -5,6 +5,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Application.UseCases.Library;
 using Clicalo.Domain.Duplicates;
+using Clicalo.Domain.Icons;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
@@ -21,13 +22,16 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <see cref="Screen"/> and <see cref="Editor"/>. It forwards every intention; the rules are the Application's.
 /// Projections are coalesced to one per dispatcher turn.
 /// </summary>
-public sealed class ShortcutsSectionViewModel : ObservableObject
+public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
 {
     private readonly ControlCenterServices _s;
     private ShortcutsScreen _screen;
     private bool _queued;
     private bool _profileEditOpen;
     private bool _linkOpen;
+    private bool _iconsOpen;
+    private string _iconQuery = string.Empty;
+    private string? _iconCategory;
     private ImmutableArray<OpenApp> _apps = [];
 
     /// <summary>Creates the section and projects it.</summary>
@@ -95,6 +99,12 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             return true;
         }
 
+        if (_iconsOpen)
+        {
+            ToggleProfileIcons();
+            return true;
+        }
+
         if (_linkOpen)
         {
             _linkOpen = false;
@@ -122,6 +132,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     public void SelectList(ListRef list)
     {
         _profileEditOpen = false;
+        _iconsOpen = false;
         _linkOpen = false;
         Workspace.SelectList(list);
     }
@@ -133,6 +144,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     public void ToggleProfileEdit()
     {
         _profileEditOpen = !_profileEditOpen;
+        _iconsOpen = false;
         _s.Confirm.Disarm();
         Invalidate();
     }
@@ -150,6 +162,44 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     /// <summary>An icon of the profile card (ATJ-004).</summary>
     /// <param name="icon">The icon.</param>
     public void SetProfileIcon(string icon) => Profiles.SetIcon(new(icon));
+
+    /// <summary>The icon of the profile card: opens or closes the icon picker (ATJ-004, D14).</summary>
+    public void ToggleProfileIcons()
+    {
+        _iconsOpen = !_iconsOpen;
+        _iconQuery = string.Empty;
+        _iconCategory = null;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void PickIcon(string icon) => SetProfileIcon(icon);
+
+    /// <inheritdoc />
+    public void SearchIcons(string query)
+    {
+        _iconQuery = query ?? string.Empty;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void ChooseIconCategory(string? category)
+    {
+        _iconCategory = category;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void CloseIconPicker()
+    {
+        if (_iconsOpen)
+        {
+            ToggleProfileIcons();
+        }
+    }
+
+    /// <inheritdoc />
+    public void DictateIconSearch() => Dictate();
 
     /// <summary>The «Modo compatible» row (ATJ-004).</summary>
     public void ToggleCompatible() =>
@@ -299,6 +349,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     public void OnOpened()
     {
         _profileEditOpen = false;
+        _iconsOpen = false;
         _linkOpen = false;
         Invalidate();
     }
@@ -371,7 +422,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                         Workspace.List is ListRef.InProfile shown && shown.Id == p.Id
                     )),
                 ],
-                "+ " + T(L.NewProfile)
+                T(L.NewProfile)
             ),
             Header(profile),
             _profileEditOpen && profile is not null ? ProfileEdit(profile) : null,
@@ -407,7 +458,9 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 ),
                 new LayerChip("star", T(L.Freq), T(L.AutoW)),
             ],
-            count > 0 ? T(L.DupReviewN(count)) : null
+            count > 0 ? T(L.DupSummaryN(count)) : null,
+            T(L.Review),
+            count > 0 ? T(L.DupReviewN(count)) : string.Empty
         );
     }
 
@@ -422,7 +475,8 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 false,
                 false,
                 T(L.EditProf),
-                T(L.Add)
+                T(L.Add),
+                T(L.BackToProfile(profile: L.Always))
             );
         }
 
@@ -436,7 +490,8 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             true,
             _profileEditOpen,
             T(L.EditProf),
-            T(L.Add)
+            T(L.Add),
+            T(L.BackToProfile(profile: profile.Name.Get(Language, LangCode.Es)))
         );
     }
 
@@ -446,23 +501,34 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             _s.Confirm.ArmedSubject is { } subject
             && string.Equals(subject.Operation, nameof(DeleteProfile), StringComparison.Ordinal)
             && string.Equals(subject.Target, profile.Id.Value, StringComparison.Ordinal);
-        var icons = new List<string> { profile.Icon.Name };
-        icons.AddRange(
-            _s.Catalogs()
-                .Icons.ProfileFeatured.Select(i => i.Name)
-                .Where(i => !string.Equals(i, profile.Icon.Name, StringComparison.Ordinal))
-        );
+        var catalog = _s.Catalogs().Icons;
         return new ProfileEditModel(
             T(L.ProfName),
             profile.Name.Get(Language, LangCode.Es),
             T(L.SearchDictate),
             T(L.Icon),
-            [
-                .. icons.Select(i => new IconOption(
-                    i,
-                    string.Equals(i, profile.Icon.Name, StringComparison.Ordinal)
-                )),
-            ],
+            profile.Icon.Name,
+            T(L.ChangeIcon),
+            _iconsOpen
+                ? IconPickerProjection.Build(
+                    catalog,
+                    profile.Icon.Name,
+                    IconSuggestions
+                        .Suggest(
+                            profile.Name.Get(Language, LangCode.Es),
+                            null,
+                            Language,
+                            catalog,
+                            ComboIconTable.Empty
+                        )
+                        .Items,
+                    _iconQuery,
+                    _iconCategory,
+                    Language,
+                    T,
+                    [profile.Icon, .. catalog.ProfileFeatured.Items]
+                )
+                : null,
             T(L.CompatT),
             T(L.CompatD),
             profile.Injection == InjectionMode.ScanCode,

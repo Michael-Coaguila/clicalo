@@ -4,55 +4,80 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Threading;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.Editor;
 using Clicalo.UI.Wpf.Workspace.Internal;
+using Clicalo.UI.Wpf.Workspace.Shortcuts;
 
 namespace Clicalo.UI.Wpf.Workspace;
 
 /// <summary>
-/// The «Atajos» section (docs/05 §1): the top bar, the profiles column (180, or 150 when narrow), the shortcuts column
-/// and the editor column (400, or 340). It only draws <see cref="ShortcutsSectionViewModel.Screen"/> and forwards taps;
-/// each region is rebuilt only when its part of the screen changed, and the text fields live across rebuilds so typing
-/// is never interrupted.
+/// The «Atajos» section (docs/05 §1) in direction C (D12): «Tu panel muestra» in one line, then the profiles
+/// (<see cref="ProfilesWidth"/>), the shortcuts as the panel shows them (flexible) and the editor
+/// (<see cref="EditorWidth"/>) with its fixed foot. Where the three columns do not fit (the smallest window, CCM-005),
+/// the profiles become a selector of the whole width whose list is a layer, and the editor opens as a page with its way
+/// back; the maximized window gives the grid more columns. The temporary states (the card of the profile, the options
+/// of its binding, the list of profiles, the icon picker) are layers over the content, never blocks that push it.
 /// </summary>
+/// <remarks>
+/// It only draws <see cref="ShortcutsSectionViewModel.Screen"/> and forwards taps; each region is rebuilt only when its
+/// part of the screen changed, and the text fields live across rebuilds so typing is never interrupted.
+/// </remarks>
 public sealed class ShortcutsSectionView : Grid
 {
-    private const double WideProfiles = 180;
-    private const double NarrowProfiles = 150;
-    private const double WideEditor = 400;
-    private const double NarrowEditor = 340;
+    /// <summary>The width of the profiles column (216 in the design of C).</summary>
+    public const double ProfilesWidth = IconPickerView.CategoriesWidth;
 
-    /// <summary>Below this width of the list column, [Añadir] goes under the name of the list.</summary>
-    private const double HeaderStackWidth = 300;
+    /// <summary>The width of the editor column (376 in the design of C): four kinds of 80 and their gaps.</summary>
+    public const double EditorWidth = Space.S12 * 8 - Space.S2;
+
+    /// <summary>The least width of the shortcuts column: three tiles, their gaps and the margins of the area.</summary>
+    public const double ListMinWidth =
+        GridTiles.MinWidth * 3 + Space.S2 * 2 + Space.S4 + Space.S1 + ComponentSize.ScrollBar;
+
     private static readonly TimeSpan LongPress = TimeSpan.FromMilliseconds(450);
 
     private readonly ShortcutsSectionViewModel _viewModel;
     private readonly ContentControl _topBar = new() { Focusable = false };
     private readonly ContentControl _profiles = new() { Focusable = false };
     private readonly ContentControl _header = new() { Focusable = false };
-    private readonly ContentControl _profileEdit = new() { Focusable = false };
     private readonly ContentControl _link = new() { Focusable = false };
     private readonly ContentControl _grid = new() { Focusable = false };
+    private readonly ContentControl _listLayerContent = new() { Focusable = false };
+    private readonly ContentControl _profilesLayerContent = new() { Focusable = false };
     private readonly ContentControl _editorColumn = new() { Focusable = false };
+    private readonly ContentControl _pageHead = new() { Focusable = false };
     private readonly ThemedScrollViewer _listScroll = new();
+    private readonly Border _profilesPane;
+    private readonly Border _listPane;
+    private readonly Grid _editorPane = new();
+    private readonly Border _listLayer;
+    private readonly Border _profilesLayer;
+    private readonly IconPickerView _picker = new();
     private readonly ShortcutEditorView _editor;
     private readonly TextInput _profileName;
     private readonly ColumnDefinition _profilesColumn = new()
     {
-        Width = new GridLength(WideProfiles),
+        Width = new GridLength(ProfilesWidth),
+    };
+    private readonly ColumnDefinition _listColumn = new()
+    {
+        Width = new GridLength(1, GridUnitType.Star),
     };
     private readonly ColumnDefinition _editorColumnDefinition = new()
     {
-        Width = new GridLength(WideEditor),
+        Width = new GridLength(EditorWidth),
     };
     private readonly DispatcherTimer _pressTimer;
     private ShortcutsScreen? _shown;
     private bool _narrow;
+    private bool _pageOpen;
+    private bool _profilesOpen;
     private ShortcutId? _pressed;
     private ShortcutId? _dragging;
     private UIElement? _dragTile;
@@ -79,6 +104,7 @@ public sealed class ShortcutsSectionView : Grid
                 _viewModel.RenameProfile(_profileName.Text);
             }
         };
+        _profileName.DictateRequested += (_, _) => _viewModel.Dictate();
         _pressTimer = new DispatcherTimer(DispatcherPriority.Input, Dispatcher)
         {
             Interval = LongPress,
@@ -90,72 +116,190 @@ public sealed class ShortcutsSectionView : Grid
         var topBar = new Border
         {
             Child = _topBar,
-            Padding = new Thickness(16, 12, 16, 12),
-            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(Space.S6, Space.S3, Space.S4, Space.S3),
+            BorderThickness = new Thickness(0, 0, 0, Theming.Generated.Stroke.Line),
         };
         Ui.Ink(topBar, Border.BorderBrushProperty, ColorToken.Border);
         Children.Add(topBar);
 
-        var columns = new Grid();
-        columns.ColumnDefinitions.Add(_profilesColumn);
-        columns.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 200 }
+        var body = new Grid();
+        body.ColumnDefinitions.Add(_profilesColumn);
+        body.ColumnDefinitions.Add(_listColumn);
+        body.ColumnDefinitions.Add(_editorColumnDefinition);
+        SetRow(body, 1);
+        Children.Add(body);
+
+        // The profiles.
+        _profilesPane = Bordered(
+            new ThemedScrollViewer
+            {
+                Content = _profiles,
+                Padding = new Thickness(Space.S3, Space.S4, Space.S1, Space.S4),
+            }
         );
-        columns.ColumnDefinitions.Add(_editorColumnDefinition);
-        SetRow(columns, 1);
-        Children.Add(columns);
+        body.Children.Add(_profilesPane);
 
-        var profilesScroll = new ThemedScrollViewer
-        {
-            Content = _profiles,
-            Padding = new Thickness(10, 16, 10, 16),
-        };
-        columns.Children.Add(Bordered(profilesScroll, 0));
+        // The shortcuts: the header (in the narrow window, the selector of profiles) and the binding fixed above, the
+        // grid below, and the layers: the list of profiles under the selector, the card of the profile and the options
+        // of the binding over the grid.
+        _header.Margin = new Thickness(Space.S4, Space.S4, Space.S4, 0);
+        _link.Margin = new Thickness(Space.S4, 0, Space.S4, Space.S3);
+        _listScroll.Content = _grid;
+        _listScroll.Padding = new Thickness(Space.S4, Space.S1, Space.S1, Space.S6);
+        _listLayer = Parts.Layer(
+            new ThemedScrollViewer
+            {
+                Content = _listLayerContent,
+                Padding = new Thickness(Space.S4, Space.S1, Space.S2, Space.S6),
+            }
+        );
+        _listLayer.Visibility = Visibility.Collapsed;
+        _profilesLayer = Parts.Layer(
+            new ThemedScrollViewer
+            {
+                Content = _profilesLayerContent,
+                Padding = new Thickness(Space.S3, Space.S1, Space.S2, Space.S6),
+            }
+        );
+        _profilesLayer.Visibility = Visibility.Collapsed;
+        var list = new Grid();
+        list.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        list.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        list.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+        list.Children.Add(_header);
+        SetRow(_link, 1);
+        list.Children.Add(_link);
+        SetRow(_listScroll, 2);
+        list.Children.Add(_listScroll);
+        SetRow(_listLayer, 2);
+        list.Children.Add(_listLayer);
+        SetRow(_profilesLayer, 1);
+        SetRowSpan(_profilesLayer, 2);
+        list.Children.Add(_profilesLayer);
+        _listPane = Bordered(list);
+        SetColumn(_listPane, 1);
+        body.Children.Add(_listPane);
 
-        var list = Ui.Column(12, _header, _profileEdit, _link, _grid);
-        _listScroll.Content = list;
-        _listScroll.Padding = new Thickness(16);
-        columns.Children.Add(Bordered(_listScroll, 1));
+        // The editor, with the way back above it when it is a page.
+        _editorPane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _editorPane.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+        _editorPane.Children.Add(_pageHead);
+        SetRow(_editorColumn, 1);
+        _editorPane.Children.Add(_editorColumn);
+        SetColumn(_editorPane, 2);
+        body.Children.Add(_editorPane);
 
-        var editorScroll = new ThemedScrollViewer
-        {
-            Content = _editorColumn,
-            Padding = new Thickness(16),
-        };
-        SetColumn(editorScroll, 2);
-        columns.Children.Add(editorScroll);
+        // The icon picker covers the shortcuts and the editor: wider than the editor, it shows the categories.
+        SetColumn(_picker, 1);
+        SetColumnSpan(_picker, 2);
+        body.Children.Add(_picker);
 
         viewModel.PropertyChanged += OnChanged;
+        viewModel.Editor.PropertyChanged += OnEditorChanged;
         Render();
+        ApplyLayout();
     }
 
-    /// <summary>Below 1240 the columns narrow to 150 / flexible / 340 (CCM-005).</summary>
-    /// <param name="narrow">Whether the window is narrow.</param>
-    public void SetNarrow(bool narrow)
+    /// <summary>Whether the window is too narrow for the three columns (CCM-005).</summary>
+    public bool IsNarrow => _narrow;
+
+    /// <summary>Whether the editor is shown as a page of its own (the narrow window).</summary>
+    public bool IsPageOpen => _narrow && _pageOpen && _shown?.Column is not EditorColumn.Empty;
+
+    /// <summary>The icon picker, a layer of the section.</summary>
+    internal IconPickerView Picker => _picker;
+
+    /// <summary>
+    /// Lays the section out for <paramref name="width"/>, the width beside the rail (CCM-005): three columns where
+    /// they fit; otherwise the profiles in a selector and the editor as a page.
+    /// </summary>
+    /// <param name="width">The width of the section.</param>
+    public void ApplyWidth(double width)
     {
+        var narrow = width < ProfilesWidth + EditorWidth + ListMinWidth;
         if (_narrow == narrow)
         {
             return;
         }
 
         _narrow = narrow;
-        _profilesColumn.Width = new GridLength(narrow ? NarrowProfiles : WideProfiles);
-        _editorColumnDefinition.Width = new GridLength(narrow ? NarrowEditor : WideEditor);
+        _profilesOpen = false;
+        if (_shown is { } shown)
+        {
+            _header.Content = Header(shown.Header);
+        }
+
+        ApplyLayout();
+    }
+
+    /// <summary>Shows the editor as a page in the narrow window, as a tap on a tile does.</summary>
+    public void ShowPage()
+    {
+        _pageOpen = true;
+        _profilesOpen = false;
+        ApplyLayout();
+    }
+
+    /// <summary>Opens the list of profiles of the narrow window, as a tap on its selector does.</summary>
+    public void OpenProfiles()
+    {
+        if (_narrow && !_profilesOpen)
+        {
+            ToggleProfiles();
+        }
+    }
+
+    /// <summary>Closes the list of profiles of the narrow window; says whether it was open (Esc).</summary>
+    public bool CloseProfiles()
+    {
+        if (!_narrow || !_profilesOpen)
+        {
+            return false;
+        }
+
+        ToggleProfiles();
+        return true;
+    }
+
+    /// <summary>Goes back from the page of the editor to the list (Esc, or ← of the page); says whether it was open.</summary>
+    public bool ClosePage()
+    {
+        if (!IsPageOpen)
+        {
+            return false;
+        }
+
+        if (_shown?.Column == EditorColumn.Library)
+        {
+            _viewModel.CloseLibrary();
+        }
+
+        _pageOpen = false;
+        ApplyLayout();
+        return true;
     }
 
     /// <summary>Stops following the view model.</summary>
     public void Detach()
     {
         _viewModel.PropertyChanged -= OnChanged;
+        _viewModel.Editor.PropertyChanged -= OnEditorChanged;
         _editor.Detach();
         _pressTimer.Stop();
     }
 
-    private static Border Bordered(UIElement child, int column)
+    private static Border Bordered(UIElement child)
     {
-        var border = new Border { Child = child, BorderThickness = new Thickness(0, 0, 1, 0) };
+        var border = new Border
+        {
+            Child = child,
+            BorderThickness = new Thickness(0, 0, Theming.Generated.Stroke.Line, 0),
+        };
         Ui.Ink(border, Border.BorderBrushProperty, ColorToken.Border);
-        SetColumn(border, column);
         return border;
     }
 
@@ -175,6 +319,47 @@ public sealed class ShortcutsSectionView : Grid
         }
     }
 
+    /// <summary>
+    /// The columns of the width: three side by side; or, narrow, the shortcuts alone or the editor alone as a page.
+    /// </summary>
+    private void ApplyLayout()
+    {
+        var page = IsPageOpen;
+        _profilesColumn.Width = new GridLength(_narrow ? 0 : ProfilesWidth);
+        _profilesPane.Visibility = _narrow ? Visibility.Collapsed : Visibility.Visible;
+        _listColumn.Width = page ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        _listPane.Visibility = page ? Visibility.Collapsed : Visibility.Visible;
+        _listPane.BorderThickness = new Thickness(
+            0,
+            0,
+            _narrow ? 0 : Theming.Generated.Stroke.Line,
+            0
+        );
+        _editorColumnDefinition.Width =
+            !_narrow ? new GridLength(EditorWidth)
+            : page ? new GridLength(1, GridUnitType.Star)
+            : new GridLength(0);
+        _editorPane.Visibility = !_narrow || page ? Visibility.Visible : Visibility.Collapsed;
+        _pageHead.Content = page && _shown is { } shown ? PageHead(shown) : null;
+        _profilesLayer.Visibility =
+            _narrow && _profilesOpen && !page ? Visibility.Visible : Visibility.Collapsed;
+        SetColumn(_picker, page ? 2 : 1);
+        SetColumnSpan(_picker, page ? 1 : 2);
+        if (_shown is { } current)
+        {
+            _profilesLayerContent.Content =
+                _narrow && _profilesOpen
+                    ? ProfilesList.Build(
+                        current.Profiles,
+                        current.TopBar,
+                        Review,
+                        SelectFromLayer,
+                        _viewModel.NewProfile
+                    )
+                    : null;
+        }
+    }
+
     private void OnChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (
@@ -189,6 +374,26 @@ public sealed class ShortcutsSectionView : Grid
         }
     }
 
+    private void OnEditorChanged(object? sender, PropertyChangedEventArgs e) => RenderPicker();
+
+    /// <summary>
+    /// The icon picker: the shortcut's when the editor has it open, or the profile's when its card has it open (D14).
+    /// </summary>
+    private void RenderPicker()
+    {
+        if (_shown?.ProfileEdit?.Picker is { } profile)
+        {
+            _picker.Show(profile, _viewModel);
+        }
+        else
+        {
+            _picker.Show(
+                _shown?.Column == EditorColumn.Editor ? _viewModel.Editor.Model?.Picker : null,
+                _viewModel.Editor
+            );
+        }
+    }
+
     private void Render()
     {
         var screen = _viewModel.Screen;
@@ -196,22 +401,28 @@ public sealed class ShortcutsSectionView : Grid
         _shown = screen;
         if (before?.TopBar != screen.TopBar)
         {
-            _topBar.Content = TopBar(screen.TopBar);
+            _topBar.Content = SummaryBar.Build(screen.TopBar);
         }
 
-        if (before?.Profiles != screen.Profiles)
+        if (before?.Profiles != screen.Profiles || before?.TopBar != screen.TopBar)
         {
-            _profiles.Content = Profiles(screen.Profiles);
+            _profiles.Content = ProfilesList.Build(
+                screen.Profiles,
+                screen.TopBar,
+                Review,
+                _viewModel.SelectList,
+                _viewModel.NewProfile
+            );
         }
 
-        if (before?.Header != screen.Header)
+        if (
+            before?.Header != screen.Header
+            || before?.Profiles != screen.Profiles
+            || before?.TopBar != screen.TopBar
+            || (before?.Link is null) != (screen.Link is null)
+        )
         {
             _header.Content = Header(screen.Header);
-        }
-
-        if (before?.ProfileEdit != screen.ProfileEdit)
-        {
-            _profileEdit.Content = screen.ProfileEdit is { } edit ? ProfileEdit(edit) : null;
         }
 
         if (before?.Link != screen.Link)
@@ -224,6 +435,17 @@ public sealed class ShortcutsSectionView : Grid
             _grid.Content = Grid(screen.Grid);
         }
 
+        if (before?.ProfileEdit != screen.ProfileEdit || before?.Link != screen.Link)
+        {
+            UIElement? layer =
+                screen.ProfileEdit is { } edit ? ProfileEdit(edit)
+                : screen.Link is { } open && (open.Expanded || open.Question is not null)
+                    ? LinkOptions(open)
+                : null;
+            _listLayerContent.Content = layer;
+            _listLayer.Visibility = layer is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+
         if (
             before is null
             || before.Column != screen.Column
@@ -231,186 +453,182 @@ public sealed class ShortcutsSectionView : Grid
             || !string.Equals(before.EmptyText, screen.EmptyText, StringComparison.Ordinal)
         )
         {
+            Detach(_editor);
             _editorColumn.Content = screen.Column switch
             {
-                EditorColumn.Library when screen.Library is { } library => Library(library),
+                EditorColumn.Library when screen.Library is { } library => new ThemedScrollViewer
+                {
+                    Content = LibraryPane.Build(
+                        library,
+                        _viewModel.CloseLibrary,
+                        _viewModel.CreateOwn,
+                        _viewModel.ChooseCategory,
+                        _viewModel.AddFromLibrary
+                    ),
+                    Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
+                },
                 EditorColumn.Editor => _editor,
                 _ => Empty(screen.EmptyText),
             };
         }
-    }
 
-    private static TextBlock Empty(string text)
-    {
-        var block = Ui.Text(text, 14, ink: ColorToken.Muted, wrap: true);
-        block.TextAlignment = TextAlignment.Center;
-        block.HorizontalAlignment = HorizontalAlignment.Center;
-        block.Margin = new Thickness(0, 120, 0, 0);
-        return block;
-    }
-
-    private DockPanel TopBar(TopBarModel model)
-    {
-        var layers = new List<UIElement>
+        // A library opened from elsewhere (a new profile of Plantillas) is a page of its own in the narrow window.
+        if (screen.Column == EditorColumn.Library && before?.Column != EditorColumn.Library)
         {
-            Ui.Text(model.Title, 13, bold: true, ink: ColorToken.Muted),
+            _pageOpen = true;
+        }
+        else if (screen.Column == EditorColumn.Empty)
+        {
+            _pageOpen = false;
+        }
+
+        RenderPicker();
+        ApplyLayout();
+    }
+
+    private static StyledText Empty(string text) =>
+        new(text, TextStyleToken.Body, ColorToken.Muted)
+        {
+            MaxLines = 0,
+            TextAlignment = TextAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S6),
         };
-        for (var i = 0; i < model.Layers.Count; i++)
-        {
-            var layer = model.Layers[i];
-            if (i > 0)
-            {
-                layers.Add(Ui.Separator("+", 14, bold: true));
-            }
 
-            var chip = Ui.Card(
-                Ui.Row(
-                    6,
-                    Ui.Icon(layer.Icon, 16, ColorToken.AccentInk),
-                    Ui.Text(layer.Label, 13, bold: true),
-                    Ui.Text(layer.Meta, 13, ink: ColorToken.Muted)
-                ),
+    private void Review()
+    {
+        _viewModel.ReviewDuplicates();
+        _profilesOpen = false;
+        ShowPage();
+    }
+
+    private void SelectFromLayer(ListRef list)
+    {
+        _viewModel.SelectList(list);
+        _profilesOpen = false;
+        ApplyLayout();
+    }
+
+    private void ToggleProfiles()
+    {
+        _profilesOpen = !_profilesOpen;
+        if (_shown is { } shown)
+        {
+            _header.Content = Header(shown.Header);
+        }
+
+        ApplyLayout();
+    }
+
+    // ---- The way back of the page (narrow window) ---------------------------------------------------------------
+
+    private Border PageHead(ShortcutsScreen screen)
+    {
+        var back = Parts.Button(
+            screen.Header.BackText,
+            "arrow_back",
+            ButtonVariant.Tertiary,
+            () => ClosePage()
+        );
+        back.HorizontalAlignment = HorizontalAlignment.Left;
+        var head = new Border
+        {
+            Child = back,
+            Padding = new Thickness(Space.S2, Space.S1, Space.S4, Space.S1),
+            BorderThickness = new Thickness(0, 0, 0, Theming.Generated.Stroke.Line),
+        };
+        Ui.Ink(head, Border.BorderBrushProperty, ColorToken.Border);
+        return head;
+    }
+
+    // ---- The selector of profiles (narrow window) ------------------------------------------------------------
+
+    /// <summary>
+    /// The profile in view as a selector of the whole width (CCM-005): its icon, its name and where it acts, and ▾; it
+    /// opens the list of profiles as a layer over the shortcuts.
+    /// </summary>
+    private TouchButton Selector(ShortcutsScreen screen)
+    {
+        var row = screen.Profiles.Rows.FirstOrDefault(static r => r.Selected);
+        var icon = Ui.Icon(screen.Header.Icon, IconBox.Medium, ColorToken.AccentInk);
+        icon.Margin = new Thickness(0, 0, Space.S3, 0);
+        var caret = Ui.Icon(
+            _profilesOpen ? "expand_less" : "expand_more",
+            IconBox.Medium,
+            ColorToken.Muted
+        );
+        caret.Margin = new Thickness(Space.S2, 0, 0, 0);
+        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        lines.Children.Add(new StyledText(screen.Header.Title, TextStyleToken.Label));
+        if (row is not null && row.Sub.Length > 0)
+        {
+            lines.Children.Add(new StyledText(row.Sub, TextStyleToken.Caption, ColorToken.Muted));
+        }
+
+        var content = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(caret, Dock.Right);
+        content.Children.Add(icon);
+        content.Children.Add(caret);
+        content.Children.Add(lines);
+        if (screen.TopBar.Duplicates is not null)
+        {
+            // The notice of repeated combinations is in the list: the selector says there is one.
+            var warning = Ui.Icon("difference", IconBox.Small, ColorToken.WarnText);
+            warning.Margin = new Thickness(Space.S2, 0, 0, 0);
+            DockPanel.SetDock(warning, Dock.Right);
+            content.Children.Insert(2, warning);
+        }
+
+        var selector = new TouchButton
+        {
+            Content = content,
+            Variant = ButtonVariant.Secondary,
+            Size = ControlSize.Medium,
+            IsExpanded = _profilesOpen,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S3, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(selector, screen.Profiles.Title + ": " + screen.Header.Title);
+        AutomationProperties.SetHelpText(
+            selector,
+            screen.TopBar.Duplicates ?? row?.Sub ?? string.Empty
+        );
+        selector.Click += (_, _) => ToggleProfiles();
+        return selector;
+    }
+
+    // ---- The header of the list and its binding (ATJ-003 to ATJ-008) ----------------------------------------------
+
+    /// <summary>
+    /// The name of the list with its icon, ✏ (the card of the profile) and «Añadir», the one primary button of the
+    /// column. In the narrow window the selector above already names the list, so only ✏ and «Añadir» remain.
+    /// </summary>
+    private FrameworkElement Header(ListHeaderModel model)
+    {
+        var add = Parts.Button(model.AddText, "add", ButtonVariant.Primary, OpenLibraryPage);
+        add.Margin = new Thickness(Space.S2, 0, 0, 0);
+        var row = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(add, Dock.Right);
+        row.Children.Add(add);
+        if (!_narrow)
+        {
+            var pic = Ui.Card(
+                Ui.Icon(model.Icon, IconBox.Medium, ColorToken.AccentInk),
                 ColorToken.Card,
                 ColorToken.Border,
-                16,
-                new Thickness(10, 6, 10, 6)
+                Radii.Medium,
+                new Thickness(0)
             );
-            AutomationProperties.SetName(chip, layer.Label + " " + layer.Meta);
-            layers.Add(chip);
+            pic.Width = ControlHeight.Small;
+            pic.Height = ControlHeight.Small;
+            pic.Margin = new Thickness(0, 0, Space.S3, 0);
+            DockPanel.SetDock(pic, Dock.Left);
+            row.Children.Add(pic);
         }
 
-        var dock = new DockPanel { LastChildFill = true };
-        if (model.Duplicates is { } duplicates)
-        {
-            var review = Ui.Button(
-                Ui.IconLabel("content_copy", duplicates, 18, 13, iconInk: ColorToken.Warn),
-                duplicates,
-                _viewModel.ReviewDuplicates,
-                ColorToken.WarnWash,
-                radius: 22
-            );
-            review.Margin = new Thickness(12, 0, 0, 0);
-            DockPanel.SetDock(review, Dock.Right);
-            dock.Children.Add(review);
-        }
-
-        dock.Children.Add(
-            Ui.Wrap(
-                8,
-                layers.Select(l =>
-                {
-                    if (l is FrameworkElement f)
-                    {
-                        f.VerticalAlignment = VerticalAlignment.Center;
-                    }
-                    return l;
-                })
-            )
-        );
-        return dock;
-    }
-
-    private StackPanel Profiles(ProfilesModel model)
-    {
-        var column = Ui.Column(4);
-        var title = Ui.Text(
-            model.Title.ToUpper(System.Globalization.CultureInfo.CurrentCulture),
-            12,
-            bold: true,
-            ink: ColorToken.Muted
-        );
-        title.Margin = new Thickness(8, 0, 8, 6);
-        column.Children.Add(title);
-        foreach (var row in model.Rows)
-        {
-            var content = Ui.Row(
-                8,
-                Ui.Icon(row.Icon, 20, ColorToken.AccentInk),
-                Ui.Column(
-                    0,
-                    Ui.Text(row.Name, 14, bold: true),
-                    Ui.Text(row.Sub, 11, ink: ColorToken.Muted, mono: true)
-                )
-            );
-            var button = Ui.Choice(
-                content,
-                row.Name,
-                row.Selected,
-                () => _viewModel.SelectList(row.List),
-                52,
-                10,
-                offFill: null,
-                role: OptionRole.Option
-            );
-            if (row.Selected)
-            {
-                Ui.Paint(button, ColorToken.CardHi, ColorToken.Text, null);
-                button.BorderThickness = new Thickness(0);
-            }
-            else
-            {
-                Ui.Paint(button, null, ColorToken.Text, null);
-            }
-
-            button.HorizontalContentAlignment = HorizontalAlignment.Left;
-            button.Padding = new Thickness(8, 4, 8, 4);
-            button.MinHeight = 52;
-            button.Height = double.NaN;
-            AutomationProperties.SetHelpText(button, row.Sub);
-            column.Children.Add(button);
-        }
-
-        var add = Dashed(
-            Ui.Text(model.NewProfile, 13, bold: true, ink: ColorToken.Muted),
-            model.NewProfile,
-            _viewModel.NewProfile,
-            44
-        );
-        add.Margin = new Thickness(0, 6, 0, 0);
-        column.Children.Add(add);
-        return column;
-    }
-
-    private static TouchButton Dashed(UIElement content, string name, Action click, double height)
-    {
-        var frame = new Rectangle
-        {
-            RadiusX = 10,
-            RadiusY = 10,
-            StrokeThickness = 2,
-            StrokeDashArray = [4, 3],
-            IsHitTestVisible = false,
-        };
-        Ui.Ink(frame, Shape.StrokeProperty, ColorToken.Line);
-        var layers = new Grid();
-        layers.Children.Add(frame);
-        layers.Children.Add(content);
-        if (content is FrameworkElement element)
-        {
-            element.HorizontalAlignment = HorizontalAlignment.Center;
-            element.VerticalAlignment = VerticalAlignment.Center;
-        }
-
-        var button = Ui.Button(layers, name, click, height: height);
-        button.Padding = new Thickness(0);
-        button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        button.VerticalContentAlignment = VerticalAlignment.Stretch;
-        button.BorderThickness = new Thickness(0);
-        return button;
-    }
-
-    private DockPanel Header(ListHeaderModel model)
-    {
-        var icon = Ui.Card(
-            Ui.Icon(model.Icon, 22, ColorToken.AccentInk),
-            ColorToken.Card,
-            null,
-            11,
-            new Thickness(0)
-        );
-        icon.Width = 40;
-        icon.Height = 40;
-        // The pencil is docked first, so a long name is trimmed with «…» and never pushes it out of the row (REG-02).
+        // The pencil is docked first, so a long name ends in «…» and never pushes it out of the row (REG-02).
         var title = new DockPanel
         {
             LastChildFill = true,
@@ -418,103 +636,212 @@ public sealed class ShortcutsSectionView : Grid
         };
         if (model.CanEdit)
         {
-            var edit = Ui.Choice(
-                Ui.Icon("edit", 18),
-                model.EditName,
-                model.Editing,
-                _viewModel.ToggleProfileEdit,
-                44,
-                10,
-                offFill: null,
-                role: OptionRole.Expander
-            );
-            edit.Width = 44;
-            edit.Padding = new Thickness(0);
-            if (!model.Editing)
+            var edit = new IconButton
             {
-                edit.BorderThickness = new Thickness(0);
-            }
-
-            edit.Margin = new Thickness(4, 0, 0, 0);
+                Symbol = "edit",
+                IconSize = IconBox.Small,
+                IsExpanded = model.Editing,
+                IsActive = model.Editing,
+                Margin = new Thickness(Space.S1, 0, 0, 0),
+            };
+            AutomationProperties.SetName(edit, model.EditName);
+            edit.Click += (_, _) => _viewModel.ToggleProfileEdit();
             DockPanel.SetDock(edit, Dock.Right);
             title.Children.Add(edit);
         }
 
-        title.Children.Add(Ui.Text(model.Title, 18, bold: true));
+        if (!_narrow)
+        {
+            title.Children.Add(
+                new StyledText(model.Title, TextStyleToken.Title)
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                }
+            );
+            row.Children.Add(title);
+        }
+        else
+        {
+            // Narrow: the selector of profiles names the list and takes the width; ✏ and «Añadir» stay beside it.
+            DockPanel.SetDock(title, Dock.Right);
+            row.Children.Add(title);
+            if (_shown is { } screen)
+            {
+                row.Children.Add(Selector(screen));
+            }
+        }
 
-        var subtitle = Ui.Text(model.Subtitle, 12, ink: ColorToken.Muted, wrap: true);
-        var add = Ui.Button(
-            Ui.IconLabel("add", model.AddText, 20, 14, ink: ColorToken.OnAccent),
-            model.AddText,
-            _viewModel.OpenLibrary,
-            ColorToken.Accent,
-            ColorToken.OnAccent
-        );
-        var dock = new DockPanel { LastChildFill = true };
-        add.VerticalAlignment = VerticalAlignment.Top;
-        dock.Children.Add(add);
-        DockPanel.SetDock(icon, Dock.Left);
-        icon.VerticalAlignment = VerticalAlignment.Top;
-        icon.Margin = new Thickness(0, 0, 10, 0);
-        dock.Children.Add(icon);
-        dock.Children.Add(Ui.Column(2, title, subtitle));
-        PlaceAdd(add, double.PositiveInfinity);
-        dock.SizeChanged += (_, e) => PlaceAdd(add, e.NewSize.Width);
-        return dock;
+        row.Margin = new Thickness(0, 0, 0, Space.S3);
+        if (_shown?.Link is not null || _narrow)
+        {
+            return row;
+        }
+
+        // Always visible has no binding row: its subtitle says where it acts.
+        var subtitle = Parts.Note(model.Subtitle, style: TextStyleToken.Caption);
+        subtitle.Margin = new Thickness(ControlHeight.Small + Space.S3, 0, 0, 0);
+        var column = new StackPanel();
+        column.Children.Add(row);
+        column.Children.Add(subtitle);
+        return column;
     }
 
     /// <summary>
-    /// [Añadir] goes beside the name of the list; where the column is too narrow for both (the smallest window,
-    /// CCM-005), it goes under it at full width, so the name and its pencil keep their 44 (REG-02).
+    /// The one row of the binding (ATJ-005): what the profile follows, in one line with «…», the process in the type
+    /// of the text (never cut) and its action as a tertiary button; it warns in warn when the profile follows nothing.
     /// </summary>
-    private static void PlaceAdd(TouchButton add, double width)
+    private Border Link(LinkModel model)
     {
-        var below = width < HeaderStackWidth;
-        DockPanel.SetDock(add, below ? Dock.Bottom : Dock.Right);
-        add.Margin = below ? new Thickness(0, 10, 0, 0) : new Thickness(10, 0, 0, 0);
+        var (fill, line, ink) = model.State switch
+        {
+            LinkState.Unlinked => (ColorToken.WarnWash, ColorToken.Warn, ColorToken.WarnText),
+            LinkState.Waiting => (ColorToken.AccentWash, ColorToken.Accent, ColorToken.AccentInk),
+            LinkState.Linked => (ColorToken.Card, ColorToken.Border, ColorToken.Success),
+            _ => (ColorToken.Card, ColorToken.Border, ColorToken.Muted),
+        };
+        var icon = Ui.Icon(model.Icon, IconBox.Small, ink);
+        icon.Margin = new Thickness(0, 0, Space.S3, 0);
+        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        lines.Children.Add(new StyledText(model.Title, TextStyleToken.Label));
+        lines.Children.Add(
+            new StyledText(model.Subtitle, TextStyleToken.Caption, ColorToken.Muted)
+        );
+        var row = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(icon, Dock.Left);
+        row.Children.Add(icon);
+        if (model.Action is { } action)
+        {
+            var button = Parts.Button(action, null, ButtonVariant.Tertiary, _viewModel.LinkAction);
+            button.IsExpanded = model.State == LinkState.Waiting ? null : model.Expanded;
+            AutomationProperties.SetHelpText(button, model.Title);
+            button.Margin = new Thickness(Space.S2, 0, 0, 0);
+            DockPanel.SetDock(button, Dock.Right);
+            row.Children.Add(button);
+        }
+
+        row.Children.Add(lines);
+        var card = Ui.Card(
+            row,
+            fill,
+            line,
+            Radii.Medium,
+            new Thickness(Space.S3, Space.S2, Space.S1, Space.S2)
+        );
+        card.MinHeight = ControlHeight.Large;
+        card.Margin = new Thickness(0, Space.S3, 0, 0);
+        return card;
     }
 
-    private Border ProfileEdit(ProfileEditModel model)
+    /// <summary>
+    /// The options of the binding as a layer over the grid (ATJ-006 to ATJ-008): the question when another profile has
+    /// the app, the open apps, «Detectar» and «Ninguna».
+    /// </summary>
+    private StackPanel LinkOptions(LinkModel model)
+    {
+        var column = new StackPanel();
+        if (model.Question is { } question)
+        {
+            var yes = Parts.Button(
+                model.YesText,
+                null,
+                ButtonVariant.Primary,
+                () => _viewModel.AnswerTakeOver(true)
+            );
+            var no = Parts.Button(
+                model.NoText,
+                null,
+                ButtonVariant.Secondary,
+                () => _viewModel.AnswerTakeOver(false)
+            );
+            var ask = new Card
+            {
+                Tone = CardTone.Warn,
+                Content = Parts.Section(
+                    null,
+                    new StyledText(question, TextStyleToken.Label) { MaxLines = 0 },
+                    Ui.Columns(2, Space.S2, [yes, no])
+                ),
+                Margin = new Thickness(0, 0, 0, Space.S4),
+            };
+            AutomationProperties.SetLiveSetting(ask, AutomationLiveSetting.Polite);
+            column.Children.Add(ask);
+        }
+
+        if (!model.Expanded)
+        {
+            return column;
+        }
+
+        var apps = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
+        foreach (var app in model.Apps)
+        {
+            var chip = new OptionButton
+            {
+                Kind = OptionKind.Chip,
+                Content = app.Mark is null ? app.Name : app.Name + " · " + app.Mark,
+                Symbol = "apps",
+                IsSelected = app.Selected,
+                Margin = new Thickness(0, 0, Space.S2, Space.S2),
+            };
+            AutomationProperties.SetName(
+                chip,
+                app.Mark is null
+                    ? app.Name + " " + app.Process
+                    : app.Name + " " + app.Process + ", " + app.Mark
+            );
+            AutomationProperties.SetHelpText(chip, app.Process);
+            chip.Click += (_, _) => _viewModel.BindApp(app.Process);
+            apps.Children.Add(chip);
+        }
+
+        column.Children.Add(Parts.Section(model.AppsTitle, apps));
+        var detect = Parts.Button(
+            model.DetectText,
+            "radar",
+            ButtonVariant.Secondary,
+            _viewModel.Detect
+        );
+        var none = Parts.Button(
+            model.NoneText,
+            "link_off",
+            ButtonVariant.Secondary,
+            _viewModel.Unlink
+        );
+        var actions = Ui.Columns(2, Space.S2, [detect, none]);
+        actions.Margin = new Thickness(0, Space.S4, 0, 0);
+        column.Children.Add(actions);
+        return column;
+    }
+
+    // ---- The card of the profile (ATJ-004) ---------------------------------------------------------------------
+
+    /// <summary>
+    /// «Editar perfil» as a layer over the grid: its name with 🎤, its icon (which opens the icon picker, D14), «Modo
+    /// compatible», «Listo» (primary), «Compartir» and «Eliminar perfil» (two taps, REG-04).
+    /// </summary>
+    private StackPanel ProfileEdit(ProfileEditModel model)
     {
         Detach(_profileName);
         AutomationProperties.SetName(_profileName.Box, model.NameLabel);
+        _profileName.DictateName = model.DictateName;
         _profileName.Show(model.Name);
-        var dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.AccentInk),
-            model.DictateName,
-            () => FocusAndDictate(_profileName),
-            ColorToken.AccentWash
-        );
-        dictate.Width = 44;
-        dictate.Padding = new Thickness(0);
-        var name = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(dictate, Dock.Right);
-        dictate.Margin = new Thickness(6, 0, 0, 0);
-        name.Children.Add(dictate);
-        name.Children.Add(_profileName);
-
-        var icons = new AutoFillGrid
+        var icon = new OptionButton
         {
-            MinItemWidth = 44,
-            ItemHeight = 44,
-            Gap = 4,
+            Kind = OptionKind.Tile,
+            Content = Ui.Icon(model.Icon, IconBox.Medium, ColorToken.AccentInk),
+            Role = OptionRole.Expander,
+            IsSelected = model.Picker is not null,
+            Width = ControlHeight.Medium,
+            Height = ControlHeight.Medium,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 0, Space.S2, 0),
         };
-        foreach (var option in model.Icons)
-        {
-            var button = Ui.Choice(
-                Ui.Icon(option.Icon, 20),
-                option.Icon,
-                option.Selected,
-                () => _viewModel.SetProfileIcon(option.Icon),
-                44,
-                8,
-                role: OptionRole.Option
-            );
-            button.Padding = new Thickness(0);
-            icons.Children.Add(button);
-        }
-
-        var iconsScroll = new ThemedScrollViewer { Content = icons, MaxHeight = 140 };
+        AutomationProperties.SetName(icon, model.ChangeIconName);
+        icon.Click += (_, _) => _viewModel.ToggleProfileIcons();
+        var name = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(icon, Dock.Left);
+        name.Children.Add(icon);
+        name.Children.Add(_profileName);
         var compat = Ui.SwitchRow(
             "sports_esports",
             model.CompatTitle,
@@ -522,354 +849,94 @@ public sealed class ShortcutsSectionView : Grid
             model.Compatible,
             _viewModel.ToggleCompatible
         );
-        var share = Ui.Button(
-            Ui.IconLabel("share", model.ShareText),
+        var done = Parts.Button(
+            model.DoneText,
+            "check",
+            ButtonVariant.Primary,
+            _viewModel.ToggleProfileEdit
+        );
+        var share = Parts.Button(
             model.ShareText,
-            () => _ = _viewModel.ShareAsync(withTexts: false),
-            ColorToken.Card,
-            stroke: ColorToken.Border
+            "share",
+            ButtonVariant.Secondary,
+            () => _ = _viewModel.ShareAsync(withTexts: false)
         );
         share.IsEnabled = model.CanShare;
-        var done = Ui.Button(
-            Ui.Text(model.DoneText, 14, bold: true, ink: ColorToken.OnAccent),
-            model.DoneText,
-            _viewModel.ToggleProfileEdit,
-            ColorToken.Accent,
-            ColorToken.OnAccent
-        );
         var actions = new List<UIElement> { share };
         if (model.DeleteText is { } deleteText)
         {
-            var delete = Ui.Button(
-                Ui.IconLabel(
-                    model.DeleteArmed ? "warning" : "delete",
+            actions.Add(
+                Parts.Button(
                     deleteText,
-                    ink: model.DeleteArmed ? ColorToken.OnDanger : ColorToken.DangerText,
-                    iconInk: model.DeleteArmed ? ColorToken.OnDanger : ColorToken.DangerText
-                ),
-                deleteText,
-                _viewModel.DeleteProfile,
-                model.DeleteArmed ? ColorToken.Danger : ColorToken.DangerWash
+                    model.DeleteArmed ? "warning" : "delete",
+                    ButtonVariant.Danger,
+                    _viewModel.DeleteProfile
+                )
             );
-            delete.Padding = new Thickness(6, 0, 6, 0);
-            actions.Add(delete);
         }
 
-        share.Padding = new Thickness(6, 0, 6, 0);
-        var buttons = Ui.Column(6, done, Ui.Columns(actions.Count, 6, actions));
-        if (model.ShareTextsText is { } shareTexts)
-        {
-            // DAT-007, PQ-37: the texts travel in clear only when the person chooses so.
-            buttons.Children.Add(
-                Ui.Button(
-                    Ui.IconLabel("lock_open", shareTexts),
+        var column = Parts.Section(
+            model.NameLabel,
+            name,
+            compat,
+            Ui.Columns(actions.Count, Space.S2, actions),
+            model.ShareTextsText is { } shareTexts
+                ? Parts.Button(
                     shareTexts,
-                    () => _ = _viewModel.ShareAsync(withTexts: true),
-                    ColorToken.Card,
-                    stroke: ColorToken.Border
+                    "lock_open",
+                    ButtonVariant.Secondary,
+                    () => _ = _viewModel.ShareAsync(withTexts: true)
                 )
-            );
-        }
-
-        return Ui.Card(
-            Ui.Column(
-                10,
-                Ui.Caption(model.NameLabel),
-                name,
-                Ui.Caption(model.IconLabel),
-                iconsScroll,
-                compat,
-                buttons
-            ),
-            ColorToken.AccentWash,
-            ColorToken.Accent,
-            12,
-            new Thickness(12)
+                : null,
+            done
         );
+        // DAT-007, PQ-37: the texts travel in clear only when the person chooses so.
+        return column;
     }
 
-    private Border Link(LinkModel model)
-    {
-        var tone = model.State switch
-        {
-            LinkState.Unlinked => (
-                Fill: ColorToken.WarnWash,
-                Stroke: ColorToken.Warn,
-                Icon: ColorToken.Warn
-            ),
-            LinkState.Waiting => (
-                Fill: ColorToken.AccentWash,
-                Stroke: ColorToken.Accent,
-                Icon: ColorToken.Accent
-            ),
-            _ => (Fill: ColorToken.Card, Stroke: ColorToken.Border, Icon: ColorToken.Accent),
-        };
-        var head = new DockPanel { LastChildFill = true };
-        var icon = Ui.Icon(model.Icon, 20, tone.Icon);
-        icon.Margin = new Thickness(0, 0, 10, 0);
-        DockPanel.SetDock(icon, Dock.Left);
-        head.Children.Add(icon);
-        if (model.Action is { } action)
-        {
-            var label = Ui.Text(action, 12, bold: true, ink: ColorToken.AccentInk);
-            label.Margin = new Thickness(10, 0, 0, 0);
-            DockPanel.SetDock(label, Dock.Right);
-            head.Children.Add(label);
-        }
-
-        head.Children.Add(
-            Ui.Column(
-                1,
-                Ui.Text(model.Title, 13, bold: true, wrap: true),
-                Ui.Text(model.Subtitle, 12, ink: ColorToken.Muted, wrap: true)
-            )
-        );
-        UIElement top;
-        if (model.Action is not null)
-        {
-            var button = Ui.Button(head, model.Title, _viewModel.LinkAction, height: double.NaN);
-            button.MinHeight = 48;
-            button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            button.Padding = new Thickness(12, 6, 12, 6);
-            button.BorderThickness = new Thickness(0);
-            AutomationProperties.SetHelpText(button, model.Subtitle);
-            top = button;
-        }
-        else
-        {
-            head.Margin = new Thickness(12, 10, 12, 10);
-            top = head;
-        }
-
-        var body = Ui.Column(8, top);
-        if (model.Question is { } question)
-        {
-            var yes = Ui.Button(
-                Ui.Text(model.YesText, 13, bold: true, ink: ColorToken.OnWarn),
-                model.YesText,
-                () => _viewModel.AnswerTakeOver(true),
-                ColorToken.Warn,
-                ColorToken.OnWarn
-            );
-            var no = Ui.Button(
-                Ui.Text(model.NoText, 13, bold: true),
-                model.NoText,
-                () => _viewModel.AnswerTakeOver(false),
-                ColorToken.Card,
-                stroke: ColorToken.Border
-            );
-            var ask = Ui.Card(
-                Ui.Column(
-                    8,
-                    Ui.Text(question, 13, bold: true, wrap: true),
-                    Ui.Columns(2, 6, [yes, no])
-                ),
-                ColorToken.WarnWash,
-                ColorToken.Warn,
-                10,
-                new Thickness(10)
-            );
-            ask.Margin = new Thickness(12, 0, 12, 12);
-            AutomationProperties.SetLiveSetting(ask, AutomationLiveSetting.Polite);
-            body.Children.Add(ask);
-        }
-
-        if (model.Expanded)
-        {
-            var apps = model.Apps.Select(app =>
-            {
-                var mark = app.Mark is { } active
-                    ? Ui.Card(
-                        Ui.Text(active, 11, bold: true, ink: ColorToken.AccentInk),
-                        ColorToken.AccentWash,
-                        null,
-                        8,
-                        new Thickness(6, 1, 6, 1)
-                    )
-                    : null;
-                // The name, the process and the mark go on one line and, where the column is narrower than them (the
-                // smallest window, CCM-005), on the next ones: the chip grows and nothing of it is cut.
-                var parts = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-                foreach (
-                    var part in new FrameworkElement?[]
-                    {
-                        Ui.Text(app.Name, 13, bold: true),
-                        Ui.Text(app.Process, 11, ink: ColorToken.Muted, mono: true),
-                        mark,
-                    }
-                )
-                {
-                    if (part is not null)
-                    {
-                        part.Margin = new Thickness(3, 1, 3, 1);
-                        parts.Children.Add(part);
-                    }
-                }
-
-                var chip = Ui.Choice(
-                    parts,
-                    app.Mark is null
-                        ? app.Name + " " + app.Process
-                        : app.Name + " " + app.Process + ", " + app.Mark,
-                    app.Selected,
-                    () => _viewModel.BindApp(app.Process),
-                    double.NaN,
-                    22,
-                    role: OptionRole.Option
-                );
-                chip.MinHeight = 44;
-                chip.Padding = new Thickness(9, 4, 9, 4);
-                return (UIElement)chip;
-            });
-            var detect = Ui.Button(
-                Ui.IconLabel("radar", model.DetectText, 18, 12),
-                model.DetectText,
-                _viewModel.Detect,
-                ColorToken.Card,
-                stroke: ColorToken.Border,
-                height: double.NaN
-            );
-            var none = Ui.Button(
-                Ui.IconLabel("link_off", model.NoneText, 18, 12),
-                model.NoneText,
-                _viewModel.Unlink,
-                ColorToken.Card,
-                stroke: ColorToken.Border,
-                height: double.NaN
-            );
-            detect.MinHeight = 44;
-            none.MinHeight = 44;
-            detect.HorizontalContentAlignment = HorizontalAlignment.Left;
-            none.HorizontalContentAlignment = HorizontalAlignment.Left;
-            var options = Ui.Column(8, Ui.Caption(model.AppsTitle), Ui.Wrap(6, apps), detect, none);
-            options.Margin = new Thickness(12, 0, 12, 12);
-            body.Children.Add(options);
-        }
-
-        return Ui.Card(body, tone.Fill, tone.Stroke, 12, new Thickness(0));
-    }
+    // ---- The grid (ATJ-009) ------------------------------------------------------------------------------------
 
     private StackPanel Grid(GridModel model)
     {
         var grid = new AutoFillGrid
         {
-            MinItemWidth = 96,
-            ItemHeight = 88,
-            Gap = 8,
+            MinItemWidth = GridTiles.MinWidth,
+            ItemHeight = GridTiles.TileHeight,
+            Gap = Space.S2,
         };
         foreach (var tile in model.Tiles)
         {
             grid.Children.Add(Tile(tile, model.IncompleteText));
         }
 
-        var library = Dashed(
-            Ui.Column(
-                4,
-                Ui.Icon("library_add", 24, ColorToken.Muted),
-                Ui.Text(model.LibraryText, 13, bold: true, ink: ColorToken.Muted)
-            ),
-            model.LibraryText,
-            _viewModel.OpenLibrary,
-            88
-        );
-        grid.Children.Add(library);
-        var hint = Ui.Text(model.Hint, 12, ink: ColorToken.Muted, wrap: true);
-        return Ui.Column(8, grid, hint);
+        grid.Children.Add(GridTiles.Library(model.LibraryText, OpenLibraryPage));
+        var hint = Parts.Note(model.Hint, style: TextStyleToken.Caption);
+        hint.Margin = new Thickness(0, Space.S3, 0, 0);
+        var column = new StackPanel();
+        column.Children.Add(grid);
+        column.Children.Add(hint);
+        return column;
+    }
+
+    private void OpenLibraryPage()
+    {
+        _viewModel.OpenLibrary();
+        ShowPage();
     }
 
     private OptionButton Tile(GridTile tile, string incompleteText)
     {
-        var name = Ui.Text(tile.Name, 13, bold: true);
-        name.TextAlignment = TextAlignment.Center;
-        name.HorizontalAlignment = HorizontalAlignment.Center;
-        var foot = Ui.Text(tile.Foot, 11, ink: ColorToken.Muted, mono: true);
-        foot.HorizontalAlignment = HorizontalAlignment.Center;
-        var center = Ui.Column(4, Ui.CategoryIcon(tile.Icon, 26, tile.Category), name, foot);
-        center.VerticalAlignment = VerticalAlignment.Center;
-        center.HorizontalAlignment = HorizontalAlignment.Center;
-        var layers = new Grid();
-        layers.Children.Add(center);
-        if (tile.Repeated)
-        {
-            layers.Children.Add(
-                Corner(
-                    Ui.Icon("warning", 16, ColorToken.WarnText),
-                    HorizontalAlignment.Left,
-                    VerticalAlignment.Top
-                )
-            );
-        }
-
-        if (tile.TypeIcon is { } type)
-        {
-            layers.Children.Add(
-                Corner(
-                    Ui.Icon(type, 14, ColorToken.Muted),
-                    HorizontalAlignment.Right,
-                    VerticalAlignment.Top
-                )
-            );
-        }
-
-        if (tile.Number is { } number)
-        {
-            var badge = Ui.Card(
-                Ui.Text(number, 11, bold: true, ink: ColorToken.OnWarn),
-                ColorToken.Warn,
-                null,
-                5,
-                new Thickness(4, 0, 4, 0)
-            );
-            layers.Children.Add(Corner(badge, HorizontalAlignment.Left, VerticalAlignment.Bottom));
-        }
-
-        if (tile.Incomplete)
-        {
-            var badge = Ui.Card(
-                Ui.Text(incompleteText, 11, bold: true, ink: ColorToken.WarnText),
-                ColorToken.WarnWash,
-                null,
-                4,
-                new Thickness(5, 0, 5, 0)
-            );
-            layers.Children.Add(Corner(badge, HorizontalAlignment.Right, VerticalAlignment.Bottom));
-        }
-
-        var button = Ui.Choice(
-            layers,
-            tile.AccessibleName,
-            tile.Selected,
-            () => { },
-            88,
-            12,
-            role: OptionRole.Option
-        );
-        button.Padding = new Thickness(4);
-        button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        button.VerticalContentAlignment = VerticalAlignment.Stretch;
-        button.Tag = tile.Id;
-        AutomationProperties.SetItemStatus(button, tile.AccessibleState);
+        var button = GridTiles.Tile(tile, incompleteText);
         button.PreviewMouseLeftButtonDown += (_, _) => Press(tile.Id, button);
         button.Click += (_, _) =>
         {
             if (_dragging is null)
             {
                 _viewModel.SelectTile(tile.Id);
+                ShowPage();
             }
         };
         return button;
-    }
-
-    private static FrameworkElement Corner(
-        FrameworkElement element,
-        HorizontalAlignment horizontal,
-        VerticalAlignment vertical
-    )
-    {
-        element.HorizontalAlignment = horizontal;
-        element.VerticalAlignment = vertical;
-        element.IsHitTestVisible = false;
-        return element;
     }
 
     private void Press(ShortcutId id, UIElement tile)
@@ -964,148 +1031,5 @@ public sealed class ShortcutsSectionView : Grid
         }
 
         return null;
-    }
-
-    private StackPanel Library(LibraryModel model)
-    {
-        var close = Ui.Button(
-            Ui.Icon("close", 20),
-            model.CloseName,
-            _viewModel.CloseLibrary,
-            ColorToken.Card
-        );
-        close.Width = 44;
-        close.Padding = new Thickness(0);
-        var head = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(close, Dock.Right);
-        head.Children.Add(close);
-        head.Children.Add(Ui.Text(model.Title, 18, bold: true));
-
-        var veil = Ui.Card(null, ColorToken.OnAccent, null, 12, new Thickness(0));
-        veil.Opacity = 0.2;
-        var badge = new Grid { Width = 44, Height = 44 };
-        badge.Children.Add(veil);
-        badge.Children.Add(Ui.Icon("edit_square", 26, ColorToken.OnAccent));
-        var createContent = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(badge, Dock.Left);
-        badge.Margin = new Thickness(0, 0, 12, 0);
-        createContent.Children.Add(badge);
-        var arrow = Ui.Icon("arrow_forward", 22, ColorToken.OnAccent);
-        DockPanel.SetDock(arrow, Dock.Right);
-        createContent.Children.Add(arrow);
-        createContent.Children.Add(
-            Ui.Column(
-                2,
-                Ui.Text(model.CreateTitle, 16, bold: true, ink: ColorToken.OnAccent),
-                Ui.Text(model.CreateText, 13, ink: ColorToken.OnAccent, wrap: true)
-            )
-        );
-        var create = Ui.Button(
-            createContent,
-            model.CreateTitle,
-            _viewModel.CreateOwn,
-            ColorToken.Accent,
-            ColorToken.OnAccent,
-            height: double.NaN,
-            radius: 14
-        );
-        create.Padding = new Thickness(14);
-        create.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        AutomationProperties.SetHelpText(create, model.CreateText);
-
-        var or = new Grid();
-        or.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-        );
-        or.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        or.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-        );
-        var left = Ui.Line();
-        var right = Ui.Line();
-        var orText = Ui.Text(
-            model.OrPick.ToUpper(System.Globalization.CultureInfo.CurrentCulture),
-            12,
-            bold: true,
-            ink: ColorToken.Muted
-        );
-        orText.Margin = new Thickness(10, 0, 10, 0);
-        SetColumn(orText, 1);
-        SetColumn(right, 2);
-        or.Children.Add(left);
-        or.Children.Add(orText);
-        or.Children.Add(right);
-
-        var chips = model.Chips.Select(chip =>
-        {
-            var button = Ui.Choice(
-                Ui.IconLabel(chip.Icon, chip.Label, 18, 13),
-                chip.Label,
-                chip.Selected,
-                () => _viewModel.ChooseCategory(chip.Id),
-                44,
-                22,
-                role: OptionRole.Option
-            );
-            if (chip.Selected)
-            {
-                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
-                button.Content = Ui.IconLabel(
-                    chip.Icon,
-                    chip.Label,
-                    18,
-                    13,
-                    iconInk: ColorToken.OnAccent,
-                    ink: ColorToken.OnAccent
-                );
-            }
-
-            return (UIElement)button;
-        });
-
-        var rows = Ui.Column(6);
-        foreach (var row in model.Rows)
-        {
-            var content = new DockPanel { LastChildFill = true };
-            var icon = Ui.CategoryIcon(row.Icon, 24, row.Category);
-            icon.Margin = new Thickness(0, 0, 10, 0);
-            DockPanel.SetDock(icon, Dock.Left);
-            content.Children.Add(icon);
-            var state = Ui.Icon(
-                row.Added ? "check_circle" : "add_circle",
-                26,
-                row.Added ? ColorToken.Accent : ColorToken.Muted
-            );
-            DockPanel.SetDock(state, Dock.Right);
-            content.Children.Add(state);
-            content.Children.Add(
-                Ui.Column(
-                    2,
-                    Ui.Text(row.Name, 14, bold: true),
-                    Ui.Text(row.Foot, 11, ink: ColorToken.Muted, mono: true)
-                )
-            );
-            var button = Ui.Button(
-                content,
-                row.Name,
-                () => _viewModel.AddFromLibrary(row.Index),
-                ColorToken.Card,
-                stroke: ColorToken.Border,
-                height: double.NaN
-            );
-            button.MinHeight = 56;
-            button.Padding = new Thickness(12, 6, 12, 6);
-            button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            AutomationProperties.SetItemStatus(button, row.AccessibleState);
-            rows.Children.Add(button);
-        }
-
-        return Ui.Column(16, head, create, or, Ui.Wrap(6, chips), rows);
-    }
-
-    private void FocusAndDictate(TextInput field)
-    {
-        _ = Keyboard.Focus(field.Box);
-        _viewModel.Dictate();
     }
 }
