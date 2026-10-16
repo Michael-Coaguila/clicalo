@@ -56,6 +56,27 @@ public sealed class SurfacesAuditTests
             w.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true }),
         ["frequents"] = static w =>
             w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true }),
+        ["frequents-empty"] = static w =>
+        {
+            w.Panel.Apply(
+                PanelProjector.Project(
+                    PanelBodyTestData.Library(14, 3),
+                    PanelBodyTestData.Excel,
+                    LangCode.Es,
+                    LangCode.Es
+                )
+            );
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
+        },
+        ["empty-profile"] = static w =>
+            w.Panel.Apply(
+                PanelProjector.Project(
+                    PanelBodyTestData.Library(14, 3),
+                    PanelBodyTestData.Excel,
+                    LangCode.Es,
+                    LangCode.Es
+                )
+            ),
         ["notices"] = static w =>
             w.Panel.ApplyContext(
                 PanelBodyContext.Idle with
@@ -85,13 +106,22 @@ public sealed class SurfacesAuditTests
             ),
         ["panic"] = static w =>
             w.Panel.ApplyEngine(PanelBodyTestData.Holding(new ShortcutId("w0"))),
-        ["search"] = static w => _ = w.Search.OpenAsync(SearchTrigger.Touch),
+        ["search"] = static w =>
+        {
+            _ = w.Search.OpenAsync(SearchTrigger.Touch);
+            w.Header.ApplyLayers(searchOpen: true, editing: false, quickSettingsOpen: false);
+        },
         ["suggestion"] = static w =>
             w.Suggestion.Apply(new ProcessName("excel.exe"), searching: false),
-        ["quick-settings"] = static w => w.Layers.QuickSettings.Open(),
+        ["quick-settings"] = static w =>
+        {
+            w.Layers.QuickSettings.Open();
+            w.Header.ApplyLayers(searchOpen: false, editing: false, quickSettingsOpen: true);
+        },
         ["edit-mode"] = static w =>
         {
             w.Layers.EditMode.Enter();
+            w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
             w.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
         },
         ["tile-menu"] = static w =>
@@ -110,6 +140,8 @@ public sealed class SurfacesAuditTests
         foreach (var state in PanelStates.Keys)
         {
             cases.Add(state, SizeSetting.Small, false, "es", AuditLook.Dark);
+            // The panel of the mockup of direction C (D12): M, Full, in Spanish, 340 wide.
+            cases.Add(state, SizeSetting.Medium, false, "es", AuditLook.Dark);
             cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.Dark);
             cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark);
             cases.Add(state, SizeSetting.Large, false, "en", AuditLook.Dark);
@@ -195,9 +227,12 @@ public sealed class SurfacesAuditTests
                 PanelStates[state](world);
                 host.LayOut();
 
+                var name =
+                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})";
+                AuditGallery.SaveLargeText(host, "Panel", name);
                 SurfaceAudit.ShouldPass(
                     host,
-                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})",
+                    name,
                     atLeast: 8,
                     TouchInput.PointerLayer,
                     "Panel"

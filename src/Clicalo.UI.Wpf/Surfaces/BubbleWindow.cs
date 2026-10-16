@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
 using Clicalo.Application.Ports;
-using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Bubble;
@@ -13,15 +12,15 @@ using Clicalo.UI.Wpf.Windowing;
 namespace Clicalo.UI.Wpf.Surfaces;
 
 /// <summary>
-/// The 64 px bubble the panel minimizes to (docs/04 «Burbuja minimizada», BUR-001, BUR-002): a circle with the
-/// <c>panel</c> fill, a border of 1 and the <c>keyboard</c> icon of 30 in <c>accent</c>; with something held, a red ring
-/// of 3. A tap without dragging restores the panel; a drag moves it (PAN-004). Its opacity, never below 55 % and 100 % with
-/// panic, is the one <see cref="SurfaceSet"/> gives it (BUR-002).
+/// The bubble the panel minimizes to (BUR-001, BUR-002) in direction C (D12): a circle of
+/// <see cref="ControlHeight.Large"/> with the <c>panel</c> fill and its decorative line, and the mark of Clícalo, the
+/// <c>touch_app</c> hand in <c>accentInk</c> in a box of <see cref="IconBox.Large"/>, so it is never taken for the touch
+/// keyboard of Windows; with something held, a ring of <see cref="Stroke.FocusRing"/> in <c>danger</c>. A tap without
+/// dragging restores the panel; a drag moves it (PAN-004). Its opacity, never below 55 % and 100 % with panic, is the
+/// one <see cref="SurfaceSet"/> gives it (BUR-002).
 /// </summary>
 public sealed class BubbleWindow : TouchSurface
 {
-    private const double PanicRingPx = 3;
-
     private readonly BubbleViewModel _viewModel;
     private readonly IconButton _button;
 
@@ -50,18 +49,17 @@ public sealed class BubbleWindow : TouchSurface
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        var layout = PanelSizes.Layout;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         _button = new IconButton
         {
-            Symbol = "keyboard",
-            IconSize = layout.BubbleIconPx,
-            Width = layout.BubbleDiameterPx,
-            Height = layout.BubbleDiameterPx,
+            Symbol = "touch_app",
+            IconSize = IconBox.Large,
+            Width = ControlHeight.Large,
+            Height = ControlHeight.Large,
             Focusable = false,
             IsTabStop = false,
         };
-        _button.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.Accent));
+        _button.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.AccentInk));
         _button.Click += (_, _) => _viewModel.Restore();
         Content = _button;
         _viewModel.PropertyChanged += OnViewModelChanged;
@@ -115,11 +113,11 @@ public sealed class BubbleWindow : TouchSurface
         if (_viewModel.IsPanic)
         {
             SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Danger));
-            BorderThickness = new Thickness(PanicRingPx);
+            BorderThickness = new Thickness(Stroke.FocusRing);
         }
         else
         {
-            SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
+            SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
             SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
         }
     }

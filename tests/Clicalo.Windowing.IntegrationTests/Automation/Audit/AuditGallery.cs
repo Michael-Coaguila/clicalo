@@ -95,6 +95,37 @@ internal static class AuditGallery
         }
     }
 
+    /// <summary>
+    /// Saves the view of <paramref name="host"/> as it is now, with the largest text (CUA-011), as
+    /// <c>{name}.{theme}-150.png</c> next to the gallery, when the gallery is on: the design is checked with the text at
+    /// 150 % too. These images are not in the index.
+    /// </summary>
+    public static void SaveLargeText(AuditHost host, string group, string name)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        if (
+            Folder is not { } folder
+            || host.Theme is not { } theme
+            || theme.TextScalePercent == TypeScale.MinScalePercent
+            || host.Root.ActualWidth <= 0
+            || host.Root.ActualHeight <= 0
+        )
+        {
+            return;
+        }
+
+        name = name.Replace(", LightLargeText)", ")", StringComparison.Ordinal)
+            .Replace(", ContrastLargeText)", ")", StringComparison.Ordinal);
+        var suffix = theme.Preference == ThemeChoice.HighContrast ? "contrast-150" : "light-150";
+        var file = Slug(group) + "--" + Slug(name) + "." + suffix + ".png";
+        lock (Gate)
+        {
+            Directory.CreateDirectory(folder);
+            host.LayOut();
+            File.WriteAllBytes(Path.Combine(folder, file), Render(host));
+        }
+    }
+
     private static byte[] Render(AuditHost host)
     {
         var root = host.Root;

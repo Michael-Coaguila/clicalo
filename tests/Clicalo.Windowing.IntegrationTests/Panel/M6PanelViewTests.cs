@@ -1,8 +1,8 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Profiles;
-using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
@@ -69,7 +69,7 @@ public sealed class M6PanelViewTests
                 var star = body.Picker.FrequentsTile;
 
                 body.Picker.TapTargets.First().Element.ShouldBe(star);
-                star.AccessibleName.ShouldBe("Frecuentes");
+                AutomationProperties.GetName(star).ShouldBe("Frecuentes");
                 star.ActualWidth.ShouldBeGreaterThanOrEqualTo(TouchTarget.MinimumSize);
                 star.ActualHeight.ShouldBeGreaterThanOrEqualTo(TouchTarget.MinimumSize);
 
@@ -186,7 +186,7 @@ public sealed class M6PanelViewTests
                     Title = () => taps++,
                 }
             );
-            var header = new PanelHeader(viewModel, PanelSizes.M);
+            var header = new PanelHeader(viewModel);
             header.TitleButton.Visibility.ShouldBe(Visibility.Collapsed);
             var before = header.TapTargets.Count;
 

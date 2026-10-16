@@ -2,74 +2,52 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using Clicalo.Domain.Catalog;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The notice bar (AVI-001, AVI-003, AVI-004): a strip at the foot, radius 10, at least 40 high (34 in Compact), 13 px
-/// text announced as a polite live region. At rest, the info icon in muted and [ready] on a transparent fill; a notice
-/// on card with its icon in accent; a warning on warnWash with its icon in warn. [undo] in accent when the notice can
-/// be undone, [cancel] when the notice offers it (ATJ-008), and ↻ (36 × 32 visual, 44 touch) when there is a last
-/// action. It only projects
-/// <see cref="NoticeBarViewModel"/>.
+/// The status row at the foot of the panel (AVI-001, AVI-003, AVI-004) in direction C (D12): a row of
+/// <see cref="ControlHeight.Small"/> on the surface of the panel with the decorative line above it, as wide as the
+/// panel and down to its rounded foot, always there (the panel has the size of its design). The message is one line with «…» in
+/// <c>bodySmall</c>, announced as a polite live region (assertive for a warning). A confirmation shows ✓ in
+/// <c>success</c>, never the information icon; another notice shows its own icon in <c>muted</c>, a warning ⚠ in
+/// <c>warnText</c>, and the rest says [ready] with no icon. At its end, [cancel] and [undo] as tertiary buttons and ↻
+/// [repeat] as an icon button of 44 × 44. It only projects <see cref="NoticeBarViewModel"/>.
 /// </summary>
 public sealed class NoticeBarView : Border
 {
-    private const double IconPx = 18;
-    private const double TextPx = 13;
-    private const double ButtonHeight = 32;
-    private const double RepeatWidth = 36;
-    private const double Gap = 8;
-    private const double CompactHeight = 34;
+    /// <summary>The icon the composition gives a plain notice: in the panel it is a confirmation, so it shows ✓.</summary>
+    private const string InfoSymbol = "info";
+
+    private const string ConfirmSymbol = "check_circle";
 
     private readonly NoticeBarViewModel _viewModel;
-    private readonly SymbolIcon _icon = new()
-    {
-        Size = IconPx,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
-    private readonly TextBlock _text = new()
-    {
-        TextWrapping = TextWrapping.Wrap,
-        VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(Gap, 0, Gap, 0),
-    };
+    private readonly SymbolIcon _icon = PanelChrome.Icon(null, IconBox.Small, ColorToken.Muted);
+    private readonly StyledText _text = PanelChrome.Text(TextStyleToken.BodySmall);
 
     private readonly TouchButton _undo = new()
     {
-        Variant = ButtonVariant.Primary,
-        Height = ButtonHeight,
-        Padding = new Thickness(10, 0, 10, 0),
+        Variant = ButtonVariant.Tertiary,
         Focusable = false,
         IsTabStop = false,
         VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(0, 0, Gap, 0),
     };
 
     private readonly TouchButton _cancel = new()
     {
-        Variant = ButtonVariant.Secondary,
-        Height = ButtonHeight,
-        Padding = new Thickness(10, 0, 10, 0),
+        Variant = ButtonVariant.Tertiary,
         Focusable = false,
         IsTabStop = false,
         VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(0, 0, Gap, 0),
     };
 
     private readonly IconButton _repeat = new()
     {
         Symbol = "replay",
-        IconSize = IconPx,
-        Width = RepeatWidth,
-        Height = ButtonHeight,
-        Variant = ButtonVariant.Secondary,
         Focusable = false,
         IsTabStop = false,
         VerticalAlignment = VerticalAlignment.Center,
@@ -78,25 +56,22 @@ public sealed class NoticeBarView : Border
     private readonly LiveAnnouncer _announcer;
     private string _announced = string.Empty;
 
-    /// <summary>Creates the bar of <paramref name="viewModel"/>.</summary>
-    /// <param name="viewModel">The bar.</param>
-    /// <param name="compact">The Compact view (34 high, VCO-001).</param>
-    public NoticeBarView(NoticeBarViewModel viewModel, bool compact = false)
+    /// <summary>Creates the row of <paramref name="viewModel"/>.</summary>
+    /// <param name="viewModel">The notices.</param>
+    public NoticeBarView(NoticeBarViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        CornerRadius = new CornerRadius(Radii.Medium);
-        Padding = new Thickness(10, 0, 10, 0);
-        Margin = compact ? new Thickness(10, 8, 10, 10) : new Thickness(12, 10, 12, 12);
-        MinHeight = compact ? CompactHeight : PanelSizes.Layout.PanelNoticeBarHeightPx;
-        _text.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(TextPx));
-        _undo.SetResourceReference(Control.FontSizeProperty, ThemeKeys.TextSize(TextPx));
-        _cancel.SetResourceReference(Control.FontSizeProperty, ThemeKeys.TextSize(TextPx));
+        BorderThickness = new Thickness(0, Stroke.Line, 0, 0);
+        Padding = new Thickness(Space.S3, 0, Space.S1, Space.S3);
+        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        _icon.Margin = new Thickness(0, 0, Space.S2, 0);
+        _text.VerticalAlignment = VerticalAlignment.Center;
         _undo.Click += (_, _) => _viewModel.Undo();
         _cancel.Click += (_, _) => _viewModel.Cancel();
         _repeat.Click += (_, _) => _viewModel.Repeat();
 
-        var row = new DockPanel { LastChildFill = true };
+        var row = new DockPanel { LastChildFill = true, Height = ControlHeight.Small };
         DockPanel.SetDock(_icon, Dock.Left);
         DockPanel.SetDock(_repeat, Dock.Right);
         DockPanel.SetDock(_undo, Dock.Right);
@@ -113,16 +88,11 @@ public sealed class NoticeBarView : Border
         Refresh();
     }
 
-    /// <summary>[undo] and ↻ while they show.</summary>
+    /// <summary>[undo], ↻ and [cancel] while they show.</summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
         get
         {
-            if (!_viewModel.IsVisible)
-            {
-                yield break;
-            }
-
             if (_viewModel.CanUndo)
             {
                 yield return new PanelTapTarget(_undo, _viewModel.Undo);
@@ -140,8 +110,11 @@ public sealed class NoticeBarView : Border
         }
     }
 
-    /// <summary>The text of the bar (the live region).</summary>
+    /// <summary>The text of the row (the live region).</summary>
     public TextBlock MessageText => _text;
+
+    /// <summary>The icon of the message (✓ for a confirmation).</summary>
+    public SymbolIcon Icon => _icon;
 
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
@@ -150,17 +123,20 @@ public sealed class NoticeBarView : Border
 
     private void Refresh()
     {
-        Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
-        _icon.Symbol = _viewModel.Icon;
-        var (background, tint, text) = _viewModel.Tone switch
+        var (symbol, ink) = _viewModel.Tone switch
         {
-            NoticeTone.Notice => ((ColorToken?)ColorToken.Card, ColorToken.Accent, ColorToken.Text),
-            NoticeTone.Warning => (ColorToken.WarnWash, ColorToken.Warn, ColorToken.Text),
-            _ => (null, ColorToken.Muted, ColorToken.Muted),
+            NoticeTone.Warning => (_viewModel.Icon, ColorToken.WarnText),
+            NoticeTone.Notice when _viewModel.Icon is InfoSymbol or ConfirmSymbol => (
+                ConfirmSymbol,
+                ColorToken.Success
+            ),
+            NoticeTone.Notice => (_viewModel.Icon, ColorToken.Muted),
+            _ => ((string?)null, ColorToken.Muted),
         };
-        PanelChrome.SetBrush(this, BackgroundProperty, background);
-        _icon.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(tint));
-        _text.SetResourceReference(TextBlock.ForegroundProperty, ThemeBrushKey.For(text));
+        _icon.Symbol = string.IsNullOrEmpty(symbol) ? null : symbol;
+        _icon.Visibility = _icon.Symbol is null ? Visibility.Collapsed : Visibility.Visible;
+        _icon.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(ink));
+        _text.Ink = _viewModel.Tone == NoticeTone.Rest ? ColorToken.Muted : ColorToken.Text;
         _undo.Content = _viewModel.UndoName;
         _undo.Visibility = _viewModel.CanUndo ? Visibility.Visible : Visibility.Collapsed;
         _cancel.Content = _viewModel.CancelName;
@@ -171,8 +147,8 @@ public sealed class NoticeBarView : Border
     }
 
     /// <summary>
-    /// Shows the message; a notice is announced once as a live region (AVI-001, polite; a warning assertive), the text at rest is only
-    /// shown (silence is never announced).
+    /// Shows the message; a notice is announced once as a live region (AVI-001, polite; a warning assertive), the text at
+    /// rest is only shown (silence is never announced).
     /// </summary>
     private void Say(string message, NoticeTone tone)
     {

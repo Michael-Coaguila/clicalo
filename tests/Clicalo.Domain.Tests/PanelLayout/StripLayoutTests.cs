@@ -13,8 +13,8 @@ public sealed class StripLayoutTests
             { PanelSize.Small, false, 4, 64, true },
             { PanelSize.Medium, false, 8, 64, true },
             { PanelSize.Large, false, 8, 64, true },
-            { PanelSize.Medium, true, 4, 52, true },
-            { PanelSize.Large, true, 4, 52, true },
+            { PanelSize.Medium, true, 4, 64, true },
+            { PanelSize.Large, true, 4, 64, true },
         };
 
     /// <summary>Shortcuts, capacity, page asked, expected page, pages, start, count, chip.</summary>
