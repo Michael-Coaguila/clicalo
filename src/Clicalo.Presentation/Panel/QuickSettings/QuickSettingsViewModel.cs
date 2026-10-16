@@ -52,6 +52,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
     private int _opacityPercent;
     private string _opacityText = string.Empty;
     private string _name = string.Empty;
+    private string _closeName = string.Empty;
     private string _controlCenterTitle = string.Empty;
     private string _controlCenterSubtitle = string.Empty;
     private string _viewHeading = string.Empty;
@@ -161,6 +162,16 @@ public sealed class QuickSettingsViewModel : ObservableObject
     {
         get => _name;
         private set => SetProperty(ref _name, value);
+    }
+
+    /// <summary>
+    /// [close] «Cerrar», the name of the 44 × 44 button that closes the sheet from its own title row (direction C, D12:
+    /// the sheet is a layer over the panel with its title and its way out).
+    /// </summary>
+    public string CloseName
+    {
+        get => _closeName;
+        private set => SetProperty(ref _closeName, value);
     }
 
     /// <summary>[openCC], the title of the card.</summary>
@@ -333,6 +344,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
     {
         var l = _localization.Current;
         Name = l.Format(L.Quick);
+        CloseName = l.Format(L.Close);
         ControlCenterTitle = l.Format(L.OpenCC);
         ControlCenterSubtitle = l.Format(L.CcSub);
         ViewHeading = l.Format(L.View);

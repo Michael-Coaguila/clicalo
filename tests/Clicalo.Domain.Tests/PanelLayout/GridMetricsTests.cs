@@ -13,16 +13,16 @@ public sealed class GridMetricsTests
     public static TheoryData<PanelSize, int, bool, int> TileHeights =>
         new()
         {
-            { PanelSize.Small, 100, false, 66 },
-            { PanelSize.Medium, 100, false, 78 },
-            { PanelSize.Large, 100, false, 98 },
-            { PanelSize.Small, 150, false, 76 },
-            { PanelSize.Medium, 150, false, 89 },
-            { PanelSize.Large, 120, false, 103 },
-            { PanelSize.Large, 150, false, 111 },
-            { PanelSize.Small, 100, true, 50 },
-            { PanelSize.Medium, 100, true, 62 },
-            { PanelSize.Large, 150, true, 95 },
+            { PanelSize.Small, 100, false, 72 },
+            { PanelSize.Medium, 100, false, 80 },
+            { PanelSize.Large, 100, false, 96 },
+            { PanelSize.Small, 150, false, 83 },
+            { PanelSize.Medium, 150, false, 91 },
+            { PanelSize.Large, 120, false, 101 },
+            { PanelSize.Large, 150, false, 109 },
+            { PanelSize.Small, 100, true, 56 },
+            { PanelSize.Medium, 100, true, 64 },
+            { PanelSize.Large, 150, true, 93 },
         };
 
     /// <summary>Size, columns, expected panel width.</summary>
@@ -30,12 +30,12 @@ public sealed class GridMetricsTests
         new()
         {
             { PanelSize.Small, 2, 288 },
-            { PanelSize.Small, 3, 288 },
-            { PanelSize.Small, 4, 330 },
-            { PanelSize.Medium, 3, 316 },
-            { PanelSize.Medium, 4, 416 },
-            { PanelSize.Large, 3, 392 },
-            { PanelSize.Large, 4, 518 },
+            { PanelSize.Small, 3, 292 },
+            { PanelSize.Small, 4, 384 },
+            { PanelSize.Medium, 3, 340 },
+            { PanelSize.Medium, 4, 448 },
+            { PanelSize.Large, 3, 412 },
+            { PanelSize.Large, 4, 544 },
         };
 
     /// <summary>Size, row preference, expected maximum rows.</summary>
@@ -70,7 +70,8 @@ public sealed class GridMetricsTests
         {
             { PanelSize.Medium, 0, -1, 3 },
             { PanelSize.Medium, 0, 10_000, 3 },
-            { PanelSize.Medium, 0, 165, 2 },
+            { PanelSize.Medium, 0, 168, 2 },
+            { PanelSize.Medium, 0, 167, 1 },
             { PanelSize.Medium, 0, 10, 1 },
             { PanelSize.Small, 0, 10_000, 2 },
             { PanelSize.Small, 3, 10_000, 3 },

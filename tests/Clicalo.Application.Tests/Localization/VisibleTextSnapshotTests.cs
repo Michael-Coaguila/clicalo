@@ -9,7 +9,8 @@ namespace Clicalo.Application.Tests.Localization;
 /// Binding condition of the i18n conversion (blueprint §1.3 and §8.5, ADR-0011): for every key of the design handoff
 /// that the product shows (the recipe's <c>retired</c> keys were removed by a user decision, ADR-0020) and every
 /// language, formatting the converted text with sample arguments gives exactly the text of the handoff with
-/// its one-letter markers replaced by the same values.
+/// its one-letter markers replaced by the same values. The <c>revised</c> keys are the exception a user decision made
+/// (D12: texts that named the colors of the Auto/Fixed button), and the list of them is checked here.
 /// </summary>
 /// <remarks>
 /// The letter → name mapping comes from the recipe itself, so this test only proves that data/i18n and the recipe
@@ -45,8 +46,9 @@ public sealed partial class VisibleTextSnapshotTests
         using var recipe = I18nRepository.Recipe();
         var handoff = I18nRepository.HandoffInProduct(language);
         var mismatches = new List<string>();
+        var revised = I18nRepository.Revised();
 
-        foreach (var (key, original) in handoff)
+        foreach (var (key, original) in handoff.Where(entry => !revised.Contains(entry.Key)))
         {
             var conversion = Conversion.For(recipe.RootElement, key);
             var expected = Marker()
@@ -60,6 +62,8 @@ public sealed partial class VisibleTextSnapshotTests
 
         handoff.Count.ShouldBe(669 - I18nRepository.Retired().Count);
         I18nRepository.Retired().Order(StringComparer.Ordinal).ShouldBe(["migD", "migT"]);
+        // D12 (direction C, 2026-10-16): Fixed is no longer red nor Auto blue, so their texts name the states.
+        revised.Order(StringComparer.Ordinal).ShouldBe(["autoA", "followAppD", "lockA"]);
         mismatches.ShouldBeEmpty();
     }
 

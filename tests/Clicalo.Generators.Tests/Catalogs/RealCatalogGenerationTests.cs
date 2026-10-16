@@ -88,22 +88,22 @@ public sealed class RealCatalogGenerationTests
         var medium = assembly.Static(Sizes, "M")!;
         var layout = assembly.Static(Sizes, "Layout")!;
 
-        GeneratedAssembly.Property(medium, "TileWidthPx").ShouldBe(92);
-        GeneratedAssembly.Property(medium, "TileHeightPx").ShouldBe(78);
+        GeneratedAssembly.Property(medium, "TileWidthPx").ShouldBe(100);
+        GeneratedAssembly.Property(medium, "TileHeightPx").ShouldBe(80);
         GeneratedAssembly.Property(medium, "GapPx").ShouldBe(8);
         GeneratedAssembly.Property(medium, "StripCapacity").ShouldBe(8);
         GeneratedAssembly.Property(layout, "PanelMinWidthPx").ShouldBe(288);
         GeneratedAssembly.Property(layout, "MinTouchTargetPx").ShouldBe(44);
         GeneratedAssembly.Property(layout, "TextScaleTileGrowth").ShouldBe(1.6);
 
-        // PAN-002: M with 3 columns is 316 px wide.
+        // PAN-002 with the tiles of direction C (D12): M with 3 columns is 340 px wide.
         var width = Math.Max(
             (int)GeneratedAssembly.Property(layout, "PanelMinWidthPx")!,
             (3 * (int)GeneratedAssembly.Property(medium, "TileWidthPx")!)
                 + (2 * (int)GeneratedAssembly.Property(medium, "GapPx")!)
                 + (int)GeneratedAssembly.Property(layout, "PanelChromeWidthPx")!
         );
-        width.ShouldBe(316);
+        width.ShouldBe(340);
     }
 
     [Fact]

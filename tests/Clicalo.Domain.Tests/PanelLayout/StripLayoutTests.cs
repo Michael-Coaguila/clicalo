@@ -10,11 +10,11 @@ public sealed class StripLayoutTests
     public static TheoryData<PanelSize, bool, int, int, bool> Rows =>
         new()
         {
-            { PanelSize.Small, false, 4, 44, false },
-            { PanelSize.Medium, false, 8, 60, true },
-            { PanelSize.Large, false, 8, 72, true },
-            { PanelSize.Medium, true, 4, 40, false },
-            { PanelSize.Large, true, 4, 40, false },
+            { PanelSize.Small, false, 4, 64, true },
+            { PanelSize.Medium, false, 8, 64, true },
+            { PanelSize.Large, false, 8, 64, true },
+            { PanelSize.Medium, true, 4, 52, true },
+            { PanelSize.Large, true, 4, 52, true },
         };
 
     /// <summary>Shortcuts, capacity, page asked, expected page, pages, start, count, chip.</summary>

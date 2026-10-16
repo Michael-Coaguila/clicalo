@@ -1599,5 +1599,29 @@
     "migD": {
       "notes": "Detalle de la tarjeta de migración (COP-001, retirado). Decisión del usuario del 2026-10-03 (D1, ADR-0020)."
     }
+  },
+  "revised": {
+    "notes": "Claves del paquete cuyo texto visible cambió por una decisión del usuario: se importan con el texto de «text» y cada una lleva su motivo. La prueba del texto visible las salta y comprueba la lista.",
+    "followAppD": {
+      "notes": "Descripción del interruptor «Cambiar con la app activa» (PER-006, CAB-003). Rediseño C (D12, 2026-10-16): el botón Auto/Fijo ya no es azul ni rojo, porque el rojo solo significa peligro y Fijo se dibuja como «elegido»; el texto nombra los estados en vez de los colores. Pendiente de ratificar en §6.1 del catálogo (R-33).",
+      "text": {
+        "es": "Es el botón 🔄 / 🔒 del panel: Auto sigue la app activa y Fijo lo deja en el perfil elegido. Frecuentes nunca cambia.",
+        "en": "Same as the panel’s 🔄 / 🔒 button: Auto follows the active app, Fixed keeps the chosen profile. Frequent never switches."
+      }
+    },
+    "autoA": {
+      "notes": "Nombre accesible del botón Auto/Fijo en Auto (CAB-003). Rediseño C (D12): se quita «(azul)» porque el color ya no dice el estado. Pendiente de ratificar en §6.1 del catálogo (R-33).",
+      "text": {
+        "es": "Auto: cambia con la app activa. Toca para fijar el perfil actual.",
+        "en": "Auto: follows the active app. Tap to fix the current profile."
+      }
+    },
+    "lockA": {
+      "notes": "Nombre accesible del botón Auto/Fijo en Fijo (CAB-003). Rediseño C (D12): se quita «(rojo)», porque Fijo ya no es rojo (el rojo solo significa peligro). Pendiente de ratificar en §6.1 del catálogo (R-33).",
+      "text": {
+        "es": "Fijo: el perfil no cambia al cambiar de app. Toca para volver a Auto.",
+        "en": "Fixed: profile won’t switch with the app. Tap to go back to Auto."
+      }
+    }
   }
 }

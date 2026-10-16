@@ -15,14 +15,14 @@
       "maxGridRows": 3,
       "compactTileReductionPx": 16,
       "compactStripCapacity": 4,
-      "dragHandleWidthPx": 26,
-      "autoFixedButtonPx": 36,
+      "dragHandleWidthPx": 20,
+      "autoFixedButtonPx": 52,
       "noticeBarHeightPx": 40,
       "pageDotActiveWidthPx": 24,
-      "pageDotSizePx": 10,
-      "profileTileHeightPx": 76,
+      "pageDotSizePx": 8,
+      "profileTileHeightPx": 64,
       "contextMenuRowHeightPx": 44,
-      "editDeleteButtonPx": 32
+      "editDeleteButtonPx": 24
     },
     "bubble": {
       "diameterPx": 64,
@@ -41,10 +41,10 @@
     {
       "id": "S",
       "labelKey": "sizeS",
-      "tile": { "widthPx": 72, "heightPx": 66, "iconPx": 20, "labelPx": 12, "keysPx": 9 },
-      "gapPx": 6,
-      "headerButton": { "widthPx": 32, "heightPx": 36 },
-      "strip": { "heightPx": 44, "iconPx": 18, "labelPx": 10, "capacity": 4 },
+      "tile": { "widthPx": 84, "heightPx": 72, "iconPx": 20, "labelPx": 14, "keysPx": 11 },
+      "gapPx": 8,
+      "headerButton": { "widthPx": 44, "heightPx": 44 },
+      "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 4 },
       "autoRows": 2,
       "dock": {
         "barWidthPx": 76,
@@ -59,10 +59,10 @@
     {
       "id": "M",
       "labelKey": "sizeM",
-      "tile": { "widthPx": 92, "heightPx": 78, "iconPx": 28, "labelPx": 14, "keysPx": 10 },
+      "tile": { "widthPx": 100, "heightPx": 80, "iconPx": 24, "labelPx": 14, "keysPx": 11 },
       "gapPx": 8,
-      "headerButton": { "widthPx": 32, "heightPx": 40 },
-      "strip": { "heightPx": 60, "iconPx": 22, "labelPx": 11, "capacity": 8 },
+      "headerButton": { "widthPx": 44, "heightPx": 44 },
+      "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
         "barWidthPx": 88,
@@ -77,10 +77,10 @@
     {
       "id": "L",
       "labelKey": "sizeL",
-      "tile": { "widthPx": 116, "heightPx": 98, "iconPx": 34, "labelPx": 16, "keysPx": 11 },
-      "gapPx": 10,
-      "headerButton": { "widthPx": 40, "heightPx": 46 },
-      "strip": { "heightPx": 72, "iconPx": 26, "labelPx": 13, "capacity": 8 },
+      "tile": { "widthPx": 124, "heightPx": 96, "iconPx": 32, "labelPx": 16, "keysPx": 12 },
+      "gapPx": 8,
+      "headerButton": { "widthPx": 44, "heightPx": 44 },
+      "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
         "barWidthPx": 108,

@@ -128,7 +128,7 @@ public sealed class PanelBodyViewModelTests
     [Fact]
     [Trait("Req", "FIJ-002")]
     [Trait("Req", "FIJ-003")]
-    public void In_S_the_row_holds_four_and_shows_only_icons()
+    public void In_S_the_row_holds_four_and_keeps_the_names()
     {
         var panel = Panel(0, strip: 5);
         panel.ApplyLayout(
@@ -138,7 +138,7 @@ public sealed class PanelBodyViewModelTests
             }
         );
 
-        panel.Strip.ShowsNames.ShouldBeFalse();
+        panel.Strip.ShowsNames.ShouldBeTrue();
         panel.Strip.Tiles.Count.ShouldBe(3);
         panel.Strip.MoreLabel.ShouldBe("1/2");
         panel.Strip.TileHeightPx.ShouldBe(PanelSizes.S.StripHeightPx);
