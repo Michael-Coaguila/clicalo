@@ -81,7 +81,7 @@ public sealed class PickerGridView : Border
         _compact = compact;
         Margin = new Thickness(12, 0, 12, 10);
         Padding = new Thickness(8);
-        CornerRadius = new CornerRadius(Radii.LargeCard);
+        CornerRadius = new CornerRadius(Radii.Large);
         PanelChrome.SetBrush(this, BackgroundProperty, ColorToken.Card);
         PanelChrome.SetBrush(this, BorderBrushProperty, ColorToken.Border);
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
@@ -304,8 +304,8 @@ public sealed class PickerGridView : Border
             // «+ Más» has a dashed outline (SEL-003); a WPF border cannot dash, so a rectangle draws it.
             var outline = new Rectangle
             {
-                RadiusX = Radii.Tile,
-                RadiusY = Radii.Tile,
+                RadiusX = Radii.Medium,
+                RadiusY = Radii.Medium,
                 StrokeThickness = DashedBorder,
                 StrokeDashArray = new DoubleCollection([3, 2]),
             };

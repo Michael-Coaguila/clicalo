@@ -38,7 +38,7 @@ public sealed class SegmentedItem : ListBoxItem
         );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(SegmentedItem),
-            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Control))
+            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Small))
         );
         TouchTarget.Enforce(typeof(SegmentedItem));
     }
@@ -88,7 +88,7 @@ public sealed class SegmentedItem : ListBoxItem
                 Templates.Bind(Control.VerticalContentAlignmentProperty)
             )
             .Add(icon, content);
-        var chrome = Templates.Chrome(ChromePart, Radii.Control).Add(stack);
+        var chrome = Templates.Chrome(ChromePart, Radii.Small).Add(stack);
         return Templates.Seal(
             typeof(SegmentedItem),
             chrome,

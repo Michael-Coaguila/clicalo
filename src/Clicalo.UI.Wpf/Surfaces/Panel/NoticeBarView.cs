@@ -85,7 +85,7 @@ public sealed class NoticeBarView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        CornerRadius = new CornerRadius(Radii.Button);
+        CornerRadius = new CornerRadius(Radii.Medium);
         Padding = new Thickness(10, 0, 10, 0);
         Margin = compact ? new Thickness(10, 8, 10, 10) : new Thickness(12, 10, 12, 12);
         MinHeight = compact ? CompactHeight : PanelSizes.Layout.PanelNoticeBarHeightPx;

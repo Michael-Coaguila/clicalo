@@ -36,7 +36,7 @@ public sealed class TestMarkBadge : Border
         ArgumentNullException.ThrowIfNull(testMode);
         _testMode = testMode;
         _shortcut = shortcut;
-        CornerRadius = new CornerRadius(Radii.Tile);
+        CornerRadius = new CornerRadius(Radii.Medium);
         IsHitTestVisible = false;
         Child = _glyph;
         _testMode.MarkChanged += OnMarkChanged;

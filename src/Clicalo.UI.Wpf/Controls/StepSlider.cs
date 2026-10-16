@@ -83,7 +83,7 @@ public sealed class StepSlider : Slider
         );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(StepSlider),
-            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Control))
+            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Small))
         );
         TouchTarget.Enforce(typeof(StepSlider));
     }

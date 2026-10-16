@@ -504,7 +504,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         var strip = new Border
         {
             Child = row,
-            CornerRadius = new CornerRadius(Radii.Control),
+            CornerRadius = new CornerRadius(Radii.Small),
             Padding = new Thickness(10, 4, 4, 4),
             Margin = new Thickness(12, 0, 12, 10),
             Visibility = Visibility.Collapsed,

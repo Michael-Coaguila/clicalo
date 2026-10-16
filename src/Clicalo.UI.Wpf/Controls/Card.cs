@@ -26,7 +26,7 @@ public sealed class Card : ContentControl
 
     private static readonly ControlTemplate DefaultTemplate = Templates.Seal(
         typeof(Card),
-        Templates.Chrome(ChromePart, Radii.Tile).Add(Templates.Element<ContentPresenter>())
+        Templates.Chrome(ChromePart, Radii.Medium).Add(Templates.Element<ContentPresenter>())
     );
 
     static Card()

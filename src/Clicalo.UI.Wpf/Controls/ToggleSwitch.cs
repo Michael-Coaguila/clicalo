@@ -65,7 +65,7 @@ public sealed class ToggleSwitch : ToggleButton
         );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(ToggleSwitch),
-            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Control))
+            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Small))
         );
         TouchTarget.Enforce(typeof(ToggleSwitch));
     }

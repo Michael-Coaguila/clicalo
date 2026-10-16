@@ -36,8 +36,8 @@ public sealed class AddTileView : Grid
         _editMode = editMode;
         var outline = new Rectangle
         {
-            RadiusX = Radii.Tile,
-            RadiusY = Radii.Tile,
+            RadiusX = Radii.Medium,
+            RadiusY = Radii.Medium,
             StrokeThickness = DashedBorder,
             StrokeDashArray = new DoubleCollection([3, 2]),
             IsHitTestVisible = false,

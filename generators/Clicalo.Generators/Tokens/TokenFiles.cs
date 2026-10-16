@@ -22,6 +22,9 @@ internal static class TokenFiles
     /// <summary>Transition durations and their reduced-motion values (TEM-006).</summary>
     public const string Motion = "motion.json";
 
+    /// <summary>Spacing, control heights, radii, icon boxes, strokes and the type scale of direction C (D12).</summary>
+    public const string DesignSystem = "design-system.json";
+
     public static readonly string[] All =
     [
         ThemePalettes,
@@ -29,6 +32,7 @@ internal static class TokenFiles
         ContrastPairs,
         HighContrastSystemMap,
         Motion,
+        DesignSystem,
     ];
 
     public static bool IsRelevant(string fileName) =>

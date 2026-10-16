@@ -29,7 +29,7 @@ public sealed class IgnoredTouchOutline : Border
     {
         ArgumentNullException.ThrowIfNull(tile);
         _tile = tile;
-        CornerRadius = new CornerRadius(Radii.Tile);
+        CornerRadius = new CornerRadius(Radii.Medium);
         BorderThickness = new Thickness(OutlinePx);
         IsHitTestVisible = false;
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Muted));

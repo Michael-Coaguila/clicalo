@@ -29,7 +29,7 @@ internal static class PanicButtonTemplate
         );
 
         var chrome = new FrameworkElementFactory(typeof(Border));
-        chrome.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Button));
+        chrome.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Medium));
         chrome.SetValue(
             Border.PaddingProperty,
             new TemplateBindingExtension(Control.PaddingProperty)

@@ -93,7 +93,7 @@ internal static class ButtonChrome
                 Templates.Bind(Control.VerticalContentAlignmentProperty)
             )
             .Add(icon, content);
-        var chrome = Templates.Chrome(ChromePart, Radii.Button).Add(row);
+        var chrome = Templates.Chrome(ChromePart, Radii.Medium).Add(row);
         var box = Templates
             .Element<TouchTargetBox>()
             .With(

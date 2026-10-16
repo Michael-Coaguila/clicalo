@@ -19,7 +19,7 @@
   "decorative": {
     "$comment": "Tokens sin mínimo de contraste, con el motivo.",
     "desk": "Escritorio simulado del prototipo; el fondo real tras el panel se modela con backdrops.",
-    "border": "Filete decorativo de fichas y ventanas: las fichas se identifican por su relleno, icono y nombre. Los límites que identifican un componente (campos, huecos para añadir) usan line.",
+    "border": "line de C: filete interior de reposo de fichas, tarjetas y separadores. Los componentes se identifican por su relleno (card sobre surface), su icono y su nombre; los límites que lo necesitan usan line (line-strong).",
     "scrim": "Velo que apaga lo que queda detrás de un modal; el contenido del modal va sobre win.",
     "shadow": "Sombra de elevación; no transmite información."
   },
@@ -68,24 +68,27 @@
     },
     {
       "kind": "text",
-      "foreground": "accent",
+      "foreground": "accentInk",
       "backgrounds": [
         "panel",
         "win",
         "side",
         "card",
         "cardHi",
+        "field",
         "accentWash over panel",
         "accentWash over win",
         "accentWash over side",
         "accentWash over card"
       ],
-      "use": "Texto e iconos de acento: Auto, enlaces, versión, opción seleccionada."
+      "use": "Texto e iconos de acento (accent-ink de C): opción e icono elegidos, botón terciario, enlaces, icono de la fila de navegación."
     },
     {
       "kind": "text",
       "foreground": "onAccent",
-      "backgrounds": ["accent"],
+      "backgrounds": [
+        "accent"
+      ],
       "use": "Texto sobre botones y chips rellenos de acento."
     },
     {
@@ -102,13 +105,15 @@
         "warnWash over side",
         "warnWash over card"
       ],
-      "use": "Texto e iconos de aviso: repetidos, incompleto, novedades, URL no válida."
+      "use": "Texto, iconos y anillo de aviso (warn-ink de C): repetidos, incompleto, ficha armada, URL no válida."
     },
     {
       "kind": "text",
       "foreground": "onWarn",
-      "backgrounds": ["warn"],
-      "use": "Números de voz (ACC-009), contadores y botones armados rellenos de aviso."
+      "backgrounds": [
+        "warn"
+      ],
+      "use": "Números de voz (ACC-009) y contadores: relleno warn con texto oscuro."
     },
     {
       "kind": "text",
@@ -128,55 +133,89 @@
     {
       "kind": "text",
       "foreground": "onDanger",
-      "backgrounds": ["danger"],
+      "backgrounds": [
+        "danger"
+      ],
       "use": "Texto sobre peligro: Eliminar armado, franja de pánico, Soltar todo."
     },
     {
       "kind": "text",
       "foreground": "categoryTint",
-      "backgrounds": ["categoryWash over card", "categoryWash over categoryWash over panel"],
+      "backgrounds": [
+        "categoryWash over card",
+        "categoryWash over categoryWash over panel"
+      ],
       "use": "Insignia de tipo de la ficha (Mantener, Web, pasos de macro) en reposo y activa."
     },
     {
       "kind": "graphic",
       "foreground": "line",
-      "backgrounds": ["panel", "win", "side", "card", "field"],
-      "use": "Límites que identifican un componente: contorno de campos, huecos para añadir, separadores con significado."
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "field"
+      ],
+      "use": "line-strong de C: contorno de los controles que lo necesitan para verse (botón secundario y de peligro, campo, interruptor apagado, huecos para añadir)."
     },
     {
       "kind": "graphic",
       "foreground": "accent",
-      "backgrounds": ["panel", "win", "side", "card", "cardHi", "field"],
-      "use": "Bordes de selección, interruptores y deslizadores activos, barras de progreso."
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "field",
+        "accentWash over card",
+        "accentWash over side"
+      ],
+      "use": "Anillo interior de «elegido» y «pulsado», relleno del botón primario, interruptor encendido, deslizador."
     },
     {
       "kind": "graphic",
       "foreground": "focusRing",
-      "backgrounds": ["panel", "win", "side", "card", "cardHi", "field"],
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card",
+        "cardHi",
+        "field"
+      ],
       "use": "Anillo de foco (TEM-009), dibujado fuera del control sobre la superficie que lo rodea."
     },
     {
       "kind": "graphic",
-      "foreground": "warn",
-      "backgrounds": ["panel", "win", "side", "card"],
-      "use": "Borde de ficha armada y de avisos, fondo de los números de voz."
-    },
-    {
-      "kind": "graphic",
       "foreground": "danger",
-      "backgrounds": ["panel", "win", "side", "card"],
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card"
+      ],
       "use": "Botones de peligro y borde de la burbuja en pánico."
     },
     {
       "kind": "graphic",
       "foreground": "success",
-      "backgrounds": ["panel", "win", "card"],
-      "use": "Marca de acierto del Modo prueba e indicadores de estado correcto."
+      "backgrounds": [
+        "panel",
+        "win",
+        "side",
+        "card"
+      ],
+      "use": "Marca ✓ de confirmación (guardado, enviado) en la barra de estado y acierto del Modo prueba."
     },
     {
       "kind": "graphic",
       "foreground": "onSuccess",
-      "backgrounds": ["success"],
+      "backgrounds": [
+        "success"
+      ],
       "use": "Icono sobre la marca de acierto."
     },
     {

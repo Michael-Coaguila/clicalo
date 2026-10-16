@@ -1,0 +1,62 @@
+{
+  "$schema": "../schemas/design-system.schema.json",
+  "$comment": "Sistema de diseño de la dirección C «Evolución del prototipo» (D12): las únicas medidas de la interfaz, en píxeles lógicos (DIP). Ninguna superficie usa otra medida: si algo no cabe, se rediseña con estas. Guía: docs/design/sistema.md. Los colores están en theme-palettes.json y extra-tokens.json.",
+  "space": {
+    "$comment": "Escala de espacio, rejilla de 4. Márgenes, rellenos y huecos solo con estos valores.",
+    "s1": 4,
+    "s2": 8,
+    "s3": 12,
+    "s4": 16,
+    "s6": 24,
+    "s8": 32,
+    "s12": 48
+  },
+  "controlHeights": {
+    "$comment": "Las tres alturas de control. small: botón de icono, chip, tecla, botón de texto y segmento interior. medium: campo, fila de lista, fila con interruptor y segmentado con su pista. large: tarjeta de opción, fila de navegación y ficha de la fila fija.",
+    "small": 44,
+    "medium": 52,
+    "large": 64
+  },
+  "radii": {
+    "$comment": "Los tres radios y la pastilla. small: tecla, segmento interior, ventana de Windows, insignia de texto. medium: botón, ficha, campo, tarjeta de opción. large: panel y tarjeta grande. pill: interruptor, chip de resumen y contador.",
+    "small": 8,
+    "medium": 12,
+    "large": 16,
+    "pill": 999
+  },
+  "iconBoxes": {
+    "$comment": "Cajas de icono fijas, con el glifo centrado: el contenedor nunca toma el tamaño del glifo. badge: insignia y tipo de la ficha. small: en botones de texto y filas. medium: fichas, cabecera, riel y botones de icono. large: vista previa.",
+    "badge": 16,
+    "small": 20,
+    "medium": 24,
+    "large": 32
+  },
+  "strokes": {
+    "$comment": "Grosores. line: borde de reposo, siempre por dentro. selected: anillo interior de «elegido» y de «pulsado» (el control no cambia de tamaño). focusRing y focusOffset: anillo de foco de 3 separado 2 por fuera, en focusRing (TEM-009).",
+    "line": 1,
+    "selected": 2,
+    "focusRing": 3,
+    "focusOffset": 2
+  },
+  "typography": {
+    "$comment": "Escala tipográfica cerrada: familia (ui = Atkinson Hyperlegible, keys = JetBrains Mono), peso, tamaño e interlineado en DIP. letterSpacing en em. bodySmall: descripciones y barra de estado. labelSmall: nombres de la fila fija, etiquetas del riel y contadores. Overline es la única etiqueta de sección (versalitas). La monoespaciada solo se usa en teclas, con la notación «Ctrl+Shift+L».",
+    "display": { "family": "ui", "weight": 700, "size": 28, "lineHeight": 34 },
+    "title": { "family": "ui", "weight": 700, "size": 20, "lineHeight": 26 },
+    "heading": { "family": "ui", "weight": 700, "size": 16, "lineHeight": 22 },
+    "body": { "family": "ui", "weight": 400, "size": 15, "lineHeight": 22 },
+    "bodySmall": { "family": "ui", "weight": 400, "size": 14, "lineHeight": 20 },
+    "label": { "family": "ui", "weight": 700, "size": 14, "lineHeight": 18 },
+    "labelSmall": { "family": "ui", "weight": 700, "size": 12, "lineHeight": 16 },
+    "caption": { "family": "ui", "weight": 400, "size": 12, "lineHeight": 16 },
+    "overline": {
+      "family": "ui",
+      "weight": 700,
+      "size": 12,
+      "lineHeight": 16,
+      "letterSpacing": 0.06,
+      "uppercase": true
+    },
+    "keys": { "family": "keys", "weight": 500, "size": 12, "lineHeight": 16 },
+    "keysTile": { "family": "keys", "weight": 500, "size": 11, "lineHeight": 14 }
+  }
+}

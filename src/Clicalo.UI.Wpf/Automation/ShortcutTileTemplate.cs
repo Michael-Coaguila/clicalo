@@ -65,7 +65,7 @@ public static class ShortcutTileTemplate
         box.SetValue(TouchTargetBox.VisualHeightProperty, Bind(FrameworkElement.HeightProperty));
 
         var chrome = new FrameworkElementFactory(typeof(Border), ChromePart);
-        chrome.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Tile));
+        chrome.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Medium));
         chrome.SetValue(UIElement.SnapsToDevicePixelsProperty, true);
         chrome.SetValue(UIElement.RenderTransformOriginProperty, new Point(0.5, 0.5));
         chrome.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
@@ -159,7 +159,7 @@ public static class ShortcutTileTemplate
     private static FrameworkElementFactory VoiceBadge()
     {
         var badge = new FrameworkElementFactory(typeof(Border), VoiceNumberPart);
-        badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Compact));
+        badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Small));
         badge.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
         badge.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
         badge.SetValue(FrameworkElement.MarginProperty, new Thickness(Inset, Inset, 0, 0));

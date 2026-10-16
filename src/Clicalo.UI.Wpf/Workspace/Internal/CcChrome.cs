@@ -19,7 +19,7 @@ internal static class CcChrome
         "Radius",
         typeof(CornerRadius),
         typeof(CcChrome),
-        new FrameworkPropertyMetadata(new CornerRadius(Radii.Button))
+        new FrameworkPropertyMetadata(new CornerRadius(Radii.Medium))
     );
 
     private const string ChromePart = "PART_Chrome";

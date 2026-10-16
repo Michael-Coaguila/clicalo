@@ -49,7 +49,7 @@ public sealed class TileContextMenuView : Border
         _viewModel = viewModel;
         Margin = new Thickness(12, 0, 12, 8);
         Padding = new Thickness(6);
-        CornerRadius = new CornerRadius(Radii.Tile);
+        CornerRadius = new CornerRadius(Radii.Medium);
         BorderThickness = new Thickness(1);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Accent));

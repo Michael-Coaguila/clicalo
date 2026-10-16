@@ -55,6 +55,7 @@
     "muted": "windowText",
     "line": "windowText",
     "accent": "highlight",
+    "accentInk": "windowText",
     "accentWash": "window",
     "onAccent": "highlightText",
     "warn": "highlight",

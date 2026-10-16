@@ -86,7 +86,7 @@ public sealed class QuickSettingsSheet : Border
         _viewModel = viewModel;
         Margin = new Thickness(12, 0, 12, 10);
         Padding = new Thickness(10);
-        CornerRadius = new CornerRadius(Radii.Tile);
+        CornerRadius = new CornerRadius(Radii.Medium);
         BorderThickness = new Thickness(1);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
@@ -385,7 +385,7 @@ public sealed class QuickSettingsSheet : Border
         {
             Width = CardIconTile,
             Height = CardIconTile,
-            CornerRadius = new CornerRadius(Radii.Control),
+            CornerRadius = new CornerRadius(Radii.Small),
             Child = new SymbolIcon
             {
                 Symbol = "settings",

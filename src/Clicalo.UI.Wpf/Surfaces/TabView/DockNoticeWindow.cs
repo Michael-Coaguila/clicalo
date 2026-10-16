@@ -112,7 +112,7 @@ public sealed class DockNoticeWindow : TouchSurface
         _notice = new Border
         {
             Child = row,
-            CornerRadius = new CornerRadius(Radii.Button),
+            CornerRadius = new CornerRadius(Radii.Medium),
             Padding = new Thickness(10, 4, 4, 4),
             Margin = new Thickness(8),
             MinHeight = Clicalo.Domain.Catalog.PanelSizes.Layout.PanelNoticeBarHeightPx,

@@ -128,7 +128,7 @@ public sealed class Chip : ToggleButton
             .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center)
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
             .Add(icon, content);
-        var chrome = Templates.Chrome(ChromePart, Radii.Button).Add(row);
+        var chrome = Templates.Chrome(ChromePart, Radii.Medium).Add(row);
         var box = Templates
             .Element<TouchTargetBox>()
             .With(

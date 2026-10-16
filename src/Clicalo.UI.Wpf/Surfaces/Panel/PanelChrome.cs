@@ -20,10 +20,10 @@ internal static class PanelChrome
     private const double DotRadius = 5;
 
     /// <summary>The look of a 10 px rounded button (sticky keys, ◀ ▶, the «··· i/N» chip).</summary>
-    public static ControlTemplate Button { get; } = Create(Radii.Button);
+    public static ControlTemplate Button { get; } = Create(Radii.Medium);
 
     /// <summary>The look of a 12 px rounded button (the selector, the profile grid tiles).</summary>
-    public static ControlTemplate Large { get; } = Create(Radii.Tile);
+    public static ControlTemplate Large { get; } = Create(Radii.Medium);
 
     /// <summary>The look of a page dot.</summary>
     public static ControlTemplate Dot { get; } = Create(DotRadius);

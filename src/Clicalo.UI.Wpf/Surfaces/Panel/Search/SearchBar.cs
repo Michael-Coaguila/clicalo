@@ -102,10 +102,10 @@ public sealed class SearchBar : Border
         fieldContent.Children.Add(Field);
         fieldContent.Children.Add(_placeholder);
         // TEM-009: the ring of 3 px, 2 px outside the field, while it has the keyboard.
-        _ = FieldFocusRing.Attach(fieldContent, Field, Radii.Control, 1);
+        _ = FieldFocusRing.Attach(fieldContent, Field, Radii.Small, 1);
         var fieldHost = new Border
         {
-            CornerRadius = new CornerRadius(Radii.Control),
+            CornerRadius = new CornerRadius(Radii.Small),
             BorderThickness = new Thickness(1),
             Child = fieldContent,
         };

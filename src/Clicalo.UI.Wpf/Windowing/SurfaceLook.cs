@@ -15,14 +15,14 @@ namespace Clicalo.UI.Wpf.Windowing;
 public sealed record SurfaceLook(CornerRadius Corners, ShadowSpec? Shadow, bool Round = false)
 {
     /// <summary>The panel and the edge bar: radius 18, shadow 0 18 50 at 45 % (PAN-003).</summary>
-    public static SurfaceLook Panel { get; } = new(new CornerRadius(Radii.Panel), Shadows.Panel);
+    public static SurfaceLook Panel { get; } = new(new CornerRadius(Radii.Large), Shadows.Panel);
 
     /// <summary>The 64 px bubble: a circle with a shadow 0 10 30 at 40 % (BUR-001).</summary>
     public static SurfaceLook Bubble { get; } = new(default, Shadows.Bubble, Round: true);
 
     /// <summary>Side windows, menus and drop-downs: radius 14, shadow 0 14 40 at 45 %.</summary>
     public static SurfaceLook SideWindow { get; } =
-        new(new CornerRadius(Radii.LargeCard), Shadows.Menu);
+        new(new CornerRadius(Radii.Large), Shadows.Menu);
 
     /// <summary>
     /// The handle of the edge bar: radius 12 on the side away from the screen edge, shadow 0 6 20 at 35 %.
@@ -32,10 +32,10 @@ public sealed record SurfaceLook(CornerRadius Corners, ShadowSpec? Shadow, bool 
         new(
             side switch
             {
-                DockSide.Left => new CornerRadius(0, Radii.Tile, Radii.Tile, 0),
-                DockSide.Top => new CornerRadius(0, 0, Radii.Tile, Radii.Tile),
-                DockSide.Bottom => new CornerRadius(Radii.Tile, Radii.Tile, 0, 0),
-                _ => new CornerRadius(Radii.Tile, 0, 0, Radii.Tile),
+                DockSide.Left => new CornerRadius(0, Radii.Medium, Radii.Medium, 0),
+                DockSide.Top => new CornerRadius(0, 0, Radii.Medium, Radii.Medium),
+                DockSide.Bottom => new CornerRadius(Radii.Medium, Radii.Medium, 0, 0),
+                _ => new CornerRadius(Radii.Medium, 0, 0, Radii.Medium),
             },
             Shadows.Handle
         );

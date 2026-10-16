@@ -209,16 +209,17 @@ public sealed class TokenDataTests
 
     [Fact]
     [Trait("Req", "TEM-004")]
-    public void The_light_theme_failures_cited_by_TEM_004_fail_without_their_corrections()
+    public void The_light_package_values_fail_the_pairs_that_the_redesign_and_the_corrections_fix()
     {
         var original = Data.Value;
         foreach (
-            var correction in TokenDataSet
-                .ReadCorrections()
+            var change in TokenDataSet
+                .ReadRedesign()
+                .Concat(TokenDataSet.ReadCorrections())
                 .Where(c => string.Equals(c.Theme, "light", StringComparison.Ordinal))
         )
         {
-            original = original.With(correction.Theme, correction.Token, correction.From);
+            original = original.With(change.Theme, change.Token, change.From);
         }
 
         var failing = Pairs
@@ -227,16 +228,34 @@ public sealed class TokenDataTests
             .Select(result => result.Pair.Foreground + " on " + result.Background)
             .ToHashSet(StringComparer.Ordinal);
 
-        // warn used as text (warnText), accent on cardHi, danger and the line borders.
+        // The control boundaries of the package (TEM-004) and the badge of an active tile.
         string[] cited =
         [
-            "warnText on card",
-            "accent on cardHi",
-            "onDanger on danger",
-            "dangerText on card",
             "line on panel",
+            "line on card",
+            "categoryTint on categoryWash over categoryWash over panel",
         ];
         cited.Where(pair => !failing.Contains(pair)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "TEM-002")]
+    public void Every_redesign_change_is_a_documented_decision_that_starts_from_the_package()
+    {
+        using var palettes = TokenDataSet.Read("theme-palettes.json");
+        var changes = TokenDataSet.ReadRedesign();
+
+        changes.ShouldNotBeEmpty();
+        foreach (var change in changes)
+        {
+            change.Requirement.ShouldBe("D12", change.ToString());
+            change.Reason.ShouldNotBeNullOrWhiteSpace(change.ToString());
+            palettes
+                .RootElement.GetProperty(change.Theme)
+                .GetProperty(change.Token)
+                .GetString()
+                .ShouldBe(change.From, change.ToString());
+        }
     }
 
     [Fact]
@@ -324,12 +343,12 @@ public sealed class TokenDataTests
     [Trait("Req", "TEM-009")]
     public void The_focus_ring_is_3_px_at_2_px_in_accent_and_yellow_in_high_contrast()
     {
-        using var extra = TokenDataSet.Read("extra-tokens.json");
-        var ring = extra.RootElement.GetProperty("focusRing");
+        using var system = TokenDataSet.Read("design-system.json");
+        var strokes = system.RootElement.GetProperty("strokes");
         var data = Data.Value;
 
-        ring.GetProperty("thickness").GetDouble().ShouldBe(3d);
-        ring.GetProperty("offset").GetDouble().ShouldBe(2d);
+        strokes.GetProperty("focusRing").GetDouble().ShouldBe(3d);
+        strokes.GetProperty("focusOffset").GetDouble().ShouldBe(2d);
         foreach (var theme in data.Themes)
         {
             data.Color(theme, "focusRing").ShouldBe(data.Color(theme, "accent"));

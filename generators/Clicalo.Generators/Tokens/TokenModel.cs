@@ -19,7 +19,23 @@ internal sealed class TokenModel
     /// <summary>Category keys (CAT) in declaration order.</summary>
     public List<string> Categories { get; } = [];
 
+    /// <summary>Spacing scale of <c>design-system.json</c>, in declaration order.</summary>
+    public List<KeyValuePair<string, double>> Space { get; } = [];
+
+    /// <summary>The control heights of <c>design-system.json</c>.</summary>
+    public List<KeyValuePair<string, double>> ControlHeights { get; } = [];
+
+    /// <summary>The radii of <c>design-system.json</c>.</summary>
     public List<KeyValuePair<string, double>> Radii { get; } = [];
+
+    /// <summary>The icon boxes of <c>design-system.json</c>.</summary>
+    public List<KeyValuePair<string, double>> IconBoxes { get; } = [];
+
+    /// <summary>The strokes of <c>design-system.json</c>.</summary>
+    public List<KeyValuePair<string, double>> Strokes { get; } = [];
+
+    /// <summary>The closed type scale of <c>design-system.json</c>.</summary>
+    public List<TextStyleModel> TextStyles { get; } = [];
 
     public List<ShadowModel> Shadows { get; } = [];
 

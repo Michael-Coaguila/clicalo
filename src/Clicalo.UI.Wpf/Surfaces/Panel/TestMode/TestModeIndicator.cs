@@ -34,7 +34,7 @@ public sealed class TestModeIndicator : Border
     {
         ArgumentNullException.ThrowIfNull(testMode);
         _testMode = testMode;
-        CornerRadius = new CornerRadius(Radii.Button);
+        CornerRadius = new CornerRadius(Radii.Medium);
         Padding = new Thickness(10, 4, 10, 4);
         Margin = new Thickness(12, 6, 12, 0);
         HorizontalAlignment = HorizontalAlignment.Left;

@@ -91,7 +91,11 @@ internal sealed class TokenDataSet
             }
         }
 
-        foreach (var theme in DataMembers(extra.RootElement.GetProperty("corrections")))
+        // The redesign of direction C (D12) first, then the contrast corrections (TEM-004).
+        var changes = DataMembers(extra.RootElement.GetProperty("redesign"))
+            .Concat(DataMembers(extra.RootElement.GetProperty("corrections")))
+            .ToList();
+        foreach (var theme in changes)
         {
             foreach (var correction in DataMembers(theme.Value))
             {
@@ -112,11 +116,17 @@ internal sealed class TokenDataSet
     }
 
     /// <summary>Documented corrections, as written in <c>extra-tokens.json</c>.</summary>
-    public static IReadOnlyList<Correction> ReadCorrections()
+    public static IReadOnlyList<Correction> ReadCorrections() =>
+        ReadChanges("corrections", "requirement");
+
+    /// <summary>The values that direction C (D12) changes in the design package, with the decision as requirement.</summary>
+    public static IReadOnlyList<Correction> ReadRedesign() => ReadChanges("redesign", "decision");
+
+    private static List<Correction> ReadChanges(string section, string basis)
     {
         using var extra = Read("extra-tokens.json");
         var result = new List<Correction>();
-        foreach (var theme in DataMembers(extra.RootElement.GetProperty("corrections")))
+        foreach (var theme in DataMembers(extra.RootElement.GetProperty(section)))
         {
             foreach (var correction in DataMembers(theme.Value))
             {
@@ -130,7 +140,7 @@ internal sealed class TokenDataSet
                             ? from.GetRawText()
                             : from.GetString()!,
                         to.ValueKind == JsonValueKind.Number ? to.GetRawText() : to.GetString()!,
-                        correction.Value.GetProperty("requirement").GetString()!,
+                        correction.Value.GetProperty(basis).GetString()!,
                         correction.Value.GetProperty("reason").GetString()!
                     )
                 );
