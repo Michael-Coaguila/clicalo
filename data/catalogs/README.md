@@ -8,7 +8,7 @@ Datos versionados que describen teclas, acciones, iconos, tiempos y medidas de C
 | `keys.win32.json` | Tecla virtual y código de rastreo (set 1) de cada tecla fija en la distribución de referencia `00000409`; las teclas `char:` se resuelven al enviar con la distribución de la ventana en primer plano | Plataforma Windows; el generador comprueba que coincide con `keys.json` |
 | `mouse.json` | Las 8 acciones de mouse y las velocidades de desplazamiento | Datos en tiempo de ejecución |
 | `categories.json` | Las 10 categorías de color; los colores son tokens de `data/tokens` | Datos en tiempo de ejecución |
-| `icons.json` | Biblioteca de iconos con palabras de búsqueda ES/EN, iconos destacados y por defecto | Datos en tiempo de ejecución |
+| `icons.json` | Biblioteca de iconos (D14): toda la colección de Material Symbols Rounded con su categoría y sus palabras clave en inglés, los 744 curados primero con palabras ES/EN escritas a mano, las 17 categorías, los iconos destacados y los de por defecto. La parte generada la escribe `tools/fonts/build_fonts.py` ([ADR-0025](../../docs/adr/0025-fuentes-de-terceros-empaquetadas.md)) | Datos en tiempo de ejecución |
 | `combo-icons.es.json`, `combo-icons.en.json` | Icono sugerido para una combinación según el idioma de los programas | Datos en tiempo de ejecución |
 | `blocked-combos.json` | Combinaciones bloqueadas o especiales, con su alternativa | Datos en tiempo de ejecución |
 | `common-actions.json` | Acciones comunes adaptativas (decisión D4, EJE-018): combinación estándar de Guardar, Buscar, Seleccionar todo, Negrita… y sus excepciones por familia de apps e idioma de los programas, con la fuente oficial de cada una | Datos en tiempo de ejecución |
@@ -25,7 +25,7 @@ Datos versionados que describen teclas, acciones, iconos, tiempos y medidas de C
 - **Unidades explícitas.** Los tiempos se escriben con unidad (`600ms`, `2.5s`, `10min`, `24h`, `7d`) y los tamaños en bytes también (`16KiB`). Los nombres de los valores en píxeles terminan en `Px` y los de bytes en `Bytes`.
 - **Un umbral, un nombre.** El nombre de una entrada no se repite en otro grupo: así no pueden convivir dos valores del mismo umbral.
 - **Ids canónicos y estables.** Se guardan en los documentos del usuario: nunca se renombran. Las teclas usan minúsculas ASCII separadas por puntos (`num.add`) o `char:` más un único carácter en minúscula (`char:ñ`) para los símbolos que dependen de la distribución (PQ-49).
-- **Textos de producto.** Los nombres que ya existen en `data/i18n` se referencian por clave (`labelKey`); las etiquetas de teclas, acciones e iconos van en el catálogo con español e inglés obligatorios.
+- **Textos de producto.** Los nombres que ya existen en `data/i18n` se referencian por clave (`labelKey`); las etiquetas de teclas, acciones e iconos van en el catálogo con español e inglés obligatorios. Excepción por la decisión D14: los iconos de `icons.json` que no son curados solo tienen las palabras clave en inglés de los metadatos oficiales; se encuentran también por su nombre.
 
 ## Errores de compilación de los datos
 

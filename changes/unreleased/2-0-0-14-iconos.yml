@@ -1,0 +1,5 @@
+# Novedad para usuarios (ACT-004, blueprint §11): la app la muestra y viaja en el manifiesto firmado.
+# Una frase por idioma, en palabras de usuario, sin jerga ni nombres internos.
+type: feat # feat, fix, a11y o perf
+es: "Casi 4.000 iconos para tus atajos y perfiles, que se buscan por su nombre en español o en inglés."
+en: "Almost 4,000 icons for your shortcuts and profiles, which you can search by name in Spanish or English."
