@@ -69,6 +69,7 @@ public sealed class DockBarWindow : TouchSurface
     private readonly IconButton _next;
     private readonly StyledText _pageLabel;
     private readonly FrameworkElement _verticalPager;
+    private readonly Border _toolsDivider;
     private readonly IconButton _search;
     private readonly IconButton _repeat;
     private readonly DockTool _pinned;
@@ -243,7 +244,8 @@ public sealed class DockBarWindow : TouchSurface
             Add(_verticalPager, 0);
         }
 
-        Add(Divider(), 0, stretch: true);
+        _toolsDivider = Divider();
+        Add(_toolsDivider, 0, stretch: true);
         Add(Pair(_search, _repeat), Space.S1);
         Add(_pinned.Button, Space.S1);
         Add(_sticky.Button, Space.S1);
@@ -589,6 +591,9 @@ public sealed class DockBarWindow : TouchSurface
             _tileControls.Add((tile, control, handler));
             _ = _tiles.Children.Add(cell);
         }
+
+        // Without shortcuts (Frequents still empty) one line separates «What to see» from the tools, not two.
+        _toolsDivider.Visibility = SurfaceParts.Shown(_tileControls.Count > 0);
 
         RefreshTargets();
     }
