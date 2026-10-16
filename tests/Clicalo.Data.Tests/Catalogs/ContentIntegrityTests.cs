@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Clicalo.TestKit;
 
 namespace Clicalo.Data.Tests.Catalogs;
 
@@ -78,9 +79,18 @@ public sealed class ContentIntegrityTests
     public void Icons_are_unique_and_searchable_in_both_languages()
     {
         var icons = Items("icons.json", "icons");
+        var curated = icons.Where(i => i["tags"] is not null).ToList();
 
         icons.Select(i => i["id"]!.GetValue<string>()).ShouldBeUnique(StringComparer.Ordinal);
-        foreach (var icon in icons)
+        curated.Count.ShouldBeGreaterThanOrEqualTo(
+            600,
+            "D14: the ~600 most useful icons have Spanish words"
+        );
+        icons
+            .TakeWhile(i => i["tags"] is not null)
+            .Count()
+            .ShouldBe(curated.Count, "the curated icons come first: suggestIcons walks them first");
+        foreach (var icon in curated)
         {
             foreach (var language in new[] { "es", "en" })
             {
@@ -95,6 +105,48 @@ public sealed class ContentIntegrityTests
             .Count.ShouldBe(24, "EDI-004 shows the 24 icons of ICONS first");
         Strings(catalog["profileFeatured"]!)
             .Count.ShouldBe(28, "ATJ-004 offers the current icon plus 28");
+    }
+
+    [Fact]
+    [Trait("Req", "CAT-002")]
+    [Trait("Req", "TEM-005")]
+    public void The_library_offers_every_icon_of_the_font_once_with_its_category()
+    {
+        var catalog = CatalogFiles.LoadObject(CatalogFiles.Catalog("icons.json"));
+        var categories = Items("icons.json", "categories")
+            .Select(c => c["id"]!.GetValue<string>())
+            .ToList();
+        var icons = Items("icons.json", "icons");
+        var font = CatalogFiles.LoadObject(
+            Path.Combine(RepoPaths.Root, "assets", "fonts", "codepoints.json")
+        )["icons"]!
+            .AsObject()
+            .ToDictionary(p => p.Key, p => p.Value!.GetValue<string>(), StringComparer.Ordinal);
+
+        categories.ShouldBeUnique(StringComparer.Ordinal);
+        icons
+            .Select(i => i["id"]!.GetValue<string>())
+            .Where(id => !font.ContainsKey(id))
+            .ShouldBeEmpty("every icon of the library has a glyph");
+        icons
+            .GroupBy(i => font[i["id"]!.GetValue<string>()], StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => string.Join(", ", g.Select(i => i["id"])))
+            .ShouldBeEmpty("a glyph is offered once");
+        icons.Count.ShouldBeGreaterThan(3800, "D14: the whole Material Symbols Rounded collection");
+        icons
+            .Where(i => !categories.Contains(i["category"]!.GetValue<string>()))
+            .Select(i => i["id"] + ": " + i["category"])
+            .ShouldBeEmpty();
+        categories
+            .Where(c => !icons.Any(i => Ordinal.Is(i["category"]!.GetValue<string>(), c)))
+            .ShouldBeEmpty("every category has icons");
+        Strings(catalog["featured"]!)
+            .Concat(Strings(catalog["profileFeatured"]!))
+            .Where(i =>
+                !icons.Any(e => Ordinal.Is(e["id"]!.GetValue<string>(), i) && e["tags"] is not null)
+            )
+            .ShouldBeEmpty("the icons offered first have Spanish words");
     }
 
     [Fact]

@@ -265,10 +265,17 @@ internal sealed class ControlCenterTestWorld
                 .Select(icon => new IconEntry(
                     new IconRef(icon.GetProperty("id").GetString()!),
                     [
-                        .. icon.GetProperty("tags")
-                            .EnumerateObject()
-                            .SelectMany(l => l.Value.EnumerateArray().Select(t => t.GetString()!)),
-                    ]
+                        .. icon.TryGetProperty("tags", out var tags)
+                            ? tags.EnumerateObject()
+                                .SelectMany(l =>
+                                    l.Value.EnumerateArray().Select(t => t.GetString()!)
+                                )
+                            : [],
+                        .. icon.GetProperty("keywords")
+                            .EnumerateArray()
+                            .Select(t => t.GetString()!),
+                    ],
+                    icon.GetProperty("category").GetString()!
                 ))
                 .ToList(),
             root.GetProperty("featured")

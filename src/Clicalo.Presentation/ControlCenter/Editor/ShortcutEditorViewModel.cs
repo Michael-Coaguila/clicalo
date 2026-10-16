@@ -975,6 +975,7 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
             [
                 .. _s.Catalogs()
                     .Icons.Search(_iconQuery)
+                    .Take(Timings.Icons.IconPickerMaxShown)
                     .Select(icon => new IconOption(
                         icon.Name,
                         string.Equals(icon.Name, current, StringComparison.Ordinal)

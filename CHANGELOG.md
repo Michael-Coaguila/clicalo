@@ -236,6 +236,12 @@ behind each difference from the blueprint are in `docs/architecture/deviations.m
 
 ### Changed
 
+- Icons (decision D14, ADR-0025 update): the bundled Material Symbols Rounded fonts carry the whole collection (4001
+  glyphs, about 1 MB each) and `codepoints.json` every name, aliases included. `data/catalogs/icons.json` offers 3925
+  icons in 17 categories with the English keywords of the official metadata (pinned by SHA-256); the 744 curated
+  icons come first with hand-written Spanish and English words. `IconCatalog` exposes the categories, the suggestions
+  fold the words once, and the picker grid builds at most 128 icons until it shows the library by categories.
+
 - A first start installs the default starter kit («Basics» only) with new ids for every shortcut, instead of the raw
   seed with its catalog ids; the `content` folder next to `Clicalo.exe` now also holds `starter.json` and the
   templates. `Infrastructure.Content.SeedDocument` is replaced by `Infrastructure.Catalogs`.

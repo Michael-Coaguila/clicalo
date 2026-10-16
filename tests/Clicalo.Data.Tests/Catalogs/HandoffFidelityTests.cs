@@ -747,8 +747,10 @@ public sealed class HandoffFidelityTests
                 .Select(i =>
                     (
                         i!["id"]!.GetValue<string>(),
-                        (IReadOnlyList<string>)
-                            [.. Strings(i["tags"]!["es"]!), .. Strings(i["tags"]!["en"]!)]
+                        i["tags"] is { } tags
+                            ? (IReadOnlyList<string>)
+                                [.. Strings(tags["es"]!), .. Strings(tags["en"]!)]
+                            : []
                     )
                 ),
         ];

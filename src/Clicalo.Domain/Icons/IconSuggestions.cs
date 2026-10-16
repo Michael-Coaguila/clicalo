@@ -54,16 +54,12 @@ public static class IconSuggestions
             .ToArray();
         if (words.Length > 0)
         {
-            foreach (var entry in catalog.Entries)
+            for (var i = 0; i < catalog.Entries.Count && result.Count < max; i++)
             {
-                if (result.Count >= max)
+                var icon = catalog.Entries[i].Icon;
+                if (!result.Contains(icon) && Matches(catalog.WordsAt(i), words))
                 {
-                    break;
-                }
-
-                if (!result.Contains(entry.Icon) && Matches(entry, words))
-                {
-                    result.Add(entry.Icon);
+                    result.Add(icon);
                 }
             }
         }
@@ -73,24 +69,21 @@ public static class IconSuggestions
         );
     }
 
-    private static bool Matches(IconEntry entry, string[] words)
+    private static bool Matches(ImmutableArray<string> tagWords, string[] words)
     {
-        foreach (var tag in entry.Tags)
+        foreach (var x in tagWords)
         {
-            foreach (var x in IconText.Words(IconText.Fold(tag)))
+            foreach (var w in words)
             {
-                foreach (var w in words)
-                {
-                    if (
-                        x.StartsWith(w, StringComparison.Ordinal)
-                        || (
-                            w.StartsWith(x, StringComparison.Ordinal)
-                            && x.Length >= Timings.Icons.IconReverseMatchMinLength
-                        )
+                if (
+                    x.StartsWith(w, StringComparison.Ordinal)
+                    || (
+                        w.StartsWith(x, StringComparison.Ordinal)
+                        && x.Length >= Timings.Icons.IconReverseMatchMinLength
                     )
-                    {
-                        return true;
-                    }
+                )
+                {
+                    return true;
                 }
             }
         }
