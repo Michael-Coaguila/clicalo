@@ -60,6 +60,7 @@ public sealed class DockQuickWindow : TouchSurface
         {
             Margin = new Thickness(0),
             BorderThickness = new Thickness(0),
+            ShowsAlways = true,
         };
         Width = SheetWidth;
         FixedWidth = SheetWidth;

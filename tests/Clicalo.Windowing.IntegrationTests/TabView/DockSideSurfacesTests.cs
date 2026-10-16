@@ -8,6 +8,7 @@ using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Windowing;
@@ -189,6 +190,64 @@ public sealed class DockSideSurfacesTests
                 quick.Close();
                 theme.Dispose();
             }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "AJR-001")]
+    public void Quick_settings_beside_the_bar_has_the_same_size_closed_and_open()
+    {
+        // The window appears and goes away; a sheet that collapsed with the view model shrank it to its border for a
+        // moment before it hid, and it was measured empty the first time (C:\dev\clicalo-qa\live).
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var world = new InteractionsWorld();
+            var quick = new DockQuickWindow(
+                world.QuickSettings,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch
+            );
+            try
+            {
+                var closed = quick.MeasurePhysical(1.75);
+                quick.Sheet.Visibility.ShouldBe(Visibility.Visible);
+                quick.Sheet.TapTargets.ShouldBeEmpty("a closed sheet takes no touch");
+
+                world.QuickSettings.Open();
+
+                quick.MeasurePhysical(1.75).ShouldBe(closed);
+            }
+            finally
+            {
+                quick.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-010")]
+    [Trait("Req", "SEL-006")]
+    public void The_profile_grid_beside_the_bar_is_laid_out_before_the_panel_opens_its_grid()
+    {
+        // The window beside the bar was measured with the grid of the panel still closed: it appeared 69 px high and
+        // grew to 292 px a moment later (C:\dev\clicalo-qa\live).
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var panel = Panel(time, new RecordingBodyIntents());
+            panel.Picker.IsVisible.ShouldBeFalse();
+
+            new PickerGridView(panel.Picker).Visibility.ShouldBe(Visibility.Collapsed);
+            var beside = new PickerGridView(panel.Picker) { ShowsAlways = true };
+            beside.Visibility.ShouldBe(Visibility.Visible);
+            beside.TapTargets.ShouldNotBeEmpty();
         });
     }
 

@@ -119,7 +119,11 @@ public sealed class DockFlyoutWindow : TouchSurface
                 Width = PinnedWidth;
                 break;
             case DockFlyout.Profiles:
-                _picker = new PickerGridView(panel.Picker) { Margin = new Thickness(0, Gap, 0, 0) };
+                _picker = new PickerGridView(panel.Picker)
+                {
+                    Margin = new Thickness(0, Gap, 0, 0),
+                    ShowsAlways = true,
+                };
                 _ = body.Children.Add(_picker);
                 Width = ProfilesWidth;
                 break;

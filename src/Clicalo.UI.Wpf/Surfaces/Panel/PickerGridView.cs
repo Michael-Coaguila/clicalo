@@ -66,6 +66,7 @@ public sealed class PickerGridView : Border
     };
 
     private readonly ScrollViewer _scroller;
+    private readonly bool _showsAlways;
     private readonly PanScroll _pan = new();
     private readonly TextBlock _legend = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly List<(PickerEntryViewModel Entry, ShortcutTile Control)> _entries = [];
@@ -153,7 +154,7 @@ public sealed class PickerGridView : Border
     {
         get
         {
-            if (!_viewModel.IsVisible)
+            if (!Shown)
             {
                 return [];
             }
@@ -177,6 +178,20 @@ public sealed class PickerGridView : Border
             targets.Add(new PanelTapTarget(_more, _viewModel.More));
             var view = TouchBounds.Of(_scroller, inflate: false);
             return targets.FindAll(target => InView(view, target.Element));
+        }
+    }
+
+    /// <summary>
+    /// Whether the grid shows whatever the panel says: the window beside the bar of the Tab view (PES-010) is the grid
+    /// alone, so it is laid out whole the first time it is measured instead of growing once the panel opens its grid.
+    /// </summary>
+    public bool ShowsAlways
+    {
+        get => _showsAlways;
+        init
+        {
+            _showsAlways = value;
+            Refresh();
         }
     }
 
@@ -328,9 +343,11 @@ public sealed class PickerGridView : Border
         Refresh();
     }
 
+    private bool Shown => _showsAlways || _viewModel.IsVisible;
+
     private void Refresh()
     {
-        Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
+        Visibility = Shown ? Visibility.Visible : Visibility.Collapsed;
         _suggestionText.Text = _viewModel.SuggestionName;
         _suggestion.AccessibleName = _viewModel.SuggestionName;
         _moreText.Text = _viewModel.MoreName;
