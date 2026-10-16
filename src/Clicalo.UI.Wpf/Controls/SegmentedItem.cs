@@ -100,8 +100,10 @@ public sealed class SegmentedItem : ListBoxItem
         Margin = new Thickness(kind == OptionKind.Segment ? Space.S1 / 2 : Space.S1);
     }
 
-    private static void OnKindChanged(DependencyObject item, DependencyPropertyChangedEventArgs e) =>
-        ((SegmentedItem)item).Apply((OptionKind)e.NewValue);
+    private static void OnKindChanged(
+        DependencyObject item,
+        DependencyPropertyChangedEventArgs e
+    ) => ((SegmentedItem)item).Apply((OptionKind)e.NewValue);
 
     /// <summary>
     /// The peer behind the item's ListItem: named by its text when <c>AutomationProperties.Name</c> is not set, and

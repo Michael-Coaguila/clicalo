@@ -23,9 +23,8 @@ public sealed class NavRow : Button
     );
 
     /// <summary>Identifies <see cref="Caption"/>.</summary>
-    public static readonly DependencyProperty CaptionProperty = OptionButton.CaptionProperty.AddOwner(
-        typeof(NavRow)
-    );
+    public static readonly DependencyProperty CaptionProperty =
+        OptionButton.CaptionProperty.AddOwner(typeof(NavRow));
 
     private const string IconPart = "PART_Icon";
     private const string CaptionPart = "PART_Caption";
@@ -38,7 +37,10 @@ public sealed class NavRow : Button
             typeof(NavRow),
             new FrameworkPropertyMetadata(typeof(NavRow))
         );
-        TemplateProperty.OverrideMetadata(typeof(NavRow), new FrameworkPropertyMetadata(DefaultTemplate));
+        TemplateProperty.OverrideMetadata(
+            typeof(NavRow),
+            new FrameworkPropertyMetadata(DefaultTemplate)
+        );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(NavRow),
             new FrameworkPropertyMetadata(FocusRingStyle.Button)
@@ -147,7 +149,11 @@ public sealed class NavRow : Button
             Templates.When(
                 UIElement.IsMouseOverProperty,
                 true,
-                Templates.Brush(Border.BackgroundProperty, ColorToken.CardHi, ControlChrome.FillPart)
+                Templates.Brush(
+                    Border.BackgroundProperty,
+                    ColorToken.CardHi,
+                    ControlChrome.FillPart
+                )
             ),
             Templates.When(UIElement.IsEnabledProperty, false, ControlChrome.Disabled())
         );

@@ -101,8 +101,10 @@ public sealed class Badge : FrameworkElement
         );
     }
 
-    private static void OnToneChanged(DependencyObject badge, DependencyPropertyChangedEventArgs e) =>
-        Paint((Badge)badge, (BadgeTone)e.NewValue);
+    private static void OnToneChanged(
+        DependencyObject badge,
+        DependencyPropertyChangedEventArgs e
+    ) => Paint((Badge)badge, (BadgeTone)e.NewValue);
 
     private static void Paint(Badge badge, BadgeTone tone)
     {

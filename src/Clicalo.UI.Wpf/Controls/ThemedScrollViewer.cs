@@ -265,7 +265,10 @@ public sealed class ThemedScrollViewer : ScrollViewer
     {
         var presenter = Templates
             .Element<ScrollContentPresenter>(PresenterPart)
-            .With(ScrollContentPresenter.CanContentScrollProperty, Templates.Bind(CanContentScrollProperty))
+            .With(
+                ScrollContentPresenter.CanContentScrollProperty,
+                Templates.Bind(CanContentScrollProperty)
+            )
             .With(FrameworkElement.MarginProperty, Templates.Bind(Control.PaddingProperty));
         var bar = Templates
             .Element<ScrollBar>(BarPart)

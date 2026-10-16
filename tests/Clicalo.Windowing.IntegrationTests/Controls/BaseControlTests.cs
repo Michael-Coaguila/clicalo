@@ -167,7 +167,10 @@ public sealed class BaseControlTests
             check.Symbol.ShouldBe("check");
             ring.Visibility.ShouldBe(Visibility.Visible);
             Fill(option, OptionButton.FillPart).ShouldBe(ThemePalettes.Dark.AccentWash);
-            new Size(option.ActualWidth, option.ActualHeight).ShouldBe(before, "the ring is inside");
+            new Size(option.ActualWidth, option.ActualHeight).ShouldBe(
+                before,
+                "the ring is inside"
+            );
         });
 
     [Fact]
@@ -243,10 +246,19 @@ public sealed class BaseControlTests
             (
                 (ISelectionItemProvider)items[2].GetPattern(PatternInterface.SelectionItem)
             ).IsSelected.ShouldBeTrue();
-            Fill(Item(segmented, 2), SegmentedItem.FillPart).ShouldBe(ThemePalettes.Dark.AccentWash);
-            ((SolidColorBrush)
-                ((Border)Item(segmented, 1).Template.FindName(SegmentedItem.FillPart, Item(segmented, 1))).Background
-            ).Color.A.ShouldBe((byte)0, "a segment has no fill of its own: the track shows through");
+            Fill(Item(segmented, 2), SegmentedItem.FillPart)
+                .ShouldBe(ThemePalettes.Dark.AccentWash);
+            (
+                (SolidColorBrush)
+                    (
+                        (Border)
+                            Item(segmented, 1)
+                                .Template.FindName(SegmentedItem.FillPart, Item(segmented, 1))
+                    ).Background
+            ).Color.A.ShouldBe(
+                (byte)0,
+                "a segment has no fill of its own: the track shows through"
+            );
             Item(segmented, 0).ActualWidth.ShouldBe(Item(segmented, 1).ActualWidth, 0.5);
             Item(segmented, 2)
                 .TranslatePoint(default, segmented)

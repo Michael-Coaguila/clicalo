@@ -73,7 +73,12 @@ internal static class DesignSystemSpecimen
         {
             column.Children.Add(
                 Row(
-                    new TouchButton { Content = "Añadir", Symbol = "add", Size = size },
+                    new TouchButton
+                    {
+                        Content = "Añadir",
+                        Symbol = "add",
+                        Size = size,
+                    },
                     new TouchButton
                     {
                         Content = "Duplicar",
@@ -164,7 +169,11 @@ internal static class DesignSystemSpecimen
     {
         var column = new StackPanel();
 
-        var segments = new SegmentedControl { Width = 300, Margin = new Thickness(0, 0, 0, Space.S3) };
+        var segments = new SegmentedControl
+        {
+            Width = 300,
+            Margin = new Thickness(0, 0, 0, Space.S3),
+        };
         segments.Items.Add(new SegmentedItem { Content = "Frecuentes", Symbol = "star" });
         segments.Items.Add(new SegmentedItem { Content = "Word", Symbol = "description" });
         segments.SelectedIndex = 1;
@@ -222,10 +231,21 @@ internal static class DesignSystemSpecimen
             Option("Siempre visible", OptionKind.ListRow, "push_pin", caption: "todas las apps")
         );
         lists.Children.Add(
-            Option("Word", OptionKind.ListRow, "description", caption: "WINWORD.EXE", selected: true)
+            Option(
+                "Word",
+                OptionKind.ListRow,
+                "description",
+                caption: "WINWORD.EXE",
+                selected: true
+            )
         );
         lists.Children.Add(
-            Option("Navegador web predeterminado", OptionKind.ListRow, "public", caption: "chrome.exe")
+            Option(
+                "Navegador web predeterminado",
+                OptionKind.ListRow,
+                "public",
+                caption: "chrome.exe"
+            )
         );
         var rail = new StackPanel { Width = 88 };
         rail.Children.Add(Option("Atajos", OptionKind.Rail, "tune", selected: true, count: 2));
@@ -304,7 +324,10 @@ internal static class DesignSystemSpecimen
             Margin = new Thickness(0, Space.S3, 0, 0),
         };
         column.Children.Add(search);
-        var warn = new TextInput("Dirección", "https://") { Margin = new Thickness(0, Space.S3, 0, 0) };
+        var warn = new TextInput("Dirección", "https://")
+        {
+            Margin = new Thickness(0, Space.S3, 0, 0),
+        };
         warn.Show("htp:/ejemplo");
         warn.Warn(true);
         column.Children.Add(warn);
@@ -370,7 +393,13 @@ internal static class DesignSystemSpecimen
         armed.IsArmed = true;
         row.Children.Add(armed);
         row.Children.Add(
-            Tile("Reemplazar en todo el documento", "find_replace", "Ctrl+Shift+L", CategoryToken.Edit, null)
+            Tile(
+                "Reemplazar en todo el documento",
+                "find_replace",
+                "Ctrl+Shift+L",
+                CategoryToken.Edit,
+                null
+            )
         );
         var strip = Tile("Dictar", "mic", string.Empty, CategoryToken.Voice, null);
         strip.Height = ControlHeight.Large;

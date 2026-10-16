@@ -94,8 +94,14 @@ internal static class OptionChrome
         ArgumentNullException.ThrowIfNull(control);
         if (IsFilled(kind))
         {
-            control.SetResourceReference(Control.BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
-            control.SetResourceReference(Control.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+            control.SetResourceReference(
+                Control.BackgroundProperty,
+                ThemeBrushKey.For(ColorToken.Card)
+            );
+            control.SetResourceReference(
+                Control.BorderBrushProperty,
+                ThemeBrushKey.For(ColorToken.Border)
+            );
         }
         else
         {
@@ -103,7 +109,10 @@ internal static class OptionChrome
             control.BorderBrush = Brushes.Transparent;
         }
 
-        control.SetResourceReference(Control.ForegroundProperty, ThemeBrushKey.For(ColorToken.Text));
+        control.SetResourceReference(
+            Control.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Text)
+        );
         ControlChrome.SetRadius(control, Radius(kind));
         control.Padding = Padding(kind);
         control.Height = Height(kind);
@@ -193,7 +202,11 @@ internal static class OptionChrome
             Templates.When(
                 UIElement.IsMouseOverProperty,
                 true,
-                Templates.Brush(Border.BackgroundProperty, ColorToken.CardHi, ControlChrome.FillPart)
+                Templates.Brush(
+                    Border.BackgroundProperty,
+                    ColorToken.CardHi,
+                    ControlChrome.FillPart
+                )
             ),
         };
         var selectedSetters = new List<SetterBase>
@@ -270,10 +283,16 @@ internal static class OptionChrome
                 var bare = new MultiTrigger();
                 bare.Conditions.Add(new Condition(symbol, null));
                 bare.Conditions.Add(new Condition(selected, true));
-                bare.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Visible, CheckPart));
-                triggers.Add(Templates.When(selected, true, ControlChrome.Selected([.. selectedSetters])));
+                bare.Setters.Add(
+                    new Setter(UIElement.VisibilityProperty, Visibility.Visible, CheckPart)
+                );
+                triggers.Add(
+                    Templates.When(selected, true, ControlChrome.Selected([.. selectedSetters]))
+                );
                 triggers.Add(bare);
-                triggers.Add(Templates.When(UIElement.IsEnabledProperty, false, ControlChrome.Disabled()));
+                triggers.Add(
+                    Templates.When(UIElement.IsEnabledProperty, false, ControlChrome.Disabled())
+                );
                 return Templates.Seal(owner, Box(body), [.. triggers]);
         }
 
@@ -285,7 +304,10 @@ internal static class OptionChrome
     private static FrameworkElementFactory Box(FrameworkElementFactory body) =>
         Templates
             .Element<TouchTargetBox>()
-            .With(TouchTargetBox.VisualWidthProperty, Templates.Bind(FrameworkElement.WidthProperty))
+            .With(
+                TouchTargetBox.VisualWidthProperty,
+                Templates.Bind(FrameworkElement.WidthProperty)
+            )
             .With(
                 TouchTargetBox.VisualHeightProperty,
                 Templates.Bind(FrameworkElement.HeightProperty)

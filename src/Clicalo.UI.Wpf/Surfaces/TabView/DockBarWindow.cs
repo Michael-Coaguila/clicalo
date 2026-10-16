@@ -217,12 +217,7 @@ public sealed class DockBarWindow : TouchSurface
             Border.BorderThicknessProperty,
             ThemeScope.BorderThicknessKey
         );
-        _pill = SurfaceParts.Button(
-            "autorenew",
-            16,
-            ButtonVariant.Secondary,
-            viewModel.ToggleLock
-        );
+        _pill = SurfaceParts.Button("autorenew", 16, ButtonVariant.Secondary, viewModel.ToggleLock);
         _pill.FontSize = SmallLabelPx;
 
         // Prototype: the icon before the text on a side edge and above it on the top and bottom ones.

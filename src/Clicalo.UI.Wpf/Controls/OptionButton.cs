@@ -195,9 +195,13 @@ public sealed class OptionButton : ToggleButton
         }
     }
 
-    private static void OnKindChanged(DependencyObject option, DependencyPropertyChangedEventArgs e) =>
-        ((OptionButton)option).Apply((OptionKind)e.NewValue);
+    private static void OnKindChanged(
+        DependencyObject option,
+        DependencyPropertyChangedEventArgs e
+    ) => ((OptionButton)option).Apply((OptionKind)e.NewValue);
 
-    private static void OnTypeChanged(DependencyObject option, DependencyPropertyChangedEventArgs e) =>
-        ((OptionButton)option).ApplyType();
+    private static void OnTypeChanged(
+        DependencyObject option,
+        DependencyPropertyChangedEventArgs e
+    ) => ((OptionButton)option).ApplyType();
 }

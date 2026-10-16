@@ -35,7 +35,9 @@ public sealed class TextInput : Grid
     public TextInput(string name, string placeholder, bool multiline = false)
     {
         IsMultiline = multiline;
-        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
         ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var lines = TextStyles.Body.LineHeight * 3;
         Box = new TextBox
@@ -52,7 +54,10 @@ public sealed class TextInput : Grid
         Box.SetResourceReference(Control.FontFamilyProperty, ThemeKeys.UiFont);
         Box.SetResourceReference(Control.FontSizeProperty, ThemeKeys.FontSize(TextStyleToken.Body));
         Box.SetResourceReference(Control.ForegroundProperty, ThemeBrushKey.For(ColorToken.Text));
-        Box.SetResourceReference(System.Windows.Controls.Primitives.TextBoxBase.CaretBrushProperty, ThemeBrushKey.For(ColorToken.Text));
+        Box.SetResourceReference(
+            System.Windows.Controls.Primitives.TextBoxBase.CaretBrushProperty,
+            ThemeBrushKey.For(ColorToken.Text)
+        );
         AutomationProperties.SetName(Box, name);
 
         _placeholder = new StyledText(placeholder, TextStyleToken.Body, ColorToken.Muted)
@@ -69,12 +74,19 @@ public sealed class TextInput : Grid
             Margin = new Thickness(0, multiline ? Space.S3 : 0, Space.S2, 0),
             Visibility = Visibility.Collapsed,
         };
-        _icon.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(ColorToken.Muted));
+        _icon.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
 
         var text = new Grid();
         text.Children.Add(_placeholder);
         text.Children.Add(Box);
-        var row = new DockPanel { LastChildFill = true, Margin = new Thickness(Space.S3, 0, Space.S3, 0) };
+        var row = new DockPanel
+        {
+            LastChildFill = true,
+            Margin = new Thickness(Space.S3, 0, Space.S3, 0),
+        };
         DockPanel.SetDock(_icon, Dock.Left);
         row.Children.Add(_icon);
         row.Children.Add(text);
@@ -169,7 +181,9 @@ public sealed class TextInput : Grid
         set
         {
             AutomationProperties.SetName(Dictate, value ?? string.Empty);
-            Dictate.Visibility = string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible;
+            Dictate.Visibility = string.IsNullOrEmpty(value)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
     }
 
@@ -217,8 +231,8 @@ public sealed class TextInput : Grid
             Border.BorderBrushProperty,
             ThemeBrushKey.For(
                 _warn ? ColorToken.WarnText
-                    : focused ? ColorToken.Accent
-                    : ColorToken.Line
+                : focused ? ColorToken.Accent
+                : ColorToken.Line
             )
         );
 }

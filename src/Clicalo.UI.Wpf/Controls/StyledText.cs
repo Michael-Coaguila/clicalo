@@ -148,7 +148,10 @@ public sealed class StyledText : TextBlock
             ThemeBrushKey.For((ColorToken)e.NewValue)
         );
 
-    private static void OnMaxLinesChanged(DependencyObject text, DependencyPropertyChangedEventArgs e)
+    private static void OnMaxLinesChanged(
+        DependencyObject text,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         ApplyLines((StyledText)text, (int)e.NewValue);
         OnLinesChanged(text, e);

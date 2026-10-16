@@ -284,36 +284,16 @@ public sealed class PanelHeader : Border
         _autoFixed.ToolTip = vm.AutoFixedName;
         AutomationProperties.SetName(_autoFixed, vm.AutoFixedName);
 
-        Configure(
-            _search,
-            vm.HasSearch,
-            vm.SearchName,
-            vm.IsSearchOpen
-        );
-        Configure(
-            _edit,
-            vm.HasEdit,
-            vm.EditName,
-            vm.IsEditing
-        );
+        Configure(_search, vm.HasSearch, vm.SearchName, vm.IsSearchOpen);
+        Configure(_edit, vm.HasEdit, vm.EditName, vm.IsEditing);
         _edit.Symbol = vm.EditIcon;
-        Configure(
-            _quick,
-            vm.HasQuickSettings,
-            vm.QuickSettingsName,
-            vm.IsQuickSettingsOpen
-        );
+        Configure(_quick, vm.HasQuickSettings, vm.QuickSettingsName, vm.IsQuickSettingsOpen);
         // ACC-001: «Ajustes rápidos» opens and closes its sheet, and says which.
         _quick.IsExpanded = vm.IsQuickSettingsOpen;
         Configure(_minimize, vm.HasMinimize, vm.MinimizeName, active: false);
     }
 
-    private static void Configure(
-        IconButton button,
-        bool available,
-        string name,
-        bool active
-    )
+    private static void Configure(IconButton button, bool available, string name, bool active)
     {
         button.Visibility = Shown(available);
         button.IsActive = active;

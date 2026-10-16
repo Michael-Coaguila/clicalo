@@ -38,7 +38,10 @@ internal static class PillText
         text is null
             ? default
             : new Size(
-                Math.Max(IconBox.Small, Math.Ceiling(text.WidthIncludingTrailingWhitespace) + (2 * Space.S1)),
+                Math.Max(
+                    IconBox.Small,
+                    Math.Ceiling(text.WidthIncludingTrailingWhitespace) + (2 * Space.S1)
+                ),
                 IconBox.Small
             );
 

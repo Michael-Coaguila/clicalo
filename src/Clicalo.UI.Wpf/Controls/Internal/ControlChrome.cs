@@ -39,7 +39,8 @@ internal static class ControlChrome
     );
 
     /// <summary>The dash of the rest line of a disabled control, in units of its thickness.</summary>
-    public static DoubleCollection DisabledDash { get; } = Frozen([Stroke.Selected, Stroke.Selected]);
+    public static DoubleCollection DisabledDash { get; } =
+        Frozen([Stroke.Selected, Stroke.Selected]);
 
     /// <summary>Reads the corner radius of <paramref name="element"/>.</summary>
     public static double GetRadius(DependencyObject element) =>
@@ -60,7 +61,10 @@ internal static class ControlChrome
             .With(Border.BackgroundProperty, Templates.Bind(Control.BackgroundProperty))
             .With(
                 Border.CornerRadiusProperty,
-                new TemplateBindingExtension(RadiusProperty) { Converter = CornerConverter.Instance }
+                new TemplateBindingExtension(RadiusProperty)
+                {
+                    Converter = CornerConverter.Instance,
+                }
             )
             .With(UIElement.SnapsToDevicePixelsProperty, true);
         var line = Templates
@@ -125,8 +129,12 @@ internal static class ControlChrome
     {
         public static CornerConverter Instance { get; } = new();
 
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-            new CornerRadius(value is double radius ? radius : 0);
+        public object Convert(
+            object value,
+            Type targetType,
+            object parameter,
+            CultureInfo culture
+        ) => new CornerRadius(value is double radius ? radius : 0);
 
         public object ConvertBack(
             object value,

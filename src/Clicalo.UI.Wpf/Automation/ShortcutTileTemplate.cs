@@ -175,7 +175,10 @@ public static class ShortcutTileTemplate
         var type = new FrameworkElementFactory(typeof(SymbolIcon), TypePart);
         type.SetValue(SymbolIcon.SymbolProperty, Bind(ShortcutTile.TypeSymbolProperty));
         type.SetValue(SymbolIcon.SizeProperty, IconBox.Badge);
-        type.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(ColorToken.Muted));
+        type.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
         slot.AppendChild(type);
 
         var text = new FrameworkElementFactory(typeof(TextBlock), StatePart);
@@ -183,7 +186,10 @@ public static class ShortcutTileTemplate
         text.SetValue(TextBlock.FontSizeProperty, TypeScale.Minimum);
         text.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
         text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
-        text.SetResourceReference(TextBlock.ForegroundProperty, ThemeBrushKey.For(ColorToken.Muted));
+        text.SetResourceReference(
+            TextBlock.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
         slot.AppendChild(text);
         return slot;
     }

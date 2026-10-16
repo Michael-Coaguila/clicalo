@@ -63,7 +63,11 @@ internal static class ButtonChrome
             ButtonVariant.Primary => (ColorToken.Accent, ColorToken.OnAccent, null),
             ButtonVariant.Secondary => (ColorToken.Card, ColorToken.Text, ColorToken.Line),
             // An icon button without fill draws its icon in text (the header tools); a text one in accent ink.
-            ButtonVariant.Tertiary => (null, iconOnly ? ColorToken.Text : ColorToken.AccentInk, null),
+            ButtonVariant.Tertiary => (
+                null,
+                iconOnly ? ColorToken.Text : ColorToken.AccentInk,
+                null
+            ),
             ButtonVariant.Danger => (ColorToken.Card, ColorToken.DangerText, ColorToken.Line),
             _ => throw new ArgumentOutOfRangeException(nameof(variant), variant, null),
         };
@@ -135,11 +139,13 @@ internal static class ButtonChrome
             }
         }
 
-        foreach (var (property, value) in new (DependencyProperty, object)[]
-        {
-            (TouchButton.IsOnProperty, true),
-            (TouchButton.IsActiveProperty, true),
-        })
+        foreach (
+            var (property, value) in new (DependencyProperty, object)[]
+            {
+                (TouchButton.IsOnProperty, true),
+                (TouchButton.IsActiveProperty, true),
+            }
+        )
         {
             triggers.Add(
                 Templates.When(
@@ -147,7 +153,11 @@ internal static class ButtonChrome
                     value,
                     ControlChrome.Selected(
                         new Setter(SymbolIcon.IsFilledProperty, true, IconPart),
-                        Templates.Brush(SymbolIcon.ForegroundProperty, ColorToken.AccentInk, IconPart),
+                        Templates.Brush(
+                            SymbolIcon.ForegroundProperty,
+                            ColorToken.AccentInk,
+                            IconPart
+                        ),
                         Templates.Brush(
                             TextElement.ForegroundProperty,
                             ColorToken.Text,

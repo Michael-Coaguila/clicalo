@@ -105,8 +105,9 @@ public sealed class Overline : FrameworkElement
             }
 
             // Drop letters until the label and «…» fit.
-            var trimmed = (text.EndsWith(Ellipsis, StringComparison.Ordinal) ? text[..^1] : text)
-                .TrimEnd();
+            var trimmed = (
+                text.EndsWith(Ellipsis, StringComparison.Ordinal) ? text[..^1] : text
+            ).TrimEnd();
             text = trimmed[..^1].TrimEnd() + Ellipsis;
         }
     }
@@ -157,7 +158,9 @@ public sealed class Overline : FrameworkElement
         {
             if (!face.CharacterToGlyphMap.TryGetValue(c, out var glyph))
             {
-                glyph = face.CharacterToGlyphMap.TryGetValue('?', out var fallback) ? fallback : (ushort)0;
+                glyph = face.CharacterToGlyphMap.TryGetValue('?', out var fallback)
+                    ? fallback
+                    : (ushort)0;
             }
 
             glyphs.Add(glyph);

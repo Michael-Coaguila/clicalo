@@ -17,7 +17,9 @@ public sealed class DesignSystemAuditTests
     [InlineData(AuditLook.Dark)]
     [InlineData(AuditLook.LightLargeText)]
     [InlineData(AuditLook.ContrastLargeText)]
-    public void Every_base_control_follows_the_UIA_rules_keeps_44_and_cuts_no_text(AuditLook look) =>
+    public void Every_base_control_follows_the_UIA_rules_keeps_44_and_cuts_no_text(
+        AuditLook look
+    ) =>
         WpfThread.Invoke(() =>
         {
             using var theme = AuditLooks.Theme(look);
