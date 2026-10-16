@@ -75,7 +75,7 @@ public sealed class SegmentedItem : ListBoxItem
         base.OnApplyTemplate();
         if (GetTemplateChild(OptionChrome.TextPart) is ContentPresenter presenter)
         {
-            presenter.Resources[typeof(TextBlock)] = OptionChrome.Text(
+            presenter.Resources[typeof(TextBlock)] = OptionChrome.TextStyleFor(
                 1,
                 centered: true,
                 TextStyleToken.Label

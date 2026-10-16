@@ -84,7 +84,7 @@ public sealed class NavRow : Button
         base.OnApplyTemplate();
         if (GetTemplateChild(ButtonChrome.TextPart) is ContentPresenter presenter)
         {
-            presenter.Resources[typeof(TextBlock)] = OptionChrome.Text(
+            presenter.Resources[typeof(TextBlock)] = OptionChrome.TextStyleFor(
                 1,
                 centered: false,
                 TextStyleToken.Label

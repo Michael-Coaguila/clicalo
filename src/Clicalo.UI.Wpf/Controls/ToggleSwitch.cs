@@ -132,7 +132,7 @@ public sealed class ToggleSwitch : ToggleButton
 
         if (GetTemplateChild(ContentPart) is ContentPresenter presenter)
         {
-            presenter.Resources[typeof(TextBlock)] = OptionChrome.Text(
+            presenter.Resources[typeof(TextBlock)] = OptionChrome.TextStyleFor(
                 2,
                 centered: false,
                 TextStyleToken.Body

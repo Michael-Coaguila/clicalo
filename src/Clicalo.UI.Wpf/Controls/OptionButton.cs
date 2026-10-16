@@ -166,10 +166,22 @@ public sealed class OptionButton : ToggleButton
         {
             presenter.Resources[typeof(TextBlock)] = Kind switch
             {
-                OptionKind.Rail => OptionChrome.Text(2, centered: true, TextStyleToken.LabelSmall),
-                OptionKind.Card => OptionChrome.Text(1, centered: true, TextStyleToken.Label),
-                OptionKind.ListRow => OptionChrome.Text(1, centered: false, TextStyleToken.Label),
-                _ => OptionChrome.Text(1, centered: true, TextStyleToken.Label),
+                OptionKind.Rail => OptionChrome.TextStyleFor(
+                    2,
+                    centered: true,
+                    TextStyleToken.LabelSmall
+                ),
+                OptionKind.Card => OptionChrome.TextStyleFor(
+                    1,
+                    centered: true,
+                    TextStyleToken.Label
+                ),
+                OptionKind.ListRow => OptionChrome.TextStyleFor(
+                    1,
+                    centered: false,
+                    TextStyleToken.Label
+                ),
+                _ => OptionChrome.TextStyleFor(1, centered: true, TextStyleToken.Label),
             };
         }
     }

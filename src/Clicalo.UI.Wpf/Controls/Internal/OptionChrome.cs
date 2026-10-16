@@ -138,7 +138,7 @@ internal static class OptionChrome
     /// The style of the text an option makes of a string: <paramref name="lines"/> lines with «…», centered or
     /// leading, in the line height of the <c>label</c> style.
     /// </summary>
-    public static Style Text(int lines, bool centered, TextStyleToken style) =>
+    public static Style TextStyleFor(int lines, bool centered, TextStyleToken style) =>
         TextStyleCache.GetOrAdd(
             (lines * 4) + (centered ? 2 : 0) + (style == TextStyleToken.LabelSmall ? 1 : 0),
             _ =>

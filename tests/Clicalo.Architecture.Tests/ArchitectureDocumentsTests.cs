@@ -17,6 +17,7 @@ public sealed class ArchitectureDocumentsTests
         "allowed-dependencies.json",
         "banned-api-exceptions.json",
         "destructive-operations.json",
+        "loose-measures.json",
         "domain-modules.json",
         "sensitive-paths.json",
         "undo-exemptions.json",
