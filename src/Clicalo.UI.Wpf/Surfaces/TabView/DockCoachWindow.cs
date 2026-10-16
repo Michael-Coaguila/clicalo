@@ -103,6 +103,9 @@ public sealed class DockCoachWindow : TouchSurface
         Content = stack;
         _viewModel.PropertyChanged += OnChanged;
         _viewModel.Labels.PropertyChanged += OnChanged;
+
+        // Measured again once the window has its fonts and its theme.
+        Loaded += (_, _) => Refresh();
         Refresh();
     }
 
@@ -186,9 +189,12 @@ public sealed class DockCoachWindow : TouchSurface
         {
             _title.Text = title;
             Write(_text, text);
-            _texts.ClearValue(MinHeightProperty);
-            _texts.Measure(new Size(width, double.PositiveInfinity));
-            tallest = Math.Max(tallest, _texts.DesiredSize.Height);
+
+            // The texts themselves: their new text marks them for measure, the panel around them is not yet.
+            var room = new Size(width, double.PositiveInfinity);
+            _title.Measure(room);
+            _text.Measure(room);
+            tallest = Math.Max(tallest, _title.DesiredSize.Height + _text.DesiredSize.Height);
         }
 
         _texts.MinHeight = tallest;

@@ -177,18 +177,13 @@ public sealed class DockBarWindow : TouchSurface
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var pager = new DockPanel
-        {
-            LastChildFill = true,
-            Margin = new Thickness(0, Space.S2, 0, 0),
-        };
+        // «▲ i/N ▼» (PES-007): across a side bar the two arrows take the whole width, so «i/N» goes above them.
+        var pager = new StackPanel { Margin = new Thickness(0, Space.S2, 0, 0) };
         if (_vertical)
         {
-            DockPanel.SetDock(_previous, Dock.Left);
-            DockPanel.SetDock(_next, Dock.Right);
-            _ = pager.Children.Add(_previous);
-            _ = pager.Children.Add(_next);
+            _pageLabel.Margin = new Thickness(0, 0, 0, Space.S1);
             _ = pager.Children.Add(_pageLabel);
+            _ = pager.Children.Add(Pair(_previous, _next));
         }
 
         _verticalPager = pager;

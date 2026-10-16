@@ -304,6 +304,27 @@ public sealed class SurfacesAuditTests
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
+
+                    // Two pages, on the second: the pager, with «previous» on and «next» off; Frequents in view, the
+                    // picker open and every window of the bar open, so every tool is drawn «elegido».
+                    dock.Apply(
+                        state with
+                        {
+                            Frequents = true,
+                            Flyout = DockFlyout.Pinned,
+                            QuickOpen = true,
+                            Dock = state.Dock with { PerPage = 2 },
+                        }
+                    );
+                    dock.Next();
+                    host.LayOut();
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"bar paged in Frequents ({side}, {size}, {language}, {look})",
+                        atLeast: 10,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
                 }
             }
             finally
