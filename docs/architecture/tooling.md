@@ -122,10 +122,11 @@ La auditoría sin pantalla (`tests/Clicalo.Windowing.IntegrationTests/Automation
 reales en sus estados: el panel (Completa y Compacta, S, M y L, Ajustes rápidos, búsqueda, sugerencia, menú de
 toque largo, avisos, pánico, edición, modo prueba, Frecuentes), la burbuja y «Soltar todo», la Pestaña en los cuatro
 lados con su barra y sus ventanas laterales, el centro de control en sus seis secciones y estados (a 1300 × 760, a
-su tamaño por defecto y a 760 × 520) y los cinco pasos de la bienvenida. Con la variable `CLICALO_GALLERY` apuntando a
-una carpeta, cada estado dibujado como en el diseño (tema oscuro, texto al 100 %) se guarda además en PNG a escala
-1,75 (la pantalla del usuario: 2400 × 1600 al 175 %), en tema oscuro y en claro, con el fondo y el borde de su
-ventana, y `index.html` las muestra agrupadas y con nombre:
+su tamaño por defecto y a 760 × 520), los cinco pasos de la bienvenida y la hoja «Sistema de diseño» con todos los
+componentes base de la dirección C ([sistema de diseño](../design/sistema.md)). Con la variable `CLICALO_GALLERY`
+apuntando a una carpeta, cada estado dibujado como en el diseño (tema oscuro, texto al 100 %) se guarda además en PNG a
+escala 1,75 (la pantalla del usuario: 2400 × 1600 al 175 %), en tema oscuro, en claro y en alto contraste, con el fondo
+y el borde de su ventana, y `index.html` las muestra agrupadas y con nombre:
 
 ```powershell
 $env:CLICALO_GALLERY = 'C:\dev\clicalo-qa\before'

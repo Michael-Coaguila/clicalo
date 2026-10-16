@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evolución del prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block" rel="stylesheet">
+<style>
+/* =====================================================================
+   TOKENS · Clícalo · dirección C «Evolución del prototipo»
+   Todas las medidas en DIP lógicos (1 px CSS = 1 DIP).
+   ===================================================================== */
+:root{
+  /* Espaciado: rejilla de 4, escala cerrada */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-6:24px; --s-8:32px; --s-12:48px;
+  /* Alturas de control: tres, nunca otras */
+  --h-s:44px;   /* botones de icono, chips, teclas, botones de texto */
+  --h-m:52px;   /* campos, filas, segmentados, filas-interruptor */
+  --h-l:64px;   /* tarjetas de opción, filas de navegación */
+  /* Radios: tres + pastilla */
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-pill:999px;
+  /* Cajas de icono fijas */
+  --i-badge:16px; --i-s:20px; --i-m:24px; --i-l:32px;
+  /* Tipografía: escala cerrada con nombre */
+  --f-ui:"Atkinson Hyperlegible", system-ui, sans-serif;
+  --f-keys:"JetBrains Mono", ui-monospace, monospace;
+  --t-display:700 28px/34px var(--f-ui);
+  --t-title:700 20px/26px var(--f-ui);
+  --t-heading:700 16px/22px var(--f-ui);
+  --t-body:400 15px/22px var(--f-ui);
+  --t-label:700 14px/18px var(--f-ui);
+  --t-caption:400 12px/16px var(--f-ui);
+  --t-overline:700 12px/16px var(--f-ui);
+  --t-keys:500 12px/16px var(--f-keys);
+  --t-keys-tile:500 11px/14px var(--f-keys);
+  /* Movimiento */
+  --dur:120ms;
+
+  /* ---- Color · tema claro (base) ---- */
+  --page:oklch(0.975 0.003 260);
+  --page-ink:oklch(0.22 0.015 260);
+  --page-muted:oklch(0.43 0.015 260);
+  --page-line:oklch(0 0 0 / 0.12);
+  --desk:oklch(0.84 0.02 250);
+  --surface:oklch(0.955 0.004 260);     /* nivel 0: panel y contenido de ventana */
+  --surface-2:oklch(0.925 0.006 260);   /* nivel 0b: barra de título, riel, estado */
+  --card:#ffffff;                       /* nivel 1: fichas y controles (siempre por encima) */
+  --card-hover:oklch(0.975 0.004 260);
+  --field:#ffffff;
+  --line:oklch(0 0 0 / 0.13);           /* borde decorativo */
+  --line-strong:oklch(0 0 0 / 0.45);    /* límite de control: ≥ 3:1 */
+  --text:oklch(0.22 0.015 260);
+  --muted:oklch(0.43 0.015 260);
+  --accent:oklch(0.50 0.11 220);
+  --accent-ink:oklch(0.44 0.11 225);
+  --on-accent:#ffffff;
+  --accent-wash:oklch(0.50 0.11 220 / 0.12);
+  --warn:oklch(0.80 0.14 80);
+  --on-warn:oklch(0.22 0.03 80);
+  --warn-ink:oklch(0.47 0.11 70);
+  --warn-wash:oklch(0.80 0.14 80 / 0.24);
+  --danger:oklch(0.55 0.19 25);
+  --danger-ink:oklch(0.50 0.19 25);
+  --danger-wash:oklch(0.62 0.18 25 / 0.12);
+  --success:oklch(0.50 0.13 150);
+  --focus:oklch(0.50 0.11 220);
+  --shadow-win:0 24px 64px oklch(0.2 0.02 260 / 0.28), 0 2px 6px oklch(0.2 0.02 260 / 0.12);
+  --cat-L:0.50; --cat-C:0.13;
+  --fade-to:oklch(0.955 0.004 260);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:oklch(0.16 0.01 260); --page-ink:oklch(0.96 0.004 260); --page-muted:oklch(0.76 0.012 260); --page-line:oklch(1 0 0 / 0.12);
+    --desk:oklch(0.34 0.02 250);
+    --surface:oklch(0.2 0.012 260); --surface-2:oklch(0.175 0.01 260);
+    --card:oklch(0.27 0.014 260); --card-hover:oklch(0.31 0.016 260); --field:oklch(0.15 0.01 260);
+    --line:oklch(1 0 0 / 0.11); --line-strong:oklch(1 0 0 / 0.42);
+    --text:oklch(0.97 0.004 260); --muted:oklch(0.78 0.012 260);
+    --accent:oklch(0.80 0.11 200); --accent-ink:oklch(0.84 0.10 200); --on-accent:oklch(0.2 0.03 220); --accent-wash:oklch(0.80 0.11 200 / 0.16);
+    --warn:oklch(0.83 0.13 80); --on-warn:oklch(0.2 0.02 80); --warn-ink:oklch(0.86 0.12 80); --warn-wash:oklch(0.83 0.13 80 / 0.14);
+    --danger:oklch(0.62 0.18 25); --danger-ink:oklch(0.76 0.14 25); --danger-wash:oklch(0.62 0.18 25 / 0.16);
+    --success:oklch(0.80 0.14 150); --focus:oklch(0.80 0.11 200);
+    --shadow-win:0 24px 64px oklch(0 0 0 / 0.5), 0 2px 6px oklch(0 0 0 / 0.3);
+    --cat-L:0.82; --cat-C:0.12; --fade-to:oklch(0.2 0.012 260);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:oklch(0.16 0.01 260); --page-ink:oklch(0.96 0.004 260); --page-muted:oklch(0.76 0.012 260); --page-line:oklch(1 0 0 / 0.12);
+  --desk:oklch(0.34 0.02 250);
+  --surface:oklch(0.2 0.012 260); --surface-2:oklch(0.175 0.01 260);
+  --card:oklch(0.27 0.014 260); --card-hover:oklch(0.31 0.016 260); --field:oklch(0.15 0.01 260);
+  --line:oklch(1 0 0 / 0.11); --line-strong:oklch(1 0 0 / 0.42);
+  --text:oklch(0.97 0.004 260); --muted:oklch(0.78 0.012 260);
+  --accent:oklch(0.80 0.11 200); --accent-ink:oklch(0.84 0.10 200); --on-accent:oklch(0.2 0.03 220); --accent-wash:oklch(0.80 0.11 200 / 0.16);
+  --warn:oklch(0.83 0.13 80); --on-warn:oklch(0.2 0.02 80); --warn-ink:oklch(0.86 0.12 80); --warn-wash:oklch(0.83 0.13 80 / 0.14);
+  --danger:oklch(0.62 0.18 25); --danger-ink:oklch(0.76 0.14 25); --danger-wash:oklch(0.62 0.18 25 / 0.16);
+  --success:oklch(0.80 0.14 150); --focus:oklch(0.80 0.11 200);
+  --shadow-win:0 24px 64px oklch(0 0 0 / 0.5), 0 2px 6px oklch(0 0 0 / 0.3);
+  --cat-L:0.82; --cat-C:0.12; --fade-to:oklch(0.2 0.012 260);
+  color-scheme:dark;
+}
+
+/* Colores de categoría: un tono por categoría, luminosidad por tema */
+.c-edit{--cat:oklch(var(--cat-L) var(--cat-C) 230)} .c-hist{--cat:oklch(var(--cat-L) var(--cat-C) 60)}
+.c-file{--cat:oklch(var(--cat-L) var(--cat-C) 150)} .c-sel{--cat:oklch(var(--cat-L) var(--cat-C) 300)}
+.c-win{--cat:oklch(var(--cat-L) var(--cat-C) 25)}  .c-voice{--cat:oklch(var(--cat-L) var(--cat-C) 190)}
+.c-nav{--cat:oklch(var(--cat-L) var(--cat-C) 270)} .c-fmt{--cat:oklch(var(--cat-L) var(--cat-C) 330)}
+
+/* =====================================================================
+   PÁGINA
+   ===================================================================== */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--page-ink);font:var(--t-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.page{max-width:1240px;margin:0 auto;padding:var(--s-8) var(--s-4) var(--s-12)}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s-4);margin-bottom:var(--s-8)}
+.top h1{font:var(--t-display);margin:0 0 var(--s-2)}
+.top p{margin:0;color:var(--page-muted);max-width:70ch}
+.kicker{font:var(--t-overline);letter-spacing:.06em;text-transform:uppercase;color:var(--page-muted);margin:0 0 var(--s-1)}
+.screen{margin-top:var(--s-12)}
+.screen-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s-2) var(--s-4);margin-bottom:var(--s-4);border-top:1px solid var(--page-line);padding-top:var(--s-6)}
+.screen-head h2{font:var(--t-title);margin:0}
+.screen-head .dims{font:var(--t-caption);color:var(--page-muted)}
+.pan-hint[hidden]{display:none}
+.layout{display:grid;grid-template-columns:minmax(0,404px) minmax(0,1fr);gap:var(--s-8);align-items:start}
+.layout.wide{grid-template-columns:minmax(0,1fr)}
+.notes{margin:0;padding:0;list-style:none;display:grid;gap:var(--s-3);max-width:60ch}
+.notes li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:var(--s-2);color:var(--page-ink)}
+.notes li .ms{color:var(--page-muted)}
+.notes.cols{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));max-width:none;margin-top:var(--s-6)}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* Escenario: la maqueta se escala para caber, sin desplazamiento horizontal */
+.stage{position:relative;width:100%;overflow:hidden}
+.stage>.scaler{transform-origin:top left;position:absolute;left:0;top:0}
+.stage.pan{overflow-x:auto;overflow-y:hidden;border-radius:var(--r-l)}
+.pan-hint{display:flex;align-items:center;gap:var(--s-2);margin:var(--s-2) 0 0;font:var(--t-caption);color:var(--page-muted)}
+.desk{background:var(--desk);border-radius:var(--r-l);padding:var(--s-8);
+  background-image:radial-gradient(oklch(1 0 0 / .06) 1px,transparent 1px);background-size:16px 16px}
+
+/* Conmutador de tema de la página */
+.seg{display:inline-flex;gap:var(--s-1);padding:var(--s-1);border-radius:var(--r-m);background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.seg button{all:unset;box-sizing:border-box;min-width:var(--h-s);height:var(--h-s);padding:0 var(--s-4);border-radius:var(--r-s);display:inline-flex;align-items:center;gap:var(--s-2);font:var(--t-label);color:var(--text);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-wash);box-shadow:inset 0 0 0 2px var(--accent)}
+.seg button .chk{display:none}
+.seg button[aria-pressed="true"] .chk{display:inline-block}
+
+/* =====================================================================
+   COMPONENTES
+   ===================================================================== */
+.ms{font-family:"Material Symbols Rounded";font-weight:400;font-style:normal;font-size:var(--i-m);line-height:1;
+  width:var(--i-m);height:var(--i-m);display:inline-flex;align-items:center;justify-content:center;flex:none;
+  font-variation-settings:"FILL" 0,"wght" 400,"GRAD" 0,"opsz" 24;letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";overflow:hidden;user-select:none}
+.ms.s{font-size:var(--i-s);width:var(--i-s);height:var(--i-s);font-variation-settings:"FILL" 0,"opsz" 20}
+.ms.b{font-size:var(--i-badge);width:var(--i-badge);height:var(--i-badge);font-variation-settings:"FILL" 0,"opsz" 20}
+.ms.l{font-size:var(--i-l);width:var(--i-l);height:var(--i-l);font-variation-settings:"FILL" 0,"opsz" 40}
+.ms.fill{font-variation-settings:"FILL" 1,"wght" 400,"GRAD" 0,"opsz" 24}
+
+button{font:inherit;color:inherit}
+:where(.ui) button, :where(.ui) .tap{all:unset;box-sizing:border-box;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:where(.ui) :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.seg button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.ui{font:var(--t-body);color:var(--text)}
+.ui .overline{font:var(--t-overline);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+.ui .caption{font:var(--t-caption);color:var(--muted)}
+.ui .ellip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ui .nobr{white-space:nowrap}
+.ui .two{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Botón de icono 44×44 (terciario). Pulsado = mismo tratamiento que «elegido» */
+.ib{width:var(--h-s);height:var(--h-s);border-radius:var(--r-m);display:inline-flex;align-items:center;justify-content:center;color:var(--text);transition:background var(--dur)}
+.ib:hover{background:var(--accent-wash)}
+.ib[aria-pressed="true"]{background:var(--accent-wash);box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent-ink)}
+.ib[aria-pressed="true"] .ms{font-variation-settings:"FILL" 1,"opsz" 24}
+.ib.sec{background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.ib.m{width:var(--h-m);height:var(--h-m)}
+
+/* Jerarquía de botones: primario, secundario, terciario, peligro. Todos 700, radio m */
+.btn{height:var(--h-s);padding:0 var(--s-4);border-radius:var(--r-m);display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);font:var(--t-label);white-space:nowrap;transition:background var(--dur)}
+.btn .ms{margin-left:calc(var(--s-1) * -1)}
+.btn.primary{background:var(--accent);color:var(--on-accent)}
+.btn.secondary{background:var(--card);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.btn.tertiary{color:var(--accent-ink);padding:0 var(--s-3)}
+.btn.tertiary:hover,.btn.secondary:hover{background:var(--accent-wash)}
+.btn.danger{background:var(--card);color:var(--danger-ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
+
+/* Opción (segmentados, tarjetas, chips): UN solo tratamiento de «elegido».
+   Borde siempre por dentro (inset), mismo tamaño en todos los estados.
+   Elegido = lavado + anillo de 2 + icono relleno; si no hay icono, aparece ✓. */
+.opt{background:var(--card);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-m);color:var(--text);display:flex;align-items:center;justify-content:center;gap:var(--s-2);font:var(--t-label);transition:background var(--dur)}
+.opt:hover{background:var(--card-hover)}
+.opt[aria-checked="true"],.opt[aria-pressed="true"],.opt[aria-current="true"],.opt[aria-selected="true"]{background:var(--accent-wash);box-shadow:inset 0 0 0 2px var(--accent)}
+.opt[aria-checked="true"] .ms,.opt[aria-pressed="true"] .ms,.opt[aria-current="true"] .ms,.opt[aria-selected="true"] .ms{font-variation-settings:"FILL" 1,"opsz" 24;color:var(--accent-ink)}
+.opt .chk{display:none}
+.opt[aria-checked="true"] .chk,.opt[aria-pressed="true"] .chk,.opt[aria-selected="true"] .chk{display:inline-flex}
+.opt.col{flex-direction:column;gap:var(--s-1)}
+
+/* Interruptor 48×28 con la fila entera tocable; encendido lleva ✓ en el pulgar */
+.sw-row{display:grid;grid-template-columns:var(--i-m) minmax(0,1fr) 48px;align-items:center;gap:var(--s-3);min-height:var(--h-m);padding:var(--s-2) 0;width:100%}
+.sw-row .t{font:var(--t-body)}
+.sw{width:48px;height:28px;border-radius:var(--r-pill);box-shadow:inset 0 0 0 2px var(--line-strong);position:relative;background:transparent}
+.sw::after{content:"";position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:var(--muted)}
+.sw.on{background:var(--accent);box-shadow:none}
+.sw.on::after{left:24px;top:4px;width:20px;height:20px;background:var(--on-accent)}
+.sw.on::before{content:"check";font-family:"Material Symbols Rounded";position:absolute;left:24px;top:4px;width:20px;height:20px;font-size:16px;line-height:20px;text-align:center;color:var(--accent);z-index:1;font-variation-settings:"wght" 600}
+
+/* Insignias con hueco reservado */
+.badge{min-width:20px;height:20px;padding:0 6px;border-radius:var(--r-pill);font:700 12px/20px var(--f-ui);text-align:center;background:var(--warn);color:var(--on-warn)}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:var(--r-s);font:700 11px/20px var(--f-ui);letter-spacing:.04em;background:var(--accent);color:var(--on-accent)}
+
+/* Ficha de atajo · anatomía con huecos fijos:
+   arriba-izq = número de voz · arriba-dcha = tipo · centro = icono · nombre (1 línea) · teclas (1 línea) */
+.tile{position:relative;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-m);
+  display:grid;grid-template-rows:var(--i-m) 18px 14px;row-gap:var(--s-1);align-content:center;justify-items:center;padding:0 var(--s-2);text-align:center;color:var(--text);transition:background var(--dur)}
+.tile:hover{background:var(--card-hover)}
+.tile>.ms{color:var(--cat)}
+.tile .nm{font:var(--t-label);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .ky{font:var(--t-keys-tile);color:var(--muted);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .slot-tr{position:absolute;top:6px;right:6px;width:var(--i-badge);height:var(--i-badge);color:var(--muted)}
+.tile .slot-tl{position:absolute;top:6px;left:6px}
+.tile[aria-current="true"]{background:var(--accent-wash);box-shadow:inset 0 0 0 2px var(--accent)}
+.tile[aria-current="true"]>.ms{font-variation-settings:"FILL" 1,"opsz" 24}
+.tile.add{background:transparent;box-shadow:none;outline:1px dashed var(--line-strong);outline-offset:-1px}
+.tile.add>.ms{color:var(--accent-ink)}
+.tile.add:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* Zona desplazable diseñada: barra fina con tema, en canal reservado, y fundido inferior */
+.scroll{overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-button{display:none;height:0}
+.scroll::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:4px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+.fade{position:relative}
+.fade::after{content:"";position:absolute;left:0;right:8px;bottom:0;height:32px;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--fade-to))}
+
+/* =====================================================================
+   PANEL FLOTANTE · Completa · M  (340 × 556)
+   ===================================================================== */
+.panel{width:340px;height:556px;background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow-win),inset 0 0 0 1px var(--line);
+  display:grid;grid-template-rows:var(--h-s) minmax(0,1fr) var(--h-s);row-gap:var(--s-3);padding:var(--s-3);position:relative;overflow:hidden}
+.p-head{display:flex;align-items:center;gap:var(--s-1)}
+.p-title{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s-2);height:var(--h-s);cursor:grab;padding-right:var(--s-1)}
+.p-title .grip{color:var(--muted);margin-left:-4px}
+.p-title .ms.prof{color:var(--accent-ink)}
+.p-title .nm{font:var(--t-heading)}
+.p-body{display:flex;flex-direction:column;min-height:0}
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-2);margin-top:var(--s-2)}
+.strip .tile{height:var(--h-l);grid-template-rows:var(--i-m) 16px;padding:0 var(--s-1)}
+.strip .tile .slot-tr{top:4px;right:4px}
+.strip .tile .nm{font:700 12px/16px var(--f-ui)}
+.chooser{display:grid;grid-template-columns:minmax(0,1fr) var(--h-m);gap:var(--s-2);margin-top:var(--s-3)}
+.chooser .seg2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-1);padding:var(--s-1);border-radius:var(--r-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);height:var(--h-m)}
+.chooser .seg2 .opt{height:var(--h-s);box-shadow:none;background:transparent;border-radius:var(--r-s);padding:0 var(--s-2);gap:6px}
+.chooser .seg2 .opt[aria-selected="true"]{background:var(--accent-wash);box-shadow:inset 0 0 0 2px var(--accent)}
+.chooser .autobtn{height:var(--h-m);border-radius:var(--r-m);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);color:var(--accent-ink);font:700 11px/12px var(--f-ui)}
+.grid3{display:grid;grid-template-columns:repeat(3,100px);grid-auto-rows:80px;gap:var(--s-2);margin-top:var(--s-3)}
+.p-status{display:flex;align-items:center;gap:var(--s-2);border-top:1px solid var(--line);margin:0 calc(var(--s-3) * -1) calc(var(--s-3) * -1);padding:0 var(--s-1) 0 var(--s-3);height:calc(var(--h-s) + var(--s-3))}
+.p-status .msg{flex:1;min-width:0;font:400 14px/18px var(--f-ui)}
+.p-status>.ms{color:var(--success)}
+.p-status .ky{font:var(--t-keys)}
+
+/* Hoja de Ajustes rápidos: CAPA encima del contenido, tamaño del panel fijo */
+.sheet{position:absolute;left:0;right:0;top:calc(var(--s-3) + var(--h-s) + var(--s-2));bottom:calc(var(--h-s) + var(--s-3));
+  background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-rows:var(--h-m) minmax(0,1fr);z-index:2}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:0 var(--s-1) 0 var(--s-3)}
+.sheet-head h3{margin:0;font:var(--t-heading)}
+.sheet .scroll{padding:0 var(--s-1) var(--s-6) var(--s-3)}
+.qs-sec{margin-top:var(--s-4)}
+.qs-sec:first-child{margin-top:var(--s-1)}
+.qs-sec .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--s-2)}
+.qs-sec .val{font:var(--t-label);color:var(--text)}
+.navrow{display:grid;grid-template-columns:var(--h-s) minmax(0,1fr) var(--i-m);align-items:center;gap:var(--s-3);height:var(--h-l);padding:0 var(--s-2);border-radius:var(--r-m);background:var(--card);box-shadow:inset 0 0 0 1px var(--line);width:100%}
+.navrow .ic{width:var(--h-s);height:var(--h-s);border-radius:var(--r-s);background:var(--accent-wash);color:var(--accent-ink);display:flex;align-items:center;justify-content:center}
+.navrow .t{font:var(--t-label);display:block}
+.navrow .ms.chev{color:var(--muted)}
+.qs3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-2)}
+.qs3 .opt{height:var(--h-l)}
+.qs3.sz .opt{height:var(--h-s)}
+.qs2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-2)}
+.qs2 .opt{height:var(--h-s);justify-content:flex-start;padding:0 var(--s-3)}
+.swatch{width:20px;height:20px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px var(--line-strong)}
+.slider{display:grid;grid-template-columns:var(--h-s) minmax(0,1fr) var(--h-s);gap:var(--s-3);align-items:center}
+.track{height:var(--h-s);position:relative;display:flex;align-items:center}
+.track i{display:block;height:6px;width:100%;border-radius:3px;background:var(--line-strong);position:relative}
+.track i b{position:absolute;left:0;top:0;bottom:0;width:88.5%;border-radius:3px;background:var(--accent)}
+.track i em{position:absolute;left:88.5%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--surface)}
+.qs-sw{margin-top:var(--s-3);border-top:1px solid var(--line);padding-top:var(--s-1)}
+.qs-sw .sw-row .ms{color:var(--muted)}
+
+/* =====================================================================
+   CENTRO DE CONTROL · 1120 × 680
+   ===================================================================== */
+.win{width:1120px;height:680px;background:var(--surface);border-radius:var(--r-s);box-shadow:var(--shadow-win),inset 0 0 0 1px var(--line);overflow:hidden;
+  display:grid;grid-template-columns:88px minmax(0,1fr);grid-template-rows:56px minmax(0,1fr) var(--h-s)}
+.titlebar{grid-column:1/-1;display:flex;align-items:center;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:var(--s-3);padding-left:var(--s-6);flex:1;min-width:0;height:100%}
+.logo{width:32px;height:32px;border-radius:var(--r-s);background:var(--accent);color:var(--on-accent);display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font:700 20px/1 var(--f-ui);position:relative}
+.logo::after{content:"";position:absolute;width:3px;height:8px;border-radius:2px;background:var(--on-accent);top:4px;left:17px;transform:rotate(30deg)}
+.crumbs{display:flex;align-items:center;gap:var(--s-1);min-width:0}
+.crumbs .b{font:var(--t-heading)}
+.crumbs .c{font:var(--t-body);color:var(--muted)}
+.crumbs .cur{font:var(--t-body);font-weight:700}
+.crumbs .ms{color:var(--muted)}
+.lang{display:flex;gap:0;padding:0;border-radius:var(--r-m);background:var(--card);box-shadow:inset 0 0 0 1px var(--line);margin-right:var(--s-3)}
+.lang .opt{height:var(--h-s);min-width:56px;padding:0 var(--s-3);box-shadow:none;background:transparent;border-radius:var(--r-m);gap:var(--s-1)}
+.caps{display:flex;height:100%;border-left:1px solid var(--line)}
+.caps button{width:56px;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.caps button:hover{background:var(--card-hover)}
+.caps button.x:hover{background:oklch(0.55 0.21 27);color:#fff}
+.caps button:focus-visible{outline-offset:-3px}
+
+.rail{background:var(--surface-2);border-right:1px solid var(--line);padding:var(--s-3) var(--s-2);display:flex;flex-direction:column;gap:var(--s-1)}
+.rail .opt{flex-direction:column;gap:var(--s-1);min-height:72px;padding:var(--s-2) var(--s-1);background:transparent;box-shadow:none;font:700 12px/16px var(--f-ui);text-align:center;position:relative}
+.rail .opt[aria-current="true"]{background:var(--accent-wash);box-shadow:inset 0 0 0 2px var(--accent)}
+.rail .opt .lbl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rail .opt .badge{position:absolute;top:6px;left:calc(50% + 10px)}
+.rail hr{border:0;border-top:1px solid var(--line);margin:var(--s-1) var(--s-2)}
+
+.main{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
+.summary{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-3) var(--s-4) var(--s-3) var(--s-6);border-bottom:1px solid var(--line);min-width:0}
+.summary .lead{font:var(--t-label);color:var(--muted);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 var(--s-3);border-radius:var(--r-pill);background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font:var(--t-label);white-space:nowrap}
+.chip .sub{font-weight:400;color:var(--muted)}
+.chip .ms{color:var(--muted)}
+.plus{color:var(--muted);font:var(--t-label)}
+.dup{display:grid;grid-template-columns:var(--i-s) minmax(0,1fr);gap:0 var(--s-2);padding:var(--s-3) var(--s-2) 0 var(--s-3);border-radius:var(--r-m);background:var(--warn-wash);box-shadow:inset 0 0 0 1px var(--warn);color:var(--text);margin-bottom:var(--s-3)}
+.dup .ms{color:var(--warn-ink)}
+.dup .dt{font:var(--t-label)}
+.dup .btn{grid-column:2;justify-self:start;margin-left:calc(var(--s-3) * -1);color:var(--text);text-decoration:underline;text-underline-offset:3px}
+.cols{display:grid;grid-template-columns:216px minmax(0,1fr) 376px;min-height:0}
+.col{min-height:0;min-width:0;border-right:1px solid var(--line)}
+.col:last-child{border-right:0}
+.profiles{padding:var(--s-4) var(--s-1) var(--s-4) var(--s-3);display:flex;flex-direction:column;gap:var(--s-1)}
+.profiles .overline{padding:0 var(--s-2) var(--s-2)}
+.prow{display:grid;grid-template-columns:var(--i-m) minmax(0,1fr);gap:var(--s-3);align-items:center;height:var(--h-m);flex:none;padding:0 var(--s-3);border-radius:var(--r-m);background:transparent;box-shadow:none;justify-content:stretch;text-align:left}
+.prow .ms{color:var(--muted)}
+.prow .n{display:block;font:var(--t-label)}
+.prow .p{display:block;font:var(--t-caption);color:var(--muted)}
+.profiles>*{flex:none}
+.profiles .btn.tertiary{justify-content:flex-start;margin-top:var(--s-1);padding:0 var(--s-3);width:100%}
+
+.short{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.short-head{padding:var(--s-4) var(--s-4) var(--s-3);display:grid;gap:var(--s-3)}
+.ph{display:flex;align-items:center;gap:var(--s-3)}
+.ph .pic{width:var(--h-s);height:var(--h-s);border-radius:var(--r-m);background:var(--card);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;color:var(--accent-ink)}
+.ph h3{margin:0;font:var(--t-title)}
+.ph .sp{flex:1}
+.link{display:grid;grid-template-columns:var(--i-m) minmax(0,1fr) auto;gap:var(--s-3);align-items:center;min-height:var(--h-l);padding:var(--s-2) var(--s-1) var(--s-2) var(--s-3);border-radius:var(--r-m);background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.link .ms{color:var(--success)}
+.link .t{display:block;font:var(--t-label)}
+.short .scroll{padding:var(--s-1) var(--s-1) var(--s-6) var(--s-4)}
+.grid-cc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:88px;gap:var(--s-2)}
+.grid-cc .tile{grid-template-rows:var(--i-m) 18px 14px}
+.hint{margin:var(--s-3) 0 0;font:var(--t-caption);color:var(--muted)}
+
+.editor{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0}
+.editor .scroll{padding:var(--s-4) var(--s-2) var(--s-6) var(--s-4)}
+.ed-sec{margin-top:var(--s-6)}
+.ed-sec>.overline{margin-bottom:var(--s-2)}
+.ident{display:grid;grid-template-columns:88px minmax(0,1fr);gap:var(--s-3);align-items:start}
+.preview{width:88px;height:88px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line-strong);border-radius:var(--r-m);display:grid;grid-template-rows:var(--i-l) 18px;row-gap:var(--s-1);align-content:center;justify-items:center;position:relative}
+.preview>.ms{color:var(--cat)}
+.preview .nm{font:var(--t-label)}
+.preview .slot-tr{position:absolute;top:6px;right:6px;color:var(--muted)}
+.field-row{display:grid;grid-template-columns:minmax(0,1fr) var(--h-m);gap:var(--s-2);margin-top:var(--s-2)}
+.field{height:var(--h-m);border-radius:var(--r-m);background:var(--field);box-shadow:inset 0 0 0 1px var(--line-strong);display:flex;align-items:center;padding:0 var(--s-3);font:var(--t-body);font-size:16px}
+.field-row .ib{background:var(--card);box-shadow:inset 0 0 0 1px var(--line-strong);border-radius:var(--r-m)}
+.autoline{display:grid;grid-template-columns:var(--i-s) minmax(0,1fr);gap:var(--s-2);margin-top:var(--s-3);font:var(--t-caption);color:var(--muted)}
+.autoline .ms{color:var(--accent-ink)}
+.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-2)}
+.types .opt{height:var(--h-l)}
+.desc{margin:var(--s-2) 0 0;font:400 14px/20px var(--f-ui);color:var(--muted)}
+.combo{border-radius:var(--r-m);background:var(--field);box-shadow:inset 0 0 0 1px var(--line-strong);overflow:hidden}
+.combo .keys{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2);padding:var(--s-3);min-height:var(--h-l)}
+.keycap{display:inline-flex;align-items:center;gap:0;height:var(--h-s);padding:0 0 0 var(--s-3);border-radius:var(--r-s);background:var(--card);box-shadow:inset 0 0 0 1px var(--line-strong),inset 0 -2px 0 var(--line);font:500 15px/1 var(--f-keys)}
+.keycap .x{width:var(--h-s);height:var(--h-s);border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.combo .foot{display:flex;align-items:center;gap:var(--s-1);border-top:1px solid var(--line);padding:0 var(--s-1) 0 var(--s-3);height:var(--h-m)}
+.combo .foot .caption{flex:1}
+.mods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s-2);margin-top:var(--s-3)}
+.mods .opt{height:var(--h-s);font:500 14px/1 var(--f-keys);gap:var(--s-1)}
+.groups{display:flex;flex-wrap:wrap;gap:var(--s-2);margin-top:var(--s-3)}
+.groups .opt{height:var(--h-s);padding:0 var(--s-3);border-radius:var(--r-pill);gap:var(--s-1)}
+.letters{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:var(--s-3)}
+.letters .opt{height:var(--h-s);font:500 15px/1 var(--f-keys);position:relative;border-radius:var(--r-s)}
+.letters .opt .chk{position:absolute;top:2px;right:2px}
+.ed-foot{display:flex;gap:var(--s-2);padding:var(--s-3) var(--s-4);border-top:1px solid var(--line);background:var(--surface)}
+.ed-foot .btn{flex:1;padding:0 var(--s-2)}
+.more{display:grid;grid-template-columns:minmax(0,1fr) auto var(--i-m);gap:var(--s-2);align-items:center;height:var(--h-m);padding:0 var(--s-3);border-radius:var(--r-m);background:var(--card);box-shadow:inset 0 0 0 1px var(--line);width:100%;font:var(--t-label)}
+.more .caption{font:var(--t-caption)}
+
+.statusbar{grid-column:1/-1;display:flex;align-items:center;gap:var(--s-2);padding:0 var(--s-2) 0 var(--s-6);background:var(--surface-2);border-top:1px solid var(--line)}
+.statusbar>.ms{color:var(--success)}
+.statusbar .msg{flex:1;font:400 14px/18px var(--f-ui)}
+.statusbar .resize{width:var(--h-s);height:var(--h-s);display:flex;align-items:flex-end;justify-content:flex-end;color:var(--muted);padding:6px}
+
+/* Ficha de tokens al final */
+.sys{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--s-4);margin-top:var(--s-4)}
+.sys .card{background:var(--card);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r-l);padding:var(--s-4);color:var(--text)}
+.sys h3{font:var(--t-heading);margin:0 0 var(--s-3)}
+.sys dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s-2) var(--s-3);margin:0;font:400 14px/20px var(--f-ui)}
+.sys dt{font-weight:700}
+.sys dd{margin:0;color:var(--muted)}
+.spacebar{display:flex;align-items:flex-end;gap:var(--s-2);margin-bottom:var(--s-3)}
+.spacebar i{display:block;background:var(--accent);border-radius:2px;width:12px}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="top">
+    <div>
+      <p class="kicker">Clícalo · Dirección C</p>
+      <h1>Evolución del prototipo</h1>
+      <p>Mismos colores, fuentes e iconos del prototipo v4, con un sistema estricto: rejilla de 4, tres alturas de control (44 · 52 · 64), tres radios (8 · 12 · 16), una escala tipográfica cerrada y un único aspecto para «elegido».</p>
+    </div>
+    <div class="seg" role="group" aria-label="Tema de la página">
+      <button type="button" data-set="auto" aria-pressed="true"><span class="ms s chk" aria-hidden="true">check</span>Auto</button>
+      <button type="button" data-set="dark" aria-pressed="false"><span class="ms s chk" aria-hidden="true">check</span>Oscuro</button>
+      <button type="button" data-set="light" aria-pressed="false"><span class="ms s chk" aria-hidden="true">check</span>Claro</button>
+    </div>
+  </header>
+
+  <!-- ===================== 1 · PANEL ===================== -->
+  <section class="screen" aria-labelledby="s1">
+    <div class="screen-head"><h2 id="s1">1 · Panel flotante</h2><span class="dims">Vista Completa · tamaño M · perfil Word · 340 × 556 DIP</span></div>
+    <div class="layout">
+      <div class="stage" data-w="404" data-h="620">
+        <div class="scaler">
+          <div class="desk">
+            <div class="panel ui" role="dialog" aria-label="Panel de Clícalo">
+              <div class="p-head">
+                <div class="p-title" title="Mover panel">
+                  <span class="ms s grip" aria-hidden="true">drag_indicator</span>
+                  <span class="ms prof" aria-hidden="true">description</span>
+                  <span class="nm ellip">Word</span>
+                </div>
+                <button class="ib" aria-label="Buscar" title="Buscar"><span class="ms">search</span></button>
+                <button class="ib" aria-label="Editar" aria-pressed="false" title="Editar"><span class="ms">edit</span></button>
+                <button class="ib" aria-label="Ajustes rápidos" aria-pressed="false" title="Ajustes rápidos"><span class="ms">tune</span></button>
+                <button class="ib" aria-label="Minimizar" title="Minimizar"><span class="ms">remove</span></button>
+              </div>
+
+              <div class="p-body">
+                <p class="overline">Siempre visible</p>
+                <div class="strip">
+                  <button class="tile c-voice" aria-label="Dictar, Win+H"><span class="ms">mic</span><span class="nm">Dictar</span></button>
+                  <button class="tile c-voice" aria-label="Hablar, mantener, Ctrl+Espacio"><span class="ms b slot-tr" title="Mantener">pan_tool</span><span class="ms">record_voice_over</span><span class="nm">Hablar</span></button>
+                  <button class="tile c-voice" aria-label="Silenciar, Win+Alt+K"><span class="ms">mic_off</span><span class="nm">Silenciar</span></button>
+                  <button class="tile c-win" aria-label="Escritorio, Win+D"><span class="ms">desktop_windows</span><span class="nm">Escritorio</span></button>
+                </div>
+
+                <div class="chooser">
+                  <div class="seg2" role="tablist" aria-label="Qué muestra el panel">
+                    <button class="opt" role="tab" aria-selected="false"><span class="ms s">star</span><span class="ellip">Frecuentes</span></button>
+                    <button class="opt" role="tab" aria-selected="true" aria-haspopup="true"><span class="ms s">description</span><span class="ellip">Word</span><span class="ms s" aria-hidden="true" style="margin-left:auto">expand_more</span></button>
+                  </div>
+                  <button class="autobtn" aria-pressed="false" aria-label="Auto: sigue la app activa: Word" title="Auto (azul): cambia con la app activa. Toca para fijar el perfil actual."><span class="ms s">autorenew</span>Auto</button>
+                </div>
+
+                <div class="grid3" role="list" aria-label="Atajos de Word">
+                  <button class="tile c-fmt" role="listitem"><span class="ms">format_bold</span><span class="nm">Negrita</span><span class="ky">Ctrl+N</span></button>
+                  <button class="tile c-fmt" role="listitem"><span class="ms">format_italic</span><span class="nm">Cursiva</span><span class="ky">Ctrl+K</span></button>
+                  <button class="tile c-fmt" role="listitem"><span class="ms">format_underlined</span><span class="nm">Subrayar</span><span class="ky">Ctrl+S</span></button>
+                  <button class="tile c-fmt" role="listitem"><span class="ms">title</span><span class="nm">Título 1</span><span class="ky">Ctrl+Alt+1</span></button>
+                  <button class="tile c-fmt" role="listitem"><span class="ms">format_list_bulleted</span><span class="nm">Viñetas</span><span class="ky">Ctrl+Shift+L</span></button>
+                  <button class="tile c-sel" role="listitem"><span class="ms">find_replace</span><span class="nm">Reemplazar</span><span class="ky">Ctrl+L</span></button>
+                  <button class="tile c-file" role="listitem"><span class="ms b slot-tr" title="Macro">playlist_play</span><span class="ms">picture_as_pdf</span><span class="nm">Guardar PDF</span><span class="ky">5 pasos</span></button>
+                  <button class="tile c-edit" role="listitem"><span class="ms">spellcheck</span><span class="nm">Ortografía</span><span class="ky">F7</span></button>
+                  <button class="tile c-voice" role="listitem"><span class="ms">mic</span><span class="nm">Dictado</span><span class="ky">Win+H</span></button>
+                </div>
+              </div>
+
+              <div class="p-status" role="status" aria-live="polite">
+                <span class="ms s" aria-hidden="true">check_circle</span>
+                <span class="msg ellip"><span class="ky">Ctrl+N</span> enviado a Word</span>
+                <button class="ib" aria-label="Repetir la última acción" title="Repetir la última acción"><span class="ms">replay</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="ms s" aria-hidden="true">view_compact</span><span><b>La cabecera solo tiene herramientas.</b> Auto/Fijo pasa a la fila «Qué ver», junto a Frecuentes y el perfil, que es lo que controla. El nombre del perfil gana 90 DIP y deja de cortarse.</span></li>
+        <li><span class="ms s" aria-hidden="true">crop_square</span><span><b>Un solo módulo.</b> Fichas de 100 × 80 en la rejilla y de 64 de alto en la fila fija, con el mismo hueco de 8. Los cuatro fijos llenan sus cuatro columnas y todos los espacios verticales son de 12.</span></li>
+        <li><span class="ms s" aria-hidden="true">label</span><span><b>Ficha con huecos reservados.</b> Arriba a la izquierda va el número de voz (si está activo), arriba a la derecha el tipo (Mantener, Macro…) y abajo la línea de teclas, que ahora también sale en el panel. Nada se monta sobre el icono.</span></li>
+        <li><span class="ms s" aria-hidden="true">radio_button_checked</span><span><b>«Elegido» se ve igual en todas partes:</b> fondo lavado, anillo de 2 DIP por dentro e icono relleno. El borde va por dentro, así que la opción elegida no cambia de tamaño.</span></li>
+        <li><span class="ms s" aria-hidden="true">check_circle</span><span><b>La barra de avisos confirma con ✓ y texto</b>, no con el icono de información, y deja «Repetir» como botón de 44.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== 2 · AJUSTES RÁPIDOS ===================== -->
+  <section class="screen" aria-labelledby="s2">
+    <div class="screen-head"><h2 id="s2">2 · Panel con Ajustes rápidos</h2><span class="dims">El panel no cambia de tamaño: 340 × 556 DIP</span></div>
+    <div class="layout">
+      <div class="stage" data-w="404" data-h="620">
+        <div class="scaler">
+          <div class="desk">
+            <div class="panel ui" role="dialog" aria-label="Panel de Clícalo">
+              <div class="p-head">
+                <div class="p-title" title="Mover panel">
+                  <span class="ms s grip" aria-hidden="true">drag_indicator</span>
+                  <span class="ms prof" aria-hidden="true">description</span>
+                  <span class="nm ellip">Word</span>
+                </div>
+                <button class="ib" aria-label="Buscar"><span class="ms">search</span></button>
+                <button class="ib" aria-label="Editar" aria-pressed="false"><span class="ms">edit</span></button>
+                <button class="ib" aria-label="Ajustes rápidos" aria-pressed="true" aria-expanded="true"><span class="ms">tune</span></button>
+                <button class="ib" aria-label="Minimizar"><span class="ms">remove</span></button>
+              </div>
+
+              <div class="p-body" aria-hidden="true">
+                <p class="overline">Siempre visible</p>
+                <div class="strip">
+                  <div class="tile c-voice"><span class="ms">mic</span><span class="nm">Dictar</span></div>
+                  <div class="tile c-voice"><span class="ms">record_voice_over</span><span class="nm">Hablar</span></div>
+                  <div class="tile c-voice"><span class="ms">mic_off</span><span class="nm">Silenciar</span></div>
+                  <div class="tile c-win"><span class="ms">desktop_windows</span><span class="nm">Escritorio</span></div>
+                </div>
+              </div>
+
+              <section class="sheet" aria-label="Ajustes rápidos">
+                <div class="sheet-head">
+                  <h3>Ajustes rápidos</h3>
+                  <button class="ib" aria-label="Cerrar"><span class="ms">close</span></button>
+                </div>
+                <div class="fade" style="min-height:0">
+                <div class="scroll" style="height:100%">
+                  <div class="qs-sec">
+                    <button class="navrow">
+                      <span class="ic"><span class="ms">settings</span></span>
+                      <span style="min-width:0"><span class="t">Centro de control</span><span class="caption two">Atajos, plantillas, columnas, idioma y más</span></span>
+                      <span class="ms chev">chevron_right</span>
+                    </button>
+                  </div>
+
+                  <div class="qs-sec">
+                    <div class="row"><p class="overline">Vista</p></div>
+                    <div class="qs3" role="radiogroup" aria-label="Vista">
+                      <button class="opt col" role="radio" aria-checked="true"><span class="ms">view_agenda</span>Completa</button>
+                      <button class="opt col" role="radio" aria-checked="false"><span class="ms">view_compact</span>Compacta</button>
+                      <button class="opt col" role="radio" aria-checked="false"><span class="ms">dock_to_right</span>Pestaña</button>
+                    </div>
+                  </div>
+
+                  <div class="qs-sec">
+                    <div class="row"><p class="overline">Opacidad</p><span class="val">92 %</span></div>
+                    <div class="slider">
+                      <button class="ib sec" aria-label="Menos opacidad"><span class="ms">remove</span></button>
+                      <div class="track" role="slider" aria-label="Opacidad" aria-valuemin="30" aria-valuemax="100" aria-valuenow="92" tabindex="0"><i><b></b><em></em></i></div>
+                      <button class="ib sec" aria-label="Más opacidad"><span class="ms">add</span></button>
+                    </div>
+                  </div>
+
+                  <div class="qs-sec">
+                    <div class="row"><p class="overline">Tamaño</p></div>
+                    <div class="qs3 sz" role="radiogroup" aria-label="Tamaño">
+                      <button class="opt" role="radio" aria-checked="false" aria-label="Pequeño"><span class="ms s chk">check</span>S</button>
+                      <button class="opt" role="radio" aria-checked="true" aria-label="Mediano"><span class="ms s chk">check</span>M</button>
+                      <button class="opt" role="radio" aria-checked="false" aria-label="Grande"><span class="ms s chk">check</span>L</button>
+                    </div>
+                  </div>
+
+                  <div class="qs-sec">
+                    <div class="row"><p class="overline">Tema</p></div>
+                    <div class="qs2" role="radiogroup" aria-label="Tema">
+                      <button class="opt" role="radio" aria-checked="true"><span class="swatch" style="background:linear-gradient(135deg,#f6f7f9 50%,#22262e 50%)"></span><span class="ellip">Auto</span><span class="ms s chk" style="margin-left:auto">check</span></button>
+                      <button class="opt" role="radio" aria-checked="false"><span class="swatch" style="background:#22262e"></span><span class="ellip">Oscuro</span><span class="ms s chk" style="margin-left:auto">check</span></button>
+                      <button class="opt" role="radio" aria-checked="false"><span class="swatch" style="background:#f6f7f9"></span><span class="ellip">Claro</span><span class="ms s chk" style="margin-left:auto">check</span></button>
+                      <button class="opt" role="radio" aria-checked="false"><span class="swatch" style="background:linear-gradient(135deg,#000 50%,#FFE600 50%)"></span><span class="ellip">Alto contraste</span><span class="ms s chk" style="margin-left:auto">check</span></button>
+                    </div>
+                  </div>
+
+                  <div class="qs-sw">
+                    <button class="sw-row" role="switch" aria-checked="false"><span class="ms">science</span><span class="t">Modo prueba (30 s)</span><span class="sw"></span></button>
+                    <button class="sw-row" role="switch" aria-checked="true"><span class="ms">blur_on</span><span class="t">Atenuar cuando no lo uso</span><span class="sw on"></span></button>
+                    <button class="sw-row" role="switch" aria-checked="false"><span class="ms">keyboard</span><span class="t">Teclas fijas</span><span class="sw"></span></button>
+                    <button class="sw-row" role="switch" aria-checked="false"><span class="ms">pin</span><span class="t">Números para control por voz</span><span class="sw"></span></button>
+                  </div>
+                </div>
+                </div>
+              </section>
+
+              <div class="p-status" role="status" aria-live="polite">
+                <span class="ms s" aria-hidden="true">check_circle</span>
+                <span class="msg ellip">Cambios guardados</span>
+                <button class="ib" aria-label="Deshacer" title="Deshacer"><span class="ms">undo</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li><span class="ms s" aria-hidden="true">layers</span><span><b>Es una capa, no un bloque más.</b> La hoja tapa el contenido del panel en vez de empujarlo, así que el panel mide siempre 556 DIP y no salta. Esto quita de raíz la inestabilidad del despliegue vertical.</span></li>
+        <li><span class="ms s" aria-hidden="true">tune</span><span><b>El modo se ve en la cabecera:</b> Ajustes rápidos se queda marcado como pulsado y la hoja lleva su título y un botón Cerrar de 44.</span></li>
+        <li><span class="ms s" aria-hidden="true">swipe_vertical</span><span><b>Desplazamiento diseñado:</b> barra fina con el color del tema en un canal reservado, fundido abajo que avisa de que hay más, y nada se pega al borde (el «92 %» queda alineado con los controles).</span></li>
+        <li><span class="ms s" aria-hidden="true">check</span><span><b>Las opciones sin icono ganan un ✓</b> (S · M · L, Tema). El interruptor encendido lleva ✓ en el pulgar, y el apagado es un contorno con pulgar gris: ya no se confunden.</span></li>
+        <li><span class="ms s" aria-hidden="true">crop_free</span><span><b>Sin cajas dentro de cajas.</b> La hoja va al mismo nivel que el panel. Solo los controles se elevan, y la tarjeta del Centro de control es una fila de navegación más.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== 3 · CENTRO DE CONTROL ===================== -->
+  <section class="screen" aria-labelledby="s3">
+    <div class="screen-head"><h2 id="s3">3 · Centro de control · Atajos con el editor abierto</h2><span class="dims">1120 × 680 DIP · ventana normal con minimizar, maximizar y cerrar (D13)</span></div>
+    <div class="layout wide">
+      <div class="stage" data-w="1184" data-h="744" data-min="0.5" tabindex="0" aria-label="Maqueta del centro de control; desliza en horizontal para verla entera">
+        <div class="scaler">
+          <div class="desk">
+            <div class="win ui" role="application" aria-label="Centro de control">
+              <div class="titlebar">
+                <div class="brand">
+                  <span class="logo" aria-hidden="true">ı</span>
+                  <nav class="crumbs" aria-label="Ubicación">
+                    <span class="b">Clícalo</span><span class="ms s" aria-hidden="true">chevron_right</span>
+                    <span class="c">Centro de control</span><span class="ms s" aria-hidden="true">chevron_right</span>
+                    <span class="cur">Atajos</span>
+                  </nav>
+                </div>
+                <div class="lang" role="radiogroup" aria-label="Idioma">
+                  <button class="opt" role="radio" aria-checked="true"><span class="ms s chk">check</span>ES</button>
+                  <button class="opt" role="radio" aria-checked="false"><span class="ms s chk">check</span>EN</button>
+                </div>
+                <div class="caps">
+                  <button aria-label="Minimizar"><span class="ms s">remove</span></button>
+                  <button aria-label="Maximizar"><span class="ms s">crop_square</span></button>
+                  <button class="x" aria-label="Cerrar"><span class="ms">close</span></button>
+                </div>
+              </div>
+
+              <nav class="rail" aria-label="Secciones">
+                <button class="opt" aria-current="true"><span class="ms">tune</span><span class="lbl">Atajos</span><span class="badge" aria-label="2 combinaciones repetidas">2</span></button>
+                <button class="opt"><span class="ms">auto_awesome</span><span class="lbl">Plantillas</span></button>
+                <button class="opt"><span class="ms">display_settings</span><span class="lbl">General y panel</span></button>
+                <button class="opt"><span class="ms">touch_app</span><span class="lbl">Precisión táctil</span></button>
+                <hr>
+                <button class="opt"><span class="ms">verified_user</span><span class="lbl">Sistema</span><span class="badge" aria-label="Nueva versión">1</span></button>
+                <button class="opt"><span class="ms">favorite</span><span class="lbl">Acerca de y contacto</span></button>
+              </nav>
+
+              <div class="main">
+                <div class="summary">
+                  <span class="lead">Tu panel muestra:</span>
+                  <span class="chip"><span class="ms s">push_pin</span>Siempre visible <span class="sub">4</span></span><span class="plus">+</span>
+                  <span class="chip"><span class="ms s">description</span>Word <span class="sub">9 · app activa</span></span><span class="plus">+</span>
+                  <span class="chip"><span class="ms s">star</span>Frecuentes <span class="sub">automático</span></span>
+                </div>
+
+                <div class="cols">
+                  <!-- Perfiles -->
+                  <div class="col profiles scroll">
+                    <div class="dup" role="note">
+                      <span class="ms s" aria-hidden="true">difference</span>
+                      <span class="dt">2 combinaciones repetidas entre perfiles</span>
+                      <button class="btn tertiary">Revisar</button>
+                    </div>
+                    <p class="overline">Perfiles</p>
+                    <button class="opt prow"><span class="ms">push_pin</span><span style="min-width:0"><span class="n ellip">Siempre visible</span><span class="p ellip">todas las apps</span></span></button>
+                    <button class="opt prow"><span class="ms">apps</span><span style="min-width:0"><span class="n ellip">General</span><span class="p ellip">manual</span></span></button>
+                    <button class="opt prow" aria-current="true"><span class="ms">description</span><span style="min-width:0"><span class="n ellip">Word</span><span class="p ellip">WINWORD.EXE</span></span></button>
+                    <button class="opt prow"><span class="ms">public</span><span style="min-width:0"><span class="n ellip">Navegador</span><span class="p ellip">chrome.exe</span></span></button>
+                    <button class="opt prow"><span class="ms">code</span><span style="min-width:0"><span class="n ellip">VS Code</span><span class="p ellip">Code.exe</span></span></button>
+                    <button class="btn tertiary"><span class="ms s">add</span>Nuevo perfil</button>
+                  </div>
+
+                  <!-- Atajos -->
+                  <div class="col short">
+                    <div class="short-head">
+                      <div class="ph">
+                        <span class="pic"><span class="ms">description</span></span>
+                        <h3>Word</h3>
+                        <button class="ib" aria-label="Editar perfil"><span class="ms s">edit</span></button>
+                        <span class="sp"></span>
+                        <button class="btn primary"><span class="ms s">add</span>Añadir</button>
+                      </div>
+                      <div class="link">
+                        <span class="ms s">link</span>
+                        <span style="min-width:0"><span class="t ellip">Se activa solo con Word</span><span class="caption nobr">WINWORD.EXE</span></span>
+                        <button class="btn tertiary">Cambiar</button>
+                      </div>
+                    </div>
+                    <div class="fade" style="min-height:0">
+                      <div class="scroll" style="height:100%">
+                        <div class="grid-cc" role="list" aria-label="Atajos de Word">
+                          <button class="tile c-fmt" role="listitem" aria-current="true" aria-label="Negrita, Ctrl+N, editando"><span class="ms fill">format_bold</span><span class="nm">Negrita</span><span class="ky">Ctrl+N</span></button>
+                          <button class="tile c-fmt" role="listitem"><span class="ms">format_italic</span><span class="nm">Cursiva</span><span class="ky">Ctrl+K</span></button>
+                          <button class="tile c-fmt" role="listitem"><span class="ms">format_underlined</span><span class="nm">Subrayar</span><span class="ky">Ctrl+S</span></button>
+                          <button class="tile c-fmt" role="listitem"><span class="ms">title</span><span class="nm">Título 1</span><span class="ky">Ctrl+Alt+1</span></button>
+                          <button class="tile c-fmt" role="listitem"><span class="ms">format_list_bulleted</span><span class="nm">Viñetas</span><span class="ky">Ctrl+Shift+L</span></button>
+                          <button class="tile c-sel" role="listitem"><span class="ms">find_replace</span><span class="nm">Reemplazar</span><span class="ky">Ctrl+L</span></button>
+                          <button class="tile c-file" role="listitem"><span class="ms b slot-tr" title="Macro">playlist_play</span><span class="ms">picture_as_pdf</span><span class="nm">Guardar PDF</span><span class="ky">5 pasos</span></button>
+                          <button class="tile c-edit" role="listitem"><span class="ms">spellcheck</span><span class="nm">Ortografía</span><span class="ky">F7</span></button>
+                          <button class="tile c-voice" role="listitem"><span class="ms">mic</span><span class="nm">Dictado</span><span class="ky">Win+H</span></button>
+                          <button class="tile add" role="listitem"><span class="ms">library_add</span><span class="nm">Biblioteca</span><span class="ky" style="font-family:var(--f-ui)">&nbsp;</span></button>
+                        </div>
+                        <p class="hint">Así se ven en el panel. Toca uno para editarlo; cámbialo de sitio arrastrándolo o con los botones de «Más opciones».</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Editor -->
+                  <div class="col editor">
+                    <div class="fade" style="min-height:0">
+                    <div class="scroll" style="height:100%">
+                      <div class="ident">
+                        <button class="preview c-fmt" aria-label="Cambiar icono" aria-expanded="false"><span class="ms l">format_bold</span><span class="nm">Negrita</span><span class="ms b slot-tr">edit</span></button>
+                        <div>
+                          <p class="overline">Nombre</p>
+                          <div class="field-row">
+                            <div class="field" role="textbox" aria-label="Nombre" tabindex="0">Negrita</div>
+                            <button class="ib m" aria-label="Dictar nombre"><span class="ms">mic</span></button>
+                          </div>
+                        </div>
+                      </div>
+                      <p class="autoline"><span class="ms s">auto_awesome</span><span>Icono elegido según el nombre · toca el icono para cambiarlo</span></p>
+
+                      <div class="ed-sec">
+                        <p class="overline">Qué hace</p>
+                        <div class="types" role="radiogroup" aria-label="Qué hace">
+                          <button class="opt col" role="radio" aria-checked="true"><span class="ms">touch_app</span>Pulsar</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">pan_tool</span>Mantener</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">toggle_on</span>Alternar</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">text_fields</span>Texto</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">mouse</span>Mouse</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">playlist_play</span>Macro</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">public</span>Web</button>
+                          <button class="opt col" role="radio" aria-checked="false"><span class="ms">open_in_new</span>App</button>
+                        </div>
+                        <p class="desc">Pulsa y suelta la combinación, como en el teclado.</p>
+                      </div>
+
+                      <div class="ed-sec">
+                        <p class="overline">Combinación</p>
+                        <div class="combo">
+                          <div class="keys">
+                            <span class="keycap">Ctrl<button class="x" aria-label="Quitar Ctrl"><span class="ms s">close</span></button></span>
+                            <span class="plus">+</span>
+                            <span class="keycap">N<button class="x" aria-label="Quitar N"><span class="ms s">close</span></button></span>
+                          </div>
+                          <div class="foot">
+                            <span class="caption">2 teclas · se guarda solo</span>
+                            <button class="ib" aria-label="Quitar la última"><span class="ms s">backspace</span></button>
+                            <button class="btn tertiary"><span class="ms s">restart_alt</span>Limpiar</button>
+                          </div>
+                        </div>
+                        <div class="mods" role="group" aria-label="Modificadores">
+                          <button class="opt" aria-pressed="true"><span class="ms s chk">check</span>Ctrl</button>
+                          <button class="opt" aria-pressed="false"><span class="ms s chk">check</span>Alt</button>
+                          <button class="opt" aria-pressed="false"><span class="ms s chk">check</span>Shift</button>
+                          <button class="opt" aria-pressed="false"><span class="ms s chk">check</span>Win</button>
+                        </div>
+                        <div class="groups" role="tablist" aria-label="Grupos de teclas">
+                          <button class="opt" role="tab" aria-selected="false"><span class="ms s chk">check</span>Izq. / Der.</button>
+                          <button class="opt" role="tab" aria-selected="true"><span class="ms s chk">check</span>Letras</button>
+                          <button class="opt" role="tab" aria-selected="false"><span class="ms s chk">check</span>Números</button>
+                          <button class="opt" role="tab" aria-selected="false"><span class="ms s chk">check</span>F1–F12</button>
+                          <button class="opt" role="tab" aria-selected="false"><span class="ms s chk">check</span>Especiales</button>
+                          <button class="opt" role="tab" aria-selected="false"><span class="ms s chk">check</span>Teclado num.</button>
+                          <button class="opt" role="tab" aria-selected="false"><span class="ms s chk">check</span>Multimedia</button>
+                        </div>
+                        <div class="letters" role="group" aria-label="Letras" id="letters"></div>
+                        <p class="hint">Se pulsan en el orden en que las tocas. Toca una tecla elegida para quitarla.</p>
+                      </div>
+
+                      <div class="ed-sec">
+                        <button class="sw-row" role="switch" aria-checked="false" style="align-items:start">
+                          <span class="ms" style="color:var(--muted);margin-top:2px">push_pin</span>
+                          <span><span class="t" style="display:block;font:var(--t-label)">Fijar en «Siempre visible»</span><span class="caption" style="display:block;margin-top:2px">Ahora solo aparece cuando usas «Word». Actívalo para verlo siempre, en la fila fija de arriba del panel.</span></span>
+                          <span class="sw" style="margin-top:2px"></span>
+                        </button>
+                      </div>
+                      <div class="ed-sec" style="margin-top:var(--s-3)">
+                        <button class="more" aria-expanded="false"><span>Más opciones</span><span class="caption">Posición 1/9</span><span class="ms">expand_more</span></button>
+                      </div>
+                    </div>
+                    </div>
+                    <div class="ed-foot">
+                      <button class="btn primary"><span class="ms s">play_arrow</span>Probar</button>
+                      <button class="btn secondary"><span class="ms s">content_copy</span>Duplicar</button>
+                      <button class="btn danger"><span class="ms s">delete</span>Eliminar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="statusbar" role="status" aria-live="polite">
+                <span class="ms s" aria-hidden="true">check_circle</span>
+                <span class="msg">Cambios guardados</span>
+                <button class="btn tertiary"><span class="ms s">undo</span>Deshacer</button>
+                <span class="resize" aria-hidden="true"><span class="ms b">south_east</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="pan-hint" hidden><span class="ms s" aria-hidden="true">swipe</span>Desliza en horizontal para ver la ventana entera (aquí, a la mitad de su tamaño).</p>
+      <ul class="notes cols">
+        <li><span class="ms s" aria-hidden="true">select_window</span><span><b>Ventana de Windows de verdad:</b> minimizar, maximizar (con Snap) y cerrar como zonas de 56 × 56 en la esquina, más el asa de redimensionar. ES/EN se queda en la barra (es «siempre visible» según el diseño), con 44 de alto y margen arriba y abajo.</span></li>
+        <li><span class="ms s" aria-hidden="true">menu</span><span><b>El riel estrecho conserva las etiquetas</b> (hasta 2 líneas) y el contador va al lado del icono, sin taparlo. La miga de pan es la misma en todos los anchos.</span></li>
+        <li><span class="ms s" aria-hidden="true">text_fields</span><span><b>Monoespaciada solo para teclas.</b> Procesos, valores y rutas van en Atkinson. Los nombres se cortan con «…» y los identificadores («WINWORD.EXE») nunca se parten.</span></li>
+        <li><span class="ms s" aria-hidden="true">smart_button</span><span><b>Cuatro botones y nada más:</b> primario (Probar, Añadir), secundario (Duplicar), terciario de texto (Cambiar, Limpiar, Deshacer) y peligro (Eliminar). Todos en negrita, con 44 de alto y radio 12.</span></li>
+        <li><span class="ms s" aria-hidden="true">vertical_align_bottom</span><span><b>Nada queda debajo de la barra de estado.</b> El pie del editor es fijo y las columnas terminan donde empieza la barra, con un fundido que avisa de que hay más.</span></li>
+        <li><span class="ms s" aria-hidden="true">merge</span><span><b>Una sola fila de vinculación.</b> El subtítulo «Se activa solo al abrir…» repetía lo mismo que la fila «Se activa solo con Word · Cambiar»; ahora solo queda la fila, que es la que tiene la acción.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== SISTEMA ===================== -->
+  <section class="screen" aria-labelledby="s4">
+    <div class="screen-head"><h2 id="s4">El sistema en una página</h2><span class="dims">Tokens que pasarían a data\tokens y se generarían como constantes</span></div>
+    <div class="sys ui">
+      <div class="card">
+        <h3>Espacio y tamaño</h3>
+        <div class="spacebar" aria-hidden="true"><i style="height:4px"></i><i style="height:8px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:24px"></i><i style="height:32px"></i><i style="height:48px"></i></div>
+        <dl>
+          <dt>Espacio</dt><dd>4 · 8 · 12 · 16 · 24 · 32 · 48</dd>
+          <dt>Controles</dt><dd>44 (icono, chip, tecla, botón) · 52 (campo, fila, segmentado) · 64 (opción, navegación)</dd>
+          <dt>Radios</dt><dd>8 (tecla, chip interior, ventana) · 12 (botón, ficha, campo) · 16 (panel, tarjeta) · pastilla</dd>
+          <dt>Iconos</dt><dd>Caja fija de 16 (insignia) · 20 · 24 · 32, con el glifo centrado</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Texto</h3>
+        <dl>
+          <dt style="font:var(--t-display)">Aa</dt><dd>Display 28/34 · títulos de página</dd>
+          <dt style="font:var(--t-title)">Aa</dt><dd>Title 20/26 · cabeceras de columna</dd>
+          <dt style="font:var(--t-heading)">Aa</dt><dd>Heading 16/22 · panel y hojas</dd>
+          <dt style="font:var(--t-body)">Aa</dt><dd>Body 15/22 · texto corriente</dd>
+          <dt style="font:var(--t-label)">Aa</dt><dd>Label 14/18 negrita · botones y nombres</dd>
+          <dt style="font:var(--t-caption)">Aa</dt><dd>Caption 12/16 · ayudas y procesos</dd>
+          <dt style="font:var(--t-overline);letter-spacing:.06em">AA</dt><dd>Overline 12/16 · única etiqueta de sección</dd>
+          <dt style="font:var(--t-keys)">Ctrl</dt><dd>Keys 12/16 (11 en fichas) · solo combinaciones</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Estados</h3>
+        <dl>
+          <dt>Reposo</dt><dd>Fondo card + línea interior de 1</dd>
+          <dt>Encima</dt><dd>card-hover (el táctil no lo necesita)</dd>
+          <dt>Foco</dt><dd>Anillo de 3 en accent, separado 2; amarillo en alto contraste</dd>
+          <dt>Elegido</dt><dd>Lavado accent + anillo interior de 2 + icono relleno o ✓</dd>
+          <dt>Pulsado</dt><dd>Igual que elegido en botones de modo (Ajustes, Editar, Buscar)</dd>
+          <dt>Deshabilitado</dt><dd>Sin fondo, línea discontinua, texto muted</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Color con un solo significado</h3>
+        <dl>
+          <dt style="color:var(--accent-ink)">Accent</dt><dd>Interactivo y elegido. Nunca información.</dd>
+          <dt style="color:var(--warn-ink)">Warn</dt><dd>Atención: repetidos, contadores, avisos.</dd>
+          <dt style="color:var(--danger-ink)">Danger</dt><dd>Destructivo y pánico (Soltar todo).</dd>
+          <dt style="color:var(--success)">Success</dt><dd>Confirmación (enviado, guardado).</dd>
+          <dt>Niveles</dt><dd>Superficie → control. Las fichas siempre van por encima de su fondo y nunca hay más de dos bordes anidados.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  // Letras del editor (N elegida)
+  var L=document.getElementById('letters');
+  if(L){ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(function(ch){
+    var b=document.createElement('button'); b.className='opt'; b.textContent=ch;
+    b.setAttribute('aria-pressed', ch==='N'?'true':'false');
+    if(ch==='N'){ var c=document.createElement('span'); c.className='ms b chk'; c.textContent='check'; b.appendChild(c); }
+    L.appendChild(b); }); }
+
+  // Conmutador de tema
+  var root=document.documentElement;
+  var btns=document.querySelectorAll('[data-set]');
+  function setTheme(t){
+    if(t==='auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme',t);
+    btns.forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-set')===t ? 'true':'false'); });
+    try{ localStorage.setItem('clc-c-theme',t);}catch(e){}
+    // La maqueta de Ajustes rápidos marca el tema que se está viendo
+    var map={auto:'Auto',dark:'Oscuro',light:'Claro'};
+    document.querySelectorAll('[aria-label="Tema"] [role=radio]').forEach(function(r){
+      r.setAttribute('aria-checked', r.textContent.trim().indexOf(map[t])===0 && r.textContent.trim().length<10 ? 'true':'false'); });
+  }
+  btns.forEach(function(b){ b.addEventListener('click',function(){ setTheme(b.getAttribute('data-set')); }); });
+  try{ var saved=localStorage.getItem('clc-c-theme'); if(saved) setTheme(saved);}catch(e){}
+
+  // Escala de cada maqueta para caber en el ancho disponible
+  var stages=[].slice.call(document.querySelectorAll('.stage'));
+  function fit(){
+    stages.forEach(function(s){
+      var w=+s.dataset.w, h=+s.dataset.h, avail=s.clientWidth;
+      var min=+(s.dataset.min||0);
+      var k=Math.min(1, Math.max(min, avail/w));
+      var sc=s.firstElementChild; sc.style.width=w+'px'; sc.style.transform='scale('+k+')';
+      s.style.height=Math.ceil(h*k)+'px';
+      var scrolls = w*k > avail+1;
+      s.classList.toggle('pan', scrolls);
+      var hint=s.nextElementSibling; if(hint&&hint.classList.contains('pan-hint')) hint.hidden=!scrolls;
+    });
+  }
+  window.addEventListener('resize',fit); fit();
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>
+</body>
+</html>

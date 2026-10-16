@@ -73,6 +73,7 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0028](0028-ajustes-persistidos-de-m6.md) | Ajustes persistidos de M6: documento 1.1 con campos opcionales para la posición del asa por monitor, el centro de control, el atajo global (lista cerrada, apagado), los tiempos ×1/×2/×3 y las respuestas de la bienvenida (decisiones D9 y D10) | Aceptado | 2026-10-09 |
 | [0029](0029-desinstalar-reinstalar-y-correo-de-opinion.md) | Desinstalar desde Sistema conservando los datos por defecto (borrarlos solo con dos toques y tras una copia), pregunta al reinstalar, copias importadas o restauradas tratadas como contenido importado y `mailto:` solo hacia la dirección del proyecto (NFR-010, P6, LOG-008 y ACE-004; sustituye la frase de ADR-0027 que aplazaba la pregunta de los datos) | Aceptado | 2026-10-10 |
 | [0030](0030-instancia-aislada-con-datos-propios.md) | Un arranque con `--data` es una instancia propia: el mutex y el *pipe* llevan un sufijo derivado de la ruta completa de la carpeta, sin verbos nuevos en la IPC | Aceptado | 2026-10-16 |
+| [0031](0031-rediseno-c-tokens-y-componentes-base.md) | El rediseño C (D12, D13): medidas, escala tipográfica y colores de C como datos de `data/tokens` generados como constantes, controles base nuevos construidos solo con ellos, barra de título con Snap y una prueba que impide medidas sueltas nuevas | Aceptado | 2026-10-16 |
 
 El hito M0 exige expresamente los ADR 0001, 0002 y 0015
 ([§14 del plano](../architecture/blueprint.md#14-hoja-de-ruta-por-hitos)); el resto recoge las demás
