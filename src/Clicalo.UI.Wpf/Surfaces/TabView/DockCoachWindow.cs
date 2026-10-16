@@ -72,7 +72,7 @@ public sealed class DockCoachWindow : TouchSurface
         _skip = SurfaceParts.Button(
             "close",
             0,
-            ButtonAppearance.Outline,
+            ButtonVariant.Secondary,
             viewModel.CoachSkip,
             height: TouchTargetSize.MinimumSize
         );
@@ -81,7 +81,7 @@ public sealed class DockCoachWindow : TouchSurface
         _next = SurfaceParts.Button(
             "arrow_forward",
             0,
-            ButtonAppearance.Neutral,
+            ButtonVariant.Secondary,
             viewModel.CoachNext,
             height: TouchTargetSize.MinimumSize
         );

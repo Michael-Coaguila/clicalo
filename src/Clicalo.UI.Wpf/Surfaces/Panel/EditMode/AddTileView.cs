@@ -71,7 +71,7 @@ public sealed class AddTileView : Grid
 
         _button = new TouchButton
         {
-            Appearance = ButtonAppearance.Ghost,
+            Variant = ButtonVariant.Tertiary,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,

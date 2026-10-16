@@ -27,6 +27,7 @@ internal static class DesignSystemReader
             "radii",
             "iconBoxes",
             "strokes",
+            "components",
             "typography"
         );
         ReadLengths(document, root, "space", [], model.Space, issues);
@@ -60,6 +61,25 @@ internal static class DesignSystemReader
             "strokes",
             ["line", "selected", "focusRing", "focusOffset"],
             model.Strokes,
+            issues
+        );
+        ReadLengths(
+            document,
+            root,
+            "components",
+            [
+                "switchWidth",
+                "switchHeight",
+                "switchKnobOff",
+                "switchKnobOn",
+                "sliderTrack",
+                "sliderKnob",
+                "scrollBar",
+                "scrollFade",
+                "titleBar",
+                "captionButton",
+            ],
+            model.Components,
             issues
         );
         foreach (var stroke in model.Strokes)

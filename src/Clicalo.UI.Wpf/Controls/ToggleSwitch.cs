@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 using Clicalo.UI.Wpf.Controls.Internal;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -11,11 +12,13 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// The switch row of the prototype (docs/07 «Formas»: «Interruptores de 48×28 (knob de 20). Toda la fila es
-/// tocable»): an optional icon in <c>muted</c>, the label and a 48 × 28 track whose 20 px knob slides 20 px in
-/// 150 ms (0 with reduce motion, TEM-006). The whole row is the touch target, at least 44 high (REG-02). On, the track
-/// is <c>accent</c> and the knob <c>onAccent</c>; off, <c>cardHi</c> and <c>text</c>: the knob's side also tells the
-/// state, not only the color (ACC-003). UI Automation sees a Button with the Toggle pattern whose name is the label
+/// The switch row of direction C (D12; docs/07: «toda la fila es tocable»): an optional icon in a box of
+/// <see cref="IconBox.Medium"/> in <c>muted</c>, the label (<c>body</c>, up to two lines with «…») with an optional
+/// <see cref="Description"/> under it, and the 48 × 28 switch at the end. Off, the track is an outline of
+/// <see cref="Stroke.Selected"/> in <c>line</c> with a 16 knob in <c>muted</c>; on, the track is <c>accent</c> with a
+/// 20 knob in <c>onAccent</c> that carries a ✓, so the state is told by shape and mark, not only by color (ACC-003).
+/// The knob slides in 150 ms (0 with reduce motion, TEM-006). The row is at least <see cref="ControlHeight.Medium"/>
+/// high and is the touch target (REG-02). UI Automation sees a Button with the Toggle pattern whose name is the label
 /// (<see cref="TouchToggleAutomationPeer"/>, ACC-001).
 /// </summary>
 public sealed class ToggleSwitch : ToggleButton
@@ -25,20 +28,25 @@ public sealed class ToggleSwitch : ToggleButton
         typeof(ToggleSwitch)
     );
 
+    /// <summary>Identifies <see cref="Description"/>.</summary>
+    public static readonly DependencyProperty DescriptionProperty = DependencyProperty.Register(
+        nameof(Description),
+        typeof(string),
+        typeof(ToggleSwitch),
+        new FrameworkPropertyMetadata(null)
+    );
+
     /// <summary>Width of the track.</summary>
-    public const double TrackWidth = 48;
+    public const double TrackWidth = ComponentSize.SwitchWidth;
 
     /// <summary>Height of the track.</summary>
-    public const double TrackHeight = 28;
+    public const double TrackHeight = ComponentSize.SwitchHeight;
 
-    /// <summary>Side of the knob.</summary>
-    public const double KnobSize = 20;
+    /// <summary>Side of the knob while the switch is on.</summary>
+    public const double KnobSize = ComponentSize.SwitchKnobOn;
 
-    /// <summary>Distance from the knob to the inner edge of the track.</summary>
-    public const double KnobInset = 3;
-
-    /// <summary>How far the knob slides between off and on (prototype: 3 → 23 px).</summary>
-    public const double KnobTravel = 20;
+    /// <summary>How far the knob slides between off and on.</summary>
+    public const double KnobTravel = TrackWidth - KnobSize - (2 * Space.S1);
 
     /// <summary>Name of the track.</summary>
     public const string TrackPart = "PART_Track";
@@ -46,9 +54,15 @@ public sealed class ToggleSwitch : ToggleButton
     /// <summary>Name of the knob.</summary>
     public const string KnobPart = "PART_Knob";
 
+    /// <summary>Name of the fill of the track (accent while on).</summary>
+    public const string TrackFillPart = "PART_TrackFill";
+
+    private const string OutlinePart = "PART_Outline";
+    private const string DotPart = "PART_Dot";
+    private const string MarkPart = "PART_Mark";
     private const string IconPart = "PART_Icon";
     private const string ContentPart = "PART_Content";
-    private const double Gap = 10;
+    private const string DescriptionPart = "PART_Description";
 
     private static readonly ControlTemplate DefaultTemplate = CreateTemplate();
     private TranslateTransform? _knobShift;
@@ -65,7 +79,7 @@ public sealed class ToggleSwitch : ToggleButton
         );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(ToggleSwitch),
-            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Small))
+            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Medium))
         );
         TouchTarget.Enforce(typeof(ToggleSwitch));
     }
@@ -73,10 +87,13 @@ public sealed class ToggleSwitch : ToggleButton
     /// <summary>Creates a switch that is off.</summary>
     public ToggleSwitch()
     {
-        Templates.UseTheme(this, ColorToken.Card, ColorToken.Text, ColorToken.Border);
         Background = Brushes.Transparent;
-        FontSize = 14;
-        Padding = new Thickness(2, 0, 2, 0);
+        SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.Text));
+        SetResourceReference(FontFamilyProperty, ThemeKeys.UiFont);
+        SetResourceReference(FontSizeProperty, ThemeKeys.FontSize(TextStyleToken.Body));
+        MinHeight = ControlHeight.Medium;
+        Padding = new Thickness(0, Space.S2, 0, Space.S2);
+        HorizontalContentAlignment = HorizontalAlignment.Stretch;
         IsChecked = false;
     }
 
@@ -87,8 +104,21 @@ public sealed class ToggleSwitch : ToggleButton
         set => SetValue(SymbolProperty, value);
     }
 
+    /// <summary>A line that explains the setting, under the label (<c>caption</c>, <c>muted</c>); null for none.</summary>
+    public string? Description
+    {
+        get => (string?)GetValue(DescriptionProperty);
+        set => SetValue(DescriptionProperty, value);
+    }
+
     /// <summary>Where the knob is now, from 0 (off) to <see cref="KnobTravel"/> (on); for tests and diagnostics.</summary>
     public double KnobOffset => _knobShift?.X ?? 0;
+
+    /// <summary>
+    /// The switch is only the drawing of the state of a row that is the switch itself: UI Automation then sees the
+    /// row and not a second, nameless switch inside it. Set it before the switch is shown.
+    /// </summary>
+    public bool IsDrawingOnly { get; init; }
 
     /// <inheritdoc />
     public override void OnApplyTemplate()
@@ -100,19 +130,15 @@ public sealed class ToggleSwitch : ToggleButton
             knob.RenderTransform = _knobShift;
         }
 
-        // A label longer than the row wraps and the row grows; it is never cut (the prototype's rows wrap too).
         if (GetTemplateChild(ContentPart) is ContentPresenter presenter)
         {
-            WrappedText.Apply(presenter, centered: false);
+            presenter.Resources[typeof(TextBlock)] = OptionChrome.Text(
+                2,
+                centered: false,
+                TextStyleToken.Body
+            );
         }
     }
-
-    /// <summary>
-    /// The switch is only the drawing of the state of a row that is the switch itself (docs/07: «toda la fila es
-    /// tocable»): UI Automation then sees the row and not a second, nameless switch inside it. Set it before the switch
-    /// is shown.
-    /// </summary>
-    public bool IsDrawingOnly { get; init; }
 
     /// <inheritdoc />
     protected override AutomationPeer? OnCreateAutomationPeer() =>
@@ -137,43 +163,75 @@ public sealed class ToggleSwitch : ToggleButton
         var icon = Templates
             .Element<SymbolIcon>(IconPart)
             .With(SymbolIcon.SymbolProperty, Templates.Bind(SymbolProperty))
-            .With(SymbolIcon.SizeProperty, 20d)
-            .With(FrameworkElement.MarginProperty, new Thickness(0, 0, Gap, 0))
+            .With(SymbolIcon.SizeProperty, IconBox.Medium)
+            .With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S3, 0))
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
             .With(DockPanel.DockProperty, Dock.Left)
             .Paint(SymbolIcon.ForegroundProperty, ColorToken.Muted);
+        var outline = Templates
+            .Element<Rectangle>(OutlinePart)
+            .With(Shape.StrokeThicknessProperty, Stroke.Selected)
+            .With(Rectangle.RadiusXProperty, TrackHeight / 2)
+            .With(Rectangle.RadiusYProperty, TrackHeight / 2)
+            .Paint(Shape.StrokeProperty, ColorToken.Line);
+        var dot = Templates
+            .Element<Ellipse>(DotPart)
+            .With(FrameworkElement.WidthProperty, ComponentSize.SwitchKnobOff)
+            .With(FrameworkElement.HeightProperty, ComponentSize.SwitchKnobOff)
+            .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center)
+            .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
+            .Paint(Shape.FillProperty, ColorToken.Muted);
+        var mark = Templates
+            .Element<SymbolIcon>(MarkPart)
+            .With(SymbolIcon.SymbolProperty, OptionChrome.CheckSymbol)
+            .With(SymbolIcon.SizeProperty, IconBox.Badge)
+            .With(UIElement.VisibilityProperty, Visibility.Collapsed)
+            .Paint(SymbolIcon.ForegroundProperty, ColorToken.Accent);
         var knob = Templates
-            .Element<Border>(KnobPart)
+            .Element<Grid>(KnobPart)
             .With(FrameworkElement.WidthProperty, KnobSize)
             .With(FrameworkElement.HeightProperty, KnobSize)
-            .With(Border.CornerRadiusProperty, new CornerRadius(KnobSize / 2))
             .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left)
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
-            .With(FrameworkElement.MarginProperty, new Thickness(KnobInset, 0, 0, 0))
-            .Paint(Border.BackgroundProperty, ColorToken.Text);
+            .With(FrameworkElement.MarginProperty, new Thickness(Space.S1, 0, 0, 0))
+            .Add(dot, mark);
         var track = Templates
-            .Element<Border>(TrackPart)
+            .Element<Grid>(TrackPart)
             .With(FrameworkElement.WidthProperty, TrackWidth)
             .With(FrameworkElement.HeightProperty, TrackHeight)
-            .With(Border.CornerRadiusProperty, new CornerRadius(TrackHeight / 2))
-            .With(Border.BorderBrushProperty, Templates.Bind(Control.BorderBrushProperty))
-            .With(Border.BorderThicknessProperty, Templates.Bind(Control.BorderThicknessProperty))
+            .With(FrameworkElement.MarginProperty, new Thickness(Space.S3, 0, 0, 0))
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
             .With(DockPanel.DockProperty, Dock.Right)
-            .With(UIElement.SnapsToDevicePixelsProperty, true)
-            .Paint(Border.BackgroundProperty, ColorToken.CardHi)
-            .Add(knob);
+            .Add(
+                Templates
+                    .Element<Border>(TrackFillPart)
+                    .With(Border.CornerRadiusProperty, new CornerRadius(TrackHeight / 2))
+                    .With(Border.BackgroundProperty, Brushes.Transparent),
+                outline,
+                knob
+            );
         var content = Templates
             .Element<ContentPresenter>(ContentPart)
-            .With(FrameworkElement.MarginProperty, new Thickness(0, 0, Gap, 0))
-            .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
             .With(ContentPresenter.RecognizesAccessKeyProperty, false);
+        var description = Templates
+            .Element<StyledText>(DescriptionPart)
+            .With(TextBlock.TextProperty, Templates.Bind(DescriptionProperty))
+            .With(StyledText.TextStyleProperty, TextStyleToken.Caption)
+            .With(StyledText.InkProperty, ColorToken.Muted)
+            .With(StyledText.MaxLinesProperty, 2);
+        var text = Templates
+            .Element<StackPanel>()
+            .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)
+            .Add(content, description);
         var row = Templates
             .Element<DockPanel>()
             .With(Panel.BackgroundProperty, Templates.Bind(Control.BackgroundProperty))
-            .With(FrameworkElement.MarginProperty, Templates.Bind(Control.PaddingProperty))
             .With(DockPanel.LastChildFillProperty, true)
-            .Add(icon, track, content);
+            .Add(
+                icon,
+                track,
+                text.With(FrameworkElement.MarginProperty, Templates.Bind(Control.PaddingProperty))
+            );
         return Templates.Seal(
             typeof(ToggleSwitch),
             row,
@@ -183,15 +241,25 @@ public sealed class ToggleSwitch : ToggleButton
                 new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, IconPart)
             ),
             Templates.When(
+                DescriptionProperty,
+                null,
+                new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, DescriptionPart)
+            ),
+            Templates.When(
                 IsCheckedProperty,
                 true,
-                Templates.Brush(Border.BackgroundProperty, ColorToken.Accent, TrackPart),
-                Templates.Brush(Border.BackgroundProperty, ColorToken.OnAccent, KnobPart)
+                Templates.Brush(Border.BackgroundProperty, ColorToken.Accent, TrackFillPart),
+                new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, OutlinePart),
+                new Setter(FrameworkElement.WidthProperty, KnobSize, DotPart),
+                new Setter(FrameworkElement.HeightProperty, KnobSize, DotPart),
+                Templates.Brush(Shape.FillProperty, ColorToken.OnAccent, DotPart),
+                new Setter(UIElement.VisibilityProperty, Visibility.Visible, MarkPart)
             ),
             Templates.When(
                 IsEnabledProperty,
                 false,
-                new Setter(UIElement.OpacityProperty, ButtonChrome.DisabledOpacity)
+                new Setter(Shape.StrokeDashArrayProperty, ControlChrome.DisabledDash, OutlinePart),
+                Templates.Brush(Control.ForegroundProperty, ColorToken.Muted)
             )
         );
     }

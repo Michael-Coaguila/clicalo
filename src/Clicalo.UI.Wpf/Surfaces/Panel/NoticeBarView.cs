@@ -43,7 +43,7 @@ public sealed class NoticeBarView : Border
 
     private readonly TouchButton _undo = new()
     {
-        Appearance = ButtonAppearance.Accent,
+        Variant = ButtonVariant.Primary,
         Height = ButtonHeight,
         Padding = new Thickness(10, 0, 10, 0),
         Focusable = false,
@@ -54,7 +54,7 @@ public sealed class NoticeBarView : Border
 
     private readonly TouchButton _cancel = new()
     {
-        Appearance = ButtonAppearance.Neutral,
+        Variant = ButtonVariant.Secondary,
         Height = ButtonHeight,
         Padding = new Thickness(10, 0, 10, 0),
         Focusable = false,
@@ -69,7 +69,7 @@ public sealed class NoticeBarView : Border
         IconSize = IconPx,
         Width = RepeatWidth,
         Height = ButtonHeight,
-        Appearance = ButtonAppearance.Neutral,
+        Variant = ButtonVariant.Secondary,
         Focusable = false,
         IsTabStop = false,
         VerticalAlignment = VerticalAlignment.Center,

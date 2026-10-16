@@ -34,6 +34,9 @@ internal sealed class TokenModel
     /// <summary>The strokes of <c>design-system.json</c>.</summary>
     public List<KeyValuePair<string, double>> Strokes { get; } = [];
 
+    /// <summary>The component metrics of <c>design-system.json</c>.</summary>
+    public List<KeyValuePair<string, double>> Components { get; } = [];
+
     /// <summary>The closed type scale of <c>design-system.json</c>.</summary>
     public List<TextStyleModel> TextStyles { get; } = [];
 

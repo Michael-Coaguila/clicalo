@@ -5,7 +5,7 @@ using Clicalo.UI.Wpf.Controls.Internal;
 namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// UI Automation peer of <see cref="ToggleSwitch"/> and <see cref="Chip"/> (ACC-001, REG-06): control type Button with
+/// UI Automation peer of <see cref="ToggleSwitch"/> (ACC-001, REG-06): control type Button with
 /// the Toggle pattern and its state, the name from <c>AutomationProperties.Name</c> or the text content, and no
 /// children. UI Automation can focus it only while its window is active (REG-01).
 /// </summary>

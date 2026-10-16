@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -10,24 +11,33 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Automation;
 
 /// <summary>
-/// The default look of <see cref="ShortcutTile"/>, as the prototype's tile (CUA-007, CUA-009): a
-/// <see cref="TouchTargetBox"/> (the touch target, drawn at the tile's <c>Width</c> × <c>Height</c> when that is
-/// smaller, REG-02) with a 12 px rounded <c>card</c> chrome and a <c>border</c> outline; inside, the icon in the
-/// category tint, the bold name and the key line in JetBrains Mono and <c>muted</c>; the badge at the top right (type
-/// or state, in the category tint on its wash; ACC-003: the state is never color alone) and the voice number at the
-/// top left (ACC-009: <c>warn</c> fill with dark text). Every color is a theme resource, so <see cref="ThemeScope"/>
-/// and <see cref="ThemeService"/> repaint it in place, including the system contrast colors (TEM-001).
+/// The look of <see cref="ShortcutTile"/> in direction C (D12; CUA-007, CUA-009): a <see cref="TouchTargetBox"/> (the
+/// touch target, drawn at the tile's <c>Width</c> × <c>Height</c> when that is smaller, REG-02) with a <c>card</c> of
+/// radius <see cref="Radii.Medium"/> and its line inside, and an anatomy of reserved slots that never overlap: the
+/// voice number at the top left (ACC-009: <c>warn</c> fill with dark text), the type at the top right (an icon of
+/// <see cref="IconBox.Badge"/> in <c>muted</c>, or the state as text, ACC-003), the icon in the category tint in its
+/// fixed box, the bold name in one line with «…» and the key line in JetBrains Mono and <c>muted</c>. Every color is
+/// a theme resource, so <see cref="ThemeScope"/> and <see cref="ThemeService"/> repaint it in place (TEM-001).
 /// </summary>
 /// <remarks>
-/// States (CUA-009): Alternar on, category wash and a 2 px tint outline; held, the same at scale 0.95; armed, wash
-/// and a 2 px <c>warn</c> outline; flash, wash; sticky key locked (indeterminate), <c>accent</c> fill. Sizes, the
-/// text scale and the timing of the flash come from the view. The template is sealed, so one instance serves every
-/// UI thread.
+/// States (CUA-009), all inside the same box: Alternar on, the single look of «elegido» (accent wash, a ring of
+/// <see cref="Stroke.Selected"/> inside and the icon filled); held, the same at scale 0.95; armed, <c>warnWash</c> and
+/// a ring in <c>warnText</c>; flash, accent wash; sticky key locked (indeterminate), <c>accent</c> fill; menu open
+/// (expanded), the accent ring. The template is sealed, so one instance serves every UI thread.
 /// </remarks>
 public static class ShortcutTileTemplate
 {
-    /// <summary>Name of the chrome border inside the template.</summary>
+    /// <summary>Name of the layers of the tile (what a held tile scales).</summary>
+    public const string LayersPart = "PART_Layers";
+
+    /// <summary>Name of the fill of the tile.</summary>
     public const string ChromePart = "PART_Chrome";
+
+    /// <summary>Name of the rest line.</summary>
+    public const string LinePart = "PART_Line";
+
+    /// <summary>Name of the ring of «elegido», armed and expanded.</summary>
+    public const string RingPart = "PART_Ring";
 
     /// <summary>Name of the icon.</summary>
     public const string IconPart = "PART_Icon";
@@ -38,8 +48,11 @@ public static class ShortcutTileTemplate
     /// <summary>Name of the text block of the key line.</summary>
     public const string KeysPart = "PART_Keys";
 
-    /// <summary>Name of the badge at the top right.</summary>
+    /// <summary>Name of the slot at the top right (the type or the state).</summary>
     public const string BadgePart = "PART_Badge";
+
+    /// <summary>Name of the icon of the type, in the top right slot.</summary>
+    public const string TypePart = "PART_Type";
 
     /// <summary>Name of the text block that shows the badge text (the accessible state or the type).</summary>
     public const string StatePart = "PART_State";
@@ -50,10 +63,8 @@ public static class ShortcutTileTemplate
     /// <summary>Scale of a held tile (CUA-009).</summary>
     public const double HeldScale = 0.95;
 
-    /// <summary>Outline of an active, held or armed tile (CUA-009).</summary>
-    public const double ActiveBorderThickness = 2;
-
-    private const double Inset = 4;
+    /// <summary>Ring of an active, held, armed or expanded tile (CUA-009).</summary>
+    public const double ActiveBorderThickness = Stroke.Selected;
 
     /// <summary>The default template of <see cref="ShortcutTile"/>.</summary>
     public static ControlTemplate Default { get; } = Create();
@@ -64,23 +75,27 @@ public static class ShortcutTileTemplate
         box.SetValue(TouchTargetBox.VisualWidthProperty, Bind(FrameworkElement.WidthProperty));
         box.SetValue(TouchTargetBox.VisualHeightProperty, Bind(FrameworkElement.HeightProperty));
 
+        var layers = new FrameworkElementFactory(typeof(Grid), LayersPart);
+        layers.SetValue(UIElement.RenderTransformOriginProperty, new Point(0.5, 0.5));
+        box.AppendChild(layers);
+
         var chrome = new FrameworkElementFactory(typeof(Border), ChromePart);
         chrome.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Medium));
         chrome.SetValue(UIElement.SnapsToDevicePixelsProperty, true);
-        chrome.SetValue(UIElement.RenderTransformOriginProperty, new Point(0.5, 0.5));
         chrome.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
-        chrome.SetResourceReference(
-            Border.BorderBrushProperty,
-            ThemeBrushKey.For(ColorToken.Border)
-        );
-        chrome.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
-        box.AppendChild(chrome);
+        layers.AppendChild(chrome);
 
-        var layout = new FrameworkElementFactory(typeof(Grid));
-        chrome.AppendChild(layout);
-        layout.AppendChild(Body());
-        layout.AppendChild(TypeBadge());
-        layout.AppendChild(VoiceBadge());
+        var line = Outline(LinePart, ColorToken.Border);
+        line.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
+        layers.AppendChild(line);
+        var ring = Outline(RingPart, ColorToken.Accent);
+        ring.SetValue(Shape.StrokeThicknessProperty, ActiveBorderThickness);
+        ring.SetValue(UIElement.VisibilityProperty, Visibility.Collapsed);
+        layers.AppendChild(ring);
+
+        layers.AppendChild(Body());
+        layers.AppendChild(TypeSlot());
+        layers.AppendChild(VoiceBadge());
 
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = box };
         foreach (var trigger in Triggers())
@@ -92,19 +107,31 @@ public static class ShortcutTileTemplate
         return template;
     }
 
+    private static FrameworkElementFactory Outline(string name, ColorToken token)
+    {
+        var shape = new FrameworkElementFactory(typeof(Rectangle), name);
+        shape.SetValue(Rectangle.RadiusXProperty, Radii.Medium);
+        shape.SetValue(Rectangle.RadiusYProperty, Radii.Medium);
+        shape.SetValue(UIElement.SnapsToDevicePixelsProperty, true);
+        shape.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        shape.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(token));
+        return shape;
+    }
+
     private static FrameworkElementFactory Body()
     {
         var body = new FrameworkElementFactory(typeof(ShortcutTileBody));
         body.SetValue(FrameworkElement.MarginProperty, Bind(Control.PaddingProperty));
         body.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         body.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        body.SetValue(ShortcutTileBody.NameLinesProperty, Bind(ShortcutTile.MaxNameLinesProperty));
 
         var icon = new FrameworkElementFactory(typeof(SymbolIcon), IconPart);
         icon.SetValue(SymbolIcon.SymbolProperty, Bind(ShortcutTile.SymbolProperty));
         icon.SetValue(SymbolIcon.SizeProperty, Bind(ShortcutTile.IconSizeProperty));
         icon.SetValue(SymbolIcon.ForegroundProperty, Bind(ShortcutTile.CategoryTintProperty));
         icon.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        icon.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, Inset));
+        icon.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, Space.S1));
         body.AppendChild(icon);
 
         var label = new FrameworkElementFactory(typeof(TextBlock), LabelPart);
@@ -127,7 +154,7 @@ public static class ShortcutTileTemplate
         keys.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
         keys.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
         keys.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        keys.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 2, 0, 0));
+        keys.SetValue(FrameworkElement.MarginProperty, new Thickness(0, Space.S1, 0, 0));
         keys.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.MonoFont);
         keys.SetResourceReference(
             TextBlock.ForegroundProperty,
@@ -137,35 +164,41 @@ public static class ShortcutTileTemplate
         return body;
     }
 
-    private static FrameworkElementFactory TypeBadge()
+    private static FrameworkElementFactory TypeSlot()
     {
-        var badge = new FrameworkElementFactory(typeof(Border), BadgePart);
-        badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
-        badge.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Right);
-        badge.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
-        badge.SetValue(FrameworkElement.MarginProperty, new Thickness(0, Inset, Inset, 0));
-        badge.SetValue(Border.PaddingProperty, new Thickness(3, 0, 3, 0));
-        badge.SetValue(Border.BackgroundProperty, Bind(ShortcutTile.CategoryWashProperty));
+        var slot = new FrameworkElementFactory(typeof(Grid), BadgePart);
+        slot.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Right);
+        slot.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
+        slot.SetValue(FrameworkElement.MarginProperty, new Thickness(0, Space.S1, Space.S1, 0));
+        slot.SetValue(UIElement.IsHitTestVisibleProperty, false);
+
+        var type = new FrameworkElementFactory(typeof(SymbolIcon), TypePart);
+        type.SetValue(SymbolIcon.SymbolProperty, Bind(ShortcutTile.TypeSymbolProperty));
+        type.SetValue(SymbolIcon.SizeProperty, IconBox.Badge);
+        type.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(ColorToken.Muted));
+        slot.AppendChild(type);
 
         var text = new FrameworkElementFactory(typeof(TextBlock), StatePart);
         text.SetValue(TextBlock.TextProperty, Bind(ShortcutTile.BadgeTextProperty));
         text.SetValue(TextBlock.FontSizeProperty, TypeScale.Minimum);
         text.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-        text.SetValue(TextBlock.ForegroundProperty, Bind(ShortcutTile.CategoryTintProperty));
-        badge.AppendChild(text);
-        return badge;
+        text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        text.SetResourceReference(TextBlock.ForegroundProperty, ThemeBrushKey.For(ColorToken.Muted));
+        slot.AppendChild(text);
+        return slot;
     }
 
     private static FrameworkElementFactory VoiceBadge()
     {
         var badge = new FrameworkElementFactory(typeof(Border), VoiceNumberPart);
-        badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(Radii.Small));
+        badge.SetValue(Border.CornerRadiusProperty, new CornerRadius(IconBox.Small / 2));
         badge.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left);
         badge.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
-        badge.SetValue(FrameworkElement.MarginProperty, new Thickness(Inset, Inset, 0, 0));
-        badge.SetValue(FrameworkElement.MinWidthProperty, 20d);
-        badge.SetValue(FrameworkElement.HeightProperty, 20d);
-        badge.SetValue(Border.PaddingProperty, new Thickness(4, 0, 4, 0));
+        badge.SetValue(FrameworkElement.MarginProperty, new Thickness(Space.S1, Space.S1, 0, 0));
+        badge.SetValue(FrameworkElement.MinWidthProperty, IconBox.Small);
+        badge.SetValue(FrameworkElement.HeightProperty, IconBox.Small);
+        badge.SetValue(Border.PaddingProperty, new Thickness(Space.S1, 0, Space.S1, 0));
+        badge.SetValue(UIElement.IsHitTestVisibleProperty, false);
         badge.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Warn));
 
         var number = new FrameworkElementFactory(typeof(TextBlock));
@@ -177,7 +210,7 @@ public static class ShortcutTileTemplate
                 Mode = BindingMode.OneWay,
             }
         );
-        number.SetValue(TextBlock.FontSizeProperty, 12d);
+        number.SetValue(TextBlock.FontSizeProperty, TextStyles.LabelSmall.Size);
         number.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
         number.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         number.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -192,81 +225,75 @@ public static class ShortcutTileTemplate
     private static IEnumerable<TriggerBase> Triggers()
     {
         yield return Collapse(ShortcutTile.VoiceNumberProperty, null, VoiceNumberPart);
-        yield return Collapse(ShortcutTile.BadgeTextProperty, string.Empty, BadgePart);
-        yield return Collapse(ShortcutTile.BadgeTextProperty, null, BadgePart);
+        yield return Collapse(ShortcutTile.BadgeTextProperty, string.Empty, StatePart);
+        yield return Collapse(ShortcutTile.BadgeTextProperty, null, StatePart);
+        // The type icon and the state text share the slot: the state, when there is one, wins (ACC-003).
+        yield return Collapse(ShortcutTile.IsTypeShownProperty, false, TypePart);
         yield return Collapse(ShortcutTile.KeysProperty, string.Empty, KeysPart);
         yield return Collapse(ShortcutTile.KeysProperty, null, KeysPart);
         yield return Collapse(ShortcutTile.SymbolProperty, null, IconPart);
-        yield return Washed(ShortcutTile.IsFlashingProperty, true);
-        yield return Washed(
-            ShortcutTile.ToggleStateProperty,
-            ToggleState.On,
-            Outline(FromTile(ShortcutTile.CategoryTintProperty))
+        yield return Set(
+            ShortcutTile.MaxNameLinesProperty,
+            1,
+            new Setter(TextBlock.TextWrappingProperty, TextWrapping.NoWrap, LabelPart)
         );
-        yield return Washed(
+        yield return Set(
+            ShortcutTile.IsFlashingProperty,
+            true,
+            Brush(ChromePart, Border.BackgroundProperty, ColorToken.AccentWash)
+        );
+        yield return Set(ShortcutTile.ToggleStateProperty, ToggleState.On, Chosen());
+        yield return Set(
             ShortcutTile.IsArmedProperty,
             true,
-            Outline(new DynamicResourceExtension(ThemeBrushKey.For(ColorToken.Warn)))
+            Brush(ChromePart, Border.BackgroundProperty, ColorToken.WarnWash),
+            new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart),
+            Brush(RingPart, Shape.StrokeProperty, ColorToken.WarnText)
         );
-        yield return Washed(
+        yield return Set(
             ShortcutTile.IsHeldProperty,
             true,
             [
-                .. Outline(FromTile(ShortcutTile.CategoryTintProperty)),
+                .. Chosen(),
                 new Setter(
                     UIElement.RenderTransformProperty,
                     new ScaleTransform(HeldScale, HeldScale),
-                    ChromePart
+                    LayersPart
                 ),
             ]
         );
-        yield return Paint(
+        yield return Set(
             ShortcutTile.ToggleStateProperty,
             ToggleState.Indeterminate,
-            (ChromePart, Border.BackgroundProperty, ColorToken.Accent),
-            (ChromePart, Border.BorderBrushProperty, ColorToken.Accent),
-            (LabelPart, TextBlock.ForegroundProperty, ColorToken.OnAccent),
-            (KeysPart, TextBlock.ForegroundProperty, ColorToken.OnAccent),
-            (IconPart, SymbolIcon.ForegroundProperty, ColorToken.OnAccent)
+            Brush(ChromePart, Border.BackgroundProperty, ColorToken.Accent),
+            Brush(LabelPart, TextBlock.ForegroundProperty, ColorToken.OnAccent),
+            Brush(KeysPart, TextBlock.ForegroundProperty, ColorToken.OnAccent),
+            Brush(IconPart, SymbolIcon.ForegroundProperty, ColorToken.OnAccent)
         );
-        yield return Paint(
+        yield return Set(
             ShortcutTile.IsExpandedProperty,
             true,
-            (ChromePart, Border.BorderBrushProperty, ColorToken.Accent)
+            new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart)
         );
     }
 
-    private static TemplateBindingExtension Bind(DependencyProperty property) => new(property);
-
-    /// <summary>A binding to a tile property for a trigger setter (where a template binding is not allowed).</summary>
-    private static Binding FromTile(DependencyProperty property) =>
-        new()
-        {
-            RelativeSource = RelativeSource.TemplatedParent,
-            Path = new PropertyPath(property),
-        };
-
-    private static Setter[] Outline(object brush) =>
+    /// <summary>The single look of «elegido»: wash, the ring of 2 inside and the icon filled.</summary>
+    private static Setter[] Chosen() =>
         [
-            new Setter(Border.BorderBrushProperty, brush, ChromePart),
-            new Setter(
-                Border.BorderThicknessProperty,
-                new Thickness(ActiveBorderThickness),
-                ChromePart
-            ),
+            Brush(ChromePart, Border.BackgroundProperty, ColorToken.AccentWash),
+            new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart),
+            new Setter(SymbolIcon.IsFilledProperty, true, IconPart),
         ];
 
-    private static Trigger Washed(DependencyProperty property, object value, params Setter[] extra)
+    private static TemplateBindingExtension Bind(DependencyProperty property) => new(property);
+
+    private static Setter Brush(string part, DependencyProperty property, ColorToken token) =>
+        new(property, new DynamicResourceExtension(ThemeBrushKey.For(token)), part);
+
+    private static Trigger Set(DependencyProperty property, object value, params Setter[] setters)
     {
         var trigger = new Trigger { Property = property, Value = value };
-        trigger.Setters.Add(
-            new Setter(
-                Border.BackgroundProperty,
-                FromTile(ShortcutTile.CategoryWashProperty),
-                ChromePart
-            )
-        );
-        foreach (var setter in extra)
+        foreach (var setter in setters)
         {
             trigger.Setters.Add(setter);
         }
@@ -274,27 +301,6 @@ public static class ShortcutTileTemplate
         return trigger;
     }
 
-    private static Trigger Collapse(DependencyProperty property, object? value, string part)
-    {
-        var trigger = new Trigger { Property = property, Value = value };
-        trigger.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, part));
-        return trigger;
-    }
-
-    private static Trigger Paint(
-        DependencyProperty property,
-        object value,
-        params (string Part, DependencyProperty Property, ColorToken Token)[] setters
-    )
-    {
-        var trigger = new Trigger { Property = property, Value = value };
-        foreach (var (part, target, token) in setters)
-        {
-            trigger.Setters.Add(
-                new Setter(target, new DynamicResourceExtension(ThemeBrushKey.For(token)), part)
-            );
-        }
-
-        return trigger;
-    }
+    private static Trigger Collapse(DependencyProperty property, object? value, string part) =>
+        Set(property, value!, new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, part));
 }

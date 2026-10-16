@@ -56,8 +56,8 @@ public sealed class DockNoticeWindow : TouchSurface
         VerticalAlignment = VerticalAlignment.Center,
         Margin = new Thickness(Gap, 0, Gap, 0),
     };
-    private readonly TouchButton _undo = NoticeButton(ButtonAppearance.Accent);
-    private readonly TouchButton _cancel = NoticeButton(ButtonAppearance.Neutral);
+    private readonly TouchButton _undo = NoticeButton(ButtonVariant.Primary);
+    private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Secondary);
     private readonly LiveAnnouncer _announcer;
     private string _announced = string.Empty;
 
@@ -192,10 +192,10 @@ public sealed class DockNoticeWindow : TouchSurface
         base.OnClosed(e);
     }
 
-    private static TouchButton NoticeButton(ButtonAppearance appearance) =>
+    private static TouchButton NoticeButton(ButtonVariant variant) =>
         new()
         {
-            Appearance = appearance,
+            Variant = variant,
             Height = ButtonHeight,
             Padding = new Thickness(10, 0, 10, 0),
             Focusable = false,

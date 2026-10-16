@@ -49,7 +49,7 @@ public sealed class EmptyStateView : Grid
 
     private readonly TouchButton _add = new()
     {
-        Appearance = ButtonAppearance.Accent,
+        Variant = ButtonVariant.Primary,
         Symbol = "add",
         Height = ButtonHeight,
         Focusable = false,

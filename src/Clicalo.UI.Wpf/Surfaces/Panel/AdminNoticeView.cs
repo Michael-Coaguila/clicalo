@@ -25,7 +25,7 @@ public sealed class AdminNoticeView : Border
     private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TouchButton _relaunch = new()
     {
-        Appearance = ButtonAppearance.Warn,
+        Variant = ButtonVariant.Secondary,
         Height = ButtonHeight,
         Padding = new Thickness(12, 0, 12, 0),
         Focusable = false,

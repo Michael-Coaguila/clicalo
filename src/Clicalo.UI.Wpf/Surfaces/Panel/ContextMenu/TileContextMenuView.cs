@@ -111,7 +111,7 @@ public sealed class TileContextMenuView : Border
         {
             var button = new TouchButton
             {
-                Appearance = ButtonAppearance.Ghost,
+                Variant = ButtonVariant.Tertiary,
                 Symbol = row.Icon,
                 IconSize = RowIconPx,
                 Content = row.Label,

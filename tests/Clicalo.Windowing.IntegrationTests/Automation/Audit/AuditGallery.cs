@@ -15,7 +15,7 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 /// <summary>
 /// The gallery of the real surfaces (docs/architecture/tooling.md, «Galería de superficies»): with the environment
 /// variable <see cref="Variable"/> set to a folder, every state the audit reaches as drawn (dark theme, text at 100 %)
-/// is saved as PNG at the person's scale (<see cref="Scale"/>), in the dark and in the light theme, and
+/// is saved as PNG at the person's scale (<see cref="Scale"/>), in the dark, the light and the high contrast theme, and
 /// <c>index.html</c> shows them grouped and named. Without the variable it does nothing, so <c>cl check</c> never
 /// writes an image. It only renders the hidden presentation source of <see cref="AuditHost"/>: nothing is captured
 /// from the screen.
@@ -34,6 +34,7 @@ internal static class AuditGallery
     /// <summary>The order of the groups in the index.</summary>
     private static readonly string[] GroupOrder =
     [
+        "Sistema de diseño",
         "Panel",
         "Burbuja y Soltar todo",
         "Pestaña",
@@ -80,6 +81,9 @@ internal static class AuditGallery
             {
                 host.LayOut();
                 File.WriteAllBytes(Path.Combine(folder, file + ".light.png"), Render(host));
+                theme.Preference = ThemeChoice.HighContrast;
+                host.LayOut();
+                File.WriteAllBytes(Path.Combine(folder, file + ".contrast.png"), Render(host));
             }
             finally
             {
@@ -234,13 +238,14 @@ internal static class AuditGallery
             .pair a { display: block; padding: 12px; border-radius: 6px; }
             .pair a.dark { background: #2a2c31; }
             .pair a.light { background: #d9dbe0; }
+            .pair a.contrast { background: #000000; outline: 1px solid #ffffff; }
             .pair img { display: block; max-width: min(100%, 900px); height: auto; outline: 1px dashed #7a7f8a; }
             small { color: var(--muted); }
             </style>
             </head>
             <body>
             <h1>Galería de Clícalo</h1>
-            <p><small>Superficies reales, escala 1,75, tema oscuro y claro. Cada imagen enlaza a su tamaño real.</small></p>
+            <p><small>Superficies reales, escala 1,75, tema oscuro, claro y alto contraste. Cada imagen enlaza a su tamaño real.</small></p>
             <nav>
             """
         );
@@ -278,6 +283,9 @@ internal static class AuditGallery
                     <a class="light" href="{entry.File}.light.png"><img loading="lazy" src="{entry.File}.light.png" alt="{Encode(
                         entry.Name
                     )}, tema claro"></a>
+                    <a class="contrast" href="{entry.File}.contrast.png"><img loading="lazy" src="{entry.File}.contrast.png" alt="{Encode(
+                        entry.Name
+                    )}, alto contraste"></a>
                     </div></figure>
 
                     """

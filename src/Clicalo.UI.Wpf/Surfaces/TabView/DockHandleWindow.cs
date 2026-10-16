@@ -146,7 +146,7 @@ public sealed class DockHandleWindow : TouchSurface
         var depth = Math.Max(layout.DockHandleThicknessPx, layout.MinTouchTargetPx);
         _button = new TouchButton
         {
-            Appearance = ButtonAppearance.Ghost,
+            Variant = ButtonVariant.Tertiary,
             Content = face,
             Padding = new Thickness(0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,

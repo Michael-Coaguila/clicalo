@@ -30,6 +30,7 @@ internal static class ThemeResources
         }
 
         resources[ThemeScope.BorderThicknessKey] = new Thickness(palette.BorderThickness);
+        resources[ThemeKeys.LineThickness] = Math.Max(Stroke.Line, palette.BorderThickness);
     }
 
     /// <summary>The font families and the type scale, the scaled sizes at <paramref name="textScalePercent"/>.</summary>
@@ -44,6 +45,19 @@ internal static class ThemeResources
         {
             resources[ThemeKeys.TextSize(step)] = step;
             resources[ThemeKeys.ScaledTextSize(step)] = TypeScale.Scale(step, textScalePercent);
+        }
+
+        foreach (var style in TextStyles.All)
+        {
+            var spec = TextStyles.Get(style);
+            var size = TypeScale.Scale(spec.Size, textScalePercent);
+            resources[ThemeKeys.FontSize(style)] = spec.Size;
+            resources[ThemeKeys.LineHeight(style)] = spec.LineHeight;
+            resources[ThemeKeys.FontSize(style, scaled: true)] = size;
+            resources[ThemeKeys.LineHeight(style, scaled: true)] = Math.Round(
+                spec.LineHeight * size / spec.Size,
+                MidpointRounding.AwayFromZero
+            );
         }
     }
 

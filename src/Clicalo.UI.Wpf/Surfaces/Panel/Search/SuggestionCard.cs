@@ -54,7 +54,7 @@ public sealed class SuggestionCard : Border
 
         CreateButton = new TouchButton
         {
-            Appearance = ButtonAppearance.Accent,
+            Variant = ButtonVariant.Primary,
             Height = ButtonHeight,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Focusable = false,
@@ -63,7 +63,7 @@ public sealed class SuggestionCard : Border
         CreateButton.Click += (_, _) => _viewModel.Create();
         NotNowButton = new TouchButton
         {
-            Appearance = ButtonAppearance.Outline,
+            Variant = ButtonVariant.Secondary,
             Height = ButtonHeight,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             FontWeight = FontWeights.Normal,

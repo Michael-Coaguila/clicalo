@@ -434,7 +434,7 @@ public sealed class QuickSettingsSheet : Border
 
         var card = new TouchButton
         {
-            Appearance = ButtonAppearance.Outline,
+            Variant = ButtonVariant.Secondary,
             MinHeight = CardHeight,
             Padding = new Thickness(8, 8, 10, 8),
             HorizontalAlignment = HorizontalAlignment.Stretch,

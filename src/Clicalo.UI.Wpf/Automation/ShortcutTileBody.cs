@@ -4,15 +4,28 @@ using System.Windows.Controls;
 namespace Clicalo.UI.Wpf.Automation;
 
 /// <summary>
-/// The body of a tile (CUA-007, CUA-011): its icon, its name and its key line, one under the other. Nothing is drawn
-/// cut: the name takes the lines the height of the tile leaves it, two at most, and ends in «…» when it has more; the
-/// key line shows only while it fits under the name.
+/// The body of a tile (CUA-007, CUA-011): its icon, its name and its key line, one under the other,
+/// <see cref="Theming.Generated.Space.S1"/> apart. Nothing is drawn cut: the name takes the lines the height of the
+/// tile leaves it, <see cref="NameLines"/> at most, and ends in «…» when it has more; the key line shows only while it
+/// fits under the name.
 /// </summary>
 /// <remarks>Its three children are, in this order, the icon, the name and the key line.</remarks>
 internal sealed class ShortcutTileBody : Panel
 {
-    /// <summary>Lines the name may take (CUA-011).</summary>
-    public const int NameLines = 2;
+    /// <summary>Identifies <see cref="NameLines"/>.</summary>
+    public static readonly DependencyProperty NameLinesProperty = DependencyProperty.Register(
+        nameof(NameLines),
+        typeof(int),
+        typeof(ShortcutTileBody),
+        new FrameworkPropertyMetadata(1, FrameworkPropertyMetadataOptions.AffectsMeasure)
+    );
+
+    /// <summary>Lines the name may take: one in direction C, two in S at the largest text (CUA-011).</summary>
+    public int NameLines
+    {
+        get => (int)GetValue(NameLinesProperty);
+        set => SetValue(NameLinesProperty, value);
+    }
 
     private const double Rounding = 0.5;
 
@@ -38,7 +51,7 @@ internal sealed class ShortcutTileBody : Panel
         if (name is TextBlock text && nameHeight > 0 && LineOf(text) is > 0 and var line)
         {
             // The name first: the lines it has, two at most, of those that fit (one at least).
-            var wanted = Math.Clamp((int)Math.Round(nameHeight / line), 1, NameLines);
+            var wanted = Math.Clamp((int)Math.Round(nameHeight / line), 1, Math.Max(1, NameLines));
             var fit = double.IsInfinity(room)
                 ? wanted
                 : Math.Clamp((int)Math.Floor((room + Rounding) / line), 1, wanted);

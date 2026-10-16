@@ -150,7 +150,7 @@ public sealed class DockBarWindow : TouchSurface
         _frequents = SurfaceParts.Button(
             "star",
             20,
-            ButtonAppearance.Ghost,
+            ButtonVariant.Tertiary,
             viewModel.ShowFrequents
         );
         _frequents.FontSize = SmallLabelPx;
@@ -181,7 +181,7 @@ public sealed class DockBarWindow : TouchSurface
         profileContent.Children.Add(_activeDot);
         _profile = new TouchButton
         {
-            Appearance = ButtonAppearance.Ghost,
+            Variant = ButtonVariant.Tertiary,
             Content = profileContent,
             Padding = new Thickness(2, 2, 6, 2),
             MinWidth = 0,
@@ -220,7 +220,7 @@ public sealed class DockBarWindow : TouchSurface
         _pill = SurfaceParts.Button(
             "autorenew",
             16,
-            ButtonAppearance.Outline,
+            ButtonVariant.Secondary,
             viewModel.ToggleLock
         );
         _pill.FontSize = SmallLabelPx;
@@ -278,7 +278,7 @@ public sealed class DockBarWindow : TouchSurface
         _pinned = SurfaceParts.Button(
             "push_pin",
             18,
-            ButtonAppearance.Neutral,
+            ButtonVariant.Secondary,
             viewModel.TogglePinned
         );
         _pinned.FontSize = SmallLabelPx;
@@ -286,7 +286,7 @@ public sealed class DockBarWindow : TouchSurface
         _sticky = SurfaceParts.Button(
             "keyboard_command_key",
             18,
-            ButtonAppearance.Neutral,
+            ButtonVariant.Secondary,
             viewModel.ToggleSticky
         );
         _sticky.FontSize = SmallLabelPx;
@@ -294,7 +294,7 @@ public sealed class DockBarWindow : TouchSurface
         _lock = SurfaceParts.Button(
             "lock_open",
             18,
-            ButtonAppearance.Neutral,
+            ButtonVariant.Secondary,
             viewModel.TogglePinOpen
         );
         _lock.FontSize = SmallLabelPx;
@@ -304,7 +304,7 @@ public sealed class DockBarWindow : TouchSurface
         Size(_lock, LockLength, crossTile, horizontalWidth: 56);
 
         // PES-009: Quick settings beside the bar, the side of the Tab view included.
-        _tune = SurfaceParts.Button("tune", 20, ButtonAppearance.Neutral, viewModel.QuickSettings);
+        _tune = SurfaceParts.Button("tune", 20, ButtonVariant.Secondary, viewModel.QuickSettings);
         Size(_tune, TuneLength, crossTile, horizontalWidth: 44);
         (_scrollUp, _scrollUpHandler) = DockTileFactory.Create(
             viewModel.ScrollUp,
@@ -634,17 +634,13 @@ public sealed class DockBarWindow : TouchSurface
         _expand.AccessibleName = labels.Expand;
         _frequentsLabel.Text = labels.Frequents;
         SurfaceParts.Name(_frequents, labels.Frequents);
-        _frequents.Appearance =
-            state?.Frequents == true ? ButtonAppearance.Accent : ButtonAppearance.Ghost;
+        _frequents.IsActive = state?.Frequents == true;
         _profileIcon.Symbol = state is { ProfileIcon.Length: > 0 } ? state.ProfileIcon : "apps";
         _profileName.Text = state?.ProfileName ?? string.Empty;
         _profileCaret.Symbol = vm.ProfileCaret;
         _activeDot.Visibility = SurfaceParts.Shown(state?.IsActiveApp == true);
         var pickerOpen = state?.Flyout == DockFlyout.Profiles;
-        _profile.Appearance =
-            pickerOpen ? ButtonAppearance.Neutral
-            : state?.Frequents == true ? ButtonAppearance.Ghost
-            : ButtonAppearance.Accent;
+        _profile.IsActive = pickerOpen || state?.Frequents != true;
         SurfaceParts.Name(_profile, labels.SwitchProfile);
 
         // ACC-001: what opens a window beside the bar is an ExpandCollapse with its state, and what switches a state
@@ -657,8 +653,7 @@ public sealed class DockBarWindow : TouchSurface
         _lock.IsOn = state?.Dock.PinOpen == true;
         _pillIcon.Symbol = vm.AutoFixedIcon;
         _pillLabel.Text = vm.AutoFixedLabel;
-        _pill.Appearance =
-            state?.IsFixed == true ? ButtonAppearance.Danger : ButtonAppearance.Outline;
+
         SurfaceParts.Name(_pill, vm.AutoFixedName);
         _pill.ToolTip = vm.AutoFixedName;
 
@@ -682,27 +677,20 @@ public sealed class DockBarWindow : TouchSurface
         _pinnedLabel.Text = labels.PinnedShort;
         SurfaceParts.Name(_pinned, labels.Pinned);
         _pinned.Visibility = SurfaceParts.Shown(vm.ShowsPinned);
-        _pinned.Appearance =
-            state?.Flyout == DockFlyout.Pinned
-                ? ButtonAppearance.Outline
-                : ButtonAppearance.Neutral;
+        _pinned.IsActive = state?.Flyout == DockFlyout.Pinned;
         _stickyLabel.Text = labels.Sticky;
         SurfaceParts.Name(_sticky, labels.Sticky);
         _sticky.Visibility = SurfaceParts.Shown(vm.ShowsSticky);
-        _sticky.Appearance =
-            state?.Flyout == DockFlyout.Sticky
-                ? ButtonAppearance.Outline
-                : ButtonAppearance.Neutral;
+        _sticky.IsActive = state?.Flyout == DockFlyout.Sticky;
         var pinOpen = state?.Dock.PinOpen == true;
         _lockIcon.Symbol = pinOpen ? "lock" : "lock_open";
         _lockLabel.Text = vm.PinLabel;
-        _lock.Appearance = pinOpen ? ButtonAppearance.Accent : ButtonAppearance.Neutral;
+
         SurfaceParts.Name(_lock, vm.PinName);
         _lock.ToolTip = vm.PinName;
         SurfaceParts.Name(_tune, labels.QuickSettings);
         _tune.ToolTip = labels.QuickSettings;
-        _tune.Appearance =
-            state?.QuickOpen == true ? ButtonAppearance.Outline : ButtonAppearance.Neutral;
+        _tune.IsActive = state?.QuickOpen == true;
         RefreshTargets();
     }
 

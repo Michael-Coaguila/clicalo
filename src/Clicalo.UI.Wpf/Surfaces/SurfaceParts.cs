@@ -50,7 +50,7 @@ internal static class SurfaceParts
     public static TouchButton Button(
         string symbol,
         double iconSize,
-        ButtonAppearance appearance,
+        ButtonVariant variant,
         Action tap,
         double width = double.NaN,
         double height = double.NaN
@@ -60,7 +60,7 @@ internal static class SurfaceParts
         {
             Symbol = symbol,
             IconSize = iconSize,
-            Appearance = appearance,
+            Variant = variant,
             Width = width,
             Height = height,
             Padding = new Thickness(2),

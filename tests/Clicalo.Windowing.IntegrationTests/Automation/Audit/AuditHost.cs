@@ -86,6 +86,20 @@ internal sealed class AuditHost : IDisposable
         };
     }
 
+    /// <summary>
+    /// Hosts <paramref name="view"/> painted by <paramref name="theme"/>, so the gallery can draw it in every theme.
+    /// </summary>
+    /// <param name="view">The view; it must have no parent.</param>
+    /// <param name="theme">The theme service of the thread.</param>
+    /// <param name="width">Width in device-independent pixels; <see langword="null"/> is the width the view asks for.</param>
+    public static AuditHost OfView(FrameworkElement view, ThemeService theme, double? width = null)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(theme);
+        theme.Attach(view);
+        return new AuditHost(view, width) { Theme = theme, _restore = () => theme.Detach(view) };
+    }
+
     /// <summary>The size a window fixes for itself; <see langword="null"/> when it takes the size of its content.</summary>
     private static double? Own(double size) => double.IsNaN(size) ? null : size;
 

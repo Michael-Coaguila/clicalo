@@ -288,35 +288,35 @@ public sealed class PanelHeader : Border
             _search,
             vm.HasSearch,
             vm.SearchName,
-            vm.IsSearchOpen ? ButtonAppearance.Neutral : ButtonAppearance.Ghost
+            vm.IsSearchOpen
         );
         Configure(
             _edit,
             vm.HasEdit,
             vm.EditName,
-            vm.IsEditing ? ButtonAppearance.Accent : ButtonAppearance.Ghost
+            vm.IsEditing
         );
         _edit.Symbol = vm.EditIcon;
         Configure(
             _quick,
             vm.HasQuickSettings,
             vm.QuickSettingsName,
-            vm.IsQuickSettingsOpen ? ButtonAppearance.Neutral : ButtonAppearance.Ghost
+            vm.IsQuickSettingsOpen
         );
         // ACC-001: «Ajustes rápidos» opens and closes its sheet, and says which.
         _quick.IsExpanded = vm.IsQuickSettingsOpen;
-        Configure(_minimize, vm.HasMinimize, vm.MinimizeName, ButtonAppearance.Ghost);
+        Configure(_minimize, vm.HasMinimize, vm.MinimizeName, active: false);
     }
 
     private static void Configure(
         IconButton button,
         bool available,
         string name,
-        ButtonAppearance appearance
+        bool active
     )
     {
         button.Visibility = Shown(available);
-        button.Appearance = appearance;
+        button.IsActive = active;
         AutomationProperties.SetName(button, name);
     }
 }

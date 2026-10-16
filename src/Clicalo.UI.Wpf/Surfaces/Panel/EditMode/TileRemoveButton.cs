@@ -39,7 +39,7 @@ public sealed class TileRemoveButton : TouchButton
         ArgumentNullException.ThrowIfNull(tile);
         _editMode = editMode;
         _tile = tile;
-        Appearance = ButtonAppearance.Danger;
+        Variant = ButtonVariant.Danger;
         Height = PanelSizes.Layout.PanelEditDeleteButtonPx;
         MinWidth = PanelSizes.Layout.PanelEditDeleteButtonPx;
         Padding = new Thickness(6, 0, 6, 0);

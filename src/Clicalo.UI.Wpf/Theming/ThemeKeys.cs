@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Windows;
+using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Theming;
 
@@ -16,6 +17,24 @@ public static class ThemeKeys
 
     private static readonly FrozenDictionary<double, ResourceKey> ScaledSizes =
         TypeScale.Steps.ToFrozenDictionary(px => px, px => (ResourceKey)Key("ScaledTextSize" + px));
+
+    private static readonly FrozenDictionary<TextStyleToken, ResourceKey> StyleSizes =
+        TextStyles.All.ToFrozenDictionary(s => s, s => (ResourceKey)Key("FontSize." + s));
+
+    private static readonly FrozenDictionary<TextStyleToken, ResourceKey> StyleLines =
+        TextStyles.All.ToFrozenDictionary(s => s, s => (ResourceKey)Key("LineHeight." + s));
+
+    private static readonly FrozenDictionary<TextStyleToken, ResourceKey> ScaledStyleSizes =
+        TextStyles.All.ToFrozenDictionary(s => s, s => (ResourceKey)Key("ScaledFontSize." + s));
+
+    private static readonly FrozenDictionary<TextStyleToken, ResourceKey> ScaledStyleLines =
+        TextStyles.All.ToFrozenDictionary(s => s, s => (ResourceKey)Key("ScaledLineHeight." + s));
+
+    /// <summary>
+    /// A <see cref="double"/>: the thickness of the rest line of controls and cards (<see cref="Stroke.Line"/>; 2 in
+    /// high contrast, as the palette's border). Always drawn inside the control.
+    /// </summary>
+    public static ResourceKey LineThickness { get; } = Key(nameof(LineThickness));
 
     /// <summary>The <see cref="System.Windows.Media.FontFamily"/> of the interface (Atkinson Hyperlegible).</summary>
     public static ResourceKey UiFont { get; } = Key(nameof(UiFont));
@@ -46,7 +65,30 @@ public static class ThemeKeys
     /// <param name="designPx">A step of the scale.</param>
     public static ResourceKey ScaledTextSize(double designPx) => Lookup(ScaledSizes, designPx);
 
+    /// <summary>
+    /// The <see cref="double"/> font size of a text style of direction C (<see cref="TextStyles"/>); scaled by the
+    /// person's text scale when <paramref name="scaled"/> (tile names, key lines and the fixed row, CUA-011).
+    /// </summary>
+    public static ResourceKey FontSize(TextStyleToken style, bool scaled = false) =>
+        LookupStyle(scaled ? ScaledStyleSizes : StyleSizes, style);
+
+    /// <summary>The <see cref="double"/> line height of a text style; scaled with its font size when <paramref name="scaled"/>.</summary>
+    public static ResourceKey LineHeight(TextStyleToken style, bool scaled = false) =>
+        LookupStyle(scaled ? ScaledStyleLines : StyleLines, style);
+
+    /// <summary>The font family key of a text style: <see cref="MonoFont"/> for keys, <see cref="UiFont"/> otherwise.</summary>
+    public static ResourceKey FontFamily(TextStyleToken style) =>
+        TextStyles.Get(style).Family == TextFamily.Keys ? MonoFont : UiFont;
+
     private static ComponentResourceKey Key(string name) => new(typeof(ThemeKeys), name);
+
+    private static ResourceKey LookupStyle(
+        FrozenDictionary<TextStyleToken, ResourceKey> keys,
+        TextStyleToken style
+    ) =>
+        keys.TryGetValue(style, out var key)
+            ? key
+            : throw new ArgumentOutOfRangeException(nameof(style), style, message: null);
 
     private static ResourceKey Lookup(
         FrozenDictionary<double, ResourceKey> keys,

@@ -235,6 +235,8 @@ public sealed class TokenGeneratorTests
         generated.Constant("Radii", "Pill").ShouldBe(999d);
         generated.Constant("IconBox", "Medium").ShouldBe(24d);
         generated.Constant("Stroke", "Selected").ShouldBe(2d);
+        generated.Constant("ComponentSize", "SwitchHeight").ShouldBe(28d);
+        generated.Constant("ComponentSize", "CaptionButton").ShouldBe(56d);
         generated
             .Static("TextStyles", "Overline")
             .ToString()

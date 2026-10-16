@@ -527,6 +527,13 @@ internal static class TokenEmitter
             model.Strokes
         );
         w.Blank();
+        Lengths(
+            w,
+            "ComponentSize",
+            "Metrics of single components that direction C (D12) fixes outside the scales, in device-independent pixels.",
+            model.Components
+        );
+        w.Blank();
         w.Summary(
             "The focus ring of every control (TEM-009): drawn in the <c>focusRing</c> color, outside the control."
         );
