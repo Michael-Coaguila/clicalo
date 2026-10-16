@@ -1,5 +1,5 @@
 {
-  "$comment": "Exact origin of every font file in assets/fonts (TEM-007, docs/07 «Tipografía»). build_fonts.py downloads each URL, refuses a file whose SHA-256 differs and writes assets/fonts. Change a version here, run the script and commit its output.",
+  "$comment": "Exact origin of every font file in assets/fonts and of the icon metadata of data/catalogs/icons.json (TEM-007, D14, docs/07 «Tipografía»). build_fonts.py downloads each URL, refuses a file whose SHA-256 differs and writes assets/fonts and icons.json. Change a version here, run the script and commit its output. The metadata service changes without versions: when its hash no longer matches, download it again, review the diff of icons.json and pin the new hash.",
   "sources": [
     {
       "id": "atkinsonRegular",
@@ -44,26 +44,34 @@
     {
       "id": "materialSymbolsRounded",
       "repository": "google/material-design-icons",
-      "commit": "737e3324305806514d7909874fa1818ae1808232",
-      "url": "https://raw.githubusercontent.com/google/material-design-icons/737e3324305806514d7909874fa1818ae1808232/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.ttf",
-      "sha256": "95b24392bb49efd1bc3e92cff4e2452ad094461bab7c97e7d8723fab97e330ca",
+      "commit": "49d4db35df873165d6bd6ba09b063c7dafbac2f4",
+      "url": "https://raw.githubusercontent.com/google/material-design-icons/49d4db35df873165d6bd6ba09b063c7dafbac2f4/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.ttf",
+      "sha256": "32e4011709e055596eb8d2dd0f7cb547b47c1d40ac9ecb8fad54f7f7eac202e7",
       "output": null
     },
     {
       "id": "materialSymbolsRoundedCodepoints",
       "repository": "google/material-design-icons",
-      "commit": "737e3324305806514d7909874fa1818ae1808232",
-      "url": "https://raw.githubusercontent.com/google/material-design-icons/737e3324305806514d7909874fa1818ae1808232/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.codepoints",
-      "sha256": "225bd09137103cb7746bc93dc08d08764c9f0c3bd04f4b958d4a3c3c19432dd6",
+      "commit": "49d4db35df873165d6bd6ba09b063c7dafbac2f4",
+      "url": "https://raw.githubusercontent.com/google/material-design-icons/49d4db35df873165d6bd6ba09b063c7dafbac2f4/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.codepoints",
+      "sha256": "0c9dae3ed678a81549c3be046bc8045335e5f57f2cbe2287360fbf0c2cc1355f",
       "output": null
     },
     {
       "id": "materialSymbolsLicense",
       "repository": "google/material-design-icons",
-      "commit": "737e3324305806514d7909874fa1818ae1808232",
-      "url": "https://raw.githubusercontent.com/google/material-design-icons/737e3324305806514d7909874fa1818ae1808232/LICENSE",
+      "commit": "49d4db35df873165d6bd6ba09b063c7dafbac2f4",
+      "url": "https://raw.githubusercontent.com/google/material-design-icons/49d4db35df873165d6bd6ba09b063c7dafbac2f4/LICENSE",
       "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
       "output": "MaterialSymbols-LICENSE.txt"
+    },
+    {
+      "id": "materialSymbolsMetadata",
+      "repository": "fonts.google.com (the metadata that google/material-design-icons reads in update/update_symbols.py)",
+      "commit": "2026-10-16 snapshot (pinned by its SHA-256 only: the service has no versions)",
+      "url": "https://fonts.google.com/metadata/icons?incomplete=1&key=material_symbols",
+      "sha256": "2e6cea4202c439a8fdc4b9b22895c9ae95759a68ec3f802411333f00f2986362",
+      "output": null
     }
   ]
 }
