@@ -336,7 +336,7 @@ internal static class SettingsUi
         return button;
     }
 
-    /// <summary>A secondary icon button of 44 (−, +, â†, →, copy), named for UI Automation.</summary>
+    /// <summary>A secondary icon button of 44 (−, +, ←, →, copy), named for UI Automation.</summary>
     public static IconButton IconAction(
         string symbol,
         string name,

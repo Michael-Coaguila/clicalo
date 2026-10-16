@@ -36,7 +36,7 @@ public sealed class TouchPrecisionView : ContentControl
 
     private const double ZoneWidth = 340;
 
-    /// <summary>The least width of a preset with its icon, its name and its description in one line each.</summary>
+    /// <summary>The least width of a preset with its icon, its name in one line and its description in two.</summary>
     private const double PresetWidth = (ControlHeight.Large * 2) + Space.S8 + Space.S2;
     private const uint MousePointer = 1;
 
@@ -362,7 +362,12 @@ public sealed class TouchPrecisionView : ContentControl
             var texts = Ui.Column(
                 0,
                 SettingsUi.Styled(preset.Label, TextStyleToken.Label),
-                SettingsUi.Styled(preset.Description, TextStyleToken.Caption, ColorToken.Muted)
+                SettingsUi.Styled(
+                    preset.Description,
+                    TextStyleToken.Caption,
+                    ColorToken.Muted,
+                    lines: 2
+                )
             );
             var card = SettingsUi.Tall(
                 SettingsUi.Option(
