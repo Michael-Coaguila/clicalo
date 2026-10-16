@@ -2,12 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/icons.schema.json",
   "title": "Clícalo icon library",
-  "description": "Icons offered by the icon picker, with search words per language (CAT-002, EDI-004). The order of «icons» is the order suggestIcons walks (EDI-005).",
+  "description": "Icons offered by the icon picker (CAT-002, EDI-004, D14): every icon of the bundled Material Symbols Rounded font with its category and the English keywords of the official metadata; the curated ones also have hand-written search words per language. The order of «icons» is the order suggestIcons walks (EDI-005): the curated icons first, then the rest, most popular first.",
   "type": "object",
-  "required": ["catalogVersion", "defaults", "featured", "profileFeatured", "icons"],
+  "required": ["catalogVersion", "defaults", "featured", "profileFeatured", "categories", "icons"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "$ref": "common.schema.json#/$defs/schemaRef" },
+    "$comment": {
+      "description": "Which parts are edited by hand and which ones tools/fonts/build_fonts.py writes. Ignored by the product.",
+      "type": "string"
+    },
     "catalogVersion": { "$ref": "common.schema.json#/$defs/catalogVersion" },
     "defaults": {
       "description": "Icon of a new shortcut and of a new profile without suggestion (EDI-005).",
@@ -33,18 +37,49 @@
       "uniqueItems": true,
       "items": { "$ref": "common.schema.json#/$defs/iconId" }
     },
+    "categories": {
+      "description": "Categories of the Material Symbols metadata, in the order of the picker (D14).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/iconCategoryId" },
+          "label": { "$ref": "common.schema.json#/$defs/localizedText" }
+        }
+      }
+    },
     "icons": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "tags"],
+        "required": ["id", "category", "keywords"],
         "additionalProperties": false,
         "properties": {
           "id": { "$ref": "common.schema.json#/$defs/iconId" },
-          "tags": { "$ref": "common.schema.json#/$defs/localizedWords" }
+          "category": { "$ref": "#/$defs/iconCategoryId" },
+          "tags": {
+            "description": "Hand-written search words of a curated icon (CAT-002). Icons without them are found by their name and their keywords.",
+            "$ref": "common.schema.json#/$defs/localizedWords"
+          },
+          "keywords": {
+            "description": "English search words of the Material Symbols metadata, written by tools/fonts/build_fonts.py.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^[a-z0-9]{2,}$" }
+          }
         }
       }
+    }
+  },
+  "$defs": {
+    "iconCategoryId": {
+      "description": "Category of an icon, listed in «categories».",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z]*$"
     }
   }
 }

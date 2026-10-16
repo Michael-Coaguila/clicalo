@@ -11,7 +11,7 @@ namespace Clicalo.Infrastructure.Catalogs;
 
 /// <summary>
 /// Reads the data of the shortcut editor (D17), validated again because it is untrusted (LOG-006): the icon library
-/// (<c>icons.json</c>, EDI-004), the icons of combinations (<c>combo-icons.&lt;lang&gt;.json</c>, EDI-005), the mouse
+/// (<c>icons.json</c>, EDI-004, D14), the icons of combinations (<c>combo-icons.&lt;lang&gt;.json</c>, EDI-005), the mouse
 /// actions (<c>mouse.json</c>, EDI-012) and the «Añadir atajo» library (<c>library.json</c>, ATJ-010). A file that does
 /// not read gives null; an entry that does not validate is left out.
 /// </summary>
@@ -28,26 +28,50 @@ public static class EditorCatalogsReader
                 foreach (var icon in root.GetProperty("icons").EnumerateArray())
                 {
                     var tags = new List<string>();
-                    foreach (var language in icon.GetProperty("tags").EnumerateObject())
+                    if (icon.TryGetProperty("tags", out var languages))
                     {
-                        tags.AddRange(
-                            language
-                                .Value.EnumerateArray()
-                                .Select(static t => t.GetString())
-                                .OfType<string>()
-                                .Where(static t => t.Length > 0)
-                        );
+                        foreach (var language in languages.EnumerateObject())
+                        {
+                            tags.AddRange(Words(language.Value));
+                        }
                     }
 
+                    if (icon.TryGetProperty("keywords", out var keywords))
+                    {
+                        tags.AddRange(Words(keywords));
+                    }
+
+                    var category = icon.TryGetProperty("category", out var id)
+                        ? id.GetString() ?? string.Empty
+                        : string.Empty;
                     entries.Add(
-                        new IconEntry(new IconRef(ContentJson.String(icon, "id")), [.. tags])
+                        new IconEntry(
+                            new IconRef(ContentJson.String(icon, "id")),
+                            [.. tags],
+                            category
+                        )
                     );
+                }
+
+                var categories = new List<IconCategory>();
+                if (root.TryGetProperty("categories", out var list))
+                {
+                    foreach (var category in list.EnumerateArray())
+                    {
+                        categories.Add(
+                            new IconCategory(
+                                ContentJson.String(category, "id"),
+                                ContentJson.Text(category.GetProperty("label"))
+                            )
+                        );
+                    }
                 }
 
                 return new IconCatalog(
                     entries,
                     Names(root.GetProperty("featured")),
-                    Names(root.GetProperty("profileFeatured"))
+                    Names(root.GetProperty("profileFeatured")),
+                    categories
                 );
             }
         );
@@ -139,6 +163,13 @@ public static class EditorCatalogsReader
                 );
             }
         );
+
+    private static IEnumerable<string> Words(JsonElement array) =>
+        array
+            .EnumerateArray()
+            .Select(static t => t.GetString())
+            .OfType<string>()
+            .Where(static t => t.Length > 0);
 
     private static List<IconRef> Names(JsonElement array) =>
         array

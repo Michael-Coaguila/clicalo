@@ -106,6 +106,28 @@ public sealed class IconSuggestionsTests
         all.Distinct(StringComparer.Ordinal).Count().ShouldBe(10);
     }
 
+    [Fact]
+    [Trait("Req", "EDI-004")]
+    public void Each_category_lists_its_icons_in_library_order_and_only_known_categories_are_kept()
+    {
+        var text = new IconCategory("text", LocalizedText.Same("Texto", LangCode.Es));
+        var catalog = new IconCatalog(
+            [
+                new IconEntry(new IconRef("format_bold"), ["negrita"], "text"),
+                new IconEntry(new IconRef("mic"), ["voz"], "audioVideo"),
+                new IconEntry(new IconRef("title"), ["título"], "text"),
+            ],
+            [],
+            [],
+            [text, text with { Label = LocalizedText.Same("Otra", LangCode.Es) }, null!]
+        );
+
+        catalog.Categories.Items.ShouldBe([text], "a repeated or empty category is left out");
+        Names(catalog.InCategory("text")).ShouldBe(["format_bold", "title"]);
+        catalog.InCategory("travel").ShouldBeEmpty();
+        catalog.InCategory(null).ShouldBeEmpty();
+    }
+
     private static IconEntry Entry(string icon, params string[] tags) =>
         new(new IconRef(icon), [.. tags]);
 

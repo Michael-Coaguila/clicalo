@@ -54,6 +54,26 @@ public sealed class EditorCatalogFilesTests
     }
 
     [Fact]
+    [Trait("Req", "EDI-004")]
+    [Trait("Req", "CAT-002")]
+    public void The_shipped_library_has_every_icon_by_category_and_finds_them_in_both_languages()
+    {
+        var icons = EditorCatalogFiles.Load(Catalogs, null, null, KeyLabelCatalog.Empty).Icons;
+
+        icons.Entries.Count.ShouldBeGreaterThan(3800);
+        icons.Categories.Count.ShouldBe(17);
+        icons
+            .Categories.Items.Where(c => icons.InCategory(c.Id).IsEmpty)
+            .ShouldBeEmpty("every category has icons");
+        icons.Categories[0].Label.Values[LangCode.Es].ShouldBe("Interfaz");
+        icons.Entries.Items.ShouldAllBe(e => e.Category.Length > 0);
+        icons.Search("auriculares").ShouldContain(new IconRef("headphones"));
+        icons.Search("headset").ShouldContain(new IconRef("headphones"), "an official keyword");
+        icons.Search("melody").ShouldContain(new IconRef("music_note"));
+        icons.Search("pelicula")[0].ShouldBe(new IconRef("movie"), "the curated icons come first");
+    }
+
+    [Fact]
     [Trait("Req", "ATJ-010")]
     public void Missing_folders_give_the_empty_forms()
     {
