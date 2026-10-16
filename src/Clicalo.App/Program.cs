@@ -39,7 +39,7 @@ internal static class Program
         _ = PointerSetup.EnableMouseInPointer();
 
         var options = AppOptions.Parse(args, DefaultDataDirectory());
-        var identity = InstanceIdentity.Current();
+        var identity = InstanceIdentity.Current(options);
         ElevationHandover.WaitForPrevious(args);
         var mutex = InstanceMutex.Open(identity);
         if (!mutex.IsFirst)

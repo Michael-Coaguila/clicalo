@@ -213,11 +213,25 @@ public sealed class SmokeTests
             .ShouldHaveSingleItem()
             .GetMode()
             .ShouldBe(Xunit.Sdk.ParallelMode.None);
-        RunningInstance.MutexName.ShouldMatch(@"^Local\\Clicalo\.[0-9a-f]{16}\.Instance$");
-        RunningInstance.PipeName.ShouldMatch(@"^Clicalo\.[0-9a-f]{16}\.\d+$");
+        // Every start has a data folder of its own, so it is an instance of its own (ADR-0030), with the names the app
+        // derives: InstanceIdentityTests fixes the same suffix for the same folder.
+        var data = @"C:\dev\clicalo-qa\live-data";
         RunningInstance
-            .MutexName.Split('.')[1]
-            .ShouldBe(RunningInstance.PipeName.Split('.')[1], "the same sidHash");
+            .MutexName(data)
+            .ShouldMatch(@"^Local\\Clicalo\.[0-9a-f]{16}\.dfe8f6acf7d7db647\.Instance$");
+        RunningInstance
+            .PipeName(data)
+            .ShouldMatch(@"^Clicalo\.[0-9a-f]{16}\.dfe8f6acf7d7db647\.\d+$");
+        RunningInstance
+            .MutexName(data)
+            .Split('.')[1]
+            .ShouldBe(RunningInstance.PipeName(data).Split('.')[1], "the same sidHash");
+        string.Equals(
+                RunningInstance.ScopeOf(data),
+                RunningInstance.ScopeOf(AppLaunch.NewDataDirectory()),
+                StringComparison.Ordinal
+            )
+            .ShouldBeFalse();
     }
 
     [Theory]

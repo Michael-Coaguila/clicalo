@@ -346,7 +346,9 @@ No se transfiere estado por IPC, así que no hay superficie de ataque.
 
 **Nombres:**
 - `sidHash` son los 16 primeros caracteres hexadecimales de `SHA-256(UserSid)`.
-- El mutex está en `Local\` (una instancia por sesión, SIS-003).
+- El mutex está en `Local\` (una instancia por sesión, SIS-003). Un arranque con `--data` añade a los dos
+  nombres un sufijo derivado de la ruta de esa carpeta y es una instancia propia
+  ([ADR-0030](../adr/0030-instancia-aislada-con-datos-propios.md)).
 - El pipe es `\\.\pipe\Clicalo.{sidHash}.{sessionId}`.
 
 **Servidor:**

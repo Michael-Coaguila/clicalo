@@ -8,8 +8,8 @@ namespace Clicalo.Performance;
 /// creation of the process to the first frame of the panel: the app sets the event named by
 /// <c>CLICALO_FIRST_FRAME_EVENT</c> when the panel's content is rendered. Without key sending unless the measurement
 /// runs in continuous integration (<c>--no-input</c>). Disposing it ends the process and its children (Sentinel). A
-/// start waits until the instance a previous measurement ended is gone, and fails with what to do when another
-/// Clícalo of the session is running (<see cref="RunningInstance"/>).
+/// start with <c>--data</c> is an instance of its own (ADR-0030), so it runs beside the Clícalo the person uses; it
+/// only waits until an instance with the same data folder is gone (<see cref="RunningInstance"/>).
 /// </summary>
 internal sealed class AppLaunch : IDisposable
 {
@@ -35,7 +35,18 @@ internal sealed class AppLaunch : IDisposable
     /// <summary>From the creation of the process to the first frame.</summary>
     public TimeSpan FirstFrame { get; }
 
-    /// <summary>Starts <paramref name="variant"/> and waits for its first frame.</summary>
+    /// <summary>The data folder of this start (<c>--data</c>): a second start with it finds this instance.</summary>
+    public string DataDirectory => _data;
+
+    /// <summary>A new, empty data folder under <c>%TEMP%\clicalo-perf-data</c>.</summary>
+    public static string NewDataDirectory() =>
+        Path.Combine(
+            Path.GetTempPath(),
+            "clicalo-perf-data",
+            Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)
+        );
+
+    /// <summary>Starts <paramref name="variant"/> with a new data folder and waits for its first frame.</summary>
     /// <param name="variant">The publication.</param>
     /// <param name="sendInput">False adds <c>--no-input</c>: nothing can be injected.</param>
     /// <param name="extraArguments">More options (<c>--guardian after-first-frame</c>).</param>
@@ -43,17 +54,25 @@ internal sealed class AppLaunch : IDisposable
         AppVariant variant,
         bool sendInput,
         params string[] extraArguments
+    ) => Start(variant, NewDataDirectory(), sendInput, extraArguments);
+
+    /// <summary>Starts <paramref name="variant"/> with <paramref name="data"/> and waits for its first frame.</summary>
+    /// <param name="variant">The publication.</param>
+    /// <param name="data">The data folder (<see cref="NewDataDirectory"/>).</param>
+    /// <param name="sendInput">False adds <c>--no-input</c>: nothing can be injected.</param>
+    /// <param name="extraArguments">More options (<c>--guardian after-first-frame</c>).</param>
+    public static AppLaunch Start(
+        AppVariant variant,
+        string data,
+        bool sendInput,
+        params string[] extraArguments
     )
     {
         ArgumentNullException.ThrowIfNull(variant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(data);
 
-        // A start is a first start only when no other Clícalo of this session is alive (RunningInstance).
-        RunningInstance.WaitUntilGone(RunningInstance.GoneTimeout);
-        var data = Path.Combine(
-            Path.GetTempPath(),
-            "clicalo-perf-data",
-            Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)
-        );
+        // A start is a first start only when no Clícalo with the same data folder is alive (RunningInstance).
+        RunningInstance.WaitUntilGone(data, RunningInstance.GoneTimeout);
         var name =
             @"Local\Clicalo.Perf." + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         using var firstFrame = new EventWaitHandle(false, EventResetMode.ManualReset, name);
