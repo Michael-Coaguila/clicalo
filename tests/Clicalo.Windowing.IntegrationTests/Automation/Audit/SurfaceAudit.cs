@@ -73,11 +73,19 @@ internal static class SurfaceAudit
 
     /// <summary>
     /// Fails with every broken rule, one per line, and the tree. <paramref name="atLeast"/> is the number of touch
-    /// targets the state must show, so a view that did not build is not taken for a clean one.
+    /// targets the state must show, so a view that did not build is not taken for a clean one. With the gallery on
+    /// (<see cref="AuditGallery"/>), the state is saved first in <paramref name="group"/>, broken or not.
     /// </summary>
-    public static void ShouldPass(AuditHost host, string name, int atLeast, TouchInput input)
+    public static void ShouldPass(
+        AuditHost host,
+        string name,
+        int atLeast,
+        TouchInput input,
+        string group
+    )
     {
         ArgumentNullException.ThrowIfNull(host);
+        AuditGallery.Save(host, group, name);
         var tree = host.Snapshot(name);
         var targets = tree.DescendantsAndSelf().Count(static node => node.IsActionable);
         var violations = Verify(host, name, input);

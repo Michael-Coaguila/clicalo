@@ -702,7 +702,13 @@ public sealed class SystemSectionTests
                         ControlCenterWindow.DefaultWidth,
                         ControlCenterWindow.DefaultHeight
                     );
-                    SurfaceAudit.ShouldPass(host, "Sistema · " + tab, atLeast: 10, TouchInput.Wpf);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        "Sistema · " + tab,
+                        atLeast: 10,
+                        TouchInput.Wpf,
+                        "Centro de control"
+                    );
                 });
                 if (preview)
                 {

@@ -76,6 +76,8 @@ internal sealed class AuditHost : IDisposable
         theme.Attach(content);
         return new AuditHost(content, width ?? Own(window.Width), height ?? Own(window.Height))
         {
+            Theme = theme,
+            Window = window,
             _restore = () =>
             {
                 theme.Detach(content);
@@ -92,6 +94,12 @@ internal sealed class AuditHost : IDisposable
 
     /// <summary>The root of the hosted tree.</summary>
     public FrameworkElement Root => _frame;
+
+    /// <summary>The theme service of the hosted window, when it came from <see cref="OfWindow"/>.</summary>
+    public ThemeService? Theme { get; private init; }
+
+    /// <summary>The window whose content is hosted, when it came from <see cref="OfWindow"/>: the gallery paints its frame.</summary>
+    public Window? Window { get; private init; }
 
     /// <summary>Runs the pending layout and bindings, after the view model changed.</summary>
     public void LayOut()

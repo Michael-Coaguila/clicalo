@@ -116,6 +116,28 @@ Salida en formato MSBuild, última línea legible por Narrador y códigos de sal
 Clícalo no lee archivos de Macro Quick Access ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)):
 no hay opción `--migrate-v1` ni orden `anonymize-v1`.
 
+### Galería de superficies
+
+La auditoría sin pantalla (`tests/Clicalo.Windowing.IntegrationTests/Automation/Audit`) recorre las superficies
+reales en sus estados: el panel (Completa y Compacta, S, M y L, Ajustes rápidos, búsqueda, sugerencia, menú de
+toque largo, avisos, pánico, edición, modo prueba, Frecuentes), la burbuja y «Soltar todo», la Pestaña en los cuatro
+lados con su barra y sus ventanas laterales, el centro de control en sus seis secciones y estados (a 1300 × 760, a
+su tamaño por defecto y a 760 × 520) y los cinco pasos de la bienvenida. Con la variable `CLICALO_GALLERY` apuntando a
+una carpeta, cada estado dibujado como en el diseño (tema oscuro, texto al 100 %) se guarda además en PNG a escala
+1,75 (la pantalla del usuario: 2400 × 1600 al 175 %), en tema oscuro y en claro, con el fondo y el borde de su
+ventana, y `index.html` las muestra agrupadas y con nombre:
+
+```powershell
+$env:CLICALO_GALLERY = 'C:\dev\clicalo-qa\before'
+dotnet test tests/Clicalo.Windowing.IntegrationTests -c Debug -- --filter-namespace "Clicalo.Windowing.IntegrationTests.Automation.Audit"
+Remove-Item Env:CLICALO_GALLERY
+```
+
+Tarda unos tres minutos. Nada se muestra ni se captura de la pantalla: se renderiza la fuente de presentación oculta
+de cada vista. Un estado roto se guarda igual, antes de comprobar sus reglas. La carpeta acumula: `gallery.tsv`
+lista los casos y una ejecución nueva sobrescribe las imágenes con el mismo nombre. Sin la variable no se escribe
+nada, así que la galería no forma parte de `cl check`.
+
 ### Compilar mientras se itera
 
 ```powershell

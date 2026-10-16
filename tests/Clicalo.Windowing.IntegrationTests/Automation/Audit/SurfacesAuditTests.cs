@@ -199,7 +199,8 @@ public sealed class SurfacesAuditTests
                     host,
                     $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})",
                     atLeast: 8,
-                    TouchInput.PointerLayer
+                    TouchInput.PointerLayer,
+                    "Panel"
                 );
             }
             finally
@@ -251,7 +252,8 @@ public sealed class SurfacesAuditTests
                         host,
                         $"handle ({side}, {look})",
                         atLeast: 1,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
                 }
 
@@ -261,7 +263,8 @@ public sealed class SurfacesAuditTests
                         host,
                         $"bar ({side}, {size}, {look})",
                         atLeast: 10,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
 
                     // The other texts of the pill and of the lock: «Fijo» and «Abierta».
@@ -278,7 +281,8 @@ public sealed class SurfacesAuditTests
                         host,
                         $"bar fixed and open ({side}, {size}, {look})",
                         atLeast: 10,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
                 }
             }
@@ -327,7 +331,8 @@ public sealed class SurfacesAuditTests
                     host,
                     $"flyout {flyout} ({look})",
                     atLeast,
-                    TouchInput.PointerLayer
+                    TouchInput.PointerLayer,
+                    "Pestaña"
                 );
             }
             finally
@@ -389,7 +394,13 @@ public sealed class SurfacesAuditTests
             {
                 using (var host = AuditHost.OfWindow(coach, theme))
                 {
-                    SurfaceAudit.ShouldPass(host, "coach", atLeast: 2, TouchInput.PointerLayer);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        "coach",
+                        atLeast: 2,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
                 }
 
                 world.Panel.ApplyContext(
@@ -409,7 +420,8 @@ public sealed class SurfacesAuditTests
                         host,
                         "notices with undo",
                         atLeast: 2,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
                     world.Panel.ApplyContext(
                         new PanelBodyContext(
@@ -427,7 +439,8 @@ public sealed class SurfacesAuditTests
                         host,
                         "notices with cancel in test mode",
                         atLeast: 1,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
                 }
 
@@ -443,7 +456,8 @@ public sealed class SurfacesAuditTests
                         host,
                         "menu of a shortcut",
                         atLeast: 4,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
                 }
 
@@ -455,7 +469,8 @@ public sealed class SurfacesAuditTests
                         host,
                         "Quick settings beside the bar",
                         atLeast: 17,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Pestaña"
                     );
                 }
             }
@@ -503,7 +518,13 @@ public sealed class SurfacesAuditTests
             {
                 using (var host = AuditHost.OfWindow(bubble, theme))
                 {
-                    SurfaceAudit.ShouldPass(host, "bubble", atLeast: 1, TouchInput.PointerLayer);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        "bubble",
+                        atLeast: 1,
+                        TouchInput.PointerLayer,
+                        "Burbuja y Soltar todo"
+                    );
                 }
 
                 using (var host = AuditHost.OfWindow(pill, theme))
@@ -512,7 +533,8 @@ public sealed class SurfacesAuditTests
                         host,
                         "panic pill",
                         atLeast: 1,
-                        TouchInput.PointerLayer
+                        TouchInput.PointerLayer,
+                        "Burbuja y Soltar todo"
                     );
                 }
             }

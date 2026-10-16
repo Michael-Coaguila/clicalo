@@ -66,7 +66,8 @@ public sealed class WelcomeAuditTests
                             $"welcome step {step + 1} ({language}, {look})"
                         ),
                         atLeast: 3,
-                        TouchInput.Wpf
+                        TouchInput.Wpf,
+                        "Bienvenida"
                     );
                 }
             }

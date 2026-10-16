@@ -193,7 +193,8 @@ public sealed class ControlCenterAuditTests
                         $"{state} ({language}, {width:0} × {height:0}, {look})"
                     ),
                     atLeast: 12,
-                    TouchInput.Wpf
+                    TouchInput.Wpf,
+                    "Centro de control"
                 );
             }
         );
