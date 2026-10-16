@@ -54,6 +54,17 @@ MONITORINFOEXW
 MONITORINFOF_PRIMARY
 GetDpiForMonitor
 MONITOR_DPI_TYPE
+// Window chrome of the Control Center (D13): Snap layouts on the maximize button, the resize grip and the
+// maximized overhang.
+HTMAXBUTTON
+HTBOTTOMRIGHT
+HTCLIENT
+WM_NCLBUTTONDOWN
+WM_NCLBUTTONUP
+WM_NCMOUSEMOVE
+WM_NCMOUSELEAVE
+MonitorFromWindow
+MONITOR_FROM_FLAGS
 // ---- end of Windowing ----
 
 // ---- Pointer (PointerInputSource, PointerSetup) ----

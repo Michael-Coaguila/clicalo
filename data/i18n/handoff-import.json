@@ -1579,6 +1579,16 @@
       "notes": "Texto de ayuda y nombre accesible del filtro de búsqueda de «Elegir programa», con dictado (EDI-014). Texto nuevo del cierre de M6, pendiente de ratificar en §6.1 del catálogo.",
       "after": "programsLoading",
       "text": { "es": "Buscar programa…", "en": "Search program…" }
+    },
+    "winMaximize": {
+      "notes": "Nombre accesible del botón de maximizar de la barra de título del centro de control (D13: minimizar, maximizar con Snap y cerrar). Minimizar usa [min] y cerrar [close]. Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "close",
+      "text": { "es": "Maximizar", "en": "Maximize" }
+    },
+    "winRestore": {
+      "notes": "Nombre accesible del mismo botón con la ventana maximizada: la devuelve a su tamaño (D13). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "winMaximize",
+      "text": { "es": "Restaurar tamaño", "en": "Restore down" }
     }
   },
   "retired": {

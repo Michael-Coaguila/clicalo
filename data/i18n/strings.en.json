@@ -40,6 +40,8 @@
   "firstRun": "First run",
   "cc": "Control center",
   "close": "Close",
+  "winMaximize": "Maximize",
+  "winRestore": "Restore down",
   "navShort": "Shortcuts",
   "navTpl": "Templates",
   "navTouch": "Touch precision",

@@ -84,6 +84,13 @@ public sealed class SegmentedItem : ListBoxItem
     }
 
     /// <inheritdoc />
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+        SetValue(OptionChrome.IsTextContentProperty, newContent is string);
+    }
+
+    /// <inheritdoc />
     protected override AutomationPeer OnCreateAutomationPeer() => new WrapperPeer(this);
 
     private void Apply(OptionKind kind)

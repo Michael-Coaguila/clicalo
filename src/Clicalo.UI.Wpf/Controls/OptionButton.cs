@@ -152,6 +152,7 @@ public sealed class OptionButton : ToggleButton
     // Only a string content takes the text style of the option; a view's own content keeps its texts.
     private void ApplyTextStyle()
     {
+        SetValue(OptionChrome.IsTextContentProperty, Content is string);
         if (GetTemplateChild(OptionChrome.TextPart) is not ContentPresenter presenter)
         {
             return;

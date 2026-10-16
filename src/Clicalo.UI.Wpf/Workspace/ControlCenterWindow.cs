@@ -14,6 +14,7 @@ using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Windowing;
 using Clicalo.UI.Wpf.Workspace.About;
 using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -45,8 +46,7 @@ public sealed class ControlCenterWindow : Window
     private const double LeastWidth = ControlCenterPlacer.LeastWidth;
     private const double LeastHeight = ControlCenterPlacer.LeastHeight;
     private const double NarrowBelow = 1240;
-    private const double TitleHeight = 52;
-    private const double StatusHeight = 48;
+    private const double StatusHeight = ControlHeight.Small;
     private const double WideNav = 220;
     private const double NarrowNav = ControlHeight.Large + Space.S6;
 
@@ -64,7 +64,15 @@ public sealed class ControlCenterWindow : Window
     private readonly GeneralSectionView _general;
     private readonly TouchPrecisionView _touch;
     private readonly AboutSectionView? _about;
-    private readonly TouchButton _close;
+    private readonly TitleBar _titleBar = new();
+    private readonly SymbolIcon _grip = new()
+    {
+        Symbol = "south_east",
+        Size = IconBox.Small,
+        Width = ControlHeight.Small,
+        Height = ControlHeight.Small,
+        VerticalAlignment = VerticalAlignment.Bottom,
+    };
     private readonly TextBlock _statusText = Ui.Text(string.Empty, 13);
     private readonly LiveAnnouncer _statusAnnouncer;
     private string? _announced;
@@ -90,17 +98,6 @@ public sealed class ControlCenterWindow : Window
         WindowStyle = WindowStyle.SingleBorderWindow;
         UseLayoutRounding = true;
         ApplyLeastSize();
-        WindowChrome.SetWindowChrome(
-            this,
-            new WindowChrome
-            {
-                CaptionHeight = TitleHeight,
-                ResizeBorderThickness = new Thickness(6),
-                GlassFrameThickness = new Thickness(0),
-                CornerRadius = new CornerRadius(0),
-                UseAeroCaptionButtons = false,
-            }
-        );
         Ui.Ink(this, BackgroundProperty, ColorToken.Win);
         Ui.Ink(_root, Border.BackgroundProperty, ColorToken.Win);
         _shortcuts = new ShortcutsSectionView(viewModel.Shortcuts);
@@ -111,22 +108,20 @@ public sealed class ControlCenterWindow : Window
         _general = new GeneralSectionView(viewModel.General);
         _touch = new TouchPrecisionView(viewModel.TouchPrecision);
         _about = viewModel.About is { } about ? new AboutSectionView(about) : null;
-        _close = Ui.Button(Ui.Icon("close", 24), string.Empty, viewModel.Close, height: 40);
-        _close.Width = 44;
-        _close.Padding = new Thickness(0);
-        _close.BorderThickness = new Thickness(0);
-        _close.MouseEnter += (_, _) =>
-            Ui.Paint(_close, ColorToken.Danger, ColorToken.OnDanger, null);
-        _close.MouseLeave += (_, _) => Ui.Paint(_close, null, ColorToken.Text, null);
-        WindowChrome.SetIsHitTestVisibleInChrome(_close, true);
+        // D13: a real Windows window, with minimize, maximize (and Snap) and close, and edges that resize it.
+        _titleBar.Leading = TitleLeading();
+        _titleBar.Trailing = _languages;
+        _titleBar.ResizeGrip = _grip;
+        _titleBar.Attach(this, viewModel.Close);
+        Ui.Ink(_grip, SymbolIcon.ForegroundProperty, ColorToken.Muted);
 
         var layout = new Grid();
-        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(TitleHeight) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(
             new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
         );
         layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(StatusHeight) });
-        layout.Children.Add(TitleBar());
+        layout.Children.Add(_titleBar);
         var body = new Grid();
         body.ColumnDefinitions.Add(_navColumn);
         body.ColumnDefinitions.Add(
@@ -148,11 +143,16 @@ public sealed class ControlCenterWindow : Window
         body.Children.Add(_section);
         Grid.SetRow(body, 1);
         layout.Children.Add(body);
+        // The grip at the end of the status bar resizes the window from its corner (D13), for a finger.
+        var statusRow = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(_grip, Dock.Right);
+        statusRow.Children.Add(_grip);
+        statusRow.Children.Add(_status);
         var status = new Border
         {
-            Child = _status,
-            BorderThickness = new Thickness(0, 1, 0, 0),
-            Padding = new Thickness(16, 0, 8, 0),
+            Child = statusRow,
+            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
+            Padding = new Thickness(Space.S6, 0, 0, 0),
         };
         Ui.Ink(status, Border.BorderBrushProperty, ColorToken.Border);
         Ui.Ink(status, Border.BackgroundProperty, ColorToken.Side);
@@ -337,29 +337,14 @@ public sealed class ControlCenterWindow : Window
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Render();
 
-    private Border TitleBar()
+    private StackPanel TitleLeading()
     {
-        var bar = new DockPanel { LastChildFill = true };
-        var back = new Border
-        {
-            Child = bar,
-            Padding = new Thickness(16, 0, 8, 0),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-        };
-        Ui.Ink(back, Border.BackgroundProperty, ColorToken.Side);
-        Ui.Ink(back, Border.BorderBrushProperty, ColorToken.Border);
-        DockPanel.SetDock(_close, Dock.Right);
-        bar.Children.Add(_close);
-        DockPanel.SetDock(_languages, Dock.Right);
-        _languages.Margin = new Thickness(0, 0, 8, 0);
-        _languages.VerticalAlignment = VerticalAlignment.Center;
-        bar.Children.Add(_languages);
         var logo = Logo();
-        DockPanel.SetDock(logo, Dock.Left);
-        bar.Children.Add(logo);
         _crumb.VerticalAlignment = VerticalAlignment.Center;
-        bar.Children.Add(_crumb);
-        return back;
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(logo);
+        row.Children.Add(_crumb);
+        return row;
     }
 
     private StackPanel Logo()
@@ -416,8 +401,13 @@ public sealed class ControlCenterWindow : Window
     private void Render()
     {
         Title = _viewModel.Title;
-        AutomationProperties.SetName(_close, _viewModel.CloseName);
-        _close.ToolTip = _viewModel.CloseHelp;
+        _titleBar.SetNames(
+            _viewModel.MinimizeName,
+            _viewModel.MaximizeName,
+            _viewModel.RestoreName,
+            _viewModel.CloseName
+        );
+        _titleBar.Close.ToolTip = _viewModel.CloseHelp;
         var crumb = Ui.Row(
             6,
             Ui.Icon("chevron_right", 18, ColorToken.Muted),

@@ -39,6 +39,9 @@ public sealed class ControlCenterViewModel : ObservableObject
     private string _title = string.Empty;
     private string _closeName = string.Empty;
     private string _closeHelp = string.Empty;
+    private string _minimizeName = string.Empty;
+    private string _maximizeName = string.Empty;
+    private string _restoreName = string.Empty;
     private string _soon = string.Empty;
     private string _languageName = string.Empty;
     private string _appName = string.Empty;
@@ -198,6 +201,27 @@ public sealed class ControlCenterViewModel : ObservableObject
         private set => SetProperty(ref _closeHelp, value);
     }
 
+    /// <summary>[min], the name of the minimize button of the title bar (D13).</summary>
+    public string MinimizeName
+    {
+        get => _minimizeName;
+        private set => SetProperty(ref _minimizeName, value);
+    }
+
+    /// <summary>[winMaximize], the name of the maximize button while the window is not maximized (D13).</summary>
+    public string MaximizeName
+    {
+        get => _maximizeName;
+        private set => SetProperty(ref _maximizeName, value);
+    }
+
+    /// <summary>[winRestore], the name of the same button while the window is maximized (D13).</summary>
+    public string RestoreName
+    {
+        get => _restoreName;
+        private set => SetProperty(ref _restoreName, value);
+    }
+
     /// <summary>The marker of the sections that arrive in the next part.</summary>
     public string Soon
     {
@@ -312,6 +336,9 @@ public sealed class ControlCenterViewModel : ObservableObject
         Title = T(L.Cc);
         CloseName = T(L.Close);
         CloseHelp = T(L.CloseEsc);
+        MinimizeName = T(L.Min);
+        MaximizeName = T(L.WinMaximize);
+        RestoreName = T(L.WinRestore);
         Soon = T(L.CcSoon);
         LanguageName = T(L.Lang);
         var repeated = Shortcuts.RepeatedCount;

@@ -29,6 +29,18 @@ internal static class OptionChrome
     /// <summary>Name of the counter beside the icon of a rail item.</summary>
     public const string CountPart = "PART_Count";
 
+    /// <summary>
+    /// Identifies the attached flag that says the option's content is a plain text: only then does a chosen option
+    /// without icon show ✓ (a view's own content carries its own marks).
+    /// </summary>
+    public static readonly DependencyProperty IsTextContentProperty =
+        DependencyProperty.RegisterAttached(
+            "IsTextContent",
+            typeof(bool),
+            typeof(OptionChrome),
+            new FrameworkPropertyMetadata(false)
+        );
+
     /// <summary>The icon of a chosen option without its own icon.</summary>
     public const string CheckSymbol = "check";
 
@@ -285,6 +297,7 @@ internal static class OptionChrome
                 triggers.Add(Collapse(symbol, null, IconPart));
                 var bare = new MultiTrigger();
                 bare.Conditions.Add(new Condition(symbol, null));
+                bare.Conditions.Add(new Condition(IsTextContentProperty, true));
                 bare.Conditions.Add(new Condition(selected, true));
                 bare.Setters.Add(
                     new Setter(UIElement.VisibilityProperty, Visibility.Visible, CheckPart)

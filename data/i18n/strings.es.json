@@ -40,6 +40,8 @@
   "firstRun": "Primer arranque",
   "cc": "Centro de control",
   "close": "Cerrar",
+  "winMaximize": "Maximizar",
+  "winRestore": "Restaurar tamaño",
   "navShort": "Atajos",
   "navTpl": "Plantillas",
   "navTouch": "Precisión táctil",
