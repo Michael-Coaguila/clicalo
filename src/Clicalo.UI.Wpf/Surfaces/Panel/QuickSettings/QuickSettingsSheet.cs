@@ -43,9 +43,6 @@ public sealed class QuickSettingsSheet : Border
     /// <summary>The text of the options of Vista and Tema (prototype: 12 px); the sizes keep the 13 of the control.</summary>
     private const double SmallOptionPx = 12;
 
-    /// <summary>The sheet never gets lower than this to fit the work area: the rest scrolls inside.</summary>
-    private const double MinimumFitHeight = 120;
-
     private readonly QuickSettingsViewModel _viewModel;
     private readonly TouchButton _controlCenter;
     private readonly TextBlock _ccTitle = new()
@@ -72,6 +69,7 @@ public sealed class QuickSettingsSheet : Border
     )> _options = [];
     private readonly List<(ToggleSwitch Row, QuickSwitchViewModel Switch)> _switches = [];
     private readonly ScrollViewer _scroller;
+    private readonly bool _showsAlways;
     private double _screenLimit = double.PositiveInfinity;
     private uint? _contact;
     private bool _sliding;
@@ -208,17 +206,51 @@ public sealed class QuickSettingsSheet : Border
     }
 
     /// <summary>
-    /// Limits the sheet to <paramref name="room"/>, the height left for it down to the bottom of the work area, and never
-    /// above 62 % of the screen: the panel never leaves the screen, and what does not fit scrolls inside (AJR-001).
+    /// Whether the sheet shows whatever the view model says: in the window beside the bar of the Tab view (PES-009) the
+    /// window itself appears and goes away, and a sheet that collapsed first would shrink it to its border for a moment.
+    /// </summary>
+    public bool ShowsAlways
+    {
+        get => _showsAlways;
+        init
+        {
+            _showsAlways = value;
+            Refresh();
+        }
+    }
+
+    /// <summary>62 % of the height of the work area of its monitor (<see cref="ApplyScreenHeight"/>), in DIPs.</summary>
+    public double ScreenLimit => _screenLimit;
+
+    /// <summary>
+    /// The height of the whole content of the sheet, its padding and border included, once it was laid out; null before.
+    /// It is what the sheet takes when that is less than its limit.
+    /// </summary>
+    public double? NaturalHeight =>
+        _scroller.ExtentHeight > 0
+            ? _scroller.ExtentHeight
+                + Padding.Top
+                + Padding.Bottom
+                + BorderThickness.Top
+                + BorderThickness.Bottom
+            : null;
+
+    /// <summary>
+    /// Limits the sheet to <paramref name="room"/>, the height left for it down to the bottom of the work area
+    /// (<see cref="QuickSheetFit.Room"/>), and never above 62 % of the screen: the panel never leaves the screen, and
+    /// what does not fit scrolls inside (AJR-001).
     /// </summary>
     /// <param name="room">The free height for the sheet, in device-independent pixels.</param>
-    public void FitHeight(double room)
+    /// <returns>The height the sheet will have once laid out (<see cref="QuickSheetFit.Height"/>).</returns>
+    public double FitHeight(double room)
     {
-        var height = Math.Min(_screenLimit, Math.Max(MinimumFitHeight, room));
+        var height = QuickSheetFit.MaxHeight(room, _screenLimit);
         if (Math.Abs(MaxHeight - height) > 0.5)
         {
             MaxHeight = height;
         }
+
+        return QuickSheetFit.Height(MaxHeight, NaturalHeight);
     }
 
     /// <summary>
@@ -510,7 +542,8 @@ public sealed class QuickSettingsSheet : Border
         _applying = true;
         try
         {
-            Visibility = _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
+            Visibility =
+                _showsAlways || _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
             AutomationProperties.SetName(this, _viewModel.Name);
             _ccTitle.Text = _viewModel.ControlCenterTitle;
             _ccSubtitle.Text = _viewModel.ControlCenterSubtitle;

@@ -139,16 +139,18 @@ public sealed class PanelBodyView : StackPanel
             .Concat(Notices.TapTargets);
 
     /// <summary>
-    /// How much higher the grid is than one row of tiles, in device-independent pixels: the room it would give back to a
-    /// sheet above it (AJR-001). Zero while it shows one row or something else.
+    /// How much higher the grid is <b>on screen</b> than one row of tiles, in device-independent pixels: the room it would
+    /// give back to a sheet above it (AJR-001). Zero while it shows one row or something else. It is read from the
+    /// rendered grid, never from the shape the view model may have just changed, so it matches the rest of the layout
+    /// it is measured with.
     /// </summary>
     public double GridSlack
     {
         get
         {
             var shape = _viewModel.Shape;
-            return ShortcutGrid.IsVisible && shape.Rows > 1
-                ? shape.HeightPx - GridMetrics.HeightOf(1, shape.TileHeightPx, shape.GapPx)
+            return ShortcutGrid.IsVisible
+                ? Math.Max(0, ShortcutGrid.ActualHeight - (shape.TileHeightPx + shape.GapPx))
                 : 0;
         }
     }
@@ -161,8 +163,13 @@ public sealed class PanelBodyView : StackPanel
     /// </summary>
     /// <param name="window">The window that holds the body.</param>
     /// <param name="workAreaBottomDip">The bottom edge of the work area of its monitor, in the window's DIPs.</param>
+    /// <param name="shiftAbove">
+    /// How much what is above the grid grows (or shrinks, when negative) in the next layout pass, already decided in this
+    /// one: Quick settings opening, closing or taking a new height (AJR-001). The grid then gets the rows of the layout
+    /// that comes, not of the one on screen.
+    /// </param>
     /// <returns>The space measured, in device-independent pixels.</returns>
-    public double MeasureGridSpace(Window window, double workAreaBottomDip)
+    public double MeasureGridSpace(Window window, double workAreaBottomDip, double shiftAbove = 0)
     {
         ArgumentNullException.ThrowIfNull(window);
         if (!GridArea.IsVisible || PresentationSource.FromVisual(GridArea) is null)
@@ -181,6 +188,7 @@ public sealed class PanelBodyView : StackPanel
             - PanelSizes.Layout.PanelBottomMarginPx
             - top
             - below
+            - shiftAbove
             - _viewModel.Shape.GapPx;
         _viewModel.ApplyGridSpace(space);
         return space;

@@ -14,6 +14,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.Header;
+using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.Presentation.Panel.Search;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
@@ -102,6 +103,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private bool _closed;
     private bool _measuring;
 
+    /// <summary>The height Quick settings took on screen in the last layout pass, its margins included (AJR-001).</summary>
+    private double _sheetOnScreen;
+
     /// <summary>Creates the panel on the UI thread of <paramref name="registry"/> (the Surfaces role).</summary>
     /// <param name="viewModel">The body and the panic strip; its layout settings give sizes and width.</param>
     /// <param name="registry">The surfaces of the process.</param>
@@ -173,6 +177,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             _body.AttachLayers(layers);
             layers.EditMode.PropertyChanged += OnLayerChanged;
             layers.Menu.PropertyChanged += OnLayerChanged;
+            layers.QuickSettings.PropertyChanged += OnQuickSettingsChanged;
         }
 
         if (suggestion is not null)
@@ -438,6 +443,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         {
             _layers.EditMode.PropertyChanged -= OnLayerChanged;
             _layers.Menu.PropertyChanged -= OnLayerChanged;
+            _layers.QuickSettings.PropertyChanged -= OnQuickSettingsChanged;
         }
 
         _body.Detach();
@@ -722,11 +728,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             RefreshTargets();
             if (!_touching && IsVisible)
             {
-                _ = _body.MeasureGridSpace(
-                    this,
-                    WorkAreaBottom ?? SystemParameters.WorkArea.Bottom
-                );
-                FitQuickSheet();
+                // The sheet first, from this layout alone, then the grid with the height the sheet is about to take:
+                // both from the same pass, so the next one finds nothing to change (AJR-001, CUA-001).
+                var shift = FitQuickSheet();
+                _ = _body.MeasureGridSpace(this, WorkBottom(), shift);
             }
         }
         finally
@@ -737,29 +742,98 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
 
     /// <summary>
     /// AJR-001: Quick settings never push the panel off the screen. The sheet gets the height left down to the bottom
-    /// of the work area with the grid on one row; what does not fit scrolls inside the sheet. The grid then measures
-    /// the rows that fit under it (CUA-001), so the two never chase each other.
+    /// of the work area with the grid on one row; what does not fit scrolls inside the sheet. Everything is read from the
+    /// layout on screen, the rows of the grid included (<see cref="PanelBodyView.GridSlack"/>), so the room does not
+    /// depend on the rows the grid is about to get.
     /// </summary>
-    private void FitQuickSheet()
+    /// <returns>How much higher the sheet will be after the next layout pass, in DIPs: the grid measures with it.</returns>
+    private double FitQuickSheet()
     {
         if (
             _quickSheet is not { IsVisible: true } sheet
             || PresentationSource.FromVisual(sheet) is null
         )
         {
-            return;
+            return 0;
         }
 
         var top = sheet.TranslatePoint(new Point(0, 0), this).Y;
-        var below = ActualHeight - top - sheet.ActualHeight;
-        var room =
-            (WorkAreaBottom ?? SystemParameters.WorkArea.Bottom)
-            - PanelSizes.Layout.PanelBottomMarginPx
-            - Top
-            - top
-            - below
-            + _body.GridSlack;
-        sheet.FitHeight(room);
+        var rendered = sheet.ActualHeight;
+        _sheetOnScreen = rendered + sheet.Margin.Top + sheet.Margin.Bottom;
+        var below = ActualHeight - top - rendered;
+        var next = sheet.FitHeight(QuickSheetFit.Room(Available(top), below, _body.GridSlack));
+        return next - rendered;
+    }
+
+    /// <summary>
+    /// Quick settings opened or closed (AJR-001): before the layout pass that shows or hides the sheet, its height and
+    /// the rows of the grid are decided together from the layout on screen, so the panel takes its new height in one
+    /// step instead of growing past the work area first and shrinking after. A tap opens it while its finger is still
+    /// counted on the panel, so this does not wait for the fingers.
+    /// </summary>
+    private void OnQuickSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (
+            !string.Equals(
+                e.PropertyName,
+                nameof(QuickSettingsViewModel.IsOpen),
+                StringComparison.Ordinal
+            )
+            || _closed
+            || !IsVisible
+            || _quickSheet is not { } sheet
+            || _layers is null
+            || PresentationSource.FromVisual(this) is null
+        )
+        {
+            return;
+        }
+
+        var margins = sheet.Margin.Top + sheet.Margin.Bottom;
+        double shift;
+        if (_layers.QuickSettings.IsOpen)
+        {
+            // The sheet is not laid out yet: it will start where what follows it starts now.
+            var top = TopOfSheet() + sheet.Margin.Top;
+            var below = ActualHeight - top + sheet.Margin.Bottom;
+            shift =
+                sheet.FitHeight(QuickSheetFit.Room(Available(top), below, _body.GridSlack))
+                + margins;
+        }
+        else
+        {
+            // Collapsing it already set its size to zero: what it took on screen was kept by the last layout pass.
+            shift = -_sheetOnScreen;
+            _sheetOnScreen = 0;
+        }
+
+        _ = _body.MeasureGridSpace(this, WorkBottom(), shift);
+    }
+
+    /// <summary>From <paramref name="top"/> (in the window) down to the lowest edge the panel may reach, in DIPs.</summary>
+    private double Available(double top) =>
+        WorkBottom() - PanelSizes.Layout.PanelBottomMarginPx - Top - top;
+
+    private double WorkBottom() => WorkAreaBottom ?? SystemParameters.WorkArea.Bottom;
+
+    /// <summary>Where the sheet starts in the window while it is collapsed: under what is shown above it.</summary>
+    private double TopOfSheet()
+    {
+        var top = _root.TranslatePoint(new Point(0, 0), this).Y;
+        foreach (UIElement child in _root.Children)
+        {
+            if (ReferenceEquals(child, _quickSheet))
+            {
+                break;
+            }
+
+            if (child.Visibility != Visibility.Collapsed)
+            {
+                top += child.DesiredSize.Height;
+            }
+        }
+
+        return top;
     }
 
     /// <summary>
