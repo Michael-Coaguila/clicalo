@@ -285,6 +285,20 @@ internal sealed class ControlCenterTestWorld
             root.GetProperty("profileFeatured")
                 .EnumerateArray()
                 .Select(i => new IconRef(i.GetString()!))
+                .ToList(),
+            root.GetProperty("categories")
+                .EnumerateArray()
+                .Select(c => new IconCategory(
+                    c.GetProperty("id").GetString()!,
+                    new LocalizedText(
+                        c.GetProperty("label")
+                            .EnumerateObject()
+                            .Select(l => new KeyValuePair<LangCode, string>(
+                                new LangCode(l.Name),
+                                l.Value.GetString()!
+                            ))
+                    )
+                ))
                 .ToList()
         );
     }
