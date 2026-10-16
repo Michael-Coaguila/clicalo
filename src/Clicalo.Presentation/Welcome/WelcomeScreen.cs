@@ -33,6 +33,8 @@ namespace Clicalo.Presentation.Welcome;
 /// <param name="BackText">[back].</param>
 /// <param name="SkipText">[skip].</param>
 /// <param name="NextText">[next], or [finish] on the last step.</param>
+/// <param name="SizeTitle">[size], the label of the sizes of step 4.</param>
+/// <param name="ThemeTitle">[theme], the label of the themes of step 4.</param>
 public sealed record WelcomeScreen(
     int Step,
     int StepCount,
@@ -59,5 +61,7 @@ public sealed record WelcomeScreen(
     bool CanBack,
     string BackText,
     string SkipText,
-    string NextText
+    string NextText,
+    string SizeTitle = "",
+    string ThemeTitle = ""
 );

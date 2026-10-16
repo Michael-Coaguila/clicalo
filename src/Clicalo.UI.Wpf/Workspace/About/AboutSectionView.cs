@@ -7,27 +7,31 @@ using System.Windows.Media;
 using Clicalo.Presentation.ControlCenter.About;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
 using Clicalo.UI.Wpf.Workspace.Welcome;
 
 namespace Clicalo.UI.Wpf.Workspace.About;
 
 /// <summary>
-/// «Acerca de y contacto» (docs/05 §6, ACE-001 to ACE-005): title, the story card with the signature and the app card,
-/// then the feedback form and «Escríbeme directamente». From 1240 of window width (this view at least 1020 wide) the
-/// story and the app card sit in two columns (1.4 : 1), and so do the form and the direct contact; below it everything
-/// is one column. The view is rebuilt from <see cref="AboutViewModel.Screen"/>, except while only the message changes,
-/// so typing is never interrupted; the keyboard stays on the control with the same automation id.
+/// «Acerca de y contacto» (docs/05 §6, ACE-001 to ACE-005) in direction C (D12): the title, the story with the
+/// signature and the card of the app, then the feedback form and «Escríbeme directamente», all in the same outlined
+/// groups as «General y panel». From 1240 of window width (this view at least 1000 wide) the story and the app sit in
+/// two columns (1.4 : 1), and so do the form and the direct contact; below it everything is one column. The buttons
+/// follow the four variants: the app's links are secondary, sending is the primary. The view is rebuilt from
+/// <see cref="AboutViewModel.Screen"/>, except while only the message changes, so typing is never interrupted; the
+/// keyboard stays on the control with the same automation id.
 /// </summary>
 public sealed class AboutSectionView : Border
 {
-    private const double WideFrom = 1020;
+    /// <summary>The width of this view from which it has two columns (1240 of window width).</summary>
+    private const double WideFrom = 1000;
+
     private const string MessageId = "about.message";
 
     private readonly AboutViewModel _viewModel;
-    private readonly ThemedScrollViewer _scroll = new() { Padding = new Thickness(24) };
+    private readonly ThemedScrollViewer _scroll = new();
     private readonly TextInput _message;
-    private readonly Grid _messageBox = new();
     private AboutScreen? _shown;
     private bool _wide;
 
@@ -38,11 +42,17 @@ public sealed class AboutSectionView : Border
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         var screen = viewModel.Screen;
-        _message = new TextInput(screen.MessageName, screen.MessagePlaceholder, multiline: true);
-        _message.Box.MinHeight = 130;
-        _message.Box.Padding = new Thickness(14, 12, 56, 12);
+        _message = new TextInput(screen.MessageName, screen.MessagePlaceholder, multiline: true)
+        {
+            DictateName = screen.DictateName,
+        };
+
+        // ACE-002: an area of five lines.
+        _message.Box.MinHeight = (TextStyles.Body.LineHeight * 5) + (2 * Space.S3);
         _message.Changed += (_, _) => _viewModel.SetMessage(_message.Text);
-        _messageBox.Children.Add(_message);
+        _message.DictateRequested += (_, _) => _viewModel.Dictate();
+        AutomationProperties.SetAutomationId(_message.Box, MessageId);
+        AutomationProperties.SetAutomationId(_message.Dictate, "about.dictate");
         Child = _scroll;
         viewModel.PropertyChanged += OnChanged;
         SizeChanged += (_, e) =>
@@ -77,25 +87,25 @@ public sealed class AboutSectionView : Border
             Keyboard.FocusedElement is FrameworkElement element && IsAncestorOf(element)
                 ? AutomationProperties.GetAutomationId(element)
                 : null;
-        if (_messageBox.Parent is Panel parent)
+        if (_message.Parent is Panel parent)
         {
-            parent.Children.Remove(_messageBox);
+            parent.Children.Remove(_message);
         }
 
         // The column adds its gap to the margin of each child: the field is reused, so it starts from zero.
-        _messageBox.Margin = new Thickness(0);
-
+        _message.Margin = new Thickness(0);
         AutomationProperties.SetName(_message.Box, screen.MessageName);
+        _message.DictateName = screen.DictateName;
+        var (title, subtitle) = SettingsUi.NewHeader();
+        title.Text = screen.Title;
+        subtitle.Text = screen.Subtitle;
         var content = Ui.Column(
-            24,
-            Ui.Column(
-                4,
-                Ui.Text(screen.Title, 24, bold: true, wrap: true),
-                Ui.Text(screen.Subtitle, 14, ink: ColorToken.Muted, wrap: true)
-            ),
-            StoryCard(screen),
+            Space.S6,
+            SettingsUi.PageHeader(title, subtitle),
+            Split(Story(screen), AppCard(screen), 1.4, 1),
             Split(Feedback(screen), Direct(screen), 1, 1)
         );
+        content.Margin = new Thickness(Space.S6);
         _scroll.Content = content;
         if (
             !string.IsNullOrEmpty(focused)
@@ -129,89 +139,76 @@ public sealed class AboutSectionView : Border
         }
     }
 
-    private Border StoryCard(AboutScreen screen)
+    /// <summary>ACE-001: the story in two paragraphs and the signature.</summary>
+    private static Border Story(AboutScreen screen)
     {
         var signature = Ui.Row(
-            10,
-            BrandMark.Avatar(screen.CreatorInitials, 40, 14),
+            Space.S3,
+            BrandMark.Avatar(
+                screen.CreatorInitials,
+                ControlHeight.Small,
+                TextStyles.Get(TextStyleToken.Label).Size
+            ),
             Ui.Column(
                 0,
-                Ui.Text(screen.CreatorName, 15, bold: true),
-                Ui.Text(screen.CreatorRole, 12, ink: ColorToken.Muted)
+                SettingsUi.Styled(screen.CreatorName, TextStyleToken.Label),
+                SettingsUi.Styled(screen.CreatorRole, TextStyleToken.Caption, ColorToken.Muted)
             )
         );
         var story = Ui.Column(
-            12,
-            Paragraph(screen.Story1, 18, ColorToken.Text),
-            Paragraph(screen.Story2, 16, ColorToken.Muted),
+            Space.S3,
+            SettingsUi.Styled(screen.Story1, TextStyleToken.Body, lines: 0),
+            SettingsUi.Styled(screen.Story2, TextStyleToken.Body, ColorToken.Muted, lines: 0),
             signature
         );
-        return Ui.Card(
-            Split(story, AppCard(screen), 1.4, 1),
-            ColorToken.Card,
-            null,
-            16,
-            new Thickness(22)
-        );
+        return SettingsUi.Frame(story, screen.CreatorName);
     }
 
+    /// <summary>
+    /// ACE-001: the card of the app: the logo, the name and «v{version} · MIT · código abierto» in the interface font,
+    /// and its links as secondary buttons of the same width ([GitHub], [LinkedIn] while it has an address, [shareShort]).
+    /// </summary>
     private Border AppCard(AboutScreen screen)
     {
         var identity = Ui.Row(
-            12,
-            BrandMark.Mark(48),
+            Space.S3,
+            BrandMark.Mark(ControlHeight.Medium),
             Ui.Column(
-                2,
-                BrandMark.Word(screen.AppName, 18),
-                Ui.Text(screen.VersionLine, 12, ink: ColorToken.Muted, mono: true)
+                0,
+                BrandMark.Word(screen.AppName, TextStyles.Get(TextStyleToken.Title).Size),
+                SettingsUi.Styled(screen.VersionLine, TextStyleToken.Caption, ColorToken.Muted)
             )
         );
-        var gitHub = Ui.Button(
-            Ui.IconLabel("code", screen.GitHubText, 18, 14),
+        var gitHub = Link(
             screen.GitHubText,
-            () => _ = _viewModel.OpenRepositoryAsync(),
-            null,
-            ColorToken.Text,
-            ColorToken.Border
+            "code",
+            "about.github",
+            () => _ = _viewModel.OpenRepositoryAsync()
         );
-        AutomationProperties.SetAutomationId(gitHub, "about.github");
         TouchButton? linkedIn = null;
         if (screen.LinkedInText is { } linkedInText)
         {
             // ACE-001, D11: only while there is a real address.
-            linkedIn = Ui.Button(
-                Ui.IconLabel("work", linkedInText, 18, 14),
+            linkedIn = Link(
                 linkedInText,
-                () => _ = _viewModel.OpenLinkedInAsync(),
-                null,
-                ColorToken.Text,
-                ColorToken.Border
+                "work",
+                "about.linkedin",
+                () => _ = _viewModel.OpenLinkedInAsync()
             );
-            AutomationProperties.SetAutomationId(linkedIn, "about.linkedin");
         }
-        var share = Ui.Button(
-            Ui.IconLabel(
-                "volunteer_activism",
-                screen.ShareText,
-                18,
-                14,
-                iconInk: ColorToken.Accent
-            ),
-            screen.ShareText,
-            _viewModel.Share,
-            ColorToken.AccentWash
+
+        var share = Link(screen.ShareText, "volunteer_activism", "about.share", _viewModel.Share);
+        return SettingsUi.Frame(
+            Ui.Column(Space.S3, identity, gitHub, linkedIn, share),
+            screen.AppName
         );
-        share.BorderThickness = new Thickness(0);
-        AutomationProperties.SetAutomationId(share, "about.share");
-        var card = Ui.Card(
-            Ui.Column(10, identity, gitHub, linkedIn, share),
-            ColorToken.Side,
-            null,
-            14,
-            new Thickness(16)
-        );
-        card.VerticalAlignment = VerticalAlignment.Center;
-        return card;
+
+        static TouchButton Link(string text, string symbol, string id, Action click)
+        {
+            var button = SettingsUi.Button(text, ButtonVariant.Secondary, click, symbol);
+            AutomationProperties.SetAutomationId(button, id);
+            return button;
+        }
     }
 
     private StackPanel Feedback(AboutScreen screen)
@@ -219,47 +216,19 @@ public sealed class AboutSectionView : Border
         var kinds = new List<UIElement>();
         foreach (var option in screen.Kinds)
         {
-            var kind = Ui.Choice(
-                Ui.IconLabel(option.Icon, option.Label, 22, 14, iconInk: ColorToken.Accent),
+            var kind = SettingsUi.Option(
+                OptionKind.Tile,
+                option.Label,
                 option.Label,
                 option.Selected,
                 () => _viewModel.SetKind(option.Kind),
-                52,
-                12,
-                role: OptionRole.Option
+                option.Icon
             );
-            kind.Height = double.NaN;
-            kind.MinHeight = 52;
-            kind.Padding = new Thickness(12, 0, 12, 0);
+            kind.Height = ControlHeight.Medium;
             kind.HorizontalContentAlignment = HorizontalAlignment.Left;
             AutomationProperties.SetAutomationId(kind, "about.kind." + option.Kind);
             kinds.Add(kind);
         }
-
-        var dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.AccentInk),
-            screen.DictateName,
-            () =>
-            {
-                _ = Keyboard.Focus(_message.Box);
-                _viewModel.Dictate();
-            },
-            ColorToken.AccentWash
-        );
-        dictate.Width = 44;
-        dictate.Padding = new Thickness(0);
-        dictate.BorderThickness = new Thickness(0);
-        dictate.HorizontalAlignment = HorizontalAlignment.Right;
-        dictate.VerticalAlignment = VerticalAlignment.Top;
-        dictate.Margin = new Thickness(0, 8, 8, 0);
-        AutomationProperties.SetAutomationId(dictate, "about.dictate");
-        AutomationProperties.SetAutomationId(_message.Box, MessageId);
-        for (var i = _messageBox.Children.Count - 1; i > 0; i--)
-        {
-            _messageBox.Children.RemoveAt(i);
-        }
-
-        _messageBox.Children.Add(dictate);
 
         var log = Ui.SwitchRow(
             "description",
@@ -277,142 +246,105 @@ public sealed class AboutSectionView : Border
             _viewModel.ToggleSystem
         );
         AutomationProperties.SetAutomationId(system, "about.system");
-        var previewRow = new DockPanel { LastChildFill = true };
-        var caret = Ui.Icon(
-            screen.PreviewOpen ? "expand_less" : "expand_more",
-            18,
-            ColorToken.Muted
+        var preview = SettingsUi.Button(
+            screen.PreviewTitle,
+            ButtonVariant.Tertiary,
+            () => _ = _viewModel.TogglePreviewAsync(),
+            screen.PreviewOpen ? "expand_less" : "expand_more"
         );
-        DockPanel.SetDock(caret, Dock.Right);
-        previewRow.Children.Add(caret);
-        previewRow.Children.Add(
-            Ui.IconLabel("visibility", screen.PreviewTitle, 18, 13, iconInk: ColorToken.Accent)
-        );
-        var preview = new OptionButton
-        {
-            Content = previewRow,
-            IsChecked = screen.PreviewOpen,
-            Role = OptionRole.Expander,
-            MinHeight = 44,
-            Padding = new Thickness(12, 0, 12, 0),
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-        };
-        Ui.Paint(preview, null, ColorToken.Text, ColorToken.Border);
-        AutomationProperties.SetName(preview, screen.PreviewTitle);
+        preview.IsExpanded = screen.PreviewOpen;
+        preview.HorizontalAlignment = HorizontalAlignment.Left;
         AutomationProperties.SetAutomationId(preview, "about.preview");
-        preview.Click += (_, _) => _ = _viewModel.TogglePreviewAsync();
-        Border? previewText = null;
+        UIElement? previewText = null;
         if (screen.PreviewOpen)
         {
-            var text = Ui.Text(
+            // The exact log that would be sent (ACE-003): in its own scrolling box, never cut.
+            var text = SettingsUi.Styled(
                 screen.PreviewText,
-                11,
-                ink: ColorToken.Muted,
-                mono: true,
-                wrap: true
+                TextStyleToken.Caption,
+                ColorToken.Muted,
+                lines: 0
             );
-            text.LineHeight = 11 * 1.6;
             AutomationProperties.SetName(text, screen.PreviewText);
-            previewText = Ui.Card(
-                text,
-                ColorToken.Field,
-                ColorToken.Border,
-                10,
-                new Thickness(12, 10, 12, 10)
-            );
-            previewText.MaxHeight = 320;
+            var box = new Border
+            {
+                Child = new ThemedScrollViewer { Content = text },
+                CornerRadius = new CornerRadius(Radii.Medium),
+                Padding = new Thickness(Space.S3),
+                MaxHeight = ControlHeight.Large * 5,
+            };
+            box.SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+            Ui.Ink(box, BackgroundProperty, ColorToken.Field);
+            Ui.Ink(box, BorderBrushProperty, ColorToken.Line);
+            previewText = box;
         }
 
-        var send = Ui.Button(
-            Ui.IconLabel("send", screen.SendText, 22, 16, ink: ColorToken.OnAccent),
+        var send = SettingsUi.Button(
             screen.SendText,
+            ButtonVariant.Primary,
             () => _ = _viewModel.SendAsync(),
-            ColorToken.Accent,
-            ColorToken.OnAccent,
-            null,
-            52,
-            12
+            "send",
+            ControlSize.Medium
         );
-        send.BorderThickness = new Thickness(0);
         send.IsEnabled = !screen.Sending;
+        send.HorizontalAlignment = HorizontalAlignment.Left;
         AutomationProperties.SetAutomationId(send, "about.send");
         AutomationProperties.SetHelpText(send, screen.SendNote);
-        var note = Ui.Text(screen.SendNote, 12, ink: ColorToken.Muted, wrap: true);
-        note.TextAlignment = TextAlignment.Center;
         return Ui.Column(
-            12,
-            Ui.Caption(screen.FeedbackTitle),
-            Ui.Columns(2, 8, kinds),
-            _messageBox,
-            log,
-            system,
-            preview,
-            previewText,
-            send,
-            note
+            Space.S2,
+            new Overline(screen.FeedbackTitle),
+            SettingsUi.Frame(
+                Ui.Column(
+                    Space.S3,
+                    SettingsUi.Options(2, kinds),
+                    _message,
+                    Ui.Column(0, log, system),
+                    preview,
+                    previewText,
+                    send,
+                    SettingsUi.Styled(screen.SendNote, TextStyleToken.Caption, ColorToken.Muted, 0)
+                ),
+                screen.FeedbackTitle
+            )
         );
     }
 
     private StackPanel Direct(AboutScreen screen)
     {
         // ACE-005, D11: the email and its copy button only while there is a real address.
-        Border? emailBox = null;
+        DockPanel? email = null;
         if (screen.Email is { } address)
         {
-            var emailRow = new DockPanel { LastChildFill = true };
-            var mail = Ui.Icon("mail", 20, ColorToken.AccentInk);
-            mail.Margin = new Thickness(0, 0, 8, 0);
-            DockPanel.SetDock(mail, Dock.Left);
-            emailRow.Children.Add(mail);
-            var copy = Ui.Button(
-                Ui.Icon("content_copy", 18),
-                screen.CopyName,
-                _viewModel.CopyEmail,
-                ColorToken.CardHi
-            );
-            copy.Width = 44;
-            copy.Padding = new Thickness(0);
-            copy.BorderThickness = new Thickness(0);
+            var copy = SettingsUi.IconAction("content_copy", screen.CopyName, _viewModel.CopyEmail);
             AutomationProperties.SetAutomationId(copy, "about.copyEmail");
-            DockPanel.SetDock(copy, Dock.Right);
-            emailRow.Children.Add(copy);
-            emailRow.Children.Add(Ui.Text(address, 13, mono: true));
-            emailBox = Ui.Card(
-                emailRow,
-                ColorToken.Field,
-                ColorToken.Border,
-                10,
-                new Thickness(12, 6, 6, 6)
-            );
-            emailBox.MinHeight = 56;
+            email = SettingsUi.SettingRow("mail", address, null, copy);
         }
 
-        var card = Ui.Card(
-            Ui.Column(10, emailBox, Ui.Text(screen.Promise, 13, ink: ColorToken.Muted, wrap: true)),
-            ColorToken.Card,
-            null,
-            12,
-            new Thickness(16)
+        var promise = SettingsUi.Styled(
+            screen.Promise,
+            TextStyleToken.BodySmall,
+            ColorToken.Muted,
+            lines: 0
         );
         return Ui.Column(
-            10,
-            Ui.Caption(screen.DirectTitle),
-            card,
-            LinkRow(
+            Space.S2,
+            new Overline(screen.DirectTitle),
+            SettingsUi.Frame(Ui.Column(Space.S2, email, promise), screen.DirectTitle),
+            Link(
                 "help",
                 screen.GuideTitle,
                 screen.GuideDescription,
                 "about.guide",
                 () => _ = _viewModel.OpenGuideAsync()
             ),
-            LinkRow(
+            Link(
                 "bug_report",
                 screen.IssuesTitle,
                 screen.IssuesDescription,
                 "about.issues",
                 () => _ = _viewModel.OpenIssuesAsync()
             ),
-            LinkRow(
+            Link(
                 "code",
                 screen.ContributeTitle,
                 screen.ContributeDescription,
@@ -422,7 +354,8 @@ public sealed class AboutSectionView : Border
         );
     }
 
-    private static TouchButton LinkRow(
+    /// <summary>A place outside the app (the guide, the issues, the repository): a navigation row.</summary>
+    private static NavRow Link(
         string icon,
         string title,
         string description,
@@ -430,30 +363,17 @@ public sealed class AboutSectionView : Border
         Action click
     )
     {
-        var row = new DockPanel { LastChildFill = true };
-        var lead = Ui.Icon(icon, 22, ColorToken.AccentInk);
-        lead.Margin = new Thickness(0, 0, 12, 0);
-        DockPanel.SetDock(lead, Dock.Left);
-        row.Children.Add(lead);
-        var open = Ui.Icon("open_in_new", 20, ColorToken.Muted);
-        open.Margin = new Thickness(12, 0, 0, 0);
-        DockPanel.SetDock(open, Dock.Right);
-        row.Children.Add(open);
-        row.Children.Add(
-            Ui.Column(
-                2,
-                Ui.Text(title, 15, bold: true, wrap: true),
-                Ui.Text(description, 13, ink: ColorToken.Muted, wrap: true)
-            )
-        );
-        var button = Ui.Button(row, title, click, null, ColorToken.Text, ColorToken.Border, 44, 12);
-        button.Height = double.NaN;
-        button.MinHeight = 56;
-        button.Padding = new Thickness(16, 14, 16, 14);
-        button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        AutomationProperties.SetHelpText(button, description);
-        AutomationProperties.SetAutomationId(button, automationId);
-        return button;
+        var row = new NavRow
+        {
+            Content = title,
+            Caption = description,
+            Symbol = icon,
+        };
+        AutomationProperties.SetName(row, title);
+        AutomationProperties.SetHelpText(row, description);
+        AutomationProperties.SetAutomationId(row, automationId);
+        row.Click += (_, _) => click();
+        return row;
     }
 
     private Grid Split(UIElement first, UIElement second, double firstWeight, double secondWeight)
@@ -464,29 +384,35 @@ public sealed class AboutSectionView : Border
             grid.ColumnDefinitions.Add(
                 new ColumnDefinition { Width = new GridLength(firstWeight, GridUnitType.Star) }
             );
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
             grid.ColumnDefinitions.Add(
                 new ColumnDefinition { Width = new GridLength(secondWeight, GridUnitType.Star) }
             );
-            Grid.SetColumn(second, 2);
+            if (first is FrameworkElement left)
+            {
+                left.Margin = new Thickness(0, 0, Space.S4 / 2, 0);
+            }
+
+            if (second is FrameworkElement right)
+            {
+                right.Margin = new Thickness(Space.S4 / 2, 0, 0, 0);
+            }
+
+            Grid.SetColumn(second, 1);
         }
         else
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            Grid.SetRow(second, 2);
+            if (second is FrameworkElement below)
+            {
+                below.Margin = new Thickness(0, Space.S6, 0, 0);
+            }
+
+            Grid.SetRow(second, 1);
         }
 
         grid.Children.Add(first);
         grid.Children.Add(second);
         return grid;
-    }
-
-    private static TextBlock Paragraph(string text, double px, ColorToken ink)
-    {
-        var paragraph = Ui.Text(text, px, ink: ink, wrap: true);
-        paragraph.LineHeight = px * 1.55;
-        return paragraph;
     }
 }

@@ -5,16 +5,18 @@ using System.Windows.Controls;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
 namespace Clicalo.UI.Wpf.Workspace.SystemSection;
 
 /// <summary>
-/// «Sistema» (docs/05 §5, SIS-001): the title, then one card with the three tabs joined to their content. The active
-/// tab has the background of the content, a 3 px accent line under it, the filled icon and ▴; the others have the
-/// side background, a bottom border and ▾. It only draws <see cref="SystemSectionViewModel.Screen"/> and forwards
-/// taps; every target is at least 44 × 44 (REG-02) and every control has its name for UI Automation (REG-06). The
-/// tabs are a Tab control with three TabItems for UI Automation (ACC-001).
+/// «Sistema» (docs/05 §5, SIS-001) in direction C (D12): the title, the three tabs as the tab pattern of the mockup (a
+/// track on <c>side</c> whose tabs have the single look of «elegido»: wash, ring and filled icon, with their state in a
+/// second line) and, under it, the content of the tab in view, made of the same outlined groups as «General y panel».
+/// It only draws <see cref="SystemSectionViewModel.Screen"/> and forwards taps; every target is at least 44 × 44
+/// (REG-02) and every control has its name for UI Automation (REG-06). The tabs are a Tab control with three TabItems
+/// for UI Automation (ACC-001).
 /// </summary>
 public sealed class SystemSectionView : Border
 {
@@ -27,7 +29,8 @@ public sealed class SystemSectionView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Child = new ThemedScrollViewer { Content = _content, Padding = new Thickness(24) };
+        _content.Margin = new Thickness(Space.S6);
+        Child = new ThemedScrollViewer { Content = _content };
         viewModel.PropertyChanged += OnChanged;
         Render();
     }
@@ -52,110 +55,53 @@ public sealed class SystemSectionView : Border
     private void Render()
     {
         var screen = _viewModel.Screen;
-        var heading = Ui.Column(
-            4,
-            Ui.Text(screen.Title, 24, bold: true),
-            Ui.Text(screen.Subtitle, 14, ink: ColorToken.Muted, wrap: true)
-        );
-        var body = screen.Tab switch
+        var (title, subtitle) = SettingsUi.NewHeader();
+        title.Text = screen.Title;
+        subtitle.Text = screen.Subtitle;
+        UIElement body = screen.Tab switch
         {
             SystemTab.Backups => Backups(screen.Backups),
             SystemTab.Start => Start(screen.Start),
             _ => Updates(screen.Updates),
         };
-        var inner = new Border { Child = body, Padding = new Thickness(20) };
-        Ui.Ink(inner, BackgroundProperty, ColorToken.Win);
-        var card = Ui.Card(
-            Ui.Column(0, Tabs(screen), inner),
-            null,
-            ColorToken.Border,
-            16,
-            new Thickness(0)
+        _content.Content = Ui.Column(
+            Space.S6,
+            SettingsUi.PageHeader(title, subtitle),
+            Ui.Column(Space.S4, Tabs(screen), body)
         );
-        card.ClipToBounds = true;
-        _content.Content = Ui.Column(20, heading, card);
     }
 
-    private SystemTabStrip Tabs(SystemScreen screen)
+    /// <summary>
+    /// The tabs (SIS-001): a track of <see cref="ControlHeight.Large"/> tabs, each with its icon, its name and its state
+    /// in a second line («Nueva versión» in the warning ink).
+    /// </summary>
+    private Border Tabs(SystemScreen screen)
     {
         var strip = new SystemTabStrip();
         AutomationProperties.SetName(strip, screen.Title);
         AutomationProperties.SetAutomationId(strip, "system.tabs");
-        Ui.Ink(strip, Panel.BackgroundProperty, ColorToken.Side);
         foreach (var tab in screen.Tabs)
         {
-            var iconFill =
-                tab.Warn ? ColorToken.WarnWash
-                : tab.Selected ? ColorToken.Accent
-                : ColorToken.Card;
-            var iconInk =
-                tab.Warn ? ColorToken.Warn
-                : tab.Selected ? ColorToken.OnAccent
-                : ColorToken.Muted;
-            var icon = Ui.Card(
-                Ui.Icon(tab.Icon, 22, iconInk),
-                iconFill,
-                null,
-                11,
-                new Thickness(0)
-            );
-            icon.Width = 40;
-            icon.Height = 40;
             var texts = Ui.Column(
-                2,
-                Ui.Text(
-                    tab.Label,
-                    15,
-                    bold: true,
-                    ink: tab.Selected ? ColorToken.Text : ColorToken.Muted
-                ),
-                Ui.Text(tab.Status, 13, ink: tab.Warn ? ColorToken.Warn : ColorToken.Muted)
+                0,
+                SettingsUi.Styled(tab.Label, TextStyleToken.Label),
+                SettingsUi.Styled(
+                    tab.Status,
+                    TextStyleToken.Caption,
+                    tab.Warn ? ColorToken.WarnText : ColorToken.Muted
+                )
             );
-            var chevron = Ui.Icon(
-                tab.Selected ? "expand_less" : "expand_more",
-                20,
-                ColorToken.Muted
-            );
-            var row = new DockPanel { LastChildFill = true };
-            DockPanel.SetDock(icon, Dock.Left);
-            row.Children.Add(icon);
-            chevron.Margin = new Thickness(8, 0, 0, 0);
-            DockPanel.SetDock(chevron, Dock.Right);
-            row.Children.Add(chevron);
-            texts.Margin = new Thickness(12, 0, 0, 0);
-            texts.VerticalAlignment = VerticalAlignment.Center;
-            row.Children.Add(texts);
-            var bar = new Border
-            {
-                Height = 3,
-                CornerRadius = new CornerRadius(3, 3, 0, 0),
-                Margin = new Thickness(12, 0, 12, 0),
-                VerticalAlignment = VerticalAlignment.Bottom,
-            };
-            if (tab.Selected)
-            {
-                Ui.Ink(bar, BackgroundProperty, ColorToken.Accent);
-            }
-
-            var layers = new Grid();
-            layers.Children.Add(new Border { Child = row, Padding = new Thickness(16) });
-            layers.Children.Add(bar);
             var button = new SystemTabItem
             {
-                Content = layers,
+                Content = texts,
                 IsChecked = tab.Selected,
-                Padding = new Thickness(0),
-                BorderThickness = new Thickness(0, 0, 0, tab.Selected ? 0 : 1),
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                VerticalContentAlignment = VerticalAlignment.Stretch,
-                MinHeight = 72,
+                Height = ControlHeight.Large,
+                Margin = new Thickness(Space.S1 / 2),
+                Padding = new Thickness(Space.S3, 0, Space.S3, 0),
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                VerticalContentAlignment = VerticalAlignment.Center,
             };
-            Ui.Paint(
-                button,
-                tab.Selected ? ColorToken.Win : ColorToken.Side,
-                ColorToken.Text,
-                ColorToken.Border
-            );
+            button.SetValue(OptionButton.SymbolProperty, tab.Icon);
             AutomationProperties.SetName(button, tab.Label);
             AutomationProperties.SetItemStatus(button, tab.Status);
             AutomationProperties.SetAutomationId(button, "system.tab." + tab.Tab);
@@ -170,75 +116,113 @@ public sealed class SystemSectionView : Border
             strip.Children.Add(button);
         }
 
-        return strip;
+        var track = new Border
+        {
+            Child = strip,
+            CornerRadius = new CornerRadius(Radii.Medium),
+            Padding = new Thickness(Space.S1 / 2),
+        };
+        track.SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        Ui.Ink(track, BackgroundProperty, ColorToken.Side);
+        Ui.Ink(track, BorderBrushProperty, ColorToken.Border);
+        return track;
     }
+
+    // ---- Actualizaciones -----------------------------------------------------------------------------------------
 
     private StackPanel Updates(UpdatesModel model)
     {
         var card = model.Card;
-        var iconFill =
-            card.Warning ? ColorToken.DangerWash
-            : card.Hot ? ColorToken.WarnWash
-            : ColorToken.AccentWash;
-        var iconInk =
-            card.Warning ? ColorToken.DangerText
-            : card.Hot ? ColorToken.Warn
-            : ColorToken.Accent;
-        var icon = Ui.Card(Ui.Icon(card.Icon, 26, iconInk), iconFill, null, 12, new Thickness(0));
-        icon.Width = 48;
-        icon.Height = 48;
-        var title = Ui.Text(card.Title, 18, bold: true, wrap: true);
+        var (wash, ink) =
+            card.Warning ? (ColorToken.DangerWash, ColorToken.DangerText)
+            : card.Hot ? (ColorToken.WarnWash, ColorToken.WarnText)
+            : (ColorToken.AccentWash, ColorToken.AccentInk);
+        var title = SettingsUi.Styled(card.Title, TextStyleToken.Heading, lines: 2);
         AutomationProperties.SetLiveSetting(title, AutomationLiveSetting.Polite);
         var head = Ui.Row(
-            12,
-            icon,
-            Ui.Column(2, title, Ui.Text(card.Subtitle, 13, ink: ColorToken.Muted, wrap: true))
+            Space.S3,
+            StateIcon(card.Icon, wash, ink),
+            Ui.Column(
+                0,
+                title,
+                SettingsUi.Styled(card.Subtitle, TextStyleToken.BodySmall, ColorToken.Muted, 0)
+            )
         );
-        var button = Ui.Button(
-            Ui.Text(card.Button, 15, bold: true, ink: ColorToken.Text),
+        var button = SettingsUi.Button(
             card.Button,
-            _viewModel.UpdateAction,
-            card.Hot ? ColorToken.Accent : ColorToken.CardHi,
-            ColorToken.Text,
-            height: 48
+            card.Hot ? ButtonVariant.Primary : ButtonVariant.Secondary,
+            _viewModel.UpdateAction
         );
-        button.BorderThickness = new Thickness(0);
         button.IsEnabled = card.ButtonEnabled;
-        var cardColumn = Ui.Column(14, head, card.ShowBar ? Progress(card.Percent) : null, button);
-        var column = Ui.Column(
-            10,
-            Ui.Card(cardColumn, ColorToken.Card, null, 14, new Thickness(18))
+        button.HorizontalAlignment = HorizontalAlignment.Left;
+        var state = SettingsUi.Frame(
+            Ui.Column(Space.S4, head, card.ShowBar ? Progress(card.Percent) : null, button),
+            card.Title
         );
+
+        var rows = new List<UIElement>();
         for (var i = 0; i < model.Switches.Count; i++)
         {
             var index = i;
             var item = model.Switches[i];
-            column.Children.Add(
-                Spaced(
-                    Ui.SwitchRow(
-                        item.Icon,
-                        item.Label,
-                        item.Description,
-                        item.On,
-                        () => _viewModel.ToggleUpdateSwitch(index)
-                    )
+            rows.Add(
+                Ui.SwitchRow(
+                    item.Icon,
+                    item.Label,
+                    item.Description,
+                    item.On,
+                    () => _viewModel.ToggleUpdateSwitch(index)
                 )
             );
         }
 
-        column.Children.Add(Spaced(Channel(model)));
-        column.Children.Add(Spaced(Caption(model.WhatsNew)));
-        foreach (var notes in model.Notes)
+        var channels = new List<OptionButton>();
+        foreach (var option in model.Channels)
         {
-            column.Children.Add(Spaced(Notes(notes)));
+            channels.Add(
+                SettingsUi.Option(
+                    OptionKind.Segment,
+                    option.Label,
+                    model.Channel + ": " + option.Label,
+                    option.Selected,
+                    () => _viewModel.SetChannel(option.Channel)
+                )
+            );
         }
 
-        if (model.Rollback is { } rollback)
-        {
-            column.Children.Add(Spaced(Rollback(rollback)));
-        }
+        rows.Add(
+            SettingsUi.SettingRow(
+                "science",
+                model.Channel,
+                model.ChannelDescription,
+                SettingsUi.Track(model.Channel, channels)
+            )
+        );
+        // Ui.Column puts its gap only between the children it is built with: each list is complete before it.
+        List<UIElement?> news = [new Overline(model.WhatsNew), .. model.Notes.Select(Notes)];
+        return Ui.Column(
+            Space.S4,
+            state,
+            SettingsUi.Frame(Ui.Column(0, [.. rows]), model.Channel),
+            Ui.Column(Space.S2, [.. news]),
+            model.Rollback is { } rollback ? Rollback(rollback) : null
+        );
+    }
 
-        return column;
+    /// <summary>The square of 44 with the icon of a state: its wash and its ink say what kind of state it is.</summary>
+    private static Border StateIcon(string icon, ColorToken wash, ColorToken ink)
+    {
+        var box = Ui.Card(
+            Ui.Icon(icon, IconBox.Medium, ink),
+            wash,
+            null,
+            Radii.Small,
+            new Thickness(0)
+        );
+        box.Width = ControlHeight.Small;
+        box.Height = ControlHeight.Small;
+        box.VerticalAlignment = VerticalAlignment.Top;
+        return box;
     }
 
     private static Border Progress(int percent)
@@ -246,16 +230,16 @@ public sealed class SystemSectionView : Border
         var fill = new Border
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = new CornerRadius(Space.S1),
         };
         Ui.Ink(fill, BackgroundProperty, ColorToken.Accent);
         var track = new Border
         {
-            Height = 8,
-            CornerRadius = new CornerRadius(4),
+            Height = Space.S2,
+            CornerRadius = new CornerRadius(Space.S1),
             Child = fill,
         };
-        Ui.Ink(track, BackgroundProperty, ColorToken.CardHi);
+        Ui.Ink(track, BackgroundProperty, ColorToken.Line);
         track.SizeChanged += (_, e) =>
             fill.Width = e.NewSize.Width * Math.Clamp(percent, 0, 100) / 100.0;
         AutomationProperties.SetName(
@@ -265,441 +249,344 @@ public sealed class SystemSectionView : Border
         return track;
     }
 
-    private Border Channel(UpdatesModel model)
-    {
-        var options = Ui.Row(4);
-        foreach (var option in model.Channels)
-        {
-            var button = Ui.Choice(
-                Ui.Text(option.Label, 14, bold: true, ink: ColorToken.Text),
-                model.Channel + ": " + option.Label,
-                option.Selected,
-                () => _viewModel.SetChannel(option.Channel),
-                44,
-                10,
-                offFill: ColorToken.CardHi,
-                role: OptionRole.Option
-            );
-            if (option.Selected)
-            {
-                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
-            }
-            else
-            {
-                Ui.Paint(button, ColorToken.CardHi, ColorToken.Text, null);
-            }
-
-            button.BorderThickness = new Thickness(0);
-            options.Children.Add(button);
-        }
-
-        var icon = Ui.Icon("science", 22, ColorToken.AccentInk);
-        var texts = Ui.Column(
-            2,
-            Ui.Text(model.Channel, 15, bold: true),
-            Ui.Text(model.ChannelDescription, 13, ink: ColorToken.Muted, wrap: true)
-        );
-        var row = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(icon, Dock.Left);
-        row.Children.Add(icon);
-        DockPanel.SetDock(options, Dock.Right);
-        options.Margin = new Thickness(10, 0, 0, 0);
-        row.Children.Add(options);
-        texts.Margin = new Thickness(10, 0, 0, 0);
-        row.Children.Add(texts);
-        return Ui.Card(row, ColorToken.Card, null, 12, new Thickness(14, 12, 14, 12));
-    }
-
     private static Border Notes(NotesModel notes)
     {
         var top = Ui.Row(
-            8,
-            Ui.Text(notes.Version, 14, ink: ColorToken.AccentInk, mono: true),
-            notes.Date.Length == 0 ? null : Ui.Text(notes.Date, 12, ink: ColorToken.Muted),
+            Space.S2,
+            SettingsUi.Styled(notes.Version, TextStyleToken.Label),
+            notes.Date.Length == 0
+                ? null
+                : SettingsUi.Styled(notes.Date, TextStyleToken.Caption, ColorToken.Muted),
             notes.NewBadge.Length == 0
                 ? null
-                : Ui.Card(
-                    Ui.Text(notes.NewBadge, 11, bold: true, ink: ColorToken.WarnText),
-                    ColorToken.WarnWash,
-                    null,
-                    5,
-                    new Thickness(6, 2, 6, 2)
-                )
+                : new Badge
+                {
+                    Text = notes.NewBadge,
+                    Tone = BadgeTone.Warn,
+                    VerticalAlignment = VerticalAlignment.Center,
+                }
         );
-        var column = Ui.Column(8, top);
+        List<UIElement?> column = [top];
         foreach (var item in notes.Items)
         {
-            var check = Ui.Icon("check", 16, ColorToken.Muted);
+            var check = Ui.Icon("check", IconBox.Small, ColorToken.Muted);
             check.VerticalAlignment = VerticalAlignment.Top;
-            check.Margin = new Thickness(0, 2, 0, 0);
-            column.Children.Add(Ui.Row(8, check, Ui.Text(item, 14, wrap: true)));
+            column.Add(
+                Ui.Row(Space.S2, check, SettingsUi.Styled(item, TextStyleToken.BodySmall, lines: 0))
+            );
         }
 
-        return Ui.Card(column, null, ColorToken.Border, 12, new Thickness(16, 14, 16, 14));
+        return SettingsUi.Frame(Ui.Column(Space.S2, [.. column]), notes.Version);
     }
 
     private Border Rollback(RollbackModel rollback)
     {
-        var button = Ui.Button(
-            Ui.Text(
-                rollback.Button,
-                13,
-                bold: true,
-                ink: rollback.Armed ? ColorToken.OnWarn : ColorToken.Text
-            ),
-            rollback.Title,
+        var button = SettingsUi.Button(
+            rollback.Button,
+            ButtonVariant.Secondary,
             _viewModel.Rollback,
-            rollback.Armed ? ColorToken.Warn : ColorToken.Card,
-            rollback.Armed ? ColorToken.OnWarn : ColorToken.Text
+            name: rollback.Title
         );
-        button.BorderThickness = new Thickness(0);
-        return Row("history", rollback.Title, rollback.Description, button, ColorToken.Border);
+        button.IsActive = rollback.Armed;
+        return SettingsUi.Frame(
+            SettingsUi.SettingRow("history", rollback.Title, rollback.Description, button),
+            rollback.Title
+        );
     }
+
+    // ---- Copias de seguridad -------------------------------------------------------------------------------------
 
     private StackPanel Backups(BackupsModel model)
     {
-        var folder = Ui.Row(
-            6,
-            Ui.Icon("folder", 16, ColorToken.Muted),
-            Ui.Text(model.Folder, 12, ink: ColorToken.Muted, mono: true),
-            Ui.Text("· " + model.Format, 12, ink: ColorToken.Muted)
+        // The folder and the format in the interface font (only keys go in monospace); the path ends in «…».
+        var folderIcon = Ui.Icon("folder", IconBox.Small, ColorToken.Muted);
+        var folder = new DockPanel { LastChildFill = true };
+        folderIcon.Margin = new Thickness(0, 0, Space.S2, 0);
+        DockPanel.SetDock(folderIcon, Dock.Left);
+        folder.Children.Add(folderIcon);
+        var format = SettingsUi.Styled(
+            " · " + model.Format,
+            TextStyleToken.BodySmall,
+            ColorToken.Muted
         );
-        var column = Ui.Column(10, folder);
+        DockPanel.SetDock(format, Dock.Right);
+        var path = SettingsUi.Styled(model.Folder, TextStyleToken.BodySmall, ColorToken.Muted);
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(path);
+        line.Children.Add(format);
+        folder.Children.Add(line);
+
+        List<UIElement?> column = [folder];
         if (model.ImportCard is { CanMerge: true } import)
         {
-            column.Children.Add(Spaced(Import(import)));
+            column.Add(Import(import));
         }
 
-        var now = Ui.Button(
-            Ui.IconLabel(
-                "backup",
-                model.BackupNow,
-                20,
-                14,
-                ink: ColorToken.OnAccent,
-                iconInk: ColorToken.OnAccent
-            ),
+        var now = SettingsUi.Button(
             model.BackupNow,
+            ButtonVariant.Primary,
             _viewModel.BackupNow,
-            ColorToken.Accent,
-            ColorToken.OnAccent,
-            height: 48
+            "backup"
         );
-        now.BorderThickness = new Thickness(0);
-        var export = Ui.Button(
-            Ui.IconLabel("upload", model.Export, 18, 14, bold: false),
+        var export = SettingsUi.Button(
             model.Export,
+            ButtonVariant.Secondary,
             _viewModel.Export,
-            null,
-            stroke: ColorToken.Border,
-            height: 48
+            "upload"
         );
-        var importButton = Ui.Button(
-            Ui.IconLabel("download", model.Import, 18, 14, bold: false),
+        var importButton = SettingsUi.Button(
             model.Import,
+            ButtonVariant.Secondary,
             _viewModel.Import,
-            model.ImportCard is { CanMerge: true } ? ColorToken.AccentWash : null,
-            stroke: model.ImportCard is { CanMerge: true } ? ColorToken.Accent : ColorToken.Border,
-            height: 48
+            "download"
         );
+        importButton.IsActive = model.ImportCard is { CanMerge: true };
         foreach (var button in new[] { now, export, importButton })
         {
             button.IsEnabled = !model.Busy;
         }
 
-        var actions = new Grid();
-        actions.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-        );
-        actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        export.Margin = new Thickness(8, 0, 0, 0);
-        importButton.Margin = new Thickness(8, 0, 0, 0);
-        Grid.SetColumn(export, 1);
-        Grid.SetColumn(importButton, 2);
-        actions.Children.Add(now);
-        actions.Children.Add(export);
-        actions.Children.Add(importButton);
-        column.Children.Add(Spaced(actions));
+        column.Add(Ui.Wrap(Space.S2, [now, export, importButton]));
         var auto = model.Auto;
-        column.Children.Add(
-            Spaced(
+        column.Add(
+            SettingsUi.Frame(
                 Ui.SwitchRow(
                     auto.Icon,
                     auto.Label,
                     auto.Description,
                     auto.On,
                     _viewModel.ToggleAutoBackup
-                )
+                ),
+                auto.Label
             )
         );
-        column.Children.Add(Spaced(Caption(model.History)));
+        List<UIElement?> history = [new Overline(model.History)];
         if (model.ImportCard is { CanMerge: false } review)
         {
             // LOG-008: the review of the backup being restored opens next to the history it belongs to, in view.
             var card = Import(review);
             card.Loaded += (_, _) => card.BringIntoView();
-            column.Children.Add(Spaced(card));
+            history.Add(card);
         }
 
         if (model.Rows.IsEmpty)
         {
-            column.Children.Add(
-                Spaced(
-                    Ui.Card(
-                        Ui.Text(model.Empty, 14, ink: ColorToken.Muted),
-                        null,
-                        ColorToken.Border,
-                        12,
-                        new Thickness(14)
-                    )
+            history.Add(
+                SettingsUi.Frame(
+                    SettingsUi.Styled(model.Empty, TextStyleToken.Body, ColorToken.Muted, 0),
+                    model.History
                 )
             );
-            return column;
         }
-
-        var history = Ui.Column(0);
-        for (var i = 0; i < model.Rows.Count; i++)
+        else
         {
-            history.Children.Add(History(model.Rows[i], last: i == model.Rows.Count - 1));
+            var rows = Ui.Column(0);
+            for (var i = 0; i < model.Rows.Count; i++)
+            {
+                rows.Children.Add(History(model.Rows[i], last: i == model.Rows.Count - 1));
+            }
+
+            var list = SettingsUi.Frame(rows, model.History);
+            list.Padding = new Thickness(Space.S4, 0, Space.S4, 0);
+            history.Add(list);
         }
 
-        column.Children.Add(
-            Spaced(Ui.Card(history, null, ColorToken.Border, 12, new Thickness(0)))
-        );
-        return column;
+        column.Add(Ui.Column(Space.S2, [.. history]));
+        return Ui.Column(Space.S4, [.. column]);
     }
 
-    private Border Import(ImportCardModel import)
+    private Card Import(ImportCardModel import)
     {
-        var merge = Ui.Button(
-            Ui.Column(
-                2,
-                Centered(Ui.Text(import.Merge, 14, bold: true, ink: ColorToken.OnAccent)),
-                Centered(Ui.Text(import.MergeDescription, 11, ink: ColorToken.OnAccent))
-            ),
+        var merge = SettingsUi.Button(
             import.Merge,
+            ButtonVariant.Primary,
             _viewModel.ImportMerge,
-            ColorToken.Accent,
-            ColorToken.OnAccent,
-            height: 52
+            size: ControlSize.Medium
         );
-        merge.BorderThickness = new Thickness(0);
         AutomationProperties.SetHelpText(merge, import.MergeDescription);
-        var replace = Ui.Button(
-            Ui.Column(
-                2,
-                Centered(
-                    Ui.Text(
-                        import.Replace,
-                        14,
-                        bold: true,
-                        ink: import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Text
-                    )
-                ),
-                Centered(
-                    Ui.Text(
-                        import.ReplaceDescription,
-                        11,
-                        ink: import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Muted
-                    )
-                )
-            ),
+        var replace = SettingsUi.Button(
             import.Replace,
+            ButtonVariant.Danger,
             _viewModel.ImportReplace,
-            import.ReplaceArmed ? ColorToken.Warn : null,
-            import.ReplaceArmed ? ColorToken.OnWarn : ColorToken.Text,
-            import.ReplaceArmed ? null : ColorToken.Border,
-            height: 52
+            import.ReplaceArmed ? "warning" : null,
+            ControlSize.Medium
         );
+        replace.IsActive = import.ReplaceArmed;
         AutomationProperties.SetHelpText(replace, import.ReplaceDescription);
         AutomationProperties.SetAutomationId(merge, "system.import.merge");
         AutomationProperties.SetAutomationId(replace, "system.import.replace");
-        var choices = import.CanMerge ? Ui.Columns(2, 6, [merge, replace]) : (UIElement)replace;
+        UIElement choices = import.CanMerge
+            ? SettingsUi.Options(
+                2,
+                [Choice(merge, import.MergeDescription), Choice(replace, import.ReplaceDescription)]
+            )
+            : Choice(replace, import.ReplaceDescription);
         var column = Ui.Column(
-            8,
-            Ui.Text(import.Title, 14, bold: true),
+            Space.S3,
+            SettingsUi.Styled(import.Title, TextStyleToken.Label, lines: 0),
             import.Summary.Length == 0
                 ? null
-                : Ui.Text(import.Summary, 13, ink: ColorToken.Muted, wrap: true),
+                : SettingsUi.Styled(import.Summary, TextStyleToken.BodySmall, ColorToken.Muted, 0),
             import.Warning.Length == 0
                 ? null
                 : Ui.Row(
-                    6,
-                    Ui.Icon("warning", 16, ColorToken.WarnText),
-                    Ui.Text(import.Warning, 13, wrap: true)
+                    Space.S2,
+                    Ui.Icon("warning", IconBox.Small, ColorToken.WarnText),
+                    SettingsUi.Styled(import.Warning, TextStyleToken.BodySmall, lines: 0)
                 ),
             import.Review.IsEmpty ? null : Review(import),
             choices
         );
-        return Ui.Card(column, ColorToken.Card, ColorToken.Accent, 12, new Thickness(12));
+        var card = new Card { Content = column, Tone = CardTone.Accent };
+        AutomationProperties.SetName(card, import.Title);
+        return card;
+
+        static StackPanel Choice(TouchButton button, string description) =>
+            Ui.Column(
+                Space.S1,
+                button,
+                SettingsUi.Styled(description, TextStyleToken.Caption, ColorToken.Muted, 0)
+            );
     }
 
     /// <summary>
-    /// The Web, App and Macro shortcuts of the backup that the document does not have yet (LOG-008): one row of 48 or
+    /// The Web, App and Macro shortcuts of the backup that the document does not have yet (LOG-008): one row of 52 or
     /// more each, unticked by default, with what it opens or runs.
     /// </summary>
     private StackPanel Review(ImportCardModel import)
     {
         var note = Ui.Row(
-            6,
-            Ui.Icon("shield", 16, ColorToken.WarnText),
-            Ui.Text(import.ReviewNote, 13, wrap: true)
+            Space.S2,
+            Ui.Icon("shield", IconBox.Small, ColorToken.WarnText),
+            SettingsUi.Styled(import.ReviewNote, TextStyleToken.BodySmall, lines: 0)
         );
-        var rows = Ui.Column(6, note);
+        List<UIElement?> rows = [note];
         foreach (var row in import.Review)
         {
-            var box = Ui.Icon(
-                row.Checked ? "check_box" : "check_box_outline_blank",
-                22,
-                row.Checked ? ColorToken.Accent : ColorToken.Muted
-            );
             var texts = Ui.Column(
-                2,
-                Ui.Text(row.Name, 14, bold: true, wrap: true),
+                0,
+                SettingsUi.Styled(row.Name, TextStyleToken.Label),
                 row.Detail.Length == 0
                     ? null
-                    : Ui.Text(row.Detail, 12, ink: ColorToken.Muted, mono: true, wrap: true)
+                    : SettingsUi.Styled(row.Detail, TextStyleToken.Caption, ColorToken.Muted)
             );
-            var line = new DockPanel { LastChildFill = true };
-            DockPanel.SetDock(box, Dock.Left);
-            line.Children.Add(box);
-            var icon = Ui.Icon(row.Icon, 20, ColorToken.AccentInk);
-            icon.Margin = new Thickness(10, 0, 0, 0);
-            DockPanel.SetDock(icon, Dock.Left);
-            line.Children.Add(icon);
-            texts.Margin = new Thickness(10, 0, 0, 0);
-            texts.VerticalAlignment = VerticalAlignment.Center;
-            line.Children.Add(texts);
             var id = row.Id;
-            var toggle = Ui.Choice(
-                line,
-                row.Name,
-                row.Checked,
-                () => _viewModel.ToggleReview(id),
-                48,
-                10,
-                offFill: ColorToken.Field
+            var toggle = SettingsUi.Tall(
+                SettingsUi.Option(
+                    OptionKind.Tile,
+                    texts,
+                    row.Name,
+                    row.Checked,
+                    () => _viewModel.ToggleReview(id),
+                    row.Icon,
+                    OptionRole.Toggle
+                ),
+                ControlHeight.Medium
             );
-            toggle.Height = double.NaN;
-            toggle.MinHeight = 48;
-            toggle.Padding = new Thickness(12, 6, 12, 6);
-            toggle.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            toggle.HorizontalContentAlignment = HorizontalAlignment.Left;
             AutomationProperties.SetHelpText(toggle, row.Detail);
             AutomationProperties.SetAutomationId(toggle, "system.review." + row.Id.Value);
-            rows.Children.Add(Spaced(toggle, 6));
+            rows.Add(toggle);
         }
 
-        return rows;
+        return Ui.Column(Space.S2, [.. rows]);
     }
 
     private Border History(BackupRowModel row, bool last)
     {
-        var button = Ui.Button(
-            Ui.Text(
-                row.Button,
-                13,
-                bold: true,
-                ink: row.Armed ? ColorToken.OnWarn : ColorToken.Text
-            ),
-            row.Button + " " + row.Date,
+        var button = SettingsUi.Button(
+            row.Button,
+            ButtonVariant.Secondary,
             () => _viewModel.Restore(row.Id),
-            row.Armed ? ColorToken.Warn : null,
-            row.Armed ? ColorToken.OnWarn : ColorToken.Text,
-            row.Armed ? null : ColorToken.Border,
-            radius: 8
+            name: row.Button + " " + row.Date
         );
-        var icon = Ui.Icon("history", 20, ColorToken.Muted);
-        var texts = Ui.Column(
-            2,
-            Ui.Text(row.Date, 14, bold: true),
-            Ui.Text(row.Meta, 12, ink: ColorToken.Muted)
-        );
-        var line = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(icon, Dock.Left);
-        line.Children.Add(icon);
-        DockPanel.SetDock(button, Dock.Right);
-        button.Margin = new Thickness(12, 0, 0, 0);
-        line.Children.Add(button);
-        texts.Margin = new Thickness(12, 0, 0, 0);
-        line.Children.Add(texts);
+        button.IsActive = row.Armed;
+        var line = SettingsUi.SettingRow("history", row.Date, row.Meta, button);
         var border = new Border
         {
             Child = line,
-            Padding = new Thickness(14, 10, 14, 10),
-            BorderThickness = new Thickness(0, 0, 0, last ? 0 : 1),
+            BorderThickness = new Thickness(0, 0, 0, last ? 0 : Stroke.Line),
         };
         Ui.Ink(border, BorderBrushProperty, ColorToken.Border);
         return border;
     }
 
+    // ---- Inicio y estabilidad ------------------------------------------------------------------------------------
+
     private StackPanel Start(StartModel model)
     {
         var start = model.StartWithWindows;
-        var column = Ui.Column(
-            10,
-            Ui.SwitchRow(
-                start.Icon,
-                start.Label,
-                start.Description,
-                start.On,
-                _viewModel.ToggleStartWithWindows
-            )
-        );
         var admin = model.Admin;
         UIElement trailing;
         if (admin.CanReopen)
         {
-            var button = Ui.Button(
-                Ui.Text(admin.Button, 13, bold: true),
-                admin.Title,
+            trailing = SettingsUi.Button(
+                admin.Button,
+                ButtonVariant.Secondary,
                 _viewModel.ReopenAsAdmin,
-                ColorToken.CardHi
+                "admin_panel_settings",
+                name: admin.Title
             );
-            button.BorderThickness = new Thickness(0);
-            trailing = button;
         }
         else
         {
-            trailing = Ui.Icon("check_circle", 22, ColorToken.AccentInk);
+            trailing = Ui.Icon("check_circle", IconBox.Medium, ColorToken.Success);
         }
 
-        column.Children.Add(
-            Spaced(Row("admin_panel_settings", admin.Title, admin.Description, trailing, null))
+        var status = SettingsUi.Styled(model.CrashStatus, TextStyleToken.Label);
+        var rows = SettingsUi.Frame(
+            Ui.Column(
+                0,
+                Ui.SwitchRow(
+                    start.Icon,
+                    start.Label,
+                    start.Description,
+                    start.On,
+                    _viewModel.ToggleStartWithWindows
+                ),
+                Named(
+                    SettingsUi.SettingRow(
+                        "admin_panel_settings",
+                        admin.Title,
+                        admin.Description,
+                        trailing
+                    ),
+                    admin.Title
+                ),
+                Named(
+                    SettingsUi.SettingRow("healing", model.Crash, model.CrashDescription, status),
+                    model.Crash
+                )
+            ),
+            start.Label
         );
-        var status = Ui.Text(model.CrashStatus, 13, bold: true, ink: ColorToken.AccentInk);
-        column.Children.Add(
-            Spaced(Row("healing", model.Crash, model.CrashDescription, status, null))
-        );
-        column.Children.Add(Spaced(Uninstall(model.Uninstall)));
-        return column;
+        return Ui.Column(Space.S4, rows, Uninstall(model.Uninstall));
+    }
+
+    private static T Named<T>(T element, string name)
+        where T : FrameworkElement
+    {
+        AutomationProperties.SetName(element, name);
+        return element;
     }
 
     /// <summary>
     /// «Desinstalar Clícalo» (NFR-010, P6): the data is kept unless the switch is on, and the button takes two taps
-    /// (REG-04); armed, it is drawn in the warning color like the other destructive buttons.
+    /// (REG-04); it is a danger button, drawn pressed while armed.
     /// </summary>
     private Border Uninstall(UninstallModel model)
     {
-        var button = Ui.Button(
-            Ui.Text(
-                model.Button,
-                13,
-                bold: true,
-                ink: model.Armed ? ColorToken.OnWarn : ColorToken.Text
-            ),
-            model.Title,
+        var button = SettingsUi.Button(
+            model.Button,
+            ButtonVariant.Danger,
             _viewModel.Uninstall,
-            model.Armed ? ColorToken.Warn : ColorToken.CardHi,
-            model.Armed ? ColorToken.OnWarn : ColorToken.Text
+            model.Armed ? "warning" : "delete",
+            name: model.Title
         );
-        button.BorderThickness = new Thickness(0);
+        button.IsActive = model.Armed;
         button.IsEnabled = model.Available;
         AutomationProperties.SetAutomationId(button, "system.uninstall");
         AutomationProperties.SetHelpText(button, model.Description);
-        var head = Row("delete", model.Title, model.Description, button, null);
-        head.Padding = new Thickness(0);
-        head.Background = null;
         var wipe = Ui.SwitchRow(
             model.DeleteData.Icon,
             model.DeleteData.Label,
@@ -709,80 +596,13 @@ public sealed class SystemSectionView : Border
         );
         wipe.IsEnabled = model.Available;
         AutomationProperties.SetAutomationId(wipe, "system.uninstall.deleteData");
-        var card = Ui.Card(
-            Ui.Column(10, head, wipe),
-            null,
-            ColorToken.Border,
-            12,
-            new Thickness(14)
+        return SettingsUi.Frame(
+            Ui.Column(
+                0,
+                SettingsUi.SettingRow("delete", model.Title, model.Description, button),
+                wipe
+            ),
+            model.Title
         );
-        AutomationProperties.SetName(card, model.Title);
-        return card;
-    }
-
-    private static Border Row(
-        string icon,
-        string title,
-        string description,
-        UIElement trailing,
-        ColorToken? stroke
-    )
-    {
-        var symbol = Ui.Icon(icon, 22, ColorToken.AccentInk);
-        var texts = Ui.Column(
-            2,
-            Ui.Text(title, 15, bold: true, wrap: true),
-            Ui.Text(description, 13, ink: ColorToken.Muted, wrap: true)
-        );
-        var row = new DockPanel { LastChildFill = true, MinHeight = 44 };
-        DockPanel.SetDock(symbol, Dock.Left);
-        row.Children.Add(symbol);
-        if (trailing is FrameworkElement element)
-        {
-            element.Margin = new Thickness(12, 0, 0, 0);
-            element.VerticalAlignment = VerticalAlignment.Center;
-        }
-
-        DockPanel.SetDock(trailing, Dock.Right);
-        row.Children.Add(trailing);
-        texts.Margin = new Thickness(12, 0, 0, 0);
-        texts.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(texts);
-        var card = Ui.Card(
-            row,
-            stroke is null ? ColorToken.Card : null,
-            stroke,
-            12,
-            new Thickness(14)
-        );
-        AutomationProperties.SetName(card, title);
-        return card;
-    }
-
-    private static TextBlock Caption(string text)
-    {
-        var caption = Ui.Text(
-            text.ToUpper(System.Globalization.CultureInfo.CurrentCulture),
-            13,
-            bold: true,
-            ink: ColorToken.Muted
-        );
-        caption.Margin = new Thickness(0, 10, 0, 0);
-        return caption;
-    }
-
-    /// <summary>The gap of 10 of the content (children added after the column was built get no gap of their own).</summary>
-    private static T Spaced<T>(T element, double gap = 10)
-        where T : FrameworkElement
-    {
-        var margin = element.Margin;
-        element.Margin = new Thickness(margin.Left, margin.Top + gap, margin.Right, margin.Bottom);
-        return element;
-    }
-
-    private static TextBlock Centered(TextBlock text)
-    {
-        text.HorizontalAlignment = HorizontalAlignment.Center;
-        return text;
     }
 }
