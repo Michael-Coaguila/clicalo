@@ -2,19 +2,16 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shapes;
 using Clicalo.Presentation.Panel.EditMode;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
 
 /// <summary>
 /// The dashed «+ [add]» tile that ends the grid in edit mode (CUA-012) in direction C (D12): the size and radius of a
-/// tile with no fill and a dashed line in <c>line</c>, and the <c>add</c> icon over [add] in <c>accentInk</c>, the color
-/// of an action. Not in Frequents nor in the search. A tap opens the library for the profile in view. It only projects
+/// tile with no fill and the <see cref="DashedLine"/>, and the <c>add</c> icon in <c>accentInk</c>, the color of an
+/// action, over [add] in <c>text</c>, as «Biblioteca» in the Control Center. Not in Frequents nor in the search. A tap opens the library for the profile in view. It only projects
 /// <see cref="EditModeViewModel"/>.
 /// </summary>
 /// <remarks>
@@ -22,8 +19,6 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
 /// </remarks>
 public sealed class AddTileView : Grid
 {
-    private static readonly DoubleCollection Dash = Frozen();
-
     private readonly EditModeViewModel _editMode;
     private readonly TouchButton _button;
 
@@ -39,18 +34,8 @@ public sealed class AddTileView : Grid
     {
         ArgumentNullException.ThrowIfNull(editMode);
         _editMode = editMode;
-        var outline = new Rectangle
-        {
-            RadiusX = Radii.Medium,
-            RadiusY = Radii.Medium,
-            StrokeDashArray = Dash,
-            IsHitTestVisible = false,
-            SnapsToDevicePixels = true,
-        };
-        outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
-        outline.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
-
-        Label = new StyledText(string.Empty, name, ColorToken.AccentInk)
+        var outline = DashedLine.Outline();
+        Label = new StyledText(string.Empty, name)
         {
             MaxLines = 1,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -87,13 +72,6 @@ public sealed class AddTileView : Grid
 
     /// <summary>Stops following edit mode when the grid goes away.</summary>
     public void Detach() => _editMode.PropertyChanged -= OnChanged;
-
-    private static DoubleCollection Frozen()
-    {
-        var dash = new DoubleCollection([Stroke.Selected, Stroke.Selected]);
-        dash.Freeze();
-        return dash;
-    }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
 

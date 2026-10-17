@@ -1,11 +1,8 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shapes;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
@@ -20,8 +17,6 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// </summary>
 public sealed class EmptyStateView : Grid
 {
-    private static readonly DoubleCollection Dash = Frozen();
-
     private readonly EmptyStateViewModel _viewModel;
     private readonly SymbolIcon _icon = PanelChrome.Icon(null, IconBox.Large, ColorToken.Muted);
     private readonly StyledText _title = PanelChrome.Text(TextStyleToken.Heading);
@@ -56,17 +51,7 @@ public sealed class EmptyStateView : Grid
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         ClipToBounds = true;
-        var outline = new Rectangle
-        {
-            RadiusX = Radii.Medium,
-            RadiusY = Radii.Medium,
-            StrokeDashArray = Dash,
-            SnapsToDevicePixels = true,
-            IsHitTestVisible = false,
-        };
-        outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
-        outline.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
-        Children.Add(outline);
+        Children.Add(DashedLine.Outline());
 
         _icon.Margin = new Thickness(0, 0, 0, Space.S2);
         _title.TextAlignment = TextAlignment.Center;
@@ -92,13 +77,6 @@ public sealed class EmptyStateView : Grid
 
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
-
-    private static DoubleCollection Frozen()
-    {
-        var dash = new DoubleCollection([Stroke.Selected, Stroke.Selected]);
-        dash.Freeze();
-        return dash;
-    }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 

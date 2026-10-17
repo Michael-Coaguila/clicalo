@@ -39,8 +39,7 @@ internal static class ControlChrome
     );
 
     /// <summary>The dash of the rest line of a disabled control, in units of its thickness.</summary>
-    public static DoubleCollection DisabledDash { get; } =
-        Frozen([Stroke.Selected, Stroke.Selected]);
+    public static DoubleCollection DisabledDash => DashedLine.Dash;
 
     /// <summary>Reads the corner radius of <paramref name="element"/>.</summary>
     public static double GetRadius(DependencyObject element) =>
@@ -116,13 +115,6 @@ internal static class ControlChrome
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, RingPart),
             Templates.Brush(TextElement.ForegroundProperty, ColorToken.Muted, ContentPart),
         ];
-
-    private static DoubleCollection Frozen(double[] values)
-    {
-        var collection = new DoubleCollection(values);
-        collection.Freeze();
-        return collection;
-    }
 
     /// <summary>Converts a radius in device-independent pixels into a uniform <see cref="CornerRadius"/>.</summary>
     private sealed class CornerConverter : IValueConverter

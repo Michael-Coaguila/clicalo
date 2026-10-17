@@ -5,13 +5,11 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
@@ -22,20 +20,20 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// <see cref="ControlHeight.Large"/> per profile (its icon over its name with «…»), <see cref="Space.S2"/> apart in as
 /// many columns as fit; the profile in view has the single look of «elegido» and the one of the app in front a dot of
 /// <see cref="Space.S2"/> in its corner, which the legend explains. Then «Crear para {app}» when it applies and «+ Más»
-/// in a dashed slot. Opened from the title of the header it starts with ★ Frequents (SEL-006). It scrolls with the
+/// in the dashed slot of every surface (<see cref="DashedLine"/>, its icon over its name as «Biblioteca» and the dashed
+/// tile of edit mode). Opened from the title of the header it starts with ★ Frequents (SEL-006). It scrolls with the
 /// designed scroll (<see cref="ThemedScrollViewer"/>): a finger that moves past the cancel distance scrolls it and
 /// chooses nothing (TAC-004, <see cref="Track"/>), and a card scrolled out of view is not a target. It only projects
 /// <see cref="PickerGridViewModel"/>.
 /// </summary>
 public sealed class PickerGridView : Border
 {
-    private static readonly DoubleCollection Dash = Frozen();
-
     private readonly PickerGridViewModel _viewModel;
     private readonly bool _compact;
     private readonly UniformGrid _grid = new() { Margin = new Thickness(-Space.S1) };
     private readonly TouchButton _suggestion;
     private readonly TouchButton _more;
+    private readonly StyledText _moreLabel = Label(string.Empty);
     private readonly Grid _moreSlot = new() { Margin = new Thickness(Space.S1) };
     private readonly OptionButton _frequents;
     private readonly ThemedScrollViewer _scroller;
@@ -75,27 +73,21 @@ public sealed class PickerGridView : Border
         };
         _suggestion.Click += (_, _) => _viewModel.CreateSuggested();
 
-        var outline = new Rectangle
-        {
-            RadiusX = Radii.Medium,
-            RadiusY = Radii.Medium,
-            StrokeDashArray = Dash,
-            SnapsToDevicePixels = true,
-            IsHitTestVisible = false,
-        };
-        outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
-        outline.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
+        _moreLabel.Margin = new Thickness(0, Space.S1, 0, 0);
+        var moreContent = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        moreContent.Children.Add(PanelChrome.Icon("add", IconBox.Medium, ColorToken.AccentInk));
+        moreContent.Children.Add(_moreLabel);
         _more = new TouchButton
         {
             Variant = ButtonVariant.Tertiary,
-            Symbol = "add",
+            Content = moreContent,
             Size = ControlSize.Large,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Focusable = false,
             IsTabStop = false,
         };
         _more.Click += (_, _) => _viewModel.More();
-        _moreSlot.Children.Add(outline);
+        _moreSlot.Children.Add(DashedLine.Outline());
         _moreSlot.Children.Add(_more);
 
         // SEL-006: ★ Frequents, first in the grid while the selector row is not there to offer it.
@@ -262,13 +254,6 @@ public sealed class PickerGridView : Border
             && view.Contains(bounds.Center)
         );
 
-    private static DoubleCollection Frozen()
-    {
-        var dash = new DoubleCollection([Stroke.Selected, Stroke.Selected]);
-        dash.Freeze();
-        return dash;
-    }
-
     private static OptionButton Option(string? symbol) =>
         new()
         {
@@ -319,7 +304,7 @@ public sealed class PickerGridView : Border
         Visibility = Shown ? Visibility.Visible : Visibility.Collapsed;
         _suggestion.Content = _viewModel.SuggestionName;
         AutomationProperties.SetName(_suggestion, _viewModel.SuggestionName);
-        _more.Content = _viewModel.MoreName;
+        _moreLabel.Text = _viewModel.MoreName;
         AutomationProperties.SetName(_more, _viewModel.MoreName);
         _legend.Text = _viewModel.Legend;
 

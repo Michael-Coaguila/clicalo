@@ -1,8 +1,6 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shapes;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -127,24 +125,15 @@ internal static class GridTiles
     }
 
     /// <summary>
-    /// A dashed line of the control limit around <paramref name="content"/>, with the radius of a tile. The button
-    /// centers its content, so the line takes the height of the button itself, never the height of what it holds.
+    /// The <see cref="DashedLine"/> of every surface around <paramref name="content"/>, with the radius of a tile. The
+    /// button centers its content, so the line takes the height of the button itself, never the height of what it holds.
     /// </summary>
     /// <param name="content">What goes inside.</param>
     /// <param name="height">The height of the button that holds it.</param>
     public static Grid Dashed(UIElement content, double height)
     {
-        var frame = new Rectangle
-        {
-            RadiusX = Radii.Medium,
-            RadiusY = Radii.Medium,
-            StrokeThickness = Stroke.Line,
-            StrokeDashArray = new DoubleCollection { Space.S1, Space.S1 },
-            IsHitTestVisible = false,
-        };
-        Ui.Ink(frame, Shape.StrokeProperty, ColorToken.Line);
         var layers = new Grid { Height = height };
-        layers.Children.Add(frame);
+        layers.Children.Add(DashedLine.Outline());
         layers.Children.Add(content);
         return layers;
     }
