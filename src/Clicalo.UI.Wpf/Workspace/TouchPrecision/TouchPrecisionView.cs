@@ -128,10 +128,20 @@ public sealed class TouchPrecisionView : ContentControl
         AutomationProperties.SetLiveSetting(_message, AutomationLiveSetting.Polite);
         // Two lines are kept for the message: the counters and the button never move under the finger.
         _message.MinHeight = TextStyles.Get(TextStyleToken.BodySmall).LineHeight * 2;
-        var counters = SettingsUi.Options(
-            2,
-            [Counter(_registered, _registeredLabel), Counter(_ignored, _ignoredLabel)]
+        // The counters share the columns of the targets above them (the same gap of 24), so their edges line up.
+        var counters = new Grid();
+        counters.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
         );
+        counters.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Space.S6) });
+        counters.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
+        var registered = Counter(_registered, _registeredLabel);
+        var ignored = Counter(_ignored, _ignoredLabel);
+        Grid.SetColumn(ignored, 2);
+        counters.Children.Add(registered);
+        counters.Children.Add(ignored);
         var column = new DockPanel { LastChildFill = true };
         foreach (var part in new UIElement[] { _caption, counters, _message, _reset })
         {
@@ -373,14 +383,34 @@ public sealed class TouchPrecisionView : ContentControl
                 SettingsUi.Styled(preset.Label, TextStyleToken.Label),
                 description
             );
+
+            // The icon goes with the name and the first line of the description, as in a list row, not with the
+            // middle of the two lines kept for it: chosen, it is filled in AccentInk (the single look of «elegido»).
+            var icon = Ui.Icon(
+                PresetIcon(preset.Id),
+                IconBox.Small,
+                preset.Selected ? ColorToken.AccentInk : null
+            );
+            icon.IsFilled = preset.Selected;
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            var iconSlot = new Border
+            {
+                Child = icon,
+                Height = TextStyles.Label.LineHeight + TextStyles.Caption.LineHeight,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 0, Space.S2, 0),
+            };
+            var content = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(iconSlot, Dock.Left);
+            content.Children.Add(iconSlot);
+            content.Children.Add(texts);
             var card = SettingsUi.Tall(
                 SettingsUi.Option(
                     OptionKind.Tile,
-                    texts,
+                    content,
                     preset.Label,
                     preset.Selected,
-                    () => _viewModel.ChoosePreset(preset.Id),
-                    PresetIcon(preset.Id)
+                    () => _viewModel.ChoosePreset(preset.Id)
                 )
             );
             card.HorizontalContentAlignment = HorizontalAlignment.Left;
