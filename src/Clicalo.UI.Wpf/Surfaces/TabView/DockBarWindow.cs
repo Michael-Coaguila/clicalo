@@ -171,8 +171,12 @@ public sealed class DockBarWindow : TouchSurface
             Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        // The arrows of a pager are secondary, as in the panel (PagerView): one button for one role (D12), and a
+        // disabled arrow (dashed) never looks more present than the enabled one beside it.
         _previous = IconTool(_vertical ? "keyboard_arrow_up" : "chevron_left", viewModel.Previous);
         _next = IconTool(_vertical ? "keyboard_arrow_down" : "chevron_right", viewModel.Next);
+        _previous.Variant = ButtonVariant.Secondary;
+        _next.Variant = ButtonVariant.Secondary;
         _pageLabel = new StyledText(string.Empty, TextStyleToken.LabelSmall, ColorToken.Muted)
         {
             HorizontalAlignment = HorizontalAlignment.Center,
