@@ -174,7 +174,7 @@ internal static class SettingsUi
 
     /// <summary>
     /// A theme option (GEN-003, BIE-008): a tile of 44 with the <see cref="ThemeSwatch.Row"/> of every surface (the
-    /// swatch, the name in one line and ✓ at the end while chosen), as in the quick settings of the mockup.
+    /// swatch, filled with ✓ while chosen, and the name in one line), as in the quick settings of the mockup.
     /// </summary>
     public static OptionButton ThemeOption(
         ThemeChoice theme,

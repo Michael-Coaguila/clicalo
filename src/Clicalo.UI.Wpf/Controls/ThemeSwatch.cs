@@ -10,14 +10,17 @@ namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
 /// The content of a theme option in direction C (D12), the same in Ajustes rápidos of the panel and of the Tab view,
-/// «General y panel» and the welcome (GEN-003, BIE-008, AJR-001): the swatch of the theme, its name in one line with «…»
-/// and ✓ at the end while chosen, left aligned, as the quick settings of the mockup.
+/// «General y panel» and the welcome (GEN-003, BIE-008, AJR-001): the swatch of the theme and its name in one line, left
+/// aligned, as the quick settings of the mockup. The swatch is the icon of the option, so «elegido» fills it: the chosen
+/// theme shows an <c>accent</c> disc with ✓ in <c>onAccent</c> in its place (the theme in force is the one on screen, so
+/// its preview says nothing new), as the knob of a switch that is on. No room is kept at the end for a ✓, so the name
+/// gets the whole width.
 /// </summary>
 public static class ThemeSwatch
 {
     /// <summary>
-    /// The row that goes inside a <see cref="OptionKind.Tile"/> option stretched to its width: swatch, name and the ✓
-    /// of «elegido» at the end.
+    /// The row that goes inside a <see cref="OptionKind.Tile"/> option stretched to its width: the swatch, or the filled ✓
+    /// of «elegido», and the name.
     /// </summary>
     /// <param name="theme">The theme.</param>
     /// <param name="label">Its visible name.</param>
@@ -26,26 +29,10 @@ public static class ThemeSwatch
     public static DockPanel Row(ThemeChoice theme, string label, bool selected)
     {
         var row = new DockPanel { LastChildFill = true };
-        var swatch = For(theme);
-        swatch.Margin = new Thickness(0, 0, Space.S2, 0);
-        DockPanel.SetDock(swatch, Dock.Left);
-        row.Children.Add(swatch);
-        if (selected)
-        {
-            var check = new SymbolIcon
-            {
-                Symbol = "check",
-                Size = IconBox.Small,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(Space.S2, 0, 0, 0),
-            };
-            check.SetResourceReference(
-                SymbolIcon.ForegroundProperty,
-                ThemeBrushKey.For(ColorToken.AccentInk)
-            );
-            DockPanel.SetDock(check, Dock.Right);
-            row.Children.Add(check);
-        }
+        FrameworkElement mark = selected ? Chosen() : For(theme);
+        mark.Margin = new Thickness(0, 0, Space.S2, 0);
+        DockPanel.SetDock(mark, Dock.Left);
+        row.Children.Add(mark);
 
         row.Children.Add(
             new StyledText(label, TextStyleToken.Label)
@@ -58,15 +45,15 @@ public static class ThemeSwatch
     }
 
     /// <summary>
-    /// The width <paramref name="row"/> (a <see cref="Row"/>) needs to show its name whole: the swatch, the name in its
-    /// own font and the room of the ✓, which it keeps whether chosen or not, so choosing a theme never changes the fit.
+    /// The width <paramref name="row"/> (a <see cref="Row"/>) needs to show its name whole: the swatch and the name in its
+    /// own font. Chosen or not, it is the same, so choosing a theme never changes the fit.
     /// </summary>
     /// <param name="row">The row of a theme option, laid out in its option.</param>
     /// <returns>The width, in device-independent pixels.</returns>
     public static double WholeWidth(DockPanel row)
     {
         ArgumentNullException.ThrowIfNull(row);
-        var width = IconBox.Small + Space.S2 + Space.S2 + IconBox.Small;
+        var width = IconBox.Small + Space.S2;
         foreach (var child in row.Children)
         {
             if (child is StyledText label)
@@ -90,6 +77,33 @@ public static class ThemeSwatch
         }
 
         return width;
+    }
+
+    /// <summary>The swatch of the chosen theme: an <c>accent</c> disc of the swatch's size with ✓ in <c>onAccent</c>.</summary>
+    private static Grid Chosen()
+    {
+        var disc = new Ellipse();
+        disc.SetResourceReference(Shape.FillProperty, ThemeBrushKey.For(ColorToken.Accent));
+        var check = new SymbolIcon
+        {
+            Symbol = "check",
+            Size = IconBox.Badge,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        check.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.OnAccent)
+        );
+        var chosen = new Grid
+        {
+            Width = IconBox.Small,
+            Height = IconBox.Small,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        chosen.Children.Add(disc);
+        chosen.Children.Add(check);
+        return chosen;
     }
 
     /// <summary>

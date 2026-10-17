@@ -478,7 +478,7 @@ public sealed class QuickSettingsSheet : Border
     private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
 
     /// <summary>
-    /// The themes go in two columns, as in the mockup, while every name fits whole beside its swatch and the ✓; in a
+    /// The themes go in two columns, as in the mockup, while every name fits whole beside its swatch; in a
     /// narrower sheet (the Tab view, S, a larger text) they go one under the other, never cut with «…».
     /// </summary>
     private void FitThemes()
@@ -541,7 +541,7 @@ public sealed class QuickSettingsSheet : Border
 
             foreach (var (_, item, option) in _options)
             {
-                // A theme shows its swatch and ✓ at the end, as in «General y panel» and the welcome (ThemeSwatch).
+                // A theme shows its swatch (filled with ✓ while chosen), as in «General y panel» and the welcome.
                 item.Content =
                     option.Value is ThemeChoice theme
                         ? ThemeSwatch.Row(theme, option.Label, option.IsSelected)
