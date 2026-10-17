@@ -120,16 +120,6 @@ internal static class TileFactory
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
         control.MaxNameLines = look.NameLines;
 
-        // Two lines break between words only: a word longer than the tile ends in «…», it is never cut in two.
-        control.ApplyTemplate();
-        if (
-            look.NameLines > 1
-            && control.Template?.FindName(ShortcutTileTemplate.LabelPart, control)
-                is TextBlock label
-        )
-        {
-            label.TextWrapping = TextWrapping.WrapWithOverflow;
-        }
         control.SetResourceReference(
             Control.FontSizeProperty,
             ThemeKeys.FontSize(look.Name, scaled: true)

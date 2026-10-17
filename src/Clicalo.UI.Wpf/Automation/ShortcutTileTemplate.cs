@@ -143,7 +143,8 @@ public static class ShortcutTileTemplate
         var label = new FrameworkElementFactory(typeof(TextBlock), LabelPart);
         label.SetValue(TextBlock.TextProperty, Bind(ShortcutTile.AccessibleNameProperty));
         label.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
-        label.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+        // Names break between words only: a word longer than the tile ends in «…», it is never cut in two.
+        label.SetValue(TextBlock.TextWrappingProperty, TextWrapping.WrapWithOverflow);
         label.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
         label.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
         label.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
