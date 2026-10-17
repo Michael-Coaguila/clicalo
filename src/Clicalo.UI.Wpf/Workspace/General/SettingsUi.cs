@@ -365,28 +365,23 @@ internal static class SettingsUi
         Ui.Columns(columns, Space.S2, options);
 
     /// <summary>
-    /// A row of segments in their track (the look of <see cref="SegmentedControl"/>), named for UI Automation; each
-    /// segment is a radio button with SelectionItem.
+    /// A short choice of a few values (30 s · 1 min · 2 min · Nunca): one row of tiles of 44 with the same width,
+    /// <see cref="Space.S2"/> apart, named for UI Automation; each tile is a radio button with SelectionItem. Inside a
+    /// group the tiles are the second border, so there is no track around them (never more than two nested borders).
     /// </summary>
     public static Border Track(string name, IReadOnlyList<OptionButton> segments)
     {
-        var row = new UniformGrid { Rows = 1 };
+        // Every cell of the grid carries the gap on its left; the grid gives the first one back, so the tiles have the
+        // same width and the row ends flush with the other controls of the group.
+        var row = new UniformGrid { Rows = 1, Margin = new Thickness(-Space.S2, 0, 0, 0) };
         foreach (var segment in segments)
         {
-            segment.Margin = new Thickness(Space.S1 / 2);
+            segment.Kind = OptionKind.Tile;
+            segment.Margin = new Thickness(Space.S2, 0, 0, 0);
             row.Children.Add(segment);
         }
 
-        var track = new Border
-        {
-            Child = row,
-            CornerRadius = new CornerRadius(Radii.Medium),
-            Padding = new Thickness(Space.S1 / 2),
-            HorizontalAlignment = HorizontalAlignment.Left,
-        };
-        track.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
-        Ui.Ink(track, Border.BackgroundProperty, ColorToken.Side);
-        Ui.Ink(track, Border.BorderBrushProperty, ColorToken.Border);
+        var track = new Border { Child = row, HorizontalAlignment = HorizontalAlignment.Left };
         AutomationProperties.SetName(track, name);
         return track;
     }

@@ -359,15 +359,19 @@ public sealed class TouchPrecisionView : ContentControl
         grid.SizeChanged += (_, e) => grid.Columns = e.NewSize.Width >= PresetWidth * 4 ? 4 : 2;
         foreach (var preset in screen.Presets)
         {
+            // The description always keeps its two lines, so the names of the four presets share one baseline.
+            var description = SettingsUi.Styled(
+                preset.Description,
+                TextStyleToken.Caption,
+                ColorToken.Muted,
+                lines: 2
+            );
+            description.MinHeight = TextStyles.Caption.LineHeight * 2;
+            description.VerticalAlignment = VerticalAlignment.Top;
             var texts = Ui.Column(
                 0,
                 SettingsUi.Styled(preset.Label, TextStyleToken.Label),
-                SettingsUi.Styled(
-                    preset.Description,
-                    TextStyleToken.Caption,
-                    ColorToken.Muted,
-                    lines: 2
-                )
+                description
             );
             var card = SettingsUi.Tall(
                 SettingsUi.Option(

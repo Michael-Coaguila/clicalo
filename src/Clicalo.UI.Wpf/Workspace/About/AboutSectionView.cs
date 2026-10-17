@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Clicalo.Presentation.ControlCenter.About;
@@ -103,7 +104,7 @@ public sealed class AboutSectionView : Border
             Space.S6,
             SettingsUi.PageHeader(title, subtitle),
             Split(Story(screen), AppCard(screen), 1.4, 1),
-            Split(Feedback(screen), Direct(screen), 1, 1)
+            Split(Feedback(screen), Direct(screen), 1.4, 1)
         );
         content.Margin = new Thickness(Space.S6);
         _scroll.Content = content;
@@ -198,10 +199,32 @@ public sealed class AboutSectionView : Border
         }
 
         var share = Link(screen.ShareText, "volunteer_activism", "about.share", _viewModel.Share);
-        return SettingsUi.Frame(
-            Ui.Column(Space.S3, identity, gitHub, linkedIn, share),
-            screen.AppName
-        );
+        if (_wide)
+        {
+            // In its narrow column the links fill its width, one under the other.
+            return SettingsUi.Frame(
+                Ui.Column(Space.S3, identity, gitHub, linkedIn, share),
+                screen.AppName
+            );
+        }
+
+        // Across the whole page the links keep the same width side by side, never a button as wide as the window.
+        var links = new UniformGrid
+        {
+            Rows = 1,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(-Space.S2, 0, 0, 0),
+        };
+        foreach (var link in new[] { gitHub, linkedIn, share })
+        {
+            if (link is not null)
+            {
+                link.Margin = new Thickness(Space.S2, 0, 0, 0);
+                links.Children.Add(link);
+            }
+        }
+
+        return SettingsUi.Frame(Ui.Column(Space.S3, identity, links), screen.AppName);
 
         static TouchButton Link(string text, string symbol, string id, Action click)
         {
@@ -211,7 +234,7 @@ public sealed class AboutSectionView : Border
         }
     }
 
-    private StackPanel Feedback(AboutScreen screen)
+    private Border Feedback(AboutScreen screen)
     {
         var kinds = new List<UIElement>();
         foreach (var option in screen.Kinds)
@@ -290,26 +313,23 @@ public sealed class AboutSectionView : Border
         send.HorizontalAlignment = HorizontalAlignment.Left;
         AutomationProperties.SetAutomationId(send, "about.send");
         AutomationProperties.SetHelpText(send, screen.SendNote);
-        return Ui.Column(
-            Space.S2,
-            new Overline(screen.FeedbackTitle),
-            SettingsUi.Frame(
-                Ui.Column(
-                    Space.S3,
-                    SettingsUi.Options(2, kinds),
-                    _message,
-                    Ui.Column(0, log, system),
-                    preview,
-                    previewText,
-                    send,
-                    SettingsUi.Styled(screen.SendNote, TextStyleToken.Caption, ColorToken.Muted, 0)
-                ),
-                screen.FeedbackTitle
-            )
+        return SettingsUi.Group(
+            screen.FeedbackTitle,
+            SettingsUi.Options(2, kinds),
+            _message,
+            Ui.Column(0, log, system),
+            preview,
+            previewText,
+            send,
+            SettingsUi.Styled(screen.SendNote, TextStyleToken.Caption, ColorToken.Muted, 0)
         );
     }
 
-    private StackPanel Direct(AboutScreen screen)
+    /// <summary>
+    /// ACE-005: «Escríbeme directamente» is one group like the form: its <see cref="Overline"/> inside, the promise as
+    /// text and the places outside the app as navigation rows (the second border).
+    /// </summary>
+    private Border Direct(AboutScreen screen)
     {
         // ACE-005, D11: the email and its copy button only while there is a real address.
         DockPanel? email = null;
@@ -326,10 +346,10 @@ public sealed class AboutSectionView : Border
             ColorToken.Muted,
             lines: 0
         );
-        return Ui.Column(
-            Space.S2,
-            new Overline(screen.DirectTitle),
-            SettingsUi.Frame(Ui.Column(Space.S2, email, promise), screen.DirectTitle),
+        return SettingsUi.Group(
+            screen.DirectTitle,
+            email,
+            promise,
             Link(
                 "help",
                 screen.GuideTitle,

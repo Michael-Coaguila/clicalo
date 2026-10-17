@@ -76,7 +76,10 @@ public sealed class WelcomeWindow : Window
             new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
         );
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        _scroll.Margin = new Thickness(0, Space.S6, 0, Space.S6);
+        // The channel of the bar sits in the padding of the window (Space.S2 from the content), so the step lines up
+        // with the progress bars and the footer on both sides.
+        _scroll.Margin = new Thickness(0, Space.S6, -Space.S4, Space.S6);
+        _scroll.Padding = new Thickness(0, 0, Space.S2, 0);
         Grid.SetRow(_scroll, 1);
         Grid.SetRow(_footer, 2);
         layout.Children.Add(_progress);

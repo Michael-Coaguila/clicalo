@@ -198,13 +198,15 @@ public sealed class SystemSectionView : Border
                 SettingsUi.Track(model.Channel, channels)
             )
         );
-        // Ui.Column puts its gap only between the children it is built with: each list is complete before it.
-        List<UIElement?> news = [new Overline(model.WhatsNew), .. model.Notes.Select(Notes)];
+        // «Lo nuevo» is one group with its Overline inside, like every group of the page; its notes are plain columns
+        // in it, so no frame sits inside another.
         return Ui.Column(
             Space.S4,
             state,
             SettingsUi.Frame(Ui.Column(0, [.. rows]), model.Channel),
-            Ui.Column(Space.S2, [.. news]),
+            model.Notes.IsEmpty
+                ? null
+                : SettingsUi.Group(model.WhatsNew, [.. model.Notes.Select(Notes)]),
             model.Rollback is { } rollback ? Rollback(rollback) : null
         );
     }
@@ -249,7 +251,7 @@ public sealed class SystemSectionView : Border
         return track;
     }
 
-    private static Border Notes(NotesModel notes)
+    private static StackPanel Notes(NotesModel notes)
     {
         var top = Ui.Row(
             Space.S2,
@@ -276,7 +278,9 @@ public sealed class SystemSectionView : Border
             );
         }
 
-        return SettingsUi.Frame(Ui.Column(Space.S2, [.. column]), notes.Version);
+        var note = Ui.Column(Space.S2, [.. column]);
+        AutomationProperties.SetName(note, notes.Version);
+        return note;
     }
 
     private Border Rollback(RollbackModel rollback)
@@ -316,12 +320,7 @@ public sealed class SystemSectionView : Border
         line.Children.Add(format);
         folder.Children.Add(line);
 
-        List<UIElement?> column = [folder];
-        if (model.ImportCard is { CanMerge: true } import)
-        {
-            column.Add(Import(import));
-        }
-
+        List<UIElement?> column = [];
         var now = SettingsUi.Button(
             model.BackupNow,
             ButtonVariant.Primary,
@@ -346,7 +345,19 @@ public sealed class SystemSectionView : Border
             button.IsEnabled = !model.Busy;
         }
 
-        column.Add(Ui.Wrap(Space.S2, [now, export, importButton]));
+        // The folder and what can be done with it are one group, like the switches below; the card of a file being
+        // imported opens under its button, outside the group (a card never goes inside a frame).
+        column.Add(
+            SettingsUi.Frame(
+                Ui.Column(Space.S3, folder, Ui.Wrap(Space.S2, [now, export, importButton])),
+                model.Folder
+            )
+        );
+        if (model.ImportCard is { CanMerge: true } import)
+        {
+            column.Add(Import(import));
+        }
+
         var auto = model.Auto;
         column.Add(
             SettingsUi.Frame(
@@ -360,23 +371,18 @@ public sealed class SystemSectionView : Border
                 auto.Label
             )
         );
-        List<UIElement?> history = [new Overline(model.History)];
         if (model.ImportCard is { CanMerge: false } review)
         {
-            // LOG-008: the review of the backup being restored opens next to the history it belongs to, in view.
+            // LOG-008: the review of the backup being restored opens right above the history it belongs to, in view.
             var card = Import(review);
             card.Loaded += (_, _) => card.BringIntoView();
-            history.Add(card);
+            column.Add(card);
         }
 
+        UIElement history;
         if (model.Rows.IsEmpty)
         {
-            history.Add(
-                SettingsUi.Frame(
-                    SettingsUi.Styled(model.Empty, TextStyleToken.Body, ColorToken.Muted, 0),
-                    model.History
-                )
-            );
+            history = SettingsUi.Styled(model.Empty, TextStyleToken.Body, ColorToken.Muted, 0);
         }
         else
         {
@@ -386,12 +392,10 @@ public sealed class SystemSectionView : Border
                 rows.Children.Add(History(model.Rows[i], last: i == model.Rows.Count - 1));
             }
 
-            var list = SettingsUi.Frame(rows, model.History);
-            list.Padding = new Thickness(Space.S4, 0, Space.S4, 0);
-            history.Add(list);
+            history = rows;
         }
 
-        column.Add(Ui.Column(Space.S2, [.. history]));
+        column.Add(SettingsUi.Group(model.History, history));
         return Ui.Column(Space.S4, [.. column]);
     }
 
