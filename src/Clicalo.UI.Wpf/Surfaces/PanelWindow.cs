@@ -646,8 +646,11 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     /// <summary>The layer at the foot of the body shows while one of its notices does.</summary>
     private void ApplyBottomLayer()
     {
-        var shown = _bottomLayer.Child is System.Windows.Controls.Panel notices
-            && notices.Children.OfType<UIElement>().Any(static n => n.Visibility == Visibility.Visible);
+        var shown =
+            _bottomLayer.Child is System.Windows.Controls.Panel notices
+            && notices
+                .Children.OfType<UIElement>()
+                .Any(static n => n.Visibility == Visibility.Visible);
         _bottomLayer.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -675,9 +678,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private Rect SearchRegion()
     {
         var chooser = _body.Selector;
-        var top = chooser.Visibility != Visibility.Collapsed
-            ? TopOf(chooser)
-            : Math.Max(BodyTop(), TopOf(_body.GridArea) - Space.S3 - ControlHeight.Medium);
+        var top =
+            chooser.Visibility != Visibility.Collapsed
+                ? TopOf(chooser)
+                : Math.Max(BodyTop(), TopOf(_body.GridArea) - Space.S3 - ControlHeight.Medium);
         return new Rect(
             Space.S3,
             top,

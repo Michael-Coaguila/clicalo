@@ -33,7 +33,11 @@ public sealed class SelectorRowView : Grid
     private readonly SymbolIcon _star = PanelChrome.Icon("star", IconBox.Small, ColorToken.Text);
     private readonly StyledText _frequentsText = PanelChrome.Text(TextStyleToken.Label);
     private readonly ShortcutTile _profile;
-    private readonly SymbolIcon _profileIcon = PanelChrome.Icon(null, IconBox.Small, ColorToken.Text);
+    private readonly SymbolIcon _profileIcon = PanelChrome.Icon(
+        null,
+        IconBox.Small,
+        ColorToken.Text
+    );
     private readonly StyledText _profileName = PanelChrome.Text(TextStyleToken.Label);
     private readonly Border _dot = PanelChrome.Mark(ColorToken.AccentInk);
     private readonly Border _suggestionDot = PanelChrome.Mark(ColorToken.Warn);
@@ -103,7 +107,10 @@ public sealed class SelectorRowView : Grid
             Child = segments,
         };
         track.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Side));
-        track.SetResourceReference(Border.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        track.SetResourceReference(
+            Border.BorderBrushProperty,
+            ThemeBrushKey.For(ColorToken.Border)
+        );
         track.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
         _autoFixed = new AutoFixedButton
@@ -184,9 +191,7 @@ public sealed class SelectorRowView : Grid
             }
 
             _narrow = value;
-            _frequentsColumn.Width = value
-                ? GridLength.Auto
-                : new GridLength(1, GridUnitType.Star);
+            _frequentsColumn.Width = value ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
             _frequents.Width = value ? ControlHeight.Small : double.NaN;
             _frequents.Padding = value ? new Thickness(0) : new Thickness(Space.S2, 0, Space.S2, 0);
             _frequentsText.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
@@ -207,7 +212,8 @@ public sealed class SelectorRowView : Grid
         }
     }
 
-    private static ColumnDefinition Star() => new() { Width = new GridLength(1, GridUnitType.Star) };
+    private static ColumnDefinition Star() =>
+        new() { Width = new GridLength(1, GridUnitType.Star) };
 
     private static ShortcutTile Segment(ShortcutTilePattern pattern)
     {

@@ -164,7 +164,11 @@ internal static class PanelChrome
     /// <param name="content">What the layer shows.</param>
     public static Border Layer(UIElement content)
     {
-        var layer = new Border { Child = content, BorderThickness = new Thickness(0, Stroke.Line, 0, 0) };
+        var layer = new Border
+        {
+            Child = content,
+            BorderThickness = new Thickness(0, Stroke.Line, 0, 0),
+        };
         layer.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
         layer.SetResourceReference(
             Border.BorderBrushProperty,
@@ -235,7 +239,11 @@ internal static class PanelChrome
         layers.AppendChild(content);
 
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = box };
-        var once = new Trigger { Property = ShortcutTile.ToggleStateProperty, Value = ToggleState.On };
+        var once = new Trigger
+        {
+            Property = ShortcutTile.ToggleStateProperty,
+            Value = ToggleState.On,
+        };
         once.Setters.Add(Brush(Border.BackgroundProperty, ColorToken.AccentWash, FillPart));
         once.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart));
         once.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart));
@@ -293,7 +301,11 @@ internal static class PanelChrome
         layers.AppendChild(content);
 
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = box };
-        var chosen = new Trigger { Property = ShortcutTile.ToggleStateProperty, Value = ToggleState.On };
+        var chosen = new Trigger
+        {
+            Property = ShortcutTile.ToggleStateProperty,
+            Value = ToggleState.On,
+        };
         chosen.Setters.Add(Brush(Border.BackgroundProperty, ColorToken.AccentWash, FillPart));
         chosen.Setters.Add(new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart));
         template.Triggers.Add(chosen);

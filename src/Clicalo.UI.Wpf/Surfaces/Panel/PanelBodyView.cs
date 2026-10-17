@@ -303,8 +303,7 @@ public sealed class PanelBodyView : StackPanel
         var empty = _viewModel.Empty.IsVisible;
         Pager.ShowPages(
             compact
-                ? CompactRowRules.ShowsPager(_viewModel.Pager.PageCount, empty)
-                    && !searching
+                ? CompactRowRules.ShowsPager(_viewModel.Pager.PageCount, empty) && !searching
                 : _viewModel.Pager.IsVisible
         );
 

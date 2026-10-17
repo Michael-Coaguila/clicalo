@@ -51,7 +51,10 @@ public sealed class BubbleWindow : TouchSurface
         _viewModel = viewModel;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         var mark = new SymbolIcon { Symbol = "touch_app", Size = IconBox.Large };
-        mark.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(ColorToken.AccentInk));
+        mark.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.AccentInk)
+        );
         _button = new IconButton
         {
             Content = mark,

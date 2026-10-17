@@ -24,7 +24,11 @@ public sealed class AutoFixedButton : ToggleButton
         typeof(AutoFixedButton)
     );
 
-    private readonly StyledText _label = new(string.Empty, TextStyleToken.LabelSmall, ColorToken.AccentInk)
+    private readonly StyledText _label = new(
+        string.Empty,
+        TextStyleToken.LabelSmall,
+        ColorToken.AccentInk
+    )
     {
         MaxLines = 1,
         HorizontalAlignment = HorizontalAlignment.Center,

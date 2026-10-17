@@ -130,7 +130,9 @@ public sealed class ShortcutGridView : Border
         if (_layers is { } layers && _viewModel.ShowsAddTile)
         {
             _add = new AddTileView(layers.EditMode, look.IconSize, look.Name)
-            { Margin = new Thickness(Space.S1) };
+            {
+                Margin = new Thickness(Space.S1),
+            };
             System.Windows.Controls.Panel.SetZIndex(_add, -_cells.Count - 1);
             _grid.Children.Add(_add);
         }

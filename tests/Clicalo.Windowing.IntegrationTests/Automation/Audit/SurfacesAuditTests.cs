@@ -232,13 +232,7 @@ public sealed class SurfacesAuditTests
                 var name =
                     $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})";
                 AuditGallery.SaveLargeText(host, "Panel", name);
-                SurfaceAudit.ShouldPass(
-                    host,
-                    name,
-                    atLeast: 8,
-                    TouchInput.PointerLayer,
-                    "Panel"
-                );
+                SurfaceAudit.ShouldPass(host, name, atLeast: 8, TouchInput.PointerLayer, "Panel");
             }
             finally
             {

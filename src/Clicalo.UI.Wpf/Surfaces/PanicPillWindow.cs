@@ -57,14 +57,8 @@ public sealed class PanicPillWindow : TouchSurface
             height: ControlHeight.Small
         );
         // SEG-002: «Soltar todo» is the panic itself: the danger fill with its text, the one filled danger button.
-        _button.SetResourceReference(
-            BackgroundProperty,
-            ThemeBrushKey.For(ColorToken.Danger)
-        );
-        _button.SetResourceReference(
-            ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.OnDanger)
-        );
+        _button.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Danger));
+        _button.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.OnDanger));
         AutomationProperties.SetLiveSetting(_button, AutomationLiveSetting.Assertive);
         _announcer = new LiveAnnouncer(_button);
         Content = _button;

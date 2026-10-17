@@ -21,12 +21,13 @@ internal static class TileFactory
     /// Identifies the attached flag that hides the type icon of a tile while edit mode puts its × in the same slot at
     /// the top right (CUA-012): the slots of a tile never overlap.
     /// </summary>
-    public static readonly DependencyProperty HidesTypeProperty = DependencyProperty.RegisterAttached(
-        "HidesType",
-        typeof(bool),
-        typeof(TileFactory),
-        new PropertyMetadata(false)
-    );
+    public static readonly DependencyProperty HidesTypeProperty =
+        DependencyProperty.RegisterAttached(
+            "HidesType",
+            typeof(bool),
+            typeof(TileFactory),
+            new PropertyMetadata(false)
+        );
 
     /// <summary>A new tile for <paramref name="viewModel"/>, kept painted while it lives.</summary>
     /// <param name="viewModel">The tile's view model.</param>
@@ -118,6 +119,17 @@ internal static class TileFactory
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
         control.MaxNameLines = look.NameLines;
+
+        // Two lines break between words only: a word longer than the tile ends in «…», it is never cut in two.
+        control.ApplyTemplate();
+        if (
+            look.NameLines > 1
+            && control.Template?.FindName(ShortcutTileTemplate.LabelPart, control)
+                is TextBlock label
+        )
+        {
+            label.TextWrapping = TextWrapping.WrapWithOverflow;
+        }
         control.SetResourceReference(
             Control.FontSizeProperty,
             ThemeKeys.FontSize(look.Name, scaled: true)

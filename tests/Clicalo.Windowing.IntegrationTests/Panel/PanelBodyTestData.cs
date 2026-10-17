@@ -75,7 +75,12 @@ internal static class PanelBodyTestData
                         "w" + Number(i),
                         s,
                         i == 6
-                            ? new MacroAction([.. Enumerable.Repeat<MacroStep>(new WaitStep(TimeSpan.FromSeconds(1)), 5)])
+                            ? new MacroAction([
+                                .. Enumerable.Repeat<MacroStep>(
+                                    new WaitStep(TimeSpan.FromSeconds(1)),
+                                    5
+                                ),
+                            ])
                             : new TapAction(KeyChord.Empty, [])
                     )
             )

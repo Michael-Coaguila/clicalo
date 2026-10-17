@@ -56,7 +56,8 @@ public sealed class SurfaceWindowsTests
             {
                 bubble.Look.ShouldBe(SurfaceLook.Bubble);
                 // Direction C (D12): the mark of Clícalo, never taken for the touch keyboard of Windows.
-                var mark = bubble.Button.Content.ShouldBeOfType<Clicalo.UI.Wpf.Controls.SymbolIcon>();
+                var mark =
+                    bubble.Button.Content.ShouldBeOfType<Clicalo.UI.Wpf.Controls.SymbolIcon>();
                 mark.Symbol.ShouldBe("touch_app");
                 mark.Size.ShouldBe(IconBox.Large);
                 bubble.Title.ShouldBe("Mostrar panel");
@@ -192,7 +193,8 @@ public sealed class SurfaceWindowsTests
             var body = new PanelBodyView(panel);
 
             // Direction C (D12): the row «Qué ver» goes to the foot of the Compact view, under the pager.
-            body.Children.IndexOf(body.Selector).ShouldBeGreaterThan(body.Children.IndexOf(body.Pager));
+            body.Children.IndexOf(body.Selector)
+                .ShouldBeGreaterThan(body.Children.IndexOf(body.Pager));
             body.Selector.Visibility.ShouldBe(System.Windows.Visibility.Visible);
             body.Selector.FrequentsButton.AccessibleName.ShouldBe("Frecuentes");
             body.Selector.TapTargets.Count().ShouldBeGreaterThanOrEqualTo(2);

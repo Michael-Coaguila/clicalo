@@ -25,7 +25,11 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.ContextMenu;
 public sealed class TileContextMenuView : Border
 {
     private readonly TileContextMenuViewModel _viewModel;
-    private readonly SymbolIcon _headerIcon = PanelChrome.Icon(null, IconBox.Medium, ColorToken.AccentInk);
+    private readonly SymbolIcon _headerIcon = PanelChrome.Icon(
+        null,
+        IconBox.Medium,
+        ColorToken.AccentInk
+    );
     private readonly StyledText _headerText = PanelChrome.Text(TextStyleToken.Heading);
     private readonly StackPanel _rows = new();
     private readonly List<(TouchButton Button, TileMenuRowViewModel Row)> _buttons = [];
@@ -40,11 +44,7 @@ public sealed class TileContextMenuView : Border
 
         _headerIcon.Margin = new Thickness(0, 0, Space.S2, 0);
         _headerText.VerticalAlignment = VerticalAlignment.Center;
-        var header = new DockPanel
-        {
-            LastChildFill = true,
-            Height = ControlHeight.Small,
-        };
+        var header = new DockPanel { LastChildFill = true, Height = ControlHeight.Small };
         DockPanel.SetDock(_headerIcon, Dock.Left);
         header.Children.Add(_headerIcon);
         header.Children.Add(_headerText);

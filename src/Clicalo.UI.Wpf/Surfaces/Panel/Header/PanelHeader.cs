@@ -87,7 +87,9 @@ public sealed class PanelHeader : Grid
         _minimize = Tool("remove", () => _viewModel.Minimize());
 
         // REG-06: one column each, from left to right, so UI Automation reads the header as it is seen.
-        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
         Children.Add(_title);
         Children.Add(_titleButton);
         IconButton[] tools = [_search, _edit, _quick, _minimize];

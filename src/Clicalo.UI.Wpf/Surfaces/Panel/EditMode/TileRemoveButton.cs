@@ -35,7 +35,11 @@ public sealed class TileRemoveButton : TouchButton
     /// <param name="editMode">Edit mode.</param>
     /// <param name="tile">The tile it removes.</param>
     /// <param name="control">The tile's control, whose type slot the × takes while it shows.</param>
-    public TileRemoveButton(EditModeViewModel editMode, TileViewModel tile, ShortcutTile? control = null)
+    public TileRemoveButton(
+        EditModeViewModel editMode,
+        TileViewModel tile,
+        ShortcutTile? control = null
+    )
     {
         ArgumentNullException.ThrowIfNull(editMode);
         ArgumentNullException.ThrowIfNull(tile);

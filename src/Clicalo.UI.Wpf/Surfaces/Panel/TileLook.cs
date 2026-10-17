@@ -31,7 +31,12 @@ internal sealed record TileLook(
     public static TileLook Grid(PanelSize size) =>
         size switch
         {
-            PanelSize.S => new(IconBox.Small, TextStyleToken.LabelSmall, TextStyleToken.KeysTile, 2),
+            PanelSize.S => new(
+                IconBox.Small,
+                TextStyleToken.LabelSmall,
+                TextStyleToken.KeysTile,
+                2
+            ),
             PanelSize.L => new(IconBox.Large, TextStyleToken.Heading, TextStyleToken.Keys, 2),
             _ => new(IconBox.Medium, TextStyleToken.Label, TextStyleToken.KeysTile, 2),
         };

@@ -41,9 +41,13 @@ public sealed class PickerGridView : Border
     private readonly ThemedScrollViewer _scroller;
     private readonly bool _showsAlways;
     private readonly PanScroll _pan = new();
-    private readonly StyledText _legend = PanelChrome.Text(TextStyleToken.Caption, ColorToken.Muted);
+    private readonly StyledText _legend = PanelChrome.Text(
+        TextStyleToken.Caption,
+        ColorToken.Muted
+    );
     private readonly DockPanel _legendRow;
-    private readonly List<(PickerEntryViewModel Entry, OptionButton Control, Grid Cell)> _entries = [];
+    private readonly List<(PickerEntryViewModel Entry, OptionButton Control, Grid Cell)> _entries =
+    [];
 
     /// <summary>Creates the profile grid of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The profile grid.</param>
@@ -100,14 +104,21 @@ public sealed class PickerGridView : Border
         var mark = PanelChrome.Mark(ColorToken.AccentInk);
         mark.Visibility = Visibility.Visible;
         mark.Margin = new Thickness(0, 0, Space.S2, 0);
-        _legendRow = new DockPanel { LastChildFill = true, Margin = new Thickness(0, Space.S3, 0, 0) };
+        _legendRow = new DockPanel
+        {
+            LastChildFill = true,
+            Margin = new Thickness(0, Space.S3, 0, 0),
+        };
         var legend = _legendRow;
         DockPanel.SetDock(mark, Dock.Left);
         legend.Children.Add(mark);
         _legend.VerticalAlignment = VerticalAlignment.Center;
         legend.Children.Add(_legend);
 
-        var stack = new StackPanel { Margin = new Thickness(Space.S3, Space.S3, Space.S1, Space.S6) };
+        var stack = new StackPanel
+        {
+            Margin = new Thickness(Space.S3, Space.S3, Space.S1, Space.S6),
+        };
         stack.Children.Add(_grid);
         stack.Children.Add(legend);
         _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = stack };
@@ -324,7 +335,11 @@ public sealed class PickerGridView : Border
     }
 
     private static StyledText Label(string text) =>
-        new(text, TextStyleToken.Label) { MaxLines = 1, HorizontalAlignment = HorizontalAlignment.Center };
+        new(text, TextStyleToken.Label)
+        {
+            MaxLines = 1,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
 
     /// <summary>Lays the cards out in as many columns as fit (SEL-003), the extra ones last.</summary>
     private void Arrange()
