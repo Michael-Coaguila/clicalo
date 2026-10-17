@@ -100,18 +100,26 @@ public sealed class SelectorRowView : Grid
         SetColumn(_profile, 2);
         segments.Children.Add(_frequents);
         segments.Children.Add(_profile);
-        var track = new Border
+        // The line of the track is drawn over it, inside, without taking room: the segments of 44 keep their whole
+        // height in the track of 52 (S1 above and below), so the ring of the chosen one is never cut (D12).
+        var fill = new Border
         {
             CornerRadius = new CornerRadius(Radii.Medium),
             Padding = new Thickness(Space.S1),
             Child = segments,
         };
-        track.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Side));
-        track.SetResourceReference(
-            Border.BorderBrushProperty,
-            ThemeBrushKey.For(ColorToken.Border)
-        );
-        track.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        fill.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Side));
+        var line = new Border
+        {
+            CornerRadius = new CornerRadius(Radii.Medium),
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = true,
+        };
+        line.SetResourceReference(Border.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        line.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        var track = new Grid();
+        track.Children.Add(fill);
+        track.Children.Add(line);
 
         _autoFixed = new AutoFixedButton
         {
