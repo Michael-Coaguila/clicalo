@@ -102,7 +102,7 @@ public sealed class SearchSurfaceTests
             card.Visibility.ShouldBe(Visibility.Collapsed);
         });
 
-    internal static SearchViewModel Search()
+    internal static SearchViewModel Search(string language = "es")
     {
         var search = new SearchViewModel(
             new PanelSearch(
@@ -112,7 +112,7 @@ public sealed class SearchSurfaceTests
                 TimeProvider.System,
                 keyboard: null
             ),
-            PanelTestData.Localization("es"),
+            PanelTestData.Localization(language),
             () => WindowToken.None,
             static _ => null,
             static _ => { }
@@ -121,7 +121,7 @@ public sealed class SearchSurfaceTests
         return search;
     }
 
-    internal static SuggestionViewModel Suggestion() =>
+    internal static SuggestionViewModel Suggestion(string language = "es") =>
         new(
             new DocumentStore(
                 SearchTestWorld.Document(),
@@ -130,7 +130,7 @@ public sealed class SearchSurfaceTests
                 TimeProvider.System
             ),
             SuggestionViewModelTests.Content,
-            PanelTestData.Localization("es"),
+            PanelTestData.Localization(language),
             new SequentialTestIds(),
             static () => new ProfileState(new ViewTarget.Profile(ProfileId.General), false, null),
             static (SuggestionAccepted _) => { },

@@ -1035,8 +1035,8 @@ public sealed class SurfacesAuditTests
             );
             _language = new LangCode(language);
             ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Word));
-            Search = SearchSurfaceTests.Search();
-            Suggestion = SearchSurfaceTests.Suggestion();
+            Search = SearchSurfaceTests.Search(language);
+            Suggestion = SearchSurfaceTests.Suggestion(language);
             Layers = new PanelLayerModels(
                 Interactions.QuickSettings,
                 Interactions.EditMode,
