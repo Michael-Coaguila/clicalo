@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Media;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.ContextMenu;
@@ -55,10 +56,14 @@ public sealed class DockMenuWindow : TouchSurface
         // A side window like the others (D12): accent says «interactive or chosen», not «menu».
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        // The window is the surface (its background, its line and Space.S3 inside, as the windows beside the bar) and
+        // the menu draws only its rows: no box of its own over the line of the window (D12).
         _view = new TileContextMenuView(viewModel)
         {
             Margin = new Thickness(0),
+            Padding = new Thickness(Space.S3),
             BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
         };
         Width = MenuWidth;
         FixedWidth = MenuWidth;
