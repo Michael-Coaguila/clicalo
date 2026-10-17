@@ -50,6 +50,8 @@ public sealed class AllowUnusedTests
         listed.Contains("activeShort").ShouldBeFalse();
         listed.Contains("shortcutsW").ShouldBeTrue();
         listed.Contains("autoReleaseD").ShouldBeTrue();
-        listed.Count.ShouldBe(72);
+        // M7: the notice of repeated combinations of «Atajos» has its own button, [review] (R-33).
+        listed.Contains("review").ShouldBeFalse();
+        listed.Count.ShouldBe(71);
     }
 }
