@@ -88,8 +88,10 @@ public sealed class DockHandleWindow : TouchSurface
         var face = new Border
         {
             CornerRadius = SurfaceLook.DockHandle(side).Corners,
-            Width = vertical ? layout.DockHandleThicknessPx : double.NaN,
-            Height = vertical ? double.NaN : layout.DockHandleThicknessPx,
+            // PES-001: drawn at its whole 44 × 116 (128 × 44): the text button centers its content across, so the face
+            // takes its length here, and the chevron, the icon and the dot sit centered in it, never on its edge.
+            Width = vertical ? layout.DockHandleThicknessPx : layout.DockHandleHorizontalLengthPx,
+            Height = vertical ? layout.DockHandleVerticalLengthPx : layout.DockHandleThicknessPx,
             HorizontalAlignment = side switch
             {
                 DockSide.Left => HorizontalAlignment.Left,
