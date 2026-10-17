@@ -63,38 +63,80 @@ public sealed class ShortcutTileLookTests
     [Fact]
     [Trait("Req", "CUA-007")]
     [Trait("Req", "ACC-003")]
-    public void The_badge_shows_the_type_and_the_state_wins_over_it() =>
+    [Trait("Req", "EJE-010")]
+    public void The_slot_shows_the_type_and_the_state_takes_the_key_line() =>
         WpfThread.Invoke(() =>
         {
             var tile = Tile();
             using var service = BaseControlTests.Host(tile);
             var type = Part<SymbolIcon>(tile, ShortcutTileTemplate.TypePart);
-            var text = Part<TextBlock>(tile, ShortcutTileTemplate.StatePart);
+            var word = Part<TextBlock>(tile, ShortcutTileTemplate.StatePart);
+            var keys = Part<TextBlock>(tile, ShortcutTileTemplate.KeysPart);
 
-            text.Visibility.ShouldBe(Visibility.Collapsed);
+            word.Visibility.ShouldBe(Visibility.Collapsed);
             type.Visibility.ShouldBe(Visibility.Collapsed);
 
-            tile.Badge = "ALTERNAR";
+            tile.Badge = "WEB";
             tile.UpdateLayout();
-            text.Visibility.ShouldBe(Visibility.Visible);
-            text.Text.ShouldBe("ALTERNAR");
+            word.Visibility.ShouldBe(
+                Visibility.Visible,
+                "a tile without a type icon writes its badge"
+            );
+            word.Text.ShouldBe("WEB");
+            word.FontSize.ShouldBeGreaterThanOrEqualTo(11, "TEM-007: no text below 11");
 
             tile.TypeSymbol = "toggle_on";
             tile.UpdateLayout();
             type.Visibility.ShouldBe(Visibility.Visible, "the type icon takes the slot");
-            text.Visibility.ShouldBe(Visibility.Collapsed);
-            text.FontSize.ShouldBeGreaterThanOrEqualTo(11, "TEM-007: no text below 11");
+            word.Visibility.ShouldBe(Visibility.Collapsed);
 
             tile.AccessibleState = "ACTIVO";
             tile.UpdateLayout();
-            text.Text.ShouldBe("ACTIVO");
+            type.Visibility.ShouldBe(Visibility.Visible, "the state never covers the slot");
+            word.Visibility.ShouldBe(Visibility.Collapsed);
+            keys.Text.ShouldBe("ACTIVO", "the state takes the key line");
+            keys.FontFamily.ShouldBeSameAs(AppFonts.Ui, "a state is words, not keys");
+            Color(keys.Foreground).ShouldBe(ThemePalettes.Dark.AccentInk);
             AutomationProperties.GetItemStatus(tile).ShouldBeEmpty("the peer reads the state");
-
-            type.Visibility.ShouldBe(Visibility.Collapsed, "the state wins over the type");
 
             tile.AccessibleState = string.Empty;
             tile.UpdateLayout();
-            type.Visibility.ShouldBe(Visibility.Visible);
+            keys.Text.ShouldBe("Ctrl + C");
+            keys.FontFamily.ShouldBeSameAs(AppFonts.Mono);
+        });
+
+    [Fact]
+    [Trait("Req", "ACC-003")]
+    [Trait("Req", "EJE-010")]
+    public void The_state_shows_without_keys_and_never_overlaps_the_icon_or_the_voice_number() =>
+        WpfThread.Invoke(() =>
+        {
+            var tile = Tile();
+            tile.Keys = string.Empty;
+            tile.VoiceNumber = 1;
+            tile.TypeSymbol = "pan_tool";
+            using var service = BaseControlTests.Host(tile);
+            tile.AccessibleState = "Manteniendo";
+            tile.IsHeld = true;
+            tile.UpdateLayout();
+            var keys = Part<TextBlock>(tile, ShortcutTileTemplate.KeysPart);
+            var icon = Part<SymbolIcon>(tile, ShortcutTileTemplate.IconPart);
+            var number = Part<Border>(tile, ShortcutTileTemplate.VoiceNumberPart);
+            var type = Part<SymbolIcon>(tile, ShortcutTileTemplate.TypePart);
+
+            keys.Visibility.ShouldBe(Visibility.Visible);
+            keys.Text.ShouldBe("Manteniendo");
+            type.IsFilled.ShouldBeTrue("held is the single look of «elegido»");
+            Color(type.Foreground).ShouldBe(ThemePalettes.Dark.AccentInk);
+            var state = Bounds(keys, tile);
+            state.IntersectsWith(Bounds(icon, tile)).ShouldBeFalse();
+            state.IntersectsWith(Bounds(number, tile)).ShouldBeFalse();
+            state.IntersectsWith(Bounds(type, tile)).ShouldBeFalse();
+
+            tile.IsHeld = false;
+            tile.IsArmed = true;
+            Color(keys.Foreground).ShouldBe(ThemePalettes.Dark.WarnText);
+            Color(type.Foreground).ShouldBe(ThemePalettes.Dark.WarnText);
         });
 
     [Fact]
@@ -182,4 +224,7 @@ public sealed class ShortcutTileLookTests
         where T : FrameworkElement => (T)tile.Template.FindName(name, tile);
 
     private static Color Color(Brush? brush) => ((SolidColorBrush)brush!).Color;
+
+    private static Rect Bounds(FrameworkElement part, Visual tile) =>
+        part.TransformToAncestor(tile).TransformBounds(new Rect(part.RenderSize));
 }

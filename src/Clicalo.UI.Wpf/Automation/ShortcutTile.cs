@@ -165,8 +165,32 @@ public sealed class ShortcutTile : Control
         nameof(Keys),
         typeof(string),
         typeof(ShortcutTile),
-        new FrameworkPropertyMetadata(string.Empty)
+        new FrameworkPropertyMetadata(string.Empty, OnBadgeChanged)
     );
+
+    private static readonly DependencyPropertyKey FootTextPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(FootText),
+            typeof(string),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(string.Empty)
+        );
+
+    /// <summary>Identifies <see cref="FootText"/>.</summary>
+    public static readonly DependencyProperty FootTextProperty =
+        FootTextPropertyKey.DependencyProperty;
+
+    private static readonly DependencyPropertyKey IsStateShownPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(IsStateShown),
+            typeof(bool),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(false)
+        );
+
+    /// <summary>Identifies <see cref="IsStateShown"/>.</summary>
+    public static readonly DependencyProperty IsStateShownProperty =
+        IsStateShownPropertyKey.DependencyProperty;
 
     /// <summary>Identifies <see cref="KeysFontSize"/>.</summary>
     public static readonly DependencyProperty KeysFontSizeProperty = DependencyProperty.Register(
@@ -294,8 +318,9 @@ public sealed class ShortcutTile : Control
 
     /// <summary>
     /// The localized state of the tile (ACC-003), such as «ACTIVO» for a Toggle shortcut that is on; empty when there
-    /// is nothing to say. Shown on the tile and exposed as the UI Automation item status, so the state is never
-    /// color alone and Narrator reads it with the name.
+    /// is nothing to say. Shown on the tile in the place of its key line (<see cref="FootText"/>), never over its icon
+    /// or its voice number, and exposed as the UI Automation item status, so the state is never color alone and
+    /// Narrator reads it with the name.
     /// </summary>
     public string AccessibleState
     {
@@ -319,8 +344,8 @@ public sealed class ShortcutTile : Control
 
     /// <summary>
     /// Material Symbols name of the type of the shortcut (Mantener, Alternar, Macro, Web, App, Texto) shown in the slot
-    /// at the top right, in a box of <see cref="IconBox.Badge"/> in <c>muted</c>; null leaves the slot to
-    /// <see cref="BadgeText"/>.
+    /// at the top right, in a box of <see cref="IconBox.Badge"/> in <c>muted</c> (filled in <c>accentInk</c> while the
+    /// tile is chosen or held, in <c>warnText</c> while it is armed); null leaves the slot to <see cref="BadgeText"/>.
     /// </summary>
     public string? TypeSymbol
     {
@@ -378,7 +403,7 @@ public sealed class ShortcutTile : Control
 
     /// <summary>
     /// The type badge at the top right (CUA-007): MANTENER, ALTERNAR, the number of steps, WEB, APP, TXT or the pin;
-    /// empty for none. While <see cref="AccessibleState"/> is set (ACTIVO), the badge shows the state instead.
+    /// empty for none. It shows only on a tile without <see cref="TypeSymbol"/>.
     /// </summary>
     public string Badge
     {
@@ -387,13 +412,24 @@ public sealed class ShortcutTile : Control
     }
 
     /// <summary>
-    /// What the top right slot writes: <see cref="AccessibleState"/> when set (ACC-003), otherwise <see cref="Badge"/>
-    /// when the tile has no <see cref="TypeSymbol"/>; empty when the slot shows the type icon.
+    /// What the top right slot writes: <see cref="Badge"/> when the tile has no <see cref="TypeSymbol"/>; empty when
+    /// the slot shows the type icon. The state never goes in this slot: it is too narrow beside the voice number and
+    /// the icon (D12).
     /// </summary>
     public string BadgeText => (string)GetValue(BadgeTextProperty);
 
-    /// <summary>Whether the top right slot shows the type icon (a <see cref="TypeSymbol"/> and no state).</summary>
+    /// <summary>Whether the top right slot shows the type icon (a <see cref="TypeSymbol"/>).</summary>
     public bool IsTypeShown => (bool)GetValue(IsTypeShownProperty);
+
+    /// <summary>
+    /// What the line under the name writes: <see cref="AccessibleState"/> while there is one («Manteniendo», «ACTIVO»,
+    /// «Paso 2/5», ACC-003, EJE-010), in the interface font and <c>accentInk</c> (<c>warnText</c> while armed),
+    /// otherwise <see cref="Keys"/>. It shows only while it fits under the name.
+    /// </summary>
+    public string FootText => (string)GetValue(FootTextProperty);
+
+    /// <summary>Whether the line under the name shows the state instead of the keys.</summary>
+    public bool IsStateShown => (bool)GetValue(IsStateShownProperty);
 
     /// <summary>A Mantener tile held down: scale 0.95, category wash and a 2 px tint outline (CUA-009).</summary>
     public bool IsHeld
@@ -493,13 +529,10 @@ public sealed class ShortcutTile : Control
     private void UpdateBadgeText()
     {
         var hasState = !string.IsNullOrEmpty(AccessibleState);
-        SetValue(
-            BadgeTextPropertyKey,
-            hasState ? AccessibleState
-                : TypeSymbol is null ? Badge ?? string.Empty
-                : string.Empty
-        );
-        SetValue(IsTypeShownPropertyKey, !hasState && TypeSymbol is not null);
+        SetValue(BadgeTextPropertyKey, TypeSymbol is null ? Badge ?? string.Empty : string.Empty);
+        SetValue(IsTypeShownPropertyKey, TypeSymbol is not null);
+        SetValue(IsStateShownPropertyKey, hasState);
+        SetValue(FootTextPropertyKey, hasState ? AccessibleState : Keys ?? string.Empty);
     }
 
     private static ShortcutTileAutomationPeer? ExistingPeer(DependencyObject tile) =>
