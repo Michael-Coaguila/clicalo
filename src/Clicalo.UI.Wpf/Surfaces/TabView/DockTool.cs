@@ -10,7 +10,8 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// A labeled tool of the bar of the Tab view in direction C (D12, PES-006, PES-008): a <see cref="TouchButton"/> whose
 /// content is an icon in a box of <see cref="IconBox.Small"/> and a <see cref="TextStyleToken.LabelSmall"/> label.
 /// <see cref="DockToolShape.Row"/> puts the icon before the label (a row of <see cref="ControlHeight.Small"/>, the label
-/// in up to two lines) and <see cref="DockToolShape.Stacked"/> above it (a card of <see cref="ControlHeight.Medium"/>,
+/// in up to two lines, icon and label from the start so the icons of a column line up) and
+/// <see cref="DockToolShape.Stacked"/> above it (a card of <see cref="ControlHeight.Medium"/>,
 /// one line), as the prototype did on a side edge and on the top and bottom ones. Pressed, the button draws «elegido»
 /// (<see cref="TouchButton.IsActive"/> or <see cref="TouchButton.IsOn"/>) and its icon fills in <c>accentInk</c>, the
 /// one look of direction C; it never changes size.
@@ -44,7 +45,7 @@ internal sealed class DockTool
         var parts = new DockPanel
         {
             LastChildFill = true,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = stacked ? HorizontalAlignment.Center : HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
         DockPanel.SetDock(Lead, stacked ? Dock.Top : Dock.Left);
@@ -57,6 +58,11 @@ internal sealed class DockTool
             Size = stacked ? ControlSize.Medium : ControlSize.Small,
             Content = parts,
             Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+
+            // In a column of rows the icons line up at the start, one under the other, whatever their labels.
+            HorizontalContentAlignment = stacked
+                ? HorizontalAlignment.Center
+                : HorizontalAlignment.Left,
             MinWidth = stacked ? ControlHeight.Medium : ControlHeight.Small,
             Focusable = false,
             IsTabStop = false,
