@@ -298,6 +298,34 @@ internal static class SettingsUi
     }
 
     /// <summary>
+    /// A setting whose control does not fit at the end of its row (a few options, a button with a long text, beside a
+    /// long title or description): the row of <see cref="SettingRow"/> without an end, and <paramref name="below"/>
+    /// under its texts, aligned with them, so the title keeps its line and the control its own width.
+    /// </summary>
+    public static StackPanel SettingBlock(
+        string? icon,
+        string title,
+        string? description,
+        FrameworkElement? below
+    )
+    {
+        var row = SettingRow(icon, title, description, null);
+        if (below is null)
+        {
+            return Ui.Column(0, row);
+        }
+
+        below.HorizontalAlignment = HorizontalAlignment.Left;
+        below.Margin = new Thickness(
+            string.IsNullOrEmpty(icon) ? 0 : IconBox.Medium + Space.S3,
+            0,
+            0,
+            Space.S2
+        );
+        return Ui.Column(0, row, below);
+    }
+
+    /// <summary>
     /// The title of a setting with its value at the end, both in <see cref="TextStyleToken.Label"/> (the value in
     /// <c>text</c>, never monospace: that is only for keys).
     /// </summary>

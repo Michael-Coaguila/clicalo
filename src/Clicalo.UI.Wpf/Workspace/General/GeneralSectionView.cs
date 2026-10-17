@@ -16,11 +16,12 @@ namespace Clicalo.UI.Wpf.Workspace.General;
 /// <summary>
 /// «General y panel» (docs/05 §3, GEN-001) in direction C (D12): the title, the 2 × 2 grid of groups of equal height
 /// (Idioma, Tema, Tamaño, Vista; one column in a narrow window) and, below, two columns from 1240 of window width (one
-/// below): Disposición and Transparencia on the left; Modo pestaña, Confirmación al tocar, Seguridad de teclas,
-/// Accesibilidad y datos, Inteligencia artificial and Primeros pasos on the right. Every group is the same outlined
-/// frame with its overline (<see cref="SettingsUi.Group"/>); every choice has the single look of «elegido». It only
-/// draws <see cref="GeneralSectionViewModel.Screen"/> and forwards taps; each group is rebuilt only when its part
-/// changed, and the two sliders live across rebuilds so a drag is never cut.
+/// below): Disposición, Transparencia and Accesibilidad y datos on the left; Modo pestaña, Confirmación al tocar,
+/// Seguridad de teclas, Inteligencia artificial and Primeros pasos on the right (GEN-001 places the first two and the
+/// four of the right; the two groups it does not place go where both columns end at about the same height). Every
+/// group is the same outlined frame with its overline (<see cref="SettingsUi.Group"/>); every choice has the single
+/// look of «elegido». It only draws <see cref="GeneralSectionViewModel.Screen"/> and forwards taps; each group is
+/// rebuilt only when its part changed, and the two sliders live across rebuilds so a drag is never cut.
 /// </summary>
 public sealed class GeneralSectionView : ContentControl
 {
@@ -73,8 +74,8 @@ public sealed class GeneralSectionView : ContentControl
         Ui.Ink(_preview, Border.BorderBrushProperty, ColorToken.Border);
         _preview.BorderThickness = new Thickness(Stroke.Line);
 
-        _left = Ui.Column(Space.S4, _layout, _transparency);
-        _right = Ui.Column(Space.S4, _dock, _feedback, _safety, _access, _ai, _start);
+        _left = Ui.Column(Space.S4, _layout, _transparency, _access);
+        _right = Ui.Column(Space.S4, _dock, _feedback, _safety, _ai, _start);
         var page = Ui.Column(Space.S6, SettingsUi.PageHeader(_title, _subtitle), _top, _columns);
         page.Margin = new Thickness(Space.S6);
         var root = new Border { Child = new ThemedScrollViewer { Content = page } };
@@ -607,7 +608,7 @@ public sealed class GeneralSectionView : ContentControl
             );
         }
 
-        var perPage = SettingsUi.SettingRow(
+        var perPage = SettingsUi.SettingBlock(
             "view_agenda",
             dock.PerPageTitle,
             null,
@@ -745,13 +746,13 @@ public sealed class GeneralSectionView : ContentControl
             ai.Caption,
             Switches(
                 SwitchRow(ai.Use, _viewModel.ToggleAi),
-                SettingsUi.SettingRow(
+                SettingsUi.SettingBlock(
                     ai.Consent ? "verified_user" : "gpp_maybe",
                     ai.ConsentState,
                     ai.ConsentDetail,
                     consent
                 ),
-                SettingsUi.SettingRow("key", ai.KeyState, null, delete)
+                SettingsUi.SettingBlock("key", ai.KeyState, null, delete)
             )
         );
     }
