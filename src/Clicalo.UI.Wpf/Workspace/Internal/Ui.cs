@@ -191,40 +191,47 @@ internal static class Ui
         return panel;
     }
 
-    /// <summary>A grid of <paramref name="columns"/> equal columns, <paramref name="gap"/> apart.</summary>
+    /// <summary>
+    /// A grid of <paramref name="columns"/> equal columns, <paramref name="gap"/> apart. The gaps are columns and rows of
+    /// their own, so every column has the same width (a margin split between neighbours made the middle ones narrower).
+    /// </summary>
     public static Grid Columns(int columns, double gap, IReadOnlyList<UIElement> children)
     {
+        columns = Math.Max(1, columns);
         var grid = new Grid();
         for (var c = 0; c < columns; c++)
         {
+            if (c > 0)
+            {
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gap) });
+            }
+
             grid.ColumnDefinitions.Add(
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             );
         }
 
-        var rows = (children.Count + columns - 1) / Math.Max(1, columns);
+        var rows = (children.Count + columns - 1) / columns;
         for (var r = 0; r < rows; r++)
         {
+            if (r > 0)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(gap) });
+            }
+
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         }
 
         for (var i = 0; i < children.Count; i++)
         {
             var child = children[i];
-            var column = i % columns;
-            var row = i / columns;
             if (child is FrameworkElement element)
             {
-                element.Margin = new Thickness(
-                    column == 0 ? 0 : gap / 2,
-                    row == 0 ? 0 : gap / 2,
-                    column == columns - 1 ? 0 : gap / 2,
-                    row == rows - 1 ? 0 : gap / 2
-                );
+                element.Margin = default;
             }
 
-            Grid.SetColumn(child, column);
-            Grid.SetRow(child, row);
+            Grid.SetColumn(child, 2 * (i % columns));
+            Grid.SetRow(child, 2 * (i / columns));
             grid.Children.Add(child);
         }
 
