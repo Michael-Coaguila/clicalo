@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Clicalo.Presentation.ControlCenter.About;
@@ -208,22 +207,16 @@ public sealed class AboutSectionView : Border
             );
         }
 
-        // Across the whole page the links keep the same width side by side, never a button as wide as the window.
-        var links = new UniformGrid
+        // Across the whole page the links sit side by side at their own width (they wrap when the window is narrow),
+        // never a button as wide as the window.
+        List<UIElement> row = [gitHub];
+        if (linkedIn is not null)
         {
-            Rows = 1,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(-Space.S2, 0, 0, 0),
-        };
-        foreach (var link in new[] { gitHub, linkedIn, share })
-        {
-            if (link is not null)
-            {
-                link.Margin = new Thickness(Space.S2, 0, 0, 0);
-                links.Children.Add(link);
-            }
+            row.Add(linkedIn);
         }
 
+        row.Add(share);
+        var links = Ui.Wrap(Space.S2, row);
         return SettingsUi.Frame(Ui.Column(Space.S3, identity, links), screen.AppName);
 
         static TouchButton Link(string text, string symbol, string id, Action click)

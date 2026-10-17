@@ -361,8 +361,49 @@ internal static class SettingsUi
     /// A grid of <paramref name="columns"/> equal columns, <see cref="Space.S2"/> apart, whose rows are as tall as
     /// their tallest item: the options of a group share borders, height and baseline.
     /// </summary>
-    public static Grid Options(int columns, IReadOnlyList<UIElement> options) =>
-        Ui.Columns(columns, Space.S2, options);
+    public static Grid Options(int columns, IReadOnlyList<UIElement> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        // The gaps are columns and rows of their own, so every option gets the same width (sharing each gap between
+        // two neighbours would leave the middle ones narrower).
+        columns = Math.Max(1, columns);
+        var grid = new Grid();
+        for (var c = 0; c < columns; c++)
+        {
+            if (c > 0)
+            {
+                grid.ColumnDefinitions.Add(
+                    new ColumnDefinition { Width = new GridLength(Space.S2) }
+                );
+            }
+
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+        }
+
+        var rows = (options.Count + columns - 1) / columns;
+        for (var r = 0; r < rows; r++)
+        {
+            if (r > 0)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(Space.S2) });
+            }
+
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
+        for (var i = 0; i < options.Count; i++)
+        {
+            var option = options[i];
+            Grid.SetColumn(option, i % columns * 2);
+            Grid.SetRow(option, i / columns * 2);
+            grid.Children.Add(option);
+        }
+
+        return grid;
+    }
 
     /// <summary>
     /// A short choice of a few values (30 s · 1 min · 2 min · Nunca): one row of tiles of 44 with the same width,
