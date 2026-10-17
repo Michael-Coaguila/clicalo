@@ -337,7 +337,7 @@ public sealed class WelcomeViewModel : ObservableObject
             ),
             new(
                 PanelDensity.Dock,
-                "dock_to_right",
+                "view_sidebar",
                 T(L.DDock),
                 T(L.DDockD),
                 current == PanelDensity.Dock

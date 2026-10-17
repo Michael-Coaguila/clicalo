@@ -344,7 +344,7 @@ public sealed class GeneralSectionView : ContentControl
             var symbol = option.Value switch
             {
                 PanelDensity.Compact => "view_compact",
-                PanelDensity.Dock => "dock_to_right",
+                PanelDensity.Dock => "view_sidebar",
                 _ => "view_agenda",
             };
             var card = SettingsUi.Option(
