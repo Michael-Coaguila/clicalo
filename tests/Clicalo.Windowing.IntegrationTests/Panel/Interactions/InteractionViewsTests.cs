@@ -130,7 +130,7 @@ public sealed class InteractionViewsTests
             var world = new InteractionsWorld();
             var tile = world.Tile(InteractionsWorld.Bold);
             var cross = new TileRemoveButton(world.EditMode, tile);
-            var add = new AddTileView(world.EditMode, 28, 14);
+            var add = new AddTileView(world.EditMode);
             using var theme = BaseControlTests.Host(cross, add);
 
             cross.Visibility.ShouldBe(Visibility.Collapsed);

@@ -1,235 +1,284 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
+using Clicalo.Presentation.Panel.Header;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Surfaces.Panel.Header;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The profile selector of the Full view (SEL-001): two columns of the same width and 44 high with a gap of 6. ★
-/// Frequents is filled with accent while Frequents is in view and outlined otherwise. The profile button shows the icon
-/// (20), the name (15, bold, cut with «…»), the 8 px dot of the active app, the 8 px yellow dot of a pending profile
-/// suggestion (SEL-005) and ▾, ▴ or ↶; it is accent while its profile is in view, cardHi while the profile grid is open
-/// and card with a border in Frequents, and it is an ExpandCollapse for UI Automation. Both dots are said in its item
-/// status, never by color alone. It only projects <see cref="SelectorRowViewModel"/>.
+/// The row «Qué ver» of direction C (D12, SEL-001, CAB-003): a track of <see cref="ControlHeight.Medium"/> in <c>side</c>
+/// with two segments of the same width, ★ Frequents and the profile (its icon, its name with «…», the dot of the app in
+/// front, the yellow dot of a pending suggestion and ▾, ▴ or ↶), and at its end the Auto/Fixed button of
+/// <see cref="ControlHeight.Medium"/> × <see cref="ControlHeight.Medium"/>, next to what it controls. The segment in view
+/// has the single look of «elegido». ★ Frequents is an Invoke button and the profile an ExpandCollapse one for UI
+/// Automation; both say their dots in their item status, never by color alone. The Full view shows it above the grid
+/// and the Compact view at its foot (VCO-002), where the open profile grid closes with ✕. It only projects
+/// <see cref="SelectorRowViewModel"/> and, for Auto/Fixed, <see cref="PanelHeaderViewModel"/>.
 /// </summary>
 public sealed class SelectorRowView : Grid
 {
-    private const double Gap = 6;
-    private const double Height44 = 44;
-    private const double IconPx = 20;
-    private const double FrequentsPx = 14;
-    private const double NamePx = 15;
-    private const double DotPx = 8;
-
     private readonly SelectorRowViewModel _viewModel;
+    private readonly PanelHeaderViewModel? _header;
+    private bool _compact;
+    private bool _narrow;
+    private readonly ColumnDefinition _frequentsColumn = Star();
     private readonly ShortcutTile _frequents;
-    private readonly TextBlock _frequentsText = new()
-    {
-        FontWeight = FontWeights.Bold,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
-
+    private readonly SymbolIcon _star = PanelChrome.Icon("star", IconBox.Small, ColorToken.Text);
+    private readonly StyledText _frequentsText = PanelChrome.Text(TextStyleToken.Label);
     private readonly ShortcutTile _profile;
-    private readonly SymbolIcon _profileIcon = new()
-    {
-        Size = IconPx,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
-    private readonly TextBlock _profileName = new()
-    {
-        FontWeight = FontWeights.Bold,
-        TextTrimming = TextTrimming.CharacterEllipsis,
-        VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(Gap, 0, Gap, 0),
-    };
+    private readonly SymbolIcon _profileIcon = PanelChrome.Icon(
+        null,
+        IconBox.Small,
+        ColorToken.Text
+    );
+    private readonly StyledText _profileName = PanelChrome.Text(TextStyleToken.Label);
+    private readonly Border _dot = PanelChrome.Mark(ColorToken.AccentInk);
+    private readonly Border _suggestionDot = PanelChrome.Mark(ColorToken.Warn);
+    private readonly SymbolIcon _caret = PanelChrome.Icon(null, IconBox.Small, ColorToken.Muted);
+    private readonly AutoFixedButton _autoFixed;
 
-    private readonly Border _dot = new()
-    {
-        Width = DotPx,
-        Height = DotPx,
-        CornerRadius = new CornerRadius(DotPx / 2),
-        VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(0, 0, Gap, 0),
-    };
-
-    private readonly Border _suggestionDot = SuggestionDot(DotPx, Gap);
-
-    private readonly SymbolIcon _caret = new()
-    {
-        Size = IconPx,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
-
-    /// <summary>Creates the selector of <paramref name="viewModel"/>.</summary>
-    /// <param name="viewModel">The selector.</param>
-    public SelectorRowView(SelectorRowViewModel viewModel)
+    /// <summary>Creates the row.</summary>
+    /// <param name="viewModel">★ Frequents and the profile button.</param>
+    /// <param name="header">The header, whose Auto/Fixed button the row shows; null leaves it out.</param>
+    /// <param name="compact">The row of the Compact view (✕ closes the open profile grid).</param>
+    public SelectorRowView(
+        SelectorRowViewModel viewModel,
+        PanelHeaderViewModel? header = null,
+        bool compact = false
+    )
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Margin = new Thickness(12, 0, 12, 10);
-        ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-        );
-        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Gap) });
-        ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-        );
+        _header = header;
+        _compact = compact;
+        Height = ControlHeight.Medium;
 
-        _frequents = PanelChrome.NewButton(PanelChrome.Large, ShortcutTilePattern.Invoke);
-        _frequents.Height = Height44;
-        _frequents.HorizontalContentAlignment = HorizontalAlignment.Center;
-        _frequents.VerticalContentAlignment = VerticalAlignment.Center;
-        var star = new StackPanel { Orientation = Orientation.Horizontal };
-        star.Children.Add(
-            new SymbolIcon
-            {
-                Symbol = "star",
-                Size = IconPx,
-                Margin = new Thickness(0, 0, Gap, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-            }
-        );
-        _frequentsText.SetResourceReference(
-            TextBlock.FontSizeProperty,
-            ThemeKeys.TextSize(FrequentsPx)
-        );
+        _frequents = Segment(ShortcutTilePattern.Invoke);
+        _star.Margin = new Thickness(0, 0, Space.S2, 0);
+        _frequentsText.VerticalAlignment = VerticalAlignment.Center;
+        var star = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(_star, Dock.Left);
+        star.Children.Add(_star);
         star.Children.Add(_frequentsText);
         _frequents.Tag = star;
+        _frequents.HorizontalContentAlignment = HorizontalAlignment.Center;
         _frequents.Invoked += (_, _) => _viewModel.Frequents();
-        SetColumn(_frequents, 0);
-        Children.Add(_frequents);
 
-        _profile = PanelChrome.NewButton(PanelChrome.Large, ShortcutTilePattern.ExpandCollapse);
-        _profile.Height = Height44;
-        _profile.Padding = new Thickness(10, 0, 8, 0);
-        _profile.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        _profile.VerticalContentAlignment = VerticalAlignment.Center;
+        _profile = Segment(ShortcutTilePattern.ExpandCollapse);
+        _profileIcon.Margin = new Thickness(0, 0, Space.S2, 0);
+        _profileName.VerticalAlignment = VerticalAlignment.Center;
+        _dot.Margin = new Thickness(Space.S1, 0, 0, 0);
+        _suggestionDot.Margin = new Thickness(Space.S1, 0, 0, 0);
+        _caret.Margin = new Thickness(Space.S1, 0, 0, 0);
         var content = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_profileIcon, Dock.Left);
         DockPanel.SetDock(_caret, Dock.Right);
-        DockPanel.SetDock(_dot, Dock.Right);
         DockPanel.SetDock(_suggestionDot, Dock.Right);
+        DockPanel.SetDock(_dot, Dock.Right);
         content.Children.Add(_profileIcon);
         content.Children.Add(_caret);
         content.Children.Add(_suggestionDot);
         content.Children.Add(_dot);
-        _profileName.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(NamePx));
         content.Children.Add(_profileName);
         _profile.Tag = content;
+        _profile.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         _profile.Invoked += (_, _) => _viewModel.ProfileButton();
         _profile.ExpandRequested += (_, _) => _viewModel.ProfileButton();
         _profile.CollapseRequested += (_, _) => _viewModel.ProfileButton();
-        SetColumn(_profile, 2);
-        Children.Add(_profile);
 
-        viewModel.PropertyChanged += OnChanged;
+        var segments = new Grid();
+        segments.ColumnDefinitions.Add(_frequentsColumn);
+        segments.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Space.S1) });
+        segments.ColumnDefinitions.Add(Star());
+        SetColumn(_profile, 2);
+        segments.Children.Add(_frequents);
+        segments.Children.Add(_profile);
+        // The line of the track is drawn over it, inside, without taking room: the segments of 44 keep their whole
+        // height in the track of 52 (S1 above and below), so the ring of the chosen one is never cut (D12).
+        var fill = new Border
+        {
+            CornerRadius = new CornerRadius(Radii.Medium),
+            Padding = new Thickness(Space.S1),
+            Child = segments,
+        };
+        fill.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Side));
+        var line = new Border
+        {
+            CornerRadius = new CornerRadius(Radii.Medium),
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = true,
+        };
+        line.SetResourceReference(Border.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        line.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        var track = new Grid();
+        track.Children.Add(fill);
+        track.Children.Add(line);
+
+        _autoFixed = new AutoFixedButton
+        {
+            Focusable = false,
+            IsTabStop = false,
+            Margin = new Thickness(Space.S2, 0, 0, 0),
+            Visibility = header is null ? Visibility.Collapsed : Visibility.Visible,
+        };
+        _autoFixed.ToggleRequested += (_, _) => _header?.ToggleLock();
+
+        ColumnDefinitions.Add(Star());
+        ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        SetColumn(_autoFixed, 1);
+        Children.Add(track);
+        Children.Add(_autoFixed);
+
+        _viewModel.PropertyChanged += OnChanged;
+        if (_header is not null)
+        {
+            _header.PropertyChanged += OnChanged;
+        }
+
         Refresh();
     }
 
-    /// <summary>★ Frequents and the profile button while the row shows.</summary>
+    /// <summary>★ Frequents, the profile button and Auto/Fixed while the row is on screen.</summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
         get
         {
-            if (!_viewModel.IsVisible)
+            if (Visibility != Visibility.Visible)
             {
                 yield break;
             }
 
             yield return new PanelTapTarget(_frequents, _viewModel.Frequents);
             yield return new PanelTapTarget(_profile, _viewModel.ProfileButton);
+            if (_header is not null && _autoFixed.Visibility == Visibility.Visible)
+            {
+                yield return new PanelTapTarget(_autoFixed, _header.ToggleLock);
+            }
         }
     }
 
     /// <summary>The ★ Frequents button.</summary>
     public ShortcutTile FrequentsButton => _frequents;
 
-    /// <summary>The yellow dot of a pending profile suggestion (SEL-005).</summary>
-    public Border SuggestionMark => _suggestionDot;
-
-    /// <summary>
-    /// A dot of the warn color for the profile button, shown while a profile suggestion waits for the active app
-    /// (SEL-005). It is drawn only: the button says it in its item status.
-    /// </summary>
-    /// <param name="size">Its diameter.</param>
-    /// <param name="gap">The space after it.</param>
-    internal static Border SuggestionDot(double size, double gap)
-    {
-        var dot = new Border
-        {
-            Width = size,
-            Height = size,
-            CornerRadius = new CornerRadius(size / 2),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, gap, 0),
-            Visibility = Visibility.Collapsed,
-        };
-        PanelChrome.SetBrush(dot, Border.BackgroundProperty, ColorToken.Warn);
-        return dot;
-    }
-
     /// <summary>The profile button.</summary>
     public ShortcutTile ProfileButton => _profile;
 
-    /// <summary>Stops following the view model.</summary>
-    public void Detach() => _viewModel.PropertyChanged -= OnChanged;
+    /// <summary>The Auto/Fixed button (CAB-003).</summary>
+    public AutoFixedButton AutoFixed => _autoFixed;
+
+    /// <summary>Whether the row is the bottom row of the Compact view (✕ closes the open profile grid, VCO-002).</summary>
+    public bool IsCompact
+    {
+        get => _compact;
+        set
+        {
+            _compact = value;
+            Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Whether the row is in the narrowest panel (S): ★ Frequents keeps only its star, a square of 44 named
+    /// «Frecuentes», and the profile takes the rest of the track, so its name is read instead of «W…».
+    /// </summary>
+    public bool IsNarrow
+    {
+        get => _narrow;
+        set
+        {
+            if (_narrow == value)
+            {
+                return;
+            }
+
+            _narrow = value;
+            _frequentsColumn.Width = value ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+            _frequents.Width = value ? ControlHeight.Small : double.NaN;
+            _frequents.Padding = value ? new Thickness(0) : new Thickness(Space.S2, 0, Space.S2, 0);
+            _frequentsText.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
+            _star.Margin = value ? new Thickness(0) : new Thickness(0, 0, Space.S2, 0);
+        }
+    }
+
+    /// <summary>The yellow dot of a pending profile suggestion (SEL-005).</summary>
+    public Border SuggestionMark => _suggestionDot;
+
+    /// <summary>Stops following the view models.</summary>
+    public void Detach()
+    {
+        _viewModel.PropertyChanged -= OnChanged;
+        if (_header is not null)
+        {
+            _header.PropertyChanged -= OnChanged;
+        }
+    }
+
+    private static ColumnDefinition Star() =>
+        new() { Width = new GridLength(1, GridUnitType.Star) };
+
+    private static ShortcutTile Segment(ShortcutTilePattern pattern)
+    {
+        var segment = PanelChrome.NewButton(PanelChrome.Segment, pattern);
+        segment.Height = ControlHeight.Small;
+        segment.Padding = new Thickness(Space.S2, 0, Space.S2, 0);
+        return segment;
+    }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
     private void Refresh()
     {
-        Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
         _frequents.AccessibleName = _viewModel.FrequentsName;
         _frequents.AccessibleState = _viewModel.FrequentsState;
         _frequentsText.Text = _viewModel.FrequentsName;
-        if (_viewModel.IsFrequentsActive)
-        {
-            PanelChrome.Paint(_frequents, ColorToken.Accent, ColorToken.OnAccent, null);
-        }
-        else
-        {
-            PanelChrome.Paint(_frequents, null, ColorToken.Text, ColorToken.Border);
-        }
+        Choose(_frequents, _star, _frequentsText, _viewModel.IsFrequentsActive);
 
         _profile.AccessibleName = _viewModel.ProfileName;
         _profile.AccessibleHelpText = _viewModel.ButtonHelp;
         _profile.AccessibleState = _viewModel.ButtonState;
-        _suggestionDot.Visibility = _viewModel.HasSuggestion
-            ? Visibility.Visible
-            : Visibility.Collapsed;
         _profile.IsExpanded = _viewModel.IsExpanded;
         _profileName.Text = _viewModel.ProfileName;
         _profileIcon.Symbol = _viewModel.ProfileIcon.Length == 0 ? null : _viewModel.ProfileIcon;
         _caret.Symbol = _viewModel.Caret switch
         {
-            SelectorCaret.Collapse => "expand_less",
+            SelectorCaret.Collapse => _compact ? "close" : "expand_less",
             SelectorCaret.Return => "undo",
             _ => "expand_more",
         };
         _dot.Visibility = _viewModel.IsActiveApp ? Visibility.Visible : Visibility.Collapsed;
-        var active = _viewModel.Look == SelectorLook.Active;
-        PanelChrome.SetBrush(
-            _dot,
-            Border.BackgroundProperty,
-            active ? ColorToken.OnAccent : ColorToken.Accent
-        );
-        switch (_viewModel.Look)
+        _suggestionDot.Visibility = _viewModel.HasSuggestion
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        Choose(_profile, _profileIcon, _profileName, _viewModel.Look != SelectorLook.Frequents);
+
+        if (_header is { } header)
         {
-            case SelectorLook.Active:
-                PanelChrome.Paint(_profile, ColorToken.Accent, ColorToken.OnAccent, null);
-                break;
-            case SelectorLook.Open:
-                PanelChrome.Paint(_profile, ColorToken.CardHi, ColorToken.Text, ColorToken.Border);
-                break;
-            default:
-                PanelChrome.Paint(_profile, ColorToken.Card, ColorToken.Text, ColorToken.Border);
-                break;
+            // While the search has text, Auto/Fixed keeps its place under the search layer (CAB-001).
+            _autoFixed.Visibility = header.ShowsAutoFixed ? Visibility.Visible : Visibility.Hidden;
+            _autoFixed.IsChecked = header.IsFixed;
+            _autoFixed.Symbol = header.AutoFixedIcon;
+            _autoFixed.Label = header.AutoFixedLabel;
+            _autoFixed.ToolTip = header.AutoFixedName;
+            AutomationProperties.SetName(_autoFixed, header.AutoFixedName);
         }
+    }
+
+    /// <summary>The single look of «elegido» on a segment: wash, ring, the icon filled in <c>accentInk</c>.</summary>
+    private static void Choose(ShortcutTile segment, SymbolIcon icon, StyledText text, bool chosen)
+    {
+        segment.ToggleState = chosen ? ToggleState.On : ToggleState.Off;
+        icon.IsFilled = chosen;
+        icon.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(chosen ? ColorToken.AccentInk : ColorToken.Text)
+        );
+        text.Ink = ColorToken.Text;
     }
 }

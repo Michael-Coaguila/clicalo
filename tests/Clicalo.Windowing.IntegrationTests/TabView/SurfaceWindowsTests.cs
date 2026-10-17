@@ -13,6 +13,7 @@ using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.Theming;
@@ -54,8 +55,11 @@ public sealed class SurfaceWindowsTests
             try
             {
                 bubble.Look.ShouldBe(SurfaceLook.Bubble);
-                bubble.Button.Symbol.ShouldBe("keyboard");
-                bubble.Button.IconSize.ShouldBe(PanelSizes.Layout.BubbleIconPx);
+                // Direction C (D12): the mark of Clícalo, never taken for the touch keyboard of Windows.
+                var mark =
+                    bubble.Button.Content.ShouldBeOfType<Clicalo.UI.Wpf.Controls.SymbolIcon>();
+                mark.Symbol.ShouldBe("touch_app");
+                mark.Size.ShouldBe(IconBox.Large);
                 bubble.Title.ShouldBe("Mostrar panel");
                 bubble.BorderThickness.Left.ShouldBeLessThan(3);
 
@@ -186,15 +190,15 @@ public sealed class SurfaceWindowsTests
             );
             panel.Apply(PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es));
             panel.ApplyLayout(PanelLayoutSettings.Default with { Compact = true });
-            var row = new CompactRowView(panel.Selector, panel.Pager, () => false);
+            var body = new PanelBodyView(panel);
 
-            row.Visibility.ShouldBe(System.Windows.Visibility.Collapsed);
-            row.TapTargets.ShouldBeEmpty();
-            row.Show(shown: true);
-            row.Visibility.ShouldBe(System.Windows.Visibility.Visible);
-            row.FrequentsButton.AccessibleName.ShouldBe("Frecuentes");
-            row.TapTargets.Count().ShouldBeGreaterThanOrEqualTo(2);
-            row.Detach();
+            // Direction C (D12): the row «Qué ver» goes to the foot of the Compact view, under the pager.
+            body.Children.IndexOf(body.Selector)
+                .ShouldBeGreaterThan(body.Children.IndexOf(body.Pager));
+            body.Selector.Visibility.ShouldBe(System.Windows.Visibility.Visible);
+            body.Selector.FrequentsButton.AccessibleName.ShouldBe("Frecuentes");
+            body.Selector.TapTargets.Count().ShouldBeGreaterThanOrEqualTo(2);
+            body.Detach();
         });
     }
 

@@ -11,51 +11,42 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The empty card of the grid (CUA-010): a dashed outline of 2 px in line and radius 12, an icon of 30 in muted, a
-/// title in 14 bold, a text in 12 muted and a 44 px accent button. An empty profile shows <c>inbox</c>, [emptyProfT],
-/// [emptyProfS] and «+ [addShortcut]»; an empty Frequents shows <c>star</c>, [freqEmptyT], [freqEmptyS] and «Volver a
-/// {perfil}». It only projects <see cref="EmptyStateViewModel"/>.
+/// The empty grid (CUA-010) in direction C (D12): in the place of the tiles, with their size, the dashed line of an
+/// empty slot in <c>line</c> and, centered, the icon in <c>muted</c>, the title in <c>heading</c>, the text in
+/// <c>bodySmall</c> and <c>muted</c> (two lines with «…») and one primary button. An empty profile shows
+/// <c>inbox</c>, [emptyProfT], [emptyProfS] and «+ [addShortcut]»; an empty Frequents shows <c>star</c>, [freqEmptyT],
+/// [freqEmptyS] and «Volver a {perfil}». When the grid has few rows, the icon and then the text give way, so the title
+/// and the button are never cut. It only projects <see cref="EmptyStateViewModel"/>.
 /// </summary>
 public sealed class EmptyStateView : Grid
 {
-    private const double IconPx = 30;
-    private const double TitlePx = 14;
-    private const double SubtitlePx = 12;
-    private const double ButtonHeight = 44;
-    private const double Gap = 8;
-    private const double DashedBorder = 2;
+    private static readonly DoubleCollection Dash = Frozen();
 
     private readonly EmptyStateViewModel _viewModel;
-    private readonly SymbolIcon _icon = new()
+    private readonly SymbolIcon _icon = PanelChrome.Icon(null, IconBox.Large, ColorToken.Muted);
+    private readonly StyledText _title = PanelChrome.Text(TextStyleToken.Heading);
+    private readonly StyledText _subtitle = new(
+        string.Empty,
+        TextStyleToken.BodySmall,
+        ColorToken.Muted
+    )
     {
-        Size = IconPx,
-        HorizontalAlignment = HorizontalAlignment.Center,
-        Margin = new Thickness(0, 0, 0, Gap),
-    };
-
-    private readonly TextBlock _title = new()
-    {
-        FontWeight = FontWeights.Bold,
-        TextAlignment = TextAlignment.Center,
-        TextWrapping = TextWrapping.Wrap,
-    };
-
-    private readonly TextBlock _subtitle = new()
-    {
-        TextAlignment = TextAlignment.Center,
-        TextWrapping = TextWrapping.Wrap,
-        Margin = new Thickness(0, Gap, 0, 0),
+        MaxLines = 2,
     };
 
     private readonly TouchButton _add = new()
     {
         Variant = ButtonVariant.Primary,
-        Symbol = "add",
-        Height = ButtonHeight,
         Focusable = false,
         IsTabStop = false,
         HorizontalAlignment = HorizontalAlignment.Center,
-        Margin = new Thickness(0, Gap, 0, 0),
+        Margin = new Thickness(0, Space.S2, 0, 0),
+    };
+
+    private readonly StackPanel _stack = new()
+    {
+        VerticalAlignment = VerticalAlignment.Center,
+        Margin = new Thickness(Space.S3),
     };
 
     /// <summary>Creates the card of <paramref name="viewModel"/>.</summary>
@@ -64,50 +55,50 @@ public sealed class EmptyStateView : Grid
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Margin = new Thickness(12, 6, 12, 0);
+        ClipToBounds = true;
         var outline = new Rectangle
         {
             RadiusX = Radii.Medium,
             RadiusY = Radii.Medium,
-            StrokeThickness = DashedBorder,
-            StrokeDashArray = new DoubleCollection([3, 2]),
+            StrokeDashArray = Dash,
+            SnapsToDevicePixels = true,
+            IsHitTestVisible = false,
         };
         outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
+        outline.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
         Children.Add(outline);
 
-        _icon.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
-        _title.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(TitlePx));
-        _title.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Text)
-        );
-        _subtitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(SubtitlePx));
-        _subtitle.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
+        _icon.Margin = new Thickness(0, 0, 0, Space.S2);
+        _title.TextAlignment = TextAlignment.Center;
+        _title.HorizontalAlignment = HorizontalAlignment.Center;
+        _subtitle.TextAlignment = TextAlignment.Center;
+        _subtitle.HorizontalAlignment = HorizontalAlignment.Center;
+        _subtitle.Margin = new Thickness(0, Space.S1, 0, 0);
         _add.Click += (_, _) => _viewModel.Add();
+        _stack.Children.Add(_icon);
+        _stack.Children.Add(_title);
+        _stack.Children.Add(_subtitle);
+        _stack.Children.Add(_add);
+        Children.Add(_stack);
 
-        var stack = new StackPanel { Margin = new Thickness(12, 18, 12, 18) };
-        stack.Children.Add(_icon);
-        stack.Children.Add(_title);
-        stack.Children.Add(_subtitle);
-        stack.Children.Add(_add);
-        Children.Add(stack);
-
+        SizeChanged += (_, _) => Fit();
         viewModel.PropertyChanged += OnChanged;
         Refresh();
     }
 
-    /// <summary>«+ Añadir atajo» while the card shows.</summary>
+    /// <summary>The button while the card shows.</summary>
     public IEnumerable<PanelTapTarget> TapTargets =>
         _viewModel.IsVisible ? [new PanelTapTarget(_add, _viewModel.Add)] : [];
 
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
+
+    private static DoubleCollection Frozen()
+    {
+        var dash = new DoubleCollection([Stroke.Selected, Stroke.Selected]);
+        dash.Freeze();
+        return dash;
+    }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
@@ -119,5 +110,28 @@ public sealed class EmptyStateView : Grid
         _subtitle.Text = _viewModel.Subtitle;
         _add.Symbol = _viewModel.ButtonIcon;
         _add.Content = _viewModel.ButtonName;
+        Fit();
+    }
+
+    /// <summary>Gives way to the icon, then to the text, while the card is lower than its content.</summary>
+    private void Fit()
+    {
+        if (ActualHeight <= 0)
+        {
+            return;
+        }
+
+        _icon.Visibility = Visibility.Visible;
+        _subtitle.Visibility = Visibility.Visible;
+        foreach (var part in new UIElement[] { _icon, _subtitle })
+        {
+            _stack.Measure(new Size(ActualWidth, double.PositiveInfinity));
+            if (_stack.DesiredSize.Height <= ActualHeight)
+            {
+                return;
+            }
+
+            part.Visibility = Visibility.Collapsed;
+        }
     }
 }

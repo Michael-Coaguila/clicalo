@@ -29,6 +29,7 @@ public sealed class PanelHeaderViewModel : ObservableObject
     private bool _showsAutoFixed = true;
     private string _autoFixedIcon = string.Empty;
     private string _autoFixedName = string.Empty;
+    private string _autoFixedLabel = string.Empty;
     private string _moveName = string.Empty;
     private string _searchName = string.Empty;
     private string _editName = string.Empty;
@@ -88,7 +89,10 @@ public sealed class PanelHeaderViewModel : ObservableObject
         private set => SetProperty(ref _activeAppDotName, value);
     }
 
-    /// <summary>Fixed (red, lock) or Auto (blue, autorenew); the Toggle state of the button (CAB-003).</summary>
+    /// <summary>
+    /// Fixed (lock) or Auto (autorenew); the Toggle state of the button (CAB-003). In direction C (D12) Fixed is drawn as
+    /// «elegido», never in red: red only means danger.
+    /// </summary>
     public bool IsFixed
     {
         get => _isFixed;
@@ -114,6 +118,13 @@ public sealed class PanelHeaderViewModel : ObservableObject
     {
         get => _autoFixedName;
         private set => SetProperty(ref _autoFixedName, value);
+    }
+
+    /// <summary>The word under the icon of the Auto/Fixed button: [auto2] «Auto» or [lockOn2] «Fijo» (D12).</summary>
+    public string AutoFixedLabel
+    {
+        get => _autoFixedLabel;
+        private set => SetProperty(ref _autoFixedLabel, value);
     }
 
     /// <summary>The accessible name of the grip ([move] «Mover panel»).</summary>
@@ -302,5 +313,6 @@ public sealed class PanelHeaderViewModel : ObservableObject
         var localizer = _localization.Current;
         Title = _model.Title is { } title ? localizer.Format(title) : _model.ProfileName;
         AutoFixedName = localizer.Format(_model.AutoFixedName);
+        AutoFixedLabel = localizer.Format(_model.IsFixed ? L.LockOn2 : L.Auto2);
     }
 }

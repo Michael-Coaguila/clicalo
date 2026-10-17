@@ -1,26 +1,23 @@
-using System.Windows;
 using System.Windows.Automation;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Touch;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
-using TouchTargetSize = Clicalo.UI.Wpf.Controls.TouchTarget;
 
 namespace Clicalo.UI.Wpf.Surfaces;
 
 /// <summary>
-/// The floating «Release all» of the Tab view and the bubble (PES-013, BUR-002, REG-03): a red pill of 44 with ⚠ and
-/// [releaseAll], always at 100 %, that releases everything in one tap. It shows only while something is held. It is an
+/// The floating «Release all» of the Tab view and the bubble (PES-013, BUR-002, REG-03): the one filled danger button of
+/// direction C (D12), <see cref="ControlHeight.Small"/> high with the radius of every button, ⚠ and [releaseAll] in
+/// bold <c>onDanger</c>, always at 100 %, that releases everything in one tap. It shows only while something is held. It is an
 /// assertive live region (ACC-001): when it appears, and whenever what is held changes while it is on screen, it
 /// announces what is held, as the panic strip of the panel does (SEG-002); what is held is also its help text.
 /// </summary>
 public sealed class PanicPillWindow : TouchSurface
 {
-    private const double PanicTextPx = 13;
-    private const double PanicIconPx = 18;
-
     private readonly Action _releaseAll;
     private readonly TouchButton _button;
     private readonly LiveAnnouncer _announcer;
@@ -47,29 +44,24 @@ public sealed class PanicPillWindow : TouchSurface
             theme,
             touch,
             static (_, _, _) => { },
-            new SurfaceLook(default, Clicalo.UI.Wpf.Theming.Generated.Shadows.Menu, Round: true)
+            new SurfaceLook(default, Shadows.Menu, Round: true)
         )
     {
         ArgumentNullException.ThrowIfNull(releaseAll);
         _releaseAll = releaseAll;
         _button = SurfaceParts.Button(
             "warning",
-            PanicIconPx,
+            IconBox.Small,
             ButtonVariant.Danger,
             releaseAll,
-            height: TouchTargetSize.MinimumSize
+            height: ControlHeight.Small
         );
+        // A button of the system: its side padding (Space.S4), not the tight one of the narrow bar of the Tab view.
+        _button.ClearValue(PaddingProperty);
+
         // SEG-002: «Soltar todo» is the panic itself: the danger fill with its text, the one filled danger button.
-        _button.SetResourceReference(
-            BackgroundProperty,
-            ThemeBrushKey.For(Clicalo.UI.Wpf.Theming.Generated.ColorToken.Danger)
-        );
-        _button.SetResourceReference(
-            ForegroundProperty,
-            ThemeBrushKey.For(Clicalo.UI.Wpf.Theming.Generated.ColorToken.OnDanger)
-        );
-        _button.Padding = new Thickness(14, 0, 14, 0);
-        _button.SetResourceReference(FontSizeProperty, ThemeKeys.TextSize(PanicTextPx));
+        _button.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Danger));
+        _button.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.OnDanger));
         AutomationProperties.SetLiveSetting(_button, AutomationLiveSetting.Assertive);
         _announcer = new LiveAnnouncer(_button);
         Content = _button;

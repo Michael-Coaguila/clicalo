@@ -1,8 +1,8 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Profiles;
-using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
@@ -69,7 +69,7 @@ public sealed class M6PanelViewTests
                 var star = body.Picker.FrequentsTile;
 
                 body.Picker.TapTargets.First().Element.ShouldBe(star);
-                star.AccessibleName.ShouldBe("Frecuentes");
+                AutomationProperties.GetName(star).ShouldBe("Frecuentes");
                 star.ActualWidth.ShouldBeGreaterThanOrEqualTo(TouchTarget.MinimumSize);
                 star.ActualHeight.ShouldBeGreaterThanOrEqualTo(TouchTarget.MinimumSize);
 
@@ -186,7 +186,7 @@ public sealed class M6PanelViewTests
                     Title = () => taps++,
                 }
             );
-            var header = new PanelHeader(viewModel, PanelSizes.M);
+            var header = new PanelHeader(viewModel);
             header.TitleButton.Visibility.ShouldBe(Visibility.Collapsed);
             var before = header.TapTargets.Count;
 
@@ -200,7 +200,7 @@ public sealed class M6PanelViewTests
             header.TapTargets[0].Tap();
             taps.ShouldBe(1);
             // PAN-004: the title still drags the panel.
-            header.DragZones.Count.ShouldBe(2);
+            header.DragZones.Count.ShouldBe(1);
         });
 
     private static void WithBody(
@@ -221,6 +221,9 @@ public sealed class M6PanelViewTests
             var body = new PanelBodyView(panel);
             var root = new StackPanel();
             root.Children.Add(body);
+
+            // The profile grid is a layer of the panel (direction C, D12): here it goes under the body.
+            root.Children.Add(body.Picker);
             theme.Attach(root);
             try
             {

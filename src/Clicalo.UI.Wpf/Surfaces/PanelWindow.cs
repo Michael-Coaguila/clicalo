@@ -14,7 +14,6 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.Header;
-using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.Presentation.Panel.Search;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
@@ -27,29 +26,31 @@ using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
 using GestureTarget = Clicalo.Domain.Touch.TouchTarget;
-using TouchTargetSize = Clicalo.UI.Wpf.Controls.TouchTarget;
 
 namespace Clicalo.UI.Wpf.Surfaces;
 
 /// <summary>
-/// The full panel (blueprint §8.1, docs/04 §1–§11): a <see cref="NonActivatingWindow"/> (CLC0001 applies) that
-/// composes, from the top, the header, the panic strip, the administrator notice, the search, the profile suggestion and
-/// the body (Always visible row, sticky keys, profile selector and grid, shortcut grid, pager and notice bar), in the
-/// order of PAN-007. It shows what its view models say and forwards what happens:
+/// The full panel (blueprint §8.1, docs/04 §1–§11) in direction C (D12): a <see cref="NonActivatingWindow"/> (CLC0001
+/// applies) with the size of its design: the header, the body (the Always visible row, the sticky keys, the row «Qué
+/// ver», the grid and its pager, in the order of PAN-007) and the status row at its foot. Every temporary state is a
+/// layer over those rows, never a block that pushes them (<see cref="PanelLayerHost"/>): Quick settings and the search
+/// over the body, the profile grid over the grid, the administrator notice, the profile suggestion and the tile menu at
+/// the foot of the body, the test mode band over the pager row and the panic strip with «Release all» over the status
+/// row. So the panel never changes its size for them, nothing moves under the finger and a row a layer covers is not on
+/// screen for the finger nor for UI Automation. It shows what its view models say and forwards what happens:
 /// <list type="bullet">
 /// <item>finger, pen and mouse go through the product's pointer layer (<see cref="PointerInputSource"/> feeding a
 /// <see cref="GestureHost"/>, ADR-0006): every visible tile and button is a target; an accepted tap, the start and the
 /// end of a hold and a page swipe reach the view models with the contact's device and summary;</item>
 /// <item>UI Automation Invoke, Toggle and ExpandCollapse reach the same actions through the controls themselves (EJE-005,
 /// S3);</item>
-/// <item>the panic strip and the notice bar are live regions (assertive and polite, ACC-001);</item>
-/// <item>with the layers of the panel, Quick settings open under the search, the tile menu above the grid and the test
-/// mode indicator above the notice bar; every gesture on a tile asks <see cref="PanelLayerModels.Modes"/> first (edit
-/// mode, test mode, the long press of the menu), and while the menu is open any other tap only closes it (CUA-014).</item>
+/// <item>the panic strip and the status row are live regions (assertive and polite, ACC-001);</item>
+/// <item>every gesture on a tile asks <see cref="PanelLayerModels.Modes"/> first (edit mode, test mode, the long press of
+/// the menu), and while the menu is open any other tap only closes it (CUA-014).</item>
 /// </list>
 /// It never takes the foreground (REG-01): it is shown and moved only passively, and hiding it resets the gestures, so
 /// a hold under the finger ends with <see cref="HoldEndReason.Reset"/> and the engine releases it (REG-03). While a
-/// finger rests on it, nothing that appears above the grid moves a button under it: the window moves up by as much
+/// finger rests on it, nothing that would move the grid moves a button under it: the window moves up by as much
 /// (PAN-009).
 /// </summary>
 [SuppressMessage(
@@ -62,9 +63,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     /// <summary>The target identifier of «Release all»; tiles and buttons take the ones after it.</summary>
     private const int ReleaseAllTargetId = 0;
 
-    private const double PanicTextPx = 14;
-    private const double PanicIconPx = 18;
-
     private readonly PanelViewModel _viewModel;
     private readonly PanelHeaderViewModel? _headerViewModel;
     private readonly SearchViewModel? _search;
@@ -74,11 +72,14 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private readonly TimeProvider _time;
     private readonly ThemeService _theme;
     private readonly StackPanel _root;
+    private readonly PanelLayerHost _host;
+    private readonly Border _headerSlot;
     private readonly PanelBodyView _body;
+    private readonly Border _bottomLayer;
     private readonly SearchBar? _searchBar;
     private readonly SuggestionCard? _suggestionCard;
     private readonly Border _panicStrip;
-    private readonly TextBlock _panicText;
+    private readonly StyledText _panicText;
     private readonly ShortcutTile _releaseAll;
     private readonly Dictionary<int, Target> _targets = [];
     private readonly Dictionary<ShortcutId, int> _tileIds = [];
@@ -87,6 +88,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private readonly HashSet<uint> _dragged = [];
     private PanelHeader? _header;
     private SizeMetrics? _headerSize;
+    private bool _headerNamed;
     private int _nextTargetId = ReleaseAllTargetId + 1;
     private DimSettings _dim;
     private bool _hovered;
@@ -102,9 +104,6 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private bool _placed;
     private bool _closed;
     private bool _measuring;
-
-    /// <summary>The height Quick settings took on screen in the last layout pass, its margins included (AJR-001).</summary>
-    private double _sheetOnScreen;
 
     /// <summary>Creates the panel on the UI thread of <paramref name="registry"/> (the Surfaces role).</summary>
     /// <param name="viewModel">The body and the panic strip; its layout settings give sizes and width.</param>
@@ -153,42 +152,84 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         Title = viewModel.AccessibleName;
         theme.Attach(this);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
-        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
+        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
         (_panicStrip, _panicText, _releaseAll) = BuildPanicStrip();
-        _body = new PanelBodyView(viewModel);
+        _body = new PanelBodyView(viewModel, header)
+        {
+            Margin = new Thickness(Space.S3, Space.S3, Space.S3, 0),
+        };
+        _headerSlot = new Border
+        {
+            Margin = new Thickness(Space.S3, Space.S3, Space.S3, 0),
+            Visibility = header is null ? Visibility.Collapsed : Visibility.Visible,
+        };
+        _body.Notices.Margin = new Thickness(0, Space.S3, 0, 0);
         _root = new StackPanel { Orientation = Orientation.Vertical };
-        _root.Children.Add(_panicStrip);
-        _root.Children.Add(_body.AdminNotice);
+        _root.Children.Add(_headerSlot);
+        _root.Children.Add(_body);
+        _root.Children.Add(_body.Notices);
+
+        // The layers, in the order of PAN-007 from the top; the last ones are drawn above the first ones.
+        _host = new PanelLayerHost(_root);
         if (search is not null)
         {
             _searchBar = new SearchBar(search);
-            _root.Children.Add(_searchBar);
+            _host.Add(_searchBar, SearchRegion);
             search.PropertyChanged += OnSearchChanged;
         }
 
         if (layers is not null)
         {
-            // AJR-001: the sheet opens under the search bar, at most 62 % of the screen high.
-            _quickSheet = new QuickSettingsSheet(layers.QuickSettings);
-            _quickSheet.ApplyScreenHeight(SystemParameters.WorkArea.Height);
-            _root.Children.Add(_quickSheet);
             _body.AttachLayers(layers);
+            _quickSheet = new QuickSettingsSheet(layers.QuickSettings) { ShowsHeader = true };
+            _host.Add(_quickSheet, BodyRegion);
             layers.EditMode.PropertyChanged += OnLayerChanged;
             layers.Menu.PropertyChanged += OnLayerChanged;
-            layers.QuickSettings.PropertyChanged += OnQuickSettingsChanged;
+            layers.QuickSettings.PropertyChanged += OnLayerChanged;
+            layers.TestMode.PropertyChanged += OnLayerChanged;
         }
 
+        _host.Add(_body.Picker, PickerRegion);
+        viewModel.Picker.PropertyChanged += OnPickerChanged;
+
+        // The notices that wait for an answer go at the foot of the body, one above the other, over the tiles.
+        var notices = new StackPanel();
+        notices.Children.Add(_body.AdminNotice);
         if (suggestion is not null)
         {
             _suggestionCard = new SuggestionCard(suggestion);
-            _root.Children.Add(_suggestionCard);
+            notices.Children.Add(_suggestionCard);
         }
 
-        _root.Children.Add(_body);
-        Content = _root;
+        if (_body.TileMenu is { } menu)
+        {
+            notices.Children.Add(menu);
+        }
+
+        var visibility = DependencyPropertyDescriptor.FromProperty(
+            VisibilityProperty,
+            typeof(UIElement)
+        );
+        foreach (FrameworkElement notice in notices.Children)
+        {
+            notice.Margin = new Thickness(0, 0, 0, Space.S3);
+            visibility.AddValueChanged(notice, OnNoticeShown);
+        }
+
+        _bottomLayer = PanelChrome.Layer(notices);
+        _bottomLayer.Padding = new Thickness(Space.S3, Space.S3, Space.S3, 0);
+        _host.Add(_bottomLayer, BodyRegion, bottom: true);
+        if (_body.TestModeIndicator is { } testMode)
+        {
+            _host.Add(testMode, PagerRegion);
+        }
+
+        _host.Add(_panicStrip, StatusRegion);
+        Content = _host;
         ApplyLayout();
+        ApplyBottomLayer();
 
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Panic.PropertyChanged += OnPanicChanged;
@@ -443,9 +484,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         {
             _layers.EditMode.PropertyChanged -= OnLayerChanged;
             _layers.Menu.PropertyChanged -= OnLayerChanged;
-            _layers.QuickSettings.PropertyChanged -= OnQuickSettingsChanged;
+            _layers.QuickSettings.PropertyChanged -= OnLayerChanged;
+            _layers.TestMode.PropertyChanged -= OnLayerChanged;
         }
 
+        _viewModel.Picker.PropertyChanged -= OnPickerChanged;
+        _header?.Detach();
         _body.Detach();
         _quickSheet?.Detach();
         _suggestionCard?.Detach();
@@ -458,44 +502,33 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         base.OnClosed(e);
     }
 
-    private (Border Strip, TextBlock Text, ShortcutTile ReleaseAll) BuildPanicStrip()
+    /// <summary>
+    /// The panic strip (SEG-002) of direction C: a layer over the status row, so nothing moves when it appears, in the
+    /// danger fill down to the rounded foot of the panel, with ⚠ and what is held in bold <c>onDanger</c> (one line with
+    /// «…», an assertive live region) and «Release all», the danger button of 44.
+    /// </summary>
+    private (Border Strip, StyledText Text, ShortcutTile ReleaseAll) BuildPanicStrip()
     {
-        var text = new TextBlock
+        var text = new StyledText(string.Empty, TextStyleToken.Label, ColorToken.OnDanger)
         {
-            TextWrapping = TextWrapping.Wrap,
-            FontWeight = FontWeights.Bold,
+            MaxLines = 1,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 8, 0),
         };
-        text.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(PanicTextPx));
-        text.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.OnDanger)
-        );
         AutomationProperties.SetLiveSetting(text, AutomationLiveSetting.Assertive);
-        var icon = new SymbolIcon
-        {
-            Symbol = "warning",
-            Size = PanicIconPx,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        icon.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.OnDanger)
-        );
+        var icon = PanelChrome.Icon("warning", IconBox.Small, ColorToken.OnDanger);
+        icon.Margin = new Thickness(0, 0, Space.S2, 0);
         var releaseAll = new ShortcutTile
         {
             Template = PanicButtonTemplate.Default,
             Pattern = ShortcutTilePattern.Invoke,
-            MinWidth = TouchTargetSize.MinimumSize,
-            MinHeight = TouchTargetSize.MinimumSize,
-            Padding = new Thickness(12, 0, 12, 0),
+            Height = ControlHeight.Small,
+            Padding = new Thickness(Space.S4, 0, Space.S4, 0),
+            Margin = new Thickness(Space.S2, 0, 0, 0),
             Focusable = false,
             IsTabStop = false,
         };
-        releaseAll.SetResourceReference(FontSizeProperty, ThemeKeys.TextSize(PanicTextPx));
         releaseAll.Invoked += (_, _) => _viewModel.Panic.ReleaseAll();
-        var row = new DockPanel();
+        var row = new DockPanel { LastChildFill = true, Height = ControlHeight.Small };
         DockPanel.SetDock(icon, Dock.Left);
         DockPanel.SetDock(releaseAll, Dock.Right);
         row.Children.Add(icon);
@@ -504,9 +537,10 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         var strip = new Border
         {
             Child = row,
-            CornerRadius = new CornerRadius(Radii.Small),
-            Padding = new Thickness(10, 4, 4, 4),
-            Margin = new Thickness(12, 0, 12, 10),
+            CornerRadius = new CornerRadius(0, 0, Radii.Large, Radii.Large),
+            // The strip covers the status row and the foot of the panel: «Release all» sits S2 from the right and
+            // the bottom and S1 from the top, so it reads centered in the red instead of hanging from its top edge.
+            Padding = new Thickness(Space.S3, Space.S1, Space.S2, Space.S2),
             Visibility = Visibility.Collapsed,
         };
         strip.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Danger));
@@ -537,53 +571,151 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
 
     private void OnSearchChanged(object? sender, PropertyChangedEventArgs change)
     {
-        if (
-            string.Equals(
-                change.PropertyName,
-                nameof(SearchViewModel.IsSearching),
-                StringComparison.Ordinal
-            )
-        )
+        switch (change.PropertyName)
         {
-            ApplyCompactRow();
+            case nameof(SearchViewModel.IsSearching):
+                ApplyCompactRow();
+                break;
+            case nameof(SearchViewModel.IsOpen):
+                ApplyCover();
+                break;
         }
     }
 
+    private void OnPickerChanged(object? sender, PropertyChangedEventArgs change) => ApplyCover();
+
+    private void OnNoticeShown(object? sender, EventArgs e) => ApplyBottomLayer();
+
     private void OnPanicChanged(object? sender, PropertyChangedEventArgs change) => ApplyPanic();
 
-    /// <summary>Edit mode changes what a tile does (CUA-012) and the menu what a tap does (CUA-014).</summary>
-    private void OnLayerChanged(object? sender, PropertyChangedEventArgs change) =>
+    /// <summary>
+    /// Edit mode changes what a tile does (CUA-012), the menu what a tap does (CUA-014) and Quick settings what is on
+    /// screen under them.
+    /// </summary>
+    private void OnLayerChanged(object? sender, PropertyChangedEventArgs change)
+    {
+        ApplyCover();
         RefreshTargets();
+    }
 
     /// <summary>
-    /// Width from the layout (PAN-002) and, in the Full and Compact views, the header with the header buttons of the
-    /// size (<c>sizes.json</c>); the bottom row of the Compact view (VCO-002). The Tab view has its own surfaces.
+    /// Width from the layout (PAN-002) and, in the Full and Compact views, the header of the size: in S it keeps the
+    /// grip and the icon of the profile and leaves its name to the row «Qué ver». The Tab view has its own surfaces.
     /// </summary>
     private void ApplyLayout()
     {
         var layout = _viewModel.Layout;
         _root.Width = GridMetrics.PanelWidth(layout);
         ApplyCompactRow();
-        if (_headerViewModel is null || ReferenceEquals(_headerSize, layout.Metrics))
+        var named = layout.Metrics.Size != Clicalo.Domain.Catalog.PanelSize.S;
+        if (
+            _headerViewModel is null
+            || (ReferenceEquals(_headerSize, layout.Metrics) && _headerNamed == named)
+        )
         {
             return;
         }
 
-        if (_header is not null)
-        {
-            _root.Children.Remove(_header);
-        }
-
+        _header?.Detach();
         _headerSize = layout.Metrics;
-        _header = new PanelHeader(_headerViewModel, layout.Metrics);
-        _root.Children.Insert(0, _header);
+        _headerNamed = named;
+        _header = new PanelHeader(_headerViewModel, named);
+        _headerSlot.Child = _header;
     }
 
-    /// <summary>VCO-002: the bottom row of the Compact view, hidden while the search has text.</summary>
+    /// <summary>VCO-002: the row «Qué ver» goes to the foot in the Compact view, hidden while the search has text.</summary>
     private void ApplyCompactRow() =>
         _body.ApplyCompactRow(
             CompactRowRules.Visible(_viewModel.Layout, _search?.IsSearching == true)
         );
+
+    /// <summary>
+    /// What the open layers cover stops being on screen, so neither the finger nor UI Automation reaches a tile under a
+    /// layer: Quick settings cover the whole body, the search field the row «Qué ver», the profile grid the grid and
+    /// its pager, and the test mode band the pager.
+    /// </summary>
+    private void ApplyCover()
+    {
+        var quick = _layers?.QuickSettings.IsOpen == true;
+        _body.Visibility = quick ? Visibility.Hidden : Visibility.Visible;
+        _body.Cover(
+            chooser: _search?.IsOpen == true,
+            grid: _viewModel.Picker.IsVisible,
+            pager: _layers?.TestMode.IsOn == true
+        );
+    }
+
+    /// <summary>The layer at the foot of the body shows while one of its notices does.</summary>
+    private void ApplyBottomLayer()
+    {
+        var shown =
+            _bottomLayer.Child is System.Windows.Controls.Panel notices
+            && notices
+                .Children.OfType<UIElement>()
+                .Any(static n => n.Visibility == Visibility.Visible);
+        _bottomLayer.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Where the body starts under the header, in the host: the layers over the body start there.</summary>
+    private double BodyTop() =>
+        _headerSlot.Visibility == Visibility.Visible && _host.IsAncestorOf(_headerSlot)
+            ? _headerSlot.TranslatePoint(default, _host).Y + _headerSlot.ActualHeight + Space.S2
+            : 0;
+
+    /// <summary>The top of <paramref name="element"/> in the host.</summary>
+    private double TopOf(FrameworkElement element) =>
+        _host.IsAncestorOf(element) ? element.TranslatePoint(default, _host).Y : 0;
+
+    private Rect Span(double top, double bottom) =>
+        new(0, top, _host.ActualWidth, Math.Max(0, bottom - top));
+
+    /// <summary>The body, from under the header to the status row (Quick settings, the notices at its foot).</summary>
+    private Rect BodyRegion() => Span(BodyTop(), TopOf(_body.Notices));
+
+    /// <summary>
+    /// The search field (BUS-001): in the place of the row «Qué ver», right above the results in Full and at the foot in
+    /// Compact, as high as that row, so the panel looks the same with the field open and empty (BUS-005). Without that row
+    /// (<c>showTabsRow</c> off) it takes the same place above the grid.
+    /// </summary>
+    private Rect SearchRegion()
+    {
+        var chooser = _body.Selector;
+        var top =
+            chooser.Visibility != Visibility.Collapsed
+                ? TopOf(chooser)
+                : Math.Max(BodyTop(), TopOf(_body.GridArea) - Space.S3 - ControlHeight.Medium);
+        return new Rect(
+            Space.S3,
+            top,
+            Math.Max(0, _host.ActualWidth - (2 * Space.S3)),
+            ControlHeight.Medium
+        );
+    }
+
+    /// <summary>The grid and its pager (the profile grid): above the status row in Full, above «Qué ver» in Compact.</summary>
+    private Rect PickerRegion()
+    {
+        var bottom = _viewModel.Layout.Compact
+            ? TopOf(_body.Selector) - Space.S2
+            : TopOf(_body.Notices);
+        return Span(TopOf(_body.GridArea) - Space.S1, bottom);
+    }
+
+    /// <summary>The pager row, inside the margins of the body (the test mode band).</summary>
+    private Rect PagerRegion()
+    {
+        var top = TopOf(_body.Pager);
+        return new Rect(
+            Space.S3,
+            top,
+            Math.Max(0, _host.ActualWidth - (2 * Space.S3)),
+            _body.Pager.ActualHeight
+        );
+    }
+
+    /// <summary>The status row (the panic strip).</summary>
+    private Rect StatusRegion() =>
+        Span(TopOf(_body.Notices), TopOf(_body.Notices) + _body.Notices.ActualHeight);
 
     private void ApplyVisibility()
     {
@@ -728,10 +860,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             RefreshTargets();
             if (!_touching && IsVisible)
             {
-                // The sheet first, from this layout alone, then the grid with the height the sheet is about to take:
-                // both from the same pass, so the next one finds nothing to change (AJR-001, CUA-001).
-                var shift = FitQuickSheet();
-                _ = _body.MeasureGridSpace(this, WorkBottom(), shift);
+                // The layers never move the grid: the space below it is the same with any of them open (D12).
+                _ = _body.MeasureGridSpace(this, WorkBottom());
             }
         }
         finally
@@ -740,101 +870,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         }
     }
 
-    /// <summary>
-    /// AJR-001: Quick settings never push the panel off the screen. The sheet gets the height left down to the bottom
-    /// of the work area with the grid on one row; what does not fit scrolls inside the sheet. Everything is read from the
-    /// layout on screen, the rows of the grid included (<see cref="PanelBodyView.GridSlack"/>), so the room does not
-    /// depend on the rows the grid is about to get.
-    /// </summary>
-    /// <returns>How much higher the sheet will be after the next layout pass, in DIPs: the grid measures with it.</returns>
-    private double FitQuickSheet()
-    {
-        if (
-            _quickSheet is not { IsVisible: true } sheet
-            || PresentationSource.FromVisual(sheet) is null
-        )
-        {
-            return 0;
-        }
-
-        var top = sheet.TranslatePoint(new Point(0, 0), this).Y;
-        var rendered = sheet.ActualHeight;
-        _sheetOnScreen = rendered + sheet.Margin.Top + sheet.Margin.Bottom;
-        var below = ActualHeight - top - rendered;
-        var next = sheet.FitHeight(QuickSheetFit.Room(Available(top), below, _body.GridSlack));
-        return next - rendered;
-    }
-
-    /// <summary>
-    /// Quick settings opened or closed (AJR-001): before the layout pass that shows or hides the sheet, its height and
-    /// the rows of the grid are decided together from the layout on screen, so the panel takes its new height in one
-    /// step instead of growing past the work area first and shrinking after. A tap opens it while its finger is still
-    /// counted on the panel, so this does not wait for the fingers.
-    /// </summary>
-    private void OnQuickSettingsChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (
-            !string.Equals(
-                e.PropertyName,
-                nameof(QuickSettingsViewModel.IsOpen),
-                StringComparison.Ordinal
-            )
-            || _closed
-            || !IsVisible
-            || _quickSheet is not { } sheet
-            || _layers is null
-            || PresentationSource.FromVisual(this) is null
-        )
-        {
-            return;
-        }
-
-        var margins = sheet.Margin.Top + sheet.Margin.Bottom;
-        double shift;
-        if (_layers.QuickSettings.IsOpen)
-        {
-            // The sheet is not laid out yet: it will start where what follows it starts now.
-            var top = TopOfSheet() + sheet.Margin.Top;
-            var below = ActualHeight - top + sheet.Margin.Bottom;
-            shift =
-                sheet.FitHeight(QuickSheetFit.Room(Available(top), below, _body.GridSlack))
-                + margins;
-        }
-        else
-        {
-            // Collapsing it already set its size to zero: what it took on screen was kept by the last layout pass.
-            shift = -_sheetOnScreen;
-            _sheetOnScreen = 0;
-        }
-
-        _ = _body.MeasureGridSpace(this, WorkBottom(), shift);
-    }
-
-    /// <summary>From <paramref name="top"/> (in the window) down to the lowest edge the panel may reach, in DIPs.</summary>
-    private double Available(double top) =>
-        WorkBottom() - PanelSizes.Layout.PanelBottomMarginPx - Top - top;
-
     private double WorkBottom() => WorkAreaBottom ?? SystemParameters.WorkArea.Bottom;
-
-    /// <summary>Where the sheet starts in the window while it is collapsed: under what is shown above it.</summary>
-    private double TopOfSheet()
-    {
-        var top = _root.TranslatePoint(new Point(0, 0), this).Y;
-        foreach (UIElement child in _root.Children)
-        {
-            if (ReferenceEquals(child, _quickSheet))
-            {
-                break;
-            }
-
-            if (child.Visibility != Visibility.Collapsed)
-            {
-                top += child.DesiredSize.Height;
-            }
-        }
-
-        return top;
-    }
 
     /// <summary>
     /// PAN-009: something appeared or went away above the grid while a finger rests on the panel (the panic strip, the
@@ -937,7 +973,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             yield return new PanelTapTarget(_suggestionCard.NotNowButton, _suggestion.NotNow);
         }
 
-        foreach (var target in _body.TapTargets)
+        foreach (var target in _body.TapTargets.Concat(_body.PlacedTapTargets))
         {
             yield return target;
         }
@@ -952,6 +988,13 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
 
         _targets.Clear();
         var targets = ImmutableArray.CreateBuilder<GestureTarget>();
+
+        // A layer on screen covers what is under it: only its own controls answer there (D12).
+        var covers = _host
+            .Layers.Where(static layer => layer.IsVisible)
+            .Select(static layer => (Layer: layer, Bounds: TouchBounds.Of(layer, inflate: false)))
+            .Where(static cover => !cover.Bounds.IsEmpty)
+            .ToList();
 
         // CUA-014: while the tile menu is open, its rows act and any other tap only closes it.
         Action? closeMenu = _layers is { Menu.IsOpen: true } open ? open.Menu.Close : null;
@@ -1007,13 +1050,21 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         void Add(FrameworkElement element, int id, TouchTargetKind kind, Target target)
         {
             var bounds = TouchBounds.Of(element, inflate: true);
-            if (bounds.IsEmpty)
+            if (bounds.IsEmpty || IsCovered(element))
             {
                 return;
             }
 
             targets.Add(new GestureTarget(new TouchTargetId(id), bounds, kind));
             _targets[id] = target;
+        }
+
+        bool IsCovered(FrameworkElement element)
+        {
+            var center = TouchBounds.Of(element, inflate: false).Center;
+            return covers.Exists(cover =>
+                !cover.Layer.IsAncestorOf(element) && cover.Bounds.Contains(center)
+            );
         }
     }
 

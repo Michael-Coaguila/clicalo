@@ -15,14 +15,16 @@ namespace Clicalo.UI.Wpf.Automation;
 /// touch target, drawn at the tile's <c>Width</c> × <c>Height</c> when that is smaller, REG-02) with a <c>card</c> of
 /// radius <see cref="Radii.Medium"/> and its line inside, and an anatomy of reserved slots that never overlap: the
 /// voice number at the top left (ACC-009: <c>warn</c> fill with dark text), the type at the top right (an icon of
-/// <see cref="IconBox.Badge"/> in <c>muted</c>, or the state as text, ACC-003), the icon in the category tint in its
-/// fixed box, the bold name in one line with «…» and the key line in JetBrains Mono and <c>muted</c>. Every color is
-/// a theme resource, so <see cref="ThemeScope"/> and <see cref="ThemeService"/> repaint it in place (TEM-001).
+/// <see cref="IconBox.Badge"/> in <c>muted</c>), the icon in the category tint in its fixed box, the bold name in one
+/// line with «…» and the key line in JetBrains Mono and <c>muted</c>. The state in words (ACC-003, EJE-010) takes the
+/// place of the key line, in the interface font and <c>accentInk</c>, so it never covers the icon or the voice number.
+/// Every color is a theme resource, so <see cref="ThemeScope"/> and <see cref="ThemeService"/> repaint it in place
+/// (TEM-001).
 /// </summary>
 /// <remarks>
 /// States (CUA-009), all inside the same box: Alternar on, the single look of «elegido» (accent wash, a ring of
-/// <see cref="Stroke.Selected"/> inside and the icon filled); held, the same at scale 0.95; armed, <c>warnWash</c> and
-/// a ring in <c>warnText</c>; flash, accent wash; sticky key locked (indeterminate), <c>accent</c> fill; menu open
+/// <see cref="Stroke.Selected"/> inside and the icon and the type filled in <c>accentInk</c>); held, the same at scale
+/// 0.95; armed, <c>warnWash</c> and a ring, the type and the state in <c>warnText</c>; flash, accent wash; sticky key locked (indeterminate), <c>accent</c> fill; menu open
 /// (expanded), the accent ring. The template is sealed, so one instance serves every UI thread.
 /// </remarks>
 public static class ShortcutTileTemplate
@@ -45,7 +47,7 @@ public static class ShortcutTileTemplate
     /// <summary>Name of the text block that shows the tile's name.</summary>
     public const string LabelPart = "PART_Label";
 
-    /// <summary>Name of the text block of the key line.</summary>
+    /// <summary>Name of the text block of the key line, which shows the state while there is one.</summary>
     public const string KeysPart = "PART_Keys";
 
     /// <summary>Name of the slot at the top right (the type or the state).</summary>
@@ -54,7 +56,7 @@ public static class ShortcutTileTemplate
     /// <summary>Name of the icon of the type, in the top right slot.</summary>
     public const string TypePart = "PART_Type";
 
-    /// <summary>Name of the text block that shows the badge text (the accessible state or the type).</summary>
+    /// <summary>Name of the text block that shows the badge word of a tile without a type icon.</summary>
     public const string StatePart = "PART_State";
 
     /// <summary>Name of the voice number badge.</summary>
@@ -148,7 +150,7 @@ public static class ShortcutTileTemplate
         body.AppendChild(label);
 
         var keys = new FrameworkElementFactory(typeof(TextBlock), KeysPart);
-        keys.SetValue(TextBlock.TextProperty, Bind(ShortcutTile.KeysProperty));
+        keys.SetValue(TextBlock.TextProperty, Bind(ShortcutTile.FootTextProperty));
         keys.SetValue(TextBlock.FontSizeProperty, Bind(ShortcutTile.KeysFontSizeProperty));
         keys.SetValue(TextBlock.FontWeightProperty, FontWeights.Medium);
         keys.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
@@ -233,10 +235,23 @@ public static class ShortcutTileTemplate
         yield return Collapse(ShortcutTile.VoiceNumberProperty, null, VoiceNumberPart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, string.Empty, StatePart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, null, StatePart);
-        // The type icon and the state text share the slot: the state, when there is one, wins (ACC-003).
+        // The slot at the top right holds the type icon, or the badge word of a tile without one; never the state.
         yield return Collapse(ShortcutTile.IsTypeShownProperty, false, TypePart);
-        yield return Collapse(ShortcutTile.KeysProperty, string.Empty, KeysPart);
-        yield return Collapse(ShortcutTile.KeysProperty, null, KeysPart);
+        yield return Collapse(ShortcutTile.FootTextProperty, string.Empty, KeysPart);
+        yield return Collapse(ShortcutTile.FootTextProperty, null, KeysPart);
+
+        // The state in words takes the place of the key line (ACC-003, EJE-010): words, so the interface font.
+        yield return Set(
+            ShortcutTile.IsStateShownProperty,
+            true,
+            new Setter(
+                TextBlock.FontFamilyProperty,
+                new DynamicResourceExtension(ThemeKeys.UiFont),
+                KeysPart
+            ),
+            new Setter(TextBlock.FontWeightProperty, FontWeights.Bold, KeysPart),
+            Brush(KeysPart, TextBlock.ForegroundProperty, ColorToken.AccentInk)
+        );
         yield return Collapse(ShortcutTile.SymbolProperty, null, IconPart);
         yield return Set(
             ShortcutTile.MaxNameLinesProperty,
@@ -254,7 +269,9 @@ public static class ShortcutTileTemplate
             true,
             Brush(ChromePart, Border.BackgroundProperty, ColorToken.WarnWash),
             new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart),
-            Brush(RingPart, Shape.StrokeProperty, ColorToken.WarnText)
+            Brush(RingPart, Shape.StrokeProperty, ColorToken.WarnText),
+            Brush(TypePart, SymbolIcon.ForegroundProperty, ColorToken.WarnText),
+            Brush(KeysPart, TextBlock.ForegroundProperty, ColorToken.WarnText)
         );
         yield return Set(
             ShortcutTile.IsHeldProperty,
@@ -274,7 +291,8 @@ public static class ShortcutTileTemplate
             Brush(ChromePart, Border.BackgroundProperty, ColorToken.Accent),
             Brush(LabelPart, TextBlock.ForegroundProperty, ColorToken.OnAccent),
             Brush(KeysPart, TextBlock.ForegroundProperty, ColorToken.OnAccent),
-            Brush(IconPart, SymbolIcon.ForegroundProperty, ColorToken.OnAccent)
+            Brush(IconPart, SymbolIcon.ForegroundProperty, ColorToken.OnAccent),
+            Brush(TypePart, SymbolIcon.ForegroundProperty, ColorToken.OnAccent)
         );
         yield return Set(
             ShortcutTile.IsExpandedProperty,
@@ -283,12 +301,14 @@ public static class ShortcutTileTemplate
         );
     }
 
-    /// <summary>The single look of «elegido»: wash, the ring of 2 inside and the icon filled.</summary>
+    /// <summary>The single look of «elegido»: wash, the ring of 2 inside, the icon filled and the type in accent.</summary>
     private static Setter[] Chosen() =>
         [
             Brush(ChromePart, Border.BackgroundProperty, ColorToken.AccentWash),
             new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart),
             new Setter(SymbolIcon.IsFilledProperty, true, IconPart),
+            new Setter(SymbolIcon.IsFilledProperty, true, TypePart),
+            Brush(TypePart, SymbolIcon.ForegroundProperty, ColorToken.AccentInk),
         ];
 
     private static TemplateBindingExtension Bind(DependencyProperty property) => new(property);

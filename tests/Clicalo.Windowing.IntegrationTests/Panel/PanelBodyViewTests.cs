@@ -35,15 +35,19 @@ public sealed class PanelBodyViewTests
             {
                 body.ActualWidth.ShouldBe(316);
                 body.ShortcutGrid.TileControls.Count.ShouldBe(9);
-                body.ShortcutGrid.ActualHeight.ShouldBe(3 * (78 + 8));
+                // Tiles of 80 with the gap of 8 of direction C (D12); each one keeps half the gap around it.
+                body.ShortcutGrid.ActualHeight.ShouldBe(3 * (80 + 8));
                 body.ShortcutGrid.TileControls[0].Control.AccessibleName.ShouldBe("Atajo 0");
                 body.Strip.TileControls.Count.ShouldBe(5);
                 body.Children.IndexOf(body.Strip)
                     .ShouldBeLessThan(body.Children.IndexOf(body.Selector));
                 body.Children.IndexOf(body.Selector)
                     .ShouldBeLessThan(body.Children.IndexOf(body.GridArea));
-                body.Children.IndexOf(body.Pager)
-                    .ShouldBeLessThan(body.Children.IndexOf(body.Notices));
+                body.Children.IndexOf(body.GridArea)
+                    .ShouldBeLessThan(body.Children.IndexOf(body.Pager));
+
+                // The status row goes at the foot of the panel, out of the body (the surface places it).
+                body.Children.Contains(body.Notices).ShouldBeFalse();
                 body.Pager.Visibility.ShouldBe(Visibility.Visible);
                 panel.Pager.PageCount.ShouldBe(3);
             }

@@ -3,19 +3,19 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Frequents;
 using Clicalo.Presentation.Panel.ContextMenu;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel.ContextMenu;
 
 /// <summary>
-/// The context menu of a tile inside the panel, over the grid (CUA-014, prototype lines 200–205): a <c>win</c> card of
-/// radius 12 with a 1 px <c>accent</c> outline and padding 6, a header with the tile's icon in accent and its name in
-/// 13 bold, then 44 px rows ([ctxPin]/[ctxUnpin], [ctxHide], [edit], [cancel]) with a 20 px icon and 14 px text. It only
-/// projects <see cref="TileContextMenuViewModel"/>.
+/// The menu of a tile (CUA-014) in direction C (D12): the tile's icon in <c>accentInk</c> and its name in
+/// <c>heading</c>, then one secondary button per action ([ctxPin]/[ctxUnpin], [ctxHide], [edit]) of
+/// <see cref="ControlHeight.Small"/>, <see cref="Space.S2"/> apart, with its icon and its name, and [cancel] as a
+/// tertiary button, lighter than the actions. The panel shows it as a layer at the foot of its body, over the tiles,
+/// without moving them, and rings the tile it belongs to. It only projects <see cref="TileContextMenuViewModel"/>.
 /// </summary>
 /// <remarks>
 /// While it is open the panel registers only <see cref="TapTargets"/> and treats any other tap as «tap outside»
@@ -24,20 +24,13 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.ContextMenu;
 /// </remarks>
 public sealed class TileContextMenuView : Border
 {
-    private const double HeaderIconPx = 18;
-    private const double HeaderTextPx = 13;
-    private const double RowIconPx = 20;
-    private const double RowTextPx = 14;
-
     private readonly TileContextMenuViewModel _viewModel;
-    private readonly SymbolIcon _headerIcon = new() { Size = HeaderIconPx };
-    private readonly TextBlock _headerText = new()
-    {
-        FontWeight = FontWeights.Bold,
-        VerticalAlignment = VerticalAlignment.Center,
-        TextTrimming = TextTrimming.CharacterEllipsis,
-        Margin = new Thickness(8, 0, 0, 0),
-    };
+    private readonly SymbolIcon _headerIcon = PanelChrome.Icon(
+        null,
+        IconBox.Medium,
+        ColorToken.AccentInk
+    );
+    private readonly StyledText _headerText = PanelChrome.Text(TextStyleToken.Heading);
     private readonly StackPanel _rows = new();
     private readonly List<(TouchButton Button, TileMenuRowViewModel Row)> _buttons = [];
 
@@ -47,30 +40,12 @@ public sealed class TileContextMenuView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Margin = new Thickness(12, 0, 12, 8);
-        Padding = new Thickness(6);
-        CornerRadius = new CornerRadius(Radii.Medium);
-        BorderThickness = new Thickness(1);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
-        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Accent));
 
-        _headerIcon.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Accent)
-        );
-        _headerText.SetResourceReference(
-            TextBlock.FontSizeProperty,
-            ThemeKeys.TextSize(HeaderTextPx)
-        );
-        _headerText.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Text)
-        );
-        var header = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Margin = new Thickness(8, 6, 8, 6),
-        };
+        _headerIcon.Margin = new Thickness(0, 0, Space.S2, 0);
+        _headerText.VerticalAlignment = VerticalAlignment.Center;
+        var header = new DockPanel { LastChildFill = true, Height = ControlHeight.Small };
+        DockPanel.SetDock(_headerIcon, Dock.Left);
         header.Children.Add(_headerIcon);
         header.Children.Add(_headerText);
 
@@ -109,21 +84,20 @@ public sealed class TileContextMenuView : Border
         _buttons.Clear();
         foreach (var row in _viewModel.Rows)
         {
+            var cancel = row.Item == TileMenuItem.Cancel;
             var button = new TouchButton
             {
-                Variant = ButtonVariant.Tertiary,
-                Symbol = row.Icon,
-                IconSize = RowIconPx,
+                Variant = cancel ? ButtonVariant.Tertiary : ButtonVariant.Secondary,
+                Symbol = cancel ? null : row.Icon,
                 Content = row.Label,
-                MinHeight = PanelSizes.Layout.PanelContextMenuRowHeightPx,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                Padding = new Thickness(10, 0, 10, 0),
-                FontWeight = FontWeights.Normal,
+                HorizontalContentAlignment = cancel
+                    ? HorizontalAlignment.Center
+                    : HorizontalAlignment.Left,
+                Margin = new Thickness(0, Space.S2, 0, 0),
                 Focusable = false,
                 IsTabStop = false,
             };
-            button.SetResourceReference(Control.FontSizeProperty, ThemeKeys.TextSize(RowTextPx));
             AutomationProperties.SetName(button, row.Label);
             var activate = row.Activate;
             button.Click += (_, _) => activate();
@@ -135,7 +109,7 @@ public sealed class TileContextMenuView : Border
     private void Refresh()
     {
         Visibility = _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
-        _headerIcon.Symbol = _viewModel.Icon;
+        _headerIcon.Symbol = _viewModel.Icon.Length == 0 ? null : _viewModel.Icon;
         _headerText.Text = _viewModel.Title;
         AutomationProperties.SetName(this, _viewModel.AccessibleName);
         AutomationProperties.SetHelpText(this, _viewModel.Title);

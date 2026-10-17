@@ -30,7 +30,7 @@ public sealed class PanelBodyViewModelTests
         panel.Shape.PerPage.ShouldBe(9);
         Ids(panel).ShouldBe(Range(0, 9));
         panel.Pager.IsVisible.ShouldBeTrue();
-        panel.Pager.Dots.Select(static d => d.WidthPx).ShouldBe([24d, 10, 10]);
+        panel.Pager.Dots.Select(static d => d.WidthPx).ShouldBe([24d, 8, 8]);
         panel.Pager.Dots[1].AccessibleName.ShouldBe("Página 2");
         panel.Pager.Dots.Select(static d => d.AccessibleState).ShouldBe(["Activado", "", ""]);
         panel.Pager.CanGoPrevious.ShouldBeFalse();
@@ -69,7 +69,8 @@ public sealed class PanelBodyViewModelTests
     {
         var panel = Panel(20);
 
-        panel.ApplyGridSpace(165);
+        // Two tiles of 80 and the gap of 8 between them (direction C, D12).
+        panel.ApplyGridSpace(168);
         panel.Shape.Rows.ShouldBe(2);
         panel.Tiles.Count.ShouldBe(6);
         panel.Pager.PageCount.ShouldBe(4);
@@ -128,7 +129,7 @@ public sealed class PanelBodyViewModelTests
     [Fact]
     [Trait("Req", "FIJ-002")]
     [Trait("Req", "FIJ-003")]
-    public void In_S_the_row_holds_four_and_shows_only_icons()
+    public void In_S_the_row_holds_four_and_keeps_the_names()
     {
         var panel = Panel(0, strip: 5);
         panel.ApplyLayout(
@@ -138,7 +139,7 @@ public sealed class PanelBodyViewModelTests
             }
         );
 
-        panel.Strip.ShowsNames.ShouldBeFalse();
+        panel.Strip.ShowsNames.ShouldBeTrue();
         panel.Strip.Tiles.Count.ShouldBe(3);
         panel.Strip.MoreLabel.ShouldBe("1/2");
         panel.Strip.TileHeightPx.ShouldBe(PanelSizes.S.StripHeightPx);

@@ -4,15 +4,19 @@ namespace Clicalo.Domain.PanelLayout;
 
 /// <summary>
 /// The Always visible row (FIJ-001 to FIJ-003): 4 columns; 4 shortcuts in S or Compact and 8 in M or L; with more,
-/// capacity − 1 per page and a «··· i/N» chip that cycles; names hidden in S and Compact.
+/// capacity − 1 per page and a «··· i/N» chip that cycles. Direction C (D12) keeps the name on every tile, in every size
+/// and view: a tile without a name was one of the causes of the critique, and the row of C is 64 high in every view.
 /// </summary>
 public static class StripLayout
 {
     /// <summary>Columns of the row (FIJ-002).</summary>
     public const int Columns = 4;
 
-    /// <summary>Visual height of the row in the Compact view (FIJ-002; 44 as touch target).</summary>
-    public const int CompactHeightPx = 40;
+    /// <summary>
+    /// Height of the row in the Compact view: the large control height of direction C, as in Full (D12, FIJ-002), the
+    /// least that holds the icon and the name of a tile at the largest text.
+    /// </summary>
+    public const int CompactHeightPx = 64;
 
     /// <summary>Shortcuts the row holds before paging: 4 in S or Compact, 8 in M or L (FIJ-003).</summary>
     /// <param name="settings">Size and view.</param>
@@ -24,7 +28,7 @@ public static class StripLayout
             : settings.Metrics.StripCapacity;
     }
 
-    /// <summary>Visual height of a tile of the row: 44/60/72 in S/M/L and 40 in Compact (FIJ-002).</summary>
+    /// <summary>Height of a tile of the row: 64 in S, M and L, in Full and in Compact (FIJ-002, D12).</summary>
     /// <param name="settings">Size and view.</param>
     public static int TileHeight(PanelLayoutSettings settings)
     {
@@ -32,12 +36,15 @@ public static class StripLayout
         return settings.Compact ? CompactHeightPx : settings.Metrics.StripHeightPx;
     }
 
-    /// <summary>Whether the tiles show their name: not in S nor in Compact (FIJ-002).</summary>
+    /// <summary>
+    /// Whether the tiles show their name: always in direction C (D12), which replaced the icons alone of S and Compact
+    /// (FIJ-002) with a name in one line with «…».
+    /// </summary>
     /// <param name="settings">Size and view.</param>
     public static bool ShowsNames(PanelLayoutSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return !settings.IsSmall && !settings.Compact;
+        return true;
     }
 
     /// <summary>The page <paramref name="page"/> of a row of <paramref name="count"/> shortcuts (FIJ-003).</summary>

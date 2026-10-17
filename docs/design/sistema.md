@@ -249,10 +249,12 @@ lo apagan porque las desplaza su capa de punteros. `CancelPan()` lo suelta cuand
 ### 3.10 Ficha de atajo · `ShortcutTile` (`Clicalo.UI.Wpf.Automation`)
 
 Anatomía de huecos reservados que nunca se pisan: número de voz arriba a la izquierda (`VoiceNumber`, pastilla `Warn`
-con `OnWarn`), tipo arriba a la derecha (`TypeSymbol`, icono de 16 en `Muted`; si hay estado, el texto del estado
-`AccessibleState` gana, ACC-003), icono en su caja (`IconSize`, 24 por defecto) con el tinte de su `Category`, nombre
+con `OnWarn`), tipo arriba a la derecha (`TypeSymbol`, icono de 16 en `Muted`; relleno en `AccentInk` si la ficha
+está elegida o mantenida y en `WarnText` si está armada), icono en su caja (`IconSize`, 24 por defecto) con el tinte de su `Category`, nombre
 (`AccessibleName`, `Label`, una línea con «…»; `MaxNameLines = 2` donde CUA-011 lo pide) y línea de teclas (`Keys`, en
-JetBrains Mono y `Muted`, solo si cabe). Fondo `Card` con su línea por dentro, radio `Radii.Medium`. Estados:
+JetBrains Mono y `Muted`, solo si cabe). El estado en palabras (`AccessibleState`: «Manteniendo», «ACTIVO», «Paso
+2/5», ACC-003 y EJE-010) ocupa el lugar de la línea de teclas, en la fuente de la interfaz y `AccentInk` (`WarnText`
+si está armada), y nunca el hueco de arriba, demasiado estrecho junto al número y al icono. Fondo `Card` con su línea por dentro, radio `Radii.Medium`. Estados:
 Alternar activo y mantener (el aspecto único de elegido; mantener además escala 0,95), armado (`WarnWash` y anillo
 `WarnText`), destello (`AccentWash`), tecla fija bloqueada (relleno `Accent`), menú abierto (anillo). Tamaños de la
 maqueta: rejilla de 100 × 80 y fila fija de 64 de alto.

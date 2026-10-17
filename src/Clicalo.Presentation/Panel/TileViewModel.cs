@@ -1,4 +1,5 @@
 using Clicalo.Application.Coordinators;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Domain.VoiceNumbering;
@@ -62,6 +63,13 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
 
     /// <summary>The Material Symbols name of the icon (CUA-007).</summary>
     public string Icon => _model.Icon.Name;
+
+    /// <summary>
+    /// The Material Symbols icon of the type of the action, for the slot at the top right of the tile (CUA-007, direction
+    /// C): Mantener, Alternar, Texto, Mouse, Macro, Web, App or Sistema, with the icons of the Control Center; null for
+    /// Pulsar, which needs no mark. The type is also in the help text, so it is never the icon alone (ACC-003).
+    /// </summary>
+    public string? TypeSymbol => TypeSymbolOf(_model.Binding.Shortcut.Action.Kind);
 
     /// <summary>The color category id (TEM-003), such as <c>edit</c> or <c>voice</c>.</summary>
     public string Category => _model.Category.Value;
@@ -218,6 +226,7 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
         var renamed = !string.Equals(model.Name, _model.Name, StringComparison.Ordinal);
         var reiconed = model.Icon != _model.Icon;
         var recolored = model.Category != _model.Category;
+        var retyped = model.Binding.Shortcut.Action.Kind != _model.Binding.Shortcut.Action.Kind;
         var rekeyed =
             !string.Equals(model.Keys, _model.Keys, StringComparison.Ordinal)
             || !string.Equals(model.SpokenKeys, _model.SpokenKeys, StringComparison.Ordinal);
@@ -243,6 +252,11 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
         {
             OnPropertyChanged(nameof(Category));
         }
+
+        if (retyped)
+        {
+            OnPropertyChanged(nameof(TypeSymbol));
+        }
     }
 
     /// <summary>Applies its voice number, or <see langword="null"/> when the option is off.</summary>
@@ -265,4 +279,18 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
     /// <summary>Applies whether the engine has the tile armed (EJE-002).</summary>
     /// <param name="armed">Whether it waits for its confirmation tap.</param>
     internal void ApplyArmed(bool armed) => IsArmed = armed;
+
+    private static string? TypeSymbolOf(ActionKind kind) =>
+        kind switch
+        {
+            ActionKind.Hold => "pan_tool",
+            ActionKind.Toggle => "toggle_on",
+            ActionKind.Text => "text_fields",
+            ActionKind.Mouse => "mouse",
+            ActionKind.Macro => "playlist_play",
+            ActionKind.Url => "public",
+            ActionKind.App => "open_in_new",
+            ActionKind.System => "settings",
+            _ => null,
+        };
 }

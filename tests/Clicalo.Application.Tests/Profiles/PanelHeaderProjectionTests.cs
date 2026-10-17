@@ -85,12 +85,12 @@ public sealed class PanelHeaderProjectionTests
     [InlineData(
         false,
         "autorenew",
-        "Auto (azul): cambia con la app activa. Toca para fijar el perfil actual."
+        "Auto: cambia con la app activa. Toca para fijar el perfil actual."
     )]
     [InlineData(
         true,
         "lock",
-        "Fijo (rojo): el perfil no cambia al cambiar de app. Toca para volver a Auto."
+        "Fijo: el perfil no cambia al cambiar de app. Toca para volver a Auto."
     )]
     public void Auto_Fixed_is_said_by_its_icon_and_its_name_not_only_its_color(
         bool locked,

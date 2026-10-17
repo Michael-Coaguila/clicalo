@@ -55,7 +55,37 @@ public sealed class SurfacesAuditTests
         ["picker"] = static w =>
             w.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true }),
         ["frequents"] = static w =>
-            w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true }),
+        {
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
+            w.ShowHeader(new ViewTarget.Frequents());
+        },
+        ["frequents-empty"] = static w =>
+        {
+            w.Panel.Apply(
+                PanelProjector.Project(
+                    PanelBodyTestData.GalleryLibrary(),
+                    PanelBodyTestData.Excel,
+                    LangCode.Es,
+                    LangCode.Es,
+                    PanelBodyTestData.GalleryKeys
+                )
+            );
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
+            w.ShowHeader(new ViewTarget.Frequents());
+        },
+        ["empty-profile"] = static w =>
+        {
+            w.Panel.Apply(
+                PanelProjector.Project(
+                    PanelBodyTestData.GalleryLibrary(),
+                    PanelBodyTestData.Excel,
+                    LangCode.Es,
+                    LangCode.Es,
+                    PanelBodyTestData.GalleryKeys
+                )
+            );
+            w.ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Excel));
+        },
         ["notices"] = static w =>
             w.Panel.ApplyContext(
                 PanelBodyContext.Idle with
@@ -85,17 +115,26 @@ public sealed class SurfacesAuditTests
             ),
         ["panic"] = static w =>
             w.Panel.ApplyEngine(PanelBodyTestData.Holding(new ShortcutId("w0"))),
-        ["search"] = static w => _ = w.Search.OpenAsync(SearchTrigger.Touch),
+        ["search"] = static w =>
+        {
+            _ = w.Search.OpenAsync(SearchTrigger.Touch);
+            w.Header.ApplyLayers(searchOpen: true, editing: false, quickSettingsOpen: false);
+        },
         ["suggestion"] = static w =>
             w.Suggestion.Apply(new ProcessName("excel.exe"), searching: false),
-        ["quick-settings"] = static w => w.Layers.QuickSettings.Open(),
+        ["quick-settings"] = static w =>
+        {
+            w.Layers.QuickSettings.Open();
+            w.Header.ApplyLayers(searchOpen: false, editing: false, quickSettingsOpen: true);
+        },
         ["edit-mode"] = static w =>
         {
             w.Layers.EditMode.Enter();
+            w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
             w.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
         },
         ["tile-menu"] = static w =>
-            w.Layers.Menu.Open(new ShortcutId("w0"), "Atajo 0", "keyboard", inFrequents: false),
+            w.Layers.Menu.Open(new ShortcutId("w0"), "Negrita", "format_bold", inFrequents: false),
         ["test-mode"] = static w => w.Layers.TestMode.Start(),
     };
 
@@ -110,6 +149,8 @@ public sealed class SurfacesAuditTests
         foreach (var state in PanelStates.Keys)
         {
             cases.Add(state, SizeSetting.Small, false, "es", AuditLook.Dark);
+            // The panel of the mockup of direction C (D12): M, Full, in Spanish, 340 wide.
+            cases.Add(state, SizeSetting.Medium, false, "es", AuditLook.Dark);
             cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.Dark);
             cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark);
             cases.Add(state, SizeSetting.Large, false, "en", AuditLook.Dark);
@@ -195,13 +236,10 @@ public sealed class SurfacesAuditTests
                 PanelStates[state](world);
                 host.LayOut();
 
-                SurfaceAudit.ShouldPass(
-                    host,
-                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})",
-                    atLeast: 8,
-                    TouchInput.PointerLayer,
-                    "Panel"
-                );
+                var name =
+                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})";
+                AuditGallery.SaveLargeText(host, "Panel", name);
+                SurfaceAudit.ShouldPass(host, name, atLeast: 8, TouchInput.PointerLayer, "Panel");
             }
             finally
             {
@@ -576,14 +614,16 @@ public sealed class SurfacesAuditTests
                 using var host = AuditHost.OfWindow(window, theme);
                 var header = world.Header;
                 header.ShowsAutoFixed.ShouldBeTrue();
+                // Direction C (D12): the header holds only tools; Auto/Fixed is read later, at the end of the row
+                // «Qué ver», next to what it controls.
                 string[] expected =
                 [
                     header.Title,
-                    header.AutoFixedName,
                     header.SearchName,
                     header.EditName,
                     header.QuickSettingsName,
                     header.MinimizeName,
+                    header.AutoFixedName,
                 ];
                 expected.ShouldAllBe(static name => name.Length > 0);
                 expected.Distinct(StringComparer.Ordinal).Count().ShouldBe(expected.Length);
@@ -637,15 +677,23 @@ public sealed class SurfacesAuditTests
             try
             {
                 using var host = AuditHost.OfWindow(window, theme);
-                var page = world.Panel.Tiles.Count;
-                page.ShouldBeGreaterThan(3);
+                var page = world
+                    .Panel.Tiles.Select(
+                        static (tile, i) =>
+                            string.Create(
+                                CultureInfo.InvariantCulture,
+                                $"{i + 1} {tile.AccessibleName}"
+                            )
+                    )
+                    .ToList();
+                page.Count.ShouldBeGreaterThan(3);
 
                 // The tiles are drawn each above the next one; a screen reader still walks them from the first.
-                GridTiles(host.Snapshot("panel")).ShouldBe(InOrder(page));
+                GridTiles(host.Snapshot("panel"), page).ShouldBe(page);
 
                 world.Layers.EditMode.Enter();
                 world.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true });
-                GridTiles(host.Snapshot("panel")).ShouldBe(InOrder(page));
+                GridTiles(host.Snapshot("panel"), page).ShouldBe(page);
             }
             finally
             {
@@ -653,18 +701,10 @@ public sealed class SurfacesAuditTests
             }
         });
 
-        static IEnumerable<string> InOrder(int count) =>
-            Enumerable
-                .Range(0, count)
-                .Select(static i =>
-                    string.Create(CultureInfo.InvariantCulture, $"{i + 1} Atajo {i}")
-                );
-
-        static IEnumerable<string> GridTiles(UiaNode tree) =>
+        static IEnumerable<string> GridTiles(UiaNode tree, List<string> names) =>
             tree.DescendantsAndSelf()
                 .Select(static node => node.Name)
-                .Where(static name => name.Contains(" Atajo ", StringComparison.Ordinal))
-                .Where(static name => char.IsDigit(name[0]));
+                .Where(name => names.Contains(name, StringComparer.Ordinal));
     }
 
     [Fact]
@@ -918,10 +958,11 @@ public sealed class SurfacesAuditTests
         {
             Interactions = new InteractionsWorld(language);
             Panel = PanelBodyTestData.Panel(
-                PanelBodyTestData.Library(14, 3),
+                PanelBodyTestData.GalleryLibrary(),
                 PanelBodyTestData.Word,
                 new RecordingBodyIntents(),
-                language
+                language,
+                PanelBodyTestData.GalleryKeys
             );
             Header = new PanelHeaderViewModel(
                 new ProfileViewCoordinator(Interactions.Store),
@@ -933,16 +974,8 @@ public sealed class SurfacesAuditTests
                     static () => { }
                 )
             );
-            Header.Apply(
-                PanelHeaderProjection.Project(
-                    new ProfileState(new ViewTarget.Profile(SearchTestWorld.Word), false, null),
-                    Interactions.Store.Current.Library,
-                    SearchTestWorld.Word,
-                    searchingWithText: false,
-                    new LangCode(language),
-                    LangCode.Es
-                )
-            );
+            _language = new LangCode(language);
+            ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Word));
             Search = SearchSurfaceTests.Search();
             Suggestion = SearchSurfaceTests.Suggestion();
             Layers = new PanelLayerModels(
@@ -956,7 +989,25 @@ public sealed class SurfacesAuditTests
             _ = time;
         }
 
+        private readonly LangCode _language;
+
         public InteractionsWorld Interactions { get; }
+
+        /// <summary>
+        /// Gives the header the view the body shows: the profile, with the same icon as the row «Qué ver», or
+        /// Frequents (CAB-002).
+        /// </summary>
+        public void ShowHeader(ViewTarget view) =>
+            Header.Apply(
+                PanelHeaderProjection.Project(
+                    new ProfileState(view, false, null),
+                    PanelBodyTestData.GalleryLibrary(),
+                    PanelBodyTestData.Word,
+                    searchingWithText: false,
+                    _language,
+                    LangCode.Es
+                )
+            );
 
         /// <summary>How many times «Ajustes rápidos» of the header was used.</summary>
         public int QuickSettingsTaps { get; private set; }

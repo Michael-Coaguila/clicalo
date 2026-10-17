@@ -1,16 +1,15 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel;
-using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -18,123 +17,108 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The profile grid (SEL-003), under the selector in the Full view: a card with a tile per profile (76 high, at least 88
-/// wide; icon in accent and the name in 13 px cut with «…»), accentWash and a 2 px accent outline on the profile in
-/// view, a 9 px dot on the profile of the active app, «Crear para {app}» in warn when it applies, «+ Más» with a
-/// dashed outline, and the legend of the dot. Opened from the title of the header it starts with ★ Frequents
-/// (SEL-006). It scrolls inside <see cref="FrameworkElement.MaxHeight"/>, which the surface sets to 46 % of the work
-/// area: a finger that moves past the cancel distance scrolls it and chooses nothing (TAC-004, <see cref="Track"/>),
-/// and a tile scrolled out of view is not a target. It only projects <see cref="PickerGridViewModel"/>.
+/// The profile grid (SEL-003) in direction C (D12): in the panel, a layer over the grid of shortcuts and its pager (the
+/// <c>win</c> surface with the decorative line on top), so the panel keeps its size. One option card of
+/// <see cref="ControlHeight.Large"/> per profile (its icon over its name with «…»), <see cref="Space.S2"/> apart in as
+/// many columns as fit; the profile in view has the single look of «elegido» and the one of the app in front a dot of
+/// <see cref="Space.S2"/> in its corner, which the legend explains. Then «Crear para {app}» when it applies and «+ Más»
+/// in a dashed slot. Opened from the title of the header it starts with ★ Frequents (SEL-006). It scrolls with the
+/// designed scroll (<see cref="ThemedScrollViewer"/>): a finger that moves past the cancel distance scrolls it and
+/// chooses nothing (TAC-004, <see cref="Track"/>), and a card scrolled out of view is not a target. It only projects
+/// <see cref="PickerGridViewModel"/>.
 /// </summary>
 public sealed class PickerGridView : Border
 {
-    private const double IconPx = 24;
-    private const double ExtraIconPx = 22;
-    private const double NamePx = 13;
-    private const double ExtraPx = 12;
-    private const double DotPx = 9;
-    private const double LegendDotPx = 8;
-    private const double LegendPx = 11;
-    private const double ActiveBorder = 2;
-    private const double DashedBorder = 2;
+    private static readonly DoubleCollection Dash = Frozen();
 
     private readonly PickerGridViewModel _viewModel;
     private readonly bool _compact;
-    private readonly UniformGrid _grid = new();
-    private readonly ShortcutTile _suggestion;
-    private readonly TextBlock _suggestionText = new()
-    {
-        FontWeight = FontWeights.Bold,
-        TextAlignment = TextAlignment.Center,
-        TextWrapping = TextWrapping.Wrap,
-    };
-
-    private readonly ShortcutTile _more;
-    private readonly TextBlock _moreText = new()
-    {
-        FontWeight = FontWeights.Bold,
-        HorizontalAlignment = HorizontalAlignment.Center,
-    };
-
-    private readonly ShortcutTile _frequents;
-    private readonly TextBlock _frequentsText = new()
-    {
-        FontWeight = FontWeights.Bold,
-        TextTrimming = TextTrimming.CharacterEllipsis,
-        HorizontalAlignment = HorizontalAlignment.Center,
-        Margin = new Thickness(0, 5, 0, 0),
-    };
-
-    private readonly ScrollViewer _scroller;
+    private readonly UniformGrid _grid = new() { Margin = new Thickness(-Space.S1) };
+    private readonly TouchButton _suggestion;
+    private readonly TouchButton _more;
+    private readonly Grid _moreSlot = new() { Margin = new Thickness(Space.S1) };
+    private readonly OptionButton _frequents;
+    private readonly ThemedScrollViewer _scroller;
     private readonly bool _showsAlways;
     private readonly PanScroll _pan = new();
-    private readonly TextBlock _legend = new() { VerticalAlignment = VerticalAlignment.Center };
-    private readonly List<(PickerEntryViewModel Entry, ShortcutTile Control)> _entries = [];
+    private readonly StyledText _legend = PanelChrome.Text(
+        TextStyleToken.Caption,
+        ColorToken.Muted
+    );
+    private readonly DockPanel _legendRow;
+    private readonly List<(PickerEntryViewModel Entry, OptionButton Control, Grid Cell)> _entries =
+    [];
 
     /// <summary>Creates the profile grid of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The profile grid.</param>
-    /// <param name="compact">The Compact view (tiles at least 80 wide).</param>
+    /// <param name="compact">The Compact view (narrower cards).</param>
     public PickerGridView(PickerGridViewModel viewModel, bool compact = false)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         _compact = compact;
-        Margin = new Thickness(12, 0, 12, 10);
-        Padding = new Thickness(8);
-        CornerRadius = new CornerRadius(Radii.Large);
-        PanelChrome.SetBrush(this, BackgroundProperty, ColorToken.Card);
-        PanelChrome.SetBrush(this, BorderBrushProperty, ColorToken.Border);
-        SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        BorderThickness = new Thickness(0, Stroke.Line, 0, 0);
+        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
+        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
 
-        _suggestion = Extra("add_circle", _suggestionText, ColorToken.Warn, dashed: false);
-        PanelChrome.Paint(_suggestion, ColorToken.WarnWash, ColorToken.Text, ColorToken.Warn);
-        _suggestion.Invoked += (_, _) => _viewModel.CreateSuggested();
-        _more = Extra("add", _moreText, ColorToken.Muted, dashed: true);
-        PanelChrome.Paint(_more, null, ColorToken.Muted, null);
-        _more.Invoked += (_, _) => _viewModel.More();
+        _suggestion = new TouchButton
+        {
+            Variant = ButtonVariant.Secondary,
+            Symbol = "add_circle",
+            Size = ControlSize.Large,
+            MaxLines = 2,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(Space.S1),
+            Focusable = false,
+            IsTabStop = false,
+        };
+        _suggestion.Click += (_, _) => _viewModel.CreateSuggested();
+
+        var outline = new Rectangle
+        {
+            RadiusX = Radii.Medium,
+            RadiusY = Radii.Medium,
+            StrokeDashArray = Dash,
+            SnapsToDevicePixels = true,
+            IsHitTestVisible = false,
+        };
+        outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
+        outline.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
+        _more = new TouchButton
+        {
+            Variant = ButtonVariant.Tertiary,
+            Symbol = "add",
+            Size = ControlSize.Large,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Focusable = false,
+            IsTabStop = false,
+        };
+        _more.Click += (_, _) => _viewModel.More();
+        _moreSlot.Children.Add(outline);
+        _moreSlot.Children.Add(_more);
 
         // SEL-006: ★ Frequents, first in the grid while the selector row is not there to offer it.
-        _frequents = NewTile();
-        var star = new SymbolIcon
-        {
-            Symbol = "star",
-            Size = IconPx,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        star.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Accent)
-        );
-        _frequentsText.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(NamePx));
-        var frequents = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        frequents.Children.Add(star);
-        frequents.Children.Add(_frequentsText);
-        _frequents.Tag = frequents;
-        _frequents.Invoked += (_, _) => _viewModel.Frequents();
+        _frequents = Option("star");
+        _frequents.Click += (_, _) => _viewModel.Frequents();
 
-        var legend = new StackPanel
+        var mark = PanelChrome.Mark(ColorToken.AccentInk);
+        mark.Visibility = Visibility.Visible;
+        mark.Margin = new Thickness(0, 0, Space.S2, 0);
+        _legendRow = new DockPanel
         {
-            Orientation = Orientation.Horizontal,
-            Margin = new Thickness(4, 6, 4, 2),
+            LastChildFill = true,
+            Margin = new Thickness(0, Space.S3, 0, 0),
         };
-        var legendDot = new Border
-        {
-            Width = LegendDotPx,
-            Height = LegendDotPx,
-            CornerRadius = new CornerRadius(LegendDotPx / 2),
-            Margin = new Thickness(0, 0, 6, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        PanelChrome.SetBrush(legendDot, Border.BackgroundProperty, ColorToken.Accent);
-        _legend.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(LegendPx));
-        _legend.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
-        legend.Children.Add(legendDot);
+        var legend = _legendRow;
+        DockPanel.SetDock(mark, Dock.Left);
+        legend.Children.Add(mark);
+        _legend.VerticalAlignment = VerticalAlignment.Center;
         legend.Children.Add(_legend);
 
-        var stack = new StackPanel { Orientation = Orientation.Vertical };
+        var stack = new StackPanel
+        {
+            Margin = new Thickness(Space.S3, Space.S3, Space.S1, Space.S6),
+        };
         stack.Children.Add(_grid);
         stack.Children.Add(legend);
         _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = stack };
@@ -147,8 +131,8 @@ public sealed class PickerGridView : Border
     }
 
     /// <summary>
-    /// Every tile of the grid while it shows; a tile scrolled out of the view is left out, so a touch under or over
-    /// the grid never chooses a profile nobody sees (TAC-004).
+    /// Every card of the grid while it shows; a card scrolled out of the view is left out, so a touch under or over the
+    /// grid never chooses a profile nobody sees (TAC-004).
     /// </summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
@@ -165,7 +149,7 @@ public sealed class PickerGridView : Border
                 targets.Add(new PanelTapTarget(_frequents, _viewModel.Frequents));
             }
 
-            foreach (var (entry, control) in _entries)
+            foreach (var (entry, control, _) in _entries)
             {
                 targets.Add(new PanelTapTarget(control, entry.Choose));
             }
@@ -195,8 +179,8 @@ public sealed class PickerGridView : Border
         }
     }
 
-    /// <summary>The ★ Frequents tile (SEL-006).</summary>
-    public ShortcutTile FrequentsTile => _frequents;
+    /// <summary>The ★ Frequents card (SEL-006).</summary>
+    public OptionButton FrequentsTile => _frequents;
 
     /// <summary>The scroll viewer of the grid (TAC-004).</summary>
     public ScrollViewer Scroller => _scroller;
@@ -251,7 +235,7 @@ public sealed class PickerGridView : Border
     {
         _viewModel.PropertyChanged -= OnChanged;
         _viewModel.Entries.CollectionChanged -= OnEntriesChanged;
-        foreach (var (entry, _) in _entries)
+        foreach (var (entry, _, _) in _entries)
         {
             entry.PropertyChanged -= OnChanged;
         }
@@ -264,60 +248,22 @@ public sealed class PickerGridView : Border
             && view.Contains(bounds.Center)
         );
 
-    private static ShortcutTile NewTile()
+    private static DoubleCollection Frozen()
     {
-        var tile = PanelChrome.NewButton(PanelChrome.Large, ShortcutTilePattern.Invoke);
-        tile.Height = PanelSizes.Layout.PanelProfileTileHeightPx;
-        tile.Margin = new Thickness(PickerLayout.GapPx / 2.0);
-        tile.Padding = new Thickness(4, 6, 4, 6);
-        tile.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        tile.VerticalContentAlignment = VerticalAlignment.Stretch;
-        return tile;
+        var dash = new DoubleCollection([Stroke.Selected, Stroke.Selected]);
+        dash.Freeze();
+        return dash;
     }
 
-    private static ShortcutTile Extra(
-        string symbol,
-        TextBlock text,
-        ColorToken iconColor,
-        bool dashed
-    )
-    {
-        var tile = NewTile();
-        var icon = new SymbolIcon
+    private static OptionButton Option(string? symbol) =>
+        new()
         {
+            Kind = OptionKind.Card,
             Symbol = symbol,
-            Size = ExtraIconPx,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Focusable = false,
+            IsTabStop = false,
         };
-        icon.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(iconColor));
-        text.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(ExtraPx));
-        var stack = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = tile.Padding,
-        };
-        stack.Children.Add(icon);
-        stack.Children.Add(text);
-        var layered = new Grid();
-        if (dashed)
-        {
-            // «+ Más» has a dashed outline (SEL-003); a WPF border cannot dash, so a rectangle draws it.
-            var outline = new Rectangle
-            {
-                RadiusX = Radii.Medium,
-                RadiusY = Radii.Medium,
-                StrokeThickness = DashedBorder,
-                StrokeDashArray = new DoubleCollection([3, 2]),
-            };
-            outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
-            layered.Children.Add(outline);
-        }
-
-        layered.Children.Add(stack);
-        tile.Padding = new Thickness(0);
-        tile.Tag = layered;
-        return tile;
-    }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
@@ -325,7 +271,7 @@ public sealed class PickerGridView : Border
 
     private void Rebuild()
     {
-        foreach (var (entry, _) in _entries)
+        foreach (var (entry, _, _) in _entries)
         {
             entry.PropertyChanged -= OnChanged;
         }
@@ -333,11 +279,20 @@ public sealed class PickerGridView : Border
         _entries.Clear();
         foreach (var entry in _viewModel.Entries)
         {
-            var control = NewTile();
+            var control = Option(null);
             var chosen = entry;
-            control.Invoked += (_, _) => chosen.Choose();
+            control.Click += (_, _) => chosen.Choose();
             entry.PropertyChanged += OnChanged;
-            _entries.Add((entry, control));
+
+            // The dot of the app in front goes in a corner of its own, never over the icon or the name.
+            var dot = PanelChrome.Mark(ColorToken.AccentInk);
+            dot.HorizontalAlignment = HorizontalAlignment.Right;
+            dot.VerticalAlignment = VerticalAlignment.Top;
+            dot.Margin = new Thickness(0, Space.S2, Space.S2, 0);
+            var cell = new Grid { Margin = new Thickness(Space.S1) };
+            cell.Children.Add(control);
+            cell.Children.Add(dot);
+            _entries.Add((entry, control, cell));
         }
 
         Refresh();
@@ -348,105 +303,51 @@ public sealed class PickerGridView : Border
     private void Refresh()
     {
         Visibility = Shown ? Visibility.Visible : Visibility.Collapsed;
-        _suggestionText.Text = _viewModel.SuggestionName;
-        _suggestion.AccessibleName = _viewModel.SuggestionName;
-        _moreText.Text = _viewModel.MoreName;
-        _more.AccessibleName = _viewModel.MoreName;
+        _suggestion.Content = _viewModel.SuggestionName;
+        AutomationProperties.SetName(_suggestion, _viewModel.SuggestionName);
+        _more.Content = _viewModel.MoreName;
+        AutomationProperties.SetName(_more, _viewModel.MoreName);
         _legend.Text = _viewModel.Legend;
-        _frequentsText.Text = _viewModel.FrequentsName;
-        _frequents.AccessibleName = _viewModel.FrequentsName;
-        _frequents.AccessibleState = _viewModel.FrequentsState;
-        if (_viewModel.IsFrequentsCurrent)
-        {
-            PanelChrome.Paint(
-                _frequents,
-                ColorToken.AccentWash,
-                ColorToken.Text,
-                ColorToken.Accent
-            );
-            _frequents.BorderThickness = new Thickness(ActiveBorder);
-        }
-        else
-        {
-            PanelChrome.Paint(_frequents, ColorToken.Side, ColorToken.Text, ColorToken.Border);
-        }
 
-        foreach (var (entry, control) in _entries)
+        // The legend explains the dot only while a card shows it.
+        _legendRow.Visibility = _entries.Exists(static e => e.Entry.IsActiveApp)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        _frequents.Content = Label(_viewModel.FrequentsName);
+        _frequents.IsSelected = _viewModel.IsFrequentsCurrent;
+        AutomationProperties.SetName(_frequents, _viewModel.FrequentsName);
+        AutomationProperties.SetItemStatus(_frequents, _viewModel.FrequentsState);
+        _frequents.Margin = new Thickness(Space.S1);
+
+        foreach (var (entry, control, cell) in _entries)
         {
-            control.AccessibleName = entry.Name;
-            control.AccessibleState = entry.AccessibleState;
-            control.Tag = EntryContent(entry);
-            if (entry.IsCurrent)
-            {
-                PanelChrome.Paint(
-                    control,
-                    ColorToken.AccentWash,
-                    ColorToken.Text,
-                    ColorToken.Accent
-                );
-                control.BorderThickness = new Thickness(ActiveBorder);
-            }
-            else
-            {
-                PanelChrome.Paint(control, ColorToken.Side, ColorToken.Text, ColorToken.Border);
-            }
+            control.Symbol = entry.Icon.Length == 0 ? null : entry.Icon;
+            control.Content = Label(entry.Name);
+            control.IsSelected = entry.IsCurrent;
+            AutomationProperties.SetName(control, entry.Name);
+            AutomationProperties.SetItemStatus(control, entry.AccessibleState);
+            cell.Children[1].Visibility = entry.IsActiveApp
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         Arrange();
     }
 
-    private static Grid EntryContent(PickerEntryViewModel entry)
-    {
-        var grid = new Grid();
-        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        var icon = new SymbolIcon
+    private static StyledText Label(string text) =>
+        new(text, TextStyleToken.Label)
         {
-            Symbol = entry.Icon,
-            Size = IconPx,
+            MaxLines = 1,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        icon.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Accent)
-        );
-        var name = new TextBlock
-        {
-            Text = entry.Name,
-            FontWeight = FontWeights.Bold,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 5, 0, 0),
-        };
-        name.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(NamePx));
-        stack.Children.Add(icon);
-        stack.Children.Add(name);
-        grid.Children.Add(stack);
-        if (entry.IsActiveApp)
-        {
-            var dot = new Border
-            {
-                Width = DotPx,
-                Height = DotPx,
-                CornerRadius = new CornerRadius(DotPx / 2),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-            };
-            PanelChrome.SetBrush(dot, Border.BackgroundProperty, ColorToken.Accent);
-            grid.Children.Add(dot);
-        }
 
-        return grid;
-    }
-
-    /// <summary>Lays the tiles out in as many columns as fit (SEL-003), the extra tiles last.</summary>
+    /// <summary>Lays the cards out in as many columns as fit (SEL-003), the extra ones last.</summary>
     private void Arrange()
     {
         var width =
-            ActualWidth
-            - Padding.Left
-            - Padding.Right
-            - BorderThickness.Left
-            - BorderThickness.Right;
+            (_scroller.ViewportWidth > 0 ? _scroller.ViewportWidth : ActualWidth)
+            - Space.S3
+            - Space.S1;
         _grid.Columns = PickerLayout.Columns(width > 0 ? width : double.NaN, _compact);
         _grid.Children.Clear();
         if (_viewModel.HasFrequents)
@@ -454,9 +355,9 @@ public sealed class PickerGridView : Border
             _grid.Children.Add(_frequents);
         }
 
-        foreach (var (_, control) in _entries)
+        foreach (var (_, _, cell) in _entries)
         {
-            _grid.Children.Add(control);
+            _grid.Children.Add(cell);
         }
 
         if (_viewModel.HasSuggestion)
@@ -464,6 +365,6 @@ public sealed class PickerGridView : Border
             _grid.Children.Add(_suggestion);
         }
 
-        _grid.Children.Add(_more);
+        _grid.Children.Add(_moreSlot);
     }
 }

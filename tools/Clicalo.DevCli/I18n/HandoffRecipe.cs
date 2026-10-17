@@ -7,6 +7,9 @@ namespace Clicalo.DevCli.I18n;
 /// The reviewed conversion from the design handoff to <c>data/i18n</c> (<c>data/i18n/handoff-import.json</c>).
 /// Strict: unknown properties are errors, so a typo never silently changes the import. <see cref="Retired"/> lists the
 /// handoff keys a user decision removed from the product: they are not imported and need a reason in <c>notes</c>.
+/// <see cref="Revised"/> lists the handoff keys whose visible text a user decision changed (D12, direction C: a text
+/// that named colors the redesign no longer uses); each one carries its new <c>text</c> and its reason in <c>notes</c>,
+/// and is converted like a key of <see cref="Keys"/> with that text.
 /// </summary>
 internal sealed record HandoffRecipe(
     string Source,
@@ -14,7 +17,8 @@ internal sealed record HandoffRecipe(
     ImmutableDictionary<string, string> Placeholders,
     ImmutableDictionary<string, HandoffKeyRule> Keys,
     ImmutableArray<HandoffAddedKey> Added,
-    ImmutableHashSet<string> Retired
+    ImmutableHashSet<string> Retired,
+    ImmutableHashSet<string> Revised
 )
 {
     /// <summary>Reads the recipe.</summary>
@@ -33,7 +37,8 @@ internal sealed record HandoffRecipe(
             "placeholders",
             "keys",
             "added",
-            "retired"
+            "retired",
+            "revised"
         );
         var languages = Required(root, "languages", "the root")
             .EnumerateArray()
@@ -101,13 +106,38 @@ internal sealed record HandoffRecipe(
             }
         }
 
+        var revised = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (root.TryGetProperty("revised", out var revisedElement))
+        {
+            foreach (var key in Objects(revisedElement, "'revised'"))
+            {
+                var owner = "revised." + key.Name;
+                AllowOnly(key.Value, owner, "notes", "text");
+                _ = String(Required(key.Value, "notes", owner), owner + ".notes");
+                if (keys.ContainsKey(key.Name))
+                {
+                    throw Invalid(owner + " also has a rule in 'keys'; keep only one.");
+                }
+
+                keys.Add(
+                    key.Name,
+                    new HandoffKeyRule
+                    {
+                        Text = Strings(Required(key.Value, "text", owner), owner + ".text"),
+                    }
+                );
+                revised.Add(key.Name);
+            }
+        }
+
         return new HandoffRecipe(
             String(Required(root, "source", "the root"), "source"),
             languages,
             Strings(Required(root, "placeholders", "the root"), "placeholders"),
             keys.ToImmutable(),
             added.ToImmutable(),
-            retired.ToImmutable()
+            retired.ToImmutable(),
+            revised.ToImmutable()
         );
     }
 

@@ -10,6 +10,7 @@ using Clicalo.Presentation.Panel.Search;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Surfaces.Panel.Search;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.Windowing.IntegrationTests.Controls;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 
@@ -38,7 +39,8 @@ public sealed class SearchSurfaceTests
             bar.UpdateLayout();
 
             bar.Visibility.ShouldBe(Visibility.Visible);
-            bar.Field.ActualHeight.ShouldBe(SearchBar.FieldHeight);
+            // Direction C (D12): the field is a control of the medium height.
+            bar.Field.ActualHeight.ShouldBe(ControlHeight.Medium);
             TouchTarget
                 .IsLargeEnough(
                     new Size(bar.DictateButton.ActualWidth, bar.DictateButton.ActualHeight)

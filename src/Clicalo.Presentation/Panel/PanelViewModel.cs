@@ -185,6 +185,12 @@ public sealed class PanelViewModel : ObservableObject
         private set => SetProperty(ref _layers, value);
     }
 
+    /// <summary>
+    /// Whether the search has text: the rows it hides (PAN-008) keep their place under the search layer, so the grid
+    /// does not move and the panel keeps its size (direction C, D12: temporary states are layers).
+    /// </summary>
+    public bool IsSearchingWithText => _context.SearchingWithText;
+
     /// <summary>[noResults], shown in place of the grid while a search with text finds nothing (BUS-005).</summary>
     public string NoResultsText
     {
