@@ -130,7 +130,9 @@ public sealed class DockFlyoutWindow : TouchSurface
                 {
                     Columns = 2,
                     Rows = 0,
-                    Margin = new Thickness(0),
+                    // Each key keeps its half of the gap around it; this takes it back at the edges, as the grid of
+                    // «Pinned» does, so the keys line up with the header.
+                    Margin = new Thickness(-Space.S1),
                 };
                 body = _sticky;
                 Width = PinnedWidth;
