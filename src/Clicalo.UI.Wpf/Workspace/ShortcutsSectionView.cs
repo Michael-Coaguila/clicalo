@@ -642,7 +642,7 @@ public sealed class ShortcutsSectionView : Grid
                 IconSize = IconBox.Small,
                 IsExpanded = model.Editing,
                 IsActive = model.Editing,
-                Margin = new Thickness(Space.S1, 0, 0, 0),
+                Margin = new Thickness(Space.S2, 0, 0, 0),
             };
             AutomationProperties.SetName(edit, model.EditName);
             edit.Click += (_, _) => _viewModel.ToggleProfileEdit();

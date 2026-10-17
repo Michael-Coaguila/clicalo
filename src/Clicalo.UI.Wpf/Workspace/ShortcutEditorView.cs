@@ -120,8 +120,15 @@ public sealed class ShortcutEditorView : Grid
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
 
+    // A region starts collapsed: one whose model is empty from the first render is never shown, so its gap never
+    // pushes the regions under it.
     private static ContentControl Region() =>
-        new() { Focusable = false, Margin = new Thickness(0, 0, 0, RegionGap) };
+        new()
+        {
+            Focusable = false,
+            Margin = new Thickness(0, 0, 0, RegionGap),
+            Visibility = Visibility.Collapsed,
+        };
 
     private static void Detach(FrameworkElement element)
     {
@@ -641,7 +648,7 @@ public sealed class ShortcutEditorView : Grid
                 );
                 var button = new TouchButton
                 {
-                    Content = GridTiles.Dashed(content),
+                    Content = GridTiles.Dashed(content, ControlHeight.Large),
                     Variant = ButtonVariant.Tertiary,
                     Size = ControlSize.Large,
                     Padding = new Thickness(0),

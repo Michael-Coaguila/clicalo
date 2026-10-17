@@ -114,7 +114,7 @@ internal static class GridTiles
         );
         var button = new TouchButton
         {
-            Content = Dashed(content),
+            Content = Dashed(content, TileHeight),
             Variant = ButtonVariant.Tertiary,
             Height = TileHeight,
             Padding = new Thickness(0),
@@ -126,9 +126,13 @@ internal static class GridTiles
         return button;
     }
 
-    /// <summary>A dashed line of the control limit around <paramref name="content"/>, with the radius of a tile.</summary>
+    /// <summary>
+    /// A dashed line of the control limit around <paramref name="content"/>, with the radius of a tile. The button
+    /// centers its content, so the line takes the height of the button itself, never the height of what it holds.
+    /// </summary>
     /// <param name="content">What goes inside.</param>
-    public static Grid Dashed(UIElement content)
+    /// <param name="height">The height of the button that holds it.</param>
+    public static Grid Dashed(UIElement content, double height)
     {
         var frame = new Rectangle
         {
@@ -139,7 +143,7 @@ internal static class GridTiles
             IsHitTestVisible = false,
         };
         Ui.Ink(frame, Shape.StrokeProperty, ColorToken.Line);
-        var layers = new Grid();
+        var layers = new Grid { Height = height };
         layers.Children.Add(frame);
         layers.Children.Add(content);
         return layers;
