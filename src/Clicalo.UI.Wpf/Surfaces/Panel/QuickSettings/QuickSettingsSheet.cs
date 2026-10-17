@@ -4,6 +4,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.UI.Wpf.Controls;
@@ -503,7 +504,17 @@ public sealed class QuickSettingsSheet : Border
 
             foreach (var (_, item, option) in _options)
             {
-                item.Content = option.Label.Length > 0 ? option.Label : null;
+                // A theme shows its swatch and ✓ at the end, as in «General y panel» and the welcome (ThemeSwatch).
+                item.Content =
+                    option.Value is ThemeChoice theme
+                        ? ThemeSwatch.Row(theme, option.Label, option.IsSelected)
+                    : option.Label.Length > 0 ? option.Label
+                    : null;
+                if (option.Value is ThemeChoice)
+                {
+                    item.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                }
+
                 item.IsSelected = option.IsSelected;
                 AutomationProperties.SetName(item, option.AccessibleName);
             }

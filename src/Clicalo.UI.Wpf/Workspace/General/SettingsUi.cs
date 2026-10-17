@@ -3,10 +3,8 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using Clicalo.Domain.Settings;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -175,8 +173,8 @@ internal static class SettingsUi
     }
 
     /// <summary>
-    /// A theme option (GEN-003, BIE-008): a tile of 44 with the swatch of the theme, its name in one line and ✓ at the
-    /// end while chosen, as in the quick settings of the mockup.
+    /// A theme option (GEN-003, BIE-008): a tile of 44 with the <see cref="ThemeSwatch.Row"/> of every surface (the
+    /// swatch, the name in one line and ✓ at the end while chosen), as in the quick settings of the mockup.
     /// </summary>
     public static OptionButton ThemeOption(
         ThemeChoice theme,
@@ -186,71 +184,15 @@ internal static class SettingsUi
         Action click
     )
     {
-        var row = new DockPanel { LastChildFill = true };
-        var swatch = Swatch(theme);
-        swatch.Margin = new Thickness(0, 0, Space.S2, 0);
-        DockPanel.SetDock(swatch, Dock.Left);
-        row.Children.Add(swatch);
-        if (selected)
-        {
-            var check = Ui.Icon("check", IconBox.Small, ColorToken.AccentInk);
-            check.Margin = new Thickness(Space.S2, 0, 0, 0);
-            DockPanel.SetDock(check, Dock.Right);
-            row.Children.Add(check);
-        }
-
-        row.Children.Add(Styled(label, TextStyleToken.Label));
-        var option = Option(OptionKind.Tile, row, name, selected, click);
+        var option = Option(
+            OptionKind.Tile,
+            ThemeSwatch.Row(theme, label, selected),
+            name,
+            selected,
+            click
+        );
         option.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         return option;
-    }
-
-    /// <summary>
-    /// The swatch of a theme: a circle of <see cref="IconBox.Small"/> split between the background and the accent of
-    /// its palette («Como Windows»: the light and the dark background), with the control line of the current theme.
-    /// </summary>
-    public static Ellipse Swatch(ThemeChoice theme)
-    {
-        var (first, second) = theme switch
-        {
-            ThemeChoice.Light => Pair(
-                ThemeId.Light,
-                ColorToken.Win,
-                ThemeId.Light,
-                ColorToken.Accent
-            ),
-            ThemeChoice.Dark => Pair(ThemeId.Dark, ColorToken.Win, ThemeId.Dark, ColorToken.Accent),
-            ThemeChoice.HighContrast => Pair(
-                ThemeId.HighContrast,
-                ColorToken.Win,
-                ThemeId.HighContrast,
-                ColorToken.Accent
-            ),
-            _ => Pair(ThemeId.Light, ColorToken.Win, ThemeId.Dark, ColorToken.Win),
-        };
-        var fill = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, 0),
-            EndPoint = new Point(1, 1),
-        };
-        fill.GradientStops.Add(new GradientStop(first, 0));
-        fill.GradientStops.Add(new GradientStop(first, 0.5));
-        fill.GradientStops.Add(new GradientStop(second, 0.5));
-        fill.GradientStops.Add(new GradientStop(second, 1));
-        fill.Freeze();
-        var swatch = new Ellipse
-        {
-            Width = IconBox.Small,
-            Height = IconBox.Small,
-            Fill = fill,
-            StrokeThickness = Stroke.Line,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        Ui.Ink(swatch, Shape.StrokeProperty, ColorToken.Line);
-        return swatch;
-
-        static (Color, Color) Pair(ThemeId a, ColorToken at, ThemeId b, ColorToken bt) =>
-            (ThemeCatalog.GetPalette(a).GetColor(at), ThemeCatalog.GetPalette(b).GetColor(bt));
     }
 
     /// <summary>
