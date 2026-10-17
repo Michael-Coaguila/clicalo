@@ -47,6 +47,37 @@ public sealed class WelcomeWindowTests
     [Fact]
     [Trait("Req", "BIE-001")]
     [Trait("Req", "BIE-003")]
+    public void The_window_keeps_one_size_for_the_five_steps()
+    {
+        // D12: the welcome has a fixed size by design; a step that needs more room scrolls inside, it never jumps.
+        var world = new WelcomeTestWorld();
+        var (window, theme, viewModel) = Build(world);
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                for (var step = 0; step < 5; step++)
+                {
+                    if (step > 0)
+                    {
+                        viewModel.Next();
+                    }
+
+                    window.SizeToContent.ShouldBe(SizeToContent.Manual);
+                    window.Width.ShouldBe(WelcomeWindow.WelcomeWidth, "step " + step);
+                    window.Height.ShouldBe(WelcomeWindow.WelcomeHeight, "step " + step);
+                }
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-001")]
+    [Trait("Req", "BIE-003")]
     public void Alt_f4_asks_to_skip_and_the_window_stays()
     {
         var world = new WelcomeTestWorld();

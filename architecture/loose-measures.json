@@ -18,15 +18,13 @@
     "src/Clicalo.UI.Wpf/Windowing/DisplayMonitors.cs": 1,
     "src/Clicalo.UI.Wpf/Windowing/Internal/SurfaceHook.cs": 1,
     "src/Clicalo.UI.Wpf/Windowing/Internal/SurfaceShadow.cs": 2,
-    "src/Clicalo.UI.Wpf/Workspace/About/AboutSectionView.cs": 89,
-    "src/Clicalo.UI.Wpf/Workspace/General/GeneralSectionView.cs": 217,
-    "src/Clicalo.UI.Wpf/Workspace/General/SettingSlider.cs": 4,
+    "src/Clicalo.UI.Wpf/Workspace/About/AboutSectionView.cs": 1,
+    "src/Clicalo.UI.Wpf/Workspace/General/GeneralSectionView.cs": 2,
     "src/Clicalo.UI.Wpf/Workspace/Internal/Ui.cs": 2,
     "src/Clicalo.UI.Wpf/Workspace/ShortcutEditorView.cs": 5,
     "src/Clicalo.UI.Wpf/Workspace/ShortcutsSectionView.cs": 1,
-    "src/Clicalo.UI.Wpf/Workspace/System/SystemSectionView.cs": 161,
     "src/Clicalo.UI.Wpf/Workspace/Templates/TemplatesSectionView.cs": 3,
-    "src/Clicalo.UI.Wpf/Workspace/TouchPrecision/TouchPrecisionView.cs": 42,
-    "src/Clicalo.UI.Wpf/Workspace/Welcome/WelcomeWindow.cs": 108
+    "src/Clicalo.UI.Wpf/Workspace/TouchPrecision/TouchPrecisionView.cs": 2,
+    "src/Clicalo.UI.Wpf/Workspace/Welcome/WelcomeWindow.cs": 2
   }
 }

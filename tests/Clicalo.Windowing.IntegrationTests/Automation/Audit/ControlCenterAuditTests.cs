@@ -3,8 +3,10 @@ using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Commands;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.TestKit.Windows.Rendering;
@@ -349,6 +351,22 @@ public sealed class ControlCenterAuditTests
             RollbackVersion = "1.9.3",
         };
         setup.World.Localization.TrySetLanguage(language).ShouldBeTrue();
+
+        // In the app the interface follows the language of the document (LanguageFollower): both say the same here too,
+        // so «Idioma · Language» marks the language the window is drawn in.
+        if (
+            !string.Equals(
+                language,
+                setup.World.Store.Current.Settings.Language.Value,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            setup
+                .World.Store.Dispatch(new SetSetting(SettingPaths.Language, new LangCode(language)))
+                .IsSuccess.ShouldBeTrue();
+        }
+
         var services = setup.Services with
         {
             System = system.Services.System,

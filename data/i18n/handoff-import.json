@@ -1594,6 +1594,11 @@
       "notes": "Primera categoría del selector de iconos: toda la colección (D14). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
       "after": "iconSug",
       "text": { "es": "Todos", "en": "All" }
+    },
+    "langBarNote": {
+      "notes": "Nota bajo «Idioma · Language» de General: el mismo selector ES/EN está siempre en la barra de título del centro de control, así que la tarjeta de General se reduce (rediseño C, D12; la crítica lo veía duplicado). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "langBoth",
+      "text": { "es": "También está siempre arriba, en la barra de la ventana.", "en": "It is also always at the top, in the window bar." }
     }
   },
   "retired": {

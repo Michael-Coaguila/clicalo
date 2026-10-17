@@ -28,7 +28,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
     private const string DeleteKeyOperation = "DeleteKey";
 
     /// <summary>The keys on the miniature tile of «Mostrar teclas» (key names are not translated).</summary>
-    private const string SampleKeys = "Ctrl + C";
+    private const string SampleKeys = "Ctrl+C";
 
     private static readonly ConfirmationSubject ResetSubject = new(
         nameof(Domain.Commands.ResetFrequents),
@@ -549,7 +549,8 @@ public sealed class GeneralSectionViewModel : ObservableObject
                     PanelDensity.Dock => L.DDockD,
                     _ => L.DFullD,
                 }
-            )
+            ),
+            T(L.LangBarNote)
         );
     }
 

@@ -206,7 +206,9 @@ public sealed class WelcomeViewModel : ObservableObject
             step > 0,
             T(L.Back),
             T(L.Skip),
-            T(Session.IsLastStep ? L.Finish : L.Next)
+            T(Session.IsLastStep ? L.Finish : L.Next),
+            T(L.Size),
+            T(L.Theme)
         );
     }
 
@@ -324,8 +326,6 @@ public sealed class WelcomeViewModel : ObservableObject
                 "view_agenda",
                 T(L.DFull),
                 T(L.DFullD),
-                30,
-                38,
                 current == PanelDensity.Full
             ),
             new(
@@ -333,17 +333,13 @@ public sealed class WelcomeViewModel : ObservableObject
                 "view_compact",
                 T(L.DCompact),
                 T(L.DCompactD),
-                30,
-                26,
                 current == PanelDensity.Compact
             ),
             new(
                 PanelDensity.Dock,
-                "view_sidebar",
+                "dock_to_right",
                 T(L.DDock),
                 T(L.DDockD),
-                14,
-                38,
                 current == PanelDensity.Dock
             ),
         ];

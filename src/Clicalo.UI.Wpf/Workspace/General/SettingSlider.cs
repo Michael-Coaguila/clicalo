@@ -7,24 +7,24 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.General;
 
 /// <summary>
-/// A slider row of «General y panel» and «Precisión táctil» (GEN-009, TAC-005): the name, the value in accent
-/// monospace, the <see cref="StepSlider"/> with its − / + and, optionally, the explanation below. It lives across the
+/// A slider row of «General y panel» and «Precisión táctil» (GEN-009, TAC-005) in direction C: the name and, at the
+/// end of its line, the value (both in <c>label</c>; monospace is only for keys), the <see cref="StepSlider"/> with its
+/// − / + of 44 and, optionally, the explanation below. It lives across the
 /// rebuilds of its section, so a finger dragging the knob never loses it; the section only updates its texts and value.
 /// </summary>
 internal sealed class SettingSlider
 {
-    private readonly TextBlock _title = Ui.Text(string.Empty, 15, bold: true);
-    private readonly TextBlock _value = Ui.Text(
+    private readonly StyledText _title = SettingsUi.Styled(
         string.Empty,
-        14,
-        ink: ColorToken.AccentInk,
-        mono: true
+        TextStyleToken.Label,
+        lines: 2
     );
-    private readonly TextBlock _description = Ui.Text(
+    private readonly StyledText _value = SettingsUi.Styled(string.Empty, TextStyleToken.Label);
+    private readonly StyledText _description = SettingsUi.Styled(
         string.Empty,
-        13,
-        ink: ColorToken.Muted,
-        wrap: true
+        TextStyleToken.Caption,
+        ColorToken.Muted,
+        lines: 0
     );
     private readonly Action<double> _moved;
     private bool _applying;
@@ -43,11 +43,12 @@ internal sealed class SettingSlider
                 _moved(change.NewValue);
             }
         };
-        var heading = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(_value, Dock.Right);
-        heading.Children.Add(_value);
-        heading.Children.Add(_title);
-        Element = Ui.Column(6, heading, Slider, withDescription ? _description : null);
+        Element = Ui.Column(
+            Space.S2,
+            SettingsUi.TitleWithValue(_title, _value),
+            Slider,
+            withDescription ? _description : null
+        );
     }
 
     /// <summary>The slider.</summary>

@@ -21,6 +21,7 @@ namespace Clicalo.Presentation.ControlCenter.General;
 /// <param name="ViewTitle">[view].</param>
 /// <param name="Views">Completa, Compacta and Pestaña with a miniature (GEN-005).</param>
 /// <param name="ViewDescription">[dFullD], [dCompactD] or [dDockD], of the current view.</param>
+/// <param name="LanguageNote">[langBarNote]: the same choice is always in the title bar of the window.</param>
 public sealed record LookModel(
     string LanguageTitle,
     ValueList<LanguageOption> Languages,
@@ -36,5 +37,6 @@ public sealed record LookModel(
     bool CanTextBigger,
     string ViewTitle,
     ValueList<SettingOption<PanelDensity>> Views,
-    string ViewDescription
+    string ViewDescription,
+    string LanguageNote = ""
 );

@@ -7,17 +7,22 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Welcome;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
 namespace Clicalo.UI.Wpf.Workspace.Welcome;
 
 /// <summary>
-/// The welcome (docs/06, BIE-001): a window 600 wide with padding 32 and radius 20, always on top, with five progress
-/// bars, the step and [Atrás] · [Omitir] · [Siguiente]/[Empezar] of 52. Esc does not close it; Alt+F4 is [Omitir].
+/// The welcome (docs/06, BIE-001) in direction C (D12): a window of a fixed size for its five steps (600 ×
+/// <see cref="WelcomeHeight"/>, padding <see cref="Space.S8"/>), always on top, with five progress bars, the step in a
+/// zone that scrolls with the designed bar when it needs more room, and the fixed footer [Atrás] (secondary) ·
+/// [Omitir] (tertiary) · [Siguiente]/[Empezar] (primary), all 52 high. Every choice has the single look of «elegido»
+/// (the wash, the ring and a ✓ or a filled icon). Esc does not close it; Alt+F4 is [Omitir].
 /// </summary>
 /// <remarks>
 /// Like the Control Center it never activates itself (<c>Window.Activate</c> is banned): it is shown without
@@ -30,12 +35,17 @@ public sealed class WelcomeWindow : Window
     /// <summary>The width of the welcome (BIE-001).</summary>
     public const double WelcomeWidth = 600;
 
-    private const double Padding32 = 32;
-    private const double Radius = 20;
-    private const double FooterHeight = 52;
+    /// <summary>
+    /// The height of the welcome, the same for its five steps (D12: the window never jumps from one step to the next);
+    /// the tallest step fits, and a longer one (a reinstallation, the note of a repeated welcome) scrolls inside.
+    /// </summary>
+    public const double WelcomeHeight = 640;
 
     private readonly WelcomeViewModel _viewModel;
-    private readonly ContentControl _body = new() { Focusable = false };
+    private readonly Grid _progress = new();
+    private readonly ThemedScrollViewer _scroll = new();
+    private readonly ContentControl _footer = new() { Focusable = false };
+    private int _shownStep = -1;
     private bool _closing;
 
     /// <summary>Creates the window of <paramref name="viewModel"/>, painted by <paramref name="theme"/>.</summary>
@@ -48,7 +58,8 @@ public sealed class WelcomeWindow : Window
         _viewModel = viewModel;
         theme.Attach(this);
         Width = WelcomeWidth;
-        SizeToContent = SizeToContent.Height;
+        Height = WelcomeHeight;
+        SizeToContent = SizeToContent.Manual;
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
         Background = Brushes.Transparent;
@@ -58,14 +69,30 @@ public sealed class WelcomeWindow : Window
         ShowInTaskbar = true;
         Topmost = true;
         UseLayoutRounding = true;
+
+        var layout = new Grid();
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        // The channel of the bar sits in the padding of the window (Space.S2 from the content), so the step lines up
+        // with the progress bars and the footer on both sides.
+        _scroll.Margin = new Thickness(0, Space.S6, -Space.S4, Space.S6);
+        _scroll.Padding = new Thickness(0, 0, Space.S2, 0);
+        Grid.SetRow(_scroll, 1);
+        Grid.SetRow(_footer, 2);
+        layout.Children.Add(_progress);
+        layout.Children.Add(_scroll);
+        layout.Children.Add(_footer);
         var frame = new Border
         {
-            Child = _body,
-            CornerRadius = new CornerRadius(Radius),
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(Padding32),
+            Child = layout,
+            CornerRadius = new CornerRadius(Radii.Large),
+            Padding = new Thickness(Space.S8),
             SnapsToDevicePixels = true,
         };
+        frame.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
         Ui.Ink(frame, Border.BackgroundProperty, ColorToken.Win);
         Ui.Ink(frame, Border.BorderBrushProperty, ColorToken.Border);
         Content = frame;
@@ -95,10 +122,9 @@ public sealed class WelcomeWindow : Window
     public void Place(Rect workArea)
     {
         Width = Math.Min(WelcomeWidth, workArea.Width);
-        UpdateLayout();
-        var height = double.IsNaN(ActualHeight) || ActualHeight <= 0 ? 560 : ActualHeight;
+        Height = Math.Min(WelcomeHeight, workArea.Height);
         Left = workArea.Left + ((workArea.Width - Width) / 2);
-        Top = workArea.Top + Math.Max(0, (workArea.Height - height) / 2);
+        Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
     }
 
     /// <inheritdoc />
@@ -134,11 +160,20 @@ public sealed class WelcomeWindow : Window
             (Keyboard.FocusedElement as FrameworkElement) is { } element && IsAncestorOf(element)
                 ? AutomationProperties.GetAutomationId(element)
                 : null;
-        var column = Ui.Column(22, Dots(screen), Step(screen), Footer(screen));
-        _body.Content = column;
-        if (!string.IsNullOrEmpty(focused))
+        Progress(screen);
+        var step = Step(screen);
+        _scroll.Content = step;
+        if (screen.Step != _shownStep)
         {
-            _ = Dispatcher.BeginInvoke(() => Refocus(column, focused));
+            // A new step starts at its top; a choice inside the same step keeps the place.
+            _shownStep = screen.Step;
+            _scroll.ScrollToTop();
+        }
+
+        _footer.Content = Footer(screen);
+        if (!string.IsNullOrEmpty(focused) && Content is DependencyObject root)
+        {
+            _ = Dispatcher.BeginInvoke(() => Refocus(root, focused));
         }
     }
 
@@ -165,31 +200,36 @@ public sealed class WelcomeWindow : Window
         }
     }
 
-    private static Grid Dots(WelcomeScreen screen)
+    /// <summary>The five progress bars: the steps done and the one in view in the accent, the rest in the line.</summary>
+    private void Progress(WelcomeScreen screen)
     {
-        var dots = new Grid();
-        AutomationProperties.SetName(dots, screen.StepName);
+        _progress.Children.Clear();
+        _progress.ColumnDefinitions.Clear();
+        AutomationProperties.SetName(_progress, screen.StepName);
         for (var i = 0; i < screen.StepCount; i++)
         {
-            dots.ColumnDefinitions.Add(
+            _progress.ColumnDefinitions.Add(
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             );
             var bar = new Border
             {
-                Height = 6,
-                CornerRadius = new CornerRadius(3),
-                Margin = new Thickness(i == 0 ? 0 : 3, 0, i == screen.StepCount - 1 ? 0 : 3, 0),
+                Height = Space.S1,
+                CornerRadius = new CornerRadius(Space.S1 / 2),
+                Margin = new Thickness(
+                    i == 0 ? 0 : Space.S1 / 2,
+                    0,
+                    i == screen.StepCount - 1 ? 0 : Space.S1 / 2,
+                    0
+                ),
             };
             Ui.Ink(
                 bar,
                 Border.BackgroundProperty,
-                i <= screen.Step ? ColorToken.Accent : ColorToken.CardHi
+                i <= screen.Step ? ColorToken.Accent : ColorToken.Line
             );
             Grid.SetColumn(bar, i);
-            dots.Children.Add(bar);
+            _progress.Children.Add(bar);
         }
-
-        return dots;
     }
 
     private StackPanel Step(WelcomeScreen screen) =>
@@ -202,56 +242,74 @@ public sealed class WelcomeWindow : Window
             _ => Step4(screen),
         };
 
+    /// <summary>The title of a step and the text under it.</summary>
+    private static StackPanel Head(WelcomeScreen screen)
+    {
+        var title = SettingsUi.Styled(screen.Title, TextStyleToken.Display, lines: 2);
+        AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level1);
+        return Ui.Column(
+            Space.S2,
+            title,
+            screen.Body.Length == 0
+                ? null
+                : SettingsUi.Styled(screen.Body, TextStyleToken.Body, ColorToken.Muted, lines: 0)
+        );
+    }
+
     private StackPanel Step0(WelcomeScreen screen)
     {
         var brand = Ui.Row(
-            14,
-            BrandMark.Mark(56),
+            Space.S3,
+            BrandMark.Mark(ControlHeight.Medium),
             Ui.Column(
-                2,
-                BrandMark.Word(screen.AppName, 24),
-                Ui.Text(screen.Tagline, 14, ink: ColorToken.Muted, wrap: true)
+                0,
+                BrandMark.Word(screen.AppName, TextStyles.Get(TextStyleToken.Title).Size),
+                SettingsUi.Styled(screen.Tagline, TextStyleToken.BodySmall, ColorToken.Muted)
             )
         );
         var signature = Ui.Row(
-            10,
-            BrandMark.Avatar(screen.CreatorInitials, 36, 13),
+            Space.S3,
+            BrandMark.Avatar(
+                screen.CreatorInitials,
+                ControlHeight.Small,
+                TextStyles.Get(TextStyleToken.Label).Size
+            ),
             Ui.Column(
                 0,
-                Ui.Text(screen.CreatorName, 14, bold: true),
-                Ui.Text(screen.CreatorRole, 12, ink: ColorToken.Muted)
+                SettingsUi.Styled(screen.CreatorName, TextStyleToken.Label),
+                SettingsUi.Styled(screen.CreatorRole, TextStyleToken.Caption, ColorToken.Muted)
             )
         );
-        var story = Ui.Card(
-            Ui.Column(12, Paragraph(screen.Story, 16, ColorToken.Text), signature),
-            ColorToken.Card,
-            null,
-            14,
-            new Thickness(18)
-        );
+        var story = new Card
+        {
+            Content = Ui.Column(
+                Space.S3,
+                SettingsUi.Styled(screen.Story, TextStyleToken.Body, lines: 0),
+                signature
+            ),
+        };
         var languages = new List<UIElement>();
         foreach (var option in screen.Languages)
         {
-            languages.Add(
-                Segment(
-                    option,
-                    52,
-                    12,
-                    16,
-                    "language." + option.Id,
-                    () => _viewModel.SetLanguage(option.Id)
-                )
+            var language = SettingsUi.Option(
+                OptionKind.Tile,
+                option.Label,
+                option.Label,
+                option.Selected,
+                () => _viewModel.SetLanguage(option.Id)
             );
+            language.Height = ControlHeight.Medium;
+            AutomationProperties.SetAutomationId(language, "language." + option.Id);
+            languages.Add(language);
         }
 
         return Ui.Column(
-            22,
+            Space.S6,
             brand,
-            Heading(screen.Title, 30),
-            Paragraph(screen.Body, 16, ColorToken.Muted),
+            Head(screen),
             story,
             screen.Reinstall is { } reinstall ? Reinstall(reinstall) : null,
-            Ui.Columns(languages.Count, 8, languages)
+            SettingsUi.Options(languages.Count, languages)
         );
     }
 
@@ -259,91 +317,80 @@ public sealed class WelcomeWindow : Window
     /// The question of a reinstallation that found data from before (P6): «Conservar mis datos» is the option in force
     /// and «Empezar de cero» takes two taps (REG-04), both 52 high (REG-02).
     /// </summary>
-    private Border Reinstall(WelcomeReinstallCard card)
+    private Card Reinstall(WelcomeReinstallCard card)
     {
-        var title = Ui.Text(card.Title, 16, bold: true, wrap: true);
+        var title = SettingsUi.Styled(card.Title, TextStyleToken.Label, lines: 0);
         AutomationProperties.SetLiveSetting(title, AutomationLiveSetting.Polite);
         if (card.Done.Length > 0)
         {
-            var done = Ui.Text(card.Done, 14, wrap: true);
+            var done = SettingsUi.Styled(card.Done, TextStyleToken.Body, lines: 0);
             AutomationProperties.SetLiveSetting(done, AutomationLiveSetting.Polite);
-            return Ui.Card(
-                Ui.Row(8, Ui.Icon("check_circle", 20, ColorToken.AccentInk), done),
-                ColorToken.AccentWash,
-                null,
-                14,
-                new Thickness(16)
-            );
+            var check = Ui.Icon("check_circle", IconBox.Medium, ColorToken.Success);
+            check.VerticalAlignment = VerticalAlignment.Top;
+            return new Card { Content = Ui.Row(Space.S2, check, done) };
         }
 
-        var keep = Ui.Choice(
-            Centered(Ui.Text(card.KeepText, 15, bold: true, ink: ColorToken.OnAccent)),
+        var keep = SettingsUi.Option(
+            OptionKind.Tile,
+            card.KeepText,
             card.KeepText,
             true,
-            () => { },
-            52,
-            12
+            static () => { }
         );
-        Ui.Paint(keep, ColorToken.Accent, ColorToken.OnAccent, null);
-        keep.BorderThickness = new Thickness(0);
-        keep.HorizontalContentAlignment = HorizontalAlignment.Center;
+        keep.Height = ControlHeight.Medium;
         AutomationProperties.SetAutomationId(keep, "reinstall.keep");
-        var fresh = Ui.Button(
-            Centered(
-                Ui.Text(
-                    card.FreshText,
-                    15,
-                    bold: true,
-                    ink: card.FreshArmed ? ColorToken.OnWarn : ColorToken.Text
-                )
-            ),
+        var fresh = SettingsUi.Button(
             card.FreshText,
+            ButtonVariant.Danger,
             _viewModel.StartFromScratch,
-            card.FreshArmed ? ColorToken.Warn : null,
-            card.FreshArmed ? ColorToken.OnWarn : ColorToken.Text,
-            card.FreshArmed ? null : ColorToken.Border,
-            52,
-            12
+            card.FreshArmed ? "warning" : "delete",
+            ControlSize.Medium
         );
+        fresh.IsActive = card.FreshArmed;
         AutomationProperties.SetAutomationId(fresh, "reinstall.fresh");
         AutomationProperties.SetHelpText(fresh, card.Description);
-        return Ui.Card(
-            Ui.Column(
-                10,
+        return new Card
+        {
+            Content = Ui.Column(
+                Space.S3,
                 title,
-                Ui.Text(card.Description, 13, ink: ColorToken.Muted, wrap: true),
-                Ui.Columns(2, 8, [keep, fresh])
+                SettingsUi.Styled(card.Description, TextStyleToken.BodySmall, ColorToken.Muted, 0),
+                SettingsUi.Options(2, [keep, fresh])
             ),
-            ColorToken.Card,
-            ColorToken.Accent,
-            14,
-            new Thickness(16)
-        );
+        };
     }
 
     /// <summary>What [Siguiente] changes and what it leaves as the person set it (BIE-010), read out when it changes.</summary>
-    private static Border Changes(WelcomeChangesNote note)
+    private static Card Changes(WelcomeChangesNote note)
     {
-        var column = Ui.Column(6);
-        void Add(string title, ValueList<string> lines, string icon, ColorToken ink)
+        var column = new StackPanel();
+        void Add(string title, ValueList<string> lines, string icon)
         {
             if (lines.IsEmpty)
             {
                 return;
             }
 
-            column.Children.Add(Ui.Text(title, 13, bold: true, wrap: true));
+            var heading = SettingsUi.Styled(title, TextStyleToken.Label, lines: 0);
+            heading.Margin = new Thickness(0, column.Children.Count == 0 ? 0 : Space.S2, 0, 0);
+            column.Children.Add(heading);
             foreach (var line in lines)
             {
-                column.Children.Add(
-                    Ui.Row(8, Ui.Icon(icon, 16, ink), Ui.Text(line, 13, wrap: true))
+                var mark = Ui.Icon(icon, IconBox.Small, ColorToken.Muted);
+                mark.VerticalAlignment = VerticalAlignment.Top;
+                var row = Ui.Row(
+                    Space.S2,
+                    mark,
+                    SettingsUi.Styled(line, TextStyleToken.BodySmall, lines: 0)
                 );
+                row.Margin = new Thickness(0, Space.S1, 0, 0);
+                column.Children.Add(row);
             }
         }
 
-        Add(note.ChangesTitle, note.Changes, "swap_horiz", ColorToken.Accent);
-        Add(note.KeptTitle, note.Kept, "lock", ColorToken.Muted);
-        var card = Ui.Card(column, ColorToken.Card, null, 12, new Thickness(14, 12, 14, 12));
+        Add(note.ChangesTitle, note.Changes, "swap_horiz");
+        Add(note.KeptTitle, note.Kept, "lock");
+        var card = new Card { Content = column };
         AutomationProperties.SetLiveSetting(card, AutomationLiveSetting.Polite);
         AutomationProperties.SetName(
             card,
@@ -359,182 +406,176 @@ public sealed class WelcomeWindow : Window
         return card;
     }
 
+    /// <summary>
+    /// BIE-005: five option cards of 88 in two columns, each with its icon (filled while chosen) over its name; several
+    /// can be chosen, so each one is a switch for UI Automation.
+    /// </summary>
     private StackPanel Step1(WelcomeScreen screen)
     {
-        var chips = new List<UIElement>();
+        var options = new List<UIElement>();
         foreach (var option in screen.Uses)
         {
-            var content = Ui.Column(
-                6,
-                Ui.Icon(option.Icon, 26, ColorToken.AccentInk),
-                Ui.Text(option.Label, 16, bold: true, wrap: true)
-            );
-            ((FrameworkElement)content.Children[0]).HorizontalAlignment = HorizontalAlignment.Left;
-            var chip = Ui.Choice(
-                content,
+            var card = SettingsUi.Option(
+                OptionKind.Card,
+                option.Label,
                 option.Label,
                 option.Selected,
                 () => _viewModel.ToggleUse(option.Id),
-                84,
-                14
+                option.Icon,
+                OptionRole.Toggle
             );
-            chip.Height = double.NaN;
-            chip.MinHeight = 84;
-            chip.Padding = new Thickness(14);
-            chip.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            chip.VerticalContentAlignment = VerticalAlignment.Top;
-            AutomationProperties.SetAutomationId(chip, "use." + option.Id);
-            chips.Add(chip);
+            card.Height = ControlHeight.Large + Space.S6;
+            AutomationProperties.SetAutomationId(card, "use." + option.Id);
+            options.Add(card);
         }
 
         return Ui.Column(
-            22,
-            Heading(screen.Title, 28),
-            Paragraph(screen.Body, 16, ColorToken.Muted),
-            Ui.Columns(2, 10, chips),
+            Space.S6,
+            Head(screen),
+            SettingsUi.Options(2, options),
             screen.Changes is { } changes ? Changes(changes) : null
         );
     }
 
+    /// <summary>
+    /// BIE-006: the detected keyboard, «Básicos» as a whole row with its description, and the templates as tiles of
+    /// 44 in three columns, all with the same border, height and ✓ or filled icon while chosen.
+    /// </summary>
     private StackPanel Step2(WelcomeScreen screen)
     {
-        var keyboard = Ui.Card(
-            Ui.Row(
-                8,
-                Ui.Icon("keyboard", 18, ColorToken.AccentInk),
-                Ui.Text(screen.KeyboardLine, 13, wrap: true)
-            ),
-            ColorToken.Card,
-            null,
-            10,
-            new Thickness(12, 10, 12, 10)
-        );
-        var chips = new List<UIElement>();
+        var keyboard = SettingsUi.SettingRow("keyboard", screen.KeyboardLine, null, null);
+        keyboard.MinHeight = ControlHeight.Small;
+        UIElement? basics = null;
+        var templates = new List<UIElement>();
         foreach (var option in screen.Kit)
         {
-            var label = Ui.Text(option.Label, 15, bold: true);
-            UIElement text =
-                option.Description.Length == 0
-                    ? label
-                    : Ui.Column(
-                        0,
-                        label,
-                        Ui.Text(option.Description, 12, ink: ColorToken.Muted, wrap: true)
-                    );
-            var chip = Ui.Choice(
-                Ui.Row(8, Ui.Icon(option.Icon, 20), text),
-                option.Label,
-                option.Selected,
-                () => _viewModel.ToggleKit(option.Id),
-                48,
-                24
-            );
-            chip.Height = double.NaN;
-            chip.MinHeight = 48;
-            chip.Padding = new Thickness(16, 6, 16, 6);
+            OptionButton chip;
             if (option.Description.Length > 0)
             {
-                chip.MaxWidth = 534;
+                var texts = Ui.Column(
+                    0,
+                    SettingsUi.Styled(option.Label, TextStyleToken.Label),
+                    SettingsUi.Styled(option.Description, TextStyleToken.Caption, ColorToken.Muted)
+                );
+                chip = SettingsUi.Tall(
+                    SettingsUi.Option(
+                        OptionKind.Tile,
+                        texts,
+                        option.Label,
+                        option.Selected,
+                        () => _viewModel.ToggleKit(option.Id),
+                        option.Icon,
+                        OptionRole.Toggle
+                    ),
+                    ControlHeight.Medium
+                );
+                chip.HorizontalContentAlignment = HorizontalAlignment.Left;
                 AutomationProperties.SetHelpText(chip, option.Description);
+                basics = chip;
+            }
+            else
+            {
+                chip = SettingsUi.Option(
+                    OptionKind.Tile,
+                    option.Label,
+                    option.Label,
+                    option.Selected,
+                    () => _viewModel.ToggleKit(option.Id),
+                    option.Icon,
+                    OptionRole.Toggle
+                );
+                chip.HorizontalContentAlignment = HorizontalAlignment.Left;
+                templates.Add(chip);
             }
 
             AutomationProperties.SetAutomationId(chip, "kit." + option.Id);
-            chips.Add(chip);
         }
 
         return Ui.Column(
-            22,
-            Heading(screen.Title, 28),
-            Paragraph(screen.Body, 16, ColorToken.Muted),
+            Space.S4,
+            Head(screen),
             keyboard,
-            Ui.Wrap(8, chips)
+            basics,
+            SettingsUi.Options(3, templates)
         );
     }
 
+    /// <summary>BIE-007: the three views as option cards with their icon, name and description.</summary>
     private StackPanel Step3(WelcomeScreen screen)
     {
         var cards = new List<UIElement>();
         foreach (var view in screen.Views)
         {
-            var miniature = Ui.Card(
-                Ui.Icon(view.Icon, 18, ColorToken.AccentInk),
-                ColorToken.Card,
-                ColorToken.Border,
-                6,
-                new Thickness(0)
+            var name = SettingsUi.Styled(view.Label, TextStyleToken.Label);
+            name.HorizontalAlignment = HorizontalAlignment.Center;
+            var description = SettingsUi.Styled(
+                view.Description,
+                TextStyleToken.Caption,
+                ColorToken.Muted,
+                lines: 0
             );
-            miniature.Width = view.MiniatureWidth;
-            miniature.Height = view.MiniatureHeight;
-            var holder = new Grid { Height = 56 };
-            holder.Children.Add(miniature);
-            var label = Ui.Text(view.Label, 14, bold: true);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            var description = Ui.Text(view.Description, 12, ink: ColorToken.Muted, wrap: true);
             description.TextAlignment = TextAlignment.Center;
-            var card = Ui.Choice(
-                Ui.Column(8, holder, label, description),
-                view.Label,
-                view.Selected,
-                () => _viewModel.SetDensity(view.Density),
-                44,
-                14,
-                role: OptionRole.Option
+            var card = SettingsUi.Tall(
+                SettingsUi.Option(
+                    OptionKind.Card,
+                    Ui.Column(Space.S1, name, description),
+                    view.Label,
+                    view.Selected,
+                    () => _viewModel.SetDensity(view.Density),
+                    view.Icon
+                )
             );
-            card.Height = double.NaN;
-            card.Padding = new Thickness(8, 12, 8, 12);
-            card.HorizontalContentAlignment = HorizontalAlignment.Stretch;
             card.VerticalContentAlignment = VerticalAlignment.Top;
-            card.VerticalAlignment = VerticalAlignment.Stretch;
             AutomationProperties.SetHelpText(card, view.Description);
             AutomationProperties.SetAutomationId(card, "view." + view.Density);
             cards.Add(card);
         }
 
-        return Ui.Column(
-            22,
-            Heading(screen.Title, 28),
-            Paragraph(screen.Body, 16, ColorToken.Muted),
-            Ui.Columns(3, 10, cards)
-        );
+        return Ui.Column(Space.S6, Head(screen), SettingsUi.Options(3, cards));
     }
 
+    /// <summary>
+    /// BIE-008: the three sizes with a «Copiar» button at real scale in a stage as tall as the largest, so the names
+    /// line up, and the four themes as tiles with their swatch (as in «General y panel»).
+    /// </summary>
     private StackPanel Step4(WelcomeScreen screen)
     {
+        var stage = screen.Sizes.IsEmpty ? 0 : screen.Sizes.Max(size => size.TileHeight);
         var sizes = new List<UIElement>();
         foreach (var size in screen.Sizes)
         {
-            var sample = Ui.Card(
-                Ui.Column(
-                    3,
+            var sample = new Border
+            {
+                Child = Ui.Column(
+                    Space.S1,
                     Ui.Icon("content_copy", size.IconSize, ColorToken.AccentInk),
-                    Centered(Fixed(screen.CopyLabel, size.TextSize))
+                    Sample(screen.CopyLabel, size.TextSize)
                 ),
-                ColorToken.Card,
-                ColorToken.Border,
-                10,
-                new Thickness(0)
-            );
-            sample.Width = size.TileWidth;
-            sample.Height = size.TileHeight;
+                Width = size.TileWidth,
+                Height = size.TileHeight,
+                CornerRadius = new CornerRadius(Radii.Medium),
+                BorderThickness = new Thickness(Stroke.Line),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
             if (sample.Child is FrameworkElement inner)
             {
                 inner.VerticalAlignment = VerticalAlignment.Center;
             }
 
-            var label = Ui.Text(size.Label, 14, bold: true);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            var card = Ui.Choice(
-                Ui.Column(10, sample, label),
-                size.Label,
-                size.Selected,
-                () => _viewModel.SetSize(size.Size),
-                44,
-                14,
-                role: OptionRole.Option
+            Ui.Ink(sample, Border.BackgroundProperty, ColorToken.Card);
+            Ui.Ink(sample, Border.BorderBrushProperty, ColorToken.Border);
+            var holder = new Grid { Height = stage };
+            holder.Children.Add(sample);
+            var card = SettingsUi.Tall(
+                SettingsUi.Option(
+                    OptionKind.Tile,
+                    Ui.Column(Space.S3, holder, SettingsUi.CheckLabel(size.Label, size.Selected)),
+                    size.Label,
+                    size.Selected,
+                    () => _viewModel.SetSize(size.Size)
+                )
             );
-            card.Height = double.NaN;
-            card.Padding = new Thickness(8, 14, 8, 14);
-            card.VerticalAlignment = VerticalAlignment.Bottom;
             AutomationProperties.SetAutomationId(card, "size." + size.Size);
             sizes.Add(card);
         }
@@ -542,150 +583,84 @@ public sealed class WelcomeWindow : Window
         var themes = new List<UIElement>();
         foreach (var option in screen.Themes)
         {
-            themes.Add(
-                Segment(
-                    option,
-                    44,
-                    10,
-                    14,
-                    "theme." + option.Id,
-                    () => _viewModel.SetTheme(option.Id)
-                )
+            var value = Enum.TryParse<ThemeChoice>(option.Id, out var parsed)
+                ? parsed
+                : ThemeChoice.Auto;
+            var theme = SettingsUi.ThemeOption(
+                value,
+                option.Label,
+                option.Label,
+                option.Selected,
+                () => _viewModel.SetTheme(option.Id)
             );
+            AutomationProperties.SetAutomationId(theme, "theme." + option.Id);
+            themes.Add(theme);
         }
 
-        var sizeRow = Ui.Columns(3, 10, sizes);
         return Ui.Column(
-            22,
-            Heading(screen.Title, 28),
-            sizeRow,
-            Ui.Columns(themes.Count, 6, themes)
+            Space.S6,
+            Head(screen),
+            Ui.Column(
+                Space.S2,
+                new Overline(screen.SizeTitle),
+                SettingsUi.Options(sizes.Count, sizes)
+            ),
+            Ui.Column(Space.S2, new Overline(screen.ThemeTitle), SettingsUi.Options(2, themes))
         );
     }
 
+    /// <summary>[Atrás] (secondary, not on step 0) · [Omitir] (tertiary) · [Siguiente]/[Empezar] (primary), all 52.</summary>
     private DockPanel Footer(WelcomeScreen screen)
     {
-        var footer = new DockPanel { LastChildFill = false, Height = FooterHeight };
+        var footer = new DockPanel { LastChildFill = false };
         if (screen.CanBack)
         {
-            var back = Ui.Button(
-                Ui.Text(screen.BackText, 16),
+            var back = SettingsUi.Button(
                 screen.BackText,
+                ButtonVariant.Secondary,
                 _viewModel.Back,
-                null,
-                ColorToken.Text,
-                ColorToken.Border,
-                FooterHeight,
-                12
+                "arrow_back",
+                ControlSize.Medium
             );
-            back.Padding = new Thickness(20, 0, 20, 0);
             AutomationProperties.SetAutomationId(back, "back");
             DockPanel.SetDock(back, Dock.Left);
             footer.Children.Add(back);
         }
 
-        var next = Ui.Button(
-            Ui.Text(screen.NextText, 16, bold: true, ink: ColorToken.OnAccent),
+        var next = SettingsUi.Button(
             screen.NextText,
+            ButtonVariant.Primary,
             _viewModel.Next,
-            ColorToken.Accent,
-            ColorToken.OnAccent,
-            null,
-            FooterHeight,
-            12
+            size: ControlSize.Medium
         );
-        next.Padding = new Thickness(24, 0, 24, 0);
-        next.BorderThickness = new Thickness(0);
         AutomationProperties.SetAutomationId(next, "next");
         DockPanel.SetDock(next, Dock.Right);
         footer.Children.Add(next);
-        var skip = Ui.Button(
-            Ui.Text(screen.SkipText, 15, ink: ColorToken.Muted),
+        var skip = SettingsUi.Button(
             screen.SkipText,
+            ButtonVariant.Tertiary,
             _viewModel.Skip,
-            null,
-            ColorToken.Muted,
-            null,
-            FooterHeight,
-            12
+            size: ControlSize.Medium
         );
-        skip.Padding = new Thickness(16, 0, 16, 0);
-        skip.BorderThickness = new Thickness(0);
-        skip.Margin = new Thickness(0, 0, 10, 0);
+        skip.Margin = new Thickness(0, 0, Space.S2, 0);
         AutomationProperties.SetAutomationId(skip, "skip");
         DockPanel.SetDock(skip, Dock.Right);
         footer.Children.Add(skip);
         return footer;
     }
 
-    private static OptionButton Segment(
-        WelcomeOption option,
-        double height,
-        double radius,
-        double px,
-        string automationId,
-        Action click
-    )
+    private static TextBlock Sample(string text, double px)
     {
-        var text = Ui.Text(option.Label, px, bold: true, ink: ColorToken.Text);
-        text.HorizontalAlignment = HorizontalAlignment.Center;
-        var segment = Ui.Choice(
-            text,
-            option.Label,
-            option.Selected,
-            click,
-            height,
-            radius,
-            role: OptionRole.Option
-        );
-        if (option.Selected)
-        {
-            Ui.Paint(segment, ColorToken.Accent, ColorToken.OnAccent, null);
-        }
-        else
-        {
-            Ui.Paint(segment, ColorToken.CardHi, ColorToken.Text, null);
-        }
-
-        segment.BorderThickness = new Thickness(0);
-        segment.HorizontalContentAlignment = HorizontalAlignment.Center;
-        AutomationProperties.SetAutomationId(segment, automationId);
-        return segment;
-    }
-
-    private static TextBlock Heading(string text, double px)
-    {
-        var heading = Ui.Text(text, px, bold: true, wrap: true);
-        heading.LineHeight = px * 1.15;
-        AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level1);
-        return heading;
-    }
-
-    private static TextBlock Paragraph(string text, double px, ColorToken ink)
-    {
-        var paragraph = Ui.Text(text, px, ink: ink, wrap: true);
-        paragraph.LineHeight = px * 1.5;
-        return paragraph;
-    }
-
-    private static TextBlock Fixed(string text, double px)
-    {
-        // The sample of each size is drawn at real scale: its type size does not follow the text size setting.
+        // The sample of each size is drawn at real scale: its type size is the panel's, not the text size setting.
         var block = new TextBlock
         {
             Text = text,
-            FontSize = px,
             FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
         };
+        block.FontSize = px;
         block.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.UiFont);
         Ui.Ink(block, TextBlock.ForegroundProperty, ColorToken.Text);
-        return block;
-    }
-
-    private static TextBlock Centered(TextBlock block)
-    {
-        block.HorizontalAlignment = HorizontalAlignment.Center;
         return block;
     }
 }

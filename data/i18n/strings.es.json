@@ -21,6 +21,7 @@
   "hc": "Alto contraste",
   "lang": "Idioma",
   "langBoth": "Idioma · Language",
+  "langBarNote": "También está siempre arriba, en la barra de la ventana.",
   "showKeys": "Mostrar teclas",
   "keysWith": "Con teclas",
   "keysNameOnly": "Solo nombre",
