@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Shell;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
@@ -21,19 +20,24 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 using Clicalo.UI.Wpf.Workspace.SystemSection;
 using Clicalo.UI.Wpf.Workspace.Templates;
 using Clicalo.UI.Wpf.Workspace.TouchPrecision;
+using Clicalo.UI.Wpf.Workspace.Welcome;
 
 namespace Clicalo.UI.Wpf.Workspace;
 
 /// <summary>
-/// The Control Center (docs/05, CCM-001 to CCM-005): a normal window that can be activated, moved and resized (1120 ×
-/// 680 by default, at least 760 × 520 or the work area when it is smaller), with the title bar of 52 (logo, «Clícalo ›
-/// Centro de control › sección», ES/EN and ✕ of 44 × 40), the side menu of 220 (72 with icons only below 1240), the
-/// section and the status bar of 48. Esc leaves a field first, then closes a menu, then the window.
+/// The Control Center (docs/05, CCM-001 to CCM-005) in direction C (D12, D13): a real Windows window (1120 × 680 by
+/// default, at least 760 × 520 or the work area when it is smaller) with the title bar of
+/// <see cref="ComponentSize.TitleBar"/> (logo, «Clícalo › Centro de control › sección» at every width, ES/EN and the
+/// three Windows buttons), the rail of <see cref="RailWidth"/> with its labels always shown and the counter beside
+/// each icon, the section, and the status bar of <see cref="ControlHeight.Small"/> (✓ and the message, Deshacer and the
+/// resize grip). Esc leaves a field first, then closes a menu, then the window.
 /// </summary>
 /// <remarks>
 /// It never activates itself (<c>Window.Activate</c> is banned): it is shown without activation and the composition
 /// root brings it to the front through the <c>ControlCenter</c> foreground lease (blueprint §3.6, CCM-004). Closing it
-/// hides it: <see cref="CloseRequested"/> lets the composition root give the foreground back.
+/// hides it: <see cref="CloseRequested"/> lets the composition root give the foreground back. Each section lays itself
+/// out for the width it gets (<see cref="ApplyWidth(double)"/>): the narrow window and the maximized one are designed
+/// in the sections, never squeezed.
 /// </remarks>
 public sealed class ControlCenterWindow : Window
 {
@@ -43,21 +47,19 @@ public sealed class ControlCenterWindow : Window
     /// <summary>The default height (CCM-001).</summary>
     public const double DefaultHeight = ControlCenterPlacer.DefaultHeight;
 
+    /// <summary>The width of the rail: two touch targets (88 in the design of C).</summary>
+    public const double RailWidth = ControlHeight.Small * 2;
+
     private const double LeastWidth = ControlCenterPlacer.LeastWidth;
     private const double LeastHeight = ControlCenterPlacer.LeastHeight;
-    private const double NarrowBelow = 1240;
-    private const double StatusHeight = ControlHeight.Small;
-    private const double WideNav = 220;
-    private const double NarrowNav = ControlHeight.Large + Space.S6;
 
     private readonly ControlCenterViewModel _viewModel;
     private readonly Border _root = new() { Focusable = true, FocusVisualStyle = null };
     private readonly ContentControl _crumb = new() { Focusable = false };
     private readonly ContentControl _languages = new() { Focusable = false };
-    private readonly ContentControl _nav = new() { Focusable = false };
+    private readonly StackPanel _nav = new();
     private readonly ContentControl _section = new() { Focusable = false };
-    private readonly ContentControl _status = new() { Focusable = false };
-    private readonly ColumnDefinition _navColumn = new() { Width = new GridLength(WideNav) };
+    private readonly StatusBar _status = new();
     private readonly ShortcutsSectionView _shortcuts;
     private readonly SystemSectionView? _system;
     private readonly TemplatesSectionView? _templates;
@@ -68,15 +70,13 @@ public sealed class ControlCenterWindow : Window
     private readonly SymbolIcon _grip = new()
     {
         Symbol = "south_east",
-        Size = IconBox.Small,
+        Size = IconBox.Badge,
         Width = ControlHeight.Small,
         Height = ControlHeight.Small,
-        VerticalAlignment = VerticalAlignment.Bottom,
+        VerticalAlignment = VerticalAlignment.Center,
     };
-    private readonly TextBlock _statusText = Ui.Text(string.Empty, 13);
     private readonly LiveAnnouncer _statusAnnouncer;
     private string? _announced;
-    private bool _narrow;
     private bool _closing;
 
     /// <summary>Creates the window of <paramref name="viewModel"/>, painted by <paramref name="theme"/>.</summary>
@@ -87,7 +87,7 @@ public sealed class ControlCenterWindow : Window
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(theme);
         _viewModel = viewModel;
-        _statusAnnouncer = new LiveAnnouncer(_statusText);
+        _statusAnnouncer = new LiveAnnouncer(_status.Message);
         theme.Attach(this);
         Width = DefaultWidth;
         Height = DefaultHeight;
@@ -120,44 +120,33 @@ public sealed class ControlCenterWindow : Window
         layout.RowDefinitions.Add(
             new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
         );
-        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(StatusHeight) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.Children.Add(_titleBar);
         var body = new Grid();
-        body.ColumnDefinitions.Add(_navColumn);
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(RailWidth) });
         body.ColumnDefinitions.Add(
             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
         );
-        var nav = new Border
+        // The rail scrolls when the window is too short for its six sections; the channel of its bar is its right
+        // margin, so nothing moves when the bar appears.
+        var rail = new Border
         {
             Child = new ThemedScrollViewer
             {
                 Content = _nav,
-                Padding = new Thickness(10, 12, 10, 12),
+                Padding = new Thickness(Space.S2, Space.S3, 0, Space.S3),
             },
-            BorderThickness = new Thickness(0, 0, 1, 0),
+            BorderThickness = new Thickness(0, 0, Theming.Generated.Stroke.Line, 0),
         };
-        Ui.Ink(nav, Border.BackgroundProperty, ColorToken.Side);
-        Ui.Ink(nav, Border.BorderBrushProperty, ColorToken.Border);
-        body.Children.Add(nav);
+        Ui.Ink(rail, Border.BackgroundProperty, ColorToken.Side);
+        Ui.Ink(rail, Border.BorderBrushProperty, ColorToken.Border);
+        body.Children.Add(rail);
         Grid.SetColumn(_section, 1);
         body.Children.Add(_section);
         Grid.SetRow(body, 1);
         layout.Children.Add(body);
-        // The grip at the end of the status bar resizes the window from its corner (D13), for a finger.
-        var statusRow = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(_grip, Dock.Right);
-        statusRow.Children.Add(_grip);
-        statusRow.Children.Add(_status);
-        var status = new Border
-        {
-            Child = statusRow,
-            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
-            Padding = new Thickness(Space.S6, 0, 0, 0),
-        };
-        Ui.Ink(status, Border.BorderBrushProperty, ColorToken.Border);
-        Ui.Ink(status, Border.BackgroundProperty, ColorToken.Side);
-        Grid.SetRow(status, 2);
-        layout.Children.Add(status);
+        Grid.SetRow(_status, 2);
+        layout.Children.Add(_status);
         _root.Child = layout;
         Content = _root;
 
@@ -249,11 +238,31 @@ public sealed class ControlCenterWindow : Window
     /// </summary>
     public void Maximize() => WindowState = WindowState.Maximized;
 
-    private double CurrentScale()
+    /// <summary>
+    /// Lays the sections out for a window of <paramref name="width"/> (CCM-005): each section gets the width beside the
+    /// rail and chooses its own designed layout (in «Atajos», three columns, or the profiles in a selector and the
+    /// editor as a page when they do not fit). The window calls it whenever its size changes; a preview or an audit of
+    /// a window that is never shown calls it with the width it lays the content out at.
+    /// </summary>
+    /// <param name="width">The width of the window, in device-independent pixels.</param>
+    public void ApplyWidth(double width)
     {
-        var scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
-        return scale > 0 ? scale : 1;
+        var content = Math.Max(0, width - RailWidth);
+        _shortcuts.ApplyWidth(content);
+        _templates?.ApplyWidth(content);
     }
+
+    /// <summary>
+    /// In a window too narrow for the three columns of «Atajos», shows the editor of the shortcut in view as its own
+    /// page, as a tap on its tile does (the previews and the audits of the narrow window).
+    /// </summary>
+    public void ShowShortcutPage() => _shortcuts.ShowPage();
+
+    /// <summary>
+    /// In a window too narrow for the three columns of «Atajos», opens the list of profiles of its selector, as a tap on
+    /// the selector does (the previews and the audits of the narrow window).
+    /// </summary>
+    public void ShowShortcutProfiles() => _shortcuts.OpenProfiles();
 
     /// <inheritdoc />
     protected override void OnClosing(CancelEventArgs e)
@@ -268,6 +277,12 @@ public sealed class ControlCenterWindow : Window
         base.OnClosing(e);
     }
 
+    private double CurrentScale()
+    {
+        var scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        return scale > 0 ? scale : 1;
+    }
+
     private void ApplyLeastSize(Rect? workArea = null)
     {
         var area = workArea ?? SystemParameters.WorkArea;
@@ -276,27 +291,6 @@ public sealed class ControlCenterWindow : Window
     }
 
     private void ApplyWidth() => ApplyWidth(ActualWidth);
-
-    /// <summary>
-    /// Arranges the window for <paramref name="width"/> (CCM-005): below 1240 the menu shows only its icons and the
-    /// columns of «Atajos» and «Plantillas» narrow. The window calls it whenever its size changes; a preview or an
-    /// audit of a window that is never shown calls it with the width it lays the content out at.
-    /// </summary>
-    /// <param name="width">The width of the window, in device-independent pixels.</param>
-    public void ApplyWidth(double width)
-    {
-        var narrow = width < NarrowBelow;
-        if (narrow == _narrow)
-        {
-            return;
-        }
-
-        _narrow = narrow;
-        _navColumn.Width = new GridLength(narrow ? NarrowNav : WideNav);
-        _shortcuts.SetNarrow(narrow);
-        _templates?.SetNarrow(narrow);
-        Render();
-    }
 
     private void OnPreviewKeyUp(object sender, KeyEventArgs e)
     {
@@ -332,6 +326,20 @@ public sealed class ControlCenterWindow : Window
             return;
         }
 
+        // In «Atajos» of the narrow window, the list of profiles closes first, then the menus of the view model, then
+        // the page of the editor; only then the window.
+        if (_viewModel.Section == ControlCenterSection.Shortcuts)
+        {
+            if (
+                _shortcuts.CloseProfiles()
+                || _viewModel.Shortcuts.CloseMenu()
+                || _shortcuts.ClosePage()
+            )
+            {
+                return;
+            }
+        }
+
         _viewModel.Escape();
     }
 
@@ -339,63 +347,17 @@ public sealed class ControlCenterWindow : Window
 
     private StackPanel TitleLeading()
     {
-        var logo = Logo();
+        var logo = BrandMark.Mark(IconBox.Large);
+        logo.Margin = new Thickness(0, 0, Space.S3, 0);
         _crumb.VerticalAlignment = VerticalAlignment.Center;
-        var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(logo);
-        row.Children.Add(_crumb);
-        return row;
-    }
-
-    private StackPanel Logo()
-    {
-        var mark = new Canvas { Width = 30, Height = 30 };
-        var square = new Border
-        {
-            Width = 30,
-            Height = 30,
-            CornerRadius = new CornerRadius(8),
-        };
-        Ui.Ink(square, Border.BackgroundProperty, ColorToken.Accent);
-        mark.Children.Add(square);
-        mark.Children.Add(Stroke(13, 13, 5, 12, 0, 1));
-        mark.Children.Add(Stroke(14, 4, 4, 7, 32, 1));
-        mark.Children.Add(Stroke(21, 5, 2, 4, 72, 0.75));
-        var word = Ui.Text(_viewModel.AppName, 16, bold: true);
-        word.Margin = new Thickness(10, 0, 0, 0);
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        row.Children.Add(mark);
-        row.Children.Add(word);
+        row.Children.Add(logo);
+        row.Children.Add(_crumb);
         return row;
-    }
-
-    private static Rectangle Stroke(
-        double left,
-        double top,
-        double width,
-        double height,
-        double angle,
-        double opacity
-    )
-    {
-        var stroke = new Rectangle
-        {
-            Width = width,
-            Height = height,
-            RadiusX = width / 2,
-            RadiusY = width / 2,
-            Opacity = opacity,
-            RenderTransformOrigin = new Point(0.5, 0.5),
-            RenderTransform = new RotateTransform(angle),
-        };
-        Ui.Ink(stroke, Shape.FillProperty, ColorToken.OnAccent);
-        Canvas.SetLeft(stroke, left);
-        Canvas.SetTop(stroke, top);
-        return stroke;
     }
 
     private void Render()
@@ -408,47 +370,9 @@ public sealed class ControlCenterWindow : Window
             _viewModel.CloseName
         );
         _titleBar.Close.ToolTip = _viewModel.CloseHelp;
-        var crumb = Ui.Row(
-            6,
-            Ui.Icon("chevron_right", 18, ColorToken.Muted),
-            Ui.Text(_viewModel.Title, 14),
-            _narrow ? null : Ui.Icon("chevron_right", 18, ColorToken.Muted),
-            _narrow ? null : Ui.Text(_viewModel.SectionTitle, 14, ink: ColorToken.Muted)
-        );
-        crumb.Margin = new Thickness(10, 0, 0, 0);
-        _crumb.Content = crumb;
-        var languages = Ui.Row(2);
-        foreach (var option in _viewModel.Languages)
-        {
-            var button = Ui.Choice(
-                Ui.Text(option.Label, 12, bold: true, ink: ColorToken.Text),
-                option.Name,
-                option.Selected,
-                () => _viewModel.SetLanguage(option.Code),
-                44,
-                7,
-                offFill: null,
-                role: OptionRole.Option
-            );
-            if (option.Selected)
-            {
-                Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
-            }
-            else
-            {
-                Ui.Paint(button, null, ColorToken.Text, null);
-            }
-
-            button.BorderThickness = new Thickness(0);
-            button.Padding = new Thickness(10, 0, 10, 0);
-            WindowChrome.SetIsHitTestVisibleInChrome(button, true);
-            languages.Children.Add(button);
-        }
-
-        var group = Ui.Card(languages, ColorToken.Card, null, 10, new Thickness(3));
-        AutomationProperties.SetName(group, _viewModel.LanguageName);
-        _languages.Content = group;
-        _nav.Content = Nav();
+        _crumb.Content = Crumb();
+        _languages.Content = Languages();
+        RenderNav();
         _section.Content = _viewModel.Section switch
         {
             ControlCenterSection.Shortcuts => _shortcuts,
@@ -459,178 +383,152 @@ public sealed class ControlCenterWindow : Window
             ControlCenterSection.About when _about is not null => _about,
             _ => Soon(),
         };
-        _status.Content = Status();
+        RenderStatus();
     }
 
-    private StackPanel Nav()
+    /// <summary>«Clícalo › Centro de control › sección», the same at every width; only the section ends in «…».</summary>
+    private StackPanel Crumb()
     {
-        var column = Ui.Column(4);
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (
+            var part in new FrameworkElement[]
+            {
+                new StyledText(_viewModel.AppName, TextStyleToken.Heading),
+                Chevron(),
+                new StyledText(_viewModel.Title, TextStyleToken.Body, ColorToken.Muted),
+                Chevron(),
+                new StyledText(_viewModel.SectionTitle, TextStyleToken.Body)
+                {
+                    FontWeight = FontWeights.Bold,
+                },
+            }
+        )
+        {
+            part.VerticalAlignment = VerticalAlignment.Center;
+            row.Children.Add(part);
+        }
+
+        return row;
+    }
+
+    private static SymbolIcon Chevron()
+    {
+        var chevron = Ui.Icon("chevron_right", IconBox.Small, ColorToken.Muted);
+        chevron.Margin = new Thickness(Space.S1, 0, Space.S1, 0);
+        return chevron;
+    }
+
+    /// <summary>ES | EN: two segments of 44 on a card of the bar, with air above and below (D12).</summary>
+    private Border Languages()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var option in _viewModel.Languages)
+        {
+            var button = new OptionButton
+            {
+                Kind = OptionKind.Segment,
+                Content = option.Label,
+                IsSelected = option.Selected,
+                MinWidth = ControlHeight.Small + Space.S3,
+            };
+            AutomationProperties.SetName(button, option.Name);
+            button.Click += (_, _) => _viewModel.SetLanguage(option.Code);
+            WindowChrome.SetIsHitTestVisibleInChrome(button, true);
+            row.Children.Add(button);
+        }
+
+        var group = Ui.Card(
+            row,
+            ColorToken.Card,
+            ColorToken.Border,
+            Radii.Medium,
+            new Thickness(0)
+        );
+        AutomationProperties.SetName(group, _viewModel.LanguageName);
+        return group;
+    }
+
+    /// <summary>
+    /// The rail (CCM-002): every section with its icon and its label (two lines at most), the counter beside the icon,
+    /// never over it, and the single look of «elegido» on the section in view.
+    /// </summary>
+    private void RenderNav()
+    {
+        _nav.Children.Clear();
         foreach (var item in _viewModel.Nav)
         {
             if (item.SeparatorBefore)
             {
-                column.Children.Add(Ui.Line(8));
-            }
-
-            var icon = Ui.Icon(
-                item.Icon,
-                22,
-                item.Selected ? ColorToken.AccentInk : ColorToken.Text
-            );
-            UIElement content;
-            if (_narrow)
-            {
-                var layers = new Grid();
-                layers.Children.Add(icon);
-                if (item.Count > 0)
+                var line = new Border
                 {
-                    layers.Children.Add(
-                        Badge(item.Count, HorizontalAlignment.Right, VerticalAlignment.Top)
-                    );
-                }
-
-                content = layers;
+                    Height = Theming.Generated.Stroke.Line,
+                    Margin = new Thickness(Space.S2, Space.S1, Space.S2, Space.S2),
+                };
+                Ui.Ink(line, Border.BackgroundProperty, ColorToken.Border);
+                _nav.Children.Add(line);
             }
-            else
+
+            var button = new OptionButton
             {
-                var row = new DockPanel { LastChildFill = true };
-                icon.Margin = new Thickness(0, 0, 10, 0);
-                DockPanel.SetDock(icon, Dock.Left);
-                row.Children.Add(icon);
-                if (item.Count > 0)
-                {
-                    var badge = Badge(
-                        item.Count,
-                        HorizontalAlignment.Right,
-                        VerticalAlignment.Center
-                    );
-                    DockPanel.SetDock(badge, Dock.Right);
-                    row.Children.Add(badge);
-                }
-
-                row.Children.Add(
-                    Ui.Text(
-                        item.Label,
-                        15,
-                        bold: true,
-                        ink: item.Selected ? ColorToken.AccentInk : ColorToken.Text,
-                        wrap: true
-                    )
-                );
-                content = row;
-            }
-
-            var button = Ui.Choice(
-                content,
-                item.Label,
-                item.Selected,
-                () => _viewModel.Select(item.Section),
-                46,
-                10,
-                offFill: null,
-                role: OptionRole.Option
-            );
-            if (item.Selected)
-            {
-                Ui.Paint(button, ColorToken.AccentWash, ColorToken.Accent, null);
-            }
-            else
-            {
-                Ui.Paint(button, null, ColorToken.Text, null);
-            }
-
-            button.BorderThickness = new Thickness(0);
-            button.Height = double.NaN;
-            button.MinHeight = 46;
-            button.Padding = _narrow ? new Thickness(0) : new Thickness(12, 4, 8, 4);
-            button.HorizontalContentAlignment = _narrow
-                ? HorizontalAlignment.Center
-                : HorizontalAlignment.Stretch;
+                Kind = OptionKind.Rail,
+                Content = item.Label,
+                Symbol = item.Icon,
+                Count = item.Count,
+                IsSelected = item.Selected,
+                Margin = new Thickness(0, 0, 0, Space.S1),
+            };
+            AutomationProperties.SetName(button, item.Label);
             AutomationProperties.SetItemStatus(button, item.CountName);
-            column.Children.Add(button);
+            button.Click += (_, _) => _viewModel.Select(item.Section);
+            _nav.Children.Add(button);
         }
-
-        return column;
-    }
-
-    private static Border Badge(
-        int count,
-        HorizontalAlignment horizontal,
-        VerticalAlignment vertical
-    )
-    {
-        var badge = Ui.Card(
-            Ui.Text(
-                count.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                12,
-                bold: true,
-                ink: ColorToken.OnWarn
-            ),
-            ColorToken.Warn,
-            null,
-            11,
-            new Thickness(6, 1, 6, 1)
-        );
-        badge.MinWidth = 22;
-        badge.HorizontalAlignment = horizontal;
-        badge.VerticalAlignment = vertical;
-        badge.IsHitTestVisible = false;
-        if (badge.Child is FrameworkElement text)
-        {
-            text.HorizontalAlignment = HorizontalAlignment.Center;
-        }
-
-        return badge;
     }
 
     private StackPanel Soon()
     {
         var column = Ui.Column(
-            8,
-            Ui.Text(_viewModel.SectionTitle, 24, bold: true),
-            Ui.Text(_viewModel.Soon, 14, ink: ColorToken.Muted, wrap: true)
+            Space.S2,
+            new StyledText(_viewModel.SectionTitle, TextStyleToken.Title),
+            new StyledText(_viewModel.Soon, TextStyleToken.Body, ColorToken.Muted) { MaxLines = 0 }
         );
-        column.Margin = new Thickness(24);
+        column.Margin = new Thickness(Space.S6);
         return column;
     }
 
-    private DockPanel Status()
+    /// <summary>
+    /// The status bar (CCM-003): ✓ and the message at rest and after a change, ⚠ for a warning; Deshacer and the resize
+    /// grip at its end. Its message is a live region (ACC-001).
+    /// </summary>
+    private void RenderStatus()
     {
         var status = _viewModel.Status;
-        var row = new DockPanel
-        {
-            LastChildFill = true,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        _status.Tone =
+            status.IsWarning ? StatusTone.Warning
+            : string.Equals(status.Icon, "block", StringComparison.Ordinal) ? StatusTone.Danger
+            : StatusTone.Success;
+        var end = new StackPanel { Orientation = Orientation.Horizontal };
         if (status.CanUndo)
         {
-            var undo = Ui.Button(
-                Ui.IconLabel("undo", status.UndoText, 18, 13),
-                status.UndoName,
-                _viewModel.Undo,
-                ColorToken.Card,
-                stroke: ColorToken.Border
-            );
-            DockPanel.SetDock(undo, Dock.Right);
-            row.Children.Add(undo);
+            var undo = new TouchButton
+            {
+                Content = status.UndoText,
+                Symbol = "undo",
+                Variant = ButtonVariant.Tertiary,
+            };
+            AutomationProperties.SetName(undo, status.UndoName);
+            undo.Click += (_, _) => _viewModel.Undo();
+            end.Children.Add(undo);
         }
 
-        var icon = Ui.Icon(status.Icon, 18, status.IsWarning ? ColorToken.Warn : ColorToken.Muted);
-        icon.Margin = new Thickness(0, 0, 8, 0);
-        DockPanel.SetDock(icon, Dock.Left);
-        row.Children.Add(icon);
+        if (_grip.Parent is Panel old)
+        {
+            old.Children.Remove(_grip);
+        }
+
+        end.Children.Add(_grip);
+        _status.Action = end;
         // ACC-001: the status bar is a live region. Its text block stays, so a new message is a change of that
         // region and is announced: polite for a notice, assertive for a warning. Going back to [saved] is not read.
-        if (_statusText.Parent is Panel old)
-        {
-            old.Children.Remove(_statusText);
-        }
-
-        Ui.Ink(
-            _statusText,
-            TextBlock.ForegroundProperty,
-            status.IsWarning ? ColorToken.Text : ColorToken.Muted
-        );
         if (status.IsNotice && !string.Equals(_announced, status.Text, StringComparison.Ordinal))
         {
             _announced = status.Text;
@@ -641,14 +539,11 @@ public sealed class ControlCenterWindow : Window
         }
         else
         {
-            _statusText.Text = status.Text;
+            _status.Text = status.Text;
             if (!status.IsNotice)
             {
                 _announced = null;
             }
         }
-
-        row.Children.Add(_statusText);
-        return row;
     }
 }

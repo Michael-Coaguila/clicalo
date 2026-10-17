@@ -26,7 +26,11 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// It is the only view model that reveals the text of a Text shortcut, to put it in its field (blueprint §6.2, rule of
 /// <c>SecretText</c>); the text never goes into a model.
 /// </remarks>
-public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, IComboEditor
+public sealed class ShortcutEditorViewModel
+    : ObservableObject,
+        IDisposable,
+        IComboEditor,
+        IIconPicker
 {
     private const string DraftKey = "draft";
     private const string TryOperation = "TryNow";
@@ -39,6 +43,7 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
     private string? _for;
     private bool _pickerOpen;
     private string _iconQuery = string.Empty;
+    private string? _iconCategory;
     private KeyGroup _group = KeyGroup.Letters;
     private bool _moreOpen;
     private bool _voiceHowOpen;
@@ -205,6 +210,26 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
         _iconQuery = query ?? string.Empty;
         _invalidate();
     }
+
+    /// <summary>A category of the icon picker (D14): the grid shows its icons; null shows them all.</summary>
+    /// <param name="category">The category.</param>
+    public void ChooseIconCategory(string? category)
+    {
+        _iconCategory = category;
+        _invalidate();
+    }
+
+    /// <summary>✕ of the icon picker.</summary>
+    public void CloseIconPicker()
+    {
+        if (_pickerOpen)
+        {
+            Flip(ref _pickerOpen);
+        }
+    }
+
+    /// <summary>🎤 of the icon search (ACC-011).</summary>
+    public void DictateIconSearch() => Dictate();
 
     /// <summary>An icon of the picker or a suggestion (EDI-003, EDI-004).</summary>
     /// <param name="icon">The icon.</param>
@@ -701,6 +726,7 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
         _for = key;
         _pickerOpen = false;
         _iconQuery = string.Empty;
+        _iconCategory = null;
         _programFilter = string.Empty;
         _duplicatesOpen = false;
         _voiceHowOpen = false;
@@ -959,31 +985,16 @@ public sealed class ShortcutEditorViewModel : ObservableObject, IDisposable, ICo
         );
     }
 
-    private IconPickerModel Picker(Shortcut shortcut)
-    {
-        var current = shortcut.Icon.Name;
-        return new IconPickerModel(
-            [
-                .. Workspace
-                    .SuggestedIcons()
-                    .Select(icon => new IconOption(
-                        icon.Name,
-                        string.Equals(icon.Name, current, StringComparison.Ordinal)
-                    )),
-            ],
-            T(L.IconSearch),
-            [
-                .. _s.Catalogs()
-                    .Icons.Search(_iconQuery)
-                    .Take(Timings.Icons.IconPickerMaxShown)
-                    .Select(icon => new IconOption(
-                        icon.Name,
-                        string.Equals(icon.Name, current, StringComparison.Ordinal)
-                    )),
-            ],
-            T(L.SearchDictate)
+    private IconPickerModel Picker(Shortcut shortcut) =>
+        IconPickerProjection.Build(
+            _s.Catalogs().Icons,
+            shortcut.Icon.Name,
+            Workspace.SuggestedIcons().Items,
+            _iconQuery,
+            _iconCategory,
+            Language,
+            T
         );
-    }
 
     private KindsModel Kinds(Shortcut shortcut) =>
         new(

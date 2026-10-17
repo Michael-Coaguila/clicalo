@@ -679,11 +679,6 @@
           "count": 4,
           "description": "A word may start with an icon tag only when the tag is at least this long.",
           "req": ["EDI-005"]
-        },
-        "IconPickerMaxShown": {
-          "count": 128,
-          "description": "Most icons the picker grid builds at once (the size of the library before D14): the first ones of the library or of the search, until the picker shows the library by categories.",
-          "req": ["EDI-004"]
         }
       }
     },

@@ -1,5 +1,5 @@
 using Clicalo.Domain.Primitives;
-using Clicalo.Presentation.ControlCenter.Shortcuts;
+using Clicalo.Presentation.ControlCenter.Editor;
 
 namespace Clicalo.Presentation.ControlCenter.Templates;
 
@@ -9,8 +9,8 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <param name="Open">Whether it is unfolded.</param>
 /// <param name="Icon">The icon of the profile.</param>
 /// <param name="ChangeIconName">[changeIcon].</param>
-/// <param name="IconsOpen">Whether the icon grid shows.</param>
-/// <param name="Icons">The icon grid.</param>
+/// <param name="IconsOpen">Whether the icon picker shows.</param>
+/// <param name="Picker">The icon picker (D14), when open: the whole collection, the 28 of a profile first.</param>
 /// <param name="Placeholder">[blankPh].</param>
 /// <param name="Name">The name typed.</param>
 /// <param name="DictateName">[dictName].</param>
@@ -25,7 +25,7 @@ public sealed record BlankModel(
     string Icon,
     string ChangeIconName,
     bool IconsOpen,
-    ValueList<IconOption> Icons,
+    IconPickerModel? Picker,
     string Placeholder,
     string Name,
     string DictateName,

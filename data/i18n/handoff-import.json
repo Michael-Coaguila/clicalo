@@ -1589,6 +1589,11 @@
       "notes": "Nombre accesible del mismo botón con la ventana maximizada: la devuelve a su tamaño (D13). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
       "after": "winMaximize",
       "text": { "es": "Restaurar tamaño", "en": "Restore down" }
+    },
+    "iconAll": {
+      "notes": "Primera categoría del selector de iconos: toda la colección (D14). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "after": "iconSug",
+      "text": { "es": "Todos", "en": "All" }
     }
   },
   "retired": {

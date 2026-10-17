@@ -7,33 +7,43 @@ using System.Windows.Threading;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Editor;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Resources;
+using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace.Editor;
 using Clicalo.UI.Wpf.Workspace.Internal;
+using Clicalo.UI.Wpf.Workspace.Shortcuts;
 
 namespace Clicalo.UI.Wpf.Workspace;
 
 /// <summary>
-/// State B of the editor column of «Atajos» (docs/05 §1 B, items 1 to 10): it draws
+/// State B of the editor column of «Atajos» (docs/05 §1 B) in direction C (D12): the regions of the shortcut in an area
+/// that scrolls with its fade (the repeated combination, the preview and the name, «Qué hace», the combination or the
+/// fields of its kind, «Fijar en Siempre visible» and «Más opciones»), the fixed foot with Probar, Duplicar and
+/// Eliminar, and «Probar» as a layer over the regions, never under the foot. It draws
 /// <see cref="ShortcutEditorViewModel.Model"/> region by region, rebuilding only the regions whose model changed, and
-/// keeps its text fields alive so typing, dictation and the touch keyboard are never interrupted.
+/// keeps its text fields alive so typing, dictation and the touch keyboard are never interrupted. The icon picker is a
+/// layer of the section, wider than this column.
 /// </summary>
-public sealed class ShortcutEditorView : StackPanel
+public sealed class ShortcutEditorView : Grid
 {
-    private const double Gap = 16;
+    /// <summary>The space between two regions.</summary>
+    private const double RegionGap = Space.S6;
 
     private readonly ShortcutEditorViewModel _viewModel;
+    private readonly StackPanel _regions = new();
     private readonly ContentControl _duplicate = Region();
     private readonly ContentControl _identity = Region();
-    private readonly ContentControl _picker = Region();
     private readonly ContentControl _kinds = Region();
     private readonly ContentControl _combo = Region();
     private readonly ContentControl _fields = Region();
     private readonly ContentControl _pin = Region();
     private readonly ContentControl _more = Region();
-    private readonly ContentControl _test = Region();
-    private readonly ContentControl _footer = Region();
+    private readonly ContentControl _footer = new() { Focusable = false };
+    private readonly Border _test;
+    private readonly ContentControl _testContent = new() { Focusable = false };
+    private readonly ThemedScrollViewer _scroll;
     private readonly TextInput _name;
-    private readonly TextInput _iconSearch;
     private readonly TextInput _text;
     private readonly TextInput _target;
     private readonly ProgramListView _programs;
@@ -49,39 +59,53 @@ public sealed class ShortcutEditorView : StackPanel
         _viewModel = viewModel;
         _name = new TextInput(string.Empty, string.Empty);
         _name.Changed += (_, _) => _viewModel.Rename(_name.Text);
-        _iconSearch = new TextInput(string.Empty, string.Empty);
-        _iconSearch.Changed += (_, _) => _viewModel.SearchIcons(_iconSearch.Text);
+        _name.DictateRequested += (_, _) => _viewModel.DictateName();
         _text = new TextInput(string.Empty, string.Empty, multiline: true);
         _text.Changed += (_, _) => _viewModel.SetText(_text.Text);
+        _text.DictateRequested += (_, _) => _viewModel.Dictate();
         _target = new TextInput(string.Empty, string.Empty);
         _target.Changed += (_, _) => _viewModel.SetTarget(_target.Text);
+        _target.DictateRequested += (_, _) => _viewModel.Dictate();
         _programs = new ProgramListView(
             _viewModel.FilterPrograms,
             _viewModel.PickInstalled,
-            box =>
-            {
-                _ = Keyboard.Focus(box);
-                _viewModel.Dictate();
-            }
+            _ => _viewModel.Dictate()
         );
         foreach (
-            var region in new[]
-            {
-                _duplicate,
-                _identity,
-                _picker,
-                _kinds,
-                _combo,
-                _fields,
-                _pin,
-                _more,
-                _test,
-                _footer,
-            }
+            var region in new[] { _duplicate, _identity, _kinds, _combo, _fields, _pin, _more }
         )
         {
-            Children.Add(region);
+            _regions.Children.Add(region);
         }
+
+        RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _scroll = new ThemedScrollViewer
+        {
+            Content = _regions,
+            Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
+        };
+        Children.Add(_scroll);
+        // «Probar» is a layer over the regions (D12): it never pushes them, and the foot stays where the finger is.
+        _test = Parts.Layer(
+            new ThemedScrollViewer
+            {
+                Content = _testContent,
+                Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
+            }
+        );
+        _test.Visibility = Visibility.Collapsed;
+        Children.Add(_test);
+        var foot = new Border
+        {
+            Child = _footer,
+            Padding = new Thickness(Space.S4, Space.S3, Space.S4, Space.S3),
+            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
+        };
+        Ui.Ink(foot, Border.BackgroundProperty, ColorToken.Win);
+        Ui.Ink(foot, Border.BorderBrushProperty, ColorToken.Border);
+        SetRow(foot, 1);
+        Children.Add(foot);
 
         viewModel.PropertyChanged += OnChanged;
         Render();
@@ -96,8 +120,15 @@ public sealed class ShortcutEditorView : StackPanel
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
 
+    // A region starts collapsed: one whose model is empty from the first render is never shown, so its gap never
+    // pushes the regions under it.
     private static ContentControl Region() =>
-        new() { Focusable = false, Margin = new Thickness(0, 0, 0, Gap) };
+        new()
+        {
+            Focusable = false,
+            Margin = new Thickness(0, 0, 0, RegionGap),
+            Visibility = Visibility.Collapsed,
+        };
 
     private static void Detach(FrameworkElement element)
     {
@@ -144,6 +175,7 @@ public sealed class ShortcutEditorView : StackPanel
         {
             before = null;
             _stepTexts.Clear();
+            _scroll.ScrollToTop();
         }
 
         if (before?.Duplicate != model.Duplicate)
@@ -154,11 +186,6 @@ public sealed class ShortcutEditorView : StackPanel
         if (before?.Identity != model.Identity)
         {
             Show(_identity, Identity(model.Identity, keyChanged));
-        }
-
-        if (before?.Picker != model.Picker)
-        {
-            Show(_picker, model.Picker is { } picker ? Picker(picker) : null);
         }
 
         if (before?.Kinds != model.Kinds)
@@ -203,12 +230,13 @@ public sealed class ShortcutEditorView : StackPanel
 
         if (before?.Test != model.Test)
         {
-            Show(_test, model.Test is { } test ? Test(test) : null);
+            _testContent.Content = model.Test is { } test ? Test(test) : null;
+            _test.Visibility = model.Test is null ? Visibility.Collapsed : Visibility.Visible;
         }
 
         if (before?.Footer != model.Footer)
         {
-            Show(_footer, Footer(model.Footer));
+            _footer.Content = Footer(model.Footer);
         }
 
         if (keyChanged && model.Identity.Name.Length == 0)
@@ -217,30 +245,52 @@ public sealed class ShortcutEditorView : StackPanel
         }
     }
 
-    private Border DuplicateCard(DuplicateCardModel model)
+    // ---- Combinación repetida (REP-001 to REP-004) ---------------------------------------------------------------
+
+    private Card DuplicateCard(DuplicateCardModel model)
     {
+        var caret = Ui.Icon(
+            model.Expanded ? "expand_less" : "expand_more",
+            IconBox.Medium,
+            ColorToken.Muted
+        );
+        caret.Margin = new Thickness(Space.S2, 0, 0, 0);
         var headContent = new DockPanel { LastChildFill = true };
-        headContent.Children.Add(Docked(Ui.Icon("warning", 20, ColorToken.WarnText), Dock.Left));
+        DockPanel.SetDock(caret, Dock.Right);
+        headContent.Children.Add(caret);
         headContent.Children.Add(
-            Docked(
-                Ui.Icon(model.Expanded ? "expand_less" : "expand_more", 20, ColorToken.Muted),
-                Dock.Right
+            Parts.IconLine(
+                "warning",
+                model.Head,
+                ColorToken.WarnText,
+                ColorToken.Text,
+                TextStyleToken.Label
             )
         );
-        headContent.Children.Add(Ui.Text(model.Head, 13, bold: true, wrap: true));
-        var head = Ui.Button(
-            headContent,
-            model.Head,
-            _viewModel.ToggleDuplicates,
-            height: double.NaN,
-            expanded: model.Expanded
+        var head = new TouchButton
+        {
+            Content = headContent,
+            Variant = ButtonVariant.Tertiary,
+            IsExpanded = model.Expanded,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(head, model.Head);
+        head.Click += (_, _) => _viewModel.ToggleDuplicates();
+        var previous = Parts.Button(
+            string.Empty,
+            "chevron_left",
+            ButtonVariant.Tertiary,
+            () => _viewModel.ShowRepeated(-1),
+            model.PrevName
         );
-        head.MinHeight = 44;
-        head.BorderThickness = new Thickness(0);
-        head.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        head.Padding = new Thickness(8, 0, 0, 0);
-        var previous = IconOnly("chevron_left", model.PrevName, () => _viewModel.ShowRepeated(-1));
-        var next = IconOnly("chevron_right", model.NextName, () => _viewModel.ShowRepeated(1));
+        var next = Parts.Button(
+            string.Empty,
+            "chevron_right",
+            ButtonVariant.Tertiary,
+            () => _viewModel.ShowRepeated(1),
+            model.NextName
+        );
         var bar = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(next, Dock.Right);
         DockPanel.SetDock(previous, Dock.Right);
@@ -248,277 +298,206 @@ public sealed class ShortcutEditorView : StackPanel
         bar.Children.Add(previous);
         bar.Children.Add(head);
         AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);
-        var body = Ui.Column(8, bar);
+        var body = new StackPanel();
+        body.Children.Add(bar);
         if (model.Expanded)
         {
-            var rows = Ui.Column(4);
             foreach (var row in model.Rows)
             {
-                var open = Ui.Button(
-                    Ui.Row(
-                        10,
-                        Ui.CategoryIcon(row.Icon, 20, row.Category),
-                        Ui.Text(row.Name, 14, bold: true),
-                        Ui.Text("· " + row.Where, 14, ink: ColorToken.Muted),
-                        row.Editing
-                            ? Ui.Text(model.EditingText, 11, bold: true, ink: ColorToken.WarnText)
-                            : null
-                    ),
-                    row.Name + " · " + row.Where,
-                    () => _viewModel.OpenAppearance(row.Id),
-                    height: double.NaN
-                );
-                open.MinHeight = 44;
-                open.BorderThickness = new Thickness(0);
-                open.HorizontalContentAlignment = HorizontalAlignment.Left;
-                var delete = Ui.Button(
-                    Ui.IconLabel(
-                        "delete",
-                        row.Armed ? model.ConfirmText : string.Empty,
-                        18,
-                        12,
-                        iconInk: row.Armed ? ColorToken.OnDanger : ColorToken.DangerText,
-                        ink: ColorToken.OnDanger
-                    ),
-                    row.DeleteName,
-                    () => _viewModel.DeleteAppearance(row.Id),
-                    row.Armed ? ColorToken.Danger : null
-                );
-                delete.Padding = new Thickness(8, 0, 8, 0);
-                var line = new DockPanel { LastChildFill = true };
-                DockPanel.SetDock(delete, Dock.Right);
-                line.Children.Add(delete);
-                line.Children.Add(open);
-                rows.Children.Add(
-                    Ui.Card(
-                        line,
-                        row.Editing ? ColorToken.Card : null,
-                        row.Editing ? ColorToken.Warn : ColorToken.Border,
-                        10,
-                        new Thickness(2),
-                        row.Editing ? 2 : 1
-                    )
-                );
+                body.Children.Add(RepeatedRow(model, row));
             }
 
-            body.Children.Add(rows);
-            body.Children.Add(Ui.Text(model.Advice, 13, ink: ColorToken.Muted, wrap: true));
+            var advice = Parts.Note(model.Advice, ColorToken.Text);
+            advice.Margin = new Thickness(Space.S2, Space.S2, Space.S2, Space.S2);
+            body.Children.Add(advice);
             if (model.MoveText is { } move)
             {
-                body.Children.Add(
-                    Ui.Button(
-                        Ui.IconLabel(
-                            "push_pin",
-                            move,
-                            ink: model.MoveArmed ? ColorToken.OnDanger : ColorToken.OnWarn,
-                            iconInk: model.MoveArmed ? ColorToken.OnDanger : ColorToken.OnWarn
-                        ),
-                        move,
-                        _viewModel.KeepOnlyInAlwaysVisible,
-                        model.MoveArmed ? ColorToken.Danger : ColorToken.Warn
-                    )
+                var keep = Parts.Button(
+                    move,
+                    "push_pin",
+                    model.MoveArmed ? ButtonVariant.Danger : ButtonVariant.Primary,
+                    _viewModel.KeepOnlyInAlwaysVisible
                 );
+                keep.Margin = new Thickness(0, 0, 0, Space.S2);
+                body.Children.Add(keep);
             }
 
-            body.Children.Add(
-                Ui.Button(
-                    Ui.IconLabel("thumb_up", model.FineText),
-                    model.FineText,
-                    _viewModel.AcceptRepeated,
-                    ColorToken.Card,
-                    stroke: ColorToken.Border
-                )
+            var fine = Parts.Button(
+                model.FineText,
+                "thumb_up",
+                ButtonVariant.Secondary,
+                _viewModel.AcceptRepeated
             );
+            fine.Margin = new Thickness(0, 0, 0, Space.S2);
+            body.Children.Add(fine);
             body.Children.Add(
-                Ui.Button(
-                    Ui.IconLabel("swap_horiz", model.UseOtherText),
+                Parts.Button(
                     model.UseOtherText,
-                    _viewModel.UseOtherCombination,
-                    ColorToken.Card,
-                    stroke: ColorToken.Border
+                    "swap_horiz",
+                    ButtonVariant.Secondary,
+                    _viewModel.UseOtherCombination
                 )
             );
         }
 
-        return Ui.Card(
-            body,
-            ColorToken.WarnWash,
-            ColorToken.Warn,
-            12,
-            new Thickness(model.Expanded ? 8 : 4, 4, 4, model.Expanded ? 12 : 4)
-        );
+        return new Card
+        {
+            Content = body,
+            Tone = CardTone.Warn,
+            Padding = new Thickness(
+                Space.S1,
+                Space.S1,
+                Space.S1,
+                model.Expanded ? Space.S3 : Space.S1
+            ),
+        };
     }
+
+    private DockPanel RepeatedRow(DuplicateCardModel model, DuplicateRow row)
+    {
+        var icon = Ui.CategoryIcon(row.Icon, IconBox.Small, row.Category);
+        icon.Margin = new Thickness(0, 0, Space.S2, 0);
+        var where = new StyledText(row.Where, TextStyleToken.BodySmall, ColorToken.Muted)
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S2, 0, 0, 0),
+        };
+        var name = new StyledText(row.Name, TextStyleToken.Label)
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var text = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(name, Dock.Left);
+        text.Children.Add(icon);
+        text.Children.Add(name);
+        if (row.Editing)
+        {
+            var editing = new Badge { Text = model.EditingText, Tone = BadgeTone.Warn };
+            editing.Margin = new Thickness(Space.S2, 0, 0, 0);
+            DockPanel.SetDock(editing, Dock.Right);
+            text.Children.Add(editing);
+        }
+
+        text.Children.Add(where);
+        var open = new TouchButton
+        {
+            Content = text,
+            Variant = ButtonVariant.Tertiary,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(open, row.Name + " · " + row.Where);
+        open.Click += (_, _) => _viewModel.OpenAppearance(row.Id);
+        var delete = Parts.Button(
+            row.Armed ? model.ConfirmText : string.Empty,
+            "delete",
+            ButtonVariant.Danger,
+            () => _viewModel.DeleteAppearance(row.Id),
+            row.DeleteName
+        );
+        var line = new DockPanel
+        {
+            LastChildFill = true,
+            Margin = new Thickness(0, Space.S1, 0, 0),
+        };
+        DockPanel.SetDock(delete, Dock.Right);
+        line.Children.Add(delete);
+        line.Children.Add(open);
+        return line;
+    }
+
+    // ---- Vista previa y nombre (EDI-001 to EDI-005) ---------------------------------------------------------------
 
     private DockPanel Identity(IdentityModel model, bool keyChanged)
     {
-        var tileContent = new Grid();
-        var center = Ui.Column(
-            4,
-            Ui.CategoryIcon(model.Icon, 30, model.Category),
-            Ui.Text(model.TileName, 11, bold: true)
-        );
-        center.HorizontalAlignment = HorizontalAlignment.Center;
-        center.VerticalAlignment = VerticalAlignment.Center;
-        tileContent.Children.Add(center);
-        var pencil = Ui.Card(
-            Ui.Icon("edit", 15, ColorToken.OnAccent),
-            ColorToken.Accent,
-            null,
-            13,
-            new Thickness(0)
-        );
-        pencil.Width = 26;
-        pencil.Height = 26;
+        var icon = Ui.CategoryIcon(model.Icon, IconBox.Large, model.Category);
+        var tileName = new StyledText(model.TileName, TextStyleToken.Label)
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(Space.S1, Space.S1, Space.S1, 0),
+        };
+        var center = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        center.Children.Add(icon);
+        center.Children.Add(tileName);
+        var pencil = Ui.Icon("edit", IconBox.Badge, ColorToken.Muted);
         pencil.HorizontalAlignment = HorizontalAlignment.Right;
-        pencil.VerticalAlignment = VerticalAlignment.Bottom;
-        pencil.Margin = new Thickness(0, 0, -10, -10);
-        pencil.IsHitTestVisible = false;
-        tileContent.Children.Add(pencil);
-        var tile = Ui.Choice(
-            tileContent,
-            model.ChangeIconName,
-            model.PickerOpen,
-            _viewModel.TogglePicker,
-            84,
-            14,
-            role: OptionRole.Expander
-        );
-        tile.Width = 84;
-        tile.Padding = new Thickness(4);
-        tile.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        tile.VerticalContentAlignment = VerticalAlignment.Stretch;
-        tile.VerticalAlignment = VerticalAlignment.Top;
+        pencil.VerticalAlignment = VerticalAlignment.Top;
+        pencil.Margin = new Thickness(Space.S1 + Theming.Generated.Stroke.Selected);
+        var layers = new Grid();
+        layers.Children.Add(center);
+        layers.Children.Add(pencil);
+        var preview = new OptionButton
+        {
+            Kind = OptionKind.Tile,
+            Content = layers,
+            Role = OptionRole.Expander,
+            IsSelected = model.PickerOpen,
+            Width = GridTiles.TileHeight,
+            Height = GridTiles.TileHeight,
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 0, Space.S3, 0),
+        };
+        AutomationProperties.SetName(preview, model.ChangeIconName);
+        preview.Click += (_, _) => _viewModel.TogglePicker();
 
         Detach(_name);
         AutomationProperties.SetName(_name.Box, model.NameLabel);
+        _name.DictateName = model.DictateName;
+        _name.SetPlaceholder(model.Placeholder);
         _name.Show(model.Name, force: keyChanged);
-        var dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.AccentInk),
-            model.DictateName,
-            () =>
-            {
-                _ = Keyboard.Focus(_name.Box);
-                _viewModel.DictateName();
-            },
-            ColorToken.AccentWash
+        _name.Margin = new Thickness(0, Space.S2, 0, 0);
+        var right = new StackPanel();
+        right.Children.Add(new Overline(model.NameLabel));
+        right.Children.Add(_name);
+        var top = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(preview, Dock.Left);
+        top.Children.Add(preview);
+        top.Children.Add(right);
+        var hint = Parts.IconLine(
+            model.HintIcon,
+            model.Hint,
+            ColorToken.AccentInk,
+            style: TextStyleToken.Caption
         );
-        dictate.Width = 44;
-        dictate.Padding = new Thickness(0);
-        dictate.Margin = new Thickness(6, 0, 0, 0);
-        var field = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(dictate, Dock.Right);
-        field.Children.Add(dictate);
-        field.Children.Add(_name);
-        SetPlaceholder(_name, model.Placeholder);
-        var hint = Ui.Row(
-            4,
-            Ui.Icon(model.HintIcon, 14, ColorToken.AccentInk),
-            Ui.Text(model.Hint, 12, ink: ColorToken.Muted, wrap: true)
-        );
-        var right = Ui.Column(6, Ui.Caption(model.NameLabel), field, hint);
-        var row = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(tile, Dock.Left);
-        tile.Margin = new Thickness(0, 0, 12, 0);
-        row.Children.Add(tile);
-        row.Children.Add(right);
-        return row;
+        hint.Margin = new Thickness(0, Space.S3, 0, 0);
+        var column = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(top, Dock.Top);
+        column.Children.Add(top);
+        column.Children.Add(hint);
+        return column;
     }
 
-    private static void SetPlaceholder(TextInput field, string placeholder) =>
-        field.SetPlaceholder(placeholder);
-
-    private Border Picker(IconPickerModel model)
-    {
-        var body = Ui.Column(8);
-        if (!model.Suggested.IsEmpty)
-        {
-            body.Children.Add(
-                Ui.Wrap(
-                    4,
-                    model.Suggested.Select(option =>
-                        (UIElement)IconChoice(option.Icon, option.Selected, 44, 24)
-                    )
-                )
-            );
-        }
-
-        Detach(_iconSearch);
-        AutomationProperties.SetName(_iconSearch.Box, model.SearchPlaceholder);
-        SetPlaceholder(_iconSearch, model.SearchPlaceholder);
-        var search = new DockPanel { LastChildFill = true };
-        var glass = Ui.Icon("search", 20, ColorToken.Muted);
-        glass.Margin = new Thickness(0, 0, 6, 0);
-        DockPanel.SetDock(glass, Dock.Left);
-        search.Children.Add(glass);
-        var dictateIcon = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.AccentInk),
-            model.DictateName,
-            () => Dictate(_iconSearch),
-            ColorToken.AccentWash
-        );
-        dictateIcon.Width = 44;
-        dictateIcon.Padding = new Thickness(0);
-        dictateIcon.Margin = new Thickness(6, 0, 0, 0);
-        DockPanel.SetDock(dictateIcon, Dock.Right);
-        search.Children.Add(dictateIcon);
-        search.Children.Add(_iconSearch);
-        body.Children.Add(search);
-        var grid = new AutoFillGrid
-        {
-            MinItemWidth = 44,
-            ItemHeight = 44,
-            Gap = 4,
-        };
-        foreach (var option in model.Icons)
-        {
-            grid.Children.Add(IconChoice(option.Icon, option.Selected, 44, 20));
-        }
-
-        body.Children.Add(new ThemedScrollViewer { Content = grid, MaxHeight = 180 });
-        return Ui.Card(body, ColorToken.Card, ColorToken.Border, 12, new Thickness(10));
-    }
-
-    private OptionButton IconChoice(string icon, bool selected, double size, double glyph)
-    {
-        var button = Ui.Choice(
-            Ui.Icon(icon, glyph),
-            icon.Replace('_', ' '),
-            selected,
-            () => _viewModel.PickIcon(icon),
-            size,
-            8,
-            role: OptionRole.Option
-        );
-        button.Width = size;
-        button.Padding = new Thickness(0);
-        return button;
-    }
+    // ---- Qué hace (EDI-006) --------------------------------------------------------------------------------------
 
     private StackPanel Kinds(KindsModel model)
     {
         var options = model
             .Options.Select(option =>
             {
-                var button = Ui.Choice(
-                    Ui.Column(3, Ui.Icon(option.Icon, 20), Ui.Text(option.Label, 12, bold: true)),
-                    option.Label,
-                    option.Selected,
-                    () => _viewModel.SetKind(option.Kind),
-                    56,
-                    10,
-                    role: OptionRole.Option
-                );
-                button.Padding = new Thickness(2);
-                return (UIElement)button;
+                var card = new OptionButton
+                {
+                    Kind = OptionKind.Card,
+                    Content = option.Label,
+                    Symbol = option.Icon,
+                    IsSelected = option.Selected,
+                };
+                AutomationProperties.SetName(card, option.Label);
+                card.Click += (_, _) => _viewModel.SetKind(option.Kind);
+                return (UIElement)card;
             })
             .ToList();
-        return Ui.Column(
-            6,
-            Ui.Caption(model.Title),
-            Ui.Columns(4, 6, options),
-            Ui.Text(model.Description, 13, ink: ColorToken.Muted, wrap: true)
+        return Parts.Section(
+            model.Title,
+            Ui.Columns(4, Space.S2, options),
+            model.Description.Length == 0 ? null : Parts.Note(model.Description)
         );
     }
+
+    // ---- Los campos de cada tipo (EDI-011 to EDI-014) ------------------------------------------------------------
 
     private StackPanel? Fields(EditorModel model, bool keyChanged)
     {
@@ -526,31 +505,13 @@ public sealed class ShortcutEditorView : StackPanel
         {
             Detach(_text);
             AutomationProperties.SetName(_text.Box, text.Label);
+            _text.DictateName = text.DictateName;
             _text.Show(_viewModel.RevealText(), force: keyChanged);
-            var dictate = Ui.Button(
-                Ui.Icon("mic", 22, ColorToken.AccentInk),
-                text.DictateName,
-                () => Dictate(_text),
-                ColorToken.AccentWash
-            );
-            dictate.Width = 44;
-            dictate.Padding = new Thickness(0);
-            dictate.VerticalAlignment = VerticalAlignment.Top;
-            dictate.Margin = new Thickness(6, 0, 0, 0);
-            var field = new DockPanel { LastChildFill = true };
-            DockPanel.SetDock(dictate, Dock.Right);
-            field.Children.Add(dictate);
-            field.Children.Add(_text);
-            return Ui.Column(
-                6,
-                Ui.Caption(text.Label),
-                field,
-                Ui.Text(text.Hint, 11, ink: ColorToken.Muted, wrap: true),
-                Ui.Row(
-                    6,
-                    Ui.Icon("lock", 16, ColorToken.Muted),
-                    Ui.Text(text.Encrypted, 12, ink: ColorToken.Muted, wrap: true)
-                )
+            return Parts.Section(
+                text.Label,
+                _text,
+                Parts.Note(text.Hint, style: TextStyleToken.Caption),
+                Parts.IconLine("lock", text.Encrypted, style: TextStyleToken.Caption)
             );
         }
 
@@ -559,38 +520,37 @@ public sealed class ShortcutEditorView : StackPanel
             var options = mouse
                 .Options.Select(option =>
                 {
-                    var button = Ui.Choice(
-                        Ui.IconLabel(option.Icon, option.Label, 20, 14),
-                        option.AccessibleName,
-                        option.Selected,
-                        () => _viewModel.SetMouse(option.Op),
-                        48,
-                        10,
-                        role: OptionRole.Option
-                    );
-                    button.HorizontalContentAlignment = HorizontalAlignment.Left;
+                    var button = new OptionButton
+                    {
+                        Kind = OptionKind.Tile,
+                        Content = option.Label,
+                        Symbol = option.Icon,
+                        IsSelected = option.Selected,
+                        HorizontalContentAlignment = HorizontalAlignment.Left,
+                    };
+                    AutomationProperties.SetName(button, option.AccessibleName);
+                    button.Click += (_, _) => _viewModel.SetMouse(option.Op);
                     return (UIElement)button;
                 })
                 .ToList();
-            var column = Ui.Column(6, Ui.Caption(mouse.Label), Ui.Columns(2, 6, options));
+            var column = Parts.Section(mouse.Label, Ui.Columns(2, Space.S2, options));
             if (!mouse.Speeds.IsEmpty)
             {
-                column.Children.Add(Ui.Caption(mouse.SpeedLabel));
-                column.Children.Add(
-                    Ui.Columns(
-                        mouse.Speeds.Count,
-                        2,
-                        [
-                            .. mouse.Speeds.Select(speed =>
-                                (UIElement)Segment(
+                var speeds = Parts.Section(
+                    mouse.SpeedLabel,
+                    Parts.Track([
+                        .. mouse.Speeds.Select(speed =>
+                            (UIElement)
+                                Parts.Segment(
                                     speed.Label,
                                     speed.Selected,
                                     () => _viewModel.SetSpeed(speed.Speed)
                                 )
-                            ),
-                        ]
-                    )
+                        ),
+                    ])
                 );
+                speeds.Margin = new Thickness(0, Space.S4, 0, 0);
+                column.Children.Add(speeds);
             }
 
             return column;
@@ -603,364 +563,380 @@ public sealed class ShortcutEditorView : StackPanel
 
         if (model.Target is { } target)
         {
-            Detach(_target);
-            AutomationProperties.SetName(_target.Box, target.Label);
-            _target.Show(target.Value, force: keyChanged);
-            _target.Warn(target.Invalid);
-            var dictate = Ui.Button(
-                Ui.Icon("mic", 22, ColorToken.AccentInk),
-                target.DictateName,
-                () => Dictate(_target),
-                ColorToken.AccentWash
-            );
-            dictate.Width = 44;
-            dictate.Padding = new Thickness(0);
-            dictate.Margin = new Thickness(6, 0, 0, 0);
-            var field = new DockPanel { LastChildFill = true };
-            DockPanel.SetDock(dictate, Dock.Right);
-            field.Children.Add(dictate);
-            field.Children.Add(_target);
-            var column = Ui.Column(6, Ui.Caption(target.Label), field);
-            if (target.Invalid)
-            {
-                column.Children.Add(
-                    Ui.Text(target.InvalidText, 12, ink: ColorToken.WarnText, wrap: true)
-                );
-            }
-
-            if (target.PickLabel.Length > 0 && !target.Picks.IsEmpty)
-            {
-                column.Children.Add(Ui.Caption(target.PickLabel));
-                column.Children.Add(Ui.Text(target.OpenLabel, 12, ink: ColorToken.Muted));
-                column.Children.Add(
-                    Ui.Wrap(
-                        6,
-                        target.Picks.Select(pick =>
-                            (UIElement)
-                                Ui.Choice(
-                                    Ui.IconLabel("apps", pick.Name),
-                                    pick.Name,
-                                    false,
-                                    () => _viewModel.PickProgram(pick.Process),
-                                    44,
-                                    22
-                                )
-                        )
-                    )
-                );
-            }
-
-            // EDI-014: the list of programs is kept between renders; only its filter and its mark change.
-            Detach(_programs);
-            if (target.ProgramsLoading is not null || !target.Programs.IsEmpty)
-            {
-                if (target.Picks.IsEmpty)
-                {
-                    column.Children.Add(Ui.Caption(target.PickLabel));
-                }
-
-                _programs.Apply(target);
-                column.Children.Add(_programs);
-            }
-
-            return column;
+            return Target(target, keyChanged);
         }
 
         return null;
     }
 
+    private StackPanel Target(TargetModel target, bool keyChanged)
+    {
+        Detach(_target);
+        AutomationProperties.SetName(_target.Box, target.Label);
+        _target.DictateName = target.DictateName;
+        _target.Show(target.Value, force: keyChanged);
+        _target.Warn(target.Invalid);
+        var column = Parts.Section(
+            target.Label,
+            _target,
+            target.Invalid ? Parts.Note(target.InvalidText, ColorToken.WarnText) : null
+        );
+        if (target.PickLabel.Length > 0 && !target.Picks.IsEmpty)
+        {
+            var picks = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
+            foreach (var pick in target.Picks)
+            {
+                var chip = new OptionButton
+                {
+                    Kind = OptionKind.Chip,
+                    Content = pick.Name,
+                    Symbol = "apps",
+                    Margin = new Thickness(0, 0, Space.S2, Space.S2),
+                };
+                AutomationProperties.SetName(chip, pick.Name);
+                chip.Click += (_, _) => _viewModel.PickProgram(pick.Process);
+                picks.Children.Add(chip);
+            }
+
+            var open = Parts.Section(
+                target.PickLabel,
+                Parts.Note(target.OpenLabel, style: TextStyleToken.Caption),
+                picks
+            );
+            open.Margin = new Thickness(0, Space.S4, 0, 0);
+            column.Children.Add(open);
+        }
+
+        // EDI-014: the list of programs is kept between renders; only its filter and its mark change.
+        Detach(_programs);
+        if (target.ProgramsLoading is not null || !target.Programs.IsEmpty)
+        {
+            _programs.Apply(target);
+            var programs = target.Picks.IsEmpty
+                ? Parts.Section(target.PickLabel, _programs)
+                : Parts.Section(null, _programs);
+            programs.Margin = new Thickness(0, Space.S4, 0, 0);
+            column.Children.Add(programs);
+        }
+
+        return column;
+    }
+
+    // ---- Macro (EDI-012) -----------------------------------------------------------------------------------------
+
     private StackPanel Steps(StepsModel model)
     {
-        var column = Ui.Column(6, Ui.Caption(model.Label));
+        var column = Parts.Section(model.Label);
         foreach (var step in model.Steps)
         {
-            var number = Ui.Card(
-                Ui.Text(step.Number, 12, bold: true, ink: ColorToken.AccentInk),
-                ColorToken.AccentWash,
-                null,
-                12,
-                new Thickness(0)
-            );
-            number.Width = 24;
-            number.Height = 24;
-            number.Child.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            var edit = Ui.Button(
-                Ui.Row(
-                    8,
-                    Ui.Icon(step.Icon, 18, ColorToken.Muted),
-                    Ui.Text(step.Text, 14),
-                    Ui.Icon("edit", 16, ColorToken.Muted)
-                ),
-                model.EditName + " " + step.Text,
-                () => _viewModel.ToggleStep(step.Index),
-                height: double.NaN,
-                expanded: step.Editor != StepEditorKind.None
-            );
-            edit.MinHeight = 44;
-            edit.BorderThickness = new Thickness(0);
-            edit.HorizontalContentAlignment = HorizontalAlignment.Left;
-            var up = IconOnly(
-                "arrow_upward",
-                model.UpName,
-                () => _viewModel.MoveStep(step.Index, -1)
-            );
-            up.IsEnabled = step.CanUp;
-            var down = IconOnly(
-                "arrow_downward",
-                model.DownName,
-                () => _viewModel.MoveStep(step.Index, 1)
-            );
-            down.IsEnabled = step.CanDown;
-            var delete = Ui.Button(
-                step.Armed
-                    ? Ui.Text(model.ConfirmText, 12, bold: true, ink: ColorToken.OnDanger)
-                    : Ui.Icon("close", 20, ColorToken.DangerText),
-                model.DeleteName,
-                () => _viewModel.DeleteStep(step.Index),
-                step.Armed ? ColorToken.Danger : null
-            );
-            delete.Padding = new Thickness(step.Armed ? 8 : 0, 0, step.Armed ? 8 : 0, 0);
-            delete.MinWidth = 44;
-            var line = new DockPanel { LastChildFill = true, Margin = new Thickness(10, 2, 2, 2) };
-            DockPanel.SetDock(number, Dock.Left);
-            number.Margin = new Thickness(0, 0, 6, 0);
-            line.Children.Add(number);
-            foreach (var button in new UIElement[] { delete, down, up })
-            {
-                DockPanel.SetDock(button, Dock.Right);
-                line.Children.Add(button);
-            }
-
-            line.Children.Add(edit);
-            var body = Ui.Column(0, line);
-            switch (step.Editor)
-            {
-                case StepEditorKind.Wait:
-                    var less = Ui.Button(
-                        Ui.Icon("remove", 22),
-                        model.LessName,
-                        () => _viewModel.NudgeWait(step.Index, -1),
-                        ColorToken.CardHi
-                    );
-                    var more = Ui.Button(
-                        Ui.Icon("add", 22),
-                        model.MoreName,
-                        () => _viewModel.NudgeWait(step.Index, 1),
-                        ColorToken.CardHi
-                    );
-                    less.Width = 44;
-                    more.Width = 44;
-                    less.Padding = new Thickness(0);
-                    more.Padding = new Thickness(0);
-                    var value = Ui.Text(step.Wait, 15, mono: true);
-                    value.HorizontalAlignment = HorizontalAlignment.Center;
-                    var wait = new DockPanel
-                    {
-                        LastChildFill = true,
-                        Margin = new Thickness(40, 0, 10, 10),
-                    };
-                    DockPanel.SetDock(less, Dock.Left);
-                    DockPanel.SetDock(more, Dock.Right);
-                    wait.Children.Add(less);
-                    wait.Children.Add(more);
-                    wait.Children.Add(value);
-                    body.Children.Add(wait);
-                    break;
-                case StepEditorKind.Text:
-                    var field = StepText(step.Index, model.Label);
-                    var dictate = Ui.Button(
-                        Ui.Icon("mic", 22, ColorToken.AccentInk),
-                        model.DictateName,
-                        () => Dictate(field),
-                        ColorToken.AccentWash
-                    );
-                    dictate.Width = 44;
-                    dictate.Padding = new Thickness(0);
-                    dictate.Margin = new Thickness(6, 0, 0, 0);
-                    dictate.VerticalAlignment = VerticalAlignment.Top;
-                    var text = new DockPanel
-                    {
-                        LastChildFill = true,
-                        Margin = new Thickness(40, 0, 10, 10),
-                    };
-                    DockPanel.SetDock(dictate, Dock.Right);
-                    text.Children.Add(dictate);
-                    text.Children.Add(field);
-                    body.Children.Add(text);
-                    break;
-                case StepEditorKind.Mouse:
-                    var chips = Ui.Wrap(
-                        4,
-                        step.Mouse.Select(option =>
-                            (UIElement)
-                                Ui.Choice(
-                                    Ui.Text(option.Label, 12, bold: true),
-                                    option.AccessibleName,
-                                    option.Selected,
-                                    () => _viewModel.SetStepMouse(step.Index, option.Op),
-                                    44,
-                                    8,
-                                    role: OptionRole.Option
-                                )
-                        )
-                    );
-                    chips.Margin = new Thickness(40, 0, 10 - 4, 10 - 4);
-                    body.Children.Add(chips);
-                    break;
-            }
-
-            column.Children.Add(
-                Ui.Card(
-                    body,
-                    ColorToken.Card,
-                    step.Editor == StepEditorKind.None ? ColorToken.Border : ColorToken.Accent,
-                    10,
-                    new Thickness(0),
-                    step.Editor == StepEditorKind.None ? 1 : 2
-                )
-            );
+            var card = Step(model, step);
+            card.Margin = new Thickness(0, Space.S2, 0, 0);
+            column.Children.Add(card);
         }
 
         var adds = model
             .Add.Select(add =>
             {
-                var button = Dashed(
-                    Ui.Column(2, Ui.Icon(add.Icon, 18), Ui.Text("+ " + add.Label, 12, bold: true)),
-                    add.Label,
-                    () => _viewModel.AddStep(add.Kind),
-                    52
+                var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                content.Children.Add(Ui.Icon(add.Icon, IconBox.Small, ColorToken.AccentInk));
+                content.Children.Add(
+                    new StyledText(add.Label, TextStyleToken.LabelSmall)
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Margin = new Thickness(Space.S1, Space.S1, Space.S1, 0),
+                    }
                 );
+                var button = new TouchButton
+                {
+                    Content = GridTiles.Dashed(content, ControlHeight.Large),
+                    Variant = ButtonVariant.Tertiary,
+                    Size = ControlSize.Large,
+                    Padding = new Thickness(0),
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Stretch,
+                };
+                AutomationProperties.SetName(button, add.Label);
+                button.Click += (_, _) => _viewModel.AddStep(add.Kind);
                 return (UIElement)button;
             })
             .ToList();
-        column.Children.Add(Ui.Columns(4, 6, adds));
+        var grid = Ui.Columns(4, Space.S2, adds);
+        grid.Margin = new Thickness(0, Space.S3, 0, 0);
+        column.Children.Add(grid);
         return column;
     }
 
-    private TextInput StepText(int index, string name)
+    /// <summary>
+    /// A step: its number, its icon and what it does in one line with «…» (the whole step is its accessible name), and
+    /// ↑ ↓ × in a row of their own under it, so the text keeps the width of the column.
+    /// </summary>
+    private Border Step(StepsModel model, StepRow step)
+    {
+        var number = new Badge { Text = step.Number, Tone = BadgeTone.Accent };
+        number.Margin = new Thickness(0, 0, Space.S2, 0);
+        var icon = Ui.Icon(step.Icon, IconBox.Small, ColorToken.Muted);
+        icon.Margin = new Thickness(0, 0, Space.S2, 0);
+        var caret = Ui.Icon(
+            step.Editor == StepEditorKind.None ? "edit" : "expand_less",
+            IconBox.Small,
+            ColorToken.Muted
+        );
+        caret.Margin = new Thickness(Space.S2, 0, 0, 0);
+        var words = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(number, Dock.Left);
+        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(caret, Dock.Right);
+        words.Children.Add(number);
+        words.Children.Add(icon);
+        words.Children.Add(caret);
+        words.Children.Add(
+            new StyledText(step.Text, TextStyleToken.Body)
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+            }
+        );
+        var edit = new TouchButton
+        {
+            Content = words,
+            Variant = ButtonVariant.Tertiary,
+            IsExpanded = step.Editor != StepEditorKind.None,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(edit, model.EditName + " " + step.Text);
+        edit.Click += (_, _) => _viewModel.ToggleStep(step.Index);
+        var up = Parts.Button(
+            string.Empty,
+            "arrow_upward",
+            ButtonVariant.Tertiary,
+            () => _viewModel.MoveStep(step.Index, -1),
+            model.UpName
+        );
+        up.IsEnabled = step.CanUp;
+        var down = Parts.Button(
+            string.Empty,
+            "arrow_downward",
+            ButtonVariant.Tertiary,
+            () => _viewModel.MoveStep(step.Index, 1),
+            model.DownName
+        );
+        down.IsEnabled = step.CanDown;
+        var delete = Parts.Button(
+            step.Armed ? model.ConfirmText : string.Empty,
+            "close",
+            ButtonVariant.Danger,
+            () => _viewModel.DeleteStep(step.Index),
+            model.DeleteName
+        );
+        var tools = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        tools.Children.Add(up);
+        tools.Children.Add(down);
+        tools.Children.Add(delete);
+        var body = new StackPanel();
+        body.Children.Add(edit);
+        var editor = StepEditor(model, step);
+        if (editor is not null)
+        {
+            editor.Margin = new Thickness(Space.S3, Space.S1, Space.S3, Space.S2);
+            body.Children.Add(editor);
+        }
+
+        body.Children.Add(tools);
+        var open = step.Editor != StepEditorKind.None;
+        if (open)
+        {
+            // The step that was just opened is brought into view with its editor.
+            body.Loaded += (_, _) => body.BringIntoView();
+        }
+
+        return Ui.Card(
+            body,
+            ColorToken.Card,
+            open ? ColorToken.Accent : ColorToken.Border,
+            Radii.Medium,
+            new Thickness(Space.S1),
+            open ? Theming.Generated.Stroke.Selected : Theming.Generated.Stroke.Line
+        );
+    }
+
+    private FrameworkElement? StepEditor(StepsModel model, StepRow step)
+    {
+        switch (step.Editor)
+        {
+            case StepEditorKind.Wait:
+                var less = Parts.Button(
+                    string.Empty,
+                    "remove",
+                    ButtonVariant.Secondary,
+                    () => _viewModel.NudgeWait(step.Index, -1),
+                    model.LessName
+                );
+                var more = Parts.Button(
+                    string.Empty,
+                    "add",
+                    ButtonVariant.Secondary,
+                    () => _viewModel.NudgeWait(step.Index, 1),
+                    model.MoreName
+                );
+                var value = new StyledText(step.Wait, TextStyleToken.Label)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                var wait = new DockPanel { LastChildFill = true };
+                DockPanel.SetDock(less, Dock.Left);
+                DockPanel.SetDock(more, Dock.Right);
+                wait.Children.Add(less);
+                wait.Children.Add(more);
+                wait.Children.Add(value);
+                return wait;
+            case StepEditorKind.Text:
+                return StepText(step.Index, model.Label, model.DictateName);
+            case StepEditorKind.Mouse:
+                var chips = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
+                foreach (var option in step.Mouse)
+                {
+                    var chip = new OptionButton
+                    {
+                        Kind = OptionKind.Chip,
+                        Content = option.Label,
+                        IsSelected = option.Selected,
+                        Margin = new Thickness(0, 0, Space.S2, Space.S2),
+                    };
+                    AutomationProperties.SetName(chip, option.AccessibleName);
+                    chip.Click += (_, _) => _viewModel.SetStepMouse(step.Index, option.Op);
+                    chips.Children.Add(chip);
+                }
+
+                return chips;
+            default:
+                return null;
+        }
+    }
+
+    private TextInput StepText(int index, string name, string dictateName)
     {
         if (!_stepTexts.TryGetValue(index, out var field))
         {
             field = new TextInput(name, string.Empty, multiline: true);
             field.Changed += (_, _) => _viewModel.SetStepText(index, field.Text);
+            field.DictateRequested += (_, _) => _viewModel.Dictate();
             _stepTexts[index] = field;
         }
 
         Detach(field);
+        field.DictateName = dictateName;
         field.Show(_viewModel.RevealStepText(index));
         return field;
     }
 
-    private static TouchButton Dashed(UIElement content, string name, Action click, double height)
+    // ---- Más opciones (EDI-015 to EDI-019) -----------------------------------------------------------------------
+
+    private StackPanel More(MoreModel model)
     {
-        var frame = new System.Windows.Shapes.Rectangle
+        var caret = Ui.Icon(
+            model.Expanded ? "expand_less" : "expand_more",
+            IconBox.Medium,
+            ColorToken.Muted
+        );
+        caret.Margin = new Thickness(Space.S2, 0, 0, 0);
+        var position = new StyledText(model.Position, TextStyleToken.Caption, ColorToken.Muted)
         {
-            RadiusX = 10,
-            RadiusY = 10,
-            StrokeThickness = 2,
-            StrokeDashArray = [4, 3],
-            IsHitTestVisible = false,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S2, 0, 0, 0),
         };
-        Ui.Ink(frame, System.Windows.Shapes.Shape.StrokeProperty, ColorToken.Line);
-        var layers = new Grid();
-        layers.Children.Add(frame);
-        layers.Children.Add(content);
-        if (content is FrameworkElement element)
+        var title = new StyledText(model.Title, TextStyleToken.Label)
         {
-            element.HorizontalAlignment = HorizontalAlignment.Center;
-            element.VerticalAlignment = VerticalAlignment.Center;
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var line = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(caret, Dock.Right);
+        DockPanel.SetDock(position, Dock.Right);
+        line.Children.Add(caret);
+        line.Children.Add(position);
+        line.Children.Add(title);
+        var head = new TouchButton
+        {
+            Content = line,
+            Variant = ButtonVariant.Secondary,
+            Size = ControlSize.Medium,
+            IsExpanded = model.Expanded,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(Space.S3, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(head, model.Title);
+        head.Click += (_, _) => _viewModel.ToggleMore();
+        var column = new StackPanel();
+        column.Children.Add(head);
+        if (!model.Expanded)
+        {
+            return column;
         }
 
-        var button = Ui.Button(layers, name, click, height: height);
-        button.Padding = new Thickness(0);
-        button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        button.VerticalContentAlignment = VerticalAlignment.Stretch;
-        button.BorderThickness = new Thickness(0);
-        return button;
-    }
-
-    private Border More(MoreModel model)
-    {
-        var head = Ui.Button(
-            new DockPanel
-            {
-                LastChildFill = true,
-                Children =
+        var positions = Ui.Columns(
+            4,
+            Space.S2,
+            [
+                .. model.Positions.Select(option =>
                 {
-                    Docked(
-                        Ui.Icon(
-                            model.Expanded ? "expand_less" : "expand_more",
-                            20,
-                            ColorToken.Muted
-                        ),
-                        Dock.Right
-                    ),
-                    Docked(Ui.Text(model.Position, 12, ink: ColorToken.Muted), Dock.Right),
-                    Docked(Ui.Icon("tune", 20, ColorToken.Muted), Dock.Left),
-                    Ui.Text(model.Title, 14, bold: true),
-                },
-            },
-            model.Title,
-            _viewModel.ToggleMore,
-            height: 48,
-            expanded: model.Expanded
-        );
-        head.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        head.BorderThickness = new Thickness(0);
-        var body = Ui.Column(10, head);
-        if (model.Expanded)
-        {
-            var inner = Ui.Column(10, Ui.Caption(model.PositionLabel));
-            inner.Children.Add(
-                Ui.Columns(
-                    4,
-                    6,
-                    [
-                        .. model.Positions.Select(option =>
+                    var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                    content.Children.Add(Ui.Icon(option.Icon, IconBox.Small, ColorToken.Text));
+                    content.Children.Add(
+                        new StyledText(option.Label, TextStyleToken.LabelSmall)
                         {
-                            var button = Ui.Button(
-                                Ui.Column(
-                                    2,
-                                    Ui.Icon(option.Icon, 20),
-                                    Ui.Text(option.Label, 12, bold: true)
-                                ),
-                                option.Label,
-                                () => _viewModel.Move(option.Move),
-                                ColorToken.Card,
-                                stroke: ColorToken.Border,
-                                height: 52
-                            );
-                            button.IsEnabled = option.Enabled;
-                            button.Padding = new Thickness(2);
-                            return (UIElement)button;
-                        }),
-                    ]
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            Margin = new Thickness(Space.S1, Space.S1, Space.S1, 0),
+                        }
+                    );
+                    var button = new TouchButton
+                    {
+                        Content = content,
+                        Variant = ButtonVariant.Secondary,
+                        Size = ControlSize.Large,
+                        Padding = new Thickness(0),
+                        IsEnabled = option.Enabled,
+                    };
+                    AutomationProperties.SetName(button, option.Label);
+                    button.Click += (_, _) => _viewModel.Move(option.Move);
+                    return (UIElement)button;
+                }),
+            ]
+        );
+        var inner = new StackPanel();
+        inner.Children.Add(Gap(Parts.Section(model.PositionLabel, positions)));
+        if (model.HoldLabel is { } hold)
+        {
+            inner.Children.Add(
+                Gap(
+                    Parts.Section(
+                        hold,
+                        Choices(model.Holds, _viewModel.SetHold),
+                        Parts.Note(model.HoldText, style: TextStyleToken.Caption),
+                        Parts.Note(model.HoldSwitchText, style: TextStyleToken.Caption)
+                    )
                 )
             );
-            if (model.HoldLabel is { } hold)
-            {
-                inner.Children.Add(Ui.Caption(hold));
-                inner.Children.Add(Segments(model.Holds, _viewModel.SetHold));
-                inner.Children.Add(Ui.Text(model.HoldText, 12, ink: ColorToken.Muted, wrap: true));
-                inner.Children.Add(
-                    Ui.Text(model.HoldSwitchText, 12, ink: ColorToken.Muted, wrap: true)
-                );
-            }
+        }
 
-            if (model.MethodLabel is { } method)
-            {
-                inner.Children.Add(Ui.Caption(method));
-                inner.Children.Add(Segments(model.Methods, _viewModel.SetMethod));
-                inner.Children.Add(
-                    Ui.Row(
-                        6,
-                        Ui.Icon("lock", 16, ColorToken.Muted),
-                        Ui.Text(model.EncryptedText, 12, ink: ColorToken.Muted, wrap: true)
-                    )
-                );
-            }
-
+        if (model.MethodLabel is { } method)
+        {
             inner.Children.Add(
+                Gap(
+                    Parts.Section(
+                        method,
+                        Choices(model.Methods, _viewModel.SetMethod),
+                        Parts.IconLine("lock", model.EncryptedText, style: TextStyleToken.Caption)
+                    )
+                )
+            );
+        }
+
+        inner.Children.Add(
+            Gap(
                 Ui.SwitchRow(
                     "verified",
                     model.ConfirmTitle,
@@ -968,276 +944,243 @@ public sealed class ShortcutEditorView : StackPanel
                     model.Confirm,
                     _viewModel.ToggleConfirm
                 )
-            );
-            inner.Children.Add(
-                Ui.SwitchRow(
-                    "keep",
-                    model.FrequentsTitle,
-                    string.Empty,
-                    model.Frequents,
-                    _viewModel.ToggleFrequents
-                )
-            );
-            var badge = Ui.Card(
-                Ui.Text(model.VoiceNumber, 14, bold: true, ink: ColorToken.OnWarn),
-                ColorToken.Warn,
-                null,
-                7,
-                new Thickness(6, 2, 6, 2)
-            );
-            badge.MinWidth = 28;
-            inner.Children.Add(
-                Ui.Card(
-                    Ui.Row(10, badge, Ui.Text(model.VoiceLine, 13, wrap: true)),
-                    ColorToken.Card,
-                    null,
-                    10,
-                    new Thickness(12, 10, 12, 10)
-                )
-            );
-            var how = Ui.Button(
-                new DockPanel
+            )
+        );
+        inner.Children.Add(
+            Ui.SwitchRow(
+                "keep",
+                model.FrequentsTitle,
+                string.Empty,
+                model.Frequents,
+                _viewModel.ToggleFrequents
+            )
+        );
+        var number = new Badge { Text = model.VoiceNumber, Tone = BadgeTone.Warn };
+        number.Margin = new Thickness(0, 0, Space.S2, 0);
+        number.VerticalAlignment = VerticalAlignment.Top;
+        var voice = new DockPanel
+        {
+            LastChildFill = true,
+            Margin = new Thickness(0, Space.S3, 0, Space.S2),
+        };
+        DockPanel.SetDock(number, Dock.Left);
+        voice.Children.Add(number);
+        voice.Children.Add(Parts.Note(model.VoiceLine, ColorToken.Text));
+        inner.Children.Add(voice);
+        var how = new TouchButton
+        {
+            Content = model.VoiceHowTitle,
+            Symbol = "record_voice_over",
+            Variant = ButtonVariant.Tertiary,
+            IsExpanded = model.VoiceHowOpen,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(how, model.VoiceHowTitle);
+        how.Click += (_, _) => _viewModel.ToggleVoiceHow();
+        inner.Children.Add(how);
+        if (model.VoiceHowOpen)
+        {
+            var steps = new StackPanel { Margin = new Thickness(0, Space.S2, 0, 0) };
+            for (var i = 0; i < model.VoiceSteps.Count; i++)
+            {
+                var n = new Badge
+                {
+                    Text = (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Tone = BadgeTone.Accent,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(0, 0, Space.S2, 0),
+                };
+                var row = new DockPanel
                 {
                     LastChildFill = true,
-                    Children =
-                    {
-                        Docked(Ui.Icon("record_voice_over", 20, ColorToken.AccentInk), Dock.Left),
-                        Docked(
-                            Ui.Icon(
-                                model.VoiceHowOpen ? "expand_less" : "expand_more",
-                                20,
-                                ColorToken.Muted
-                            ),
-                            Dock.Right
-                        ),
-                        Ui.Text(model.VoiceHowTitle, 13, bold: true),
-                    },
-                },
-                model.VoiceHowTitle,
-                _viewModel.ToggleVoiceHow,
-                stroke: ColorToken.Border,
-                expanded: model.VoiceHowOpen
-            );
-            how.HorizontalContentAlignment = HorizontalAlignment.Stretch;
-            inner.Children.Add(how);
-            if (model.VoiceHowOpen)
-            {
-                var steps = Ui.Column(6);
-                for (var i = 0; i < model.VoiceSteps.Count; i++)
-                {
-                    var n = Ui.Card(
-                        Ui.Text(
-                            (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
-                            12,
-                            bold: true,
-                            ink: ColorToken.OnAccent
-                        ),
-                        ColorToken.Accent,
-                        null,
-                        11,
-                        new Thickness(7, 2, 7, 2)
-                    );
-                    n.VerticalAlignment = VerticalAlignment.Top;
-                    steps.Children.Add(Ui.Row(8, n, Ui.Text(model.VoiceSteps[i], 13, wrap: true)));
-                }
-
-                inner.Children.Add(
-                    Ui.Card(steps, ColorToken.Card, null, 10, new Thickness(12, 10, 12, 10))
-                );
+                    Margin = new Thickness(0, 0, 0, Space.S2),
+                };
+                DockPanel.SetDock(n, Dock.Left);
+                row.Children.Add(n);
+                row.Children.Add(Parts.Note(model.VoiceSteps[i], ColorToken.Text));
+                steps.Children.Add(row);
             }
 
-            inner.Margin = new Thickness(12, 0, 12, 12);
-            body.Children.Add(inner);
+            inner.Children.Add(steps);
         }
 
-        return Ui.Card(body, null, ColorToken.Border, 12, new Thickness(0));
+        inner.Margin = new Thickness(0, Space.S4, 0, 0);
+        column.Children.Add(inner);
+        return column;
     }
 
-    private static UIElement Docked(UIElement element, Dock dock)
+    private static FrameworkElement Gap(FrameworkElement element)
     {
-        DockPanel.SetDock(element, dock);
-        if (element is FrameworkElement framework)
-        {
-            framework.Margin =
-                dock == Dock.Left ? new Thickness(0, 0, 10, 0) : new Thickness(10, 0, 0, 0);
-        }
-
+        element.Margin = new Thickness(0, 0, 0, Space.S4);
         return element;
     }
 
-    private static Border Segments(ValueList<ChoiceOption> options, Action<int> choose) =>
-        Ui.Card(
-            Ui.Columns(
-                options.Count,
-                2,
-                [
-                    .. options.Select(option =>
-                        (UIElement)Segment(option.Label, option.Selected, () => choose(option.Id))
-                    ),
-                ]
+    private static Border Choices(ValueList<ChoiceOption> options, Action<int> choose) =>
+        Parts.Track([
+            .. options.Select(option =>
+                (UIElement)Parts.Segment(option.Label, option.Selected, () => choose(option.Id))
             ),
-            ColorToken.Card,
-            null,
-            10,
-            new Thickness(3)
-        );
+        ]);
 
-    private static OptionButton Segment(string label, bool selected, Action click)
+    // ---- Probar (PRB-001 to PRB-007) -----------------------------------------------------------------------------
+
+    private StackPanel Test(TestModel model)
     {
-        var text = Ui.Text(label, 12, bold: true, ink: ColorToken.Text, wrap: true);
-        text.TextAlignment = TextAlignment.Center;
-        var button = Ui.Choice(
-            text,
-            label,
-            selected,
-            click,
-            44,
-            8,
-            offFill: null,
-            role: OptionRole.Option
+        var close = Parts.Button(
+            string.Empty,
+            "close",
+            ButtonVariant.Tertiary,
+            _viewModel.CloseTest,
+            model.CloseName
         );
-        if (selected)
-        {
-            Ui.Paint(button, ColorToken.Accent, ColorToken.OnAccent, null);
-        }
-        else
-        {
-            Ui.Paint(button, null, ColorToken.Text, null);
-        }
-
-        button.BorderThickness = new Thickness(0);
-        button.Padding = new Thickness(4, 0, 4, 0);
-        return button;
-    }
-
-    private Border Test(TestModel model)
-    {
-        var close = IconOnly("close", model.CloseName, _viewModel.CloseTest);
         var head = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(close, Dock.Right);
         head.Children.Add(close);
-        head.Children.Add(Ui.Text(model.Title, 14, bold: true));
-        var sequence = new List<UIElement>();
+        head.Children.Add(
+            new StyledText(model.Title, TextStyleToken.Heading)
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+            }
+        );
+
+        var sequence = new WrapPanel
+        {
+            Margin = new Thickness(Space.S3, Space.S3, Space.S1, Space.S1),
+        };
         foreach (var item in model.Sequence)
         {
             if (item.Separator is { } separator)
             {
-                sequence.Add(Ui.Separator(separator, 13));
+                var plus = new DecorativeText
+                {
+                    Text = separator,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, Space.S2, Space.S2),
+                };
+                StyledText.Apply(plus, TextStyleToken.Label);
+                Ui.Ink(plus, TextBlock.ForegroundProperty, ColorToken.Muted);
+                sequence.Children.Add(plus);
             }
 
+            var label = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            if (item.Icon is { } symbol)
+            {
+                var glyph = Ui.Icon(
+                    symbol,
+                    IconBox.Small,
+                    item.Lit ? ColorToken.OnAccent : ColorToken.Text
+                );
+                glyph.Margin = new Thickness(0, 0, Space.S1, 0);
+                label.Children.Add(glyph);
+            }
+
+            // The keys of the sequence are keys: JetBrains Mono, the only use of it.
+            var key = new StyledText(
+                item.Label,
+                TextStyleToken.Label,
+                item.Lit ? ColorToken.OnAccent : ColorToken.Text
+            )
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = AppFonts.MonoWeight,
+            };
+            key.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.MonoFont);
+            label.Children.Add(key);
             var chip = Ui.Card(
-                Ui.IconLabel(
-                    item.Icon,
-                    item.Label,
-                    16,
-                    14,
-                    bold: false,
-                    ink: ColorToken.Text,
-                    iconInk: ColorToken.Text
-                ),
+                label,
                 item.Lit ? ColorToken.Accent : ColorToken.Card,
-                item.Lit ? ColorToken.Accent : ColorToken.Border,
-                8,
-                new Thickness(12, 9, 12, 9)
+                item.Lit ? ColorToken.Accent : ColorToken.Line,
+                Radii.Small,
+                new Thickness(Space.S3, 0, Space.S3, 0)
             );
-            sequence.Add(chip);
+            chip.Height = ControlHeight.Small;
+            chip.Margin = new Thickness(0, 0, Space.S2, Space.S2);
+            sequence.Children.Add(chip);
         }
 
-        var shown = Ui.Card(Ui.Wrap(6, sequence), ColorToken.Win, null, 10, new Thickness(12));
-        shown.MinHeight = 64;
-        var play = Ui.Button(
-            Ui.IconLabel("replay", model.PlayText),
-            model.PlayText,
-            _viewModel.Play,
-            ColorToken.Card,
-            stroke: ColorToken.Border
+        var shown = Ui.Card(
+            sequence,
+            ColorToken.Field,
+            ColorToken.Line,
+            Radii.Medium,
+            new Thickness(0)
         );
-        var what = Ui.Text(model.What, 13, wrap: true);
-        what.Margin = new Thickness(10, 0, 0, 0);
+        shown.MinHeight = ControlHeight.Large;
+        var play = Parts.Button(model.PlayText, "replay", ButtonVariant.Secondary, _viewModel.Play);
+        play.VerticalAlignment = VerticalAlignment.Top;
+        var what = Parts.Note(model.What, ColorToken.Text);
+        what.Margin = new Thickness(Space.S3, 0, 0, 0);
+        what.VerticalAlignment = VerticalAlignment.Center;
         var line = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(play, Dock.Left);
-        play.VerticalAlignment = VerticalAlignment.Top;
         line.Children.Add(play);
         line.Children.Add(what);
-        var body = Ui.Column(12, head, shown, line);
+        var body = Parts.Section(null, head, shown, line);
         if (model.Phase is { } phase)
         {
-            var phaseLine = Ui.Card(
-                Ui.Row(
-                    8,
-                    Ui.Icon(model.PhaseIcon, 18, ColorToken.AccentInk),
-                    Ui.Text(phase, 13, bold: true, wrap: true)
-                ),
-                ColorToken.Win,
-                null,
-                10,
-                new Thickness(10, 8, 10, 8)
+            var phaseLine = Parts.IconLine(
+                model.PhaseIcon,
+                phase,
+                ColorToken.AccentInk,
+                ColorToken.Text,
+                TextStyleToken.Label
             );
             AutomationProperties.SetLiveSetting(phaseLine, AutomationLiveSetting.Polite);
-            body.Children.Add(phaseLine);
+            body.Children.Add(Spaced(phaseLine, Space.S3));
         }
 
-        body.Children.Add(Ui.Line());
-        body.Children.Add(Ui.Caption(model.TargetsLabel));
+        var targets = Parts.Section(model.TargetsLabel);
         if (model.NoApps is { } noApps)
         {
-            body.Children.Add(Ui.Text(noApps, 13, ink: ColorToken.Muted, wrap: true));
+            targets.Children.Add(Spaced(Parts.Note(noApps), Space.S2));
         }
         else
         {
-            body.Children.Add(
-                Ui.Wrap(
-                    6,
-                    model.Targets.Select(target =>
-                        (UIElement)
-                            Ui.Choice(
-                                Ui.IconLabel("apps", target.Name),
-                                target.Name,
-                                target.Selected,
-                                () => _viewModel.ChooseTarget(target.Process),
-                                44,
-                                22,
-                                role: OptionRole.Option
-                            )
-                    )
-                )
-            );
+            var chips = new WrapPanel { Margin = new Thickness(0, Space.S2, -Space.S2, -Space.S2) };
+            foreach (var target in model.Targets)
+            {
+                var chip = new OptionButton
+                {
+                    Kind = OptionKind.Chip,
+                    Content = target.Name,
+                    Symbol = "apps",
+                    IsSelected = target.Selected,
+                    Margin = new Thickness(0, 0, Space.S2, Space.S2),
+                };
+                AutomationProperties.SetName(chip, target.Name);
+                chip.Click += (_, _) => _viewModel.ChooseTarget(target.Process);
+                chips.Children.Add(chip);
+            }
+
+            targets.Children.Add(chips);
         }
 
+        body.Children.Add(Spaced(targets, Space.S6));
         if (model.PausedText is { } pausedText)
         {
             // BUR-004: paused, «Probar ahora» would send nothing; the card says why and its button resumes.
-            var pausedLine = Ui.Card(
-                Ui.Row(
-                    8,
-                    Ui.Icon("pause", 18, ColorToken.WarnText),
-                    Ui.Text(pausedText, 13, bold: true, wrap: true)
-                ),
-                ColorToken.Win,
-                null,
-                10,
-                new Thickness(10, 8, 10, 8)
+            var paused = Parts.IconLine(
+                "pause",
+                pausedText,
+                ColorToken.WarnText,
+                ColorToken.Text,
+                TextStyleToken.Label
             );
-            AutomationProperties.SetLiveSetting(pausedLine, AutomationLiveSetting.Polite);
-            body.Children.Add(pausedLine);
+            AutomationProperties.SetLiveSetting(paused, AutomationLiveSetting.Polite);
+            body.Children.Add(Spaced(paused, Space.S4));
         }
 
-        var live = Ui.Button(
-            Ui.IconLabel(
-                model.PausedText is not null ? "play_arrow"
-                    : model.LiveArmed ? "verified"
-                    : "send",
-                model.LiveText,
-                20,
-                14,
-                ink: model.LiveArmed ? ColorToken.OnWarn : ColorToken.OnAccent,
-                iconInk: model.LiveArmed ? ColorToken.OnWarn : ColorToken.OnAccent
-            ),
+        var live = Parts.Button(
             model.LiveText,
-            _viewModel.TryLive,
-            model.LiveArmed ? ColorToken.Warn : ColorToken.Accent,
-            model.LiveArmed ? ColorToken.OnWarn : ColorToken.OnAccent,
-            height: 48
+            model.PausedText is not null ? "play_arrow"
+                : model.LiveArmed ? "verified"
+                : "send",
+            ButtonVariant.Primary,
+            _viewModel.TryLive
         );
         if (model.LiveArmed)
         {
@@ -1245,151 +1188,114 @@ public sealed class ShortcutEditorView : StackPanel
         }
 
         live.IsEnabled = model.CanLive;
-        body.Children.Add(live);
-        body.Children.Add(Ui.Text(model.How, 12, ink: ColorToken.Muted, wrap: true));
+        body.Children.Add(Spaced(live, Space.S4));
+        body.Children.Add(Spaced(Parts.Note(model.How, style: TextStyleToken.Caption), Space.S2));
         if (model.Question is { } question)
         {
-            var yes = Ui.Button(
-                Ui.Text(model.YesText, 14, bold: true, ink: ColorToken.OnAccent),
+            var yes = Parts.Button(
                 model.YesText,
-                () => _viewModel.Answer(true),
-                ColorToken.Accent,
-                ColorToken.OnAccent
-            );
-            var no = Ui.Button(
-                Ui.Text(model.NoText, 14, bold: true),
-                model.NoText,
-                () => _viewModel.Answer(false),
-                stroke: ColorToken.Border
-            );
-            var ask = Ui.Card(
-                Ui.Column(
-                    8,
-                    Ui.Text(question, 14, bold: true, wrap: true),
-                    Ui.Columns(2, 6, [yes, no])
-                ),
-                ColorToken.Card,
                 null,
-                10,
-                new Thickness(10)
+                ButtonVariant.Primary,
+                () => _viewModel.Answer(true)
             );
+            var no = Parts.Button(
+                model.NoText,
+                null,
+                ButtonVariant.Secondary,
+                () => _viewModel.Answer(false)
+            );
+            var ask = new Card
+            {
+                Content = Parts.Section(
+                    null,
+                    new StyledText(question, TextStyleToken.Label) { MaxLines = 0 },
+                    Ui.Columns(2, Space.S2, [yes, no])
+                ),
+            };
             AutomationProperties.SetLiveSetting(ask, AutomationLiveSetting.Polite);
-            body.Children.Add(ask);
+            body.Children.Add(Spaced(ask, Space.S4));
         }
 
         if (model.Answer is { } answer)
         {
-            var ok = Ui.Row(
-                6,
-                Ui.Icon("check_circle", 18, ColorToken.AccentInk),
-                Ui.Text(answer, 13, bold: true, wrap: true)
+            var ok = Parts.IconLine(
+                "check_circle",
+                answer,
+                ColorToken.Success,
+                ColorToken.Text,
+                TextStyleToken.Label
             );
             AutomationProperties.SetLiveSetting(ok, AutomationLiveSetting.Polite);
-            body.Children.Add(ok);
+            body.Children.Add(Spaced(ok, Space.S4));
         }
 
         if (model.TipsTitle is { } tips)
         {
-            var list = Ui.Column(6, Ui.Text(tips, 13, bold: true));
+            var list = Parts.Section(null, new StyledText(tips, TextStyleToken.Label));
             foreach (var tip in model.Tips)
             {
-                var icon = Ui.Icon("lightbulb", 16, ColorToken.WarnText);
-                icon.VerticalAlignment = VerticalAlignment.Top;
-                list.Children.Add(Ui.Row(6, icon, Ui.Text(tip, 13, wrap: true)));
+                list.Children.Add(
+                    Spaced(
+                        Parts.IconLine("lightbulb", tip, ColorToken.WarnText, ColorToken.Text),
+                        Space.S2
+                    )
+                );
             }
 
-            body.Children.Add(Ui.Card(list, ColorToken.WarnWash, null, 10, new Thickness(10)));
+            body.Children.Add(Spaced(new Card { Content = list, Tone = CardTone.Warn }, Space.S4));
         }
 
-        return Ui.Card(body, ColorToken.AccentWash, ColorToken.Accent, 12, new Thickness(12));
+        return body;
     }
 
-    private Grid Footer(FooterModel model)
+    private static FrameworkElement Spaced(FrameworkElement element, double above)
     {
-        var test = Ui.Choice(
-            Ui.IconLabel(
-                "play_arrow",
-                model.TestText,
-                20,
-                14,
-                ink: ColorToken.OnAccent,
-                iconInk: ColorToken.OnAccent
-            ),
-            model.TestText,
-            model.TestOpen,
-            _viewModel.ToggleTest,
-            48,
-            10,
-            role: OptionRole.Expander
-        );
-        Ui.Paint(test, ColorToken.Accent, ColorToken.OnAccent, ColorToken.Accent);
-        var duplicate = Ui.Button(
-            Ui.IconLabel("content_copy", model.DuplicateText, 18, 13),
-            model.DuplicateText,
-            _viewModel.Duplicate,
-            stroke: ColorToken.Border,
-            height: 48
-        );
-        duplicate.IsEnabled = model.Saved;
-        var delete = Ui.Button(
-            Ui.IconLabel(
-                model.DeleteArmed ? "warning" : "delete",
-                model.DeleteText,
-                18,
-                13,
-                ink: model.DeleteArmed ? ColorToken.OnDanger : ColorToken.DangerText,
-                iconInk: model.DeleteArmed ? ColorToken.OnDanger : ColorToken.DangerText
-            ),
-            model.DeleteText,
-            _viewModel.Delete,
-            model.DeleteArmed ? ColorToken.Danger : null,
-            stroke: model.DeleteArmed ? ColorToken.Danger : ColorToken.Border,
-            height: 48
-        );
-        delete.IsEnabled = model.Saved;
-        foreach (
-            var button in new System.Windows.Controls.Primitives.ButtonBase[]
-            {
-                test,
-                duplicate,
-                delete,
-            }
-        )
+        element.Margin = new Thickness(0, above, 0, 0);
+        return element;
+    }
+
+    // ---- El pie fijo -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Probar (primary: it opens and closes the test layer), Duplicar (secondary) and Eliminar (danger, two taps,
+    /// REG-04): one row that shares its width, so no text is cut while another button has room to spare.
+    /// </summary>
+    private ShareRow Footer(FooterModel model)
+    {
+        var test = new TouchButton
         {
-            button.Padding = new Thickness(4, 0, 4, 0);
-        }
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) }
-        );
-        grid.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-        );
-        grid.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) }
-        );
-        duplicate.Margin = new Thickness(8, 0, 8, 0);
-        Grid.SetColumn(duplicate, 1);
-        Grid.SetColumn(delete, 2);
-        grid.Children.Add(test);
-        grid.Children.Add(duplicate);
-        grid.Children.Add(delete);
-        return grid;
-    }
-
-    private static TouchButton IconOnly(string icon, string name, Action click)
-    {
-        var button = Ui.Button(Ui.Icon(icon, 22), name, click);
-        button.Width = 44;
-        button.Padding = new Thickness(0);
-        button.BorderThickness = new Thickness(0);
-        return button;
-    }
-
-    private void Dictate(TextInput field)
-    {
-        _ = Keyboard.Focus(field.Box);
-        _viewModel.Dictate();
+            Content = model.TestText,
+            Symbol = "play_arrow",
+            Variant = ButtonVariant.Primary,
+            IsExpanded = model.TestOpen,
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(test, model.TestText);
+        test.Click += (_, _) => _viewModel.ToggleTest();
+        var duplicate = new TouchButton
+        {
+            Content = model.DuplicateText,
+            Symbol = "content_copy",
+            Variant = ButtonVariant.Secondary,
+            IsEnabled = model.Saved,
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(duplicate, model.DuplicateText);
+        duplicate.Click += (_, _) => _viewModel.Duplicate();
+        var delete = new TouchButton
+        {
+            Content = model.DeleteText,
+            Symbol = model.DeleteArmed ? "warning" : "delete",
+            Variant = ButtonVariant.Danger,
+            IsEnabled = model.Saved,
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+        };
+        AutomationProperties.SetName(delete, model.DeleteText);
+        delete.Click += (_, _) => _viewModel.Delete();
+        var row = new ShareRow { Gap = Space.S2, Fill = true };
+        row.Children.Add(test);
+        row.Children.Add(duplicate);
+        row.Children.Add(delete);
+        return row;
     }
 }

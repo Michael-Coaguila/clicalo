@@ -17,15 +17,14 @@ namespace Clicalo.UI.Wpf.Workspace;
 /// </summary>
 public sealed class ProgramListView : StackPanel
 {
-    private const double Gap = 6;
-    private const double ListHeight = 196;
+    /// <summary>The height of the list: four rows of choices, so the editor below it stays in reach.</summary>
+    private const double ListHeight = (ControlHeight.Small + Space.S2) * 4;
 
     private readonly Action<string> _pick;
     private readonly TextInput _search;
     private readonly DockPanel _searchRow;
-    private readonly TouchButton _dictate;
-    private readonly TextBlock _label;
-    private readonly TextBlock _note;
+    private readonly StyledText _label;
+    private readonly StyledText _note;
     private readonly WrapPanel _choices;
     private readonly ThemedScrollViewer _scroll;
     private readonly List<(ProgramChip Program, OptionButton Button)> _buttons = [];
@@ -41,30 +40,25 @@ public sealed class ProgramListView : StackPanel
         ArgumentNullException.ThrowIfNull(pick);
         ArgumentNullException.ThrowIfNull(dictate);
         _pick = pick;
-        _label = Ui.Text(string.Empty, 12, ink: ColorToken.Muted);
-        _label.Margin = new Thickness(0, 0, 0, Gap);
-        _search = new TextInput(string.Empty, string.Empty);
+        _label = new StyledText(string.Empty, TextStyleToken.Caption, ColorToken.Muted)
+        {
+            Margin = new Thickness(0, 0, 0, Space.S2),
+        };
+        _search = new TextInput(string.Empty, string.Empty) { Symbol = "search" };
         _search.Changed += (_, _) => filter(_search.Text);
-        var glass = Ui.Icon("search", 20, ColorToken.Muted);
-        glass.Margin = new Thickness(0, 0, Gap, 0);
-        _dictate = Ui.Button(
-            Ui.Icon("mic", 22, ColorToken.AccentInk),
-            string.Empty,
-            () => dictate(_search.Box),
-            ColorToken.AccentWash
-        );
-        _dictate.Width = 44;
-        _dictate.Padding = new Thickness(0);
-        _dictate.Margin = new Thickness(Gap, 0, 0, 0);
-        _searchRow = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 0, 0, Gap) };
-        DockPanel.SetDock(glass, Dock.Left);
-        _searchRow.Children.Add(glass);
-        DockPanel.SetDock(_dictate, Dock.Right);
-        _searchRow.Children.Add(_dictate);
+        _search.DictateRequested += (_, _) => dictate(_search.Box);
+        _searchRow = new DockPanel
+        {
+            LastChildFill = true,
+            Margin = new Thickness(0, 0, 0, Space.S2),
+        };
         _searchRow.Children.Add(_search);
-        _note = Ui.Text(string.Empty, 13, ink: ColorToken.Muted, wrap: true);
+        _note = new StyledText(string.Empty, TextStyleToken.BodySmall, ColorToken.Muted)
+        {
+            MaxLines = 0,
+        };
         AutomationProperties.SetLiveSetting(_note, AutomationLiveSetting.Polite);
-        _choices = new WrapPanel { Margin = new Thickness(0, 0, -Gap, -Gap) };
+        _choices = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
         _scroll = new ThemedScrollViewer { Content = _choices, MaxHeight = ListHeight };
         Children.Add(_label);
         Children.Add(_searchRow);
@@ -102,7 +96,7 @@ public sealed class ProgramListView : StackPanel
         _label.Text = target.ProgramsLabel;
         AutomationProperties.SetName(_search.Box, target.ProgramSearch);
         _search.SetPlaceholder(target.ProgramSearch);
-        AutomationProperties.SetName(_dictate, target.DictateName);
+        _search.DictateName = target.DictateName;
         _search.Show(target.ProgramQuery);
 
         var filter = ProgramFilter.Fold(target.ProgramQuery);
@@ -139,16 +133,14 @@ public sealed class ProgramListView : StackPanel
         _choices.Children.Clear();
         foreach (var program in target.Programs)
         {
-            var button = Ui.Choice(
-                Ui.Text(program.Name, 13, bold: true),
-                program.Name,
-                false,
-                () => _pick(program.Target),
-                44,
-                22,
-                role: OptionRole.Option
-            );
-            button.Margin = new Thickness(0, 0, Gap, Gap);
+            var button = new OptionButton
+            {
+                Kind = OptionKind.Chip,
+                Content = program.Name,
+                Margin = new Thickness(0, 0, Space.S2, Space.S2),
+            };
+            AutomationProperties.SetName(button, program.Name);
+            button.Click += (_, _) => _pick(program.Target);
             _buttons.Add((program, button));
             _choices.Children.Add(button);
         }

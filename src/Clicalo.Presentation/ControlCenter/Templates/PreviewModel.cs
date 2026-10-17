@@ -5,6 +5,7 @@ namespace Clicalo.Presentation.ControlCenter.Templates;
 /// <summary>The preview column of Plantillas (PLA-015 to PLA-017).</summary>
 /// <param name="HasContent">Whether something is in preview.</param>
 /// <param name="EmptyText">[pvEmpty].</param>
+/// <param name="CloseName">[close]: closes the preview (the page of the narrow window, CCM-005).</param>
 /// <param name="Icon">Its icon.</param>
 /// <param name="Name">Its name.</param>
 /// <param name="Process">Its processes.</param>
@@ -40,5 +41,6 @@ public sealed record PreviewModel(
     string ButtonIcon,
     bool ButtonEnabled,
     bool ButtonSecondary,
-    string? VariantText = null
+    string? VariantText = null,
+    string CloseName = ""
 );

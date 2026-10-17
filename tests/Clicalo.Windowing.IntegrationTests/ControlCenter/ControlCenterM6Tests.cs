@@ -513,7 +513,9 @@ public sealed class ControlCenterM6Tests
             {
                 viewModel.Nav[0].CountName.ShouldBe("1 combinación repetida entre perfiles");
                 var screen = viewModel.Shortcuts.Screen;
-                screen.TopBar.Duplicates.ShouldBe(
+                screen.TopBar.Duplicates.ShouldBe("1 combinación repetida entre perfiles");
+                screen.TopBar.ReviewText.ShouldBe("Revisar");
+                screen.TopBar.ReviewName.ShouldBe(
                     "1 combinación repetida entre perfiles · Revisar"
                 );
                 screen.TopBar.Layers[1].Meta.ShouldBe("6 · app activa");

@@ -33,10 +33,28 @@ public sealed class ControlCenterAuditTests
         ["shortcuts-editor-open"] = static cc =>
         {
             cc.Shortcuts.Editor.ToggleMore();
-            cc.Shortcuts.Editor.TogglePicker();
-            cc.Shortcuts.Editor.ToggleTest();
             cc.Shortcuts.Editor.ToggleVoiceHow();
         },
+        ["shortcuts-test"] = static cc => cc.Shortcuts.Editor.ToggleTest(),
+        ["shortcuts-icons"] = static cc => cc.Shortcuts.Editor.TogglePicker(),
+        ["shortcuts-icons-search"] = static cc =>
+        {
+            cc.Shortcuts.Editor.TogglePicker();
+            cc.Shortcuts.Editor.SearchIcons("guardar");
+        },
+        ["shortcuts-icons-category"] = static cc =>
+        {
+            cc.Shortcuts.Editor.TogglePicker();
+            cc.Shortcuts.Editor.ChooseIconCategory("text");
+        },
+        ["shortcuts-profile-edit"] = static cc => cc.Shortcuts.ToggleProfileEdit(),
+        ["shortcuts-profile-icons"] = static cc =>
+        {
+            cc.Shortcuts.ToggleProfileEdit();
+            cc.Shortcuts.ToggleProfileIcons();
+        },
+        ["shortcuts-link"] = static cc => cc.Shortcuts.LinkAction(),
+        ["shortcuts-profiles"] = static _ => { },
         ["shortcuts-hold"] = static cc => SelectShortcut(cc, "talk"),
         ["shortcuts-macro"] = static cc =>
         {
@@ -73,7 +91,12 @@ public sealed class ControlCenterAuditTests
             templates.ToggleKey();
             templates.ToggleKeyboard();
             templates.ToggleBlank();
-            templates.ToggleBlankIcons();
+        },
+        ["templates-icons"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.ToggleBlank();
+            cc.Templates.ToggleBlankIcons();
         },
         ["templates-preview"] = static cc =>
         {
@@ -114,6 +137,36 @@ public sealed class ControlCenterAuditTests
         },
     };
 
+    /// <summary>
+    /// The states of the editor: in the narrow window they are on the page of the editor, which a tap on a tile opens
+    /// (CCM-005).
+    /// </summary>
+    private static readonly HashSet<string> EditorPages = new(StringComparer.Ordinal)
+    {
+        "shortcuts-editor-open",
+        "shortcuts-test",
+        "shortcuts-icons",
+        "shortcuts-icons-search",
+        "shortcuts-icons-category",
+        "shortcuts-hold",
+        "shortcuts-macro",
+        "shortcuts-macro-keys",
+        "shortcuts-incomplete",
+        "shortcuts-text",
+        "shortcuts-mouse",
+        "shortcuts-toggle",
+        "shortcuts-url",
+        "shortcuts-app",
+        "shortcuts-system",
+        "shortcuts-repeated",
+        "shortcuts-library",
+    };
+
+    /// <summary>The size of the maximized window on the person's screen: 2400 × 1600 at 175 %, without the taskbar.</summary>
+    private const double MaximizedWidth = 1371;
+
+    private const double MaximizedHeight = 859;
+
     /// <summary>The first state of each section: where the light theme, which only changes colors, is audited.</summary>
     private static readonly string[] Sections =
     [
@@ -136,6 +189,7 @@ public sealed class ControlCenterAuditTests
         var cases = new TheoryData<string, string, double, double, AuditLook>();
         foreach (var state in States.Keys)
         {
+            cases.Add(state, "es", MaximizedWidth, MaximizedHeight, AuditLook.Dark);
             cases.Add(state, "es", 1300, 760, AuditLook.Dark);
             cases.Add(
                 state,
@@ -181,9 +235,19 @@ public sealed class ControlCenterAuditTests
             width,
             height,
             look,
-            (viewModel, host) =>
+            (viewModel, window, host) =>
             {
                 States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+                else if (string.Equals(state, "shortcuts-profiles", StringComparison.Ordinal))
+                {
+                    window.ShowShortcutProfiles();
+                }
+
                 host.LayOut();
 
                 SurfaceAudit.ShouldPass(
@@ -210,7 +274,7 @@ public sealed class ControlCenterAuditTests
             1300,
             760,
             AuditLook.Dark,
-            (viewModel, host) =>
+            (viewModel, _, host) =>
             {
                 // The sections of the menu are one group of choices: radio buttons with SelectionItem, not toggles.
                 var templates = host.Peer("Plantillas", AutomationControlType.RadioButton);
@@ -273,7 +337,7 @@ public sealed class ControlCenterAuditTests
         double width,
         double height,
         AuditLook look,
-        Action<ControlCenterViewModel, AuditHost> audit
+        Action<ControlCenterViewModel, ControlCenterWindow, AuditHost> audit
     )
     {
         var setup = new TemplatesSectionTests.Setup();
@@ -317,7 +381,7 @@ public sealed class ControlCenterAuditTests
             {
                 window.ApplyWidth(width);
                 using var host = AuditHost.OfWindow(window, theme, width, height);
-                audit(viewModel, host);
+                audit(viewModel, window, host);
             }
             finally
             {

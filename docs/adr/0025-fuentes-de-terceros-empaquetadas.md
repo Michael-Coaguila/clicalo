@@ -84,9 +84,11 @@ fijadas por hash, licencias junto a las fuentes) se mantiene.
   por compatibilidad no se ofrecen, salvo `brightness_high` y `brightness_low`, que usan los datos. Una palabra clave
   que comparte más del 3 % de los iconos («symbol», «data») no los distingue y se omite: el archivo pesa 1,1 MB y se
   lee una vez, fuera del hilo de la interfaz.
-- **Selector.** Hasta que se rediseñe por categorías, la rejilla construye como mucho `IconPickerMaxShown` (128, el
-  tamaño de la biblioteca anterior) iconos: los primeros de la biblioteca o de la búsqueda. La búsqueda recorre los
-  3925 iconos y las sugerencias (EDI-005) pliegan las palabras una sola vez al leer el catálogo.
+- **Selector.** Una capa del centro de control con las 17 categorías («Todos» primero), la búsqueda y los
+  sugeridos. La rejilla recibe todos los iconos de la categoría y la búsqueda, pero solo construye las filas que se ven
+  y las reutiliza al desplazarse (una pila virtualizada de filas), así que abrir «Todos» no crea 3925 botones; el tope
+  provisional `IconPickerMaxShown` ya no existe (R-35). La búsqueda recorre los 3925 iconos y las sugerencias
+  (EDI-005) pliegan las palabras una sola vez al leer el catálogo.
 
 Consecuencias nuevas:
 
