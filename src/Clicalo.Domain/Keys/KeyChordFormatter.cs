@@ -50,10 +50,7 @@ public static class KeyChordFormatter
             parts[i] = KeyText(chord.Strokes[i], labels, style, language, fallback);
         }
 
-        return string.Join(
-            style == KeyLabelStyle.Spoken ? SpokenSeparator : Separator,
-            parts
-        );
+        return string.Join(style == KeyLabelStyle.Spoken ? SpokenSeparator : Separator, parts);
     }
 
     /// <summary>The text of one stroke in <paramref name="style"/>.</summary>
