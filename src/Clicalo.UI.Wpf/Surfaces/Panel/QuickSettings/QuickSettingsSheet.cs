@@ -70,6 +70,7 @@ public sealed class QuickSettingsSheet : Border
     )> _options = [];
     private readonly List<(ToggleSwitch Row, QuickSwitchViewModel Switch)> _switches = [];
     private readonly ThemedScrollViewer _scroller;
+    private readonly SegmentedControl _themes;
     private readonly bool _showsAlways;
     private double _screenLimit = double.PositiveInfinity;
     private uint? _contact;
@@ -139,7 +140,9 @@ public sealed class QuickSettingsSheet : Border
         layout.Children.Add(Section(opacityTitle, _opacity));
         layout.Children.Add(Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionKind.Tile)));
         layout.Children.Add(_sideSection);
-        layout.Children.Add(Section(_themeHeading, Group(viewModel.Themes, 2, OptionKind.Tile)));
+        _themes = Group(viewModel.Themes, 2, OptionKind.Tile);
+        _themes.SizeChanged += (_, _) => FitThemes();
+        layout.Children.Add(Section(_themeHeading, _themes));
         layout.Children.Add(Switches(viewModel.Switches));
 
         _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = layout };
@@ -474,6 +477,40 @@ public sealed class QuickSettingsSheet : Border
 
     private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
 
+    /// <summary>
+    /// The themes go in two columns, as in the mockup, while every name fits whole beside its swatch and the ✓; in a
+    /// narrower sheet (the Tab view, S, a larger text) they go one under the other, never cut with «…».
+    /// </summary>
+    private void FitThemes()
+    {
+        if (_themes.ActualWidth <= 0)
+        {
+            return;
+        }
+
+        // The group spreads Space.S1 past each side and every cell keeps Space.S1 around its option.
+        var cell = (_themes.ActualWidth / 2) - (2 * Space.S1);
+        var fits = true;
+        foreach (var (owner, item, _) in _options)
+        {
+            if (
+                ReferenceEquals(owner, _themes)
+                && item.Content is DockPanel row
+                && item.Padding.Left + item.Padding.Right + ThemeSwatch.WholeWidth(row) > cell
+            )
+            {
+                fits = false;
+                break;
+            }
+        }
+
+        var columns = fits ? 2 : 1;
+        if (_themes.Columns != columns)
+        {
+            _themes.Columns = columns;
+        }
+    }
+
     private void Refresh()
     {
         _applying = true;
@@ -529,5 +566,7 @@ public sealed class QuickSettingsSheet : Border
         {
             _applying = false;
         }
+
+        FitThemes();
     }
 }

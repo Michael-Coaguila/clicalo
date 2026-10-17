@@ -58,6 +58,41 @@ public static class ThemeSwatch
     }
 
     /// <summary>
+    /// The width <paramref name="row"/> (a <see cref="Row"/>) needs to show its name whole: the swatch, the name in its
+    /// own font and the room of the ✓, which it keeps whether chosen or not, so choosing a theme never changes the fit.
+    /// </summary>
+    /// <param name="row">The row of a theme option, laid out in its option.</param>
+    /// <returns>The width, in device-independent pixels.</returns>
+    public static double WholeWidth(DockPanel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        var width = IconBox.Small + Space.S2 + Space.S2 + IconBox.Small;
+        foreach (var child in row.Children)
+        {
+            if (child is StyledText label)
+            {
+                var text = new FormattedText(
+                    label.Text,
+                    System.Globalization.CultureInfo.CurrentUICulture,
+                    label.FlowDirection,
+                    new Typeface(
+                        label.FontFamily,
+                        label.FontStyle,
+                        label.FontWeight,
+                        label.FontStretch
+                    ),
+                    label.FontSize,
+                    label.Foreground,
+                    VisualTreeHelper.GetDpi(label).PixelsPerDip
+                );
+                width += text.WidthIncludingTrailingWhitespace;
+            }
+        }
+
+        return width;
+    }
+
+    /// <summary>
     /// The swatch of a theme: a circle of <see cref="IconBox.Small"/> split between the background and the accent of
     /// its palette («Como Windows»: the light and the dark background), with the control line of the current theme.
     /// </summary>
