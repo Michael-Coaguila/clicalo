@@ -45,7 +45,8 @@ public sealed class DockBarViewModel : ObservableObject
     private int _page;
     private double _tileSpace = double.NaN;
     private double _tileGap = double.NaN;
-    private int _textScalePercent = (int)SettingsSchema.TextScalePercent.Min;
+    private double _verticalTileLength;
+    private double _horizontalTileLength;
     private int _perPage = 1;
     private bool _isVertical = true;
     private string _pageLabel = string.Empty;
@@ -419,32 +420,31 @@ public sealed class DockBarViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The length of one shortcut along the bar: 80/88/96 wide (horizontal) or 52/52/64 high (vertical, PES-007 with
-    /// the measures of direction C, D12), and then as much higher as a tile of the panel gets with the text scale,
-    /// (scale − 1) × name × 1.6 (CUA-011), so its name, which follows the scale, still has its line.
+    /// The length of one shortcut along the bar, as the view draws it with the text scale of the person
+    /// (<see cref="ApplyTileLengths"/>): 80/88/96 wide on a top or bottom bar and 52/52/64 high on a side bar at 100 %,
+    /// and longer with a larger text so its name keeps its words whole (PES-007 with the measures of direction C, D12;
+    /// CUA-011). Never shorter than the size says.
     /// </summary>
     public double TileLength =>
         IsVertical
-            ? Metrics.DockVerticalTileHeightPx
-                + (
-                    (_textScalePercent - 100)
-                    / 100d
-                    * Math.Max(PanelSizes.Layout.MinTextPx, Metrics.DockTileLabelPx)
-                    * PanelSizes.Layout.TextScaleTileGrowth
-                )
-            : Metrics.DockHorizontalTileWidthPx;
+            ? Math.Max(Metrics.DockVerticalTileHeightPx, _verticalTileLength)
+            : Math.Max(Metrics.DockHorizontalTileWidthPx, _horizontalTileLength);
 
-    /// <summary>The text scale of the person, 100 to 150 % (CUA-011): the shortcuts of a side bar grow with it.</summary>
-    /// <param name="percent">The text scale.</param>
-    public void ApplyTextScale(int percent)
+    /// <summary>
+    /// The length of a shortcut along a side bar (its height) and along a top or bottom one (its width) at the text
+    /// scale of the person (CUA-011), which the view measures with its type scale. The pages follow it.
+    /// </summary>
+    /// <param name="vertical">The height of a shortcut of a side bar, in logical pixels.</param>
+    /// <param name="horizontal">The width of a shortcut of a top or bottom bar, in logical pixels.</param>
+    public void ApplyTileLengths(double vertical, double horizontal)
     {
-        var scale = (int)SettingsSchema.TextScalePercent.Clamp(percent);
-        if (scale == _textScalePercent)
+        if (vertical.Equals(_verticalTileLength) && horizontal.Equals(_horizontalTileLength))
         {
             return;
         }
 
-        _textScalePercent = scale;
+        _verticalTileLength = vertical;
+        _horizontalTileLength = horizontal;
         OnPropertyChanged(nameof(TileLength));
         Repage();
     }

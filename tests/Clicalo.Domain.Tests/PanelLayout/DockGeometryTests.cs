@@ -142,6 +142,25 @@ public sealed class DockGeometryTests
     }
 
     [Fact]
+    [Trait("Req", "PES-005")]
+    [Trait("Req", "CUA-011")]
+    public void A_horizontal_bar_grows_across_with_its_shortcuts_but_is_never_thinner_than_its_size()
+    {
+        var metrics = PanelSizes.Get(SizeId.M);
+
+        // At 150 % its shortcuts are 80 high: with its padding of 8 the bar is 96, still 12 from the edge.
+        DockGeometry
+            .Bar(DockSide.Bottom, 600, metrics, Monitor, gutter: false, thickness: 96)
+            .ShouldBe(new PhysicalRect(660, 1040 - 12 - 96, 600, 96));
+        DockGeometry
+            .Bar(DockSide.Top, 600, metrics, Monitor, gutter: false, thickness: 40)
+            .Height.ShouldBe(80);
+        DockGeometry
+            .Bar(DockSide.Right, 600, metrics, Monitor, gutter: false, thickness: 300)
+            .Width.ShouldBe(108);
+    }
+
+    [Fact]
     [Trait("Req", "PES-010")]
     [Trait("Req", "PES-011")]
     public void A_window_beside_the_bar_goes_toward_the_screen_aligned_as_asked()

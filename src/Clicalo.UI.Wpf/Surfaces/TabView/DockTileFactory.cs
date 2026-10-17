@@ -25,7 +25,7 @@ internal static class DockTileFactory
 {
     /// <summary>
     /// Creates the tile of <paramref name="viewModel"/>, its name in <paramref name="nameLines"/> lines at most (one
-    /// along a side bar, where a word cut at the end of a first line would read worse than «…» after the name).
+    /// along a side bar of size S or M at 100 %, two wherever the tile holds them).
     /// </summary>
     public static (ShortcutTile Control, PropertyChangedEventHandler Handler) Create(
         DockTileViewModel viewModel,

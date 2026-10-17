@@ -113,10 +113,10 @@ public sealed class DockBarWindow : TouchSurface
         Side = side;
         _viewModel = viewModel;
         _theme = theme;
-        viewModel.ApplyTextScale(theme.TextScalePercent);
-        viewModel.ApplyTileGap(Space.S2);
         Modes = viewModel.Modes;
         _vertical = DockGeometry.IsVertical(side);
+        ApplyTextScale();
+        viewModel.ApplyTileGap(Space.S2);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
@@ -231,7 +231,7 @@ public sealed class DockBarWindow : TouchSurface
         }
         else
         {
-            _root.Height = viewModel.Metrics.DockBarHeightPx;
+            _root.Height = TileHeight(vertical: false);
         }
 
         Add(Pair(_close, _expand), Space.S2);
@@ -518,39 +518,75 @@ public sealed class DockBarWindow : TouchSurface
         }
         else
         {
+            if (
+                string.Equals(
+                    e.PropertyName,
+                    nameof(DockBarViewModel.Metrics),
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                // Another size: its shortcuts have another height, and a top or bottom bar another thickness.
+                ApplyTextScale();
+                if (!_vertical)
+                {
+                    _root.Height = TileHeight(vertical: false);
+                }
+            }
+
             Refresh();
         }
     }
 
     /// <summary>
-    /// CUA-011: the shortcuts of a side bar are as high as the text scale asks; those of a top or bottom bar keep their
-    /// height and give their name the lines that fit.
+    /// CUA-011: the shortcuts grow with the text scale by what the lines of their name grow, so a name is never cut
+    /// where it would fit on two lines; a top or bottom bar grows across with them.
     /// </summary>
     private void OnThemeChanged(object? sender, EventArgs e)
     {
-        _viewModel.ApplyTextScale(_theme.TextScalePercent);
+        ApplyTextScale();
         if (!_vertical)
         {
+            _root.Height = TileHeight(vertical: false);
             RebuildTiles();
         }
     }
 
-    /// <summary>
-    /// The lines the name of a shortcut takes: one along a side bar; along a top or bottom bar two while two lines of
-    /// the scaled <see cref="TextStyleToken.LabelSmall"/> fit under the icon, so a name never ends in a word cut short
-    /// on its first line («Mant…») when it would be whole on one line.
-    /// </summary>
-    private int NameLines(double tileHeight, double iconPx)
-    {
-        if (_vertical)
-        {
-            return 1;
-        }
+    /// <summary>Gives the view model the length of a shortcut along the bar, which its pages follow.</summary>
+    private void ApplyTextScale() =>
+        _viewModel.ApplyTileLengths(TileHeight(vertical: true), HorizontalTileWidth());
 
-        var line = TextStyles.LabelSmall.LineHeight * _theme.TextScalePercent / 100d;
-        var room = tileHeight - (3 * Space.S1) - iconPx;
-        return room >= 2 * line ? 2 : 1;
+    /// <summary>
+    /// The height of a shortcut (PES-007, D12): its icon and two lines of the scaled
+    /// <see cref="TextStyleToken.LabelSmall"/> with <see cref="Space.S1"/> around and between them (64 at 100 %, 80 at
+    /// 150 %), the same anatomy as «Pinned» (PES-010). Along a side bar of size S or M, at 100 %, it is the 52 of the
+    /// size with one line: the length of a side bar is what is scarce, and at 100 % the usual names fit on it.
+    /// </summary>
+    private double TileHeight(bool vertical)
+    {
+        var metrics = _viewModel.Metrics;
+        var twoLines = (3 * Space.S1) + metrics.DockTileIconPx + (2 * ScaledLine());
+        return vertical && _theme.TextScalePercent <= TypeScale.MinScalePercent
+            ? metrics.DockVerticalTileHeightPx
+            : Math.Max(
+                vertical ? metrics.DockVerticalTileHeightPx : metrics.DockHorizontalTileHeightPx,
+                twoLines
+            );
     }
+
+    /// <summary>
+    /// The width of a shortcut of a top or bottom bar: 80/88/96, as much wider as its name grows with the text scale
+    /// (CUA-011), so a word that fits on a line at 100 % still fits on it and is never split.
+    /// </summary>
+    private double HorizontalTileWidth() =>
+        _viewModel.Metrics.DockHorizontalTileWidthPx * _theme.TextScalePercent / 100d;
+
+    /// <summary>The lines the name of a shortcut gets: two while they fit under the icon, so a name is never cut short.</summary>
+    private int NameLines(double tileHeight) =>
+        tileHeight - (3 * Space.S1) - _viewModel.Metrics.DockTileIconPx >= 2 * ScaledLine() ? 2 : 1;
+
+    private double ScaledLine() =>
+        TextStyles.LabelSmall.LineHeight * _theme.TextScalePercent / 100d;
 
     private void RebuildTiles()
     {
@@ -568,14 +604,15 @@ public sealed class DockBarWindow : TouchSurface
         _tileControls.Clear();
         _tiles.Children.Clear();
         var metrics = _viewModel.Metrics;
+        var height = _vertical ? _viewModel.TileLength : TileHeight(vertical: false);
         foreach (var tile in _viewModel.PageTiles)
         {
             var (control, handler) = DockTileFactory.Create(
                 tile,
-                _vertical ? double.NaN : metrics.DockHorizontalTileWidthPx,
-                _vertical ? _viewModel.TileLength : metrics.DockHorizontalTileHeightPx,
+                _vertical ? double.NaN : _viewModel.TileLength,
+                height,
                 metrics.DockTileIconPx,
-                NameLines(metrics.DockHorizontalTileHeightPx, metrics.DockTileIconPx),
+                NameLines(height),
                 Modes
             );
             var (cell, badge) = DockTileFactory.Cell(control, tile, Modes);

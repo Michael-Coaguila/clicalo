@@ -160,22 +160,27 @@ public static class DockGeometry
     }
 
     /// <summary>
-    /// The open bar (PES-005): as thick as the size says (76/88/108 wide on a vertical edge; on a horizontal one, its
-    /// padding around what it shows, which is 58/66/78 high as its shortcuts are, PES-007), as long as its content up
-    /// to <see cref="MaxBarLength"/>, centered along its edge; against a vertical edge (18 px away on the right with
-    /// <paramref name="gutter"/>), 12 px away from a horizontal one.
+    /// The open bar (PES-005): as thick as the size says (108 wide on a vertical edge; on a horizontal one, its padding
+    /// around what it shows, which is 64 high as its shortcuts are, PES-007, or as <paramref name="thickness"/> when its
+    /// shortcuts grow with the text scale, CUA-011), as long as its content up to <see cref="MaxBarLength"/>, centered
+    /// along its edge; against a vertical edge (18 px away on the right with <paramref name="gutter"/>), 12 px away
+    /// from a horizontal one.
     /// </summary>
     /// <param name="side">The edge.</param>
     /// <param name="length">The length its content asks for, in physical pixels.</param>
     /// <param name="size">The panel size.</param>
     /// <param name="monitor">The monitor of the panel.</param>
     /// <param name="gutter">«Respect the scroll bar».</param>
+    /// <param name="thickness">
+    /// How high its content asks a horizontal bar to be, in physical pixels; never thinner than the size says.
+    /// </param>
     public static PhysicalRect Bar(
         DockSide side,
         int length,
         SizeMetrics size,
         DisplayMonitor monitor,
-        bool gutter
+        bool gutter,
+        int thickness = 0
     )
     {
         ArgumentNullException.ThrowIfNull(size);
@@ -193,7 +198,10 @@ public static class DockGeometry
             return new PhysicalRect(left, top, width, along);
         }
 
-        var height = monitor.ToPhysical(size.DockBarHeightPx + (2 * BarPaddingPx));
+        var height = Math.Max(
+            monitor.ToPhysical(size.DockBarHeightPx + (2 * BarPaddingPx)),
+            thickness
+        );
         var inset = monitor.ToPhysical(HorizontalBarInsetPx);
         var x = work.Left + ((work.Width - along) / 2);
         var y = side == DockSide.Top ? work.Top + inset : work.Bottom - inset - height;

@@ -49,7 +49,8 @@ public sealed class DockLookTests
         new[] { ControlHeight.Small, ControlHeight.Medium, ControlHeight.Large }.ShouldContain(
             metrics.DockVerticalTileHeightPx
         );
-        new[] { IconBox.Small, IconBox.Medium }.ShouldContain(metrics.DockTileIconPx);
+        // One anatomy for every shortcut of the Tab view: icon of 20 and two lines of name in 64 (PES-007, PES-010).
+        metrics.DockTileIconPx.ShouldBe((int)IconBox.Small);
         metrics.DockTileLabelPx.ShouldBe((int)TextStyles.LabelSmall.Size);
     }
 
@@ -300,6 +301,91 @@ public sealed class DockLookTests
                 window.Close();
             }
         });
+    }
+
+    [Theory]
+    [InlineData(DockSide.Right, SizeId.M, 100, 1)]
+    [InlineData(DockSide.Left, SizeId.L, 100, 2)]
+    [InlineData(DockSide.Right, SizeId.S, 150, 2)]
+    [InlineData(DockSide.Top, SizeId.S, 100, 2)]
+    [InlineData(DockSide.Bottom, SizeId.L, 150, 2)]
+    [Trait("Req", "PES-005")]
+    [Trait("Req", "PES-007")]
+    [Trait("Req", "CUA-011")]
+    public void The_names_of_the_bar_get_two_lines_when_the_text_grows_and_the_bar_grows_with_them(
+        DockSide side,
+        SizeId size,
+        int scale,
+        int lines
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = new ThemeService(
+                new FakeSystemTheme(),
+                ThemeChoice.Dark,
+                scale,
+                reduceMotion: true
+            );
+            var dock = Dock(time, side, "es", coachStep: 0, size);
+            var bar = new DockBarWindow(
+                side,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(bar, theme);
+                host.LayOut();
+                var line = TextStyles.LabelSmall.LineHeight * scale / 100d;
+                var twoLines = (3 * Space.S1) + IconBox.Small + (2 * line);
+                bar.TileControls.Count.ShouldBeGreaterThan(0);
+                foreach (var tile in bar.TileControls)
+                {
+                    tile.MaxNameLines.ShouldBe(lines);
+                    var room = tile.ActualHeight - (3 * Space.S1) - IconBox.Small;
+                    room.ShouldBeGreaterThanOrEqualTo((lines * line) - 0.5);
+                    if (lines == 2)
+                    {
+                        tile.ActualHeight.ShouldBe(Math.Max(twoLines, TileBase(side, size)), 0.5);
+                    }
+                }
+
+                // A top or bottom bar is as thick as its shortcuts and its padding: it grows with them, and they grow
+                // wider with their name, so a word that fits on a line at 100 % is never split.
+                if (!DockGeometry.IsVertical(side))
+                {
+                    bar.TileControls[0]
+                        .ActualWidth.ShouldBe(
+                            PanelSizes.Get(size).DockHorizontalTileWidthPx * scale / 100d,
+                            0.5
+                        );
+                    host.Root.ActualHeight.ShouldBe(
+                        twoLines + (2 * DockGeometry.BarPaddingPx),
+                        0.5
+                    );
+                }
+                else
+                {
+                    dock.TileLength.ShouldBe(bar.TileControls[0].ActualHeight, 0.5);
+                }
+            }
+            finally
+            {
+                bar.Close();
+            }
+        });
+
+        static double TileBase(DockSide side, SizeId size) =>
+            DockGeometry.IsVertical(side)
+                ? PanelSizes.Get(size).DockVerticalTileHeightPx
+                : PanelSizes.Get(size).DockHorizontalTileHeightPx;
     }
 
     private static int LabelLines(ShortcutTile tile)

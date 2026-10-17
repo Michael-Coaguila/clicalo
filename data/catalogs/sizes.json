@@ -88,7 +88,7 @@
         "verticalTileHeightPx": 64,
         "horizontalTileWidthPx": 96,
         "horizontalTileHeightPx": 64,
-        "tileIconPx": 24,
+        "tileIconPx": 20,
         "tileLabelPx": 12
       }
     }
