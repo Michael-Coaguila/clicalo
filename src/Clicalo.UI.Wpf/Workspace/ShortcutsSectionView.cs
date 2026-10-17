@@ -807,9 +807,12 @@ public sealed class ShortcutsSectionView : Grid
             ButtonVariant.Secondary,
             _viewModel.Unlink
         );
-        var actions = Ui.Columns(2, Space.S2, [detect, none]);
-        actions.Margin = new Thickness(0, Space.S4, 0, 0);
-        column.Children.Add(actions);
+        // One per row: their texts are long ([linkDetect], [linkNone]) and must not be cut.
+        detect.HorizontalContentAlignment = HorizontalAlignment.Left;
+        none.HorizontalContentAlignment = HorizontalAlignment.Left;
+        detect.Margin = new Thickness(0, Space.S4, 0, Space.S2);
+        column.Children.Add(detect);
+        column.Children.Add(none);
         return column;
     }
 

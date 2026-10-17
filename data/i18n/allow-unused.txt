@@ -84,7 +84,6 @@ sharedProf
 shortcutsW
 installSel
 createWith
-review
 opensWith
 # Catálogo §9: [autoReleaseD] prometía soltar siempre al cambiar de app; el editor muestra [autoReleaseTimed] o
 # [autoReleaseNever] y [autoReleaseSwitchOn] o [autoReleaseSwitchOff], según lo que hace el atajo. [recorded] se

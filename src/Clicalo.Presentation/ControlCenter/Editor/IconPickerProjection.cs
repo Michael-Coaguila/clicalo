@@ -7,8 +7,8 @@ using Clicalo.Presentation.ControlCenter.Shortcuts;
 namespace Clicalo.Presentation.ControlCenter.Editor;
 
 /// <summary>
-/// Projects an icon picker (EDI-004, D14), the same for a shortcut, a profile and Â«Perfil vacÃ­oÂ»: the categories of the
-/// collection with Â«TodosÂ» first, and the icons of the chosen one that match the search, all of them.
+/// Projects an icon picker (EDI-004, D14), the same for a shortcut, a profile and «Perfil vacío»: the categories of the
+/// collection with «Todos» first, and the icons of the chosen one that match the search, all of them.
 /// </summary>
 internal static class IconPickerProjection
 {
@@ -17,7 +17,7 @@ internal static class IconPickerProjection
     /// <param name="current">The icon in use.</param>
     /// <param name="suggested">The suggestions for the name; none for a profile without a name.</param>
     /// <param name="query">The search as typed.</param>
-    /// <param name="category">The chosen category, or null for Â«TodosÂ».</param>
+    /// <param name="category">The chosen category, or null for «Todos».</param>
     /// <param name="language">The language of the interface, for the names of the categories.</param>
     /// <param name="text">Formats a message in the language of the interface.</param>
     /// <param name="first">
