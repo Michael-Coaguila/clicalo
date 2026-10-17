@@ -15,8 +15,9 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// panel and down to its rounded foot, always there (the panel has the size of its design). The message is one line with «…» in
 /// <c>bodySmall</c>, announced as a polite live region (assertive for a warning). A confirmation shows ✓ in
 /// <c>success</c>, never the information icon; another notice shows its own icon in <c>muted</c>, a warning ⚠ in
-/// <c>warnText</c>, and the rest says [ready] with no icon. At its end, [cancel] and [undo] as tertiary buttons and ↻
-/// [repeat] as an icon button of 44 × 44. It only projects <see cref="NoticeBarViewModel"/>.
+/// <c>warnText</c>, and the rest says [ready] with no icon. At its end, [cancel] and ↶ [undo] as tertiary buttons and ↻
+/// [repeat] as an icon button of 44 × 44: the same actions with the same look as the notice window of the Tab view and
+/// the status bar of the Control Center. It only projects <see cref="NoticeBarViewModel"/>.
 /// </summary>
 public sealed class NoticeBarView : Border
 {
@@ -32,6 +33,7 @@ public sealed class NoticeBarView : Border
     private readonly TouchButton _undo = new()
     {
         Variant = ButtonVariant.Tertiary,
+        Symbol = "undo",
         Focusable = false,
         IsTabStop = false,
         VerticalAlignment = VerticalAlignment.Center,

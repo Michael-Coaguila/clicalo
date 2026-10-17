@@ -53,7 +53,7 @@ public sealed class DockNoticeWindow : TouchSurface
         Margin = new Thickness(Space.S2, 0, Space.S2, 0),
     };
     private readonly TouchButton _undo = NoticeButton(ButtonVariant.Tertiary, "undo");
-    private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Secondary, null);
+    private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Tertiary, null);
     private readonly LiveAnnouncer _announcer;
     private string _announced = string.Empty;
 
