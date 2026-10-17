@@ -15,13 +15,15 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// <param name="NameLines">Lines of the name before «…»: 1 or 2.</param>
 /// <param name="TopInset">The space above the body: under the slot of the voice number when the tile is too narrow.</param>
 /// <param name="ShowsIcon">Whether the icon shows; false only where it has no room (see <see cref="Strip"/>).</param>
+/// <param name="SideInset">The space at each side of the body.</param>
 internal sealed record TileLook(
     double IconSize,
     TextStyleToken Name,
     TextStyleToken Keys,
     int NameLines,
     double TopInset = Space.S1,
-    bool ShowsIcon = true
+    bool ShowsIcon = true,
+    double SideInset = Space.S2
 )
 {
     /// <summary>The tiles of the grid in <paramref name="size"/>.</summary>
@@ -35,22 +37,30 @@ internal sealed record TileLook(
         };
 
     /// <summary>
-    /// The tiles of the Always visible row, in Full and Compact (64 high): the icon of the grid and the small label. Its
-    /// four columns are too narrow to keep the voice number of the top left slot beside the icon, so with the numbers on
-    /// (ACC-009) the body starts under that slot, with the small icon and one line of name; at a larger text the icon
-    /// gives way, so the number never covers it and the name is never cut (CUA-011).
+    /// The tiles of the Always visible row, in Full and Compact (64 high): the icon of the grid and the small label, with
+    /// the narrow side inset of a narrow tile. When its columns are too narrow to keep the voice number of the top left
+    /// slot beside the icon (<paramref name="cramped"/>), with the numbers on (ACC-009) the body starts under that slot,
+    /// with the small icon and one line of name; at a larger text the icon gives way, so the number never covers it and
+    /// the name is never cut (CUA-011).
     /// </summary>
-    /// <param name="voiceNumbers">Whether the voice numbers show.</param>
+    /// <param name="cramped">Whether the voice number needs the top of the tile: numbers on in four narrow columns.</param>
     /// <param name="largeText">Whether the text is above 100 %.</param>
-    public static TileLook Strip(bool voiceNumbers, bool largeText) =>
-        voiceNumbers
+    public static TileLook Strip(bool cramped, bool largeText) =>
+        cramped
             ? new(
                 IconBox.Small,
                 TextStyleToken.LabelSmall,
                 TextStyleToken.KeysTile,
                 1,
                 Space.S6,
-                ShowsIcon: !largeText
+                ShowsIcon: !largeText,
+                SideInset: Space.S1
             )
-            : new(IconBox.Medium, TextStyleToken.LabelSmall, TextStyleToken.KeysTile, 2);
+            : new(
+                IconBox.Medium,
+                TextStyleToken.LabelSmall,
+                TextStyleToken.KeysTile,
+                2,
+                SideInset: Space.S1
+            );
 }

@@ -118,17 +118,21 @@ public sealed class PanelBodyView : StackPanel
     public IReadOnlyList<PanelTileControl> TileControls =>
         [.. ShortcutGrid.TileControls, .. Strip.TileControls];
 
-    /// <summary>Every other tappable element of the body, the administrator notice and the status row included.</summary>
+    /// <summary>
+    /// Every other tappable element of the rows of the body; the surface adds those of the parts it places elsewhere
+    /// (the status row, the administrator notice and the profile grid, <see cref="PlacedTapTargets"/>).
+    /// </summary>
     public IEnumerable<PanelTapTarget> TapTargets =>
-        AdminNotice
-            .TapTargets.Concat(Strip.TapTargets)
-            .Concat(Sticky.TapTargets)
+        Strip
+            .TapTargets.Concat(Sticky.TapTargets)
             .Concat(Selector.TapTargets)
-            .Concat(Picker.TapTargets)
             .Concat(EmptyState.TapTargets)
             .Concat(ShortcutGrid.TapTargets)
-            .Concat(Pager.TapTargets)
-            .Concat(Notices.TapTargets);
+            .Concat(Pager.TapTargets);
+
+    /// <summary>The tappable elements of the parts the surface places out of the body: layers and the status row.</summary>
+    public IEnumerable<PanelTapTarget> PlacedTapTargets =>
+        AdminNotice.TapTargets.Concat(Picker.TapTargets).Concat(Notices.TapTargets);
 
     /// <summary>
     /// How much higher the grid is <b>on screen</b> than one row of tiles, in device-independent pixels. Zero while it

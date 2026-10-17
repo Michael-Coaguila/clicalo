@@ -50,16 +50,16 @@ public sealed class BubbleWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
+        var mark = new SymbolIcon { Symbol = "touch_app", Size = IconBox.Large };
+        mark.SetResourceReference(SymbolIcon.ForegroundProperty, ThemeBrushKey.For(ColorToken.AccentInk));
         _button = new IconButton
         {
-            Symbol = "touch_app",
-            IconSize = IconBox.Large,
+            Content = mark,
             Width = ControlHeight.Large,
             Height = ControlHeight.Large,
             Focusable = false,
             IsTabStop = false,
         };
-        _button.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.AccentInk));
         _button.Click += (_, _) => _viewModel.Restore();
         Content = _button;
         _viewModel.PropertyChanged += OnViewModelChanged;

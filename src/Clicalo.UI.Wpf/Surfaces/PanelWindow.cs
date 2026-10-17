@@ -967,7 +967,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             yield return new PanelTapTarget(_suggestionCard.NotNowButton, _suggestion.NotNow);
         }
 
-        foreach (var target in _body.TapTargets)
+        foreach (var target in _body.TapTargets.Concat(_body.PlacedTapTargets))
         {
             yield return target;
         }

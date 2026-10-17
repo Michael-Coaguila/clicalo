@@ -25,11 +25,14 @@ public sealed class EmptyStateView : Grid
     private readonly EmptyStateViewModel _viewModel;
     private readonly SymbolIcon _icon = PanelChrome.Icon(null, IconBox.Large, ColorToken.Muted);
     private readonly StyledText _title = PanelChrome.Text(TextStyleToken.Heading);
-    private readonly StyledText _subtitle = PanelChrome.Text(
+    private readonly StyledText _subtitle = new(
+        string.Empty,
         TextStyleToken.BodySmall,
-        ColorToken.Muted,
-        lines: 2
-    );
+        ColorToken.Muted
+    )
+    {
+        MaxLines = 2,
+    };
 
     private readonly TouchButton _add = new()
     {

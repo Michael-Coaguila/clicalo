@@ -171,7 +171,7 @@ public sealed class QuickSettingsSheet : Border
     {
         get
         {
-            if (!_viewModel.IsOpen && !_showsAlways)
+            if (!_viewModel.IsOpen)
             {
                 return [];
             }
@@ -294,7 +294,7 @@ public sealed class QuickSettingsSheet : Border
         var at = new Point(sample.Position.X, sample.Position.Y);
         switch (sample.Phase)
         {
-            case PointerPhase.Down when _contact is null && (_viewModel.IsOpen || _showsAlways):
+            case PointerPhase.Down when _contact is null && _viewModel.IsOpen:
                 if (
                     _opacity.TrackElement is { } track
                     && InView(TouchBounds.Of(_scroller, inflate: false), track)

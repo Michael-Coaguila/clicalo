@@ -60,10 +60,11 @@ public sealed class SurfacesAuditTests
         {
             w.Panel.Apply(
                 PanelProjector.Project(
-                    PanelBodyTestData.Library(14, 3),
+                    PanelBodyTestData.GalleryLibrary(),
                     PanelBodyTestData.Excel,
                     LangCode.Es,
-                    LangCode.Es
+                    LangCode.Es,
+                    PanelBodyTestData.GalleryKeys
                 )
             );
             w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
@@ -71,10 +72,11 @@ public sealed class SurfacesAuditTests
         ["empty-profile"] = static w =>
             w.Panel.Apply(
                 PanelProjector.Project(
-                    PanelBodyTestData.Library(14, 3),
+                    PanelBodyTestData.GalleryLibrary(),
                     PanelBodyTestData.Excel,
                     LangCode.Es,
-                    LangCode.Es
+                    LangCode.Es,
+                    PanelBodyTestData.GalleryKeys
                 )
             ),
         ["notices"] = static w =>
@@ -125,7 +127,7 @@ public sealed class SurfacesAuditTests
             w.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
         },
         ["tile-menu"] = static w =>
-            w.Layers.Menu.Open(new ShortcutId("w0"), "Atajo 0", "keyboard", inFrequents: false),
+            w.Layers.Menu.Open(new ShortcutId("w0"), "Negrita", "format_bold", inFrequents: false),
         ["test-mode"] = static w => w.Layers.TestMode.Start(),
     };
 
@@ -611,14 +613,16 @@ public sealed class SurfacesAuditTests
                 using var host = AuditHost.OfWindow(window, theme);
                 var header = world.Header;
                 header.ShowsAutoFixed.ShouldBeTrue();
+                // Direction C (D12): the header holds only tools; Auto/Fixed is read later, at the end of the row
+                // «Qué ver», next to what it controls.
                 string[] expected =
                 [
                     header.Title,
-                    header.AutoFixedName,
                     header.SearchName,
                     header.EditName,
                     header.QuickSettingsName,
                     header.MinimizeName,
+                    header.AutoFixedName,
                 ];
                 expected.ShouldAllBe(static name => name.Length > 0);
                 expected.Distinct(StringComparer.Ordinal).Count().ShouldBe(expected.Length);
@@ -953,10 +957,11 @@ public sealed class SurfacesAuditTests
         {
             Interactions = new InteractionsWorld(language);
             Panel = PanelBodyTestData.Panel(
-                PanelBodyTestData.Library(14, 3),
+                PanelBodyTestData.GalleryLibrary(),
                 PanelBodyTestData.Word,
                 new RecordingBodyIntents(),
-                language
+                language,
+                PanelBodyTestData.GalleryKeys
             );
             Header = new PanelHeaderViewModel(
                 new ProfileViewCoordinator(Interactions.Store),

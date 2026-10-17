@@ -200,7 +200,7 @@ public sealed class M6PanelViewTests
             header.TapTargets[0].Tap();
             taps.ShouldBe(1);
             // PAN-004: the title still drags the panel.
-            header.DragZones.Count.ShouldBe(2);
+            header.DragZones.Count.ShouldBe(1);
         });
 
     private static void WithBody(
@@ -221,6 +221,9 @@ public sealed class M6PanelViewTests
             var body = new PanelBodyView(panel);
             var root = new StackPanel();
             root.Children.Add(body);
+
+            // The profile grid is a layer of the panel (direction C, D12): here it goes under the body.
+            root.Children.Add(body.Picker);
             theme.Attach(root);
             try
             {

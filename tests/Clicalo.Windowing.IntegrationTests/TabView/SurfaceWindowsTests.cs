@@ -13,6 +13,7 @@ using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.Theming;
@@ -54,8 +55,10 @@ public sealed class SurfaceWindowsTests
             try
             {
                 bubble.Look.ShouldBe(SurfaceLook.Bubble);
-                bubble.Button.Symbol.ShouldBe("keyboard");
-                bubble.Button.IconSize.ShouldBe(PanelSizes.Layout.BubbleIconPx);
+                // Direction C (D12): the mark of Clícalo, never taken for the touch keyboard of Windows.
+                var mark = bubble.Button.Content.ShouldBeOfType<Clicalo.UI.Wpf.Controls.SymbolIcon>();
+                mark.Symbol.ShouldBe("touch_app");
+                mark.Size.ShouldBe(IconBox.Large);
                 bubble.Title.ShouldBe("Mostrar panel");
                 bubble.BorderThickness.Left.ShouldBeLessThan(3);
 

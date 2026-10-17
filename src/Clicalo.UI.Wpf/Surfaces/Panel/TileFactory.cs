@@ -110,9 +110,9 @@ internal static class TileFactory
         control.Height = height;
         control.Margin = new Thickness(Space.S1);
         control.Padding = new Thickness(
-            Space.S2,
+            look.SideInset,
             look.TopInset,
-            Space.S2,
+            look.SideInset,
             look.TopInset > Space.S1 ? 0 : Space.S1
         );
         control.IconSize = look.IconSize;

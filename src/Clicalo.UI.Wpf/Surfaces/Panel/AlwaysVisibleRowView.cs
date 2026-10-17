@@ -140,6 +140,14 @@ public sealed class AlwaysVisibleRowView : StackPanel
         _grid.Children.Clear();
         var height = _viewModel.TileHeightPx;
         _more.Height = height;
+
+        // The narrowest panel at a larger text halves the columns instead of narrowing the names: two rows of two
+        // (D12: a column too narrow for its text gives way, the text never does).
+        var layout = _panel.Layout;
+        var largeText = layout.TextScalePercent > TypeScale.MinScalePercent;
+        var halves = layout.Metrics.Size == Clicalo.Domain.Catalog.PanelSize.S && largeText;
+        _grid.Columns = halves ? StripLayout.Columns / 2 : StripLayout.Columns;
+        var look = TileLook.Strip(cramped: layout.VoiceNumbers && !halves, largeText);
         foreach (var viewModel in _viewModel.Tiles)
         {
             var (control, handler) = TileFactory.Create(
@@ -150,14 +158,7 @@ public sealed class AlwaysVisibleRowView : StackPanel
                     : null,
                 showsKeys: false
             );
-            TileFactory.Size(
-                control,
-                height,
-                TileLook.Strip(
-                    _panel.Layout.VoiceNumbers,
-                    _panel.Layout.TextScalePercent > TypeScale.MinScalePercent
-                )
-            );
+            TileFactory.Size(control, height, look);
             TileFactory.ShowName(control, _viewModel.ShowsNames);
             _tiles.Add((new PanelTileControl(viewModel, control), handler));
 
