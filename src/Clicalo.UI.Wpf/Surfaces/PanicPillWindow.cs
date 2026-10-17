@@ -56,6 +56,9 @@ public sealed class PanicPillWindow : TouchSurface
             releaseAll,
             height: ControlHeight.Small
         );
+        // A button of the system: its side padding (Space.S4), not the tight one of the narrow bar of the Tab view.
+        _button.ClearValue(PaddingProperty);
+
         // SEG-002: «Soltar todo» is the panic itself: the danger fill with its text, the one filled danger button.
         _button.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Danger));
         _button.SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.OnDanger));
