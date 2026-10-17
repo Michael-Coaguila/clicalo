@@ -161,6 +161,8 @@ public sealed class StringsParityTests
                 "holdMinutes",
                 "holdSeconds",
                 "holdingKeys",
+                // The first category of the icon picker (D14, catalog §6.1, R-33).
+                "iconAll",
                 "impSummary",
                 "impTextsLost",
                 "importInvalid",
