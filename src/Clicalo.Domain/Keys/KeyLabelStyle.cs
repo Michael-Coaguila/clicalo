@@ -3,7 +3,10 @@ namespace Clicalo.Domain.Keys;
 /// <summary>How <see cref="KeyChordFormatter"/> writes a combination.</summary>
 public enum KeyLabelStyle
 {
-    /// <summary>Full labels joined by « + » («Ctrl + Shift + T»): the key line of the sizes M and L.</summary>
+    /// <summary>
+    /// Full labels joined by «+» without spaces («Ctrl+Shift+T», the key notation of direction C, D12): the key line of
+    /// the sizes M and L and every key text the person reads.
+    /// </summary>
     Full,
 
     /// <summary>

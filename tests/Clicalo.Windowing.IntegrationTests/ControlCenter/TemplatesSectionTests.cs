@@ -307,7 +307,7 @@ public sealed class TemplatesSectionTests
                 combo.RecordText.ShouldBeNull("the preview does not record");
                 templates.RowKeys.TapKey(KeyIds.Shift);
                 WpfThread.DrainPendingWork();
-                templates.Screen.Preview.Rows[0].Foot.ShouldStartWith("Ctrl + G + ");
+                templates.Screen.Preview.Rows[0].Foot.ShouldStartWith("Ctrl+G+");
                 templates.Screen.Preview.Rows[1].Combo.ShouldBeNull();
                 templates.RowKeys.StopEditingStep();
                 WpfThread.DrainPendingWork();

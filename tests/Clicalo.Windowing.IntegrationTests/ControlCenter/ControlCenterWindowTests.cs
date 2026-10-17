@@ -113,7 +113,7 @@ public sealed class ControlCenterWindowTests
                 screen.TopBar.Duplicates.ShouldNotBeNull().ShouldStartWith("1 ");
                 var tiles = screen.Grid.Tiles;
                 tiles.Count.ShouldBe(6);
-                tiles[0].Foot.ShouldBe("Ctrl + N");
+                tiles[0].Foot.ShouldBe("Ctrl+N");
                 tiles[3].TypeIcon.ShouldBe("pan_tool");
                 tiles[4].Foot.ShouldBe("3 pasos");
                 tiles[5].Incomplete.ShouldBeTrue();
@@ -155,7 +155,7 @@ public sealed class ControlCenterWindowTests
                 var steps = editor.Model.Steps.ShouldNotBeNull();
                 steps
                     .Steps.Select(s => s.Text)
-                    .ShouldBe(["Pulsar Ctrl + C", "Esperar 0,5 s", "Pulsar Ctrl + V"]);
+                    .ShouldBe(["Pulsar Ctrl+C", "Esperar 0,5 s", "Pulsar Ctrl+V"]);
                 editor.Model.Combo.ShouldBeNull(
                     "a macro has no combination until a keys step opens"
                 );

@@ -24,9 +24,9 @@ public sealed class TileKeyLinesTests
     {
         var save = Save();
 
-        Lines(new ProcessName("winword.exe")).For(save).Line.ShouldBe("Ctrl + G");
-        Lines(new ProcessName("chrome.exe")).For(save).Line.ShouldBe("Ctrl + S");
-        Lines(null).For(save).Line.ShouldBe("Ctrl + S");
+        Lines(new ProcessName("winword.exe")).For(save).Line.ShouldBe("Ctrl+G");
+        Lines(new ProcessName("chrome.exe")).For(save).Line.ShouldBe("Ctrl+S");
+        Lines(null).For(save).Line.ShouldBe("Ctrl+S");
     }
 
     [Fact]

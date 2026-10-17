@@ -27,7 +27,7 @@ public sealed class RuntimeCatalogFilesTests
         labels.Count.ShouldBe(KeyDefinitions.All.Length);
         KeyChordFormatter
             .Format(chord, labels, KeyLabelStyle.Full, LangCode.Es, LangCode.Es)
-            .ShouldBe("Ctrl + Shift + T");
+            .ShouldBe("Ctrl+Shift+T");
         KeyChordFormatter
             .Format(chord, labels, KeyLabelStyle.Abbreviated, LangCode.Es, LangCode.Es)
             .ShouldBe("Ctl+⇧+T");
