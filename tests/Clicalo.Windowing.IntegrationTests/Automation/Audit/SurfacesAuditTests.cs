@@ -55,7 +55,10 @@ public sealed class SurfacesAuditTests
         ["picker"] = static w =>
             w.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true }),
         ["frequents"] = static w =>
-            w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true }),
+        {
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
+            w.ShowHeader(new ViewTarget.Frequents());
+        },
         ["frequents-empty"] = static w =>
         {
             w.Panel.Apply(
@@ -68,8 +71,10 @@ public sealed class SurfacesAuditTests
                 )
             );
             w.Panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
+            w.ShowHeader(new ViewTarget.Frequents());
         },
         ["empty-profile"] = static w =>
+        {
             w.Panel.Apply(
                 PanelProjector.Project(
                     PanelBodyTestData.GalleryLibrary(),
@@ -78,7 +83,9 @@ public sealed class SurfacesAuditTests
                     LangCode.Es,
                     PanelBodyTestData.GalleryKeys
                 )
-            ),
+            );
+            w.ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Excel));
+        },
         ["notices"] = static w =>
             w.Panel.ApplyContext(
                 PanelBodyContext.Idle with
@@ -967,16 +974,8 @@ public sealed class SurfacesAuditTests
                     static () => { }
                 )
             );
-            Header.Apply(
-                PanelHeaderProjection.Project(
-                    new ProfileState(new ViewTarget.Profile(SearchTestWorld.Word), false, null),
-                    Interactions.Store.Current.Library,
-                    SearchTestWorld.Word,
-                    searchingWithText: false,
-                    new LangCode(language),
-                    LangCode.Es
-                )
-            );
+            _language = new LangCode(language);
+            ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Word));
             Search = SearchSurfaceTests.Search();
             Suggestion = SearchSurfaceTests.Suggestion();
             Layers = new PanelLayerModels(
@@ -990,7 +989,25 @@ public sealed class SurfacesAuditTests
             _ = time;
         }
 
+        private readonly LangCode _language;
+
         public InteractionsWorld Interactions { get; }
+
+        /// <summary>
+        /// Gives the header the view the body shows: the profile, with the same icon as the row «Qué ver», or
+        /// Frequents (CAB-002).
+        /// </summary>
+        public void ShowHeader(ViewTarget view) =>
+            Header.Apply(
+                PanelHeaderProjection.Project(
+                    new ProfileState(view, false, null),
+                    PanelBodyTestData.GalleryLibrary(),
+                    PanelBodyTestData.Word,
+                    searchingWithText: false,
+                    _language,
+                    LangCode.Es
+                )
+            );
 
         /// <summary>How many times «Ajustes rápidos» of the header was used.</summary>
         public int QuickSettingsTaps { get; private set; }
