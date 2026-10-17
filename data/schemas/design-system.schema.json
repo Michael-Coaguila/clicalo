@@ -36,6 +36,7 @@
         "sliderTrack",
         "sliderKnob",
         "scrollBar",
+        "scrollThumbMin",
         "scrollFade",
         "titleBar",
         "captionButton"

@@ -75,6 +75,7 @@ internal static class DesignSystemReader
                 "sliderTrack",
                 "sliderKnob",
                 "scrollBar",
+                "scrollThumbMin",
                 "scrollFade",
                 "titleBar",
                 "captionButton",

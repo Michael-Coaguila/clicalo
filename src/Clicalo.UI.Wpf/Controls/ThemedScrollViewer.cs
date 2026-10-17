@@ -41,6 +41,7 @@ public sealed class ThemedScrollViewer : ScrollViewer
     );
 
     private ScrollContentPresenter? _presenter;
+    private ScrollBar? _bar;
     private Point _start;
     private double _startOffset;
     private bool _pressed;
@@ -65,8 +66,8 @@ public sealed class ThemedScrollViewer : ScrollViewer
         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         Focusable = false;
         PanningMode = PanningMode.None;
-        ScrollChanged += (_, _) => UpdateFade();
-        SizeChanged += (_, _) => UpdateFade();
+        ScrollChanged += (_, _) => Update();
+        SizeChanged += (_, _) => Update();
     }
 
     /// <summary>
@@ -97,12 +98,14 @@ public sealed class ThemedScrollViewer : ScrollViewer
     {
         base.OnApplyTemplate();
         _presenter = GetTemplateChild(PresenterPart) as ScrollContentPresenter;
-        if (GetTemplateChild(BarPart) is ScrollBar bar)
+        _bar = GetTemplateChild(BarPart) as ScrollBar;
+        if (_bar is { } bar)
         {
             Theme(bar);
+            bar.SizeChanged += (_, _) => UpdateThumb();
         }
 
-        UpdateFade();
+        Update();
     }
 
     /// <inheritdoc />
@@ -203,6 +206,34 @@ public sealed class ThemedScrollViewer : ScrollViewer
         }
     }
 
+    private void Update()
+    {
+        UpdateThumb();
+        UpdateFade();
+    }
+
+    /// <summary>
+    /// The thumb is never shorter than <see cref="ComponentSize.ScrollThumbMin"/>, however long the content (the 3925
+    /// icons of the picker): the viewport given to the bar grows just enough. The thumb still runs the whole channel,
+    /// because the track places it by the offset over the scrollable height.
+    /// </summary>
+    private void UpdateThumb()
+    {
+        if (_bar is not { } bar)
+        {
+            return;
+        }
+
+        var viewport = ViewportHeight;
+        var range = ScrollableHeight;
+        var track = bar.ActualHeight;
+        var least = ComponentSize.ScrollThumbMin;
+        bar.ViewportSize =
+            range > 0 && track > least
+                ? Math.Max(viewport, least * range / (track - least))
+                : viewport;
+    }
+
     private void UpdateFade()
     {
         if (_presenter is not { } presenter)
@@ -274,7 +305,6 @@ public sealed class ThemedScrollViewer : ScrollViewer
             .Element<ScrollBar>(BarPart)
             .With(ScrollBar.OrientationProperty, Orientation.Vertical)
             .With(RangeBase.MaximumProperty, Templates.Bind(ScrollableHeightProperty))
-            .With(ScrollBar.ViewportSizeProperty, Templates.Bind(ViewportHeightProperty))
             .With(RangeBase.ValueProperty, Templates.Bind(VerticalOffsetProperty))
             .With(
                 UIElement.VisibilityProperty,

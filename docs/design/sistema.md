@@ -101,7 +101,7 @@ Medidas que la maqueta fija para un componente concreto y que no salen de las es
 | `SwitchWidth` × `SwitchHeight` | 48 × 28 | Pista del interruptor |
 | `SwitchKnobOff` / `SwitchKnobOn` | 16 / 20 | Pulgar apagado / encendido |
 | `SliderTrack` / `SliderKnob` | 6 / 24 | Pista y pulgar del deslizador |
-| `ScrollBar` / `ScrollFade` | 8 / 32 | Barra fina y altura del fundido |
+| `ScrollBar` / `ScrollThumbMin` / `ScrollFade` | 8 / 32 / 32 | Barra fina, largo mínimo de su pulgar y altura del fundido |
 | `TitleBar` / `CaptionButton` | 56 / 56 | Barra de título y zonas de minimizar, maximizar y cerrar |
 
 ### 2.7 Tipografía · `TextStyles`
@@ -240,7 +240,8 @@ subtítulo es su texto de ayuda. Para ir a otro lugar (Ajustes rápidos → Cent
 
 ### 3.9 Desplazamiento · `ThemedScrollViewer`
 
-Zona vertical con la barra fina de `ComponentSize.ScrollBar` en `Line`, sin flechas, en un canal reservado a la derecha
+Zona vertical con la barra fina de `ComponentSize.ScrollBar` en `Line`, sin flechas, con un pulgar de al menos
+`ComponentSize.ScrollThumbMin` aunque el contenido sea muy largo, en un canal reservado a la derecha
 aunque no haya barra (nada se mueve cuando aparece), y fundido de `ComponentSize.ScrollFade` abajo mientras queda
 contenido debajo (`IsFading`). La barra no es un control para UI Automation; la zona se desplaza con el patrón Scroll.
 `PansWithMouse` (por defecto, el centro de control) desplaza con el dedo como ratón promovido; las superficies del panel

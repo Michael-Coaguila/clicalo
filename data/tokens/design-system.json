@@ -39,7 +39,7 @@
     "focusOffset": 2
   },
   "components": {
-    "$comment": "Medidas propias de un componente que la maqueta C fija y que no salen de las escalas: la pista y el pulgar del interruptor (48×28, pulgar de 16 apagado y de 20 encendido), la pista y el pulgar del deslizador, la barra fina de desplazamiento y su fundido, y la barra de título del centro de control con sus zonas de 56×56.",
+    "$comment": "Medidas propias de un componente que la maqueta C fija y que no salen de las escalas: la pista y el pulgar del interruptor (48×28, pulgar de 16 apagado y de 20 encendido), la pista y el pulgar del deslizador, la barra fina de desplazamiento, el largo mínimo de su pulgar (para que no quede en un punto con contenido muy largo) y su fundido, y la barra de título del centro de control con sus zonas de 56×56.",
     "switchWidth": 48,
     "switchHeight": 28,
     "switchKnobOff": 16,
@@ -47,6 +47,7 @@
     "sliderTrack": 6,
     "sliderKnob": 24,
     "scrollBar": 8,
+    "scrollThumbMin": 32,
     "scrollFade": 32,
     "titleBar": 56,
     "captionButton": 56
