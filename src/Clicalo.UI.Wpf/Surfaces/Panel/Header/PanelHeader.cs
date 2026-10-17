@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -32,6 +33,7 @@ public sealed class PanelHeader : Grid
     private readonly DockPanel _title;
     private readonly ShortcutTile _titleButton;
     private readonly SymbolIcon _titleIcon;
+    private readonly bool _showsName;
     private readonly StyledText _titleText;
     private readonly IconButton _search;
     private readonly IconButton _edit;
@@ -57,6 +59,7 @@ public sealed class PanelHeader : Grid
         _titleIcon.Margin = new Thickness(0, 0, Space.S2, 0);
         _titleText = PanelChrome.Text(TextStyleToken.Heading);
         _titleText.VerticalAlignment = VerticalAlignment.Center;
+        _showsName = showsName;
         _titleText.Visibility = showsName ? Visibility.Visible : Visibility.Collapsed;
 
         // A dock panel: the name takes the width that is left and ends in «…» instead of being cut.
@@ -101,6 +104,7 @@ public sealed class PanelHeader : Grid
         }
 
         _viewModel.PropertyChanged += OnViewModelChanged;
+        _title.SizeChanged += (_, _) => FitTitle();
         Refresh();
     }
 
@@ -166,6 +170,7 @@ public sealed class PanelHeader : Grid
         AutomationProperties.SetName(_grip, vm.MoveName);
         _titleIcon.Symbol = vm.TitleIcon.Length == 0 ? null : vm.TitleIcon;
         _titleText.Text = vm.Title;
+        FitTitle();
         AutomationProperties.SetItemStatus(
             _titleText,
             vm.ShowsActiveAppDot ? vm.ActiveAppDotName : string.Empty
@@ -184,6 +189,44 @@ public sealed class PanelHeader : Grid
         // ACC-001: «Ajustes rápidos» opens and closes its sheet, and says which.
         _quick.IsExpanded = vm.IsQuickSettingsOpen;
         Configure(_minimize, vm.HasMinimize, vm.MinimizeName, active: false);
+    }
+
+    /// <summary>
+    /// Shows the name only when it fits whole beside the grip and the icon: a name cut to «W…» does not orient anyone
+    /// (D12). Otherwise the icon alone stays, as in S, and the row «Qué ver» names the view in full.
+    /// </summary>
+    private void FitTitle()
+    {
+        if (!_showsName || _title.ActualWidth <= 0)
+        {
+            return;
+        }
+
+        var room =
+            _title.ActualWidth
+            - _grip.ActualWidth
+            - _grip.Margin.Left
+            - _grip.Margin.Right
+            - (
+                _titleIcon.Visibility == Visibility.Visible
+                    ? _titleIcon.ActualWidth + _titleIcon.Margin.Right
+                    : 0
+            );
+        var name = new FormattedText(
+            _titleText.Text ?? string.Empty,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(
+                _titleText.FontFamily,
+                _titleText.FontStyle,
+                _titleText.FontWeight,
+                _titleText.FontStretch
+            ),
+            _titleText.FontSize,
+            _titleText.Foreground,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip
+        );
+        _titleText.Visibility = Shown(name.WidthIncludingTrailingWhitespace <= room);
     }
 
     private static void Configure(IconButton button, bool available, string name, bool active)

@@ -1,8 +1,12 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Windows.Media;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
@@ -35,6 +39,7 @@ public sealed class AlwaysVisibleRowView : StackPanel
     private readonly List<(PanelTileControl Tile, PropertyChangedEventHandler Handler)> _tiles = [];
     private readonly List<TileCell> _cells = [];
     private PanelLayerModels? _layers;
+    private bool _halves;
 
     /// <summary>Creates the row of <paramref name="panel"/>.</summary>
     /// <param name="panel">The panel.</param>
@@ -59,6 +64,15 @@ public sealed class AlwaysVisibleRowView : StackPanel
         _viewModel.PropertyChanged += OnChanged;
         _viewModel.Tiles.CollectionChanged += OnTilesChanged;
         _panel.PropertyChanged += OnPanelChanged;
+
+        // The names are measured with the font of the theme, which the row only finds once it is in the panel.
+        Loaded += (_, _) =>
+        {
+            if (Halves(_panel.Layout) != _halves)
+            {
+                Rebuild();
+            }
+        };
         Rebuild();
     }
 
@@ -141,11 +155,12 @@ public sealed class AlwaysVisibleRowView : StackPanel
         var height = _viewModel.TileHeightPx;
         _more.Height = height;
 
-        // The narrowest panel at a larger text halves the columns instead of narrowing the names: two rows of two
-        // (D12: a column too narrow for its text gives way, the text never does).
+        // At a larger text, when a name does not fit its quarter of the row, the row halves its columns instead of
+        // cutting the names: two rows of two (D12: a column too narrow for its text gives way, the text never does).
         var layout = _panel.Layout;
         var largeText = layout.TextScalePercent > TypeScale.MinScalePercent;
-        var halves = layout.Metrics.Size == Clicalo.Domain.Catalog.PanelSize.S && largeText;
+        var halves = Halves(layout);
+        _halves = halves;
         _grid.Columns = halves ? StripLayout.Columns / 2 : StripLayout.Columns;
         var look = TileLook.Strip(cramped: layout.VoiceNumbers && !halves, largeText);
         foreach (var viewModel in _viewModel.Tiles)
@@ -172,6 +187,65 @@ public sealed class AlwaysVisibleRowView : StackPanel
         {
             _grid.Children.Add(_more);
         }
+    }
+
+    /// <summary>Whether the row goes in two rows of two: at a larger text, when a name does not fit four columns.</summary>
+    private bool Halves(PanelLayoutSettings layout)
+    {
+        var largeText = layout.TextScalePercent > TypeScale.MinScalePercent;
+        return largeText && !NamesFit(layout, TileLook.Strip(layout.VoiceNumbers, largeText));
+    }
+
+    /// <summary>
+    /// Whether every name of the row is read whole in four columns with <paramref name="look"/>: in its lines, and
+    /// without a word wider than the tile (a word is never cut, CUA-011).
+    /// </summary>
+    private bool NamesFit(PanelLayoutSettings layout, TileLook look)
+    {
+        if (!_viewModel.ShowsNames)
+        {
+            return true;
+        }
+
+        var content = GridMetrics.PanelWidth(layout) - PanelSizes.Layout.PanelChromeWidthPx;
+        var tile = ((content + (2 * Space.S1)) / StripLayout.Columns) - (2 * Space.S1);
+        var room = tile - (2 * look.SideInset) - (2 * Stroke.Line);
+        var spec = TextStyles.Get(look.Name);
+        var size = TypeScale.Scale(spec.Size, layout.TextScalePercent);
+        var family =
+            TryFindResource(ThemeKeys.FontFamily(look.Name)) as FontFamily
+            ?? SystemFonts.MessageFontFamily;
+        var typeface = new Typeface(
+            family,
+            FontStyles.Normal,
+            FontWeight.FromOpenTypeWeight(spec.Weight),
+            FontStretches.Normal
+        );
+        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        foreach (var viewModel in _viewModel.Tiles)
+        {
+            var name = new FormattedText(
+                viewModel.AccessibleName,
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                size,
+                TextElement.GetForeground(this),
+                pixelsPerDip
+            )
+            {
+                MaxTextWidth = room,
+            };
+            if (
+                name.MinWidth > room
+                || Math.Round(name.Height / (size * family.LineSpacing)) > look.NameLines
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void DetachTiles()
