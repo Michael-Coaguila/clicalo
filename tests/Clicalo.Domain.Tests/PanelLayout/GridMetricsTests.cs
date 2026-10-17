@@ -146,8 +146,8 @@ public sealed class GridMetricsTests
     {
         var shape = GridMetrics.Shape(Settings(PanelSize.Medium), null);
 
-        shape.HeightPx.ShouldBe((3 * 78) + (2 * 8));
-        GridMetrics.HeightOf(0, 78, 8).ShouldBe(0);
+        shape.HeightPx.ShouldBe((3 * 80) + (2 * 8));
+        GridMetrics.HeightOf(0, 80, 8).ShouldBe(0);
     }
 
     private static PanelLayoutSettings Settings(PanelSize size) =>

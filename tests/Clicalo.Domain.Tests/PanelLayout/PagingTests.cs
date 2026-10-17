@@ -116,14 +116,14 @@ public sealed class PagingTests
 
     [Fact]
     [Trait("Req", "CUA-004")]
-    public void The_active_dot_is_24_wide_and_the_others_10()
+    public void The_active_dot_is_24_wide_and_the_others_8()
     {
         Paging.Dots(Paging.Window(9, 9, 0)).ShouldBeEmpty();
 
         var dots = Paging.Dots(Paging.Window(25, 9, 1));
 
         dots.Select(static dot => (dot.Page, dot.IsActive, dot.WidthPx))
-            .ShouldBe([(0, false, 10), (1, true, 24), (2, false, 10)]);
+            .ShouldBe([(0, false, 8), (1, true, 24), (2, false, 8)]);
     }
 
     [Fact]
