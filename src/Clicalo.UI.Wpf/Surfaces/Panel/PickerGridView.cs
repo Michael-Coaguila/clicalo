@@ -46,6 +46,7 @@ public sealed class PickerGridView : Border
         ColorToken.Muted
     );
     private readonly DockPanel _legendRow;
+    private readonly StackPanel _content;
     private readonly List<(PickerEntryViewModel Entry, OptionButton Control, Grid Cell)> _entries =
     [];
 
@@ -115,13 +116,13 @@ public sealed class PickerGridView : Border
         _legend.VerticalAlignment = VerticalAlignment.Center;
         legend.Children.Add(_legend);
 
-        var stack = new StackPanel
+        _content = new StackPanel
         {
             Margin = new Thickness(Space.S3, Space.S3, Space.S1, Space.S6),
         };
-        stack.Children.Add(_grid);
-        stack.Children.Add(legend);
-        _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = stack };
+        _content.Children.Add(_grid);
+        _content.Children.Add(legend);
+        _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = _content };
         Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
@@ -177,6 +178,19 @@ public sealed class PickerGridView : Border
             _showsAlways = value;
             Refresh();
         }
+    }
+
+    /// <summary>
+    /// Whether the content keeps its own inset inside the panel (true by default). The window beside the bar of the Tab
+    /// view turns it off: its padding is the inset, so the cards line up with its header (PES-010).
+    /// </summary>
+    public bool IsInset
+    {
+        get => _content.Margin.Left > 0;
+        init =>
+            _content.Margin = value
+                ? new Thickness(Space.S3, Space.S3, Space.S1, Space.S6)
+                : new Thickness(0, 0, 0, Space.S6);
     }
 
     /// <summary>The ★ Frequents card (SEL-006).</summary>
