@@ -73,7 +73,7 @@ internal sealed class TitleBarHook
                     return (IntPtr)PInvoke.HTMAXBUTTON;
                 }
 
-                if (_bar.ResizeGrip is { } grip && Over(grip, lParam))
+                if (_bar.ResizeGrip is { IsVisible: true } grip && Over(grip, lParam))
                 {
                     handled = true;
                     return (IntPtr)PInvoke.HTBOTTOMRIGHT;

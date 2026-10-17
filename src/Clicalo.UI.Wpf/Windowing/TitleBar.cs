@@ -99,7 +99,10 @@ public sealed class TitleBar : Border
         set => _trailing.Content = value;
     }
 
-    /// <summary>An element of the window that resizes it from its bottom right corner (the grip of the status bar).</summary>
+    /// <summary>
+    /// An element of the window that resizes it from its bottom right corner (the grip of the status bar). It hides,
+    /// keeping its place, while the window is maximized: a maximized window has no corner to drag, as in Windows.
+    /// </summary>
     public FrameworkElement? ResizeGrip { get; set; }
 
     /// <summary>
@@ -184,6 +187,11 @@ public sealed class TitleBar : Border
         var maximized = _window?.WindowState == WindowState.Maximized;
         Maximize.IsMaximized = maximized;
         AutomationProperties.SetName(Maximize, maximized ? _restoreName : _maximizeName);
+        if (ResizeGrip is { } grip)
+        {
+            grip.Visibility = maximized ? Visibility.Hidden : Visibility.Visible;
+        }
+
         KeepInsideWhenMaximized();
     }
 
