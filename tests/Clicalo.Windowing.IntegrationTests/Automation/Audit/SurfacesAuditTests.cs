@@ -354,7 +354,14 @@ public sealed class SurfacesAuditTests
             using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld(language, time);
             world.Panel.ApplyLayout(PanelLayoutSettings.Default with { StickyRow = true });
-            world.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true });
+            // Word is the active app, as the bar says with its dot (State: IsActiveApp), so its tile shows the dot too.
+            world.Panel.ApplyContext(
+                PanelBodyContext.Idle with
+                {
+                    PickerOpen = true,
+                    ActiveAppProfile = PanelBodyTestData.Word,
+                }
+            );
             var dock = Dock(time, DockSide.Right, SizeId.M, flyout, coachStep: 0, language);
             var window = new DockFlyoutWindow(
                 flyout,
