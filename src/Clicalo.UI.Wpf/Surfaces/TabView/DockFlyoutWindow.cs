@@ -95,36 +95,14 @@ public sealed class DockFlyoutWindow : TouchSurface
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
-        // One section label, as everywhere (D12): the Overline, with the icon of the button that opens the window.
+        // One section label, as everywhere (D12): the Overline alone, as in the panel («SIEMPRE VISIBLE») and in every
+        // window beside the bar, Profiles included.
         _header = new Overline { VerticalAlignment = VerticalAlignment.Center };
         var headerRow = new DockPanel
         {
             LastChildFill = true,
             Margin = new Thickness(Space.S3, Space.S3, Space.S3, Space.S2),
         };
-        var symbol = flyout switch
-        {
-            DockFlyout.Pinned => "push_pin",
-            DockFlyout.Sticky => "keyboard_command_key",
-            _ => null,
-        };
-        if (symbol is not null)
-        {
-            var icon = new SymbolIcon
-            {
-                Symbol = symbol,
-                Size = IconBox.Badge,
-                Margin = new Thickness(0, 0, Space.S1, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            icon.SetResourceReference(
-                SymbolIcon.ForegroundProperty,
-                ThemeBrushKey.For(ColorToken.Muted)
-            );
-            DockPanel.SetDock(icon, Dock.Left);
-            _ = headerRow.Children.Add(icon);
-        }
-
         _ = headerRow.Children.Add(_header);
         FrameworkElement body;
         switch (flyout)
