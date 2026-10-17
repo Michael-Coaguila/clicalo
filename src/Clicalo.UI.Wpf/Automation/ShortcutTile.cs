@@ -136,6 +136,15 @@ public sealed class ShortcutTile : Control
         static value => value is 1 or 2
     );
 
+    /// <summary>Identifies <see cref="ReservesNameLines"/>.</summary>
+    public static readonly DependencyProperty ReservesNameLinesProperty =
+        DependencyProperty.Register(
+            nameof(ReservesNameLines),
+            typeof(bool),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure)
+        );
+
     /// <summary>Identifies <see cref="Category"/>.</summary>
     public static readonly DependencyProperty CategoryProperty = DependencyProperty.Register(
         nameof(Category),
@@ -333,6 +342,16 @@ public sealed class ShortcutTile : Control
     {
         get => (int)GetValue(MaxNameLinesProperty);
         set => SetValue(MaxNameLinesProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the name keeps the room of the <see cref="MaxNameLines"/> that fit even when it is shorter: tiles side
+    /// by side, some with a name of one line and some of two, keep their icons on one line (D12).
+    /// </summary>
+    public bool ReservesNameLines
+    {
+        get => (bool)GetValue(ReservesNameLinesProperty);
+        set => SetValue(ReservesNameLinesProperty, value);
     }
 
     /// <summary>

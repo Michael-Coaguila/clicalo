@@ -25,7 +25,9 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// scrolls in a <see cref="ThemedScrollViewer"/>, <see cref="Space.S3"/> inside, on <c>win</c> with its line.
 /// <list type="bullet">
 /// <item>📌 «Pinned» (PES-010): 230 wide, the header 📌 [always] and the shortcuts of Always visible in 2 columns of
-/// <see cref="ControlHeight.Large"/>, as the row of Always visible of the panel; after using one it closes, unless it
+/// <see cref="ControlHeight.Large"/>, as the row of Always visible of the panel, with the icon in
+/// <see cref="IconBox.Small"/> so their names have two lines; with a larger text the tiles grow by what those two
+/// lines grow (CUA-011), so a name is never cut where it would fit on two lines. After using one it closes, unless it
 /// holds or latches;</item>
 /// <item>the profile grid (PES-011): 236 wide, the header [pickProfile] and the same grid as SEL-003, without a box of
 /// its own (two levels: the window and its tiles);</item>
@@ -173,6 +175,7 @@ public sealed class DockFlyoutWindow : TouchSurface
         _ = root.Children.Add(_scroller);
         Content = root;
         viewModel.Labels.PropertyChanged += OnLabelsChanged;
+        Theme.Changed += OnThemeChanged;
         RebuildPinned();
         Relabel();
     }
@@ -272,6 +275,7 @@ public sealed class DockFlyoutWindow : TouchSurface
     {
         _viewModel.Labels.PropertyChanged -= OnLabelsChanged;
         _viewModel.PinnedTiles.CollectionChanged -= OnPinnedChanged;
+        Theme.Changed -= OnThemeChanged;
         _picker?.Detach();
         _sticky?.Detach();
         foreach (var (viewModel, _, handler) in _tiles)
@@ -302,6 +306,16 @@ public sealed class DockFlyoutWindow : TouchSurface
 
     private void OnPinnedChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         RebuildPinned();
+
+    private void OnThemeChanged(object? sender, EventArgs e) => RebuildPinned();
+
+    /// <summary>
+    /// The height of a shortcut of «Pinned»: <see cref="ControlHeight.Large"/>, which holds its icon and two lines of
+    /// its name at 100 %, plus what those two lines grow with the text scale (CUA-011).
+    /// </summary>
+    private double PinnedTileHeight() =>
+        ControlHeight.Large
+        + (2 * TextStyles.LabelSmall.LineHeight * (Theme.TextScalePercent - 100) / 100d);
 
     private void Relabel()
     {
@@ -340,8 +354,8 @@ public sealed class DockFlyoutWindow : TouchSurface
             var (control, handler) = DockTileFactory.Create(
                 tile,
                 double.NaN,
-                ControlHeight.Large,
-                IconBox.Medium,
+                PinnedTileHeight(),
+                IconBox.Small,
                 2,
                 Modes
             );

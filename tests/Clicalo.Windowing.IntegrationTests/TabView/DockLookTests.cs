@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.PanelLayout;
@@ -7,6 +9,8 @@ using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -147,6 +151,189 @@ public sealed class DockLookTests
         });
     }
 
+    [Theory]
+    [InlineData(DockSide.Top, "es")]
+    [InlineData(DockSide.Bottom, "es")]
+    [Trait("Req", "PES-007")]
+    [Trait("Req", "CUA-011")]
+    public void The_icons_and_names_of_a_top_or_bottom_bar_stay_on_one_line_whatever_the_names(
+        DockSide side,
+        string language
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+
+            // In S «Mantener Ctrl» beside «Copiar»: names of two lines and of one.
+            var dock = Dock(time, side, language, coachStep: 0, SizeId.S);
+            var bar = new DockBarWindow(
+                side,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(bar, theme);
+                host.LayOut();
+                bar.TileControls.Count.ShouldBeGreaterThan(1);
+                bar.TileControls.Select(LabelLines).Distinct().Count().ShouldBe(2);
+                var icons = bar
+                    .TileControls.Select(t => Top(t, ShortcutTileTemplate.IconPart, host.Root))
+                    .ToList();
+                var names = bar
+                    .TileControls.Select(t => Top(t, ShortcutTileTemplate.LabelPart, host.Root))
+                    .ToList();
+                icons.Max().ShouldBe(icons.Min(), 0.5, string.Join(", ", icons));
+                names.Max().ShouldBe(names.Min(), 0.5, string.Join(", ", names));
+            }
+            finally
+            {
+                bar.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(DockSide.Right, "es")]
+    [InlineData(DockSide.Left, "en")]
+    [Trait("Req", "PES-008")]
+    public void The_labeled_tools_of_a_side_bar_line_up_their_icons(DockSide side, string language)
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var dock = Dock(time, side, language, coachStep: 0);
+            var bar = new DockBarWindow(
+                side,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(bar, theme);
+                host.LayOut();
+
+                // Auto/Fixed, Pinned, Sticky keys and the lock: rows whose labels have different lengths.
+                var lefts = new[] { bar.Buttons[4], bar.Buttons[7], bar.Buttons[8], bar.Buttons[9] }
+                    .Where(b => b.Visibility == Visibility.Visible)
+                    .Select(b => FirstIcon(b).TranslatePoint(default, host.Root).X)
+                    .ToList();
+                lefts.Count.ShouldBeGreaterThan(2);
+                lefts.Max().ShouldBe(lefts.Min(), 0.5, string.Join(", ", lefts));
+            }
+            finally
+            {
+                bar.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(100)]
+    [InlineData(150)]
+    [Trait("Req", "PES-010")]
+    [Trait("Req", "CUA-011")]
+    public void The_shortcuts_of_Pinned_keep_two_lines_of_name_at_every_text_scale(int scale)
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = new ThemeService(
+                new FakeSystemTheme(),
+                ThemeChoice.Dark,
+                scale,
+                reduceMotion: true
+            );
+            var dock = Dock(time, DockSide.Right, "es", coachStep: 0);
+            var panel = PanelBodyTestData.Panel(
+                PanelBodyTestData.Library(14, 3),
+                PanelBodyTestData.Word,
+                new RecordingBodyIntents(),
+                "es"
+            );
+            var window = new DockFlyoutWindow(
+                DockFlyout.Pinned,
+                dock,
+                panel,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                host.LayOut();
+                var line = TextStyles.LabelSmall.LineHeight * scale / 100d;
+                foreach (var tile in window.TileControls)
+                {
+                    tile.ActualHeight.ShouldBe(
+                        ControlHeight.Large + (2 * line) - (2 * TextStyles.LabelSmall.LineHeight),
+                        0.5
+                    );
+                    var room =
+                        tile.ActualHeight
+                        - tile.Padding.Top
+                        - tile.Padding.Bottom
+                        - IconBox.Small
+                        - Space.S1;
+                    room.ShouldBeGreaterThanOrEqualTo((2 * line) - 0.5);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static int LabelLines(ShortcutTile tile)
+    {
+        var label = (TextBlock)tile.Template.FindName(ShortcutTileTemplate.LabelPart, tile);
+        var line = label.FontFamily.LineSpacing * label.FontSize;
+        return (int)Math.Round(label.DesiredSize.Height / line);
+    }
+
+    private static double Top(ShortcutTile tile, string part, UIElement root) =>
+        ((FrameworkElement)tile.Template.FindName(part, tile)).TranslatePoint(default, root).Y;
+
+    private static SymbolIcon FirstIcon(DependencyObject parent) =>
+        FirstIconOrNull(parent) ?? throw new InvalidOperationException("No icon.");
+
+    private static SymbolIcon? FirstIconOrNull(DependencyObject parent)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is SymbolIcon icon)
+            {
+                return icon;
+            }
+
+            if (FirstIconOrNull(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     private static ThemeService Theme() =>
         new(new FakeSystemTheme(), ThemeChoice.Dark, 100, reduceMotion: true);
 
@@ -154,7 +341,8 @@ public sealed class DockLookTests
         TimeProvider time,
         DockSide side,
         string language,
-        int coachStep
+        int coachStep,
+        SizeId size = SizeId.M
     )
     {
         var controller = new PanelInteractionController(new PanelEngineInbox(), () => 1, time);
@@ -169,11 +357,11 @@ public sealed class DockLookTests
             LangCode.Es
         );
         dock.ApplyTiles(model.Tiles, model.Tiles);
-        dock.Apply(State(side, coachStep));
+        dock.Apply(State(side, coachStep, size));
         return dock;
     }
 
-    private static DockBarState State(DockSide side, int coachStep) =>
+    private static DockBarState State(DockSide side, int coachStep, SizeId size = SizeId.M) =>
         new(
             new DockSettings
             {
@@ -185,7 +373,7 @@ public sealed class DockLookTests
                 PerPage = 8,
                 CoachDone = false,
             },
-            PanelSizes.Get(SizeId.M),
+            PanelSizes.Get(size),
             ShowStripRow: true,
             StickyRow: true,
             VoiceNumbers: true,

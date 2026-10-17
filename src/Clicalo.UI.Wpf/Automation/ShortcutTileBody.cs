@@ -27,7 +27,28 @@ internal sealed class ShortcutTileBody : Panel
         set => SetValue(NameLinesProperty, value);
     }
 
+    /// <summary>Identifies <see cref="ReservesNameLines"/>.</summary>
+    public static readonly DependencyProperty ReservesNameLinesProperty =
+        DependencyProperty.Register(
+            nameof(ReservesNameLines),
+            typeof(bool),
+            typeof(ShortcutTileBody),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure)
+        );
+
+    /// <summary>
+    /// Whether the name keeps the room of all the lines it may take and that fit, even when it needs fewer, so the
+    /// icons of tiles side by side stay on one line whatever the length of their names.
+    /// </summary>
+    public bool ReservesNameLines
+    {
+        get => (bool)GetValue(ReservesNameLinesProperty);
+        set => SetValue(ReservesNameLinesProperty, value);
+    }
+
     private const double Rounding = 0.5;
+
+    private double _nameSlot;
 
     private bool _keysFit = true;
 
@@ -61,14 +82,26 @@ internal sealed class ShortcutTileBody : Panel
                 // The last line that fits ends in «…» (the name trims by characters).
                 name.Measure(new Size(availableSize.Width, nameHeight + Rounding));
             }
+
+            if (ReservesNameLines && !double.IsInfinity(room))
+            {
+                var reserved = Math.Clamp(
+                    (int)Math.Floor((room + Rounding) / line),
+                    1,
+                    Math.Max(1, NameLines)
+                );
+                nameHeight = Math.Max(nameHeight, reserved * line);
+            }
         }
+
+        _nameSlot = Math.Max(name.DesiredSize.Height, ReservesNameLines ? nameHeight : 0);
 
         _keysFit = keysHeight <= 0 || nameHeight + keysHeight <= room + Rounding;
 
         var shownKeys = _keysFit ? keys.DesiredSize : default;
         return new Size(
             Math.Max(icon.DesiredSize.Width, Math.Max(name.DesiredSize.Width, shownKeys.Width)),
-            icon.DesiredSize.Height + name.DesiredSize.Height + shownKeys.Height
+            icon.DesiredSize.Height + _nameSlot + shownKeys.Height
         );
     }
 
@@ -80,12 +113,15 @@ internal sealed class ShortcutTileBody : Panel
             return finalSize;
         }
 
-        var keys = InternalChildren[2];
+        var (name, keys) = (InternalChildren[1], InternalChildren[2]);
         keys.Opacity = _keysFit ? 1 : 0;
         var y = 0.0;
         foreach (UIElement child in InternalChildren)
         {
-            var height = ReferenceEquals(child, keys) && !_keysFit ? 0 : child.DesiredSize.Height;
+            var height =
+                ReferenceEquals(child, keys) && !_keysFit ? 0
+                : ReferenceEquals(child, name) ? _nameSlot
+                : child.DesiredSize.Height;
             child.Arrange(new Rect(0, y, finalSize.Width, height));
             y += height;
         }

@@ -51,6 +51,9 @@ internal static class DockTileFactory
             Padding = new Thickness(Space.S1),
             IconSize = iconPx,
             MaxNameLines = nameLines,
+
+            // Two lines of name are kept even for a short one, so the icons of a row stay on one line.
+            ReservesNameLines = nameLines > 1,
         };
         control.SetResourceReference(
             Control.FontSizeProperty,
