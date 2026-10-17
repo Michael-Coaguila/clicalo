@@ -195,6 +195,14 @@ abierto.
   etiqueta de hasta dos líneas).
 - **Elegido:** `AccentWash`, anillo `Stroke.Selected` en `Accent` por dentro, icono relleno en `AccentInk`; si no hay
   icono y el contenido es texto, una ✓. Mismo tamaño en todos los estados.
+- **Tema · `ThemeSwatch`:** la opción de tema es la misma en Ajustes rápidos (panel y Pestaña), «General y panel» y la
+  bienvenida: `Tile` estirado con la muestra del tema (`IconBox.Small`) y el nombre a la izquierda. La muestra hace de
+  icono, así que el tema elegido la «rellena»: disco `Accent` con ✓ en `OnAccent`, como el pulgar de un interruptor
+  encendido; no se reserva hueco para una ✓ al final. Ajustes rápidos usa dos columnas mientras todos los nombres caben
+  enteros (`ThemeSwatch.WholeWidth`) y, si no, una.
+- **Línea discontinua · `DashedLine`:** una sola raya (`Stroke.Selected` por unidad de grosor, en `Line`) para los
+  controles deshabilitados y para los huecos de añadir («+ Añadir» de edición, «Biblioteca», «+ Más» de los perfiles,
+  la rejilla vacía). Un hueco de añadir lleva el icono en `AccentInk` encima del nombre en `Text`.
 - **`OptionRole`:** `Option` (RadioButton con SelectionItem, por defecto en `OptionButton`), `Toggle` (Toggle) y
   `Expander` (ExpandCollapse).
 - **`SegmentedControl`:** grupo de una sola elección (List con Selection; cada `SegmentedItem` es ListItem con
