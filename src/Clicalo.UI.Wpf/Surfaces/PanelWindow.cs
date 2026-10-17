@@ -538,7 +538,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         {
             Child = row,
             CornerRadius = new CornerRadius(0, 0, Radii.Large, Radii.Large),
-            Padding = new Thickness(Space.S3, 0, Space.S2, Space.S3),
+            // The strip covers the status row and the foot of the panel: «Release all» sits S2 from the right and
+            // the bottom and S1 from the top, so it reads centered in the red instead of hanging from its top edge.
+            Padding = new Thickness(Space.S3, Space.S1, Space.S2, Space.S2),
             Visibility = Visibility.Collapsed,
         };
         strip.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Danger));
