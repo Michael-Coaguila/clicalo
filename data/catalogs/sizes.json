@@ -29,7 +29,7 @@
       "iconPx": 30
     },
     "dock": {
-      "handleThicknessPx": 32,
+      "handleThicknessPx": 44,
       "handleVerticalLengthPx": 116,
       "handleHorizontalLengthPx": 128,
       "scrollbarGutterPx": 18,
@@ -47,13 +47,13 @@
       "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 4 },
       "autoRows": 2,
       "dock": {
-        "barWidthPx": 76,
-        "barHeightPx": 58,
-        "verticalTileHeightPx": 50,
-        "horizontalTileWidthPx": 62,
-        "horizontalTileHeightPx": 58,
+        "barWidthPx": 108,
+        "barHeightPx": 64,
+        "verticalTileHeightPx": 52,
+        "horizontalTileWidthPx": 80,
+        "horizontalTileHeightPx": 64,
         "tileIconPx": 20,
-        "tileLabelPx": 10
+        "tileLabelPx": 12
       }
     },
     {
@@ -65,13 +65,13 @@
       "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
-        "barWidthPx": 88,
-        "barHeightPx": 66,
-        "verticalTileHeightPx": 58,
-        "horizontalTileWidthPx": 72,
-        "horizontalTileHeightPx": 66,
-        "tileIconPx": 22,
-        "tileLabelPx": 11
+        "barWidthPx": 108,
+        "barHeightPx": 64,
+        "verticalTileHeightPx": 52,
+        "horizontalTileWidthPx": 88,
+        "horizontalTileHeightPx": 64,
+        "tileIconPx": 20,
+        "tileLabelPx": 12
       }
     },
     {
@@ -84,11 +84,11 @@
       "autoRows": 3,
       "dock": {
         "barWidthPx": 108,
-        "barHeightPx": 78,
-        "verticalTileHeightPx": 70,
-        "horizontalTileWidthPx": 88,
-        "horizontalTileHeightPx": 78,
-        "tileIconPx": 26,
+        "barHeightPx": 64,
+        "verticalTileHeightPx": 64,
+        "horizontalTileWidthPx": 96,
+        "horizontalTileHeightPx": 64,
+        "tileIconPx": 20,
         "tileLabelPx": 12
       }
     }

@@ -35,10 +35,6 @@ public sealed class DockNoticeWindow : TouchSurface
     public const int Instance = 2;
 
     private const double SurfaceWidth = 300;
-    private const double IconPx = 18;
-    private const double TextPx = 13;
-    private const double ButtonHeight = 32;
-    private const double Gap = 8;
 
     private readonly NoticeBarViewModel _notices;
     private readonly DockLabels _labels;
@@ -47,17 +43,17 @@ public sealed class DockNoticeWindow : TouchSurface
     private readonly Border _notice;
     private readonly SymbolIcon _icon = new()
     {
-        Size = IconPx,
+        Size = IconBox.Small,
         VerticalAlignment = VerticalAlignment.Center,
     };
-    private readonly TextBlock _text = new()
+    private readonly StyledText _text = new(string.Empty, TextStyleToken.BodySmall)
     {
-        TextWrapping = TextWrapping.Wrap,
+        MaxLines = 2,
         VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(Gap, 0, Gap, 0),
+        Margin = new Thickness(Space.S2, 0, Space.S2, 0),
     };
-    private readonly TouchButton _undo = NoticeButton(ButtonVariant.Primary);
-    private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Secondary);
+    private readonly TouchButton _undo = NoticeButton(ButtonVariant.Tertiary, "undo");
+    private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Secondary, null);
     private readonly LiveAnnouncer _announcer;
     private string _announced = string.Empty;
 
@@ -96,9 +92,6 @@ public sealed class DockNoticeWindow : TouchSurface
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
-        _text.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(TextPx));
-        _undo.SetResourceReference(FontSizeProperty, ThemeKeys.TextSize(TextPx));
-        _cancel.SetResourceReference(FontSizeProperty, ThemeKeys.TextSize(TextPx));
         _undo.Click += (_, _) => _notices.Undo();
         _cancel.Click += (_, _) => _notices.Cancel();
         var row = new DockPanel { LastChildFill = true };
@@ -113,17 +106,23 @@ public sealed class DockNoticeWindow : TouchSurface
         {
             Child = row,
             CornerRadius = new CornerRadius(Radii.Medium),
-            Padding = new Thickness(10, 4, 4, 4),
-            Margin = new Thickness(8),
-            MinHeight = Clicalo.Domain.Catalog.PanelSizes.Layout.PanelNoticeBarHeightPx,
+            Padding = new Thickness(Space.S2, 0, 0, 0),
+            Margin = new Thickness(Space.S2),
+            MinHeight = ControlHeight.Small,
         };
         _announcer = new LiveAnnouncer(_text);
 
-        _admin = new AdminNoticeView(panel.Admin) { Margin = new Thickness(8, 8, 8, 0) };
+        _admin = new AdminNoticeView(panel.Admin)
+        {
+            Margin = new Thickness(Space.S2, Space.S2, Space.S2, 0),
+        };
         var stack = new StackPanel();
         if (testMode is not null)
         {
-            _testMode = new TestModeIndicator(testMode) { Margin = new Thickness(8, 8, 8, 0) };
+            _testMode = new TestModeIndicator(testMode)
+            {
+                Margin = new Thickness(Space.S2, Space.S2, Space.S2, 0),
+            };
             _ = stack.Children.Add(_testMode);
         }
 
@@ -192,16 +191,15 @@ public sealed class DockNoticeWindow : TouchSurface
         base.OnClosed(e);
     }
 
-    private static TouchButton NoticeButton(ButtonVariant variant) =>
+    private static TouchButton NoticeButton(ButtonVariant variant, string? symbol) =>
         new()
         {
             Variant = variant,
-            Height = ButtonHeight,
-            Padding = new Thickness(10, 0, 10, 0),
+            Symbol = symbol,
             Focusable = false,
             IsTabStop = false,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 4, 0),
+            Margin = new Thickness(Space.S1, 0, 0, 0),
         };
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
@@ -215,17 +213,23 @@ public sealed class DockNoticeWindow : TouchSurface
         _notice.Visibility = SurfaceParts.Shown(tone != NoticeTone.Rest);
         _icon.Symbol = _notices.Icon;
         var warning = tone == NoticeTone.Warning;
-        _notice.SetResourceReference(
-            Border.BackgroundProperty,
-            ThemeBrushKey.For(warning ? ColorToken.WarnWash : ColorToken.Card)
-        );
+        // The notice lies on the surface itself, as the status bar of the panel does; a warning takes the wash of warn
+        // (D12: warn is attention), never a box of its own with a border.
+        if (warning)
+        {
+            _notice.SetResourceReference(
+                Border.BackgroundProperty,
+                ThemeBrushKey.For(ColorToken.WarnWash)
+            );
+        }
+        else
+        {
+            _notice.Background = System.Windows.Media.Brushes.Transparent;
+        }
+
         _icon.SetResourceReference(
             SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(warning ? ColorToken.Warn : ColorToken.Accent)
-        );
-        _text.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Text)
+            ThemeBrushKey.For(warning ? ColorToken.WarnText : ColorToken.Muted)
         );
         _undo.Content = _notices.UndoName;
         _undo.Visibility = SurfaceParts.Shown(_notices.CanUndo);

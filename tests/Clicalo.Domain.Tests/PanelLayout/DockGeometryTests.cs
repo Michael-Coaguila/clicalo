@@ -104,16 +104,17 @@ public sealed class DockGeometryTests
     }
 
     [Theory]
-    [InlineData(SizeId.S, 76, 58)]
-    [InlineData(SizeId.M, 88, 66)]
-    [InlineData(SizeId.L, 108, 78)]
+    [InlineData(SizeId.S, 108, 64)]
+    [InlineData(SizeId.M, 108, 64)]
+    [InlineData(SizeId.L, 108, 64)]
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-007")]
     public void The_bar_is_as_thick_as_its_size_says(SizeId size, int width, int inside)
     {
         var metrics = PanelSizes.Get(size);
 
-        // A top or bottom bar shows 58/66/78 of height, as its shortcuts are, inside its padding of 8.
+        // Direction C (D12): a side bar shows two targets of 44 side by side (92) inside its padding of 8, and a top or
+        // bottom bar a row of 64, as its shortcuts are, inside the same padding.
         var height = inside + (2 * DockGeometry.BarPaddingPx);
         metrics.DockHorizontalTileHeightPx.ShouldBe(inside);
 
@@ -132,12 +133,31 @@ public sealed class DockGeometryTests
         var metrics = PanelSizes.Get(SizeId.M);
 
         var vertical = DockGeometry.Bar(DockSide.Right, 5000, metrics, Monitor, gutter: false);
-        vertical.ShouldBe(new PhysicalRect(1920 - 88, 12, 88, 1040 - 24));
+        vertical.ShouldBe(new PhysicalRect(1920 - 108, 12, 108, 1040 - 24));
 
         var horizontal = DockGeometry.Bar(DockSide.Bottom, 600, metrics, Monitor, gutter: false);
-        horizontal.ShouldBe(new PhysicalRect(660, 1040 - 12 - 82, 600, 82));
+        horizontal.ShouldBe(new PhysicalRect(660, 1040 - 12 - 80, 600, 80));
         DockGeometry.Bar(DockSide.Top, 600, metrics, Monitor, gutter: false).Top.ShouldBe(12);
         DockGeometry.MaxBarLength(DockSide.Top, Monitor).ShouldBe(1920 - 40);
+    }
+
+    [Fact]
+    [Trait("Req", "PES-005")]
+    [Trait("Req", "CUA-011")]
+    public void A_horizontal_bar_grows_across_with_its_shortcuts_but_is_never_thinner_than_its_size()
+    {
+        var metrics = PanelSizes.Get(SizeId.M);
+
+        // At 150 % its shortcuts are 80 high: with its padding of 8 the bar is 96, still 12 from the edge.
+        DockGeometry
+            .Bar(DockSide.Bottom, 600, metrics, Monitor, gutter: false, thickness: 96)
+            .ShouldBe(new PhysicalRect(660, 1040 - 12 - 96, 600, 96));
+        DockGeometry
+            .Bar(DockSide.Top, 600, metrics, Monitor, gutter: false, thickness: 40)
+            .Height.ShouldBe(80);
+        DockGeometry
+            .Bar(DockSide.Right, 600, metrics, Monitor, gutter: false, thickness: 300)
+            .Width.ShouldBe(108);
     }
 
     [Fact]

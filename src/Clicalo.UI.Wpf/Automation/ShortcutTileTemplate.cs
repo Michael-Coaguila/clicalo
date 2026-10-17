@@ -127,6 +127,10 @@ public static class ShortcutTileTemplate
         body.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         body.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         body.SetValue(ShortcutTileBody.NameLinesProperty, Bind(ShortcutTile.MaxNameLinesProperty));
+        body.SetValue(
+            ShortcutTileBody.ReservesNameLinesProperty,
+            Bind(ShortcutTile.ReservesNameLinesProperty)
+        );
 
         var icon = new FrameworkElementFactory(typeof(SymbolIcon), IconPart);
         icon.SetValue(SymbolIcon.SymbolProperty, Bind(ShortcutTile.SymbolProperty));

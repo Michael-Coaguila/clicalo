@@ -135,8 +135,8 @@ Remove-Item Env:CLICALO_GALLERY
 ```
 
 Tarda unos tres minutos. Nada se muestra ni se captura de la pantalla: se renderiza la fuente de presentación oculta
-de cada vista. Los casos del panel se guardan también con el texto al 150 %, tal como los audita la prueba
-(`*.light-150.png` y `*.contrast-150.png`, fuera del índice), y usan los atajos de la maqueta C (nombres reales, línea
+de cada vista. Los estados que la auditoría recorre con el texto al 150 % se guardan también tal como los audita la
+prueba (`*.light-150.png` y `*.contrast-150.png`, fuera del índice), en todas las superficies. Los casos del panel usan los atajos de la maqueta C (nombres reales, línea
 de teclas, un Mantener y una macro) para que se vean los nombres largos y los tipos. Un estado roto se guarda igual, antes de comprobar sus reglas. La carpeta acumula: `gallery.tsv`
 lista los casos y una ejecución nueva sobrescribe las imágenes con el mismo nombre. Sin la variable no se escribe
 nada, así que la galería no forma parte de `cl check`.

@@ -469,7 +469,8 @@ public sealed class SurfaceSet : IDisposable
                     DockGeometry.IsVertical(side) ? height : width,
                     layout.Metrics,
                     monitor,
-                    layout.Dock.Gutter
+                    layout.Dock.Gutter,
+                    DockGeometry.IsVertical(side) ? 0 : height
                 );
                 Present(bar, barRect, shown);
                 bar.UpdateLayout();
