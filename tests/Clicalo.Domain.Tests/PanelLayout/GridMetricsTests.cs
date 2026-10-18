@@ -150,6 +150,47 @@ public sealed class GridMetricsTests
         GridMetrics.HeightOf(0, 80, 8).ShouldBe(0);
     }
 
+    /// <summary>Text scale, chosen columns, whether the words fit, expected columns (D17).</summary>
+    public static TheoryData<int, int, bool, int> ColumnsForWords =>
+        new()
+        {
+            { 150, 3, false, 2 },
+            { 120, 4, false, 2 },
+            { 150, 3, true, 3 },
+            { 100, 3, false, 3 },
+            { 150, 2, false, 2 },
+        };
+
+    [Theory]
+    [MemberData(nameof(ColumnsForWords))]
+    [Trait("Req", "CUA-011")]
+    [Trait("Req", "PAN-002")]
+    public void A_word_that_does_not_fit_at_a_larger_text_gives_the_grid_two_columns_and_the_panel_keeps_its_size(
+        int textScale,
+        int columns,
+        bool wordsFit,
+        int expected
+    )
+    {
+        var settings = Settings(PanelSize.Medium) with
+        {
+            TextScalePercent = textScale,
+            Columns = columns,
+        };
+
+        var shape = GridMetrics.Shape(settings, null, wordsFit);
+
+        shape.Columns.ShouldBe(expected);
+        shape.PerPage.ShouldBe(expected * 3);
+        GridMetrics.NarrowsForWords(settings).ShouldBe(textScale > 100 && columns > 2);
+
+        // D16: the panel keeps the width of the chosen columns and the height of its rows.
+        GridMetrics
+            .PanelWidth(settings)
+            .ShouldBe(GridMetrics.PanelWidth(settings with { TextScalePercent = 100 }));
+        shape.HeightPx.ShouldBe(GridMetrics.Shape(settings, null).HeightPx);
+    }
+
     private static PanelLayoutSettings Settings(PanelSize size) =>
         PanelLayoutSettings.Default with
         {

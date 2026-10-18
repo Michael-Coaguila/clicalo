@@ -54,6 +54,7 @@ public sealed class PanelViewModel : ObservableObject
     private PanelBodyContext _context = PanelBodyContext.Idle;
     private TouchSettings _touch;
     private double? _gridSpace;
+    private Func<PanelLayoutSettings, int, string, bool>? _wordsFit;
     private int _page;
     private PageContext? _pageContext;
     private StripWindow _stripWindow;
@@ -350,6 +351,18 @@ public sealed class PanelViewModel : ObservableObject
         Recompose();
     }
 
+    /// <summary>
+    /// How the surface tells whether every word of a name fits a tile of the grid in a number of columns, with the
+    /// layout given: it measures the text. With it, a larger text that would end a name in «…» gives the grid its fewest
+    /// columns instead (D17, <see cref="GridMetrics.Columns"/>); <see langword="null"/> keeps the chosen columns.
+    /// </summary>
+    /// <param name="wordsFit">The measure: layout, columns and name; or <see langword="null"/>.</param>
+    public void ApplyWordsFit(Func<PanelLayoutSettings, int, string, bool>? wordsFit)
+    {
+        _wordsFit = wordsFit;
+        Recompose();
+    }
+
     /// <summary>Applies the session: the presence of the panel.</summary>
     /// <param name="session">The session.</param>
     public void ApplySession(PanelSession session)
@@ -568,11 +581,11 @@ public sealed class PanelViewModel : ObservableObject
     /// <summary>Composes the body from the latest inputs; every decision is a call to the domain rules.</summary>
     private void Recompose()
     {
-        var shape = GridMetrics.Shape(_layout, _gridSpace);
+        var list = _context.SearchingWithText ? _results : _list;
+        var shape = GridMetrics.Shape(_layout, _gridSpace, WordsFit(list));
         var alert = Panic.IsVisible || _context.ElevatedApp is not null;
         _cramped = CrampedRule.Evaluate(_cramped, alert, _gridSpace, shape.TileHeightPx);
 
-        var list = _context.SearchingWithText ? _results : _list;
         ShowsNoResults = _context.SearchingWithText && _results.Count == 0;
         var count = list.Count;
 
@@ -628,6 +641,18 @@ public sealed class PanelViewModel : ObservableObject
         Sync(Tiles, list.GetRange(window.Start, shown));
         ShowsAddTile = shown < window.Count;
         ApplyParts(window, layers);
+    }
+
+    /// <summary>Whether every word of every name of <paramref name="list"/> fits a tile of the chosen columns (D17).</summary>
+    private bool WordsFit(List<TileViewModel> list)
+    {
+        if (_wordsFit is not { } fits || !GridMetrics.NarrowsForWords(_layout))
+        {
+            return true;
+        }
+
+        var columns = GridMetrics.Columns(_layout, wordsFit: true);
+        return list.TrueForAll(tile => fits(_layout, columns, tile.AccessibleName));
     }
 
     private void ApplyParts(PageWindow window, BodyLayers layers)

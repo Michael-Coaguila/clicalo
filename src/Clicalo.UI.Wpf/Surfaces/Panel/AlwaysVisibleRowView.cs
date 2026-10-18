@@ -1,12 +1,8 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Documents;
-using System.Windows.Media;
-using Clicalo.Domain.Catalog;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
@@ -207,38 +203,19 @@ public sealed class AlwaysVisibleRowView : StackPanel
             return true;
         }
 
-        var content = GridMetrics.PanelWidth(layout) - PanelSizes.Layout.PanelChromeWidthPx;
-        var tile = ((content + (2 * Space.S1)) / StripLayout.Columns) - (2 * Space.S1);
-        var room = tile - (2 * look.SideInset) - (2 * Stroke.Line);
-        var spec = TextStyles.Get(look.Name);
-        var size = TypeScale.Scale(spec.Size, layout.TextScalePercent);
-        var family =
-            TryFindResource(ThemeKeys.FontFamily(look.Name)) as FontFamily
-            ?? SystemFonts.MessageFontFamily;
-        var typeface = new Typeface(
-            family,
-            FontStyles.Normal,
-            FontWeight.FromOpenTypeWeight(spec.Weight),
-            FontStretches.Normal
-        );
-        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        var room = TileNameFit.Room(layout, StripLayout.Columns, look);
         foreach (var viewModel in _viewModel.Tiles)
         {
-            var name = new FormattedText(
+            var name = TileNameFit.Layout(
                 viewModel.AccessibleName,
-                CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight,
-                typeface,
-                size,
-                TextElement.GetForeground(this),
-                pixelsPerDip
-            )
-            {
-                MaxTextWidth = room,
-            };
+                look,
+                layout.TextScalePercent,
+                room,
+                this
+            );
             if (
                 name.MinWidth > room
-                || Math.Round(name.Height / (size * family.LineSpacing)) > look.NameLines
+                || TileNameFit.Lines(name, look, layout.TextScalePercent) > look.NameLines
             )
             {
                 return false;

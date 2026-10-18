@@ -159,6 +159,10 @@ public sealed class SurfacesAuditTests
             cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.LightLargeText);
         }
 
+        // D16 and D17: M in the Full view at the largest text, in both languages, and Quick settings in English.
+        cases.Add("idle", SizeSetting.Medium, false, "es", AuditLook.LightLargeText);
+        cases.Add("idle", SizeSetting.Medium, false, "en", AuditLook.ContrastLargeText);
+        cases.Add("quick-settings", SizeSetting.Medium, false, "en", AuditLook.Dark);
         return cases;
     }
 
@@ -265,6 +269,126 @@ public sealed class SurfacesAuditTests
             }
         });
     }
+
+    [Theory]
+    [InlineData(SizeSetting.Small, 292, 508)]
+    [InlineData(SizeSetting.Medium, 340, 612)]
+    [InlineData(SizeSetting.Large, 412, 660)]
+    [Trait("Req", "PAN-002")]
+    [Trait("Req", "PAN-009")]
+    [Trait("Req", "CUA-004")]
+    public void The_panel_has_the_size_of_its_design_with_one_page_or_many(
+        SizeSetting size,
+        int width,
+        int height
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(AuditLook.Dark);
+            var world = new PanelWorld("es", time);
+            // The rows of the design: Always visible, «Qué ver», the grid, the pager and the status row.
+            world.Panel.ApplyLayout(PanelLayoutSettings.Default with { Size = size });
+            var window = NewPanelWindow(world, lab, time, theme);
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                host.LayOut();
+                world.Panel.Pager.PageCount.ShouldBeGreaterThan(1);
+                var paged = new Size(host.Root.ActualWidth, host.Root.ActualHeight);
+
+                // An empty profile: one page, so the pager row is empty, but it keeps its place (D16).
+                PanelStates["empty-profile"](world);
+                host.LayOut();
+                var single = new Size(host.Root.ActualWidth, host.Root.ActualHeight);
+
+                // D16: M in the Full view with 3 rows is 340 × 612; S (2 rows) and L follow the same rows.
+                paged.ShouldBe(new Size(width, height));
+                single.ShouldBe(paged);
+
+                // The lines go inside: the thicker ones of high contrast do not make the panel grow.
+                theme.Preference = ThemeChoice.HighContrast;
+                host.LayOut();
+                new Size(host.Root.ActualWidth, host.Root.ActualHeight).ShouldBe(paged);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData("es")]
+    [InlineData("en")]
+    [Trait("Req", "CUA-011")]
+    [Trait("Req", "PAN-002")]
+    public void At_a_larger_text_a_word_that_does_not_fit_gives_the_grid_two_whole_columns(
+        string language
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(AuditLook.LightLargeText);
+            var world = new PanelWorld(language, time);
+            var layout = PanelLayoutSettings.Default with
+            {
+                Size = SizeSetting.Medium,
+                StickyRow = true,
+                TextScalePercent = TypeScale.MaxScalePercent,
+            };
+            world.Panel.ApplyLayout(layout);
+            var window = NewPanelWindow(world, lab, time, theme);
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                host.LayOut();
+
+                // D17: «Reemplazar» and «Ortografía» do not fit a third of the panel at 150 %, so the grid has two
+                // columns of wider tiles and the panel keeps its width.
+                world.Panel.Shape.Columns.ShouldBe(2);
+                world.Panel.Tiles.Count.ShouldBe(6);
+                host.Root.ActualWidth.ShouldBe(340);
+                window.TileControls.Take(6).ShouldAllBe(static tile => tile.ActualWidth > 140);
+
+                // At 100 % every word fits: the three columns chosen.
+                world.Panel.ApplyLayout(
+                    layout with
+                    {
+                        TextScalePercent = TypeScale.MinScalePercent,
+                    }
+                );
+                host.LayOut();
+                world.Panel.Shape.Columns.ShouldBe(3);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static PanelWindow NewPanelWindow(
+        PanelWorld world,
+        SurfaceLab lab,
+        FakeTimeProvider time,
+        ThemeService theme
+    ) =>
+        new(
+            world.Panel,
+            lab.Registry,
+            time,
+            theme,
+            NoDim,
+            world.Header,
+            world.Search,
+            world.Suggestion,
+            world.Layers
+        );
 
     [Theory]
     [Trait("Req", "REG-02")]

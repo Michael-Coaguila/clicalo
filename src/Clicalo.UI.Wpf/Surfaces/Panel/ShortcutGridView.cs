@@ -2,6 +2,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using Clicalo.Domain.Catalog;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -14,7 +16,8 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// (D12: 84 × 72, 100 × 80 or 124 × 96, <see cref="Space.S2"/> apart, the key line in the Full view). Its height is
 /// always the height of its rows, so a short last page does not move the pager nor the status row. With the layers of
 /// the panel each tile carries its test mode mark and its × of edit mode, and the dashed «+ [add]» tile follows the last
-/// one (CUA-012). It only projects the view models.
+/// one (CUA-012). It measures the names for the view model: with a larger text, a word that does not fit a tile of the
+/// chosen columns gives the grid two wider columns, so the name is read whole (D17). It only projects the view models.
 /// </summary>
 public sealed class ShortcutGridView : Border
 {
@@ -22,6 +25,7 @@ public sealed class ShortcutGridView : Border
     private readonly ReadingOrderGrid _grid = new() { VerticalAlignment = VerticalAlignment.Top };
     private readonly List<(PanelTileControl Tile, PropertyChangedEventHandler Handler)> _tiles = [];
     private readonly List<TileCell> _cells = [];
+    private readonly Dictionary<(PanelSize, int, int, int, string), bool> _wordsFit = [];
     private PanelLayerModels? _layers;
     private AddTileView? _add;
 
@@ -34,6 +38,7 @@ public sealed class ShortcutGridView : Border
         Child = _grid;
         viewModel.Tiles.CollectionChanged += OnTilesChanged;
         viewModel.PropertyChanged += OnPanelChanged;
+        viewModel.ApplyWordsFit(WordsFit);
         Rebuild();
     }
 
@@ -74,7 +79,32 @@ public sealed class ShortcutGridView : Border
     {
         _viewModel.Tiles.CollectionChanged -= OnTilesChanged;
         _viewModel.PropertyChanged -= OnPanelChanged;
+        _viewModel.ApplyWordsFit(null);
         DetachTiles();
+    }
+
+    /// <summary>
+    /// Whether every word of <paramref name="name"/> fits a tile of the grid of <paramref name="layout"/> in
+    /// <paramref name="columns"/> (D17); measured once per name and layout.
+    /// </summary>
+    private bool WordsFit(PanelLayoutSettings layout, int columns, string name)
+    {
+        var size = layout.Metrics.Size;
+        var key = (size, layout.TextScalePercent, columns, GridMetrics.PanelWidth(layout), name);
+        if (!_wordsFit.TryGetValue(key, out var fits))
+        {
+            var look = TileLook.Grid(size);
+            fits = TileNameFit.WordsFit(
+                name,
+                look,
+                layout.TextScalePercent,
+                TileNameFit.Room(layout, columns, look),
+                this
+            );
+            _wordsFit[key] = fits;
+        }
+
+        return fits;
     }
 
     private void OnTilesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Rebuild();

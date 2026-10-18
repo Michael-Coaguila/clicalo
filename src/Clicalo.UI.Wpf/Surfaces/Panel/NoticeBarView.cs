@@ -64,9 +64,7 @@ public sealed class NoticeBarView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        BorderThickness = new Thickness(0, Stroke.Line, 0, 0);
-        Padding = new Thickness(Space.S3, 0, Space.S1, Space.S3);
-        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        Padding = new Thickness(0, 0, 0, Space.S3);
         _icon.Margin = new Thickness(0, 0, Space.S2, 0);
         _text.VerticalAlignment = VerticalAlignment.Center;
         _undo.Click += (_, _) => _viewModel.Undo();
@@ -83,7 +81,22 @@ public sealed class NoticeBarView : Border
         row.Children.Add(_undo);
         row.Children.Add(_cancel);
         row.Children.Add(_text);
-        Child = row;
+        row.Margin = new Thickness(Space.S3, 0, Space.S1, 0);
+
+        // The line above is drawn over the row, inside, without taking room (D12: lines go inside), so the panel keeps
+        // the height of its design (D16: M is 340 × 612) in every theme.
+        var line = new Border
+        {
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = true,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        line.SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        line.BorderThickness = new Thickness(0, Stroke.Line, 0, 0);
+        var content = new Grid();
+        content.Children.Add(row);
+        content.Children.Add(line);
+        Child = content;
         _announcer = new LiveAnnouncer(_text);
 
         viewModel.PropertyChanged += OnChanged;
