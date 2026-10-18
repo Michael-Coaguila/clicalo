@@ -644,7 +644,7 @@ public sealed class DockBarWindow : TouchSurface
         var vm = _viewModel;
         var labels = vm.Labels;
         var state = vm.State;
-        Title = labels.OpenBar;
+        Title = labels.BarName;
         AutomationProperties.SetName(_close, labels.HideBar);
         AutomationProperties.SetName(_expand, labels.Expand);
 

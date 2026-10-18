@@ -12,6 +12,8 @@ public sealed class DockLabels : ObservableObject
 {
     private readonly ILocalizationContext _localization;
     private string _openBar = string.Empty;
+    private string _barName = string.Empty;
+    private string _coachName = string.Empty;
     private string _hideBar = string.Empty;
     private string _expand = string.Empty;
     private string _frequents = string.Empty;
@@ -58,6 +60,20 @@ public sealed class DockLabels : ObservableObject
     {
         get => _openBar;
         private set => SetProperty(ref _openBar, value);
+    }
+
+    /// <summary>[dockBarName]: the window of the open bar for UI Automation (REG-06), not the name of the handle.</summary>
+    public string BarName
+    {
+        get => _barName;
+        private set => SetProperty(ref _barName, value);
+    }
+
+    /// <summary>[dockCoachName]: the window of the first-time guide (PES-015), the same in every step.</summary>
+    public string CoachName
+    {
+        get => _coachName;
+        private set => SetProperty(ref _coachName, value);
     }
 
     /// <summary>[hideBar]: the chevron of the bar.</summary>
@@ -170,6 +186,8 @@ public sealed class DockLabels : ObservableObject
     {
         var l = _localization.Current;
         OpenBar = l.Format(L.OpenBar);
+        BarName = l.Format(L.DockBarName);
+        CoachName = l.Format(L.DockCoachName);
         HideBar = l.Format(L.HideBar);
         Expand = l.Format(L.Expand);
         Frequents = l.Format(L.Freq);

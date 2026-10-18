@@ -1004,6 +1004,76 @@ public sealed class SurfacesAuditTests
         });
     }
 
+    [Theory]
+    [InlineData("es", "Abrir barra", "Barra de la pestaña", "Guía de la pestaña")]
+    [InlineData("en", "Open bar", "Edge tab bar", "Edge tab guide")]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "PES-001")]
+    [Trait("Req", "PES-015")]
+    public void The_handle_the_open_bar_and_the_guide_of_the_Tab_view_have_names_of_their_own(
+        string language,
+        string handleName,
+        string barName,
+        string coachName
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var dock = Dock(
+                time,
+                DockSide.Right,
+                SizeId.M,
+                DockFlyout.None,
+                coachStep: 1,
+                language
+            );
+            var handle = new DockHandleWindow(
+                DockSide.Right,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch
+            );
+            var bar = new DockBarWindow(
+                DockSide.Right,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            var coach = new DockCoachWindow(
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch
+            );
+            try
+            {
+                // The title of a window is its name for UI Automation once it is on screen.
+                handle.Title.ShouldBe(handleName);
+                bar.Title.ShouldBe(barName, "the open bar is not named after its handle");
+                coach.Title.ShouldBe(coachName);
+
+                // The guide keeps its name in every step; the title of the step is its text.
+                dock.Apply(State(DockSide.Right, SizeId.M, DockFlyout.None, coachStep: 2));
+                coach.Title.ShouldBe(coachName, "the name does not follow the step");
+            }
+            finally
+            {
+                handle.Close();
+                bar.Close();
+                coach.Close();
+            }
+        });
+    }
+
     [Fact]
     [Trait("Req", "ACC-001")]
     [Trait("Req", "PES-013")]

@@ -166,7 +166,7 @@ public sealed class DockCoachWindow : TouchSurface
     private void Refresh()
     {
         _step.Text = _viewModel.CoachStepLabel;
-        Title = _viewModel.CoachTitle;
+        Title = _viewModel.Labels.CoachName;
         _next.Content = _viewModel.CoachNextLabel;
         AutomationProperties.SetName(_next, _viewModel.CoachNextLabel);
         _skip.Content = _viewModel.Labels.CoachSkip;
