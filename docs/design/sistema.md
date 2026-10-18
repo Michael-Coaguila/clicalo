@@ -316,6 +316,7 @@ ventana conserva el WindowPattern (maximizar, restaurar, minimizar) y nunca se a
 | Donde la maqueta lo indica (descripciones, riel, nombre de ficha en S al 150 %) | Dos líneas con «…» | `MaxLines = 2`, `ShortcutTile.MaxNameLines = 2` |
 | Párrafos (Acerca de, ayudas largas) | Sin límite, en una zona que se desplaza | `MaxLines = 0` dentro de `ThemedScrollViewer` |
 | Identificadores (WINWORD.EXE, rutas, teclas) | Nunca se parten | Una línea con «…»; en `Keys` si son teclas |
+| Palabra de un nombre de ficha del panel que no cabe con texto grande | La rejilla pasa a 2 columnas y el nombre se ve entero (D17) | `GridMetrics.Columns`; la vista mide con `TileNameFit` |
 
 El nombre completo siempre llega a UI Automation, aunque se vea con «…». La auditoría falla si un texto sin «…» se
 dibuja cortado.
