@@ -25,7 +25,8 @@ public sealed class StringsParityTests
 
         handoff.Count.ShouldBe(669);
         // Decision D1 of the user (2026-10-03, ADR-0020): no import from Macro Quick Access, so no migration card.
-        retired.Order(StringComparer.Ordinal).ShouldBe(["migD", "migT"]);
+        // Decision D18 (2026-10-17): the theme that follows Windows is [themeAuto] everywhere, so «Auto» goes.
+        retired.Order(StringComparer.Ordinal).ShouldBe(["migD", "migT", "themeAutoS"]);
         handoff.Where(k => !retired.Contains(k) && !imported.Contains(k)).ShouldBeEmpty();
         retired.Where(imported.Contains).ShouldBeEmpty();
     }
@@ -114,6 +115,8 @@ public sealed class StringsParityTests
                 "dataUnreadable",
                 "delA",
                 "docRecovered",
+                "dockBarName",
+                "dockCoachName",
                 "dockNotices",
                 "dockPageOf",
                 "dockScrollDown",

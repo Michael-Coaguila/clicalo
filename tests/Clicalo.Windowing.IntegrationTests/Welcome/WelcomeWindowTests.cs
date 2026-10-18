@@ -157,7 +157,7 @@ public sealed class WelcomeWindowTests
                 screen.Sizes.Select(s => s.Label).ShouldBe(["Pequeño", "Mediano", "Grande"]);
                 screen
                     .Themes.Select(t => t.Label)
-                    .ShouldBe(["Auto", "Oscuro", "Claro", "Alto contraste"]);
+                    .ShouldBe(["Como Windows", "Oscuro", "Claro", "Alto contraste"]);
                 screen.NextText.ShouldBe("Empezar");
             });
         }

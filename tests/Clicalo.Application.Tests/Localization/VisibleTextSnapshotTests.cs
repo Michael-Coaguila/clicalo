@@ -61,7 +61,11 @@ public sealed partial class VisibleTextSnapshotTests
         }
 
         handoff.Count.ShouldBe(669 - I18nRepository.Retired().Count);
-        I18nRepository.Retired().Order(StringComparer.Ordinal).ShouldBe(["migD", "migT"]);
+        // D1 (2026-10-03) retired the migration card; D18 (2026-10-17) the short «Auto» of the theme.
+        I18nRepository
+            .Retired()
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(["migD", "migT", "themeAutoS"]);
         // D12 (direction C, 2026-10-16): Fixed is no longer red nor Auto blue, so their texts name the states.
         revised.Order(StringComparer.Ordinal).ShouldBe(["autoA", "followAppD", "lockA"]);
         mismatches.ShouldBeEmpty();

@@ -235,7 +235,7 @@ public sealed class BaseControlTests
             peer.GetPattern(PatternInterface.Selection).ShouldNotBeNull();
             items
                 .Select(item => item.GetName())
-                .ShouldBe(["Auto", "Oscuro", "Claro", "Alto contraste"]);
+                .ShouldBe(["Como Windows", "Oscuro", "Claro", "Alto contraste"]);
             items.ShouldAllBe(item =>
                 item.GetAutomationControlType() == AutomationControlType.ListItem
             );
@@ -380,7 +380,7 @@ public sealed class BaseControlTests
     private static SegmentedControl Segmented()
     {
         var segmented = new SegmentedControl { Columns = 2 };
-        foreach (var label in new[] { "Auto", "Oscuro", "Claro", "Alto contraste" })
+        foreach (var label in new[] { "Como Windows", "Oscuro", "Claro", "Alto contraste" })
         {
             segmented.Items.Add(new SegmentedItem { Content = label });
         }

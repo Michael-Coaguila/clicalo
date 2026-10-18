@@ -369,7 +369,7 @@ public sealed class WelcomeViewModel : ObservableObject
 
     private ValueList<WelcomeOption> Themes(ThemeChoice current) =>
         [
-            Theme(ThemeChoice.Auto, L.ThemeAutoS, current),
+            Theme(ThemeChoice.Auto, L.ThemeAuto, current),
             Theme(ThemeChoice.Dark, L.Dark, current),
             Theme(ThemeChoice.Light, L.Light, current),
             Theme(ThemeChoice.HighContrast, L.Hc, current),

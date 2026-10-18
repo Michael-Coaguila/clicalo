@@ -63,7 +63,7 @@ public sealed class BaseControlRenderTests
     {
         var section = new StackPanel();
         var segmented = new SegmentedControl { Columns = 2, SelectedIndex = 1 };
-        foreach (var label in new[] { "Auto", "Oscuro", "Claro", "Alto contraste" })
+        foreach (var label in new[] { "Como Windows", "Oscuro", "Claro", "Alto contraste" })
         {
             segmented.Items.Add(new SegmentedItem { Content = label });
         }

@@ -1581,24 +1581,34 @@
       "text": { "es": "Buscar programa…", "en": "Search program…" }
     },
     "winMaximize": {
-      "notes": "Nombre accesible del botón de maximizar de la barra de título del centro de control (D13: minimizar, maximizar con Snap y cerrar). Minimizar usa [min] y cerrar [close]. Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Nombre accesible del botón de maximizar de la barra de título del centro de control (D13: minimizar, maximizar con Snap y cerrar). Minimizar usa [min] y cerrar [close]. Texto nuevo del rediseño C, ratificado por el usuario el 2026-10-17 (D15).",
       "after": "close",
       "text": { "es": "Maximizar", "en": "Maximize" }
     },
     "winRestore": {
-      "notes": "Nombre accesible del mismo botón con la ventana maximizada: la devuelve a su tamaño (D13). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Nombre accesible del mismo botón con la ventana maximizada: la devuelve a su tamaño (D13). Texto nuevo del rediseño C, ratificado por el usuario el 2026-10-17 (D15).",
       "after": "winMaximize",
       "text": { "es": "Restaurar tamaño", "en": "Restore down" }
     },
     "iconAll": {
-      "notes": "Primera categoría del selector de iconos: toda la colección (D14). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Primera categoría del selector de iconos: toda la colección (D14). Texto nuevo del rediseño C, ratificado por el usuario el 2026-10-17 (D15).",
       "after": "iconSug",
       "text": { "es": "Todos", "en": "All" }
     },
     "langBarNote": {
-      "notes": "Nota bajo «Idioma · Language» de General: el mismo selector ES/EN está siempre en la barra de título del centro de control, así que la tarjeta de General se reduce (rediseño C, D12; la crítica lo veía duplicado). Texto nuevo del rediseño C, pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Nota bajo «Idioma · Language» de General: el mismo selector ES/EN está siempre en la barra de título del centro de control, así que la tarjeta de General se reduce (rediseño C, D12; la crítica lo veía duplicado). Texto nuevo del rediseño C, ratificado por el usuario el 2026-10-17 (D15).",
       "after": "langBoth",
       "text": { "es": "También está siempre arriba, en la barra de la ventana.", "en": "It is also always at the top, in the window bar." }
+    },
+    "dockBarName": {
+      "notes": "Nombre de la ventana de la barra abierta de la Pestaña para UI Automation (REG-06, PES-001): antes tomaba [openBar], el nombre del asa, y el lector de pantalla oía «Abrir barra» en la barra ya abierta. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-37).",
+      "after": "hideBar",
+      "text": { "es": "Barra de la pestaña", "en": "Edge tab bar" }
+    },
+    "dockCoachName": {
+      "notes": "Nombre de la ventana de la guía de primera vez de la Pestaña para UI Automation (REG-06, PES-015): antes tomaba el título del paso, que cambia en cada paso; el título sigue en la ventana como texto. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-37).",
+      "after": "dockBarName",
+      "text": { "es": "Guía de la pestaña", "en": "Edge tab guide" }
     }
   },
   "retired": {
@@ -1608,26 +1618,29 @@
     },
     "migD": {
       "notes": "Detalle de la tarjeta de migración (COP-001, retirado). Decisión del usuario del 2026-10-03 (D1, ADR-0020)."
+    },
+    "themeAutoS": {
+      "notes": "«Auto», el nombre corto de la opción de tema que sigue a Windows en Ajustes rápidos y la bienvenida. Decisión del usuario del 2026-10-17 (D18): la opción se llama [themeAuto] «Como Windows»/«Like Windows» en todas las pantallas (Ajustes rápidos del panel y de la Pestaña, General y la bienvenida), con una sola clave."
     }
   },
   "revised": {
     "notes": "Claves del paquete cuyo texto visible cambió por una decisión del usuario: se importan con el texto de «text» y cada una lleva su motivo. La prueba del texto visible las salta y comprueba la lista.",
     "followAppD": {
-      "notes": "Descripción del interruptor «Cambiar con la app activa» (PER-006, CAB-003). Rediseño C (D12, 2026-10-16): el botón Auto/Fijo ya no es azul ni rojo, porque el rojo solo significa peligro y Fijo se dibuja como «elegido»; el texto nombra los estados en vez de los colores. Pendiente de ratificar en §6.1 del catálogo (R-33).",
+      "notes": "Descripción del interruptor «Cambiar con la app activa» (PER-006, CAB-003). Rediseño C (D12, 2026-10-16): el botón Auto/Fijo ya no es azul ni rojo, porque el rojo solo significa peligro y Fijo se dibuja como «elegido»; el texto nombra los estados en vez de los colores. Ratificado por el usuario el 2026-10-17 (D15, R-33).",
       "text": {
         "es": "Es el botón 🔄 / 🔒 del panel: Auto sigue la app activa y Fijo lo deja en el perfil elegido. Frecuentes nunca cambia.",
         "en": "Same as the panel’s 🔄 / 🔒 button: Auto follows the active app, Fixed keeps the chosen profile. Frequent never switches."
       }
     },
     "autoA": {
-      "notes": "Nombre accesible del botón Auto/Fijo en Auto (CAB-003). Rediseño C (D12): se quita «(azul)» porque el color ya no dice el estado. Pendiente de ratificar en §6.1 del catálogo (R-33).",
+      "notes": "Nombre accesible del botón Auto/Fijo en Auto (CAB-003). Rediseño C (D12): se quita «(azul)» porque el color ya no dice el estado. Ratificado por el usuario el 2026-10-17 (D15, R-33).",
       "text": {
         "es": "Auto: cambia con la app activa. Toca para fijar el perfil actual.",
         "en": "Auto: follows the active app. Tap to fix the current profile."
       }
     },
     "lockA": {
-      "notes": "Nombre accesible del botón Auto/Fijo en Fijo (CAB-003). Rediseño C (D12): se quita «(rojo)», porque Fijo ya no es rojo (el rojo solo significa peligro). Pendiente de ratificar en §6.1 del catálogo (R-33).",
+      "notes": "Nombre accesible del botón Auto/Fijo en Fijo (CAB-003). Rediseño C (D12): se quita «(rojo)», porque Fijo ya no es rojo (el rojo solo significa peligro). Ratificado por el usuario el 2026-10-17 (D15, R-33).",
       "text": {
         "es": "Fijo: el perfil no cambia al cambiar de app. Toca para volver a Auto.",
         "en": "Fixed: profile won’t switch with the app. Tap to go back to Auto."

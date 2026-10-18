@@ -12,6 +12,20 @@ public sealed class QuickSettingsViewModelTests
 {
     private readonly InteractionsWorld _world = new();
 
+    [Theory]
+    [InlineData("es", "Como Windows")]
+    [InlineData("en", "Like Windows")]
+    [Trait("Req", "AJR-004")]
+    [Trait("Req", "TEM-001")]
+    public void The_theme_that_follows_Windows_has_the_name_it_has_in_General_and_the_welcome(
+        string language,
+        string name
+    ) =>
+        // D18: one name, [themeAuto], on every screen; [themeAutoS] «Auto» is retired.
+        new InteractionsWorld(language)
+            .QuickSettings.Themes[0]
+            .Label.ShouldBe(name);
+
     [Fact]
     [Trait("Req", "AJR-001")]
     [Trait("Req", "IDI-001")]
@@ -36,7 +50,7 @@ public sealed class QuickSettingsViewModelTests
             .ShouldBe(["Izquierda", "Arriba", "Abajo", "Derecha"]);
         sheet
             .Themes.Select(static o => o.Label)
-            .ShouldBe(["Auto", "Oscuro", "Claro", "Alto contraste"]);
+            .ShouldBe(["Como Windows", "Oscuro", "Claro", "Alto contraste"]);
         sheet
             .Switches.Select(static s => s.Label)
             .ShouldBe([
