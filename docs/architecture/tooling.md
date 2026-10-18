@@ -9,8 +9,12 @@ que actualiza esta página. El marco está en [§5](blueprint.md#5-estructura-de
 
 ## Kit de desarrollo
 
-- **SDK de .NET 10.0.401**, fijado en `global.json` con `rollForward: latestPatch` y sin versiones
+- **SDK de .NET 10.0.402**, fijado en `global.json` con la versión exacta (`rollForward: disable`) y sin versiones
   preliminares. El mismo archivo selecciona Microsoft Testing Platform como ejecutor de `dotnet test`.
+  La versión exacta evita que una actualización mensual del SDK rompa la CI: `setup-dotnet` instala la más nueva
+  si se permite avanzar, y sus paquetes implícitos (`ILCompiler`, `ILLink.Tasks`) dejan de coincidir con los
+  `packages.lock.json`. Para actualizar, cambia `global.json` y regenera los lock files
+  (`dotnet restore Clicalo.slnx --force-evaluate`) en el mismo commit.
 - **C# 14.** Los proyectos puros usan `$(ClicaloPortableTfm)` (`net10.0`); los de Windows,
   `$(ClicaloWindowsTfm)` (`net10.0-windows10.0.19041.0`), por las proyecciones WinRT.
 - La salida va a `artifacts/` (`UseArtifactsOutput`), nunca junto al código.
