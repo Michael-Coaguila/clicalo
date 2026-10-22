@@ -8,7 +8,7 @@ using Microsoft.Extensions.Time.Testing;
 namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
-/// The main process's side of the guardian (blueprint §3.1, ADR-0023): Sentinel starts with the protocol 3 contract and
+/// The main process's side of the guardian (blueprint §3.1, ADR-0023): Sentinel starts with the protocol 4 contract and
 /// one inherited handle, is checked every <c>Timings.Guardian.WatchInterval</c>, is started again after
 /// <c>Timings.Guardian.RestartBackoff</c> when it died, and too many deaths stop the restarts. No guardian is started:
 /// the launcher is a fake and the clock is a fake.
@@ -79,7 +79,40 @@ public sealed class SentinelSupervisorTests
         supervisor.Launches.ShouldBe(0);
     }
 
-    private SentinelSupervisor Create(bool fail = false) =>
+    [Fact]
+    [Trait("Req", "SIS-004")]
+    [Trait("Req", "REG-08")]
+    public void An_isolated_copy_gives_Sentinel_its_data_folder()
+    {
+        const string Folder = @"C:\Users\Ana\Mis datos\Clícalo";
+        using var supervisor = Create(dataFolder: Folder);
+
+        supervisor.Start();
+
+        var info = supervisor.LastStartInfo.ShouldNotBeNull();
+        info.DataFolder.ShouldBe(Folder);
+        info.ToArguments()[^1].ShouldBe("--data=" + Folder);
+    }
+
+    [Fact]
+    public void A_normal_start_gives_Sentinel_no_data_folder()
+    {
+        using var supervisor = Create();
+
+        supervisor.Start();
+
+        var info = supervisor.LastStartInfo.ShouldNotBeNull();
+        info.DataFolder.ShouldBeNull();
+        info.ToArguments().Length.ShouldBe(4);
+    }
+
+    [Theory]
+    [InlineData(@"datos\de prueba")]
+    [InlineData("C:\\a\"b")]
+    public void A_data_folder_that_cannot_travel_is_a_defect(string folder) =>
+        Should.Throw<ArgumentException>(() => Create(dataFolder: folder));
+
+    private SentinelSupervisor Create(bool fail = false, string? dataFolder = null) =>
         new(
             _ =>
             {
@@ -92,6 +125,7 @@ public sealed class SentinelSupervisorTests
                 _children.Add(child);
                 return child;
             },
+            dataFolder,
             _time,
             NullLogger<SentinelSupervisor>.Instance
         );

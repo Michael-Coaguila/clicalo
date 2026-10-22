@@ -53,6 +53,7 @@ internal static class ChaosMain
         var injector = new InputInjector(sender, Platform.Core.Injection.SystemKeyState.Instance);
         var supervisor = new SentinelSupervisor(
             sentinel,
+            dataFolder: null,
             TimeProvider.System,
             NullLogger<SentinelSupervisor>.Instance
         );

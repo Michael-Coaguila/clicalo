@@ -32,6 +32,7 @@ public sealed class SentinelProcessTests
     [Theory]
     [InlineData("--protocol=2")]
     [InlineData("--protocol=3")]
+    [InlineData("--protocol=4")]
     public void Sentinel_refuses_arguments_that_do_not_follow_the_contract(string argument)
     {
         using var sentinel = GuardianProcess.Start(SentinelPath(), [argument], []);

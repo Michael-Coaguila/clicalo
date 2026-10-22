@@ -7,8 +7,8 @@ namespace Clicalo.App;
 /// <summary>
 /// The command line of <c>Clicalo.exe</c> in M2. A normal start has no option; Sentinel adds
 /// <c>--after-crash=&lt;Unix ms&gt;</c> (and <c>--safe-mode</c> after a crash loop) when it relaunches a process that
-/// died (ADR-0018). The other options are for development and measurement, and a second start passes its arguments to
-/// the running instance only as «show» (SIS-003).
+/// died (ADR-0018), and keeps <c>--data</c> (ADR-0032). The other options are for development and measurement, and a
+/// second start passes its arguments to the running instance only as «show» (SIS-003).
 /// </summary>
 /// <param name="DataDirectory">
 /// Where the document, the usage and the backups live: <c>%AppData%\Clicalo</c>, or the folder of
@@ -25,8 +25,8 @@ namespace Clicalo.App;
 /// </param>
 public sealed record AppOptions(string DataDirectory, bool SendInput, bool GuardianAfterFirstFrame)
 {
-    /// <summary>The option that isolates the data folder.</summary>
-    public const string DataOption = "--data";
+    /// <summary>The option that isolates the data folder; Sentinel's relaunch passes it on (ADR-0032).</summary>
+    public const string DataOption = CrashJournal.DataArgument;
 
     /// <summary>The option that disables every injection.</summary>
     public const string NoInputOption = "--no-input";

@@ -6,9 +6,10 @@ using System.Text.Json;
 namespace Clicalo.Platform.Core.Guardian;
 
 /// <summary>
-/// The crash journal (<c>%LocalAppData%\Clicalo\crash-journal.json</c>, blueprint §6.5): the times of the recent
-/// crashes of the main process, which <see cref="RelaunchPolicy"/> counts (<c>Timings.App.CrashLoop</c>). Pure format
-/// code, shared by Sentinel (which reads it) and the main process (which appends the crash it was relaunched after).
+/// The crash journal (<c>%LocalAppData%\Clicalo\crash-journal.json</c>, or inside the folder of <c>--data</c>, blueprint
+/// §6.5): the times of the recent crashes of the main process, which <see cref="RelaunchPolicy"/> counts
+/// (<c>Timings.App.CrashLoop</c>). Pure format code, shared by Sentinel (which reads it) and the main process (which
+/// appends the crash it was relaunched after).
 /// AOT-safe: <see cref="Utf8JsonReader"/> and <see cref="Utf8JsonWriter"/> only.
 /// </summary>
 /// <remarks>
@@ -29,8 +30,24 @@ public static class CrashJournal
     /// <summary>The relaunch argument that asks for safe mode (the crash loop was reached).</summary>
     public const string SafeModeArgument = "--safe-mode";
 
+    /// <summary>
+    /// The option of <c>Clicalo.exe</c> followed by its data folder (ADR-0030). Sentinel passes it on, so an isolated
+    /// copy comes back to its own folder after a crash (ADR-0032).
+    /// </summary>
+    public const string DataArgument = "--data";
+
     /// <summary>The journal kept small: older crashes than this many never matter.</summary>
     public const int MaxEntries = 32;
+
+    /// <summary>
+    /// Whether <paramref name="folder"/> can follow <see cref="DataArgument"/> on a command line Clícalo writes: a full
+    /// path that <see cref="CommandLineArguments"/> can pass.
+    /// </summary>
+    /// <param name="folder">The folder.</param>
+    public static bool IsDataFolder(string? folder) =>
+        !string.IsNullOrEmpty(folder)
+        && Path.IsPathFullyQualified(folder)
+        && CommandLineArguments.CanPass(folder);
 
     /// <summary>The crash times of a journal; empty when it is missing or unreadable.</summary>
     /// <param name="json">The file's bytes.</param>
@@ -120,11 +137,29 @@ public static class CrashJournal
     /// <summary>The arguments Sentinel relaunches the main process with.</summary>
     /// <param name="crash">When the main process died.</param>
     /// <param name="safeMode">Whether the crash loop was reached.</param>
-    public static ImmutableArray<string> RelaunchArguments(DateTimeOffset crash, bool safeMode)
+    /// <param name="dataFolder">The data folder of a main process started with <c>--data</c>, or null.</param>
+    public static ImmutableArray<string> RelaunchArguments(
+        DateTimeOffset crash,
+        bool safeMode,
+        string? dataFolder
+    )
     {
-        var after =
+        var arguments = ImmutableArray.CreateBuilder<string>(4);
+        arguments.Add(
             AfterCrashArgument
-            + crash.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
-        return safeMode ? [after, SafeModeArgument] : [after];
+                + crash.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture)
+        );
+        if (safeMode)
+        {
+            arguments.Add(SafeModeArgument);
+        }
+
+        if (dataFolder is not null)
+        {
+            arguments.Add(DataArgument);
+            arguments.Add(dataFolder);
+        }
+
+        return arguments.ToImmutable();
     }
 }

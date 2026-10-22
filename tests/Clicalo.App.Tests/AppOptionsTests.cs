@@ -1,10 +1,15 @@
 using System.IO;
+using Clicalo.App.Composition;
+using Clicalo.App.SingleInstance;
+using Clicalo.Platform.Core.Guardian;
+using Clicalo.TestKit;
 
 namespace Clicalo.App.Tests;
 
 /// <summary>
 /// The command line of <c>Clicalo.exe</c>: a normal start has no option, Sentinel's relaunch adds the crash and the
-/// safe mode (ADR-0018), and development and measurement options never change what a normal start does.
+/// safe mode (ADR-0018) and keeps the folder of <c>--data</c> (ADR-0032), and development and measurement options
+/// never change what a normal start does.
 /// </summary>
 public sealed class AppOptionsTests
 {
@@ -41,13 +46,50 @@ public sealed class AppOptionsTests
         var crash = new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero);
 
         var options = AppOptions.Parse(
-            [.. Platform.Core.Guardian.CrashJournal.RelaunchArguments(crash, safeMode: true)],
+            [.. CrashJournal.RelaunchArguments(crash, safeMode: true, dataFolder: null)],
             Default
         );
 
         options.AfterCrash.ShouldBe(crash);
         options.SafeMode.ShouldBeTrue();
         options.SendInput.ShouldBeTrue("a relaunch after a crash still sends keys");
+        options.DataDirectory.ShouldBe(Default);
+        options.IsolatedData.ShouldBeFalse();
+    }
+
+    [Theory]
+    [Trait("Req", "SIS-004")]
+    [Trait("Req", "SIS-003")]
+    [Trait("Req", "REG-08")]
+    [InlineData(@"C:\Users\Ana\Mis datos\Clícalo")]
+    [InlineData(@"C:\Users\Ana\Mis datos\Clícalo\")]
+    [InlineData(@"\\servidor\compartida\datos de José")]
+    [InlineData(@"D:\año 2026\")]
+    public void An_isolated_copy_relaunched_by_Sentinel_comes_back_to_its_folder(string folder)
+    {
+        var crash = new DateTimeOffset(2026, 10, 22, 10, 0, 0, TimeSpan.Zero);
+        var original = AppOptions.Parse(["--data", folder], Default);
+
+        // What Sentinel writes (GuardianProcess.Start) and Windows splits for the relaunched Clicalo.exe.
+        var relaunched = AppOptions.Parse(
+            Relaunched(
+                CommandLineArguments.Join(
+                    CrashJournal.RelaunchArguments(crash, safeMode: true, original.DataDirectory)
+                )
+            ),
+            Default
+        );
+
+        relaunched.DataDirectory.ShouldBe(original.DataDirectory);
+        relaunched.IsolatedData.ShouldBeTrue();
+        relaunched.AfterCrash.ShouldBe(crash);
+        relaunched.SafeMode.ShouldBeTrue();
+        InstanceIdentity
+            .Current(relaunched)
+            .MutexName.ShouldBe(InstanceIdentity.Current(original).MutexName);
+        AppDataLocations
+            .CrashJournal(AppDataLocations.For(relaunched))
+            .ShouldBe(Path.Combine(original.DataDirectory, CrashJournal.FileName));
     }
 
     [Theory]
@@ -84,4 +126,12 @@ public sealed class AppOptionsTests
         options.DataDirectory.ShouldBe(Default);
         options.SendInput.ShouldBeTrue();
     }
+
+    /// <summary>The arguments a <c>Clicalo.exe</c> started with <paramref name="arguments"/> receives.</summary>
+    private static string[] Relaunched(string arguments) =>
+        [
+            .. WindowsCommandLine
+                .Split("\"C:\\Program Files\\Clícalo\\Clicalo.exe\" " + arguments)
+                .Skip(1),
+        ];
 }

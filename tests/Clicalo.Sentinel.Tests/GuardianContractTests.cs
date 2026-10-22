@@ -1,14 +1,17 @@
 using Clicalo.Platform.Core.Guardian;
+using Clicalo.TestKit;
 
 namespace Clicalo.Sentinel.Tests;
 
 /// <summary>
-/// The start-up contract of Sentinel (ADR-0023, protocol 3), the relaunch policy (blueprint §3.1, S9) and the crash
-/// journal it reads.
+/// The start-up contract of Sentinel (ADR-0023, protocol 4 of ADR-0032), the relaunch policy (blueprint §3.1, S9) and
+/// the crash journal it reads.
 /// </summary>
 [Trait("Req", "SEG-006")]
 public sealed class GuardianContractTests
 {
+    private const string Folder = @"C:\Users\Ana\Mis datos\Clícalo\";
+
     private static readonly DateTimeOffset Now = new(2026, 9, 26, 10, 0, 0, TimeSpan.Zero);
 
     private static readonly SentinelStartInfo Info = new(
@@ -23,13 +26,25 @@ public sealed class GuardianContractTests
     {
         Info.ToArguments()
             .ShouldBe([
-                "--protocol=3",
+                "--protocol=4",
                 "--parent=0x1A4",
                 "--retry-ms=1000",
                 "--crash-loop=3/600000",
             ]);
-        SentinelStartInfo.ProtocolVersion.ShouldBe(3);
+        SentinelStartInfo.ProtocolVersion.ShouldBe(4);
         Info.InheritedHandles.ShouldBe([(nint)0x1A4]);
+        Info.DataFolder.ShouldBeNull();
+    }
+
+    [Fact]
+    [Trait("Req", "SIS-004")]
+    [Trait("Req", "REG-08")]
+    public void An_isolated_copy_adds_its_data_folder_last()
+    {
+        var isolated = Info with { DataFolder = Folder };
+
+        isolated.ToArguments().ShouldBe([.. Info.ToArguments(), "--data=" + Folder]);
+        isolated.InheritedHandles.ShouldBe(Info.InheritedHandles);
     }
 
     [Fact]
@@ -41,8 +56,31 @@ public sealed class GuardianContractTests
     }
 
     [Theory]
+    [Trait("Req", "SIS-004")]
+    [Trait("Req", "REG-08")]
+    [InlineData(null)]
+    [InlineData(Folder)]
+    [InlineData(@"C:\Users\Ana\Mis datos\Clícalo")]
+    [InlineData(@"\\servidor\compartida\datos de José")]
+    [InlineData(@"D:\")]
+    public void The_command_line_round_trips_through_Windows(string? folder)
+    {
+        const string Sentinel = @"C:\Program Files\Clícalo\Clicalo.Sentinel.exe";
+        var info = Info with { DataFolder = folder };
+
+        var split = WindowsCommandLine.Split(
+            '"' + Sentinel + "\" " + CommandLineArguments.Join(info.ToArguments())
+        );
+
+        split[0].ShouldBe(Sentinel);
+        SentinelStartInfo.TryParse(split.Skip(1).ToArray(), out var parsed).ShouldBeTrue();
+        parsed.ShouldBe(info);
+    }
+
+    [Theory]
     [InlineData("--protocol=1")]
     [InlineData("--protocol=2")]
+    [InlineData("--protocol=3")]
     [InlineData("--protocol=x")]
     [InlineData("--protocol=")]
     public void Another_protocol_version_is_refused(string protocol)
@@ -71,11 +109,28 @@ public sealed class GuardianContractTests
         SentinelStartInfo.TryParse(arguments.AsSpan(), out _).ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData("--data=")]
+    [InlineData(@"--data=datos\de prueba")]
+    [InlineData("--data=C:datos")]
+    [InlineData(@"--data=\datos")]
+    [InlineData("--data=C:\\a\"b")]
+    [InlineData("--data=C:\\a\tb")]
+    [InlineData(@"--folder=C:\datos")]
+    [InlineData("--x")]
+    public void A_malformed_data_folder_is_refused(string argument) =>
+        SentinelStartInfo
+            .TryParse(Info.ToArguments().Add(argument).AsSpan(), out _)
+            .ShouldBeFalse();
+
     [Fact]
     public void Missing_or_extra_arguments_are_refused()
     {
+        var isolated = (Info with { DataFolder = Folder }).ToArguments();
+
         SentinelStartInfo.TryParse(Info.ToArguments().RemoveAt(3).AsSpan(), out _).ShouldBeFalse();
-        SentinelStartInfo.TryParse(Info.ToArguments().Add("--x").AsSpan(), out _).ShouldBeFalse();
+        SentinelStartInfo.TryParse(isolated.Add("--x").AsSpan(), out _).ShouldBeFalse();
+        SentinelStartInfo.TryParse(isolated.RemoveAt(0).AsSpan(), out _).ShouldBeFalse();
         SentinelStartInfo.TryParse([], out _).ShouldBeFalse();
     }
 
@@ -144,12 +199,37 @@ public sealed class GuardianContractTests
     [Fact]
     public void The_relaunch_arguments_say_when_it_crashed_and_whether_to_enter_safe_mode()
     {
+        var after = "--after-crash=" + Now.ToUnixTimeMilliseconds();
+
+        CrashJournal.RelaunchArguments(Now, safeMode: false, dataFolder: null).ShouldBe([after]);
         CrashJournal
-            .RelaunchArguments(Now, safeMode: false)
-            .ShouldBe(["--after-crash=" + Now.ToUnixTimeMilliseconds()]);
-        CrashJournal
-            .RelaunchArguments(Now, safeMode: true)
-            .Contains(CrashJournal.SafeModeArgument, StringComparer.Ordinal)
-            .ShouldBeTrue();
+            .RelaunchArguments(Now, safeMode: true, dataFolder: null)
+            .ShouldBe([after, "--safe-mode"]);
     }
+
+    [Fact]
+    [Trait("Req", "SIS-004")]
+    [Trait("Req", "REG-08")]
+    public void The_relaunch_of_an_isolated_copy_keeps_its_data_folder()
+    {
+        var after = "--after-crash=" + Now.ToUnixTimeMilliseconds();
+
+        CrashJournal
+            .RelaunchArguments(Now, safeMode: false, Folder)
+            .ShouldBe([after, "--data", Folder]);
+        CrashJournal
+            .RelaunchArguments(Now, safeMode: true, Folder)
+            .ShouldBe([after, "--safe-mode", "--data", Folder]);
+    }
+
+    [Theory]
+    [InlineData(Folder, true)]
+    [InlineData(@"\\servidor\compartida\datos", true)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData(@"datos\de prueba", false)]
+    [InlineData("C:datos", false)]
+    [InlineData("C:\\a\"b", false)]
+    public void Only_a_full_path_without_quotes_is_a_data_folder(string? folder, bool expected) =>
+        CrashJournal.IsDataFolder(folder).ShouldBe(expected);
 }
