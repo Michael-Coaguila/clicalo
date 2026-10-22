@@ -200,7 +200,7 @@ Las versiones marcadas «x» se fijan de forma exacta al crear el repositorio. D
 │                 «Soltar todo» de la bandeja sin el motor                        │
 └──────┬───────────────────────────────────────▲──────────────────────────────────┘
        │ un solo handle heredado (PROC_THREAD_ATTRIBUTE_HANDLE_LIST):
-       │  proceso padre (SYNCHRONIZE | QUERY_LIMITED); protocolo 3 (ADR-0023)
+       │  proceso padre (SYNCHRONIZE | QUERY_LIMITED); protocolo 4 (ADR-0023, ADR-0032)
        ▼                                       │ el principal comprueba cada 1 s
 ┌──────────────── Clicalo.Sentinel.exe (Native AOT, misma integridad, ≤5 MB) ─────┐
 │ WaitForSingleObject(padre) → GetAsyncKeyState(0x01‥0xFE) → SendInput(key-ups    │
@@ -1664,7 +1664,7 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 | UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con `RenderSnapshot` de TestKit y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos; hoy la tolerancia es por canal y el modo ΔE llega antes de las primeras referencias de la UI) | Cada PR (x64 y ARM64) |
 | Platform.IntegrationTests | Inyección en los dos modos con varias distribuciones, *hook* LL bajo presión de GC, `PointerPositionTracker` con toque sintético, sesión y suspensión, portapapeles, lanzador sin intérprete en el hilo Shell, ACL de la tarea elevada, escritura elevada y luego media | Alojado interactivo o equipo táctil |
 | Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847 y la de S3: `RaiseNotificationEvent` pasa una cadena ancha donde UI Automation lee un `BSTR`, que `LiveAnnouncer.ForUiaBstr` compensa, `wpf-notification-bstr`), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
-| Sentinel.Tests | Soltado de lo que Windows dice que está pulsado, con un estado de teclas y un `SendInput` falsos: máscara, modo VK y extendidas, reintentos mientras se rechaza, relanzamiento solo tras una salida anómala, bucle de fallos (`timings.json`); contrato de arranque (protocolo 3) | Cada PR |
+| Sentinel.Tests | Soltado de lo que Windows dice que está pulsado, con un estado de teclas y un `SendInput` falsos: máscara, modo VK y extendidas, reintentos mientras se rechaza, relanzamiento solo tras una salida anómala, bucle de fallos (`timings.json`); contrato de arranque (protocolo 4, con la carpeta de `--data`) y su entrecomillado | Cada PR |
 | Launcher.Tests | Verificación tras la copia, rechazo de un archivo alterado, `minSafeVersion` monótono, camino rápido, sin argumentos | Alojado (con elevación de runner) y equipo táctil |
 | E2E | Reglas UIA, instantánea del árbol, Axe.Windows, recorridos (bienvenida sin teclado, crear cada tipo, vincular y Probar ahora, cerrar el CC devuelve el foco) | Alojado (humo) y equipo táctil (completo) |
 | Performance | §10.3 | Tendencia y puerta |

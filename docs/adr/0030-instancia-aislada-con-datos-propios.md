@@ -48,12 +48,14 @@ fija el valor de una ruta conocida para que un cambio de la derivación sea una 
 - Mala, porque una copia con `--data` y **sin** `--no-input` es un segundo motor sobre el mismo teclado. Es un
   arranque de desarrollo: `cl run` y las revisiones usan siempre `--no-input`, y solo la medición de la CI envía
   teclas, en una máquina sin otro Clícalo.
-- Mala, porque Sentinel, al relanzar Clícalo tras un fallo (ADR-0023), y el reinicio como administrador lo abren
-  **sin** `--data`: una copia aislada que envía teclas vuelve sobre la carpeta de datos normal y parece haber perdido
-  lo hecho en la suya, y al abrirla otra vez con `--data` lo recupera. Se vio el 2026-10-22 en la vista previa del
-  mantenedor: los cuelgues de la Pestaña la cerraban, Sentinel la relanzaba en la carpeta normal y un perfil creado allí
-  aparecía y desaparecía. Por eso una vista previa de uso diario usa la carpeta normal, y una copia con `--data` lleva
-  siempre `--no-input`, que no arranca Sentinel.
+- Neutral, porque Sentinel, al relanzar Clícalo tras un fallo (ADR-0023), lo abría **sin** `--data`: una copia
+  aislada que envía teclas volvía sobre la carpeta de datos normal y parecía haber perdido lo hecho en la suya. Se vio
+  el 2026-10-22 en la vista previa del mantenedor: los cuelgues de la Pestaña la cerraban, Sentinel la relanzaba en la
+  carpeta normal y un perfil creado allí aparecía y desaparecía. Lo corrige
+  [ADR-0032](0032-relanzamiento-con-la-carpeta-de-datos.md): el contrato de Sentinel (protocolo 4) lleva la carpeta,
+  Sentinel lee en ella el diario de fallos de la copia y la relanza con `--data`. El reinicio como administrador nunca
+  se ofrece con `--data` (una copia aislada no es la instalada y `ElevatedRelaunch` responde `NotInstalled`), así que
+  ahí no hay nada que perder.
 
 ## Pros y contras de las opciones
 
@@ -76,11 +78,11 @@ fija el valor de una ruta conocida para que un cambio de la derivación sea una 
 
 - Si aparece la IPC de `OpenUri` e `ImportFile`: hereda los mismos nombres.
 - Si una copia aislada tiene que enviar teclas junto a la de la persona.
-- Si una copia aislada tiene que sobrevivir a un fallo o a un reinicio como administrador: el contrato de Sentinel
-  (ADR-0023) y el relanzamiento elevado tendrían que llevar la carpeta de datos.
+- Si algún día se habilita la elevación con `--data`: el reinicio como administrador tendría que llevar la carpeta.
 
 ## Más información
 
 - Catálogo: SIS-003, NFR-018, REG-08.
 - Plano: §3.4.
-- ADR relacionado: [ADR-0010](0010-ipc-minima.md).
+- ADR relacionados: [ADR-0010](0010-ipc-minima.md) y
+  [ADR-0032](0032-relanzamiento-con-la-carpeta-de-datos.md).

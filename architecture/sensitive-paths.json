@@ -105,7 +105,7 @@
     {
       "pattern": "src/Clicalo.Platform.Core/Guardian/**",
       "category": "process-model",
-      "reason": "Start-up contract between Clicalo.exe and Sentinel (protocol 3) and the relaunch policy (ADR-0023)."
+      "reason": "Start-up contract between Clicalo.exe and Sentinel (protocol 4), the quoting of the command lines Clicalo writes and the relaunch policy (ADR-0023, ADR-0032)."
     },
     {
       "pattern": "src/Clicalo.Sentinel/**",

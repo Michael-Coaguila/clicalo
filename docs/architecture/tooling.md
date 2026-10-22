@@ -112,7 +112,8 @@ Salida en formato MSBuild, última línea legible por Narrador y códigos de sal
   usan `cl run` y, fuera de la CI, `cl perf`.
 - `--data <carpeta>`: todos los datos, el diario de fallos incluido, dentro de esa carpeta. Es además una instancia
   propia ([ADR-0030](../adr/0030-instancia-aislada-con-datos-propios.md)): su mutex y su *pipe* llevan un sufijo
-  derivado de la ruta completa, así que convive con el Clícalo de la persona y nunca le envía «Show».
+  derivado de la ruta completa, así que convive con el Clícalo de la persona y nunca le envía «Show». Sentinel, al
+  relanzar tras un fallo, conserva la carpeta ([ADR-0032](../adr/0032-relanzamiento-con-la-carpeta-de-datos.md)).
 - `--exit-after <segundos>`: tras el primer frame, recorre la salida completa sin intervención (diagnóstico).
 - `--guardian after-first-frame`: la variante de S5 que lanza Sentinel después del primer frame.
 - `--after-crash=<ms Unix>` y `--safe-mode` los pone Sentinel al relanzar ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
