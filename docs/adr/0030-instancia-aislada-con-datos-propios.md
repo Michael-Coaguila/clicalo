@@ -48,6 +48,12 @@ fija el valor de una ruta conocida para que un cambio de la derivación sea una 
 - Mala, porque una copia con `--data` y **sin** `--no-input` es un segundo motor sobre el mismo teclado. Es un
   arranque de desarrollo: `cl run` y las revisiones usan siempre `--no-input`, y solo la medición de la CI envía
   teclas, en una máquina sin otro Clícalo.
+- Mala, porque Sentinel, al relanzar Clícalo tras un fallo (ADR-0023), y el reinicio como administrador lo abren
+  **sin** `--data`: una copia aislada que envía teclas vuelve sobre la carpeta de datos normal y parece haber perdido
+  lo hecho en la suya, y al abrirla otra vez con `--data` lo recupera. Se vio el 2026-10-22 en la vista previa del
+  mantenedor: los cuelgues de la Pestaña la cerraban, Sentinel la relanzaba en la carpeta normal y un perfil creado allí
+  aparecía y desaparecía. Por eso una vista previa de uso diario usa la carpeta normal, y una copia con `--data` lleva
+  siempre `--no-input`, que no arranca Sentinel.
 
 ## Pros y contras de las opciones
 
@@ -70,6 +76,8 @@ fija el valor de una ruta conocida para que un cambio de la derivación sea una 
 
 - Si aparece la IPC de `OpenUri` e `ImportFile`: hereda los mismos nombres.
 - Si una copia aislada tiene que enviar teclas junto a la de la persona.
+- Si una copia aislada tiene que sobrevivir a un fallo o a un reinicio como administrador: el contrato de Sentinel
+  (ADR-0023) y el relanzamiento elevado tendrían que llevar la carpeta de datos.
 
 ## Más información
 
