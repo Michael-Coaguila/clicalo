@@ -320,4 +320,41 @@ public sealed class DockGeometryTests
         double gap,
         int expected
     ) => DockGeometry.TilesPerPage(preference, space, tile, gap).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(DockSide.Right)]
+    [InlineData(DockSide.Left)]
+    [InlineData(DockSide.Top)]
+    [InlineData(DockSide.Bottom)]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "PES-010")]
+    public void A_window_opened_by_a_button_goes_beside_the_bar_and_never_over_it(DockSide side)
+    {
+        // The second button of a pair sits 48 further into the bar than the first one (D19, D20).
+        var vertical = DockGeometry.IsVertical(side);
+        var bar = vertical
+            ? new PhysicalRect(side == DockSide.Right ? 1812 : 0, 200, 108, 600)
+            : new PhysicalRect(400, side == DockSide.Top ? 12 : 948, 900, 80);
+        var button = vertical
+            ? new PhysicalRect(bar.Left + 8 + 48, 600, 44, 44)
+            : new PhysicalRect(900, bar.Top + 8 + 18, 44, 44);
+
+        var anchor = DockGeometry.AtButton(side, bar, button);
+        var window = DockGeometry.Beside(side, anchor, 340, 300, 8, DockAlign.End, Monitor);
+
+        var apart =
+            window.Right <= bar.Left
+            || bar.Right <= window.Left
+            || window.Bottom <= bar.Top
+            || bar.Bottom <= window.Top;
+        apart.ShouldBeTrue($"{window} covers the bar {bar}");
+        if (vertical)
+        {
+            window.Bottom.ShouldBe(button.Bottom);
+        }
+        else
+        {
+            window.Right.ShouldBe(button.Right);
+        }
+    }
 }

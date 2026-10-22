@@ -30,10 +30,7 @@ public static class DockGeometry
     /// <summary>On the bottom edge it stays this far from the bottom (PES-013).</summary>
     public const int PanicBottomInsetPx = 180;
 
-    /// <summary>The «Pinned» and «Sticky keys» windows open this far from their button, toward the screen (PES-010).</summary>
-    public const int ButtonWindowGapPx = 16;
-
-    /// <summary>The profile grid and the guide open this far from the bar (PES-011, PES-015).</summary>
+    /// <summary>Every window beside the bar opens this far from it (PES-009 to PES-011, PES-015; D20).</summary>
     public const int BarWindowGapPx = 8;
 
     /// <summary>The windows beside the bar are at most the work area minus this, high (PES-010, PES-011).</summary>
@@ -260,6 +257,19 @@ public static class DockGeometry
             0
         );
     }
+
+    /// <summary>
+    /// What a window opened by a button of the bar goes beside (PES-009, PES-010; D20): the edge of the bar across it,
+    /// so the window never covers the bar wherever the button sits inside it (a pair puts one button 48 further in), and
+    /// the button along it, so the window lines up with what opened it.
+    /// </summary>
+    /// <param name="side">The edge of the bar.</param>
+    /// <param name="bar">The bar on screen.</param>
+    /// <param name="button">The button of the bar on screen.</param>
+    public static PhysicalRect AtButton(DockSide side, PhysicalRect bar, PhysicalRect button) =>
+        IsVertical(side)
+            ? new PhysicalRect(bar.Left, button.Top, bar.Width, button.Height)
+            : new PhysicalRect(button.Left, bar.Top, button.Width, bar.Height);
 
     /// <summary>
     /// <see cref="Beside"/>, clear of the surfaces already placed there (PES-014): while the place is taken by one of

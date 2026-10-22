@@ -576,14 +576,14 @@ public sealed class SurfaceSet : IDisposable
             };
             var byButton =
                 layout.Flyout is DockFlyout.Pinned or DockFlyout.Sticky && !anchor.IsEmpty;
+
+            // Beside the edge of the bar, lined up with the button that opened it: never over the bar (D20).
             var rect = DockGeometry.Beside(
                 side,
-                byButton ? anchor : barRect,
+                byButton ? DockGeometry.AtButton(side, barRect, anchor) : barRect,
                 width,
                 Math.Min(height, monitor.ToPhysical(maxHeight)),
-                monitor.ToPhysical(
-                    byButton ? DockGeometry.ButtonWindowGapPx : DockGeometry.BarWindowGapPx
-                ),
+                monitor.ToPhysical(DockGeometry.BarWindowGapPx),
                 byButton ? DockAlign.End : DockAlign.Start,
                 monitor
             );
@@ -634,12 +634,10 @@ public sealed class SurfaceSet : IDisposable
             var byButton = !anchor.IsEmpty;
             var rect = DockGeometry.BesideClear(
                 side,
-                byButton ? anchor : barRect,
+                byButton ? DockGeometry.AtButton(side, barRect, anchor) : barRect,
                 width,
                 Math.Min(height, monitor.ToPhysical(maxHeight)),
-                monitor.ToPhysical(
-                    byButton ? DockGeometry.ButtonWindowGapPx : DockGeometry.BarWindowGapPx
-                ),
+                monitor.ToPhysical(DockGeometry.BarWindowGapPx),
                 byButton ? DockAlign.End : DockAlign.Start,
                 monitor,
                 taken
