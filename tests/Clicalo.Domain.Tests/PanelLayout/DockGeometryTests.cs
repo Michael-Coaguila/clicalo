@@ -104,9 +104,9 @@ public sealed class DockGeometryTests
     }
 
     [Theory]
-    [InlineData(SizeId.S, 108, 64)]
+    [InlineData(SizeId.S, 108, 44)]
     [InlineData(SizeId.M, 108, 64)]
-    [InlineData(SizeId.L, 108, 64)]
+    [InlineData(SizeId.L, 124, 80)]
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-007")]
     public void The_bar_is_as_thick_as_its_size_says(SizeId size, int width, int inside)
@@ -114,7 +114,8 @@ public sealed class DockGeometryTests
         var metrics = PanelSizes.Get(size);
 
         // Direction C (D12): a side bar shows two targets of 44 side by side (92) inside its padding of 8, and a top or
-        // bottom bar a row of 64, as its shortcuts are, inside the same padding.
+        // bottom bar a row as high as its shortcuts, inside the same padding. D20: the bar follows the size, so S is a
+        // row of icons of 44 and L is wider and taller (two targets of 52, tiles of 80).
         var height = inside + (2 * DockGeometry.BarPaddingPx);
         metrics.DockHorizontalTileHeightPx.ShouldBe(inside);
 

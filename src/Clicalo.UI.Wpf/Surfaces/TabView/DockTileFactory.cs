@@ -25,7 +25,8 @@ internal static class DockTileFactory
 {
     /// <summary>
     /// Creates the tile of <paramref name="viewModel"/>, its name in <paramref name="nameLines"/> lines at most (one
-    /// along a side bar of size S or M at 100 %, two wherever the tile holds them).
+    /// along a side bar of size M at 100 %, two wherever the tile holds them) in <paramref name="label"/>: the small
+    /// label, or the label of 14 of size L (D20).
     /// </summary>
     public static (ShortcutTile Control, PropertyChangedEventHandler Handler) Create(
         DockTileViewModel viewModel,
@@ -33,7 +34,8 @@ internal static class DockTileFactory
         double height,
         double iconPx,
         int nameLines,
-        DockTileModes? modes = null
+        DockTileModes? modes = null,
+        TextStyleToken label = TextStyleToken.LabelSmall
     )
     {
         var control = new ShortcutTile
@@ -57,7 +59,7 @@ internal static class DockTileFactory
         };
         control.SetResourceReference(
             Control.FontSizeProperty,
-            ThemeKeys.FontSize(TextStyleToken.LabelSmall, scaled: true)
+            ThemeKeys.FontSize(label, scaled: true)
         );
         control.Invoked += (_, _) => Invoke(viewModel, modes);
         control.Toggled += (_, _) => Invoke(viewModel, modes);

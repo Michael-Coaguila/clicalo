@@ -48,10 +48,10 @@
       "autoRows": 2,
       "dock": {
         "barWidthPx": 108,
-        "barHeightPx": 64,
-        "verticalTileHeightPx": 52,
-        "horizontalTileWidthPx": 80,
-        "horizontalTileHeightPx": 64,
+        "barHeightPx": 44,
+        "verticalTileHeightPx": 44,
+        "horizontalTileWidthPx": 44,
+        "horizontalTileHeightPx": 44,
         "tileIconPx": 20,
         "tileLabelPx": 12
       }
@@ -83,13 +83,13 @@
       "strip": { "heightPx": 56, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
-        "barWidthPx": 108,
-        "barHeightPx": 64,
-        "verticalTileHeightPx": 64,
-        "horizontalTileWidthPx": 96,
-        "horizontalTileHeightPx": 64,
-        "tileIconPx": 20,
-        "tileLabelPx": 12
+        "barWidthPx": 124,
+        "barHeightPx": 80,
+        "verticalTileHeightPx": 72,
+        "horizontalTileWidthPx": 104,
+        "horizontalTileHeightPx": 80,
+        "tileIconPx": 24,
+        "tileLabelPx": 14
       }
     }
   ]

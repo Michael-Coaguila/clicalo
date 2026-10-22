@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Localization;
+using Clicalo.Application.Profiles;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
@@ -45,6 +46,7 @@ public sealed class DockBarViewModel : ObservableObject
     private int _page;
     private double _tileSpace = double.NaN;
     private double _tileGap = double.NaN;
+    private int _tileColumns = 1;
     private double _verticalTileLength;
     private double _horizontalTileLength;
     private int _perPage = 1;
@@ -288,7 +290,9 @@ public sealed class DockBarViewModel : ObservableObject
             state.Frequents ? "undo"
             : state.Flyout == DockFlyout.Profiles ? "close"
             : "expand_more";
-        AutoFixedIcon = state.IsFixed ? "lock" : "autorenew";
+        AutoFixedIcon = state.IsFixed
+            ? PanelHeaderModel.FixedIcon.Name
+            : PanelHeaderModel.AutoIcon.Name;
         ShowsCoach = DockRules.ShowsCoach(
             state.BarOpen,
             state.Dock.CoachDone,
@@ -374,6 +378,23 @@ public sealed class DockBarViewModel : ObservableObject
         }
 
         _tileSpace = availablePx;
+        Repage();
+    }
+
+    /// <summary>
+    /// How many shortcuts a side bar puts across its width (D20): two icons side by side in S, one with its name in M
+    /// and L. A page holds the rows that fit times this, at most the preference of General.
+    /// </summary>
+    /// <param name="columns">1 or 2.</param>
+    public void ApplyTileColumns(int columns)
+    {
+        var across = Math.Max(1, columns);
+        if (across == _tileColumns)
+        {
+            return;
+        }
+
+        _tileColumns = across;
         Repage();
     }
 
@@ -572,11 +593,16 @@ public sealed class DockBarViewModel : ObservableObject
     private void Repage()
     {
         var preference = _state?.Dock.PerPage ?? SettingsSchema.DockPerPageChoices[0];
-        _perPage = DockGeometry.TilesPerPage(
-            preference,
+        var columns = IsVertical ? _tileColumns : 1;
+        var rows = DockGeometry.TilesPerPage(
+            int.MaxValue,
             double.IsNaN(_tileSpace) ? double.PositiveInfinity : _tileSpace,
             TileLength,
             double.IsNaN(_tileGap) ? Metrics.GapPx : _tileGap
+        );
+        _perPage = Math.Max(
+            1,
+            Math.Min(preference, (int)Math.Min(int.MaxValue, (long)rows * columns))
         );
         _window = Paging.Window(_list.Count, _perPage, _page);
         _page = _window.Page;

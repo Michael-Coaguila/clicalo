@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -29,28 +30,35 @@ namespace Clicalo.Windowing.IntegrationTests.TabView;
 public sealed class DockLookTests
 {
     [Theory]
-    [InlineData(SizeId.S)]
-    [InlineData(SizeId.M)]
-    [InlineData(SizeId.L)]
+    [InlineData(SizeId.S, 44, 44, 44, 44)]
+    [InlineData(SizeId.M, 44, 64, 52, 88)]
+    [InlineData(SizeId.L, 52, 80, 72, 104)]
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-007")]
     [Trait("Req", "TEM-002")]
-    public void The_measures_of_the_bar_are_those_of_the_design_system(SizeId size)
+    public void The_bar_grows_with_the_size_of_the_panel(
+        SizeId size,
+        int tool,
+        int row,
+        int sideTile,
+        int rowTile
+    )
     {
         var metrics = PanelSizes.Get(size);
 
-        // A side bar is two targets of 44 side by side and its padding; a top or bottom one a row of 64 and its padding.
+        // D20: a side bar is two controls side by side and its padding, 44 in S and M and 52 in L; a top or bottom one a
+        // row of the shortcuts of its size and its padding. S draws its shortcuts as icons of one touch target.
         metrics.DockBarWidthPx.ShouldBe(
-            (int)(DockBarWindow.PairWidth + (2 * DockGeometry.BarPaddingPx))
+            (2 * tool) + (int)Space.S1 + (2 * DockGeometry.BarPaddingPx)
         );
-        metrics.DockBarHeightPx.ShouldBe((int)ControlHeight.Large);
-        metrics.DockHorizontalTileHeightPx.ShouldBe((int)ControlHeight.Large);
-        new[] { ControlHeight.Small, ControlHeight.Medium, ControlHeight.Large }.ShouldContain(
-            metrics.DockVerticalTileHeightPx
+        metrics.DockBarHeightPx.ShouldBe(row);
+        metrics.DockHorizontalTileHeightPx.ShouldBe(row);
+        metrics.DockVerticalTileHeightPx.ShouldBe(sideTile);
+        metrics.DockHorizontalTileWidthPx.ShouldBe(rowTile);
+        metrics.DockTileIconPx.ShouldBe((int)(size == SizeId.L ? IconBox.Medium : IconBox.Small));
+        metrics.DockTileLabelPx.ShouldBe(
+            (int)(size == SizeId.L ? TextStyles.Label.Size : TextStyles.LabelSmall.Size)
         );
-        // One anatomy for every shortcut of the Tab view: icon of 20 and two lines of name in 64 (PES-007, PES-010).
-        metrics.DockTileIconPx.ShouldBe((int)IconBox.Small);
-        metrics.DockTileLabelPx.ShouldBe((int)TextStyles.LabelSmall.Size);
     }
 
     [Theory]
@@ -167,8 +175,8 @@ public sealed class DockLookTests
         {
             using var theme = Theme();
 
-            // In S «Mantener Ctrl» beside «Copiar»: names of two lines and of one.
-            var dock = Dock(time, side, language, coachStep: 0, SizeId.S);
+            // In M a long name beside «Copiar»: names of two lines and of one (S shows icons alone, D20).
+            var dock = Dock(time, side, language, coachStep: 0, SizeId.M, "Mantener Control");
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -201,14 +209,17 @@ public sealed class DockLookTests
     }
 
     [Theory]
-    [InlineData(DockSide.Right, "es")]
-    [InlineData(DockSide.Left, "en")]
+    [InlineData(DockSide.Right, "es", SizeId.M)]
+    [InlineData(DockSide.Left, "en", SizeId.M)]
+    [InlineData(DockSide.Right, "es", SizeId.S)]
     [Trait("Req", "PES-008")]
+    [Trait("Req", "CAB-003")]
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     public void The_tools_of_a_side_bar_are_named_icons_of_44_in_pairs(
         DockSide side,
-        string language
+        string language,
+        SizeId size
     )
     {
         using var lab = SurfaceLab.Create();
@@ -216,7 +227,7 @@ public sealed class DockLookTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, side, language, coachStep: 0);
+            var dock = Dock(time, side, language, coachStep: 0, size);
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -231,11 +242,13 @@ public sealed class DockLookTests
                 using var host = AuditHost.OfWindow(bar, theme);
                 host.LayOut();
 
-                // D19: Auto/Fixed, Pinned, Sticky keys and the lock are icons of 44, their label only their name.
-                var tools = new[] { bar.Buttons[4], bar.Buttons[7], bar.Buttons[8], bar.Buttons[9] }
+                // D19: search, repeat, Pinned, Sticky keys, the lock and the quick settings are icons of 44, their
+                // label only their name.
+                var tools = bar
+                    .Buttons.Skip(5)
                     .Where(b => b.Visibility == Visibility.Visible)
                     .ToList();
-                tools.Count.ShouldBeGreaterThan(2);
+                tools.Count.ShouldBeGreaterThan(4);
                 foreach (var tool in tools)
                 {
                     tool.ActualWidth.ShouldBe(ControlHeight.Small);
@@ -246,11 +259,25 @@ public sealed class DockLookTests
                     VisibleTexts(tool).ShouldBeEmpty();
                 }
 
-                // Auto/Fixed and the lock side by side across the bar, as every pair.
-                var auto = bar.Buttons[4].TranslatePoint(default, host.Root);
+                // D20: the lock goes beside the quick settings, as every pair, and not beside Auto/Fixed, whose own
+                // lock it was taken for.
                 var lockOpen = bar.Buttons[9].TranslatePoint(default, host.Root);
-                lockOpen.Y.ShouldBe(auto.Y, 0.5);
-                (lockOpen.X - auto.X).ShouldBe(ControlHeight.Small + Space.S1, 0.5);
+                var tune = bar.Buttons[10].TranslatePoint(default, host.Root);
+                tune.Y.ShouldBe(lockOpen.Y, 0.5);
+                (tune.X - lockOpen.X).ShouldBe(ControlHeight.Small + Space.S1, 0.5);
+
+                // Auto/Fixed says its state in words across the bar where the size has names, and is an icon of 44 in S.
+                var auto = bar.Buttons[4];
+                if (size == SizeId.S)
+                {
+                    auto.ActualWidth.ShouldBe(ControlHeight.Small);
+                    VisibleTexts(auto).ShouldBeEmpty();
+                }
+                else
+                {
+                    auto.ActualWidth.ShouldBe((2 * ControlHeight.Small) + Space.S1, 0.5);
+                    VisibleTexts(auto).ShouldNotBeEmpty();
+                }
             }
             finally
             {
@@ -323,9 +350,11 @@ public sealed class DockLookTests
     [Theory]
     [InlineData(DockSide.Right, SizeId.M, 100, 1)]
     [InlineData(DockSide.Left, SizeId.L, 100, 2)]
-    [InlineData(DockSide.Right, SizeId.S, 150, 2)]
-    [InlineData(DockSide.Top, SizeId.S, 100, 2)]
+    [InlineData(DockSide.Right, SizeId.M, 150, 2)]
+    [InlineData(DockSide.Top, SizeId.M, 100, 2)]
     [InlineData(DockSide.Bottom, SizeId.L, 150, 2)]
+    [InlineData(DockSide.Right, SizeId.S, 150, 0)]
+    [InlineData(DockSide.Top, SizeId.S, 150, 0)]
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-007")]
     [Trait("Req", "CUA-011")]
@@ -360,13 +389,36 @@ public sealed class DockLookTests
             {
                 using var host = AuditHost.OfWindow(bar, theme);
                 host.LayOut();
-                var line = TextStyles.LabelSmall.LineHeight * scale / 100d;
-                var twoLines = (3 * Space.S1) + IconBox.Small + (2 * line);
                 bar.TileControls.Count.ShouldBeGreaterThan(0);
+                if (lines == 0)
+                {
+                    // D20: the shortcuts of S are icons of one touch target at every text scale; the name stays for UI
+                    // Automation and the voice numbers.
+                    foreach (var tile in bar.TileControls)
+                    {
+                        tile.ActualWidth.ShouldBe(ControlHeight.Small, 0.5);
+                        tile.ActualHeight.ShouldBe(ControlHeight.Small, 0.5);
+                        (
+                            (FrameworkElement)
+                                tile.Template.FindName(ShortcutTileTemplate.LabelPart, tile)
+                        ).Visibility.ShouldBe(Visibility.Collapsed);
+                    }
+
+                    return;
+                }
+
+                var metrics = PanelSizes.Get(size);
+                var label =
+                    metrics.DockTileLabelPx > TextStyles.LabelSmall.Size
+                        ? TextStyles.Label
+                        : TextStyles.LabelSmall;
+                var line = label.LineHeight * scale / 100d;
+                var icon = metrics.DockTileIconPx;
+                var twoLines = (3 * Space.S1) + icon + (2 * line);
                 foreach (var tile in bar.TileControls)
                 {
                     tile.MaxNameLines.ShouldBe(lines);
-                    var room = tile.ActualHeight - (3 * Space.S1) - IconBox.Small;
+                    var room = tile.ActualHeight - (3 * Space.S1) - icon;
                     room.ShouldBeGreaterThanOrEqualTo((lines * line) - 0.5);
                     if (lines == 2)
                     {
@@ -441,20 +493,31 @@ public sealed class DockLookTests
         DockSide side,
         string language,
         int coachStep,
-        SizeId size = SizeId.M
+        SizeId size = SizeId.M,
+        string? holdName = null
     )
     {
+        var profile = PanelTestData.Profile();
+        if (holdName is not null)
+        {
+            var name = LocalizedText.Same(holdName, LangCode.Es, LangCode.En);
+            profile = profile with
+            {
+                Shortcuts = new ValueList<Shortcut>([
+                    .. profile.Shortcuts.Select(s =>
+                        s.Id.Equals(PanelTestData.HoldCtrl) ? s with { Name = name } : s
+                    ),
+                ]),
+            };
+        }
+
         var controller = new PanelInteractionController(new PanelEngineInbox(), () => 1, time);
         var dock = new DockBarViewModel(
             controller,
             PanelTestData.Localization(language),
             new NoDockIntents()
         );
-        var model = PanelProjector.Project(
-            PanelTestData.Profile(),
-            new LangCode(language),
-            LangCode.Es
-        );
+        var model = PanelProjector.Project(profile, new LangCode(language), LangCode.Es);
         dock.ApplyTiles(model.Tiles, model.Tiles);
         dock.Apply(State(side, coachStep, size));
         return dock;

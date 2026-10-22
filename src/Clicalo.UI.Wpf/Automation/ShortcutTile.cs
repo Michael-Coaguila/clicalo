@@ -253,6 +253,14 @@ public sealed class ShortcutTile : Control
         new FrameworkPropertyMetadata(false)
     );
 
+    /// <summary>Identifies <see cref="ShowsCard"/>.</summary>
+    public static readonly DependencyProperty ShowsCardProperty = DependencyProperty.Register(
+        nameof(ShowsCard),
+        typeof(bool),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(true)
+    );
+
     static ShortcutTile()
     {
         DefaultStyleKeyProperty.OverrideMetadata(
@@ -469,6 +477,16 @@ public sealed class ShortcutTile : Control
     {
         get => (bool)GetValue(IsFlashingProperty);
         set => SetValue(IsFlashingProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the tile is drawn on its card with its line (the default). Without it, a tile that is a tool among icon
+    /// buttons (Scroll up and down of the bar, PES-008) looks like them at rest, and still shows held or chosen (D20).
+    /// </summary>
+    public bool ShowsCard
+    {
+        get => (bool)GetValue(ShowsCardProperty);
+        set => SetValue(ShowsCardProperty, value);
     }
 
     /// <summary>

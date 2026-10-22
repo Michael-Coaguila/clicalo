@@ -237,6 +237,13 @@ public static class ShortcutTileTemplate
 
     private static IEnumerable<TriggerBase> Triggers()
     {
+        // First, so held, chosen, armed and flashing, after it, still paint the chrome of a tile without its card.
+        yield return Set(
+            ShortcutTile.ShowsCardProperty,
+            false,
+            new Setter(Border.BackgroundProperty, Brushes.Transparent, ChromePart),
+            new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart)
+        );
         yield return Collapse(ShortcutTile.VoiceNumberProperty, null, VoiceNumberPart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, string.Empty, StatePart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, null, StatePart);
