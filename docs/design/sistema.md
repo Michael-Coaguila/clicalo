@@ -172,7 +172,7 @@ localizado.
 - **Anatomía:** radio `Radii.Medium`, relleno horizontal `Space.S4` (`Space.S3` en terciario), icono con hueco
   `Space.S2`, texto `Label` en una línea con «…».
 - **Estados:** encima (lavado), pulsado o en modo (`IsOn` o `IsActive`: el aspecto único de «elegido»), deshabilitado
-  (sin relleno, línea discontinua y texto `Muted`). Nunca cambia de tamaño.
+  (sin relleno ni línea y con el contenido en `Muted`, como en Windows, D19). Nunca cambia de tamaño.
 - **UI Automation:** Button con Invoke; con `IsExpanded`, ExpandCollapse; con `IsOn`, Toggle. `IsActive` solo dibuja.
 - **Cuándo:** una acción por lugar es primaria; las demás, secundarias; los enlaces y acciones discretas, terciarias;
   borrar o quitar, peligro (con dos toques, REG-04).
@@ -200,8 +200,8 @@ abierto.
   icono, así que el tema elegido la «rellena»: disco `Accent` con ✓ en `OnAccent`, como el pulgar de un interruptor
   encendido; no se reserva hueco para una ✓ al final. Ajustes rápidos usa dos columnas mientras todos los nombres caben
   enteros (`ThemeSwatch.WholeWidth`) y, si no, una.
-- **Línea discontinua · `DashedLine`:** una sola raya (`Stroke.Selected` por unidad de grosor, en `Line`) para los
-  controles deshabilitados y para los huecos de añadir («+ Añadir» de edición, «Biblioteca», «+ Más» de los perfiles,
+- **Línea discontinua · `DashedLine`:** una sola raya (`Stroke.Selected` por unidad de grosor, en `Line`) solo para
+  los huecos de añadir, nunca para un control deshabilitado (D19) («+ Añadir» de edición, «Biblioteca», «+ Más» de los perfiles,
   la rejilla vacía). Un hueco de añadir lleva el icono en `AccentInk` encima del nombre en `Text`.
 - **`OptionRole`:** `Option` (RadioButton con SelectionItem, por defecto en `OptionButton`), `Toggle` (Toggle) y
   `Expander` (ExpandCollapse).
@@ -266,7 +266,8 @@ JetBrains Mono y `Muted`, solo si cabe). El estado en palabras (`AccessibleState
 si está armada), y nunca el hueco de arriba, demasiado estrecho junto al número y al icono. Fondo `Card` con su línea por dentro, radio `Radii.Medium`. Estados:
 Alternar activo y mantener (el aspecto único de elegido; mantener además escala 0,95), armado (`WarnWash` y anillo
 `WarnText`), destello (`AccentWash`), tecla fija bloqueada (relleno `Accent`), menú abierto (anillo). Tamaños de la
-maqueta: rejilla de 100 × 80 y fila fija de 64 de alto.
+maqueta, aligerados en D19: rejilla de 84 × 68, 100 × 76 y 124 × 92 en S, M y L, y fila fija de 64 con nombre en M y L
+o de 44 con solo iconos en S y en Compacta.
 
 ### 3.11 Barra de estado · `StatusBar`
 
