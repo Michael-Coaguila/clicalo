@@ -88,6 +88,46 @@ public sealed class SurfaceLookTests
         alpha(0, shadow.Top + 450).ShouldBeLessThanOrEqualTo((byte)4);
     }
 
+    [Theory]
+    [InlineData("panel", 700, 900)]
+    [InlineData("panel", 193, 1404)]
+    [InlineData("panel", 2312, 144)]
+    [InlineData("side", 504, 1275)]
+    [InlineData("bubble", 112, 112)]
+    [InlineData("handle", 77, 203)]
+    [InlineData("handle", 224, 77)]
+    [Trait("Req", "PAN-003")]
+    public void A_long_surface_gets_the_shadow_drawn_pixel_by_pixel(
+        string look,
+        int width,
+        int height
+    )
+    {
+        var shape = look switch
+        {
+            "panel" => SurfaceLook.Panel,
+            "side" => SurfaceLook.SideWindow,
+            "bubble" => SurfaceLook.Bubble,
+            _ => SurfaceLook.DockHandle(width > height ? DockSide.Top : DockSide.Right),
+        };
+        var shadow = ShadowRaster.Render(width, height, Scale, shape, Shadow);
+        var stride = shadow.Bitmap.PixelWidth * 4;
+        var drawn = new byte[stride * shadow.Bitmap.PixelHeight];
+        shadow.Bitmap.CopyPixels(drawn, stride, 0);
+
+        var expected = ReferenceShadow.Pixels(width, height, Scale, shape, Shadow);
+
+        // The same image, to the rounding of a float sum that ran over a longer side.
+        drawn.Length.ShouldBe(expected.Length);
+        var worst = 0;
+        for (var i = 0; i < drawn.Length; i++)
+        {
+            worst = Math.Max(worst, Math.Abs(drawn[i] - expected[i]));
+        }
+
+        worst.ShouldBeLessThanOrEqualTo(1);
+    }
+
     [Fact]
     [Trait("Req", "PAN-003")]
     [Trait("Req", "BUR-001")]
