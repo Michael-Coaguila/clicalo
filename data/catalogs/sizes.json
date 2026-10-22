@@ -41,7 +41,7 @@
     {
       "id": "S",
       "labelKey": "sizeS",
-      "tile": { "widthPx": 84, "heightPx": 68, "iconPx": 20, "labelPx": 12, "keysPx": 11 },
+      "tile": { "widthPx": 84, "heightPx": 64, "iconPx": 20, "labelPx": 12, "keysPx": 11 },
       "gapPx": 8,
       "headerButton": { "widthPx": 44, "heightPx": 44 },
       "strip": { "heightPx": 44, "iconPx": 20, "labelPx": 12, "capacity": 4 },
@@ -59,10 +59,10 @@
     {
       "id": "M",
       "labelKey": "sizeM",
-      "tile": { "widthPx": 100, "heightPx": 76, "iconPx": 24, "labelPx": 14, "keysPx": 11 },
+      "tile": { "widthPx": 100, "heightPx": 68, "iconPx": 20, "labelPx": 14, "keysPx": 11 },
       "gapPx": 8,
       "headerButton": { "widthPx": 44, "heightPx": 44 },
-      "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 8 },
+      "strip": { "heightPx": 56, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
         "barWidthPx": 108,
@@ -77,10 +77,10 @@
     {
       "id": "L",
       "labelKey": "sizeL",
-      "tile": { "widthPx": 124, "heightPx": 92, "iconPx": 32, "labelPx": 16, "keysPx": 12 },
+      "tile": { "widthPx": 124, "heightPx": 80, "iconPx": 24, "labelPx": 16, "keysPx": 12 },
       "gapPx": 8,
       "headerButton": { "widthPx": 44, "heightPx": 44 },
-      "strip": { "heightPx": 64, "iconPx": 24, "labelPx": 12, "capacity": 8 },
+      "strip": { "heightPx": 56, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
         "barWidthPx": 108,

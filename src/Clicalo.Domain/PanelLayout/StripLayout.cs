@@ -1,4 +1,5 @@
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Settings;
 
 namespace Clicalo.Domain.PanelLayout;
 
@@ -6,7 +7,7 @@ namespace Clicalo.Domain.PanelLayout;
 /// The Always visible row (FIJ-001 to FIJ-003): 4 columns; 4 shortcuts in S or Compact and 8 in M or L; with more,
 /// capacity − 1 per page and a «··· i/N» chip that cycles. In S and in Compact the row is a row of icons as high as a
 /// touch target (FIJ-002, VCO-001; D19): the name, in a quarter of the narrowest panel, ended in «…», and a row of the
-/// height of M made S and Compact as tall as M. In M and L it keeps the name, 64 high.
+/// height of M made S and Compact as tall as M. In M and L it keeps the name, 56 high (D20).
 /// </summary>
 public static class StripLayout
 {
@@ -26,12 +27,32 @@ public static class StripLayout
             : settings.Metrics.StripCapacity;
     }
 
-    /// <summary>Height of a tile of the row: the size's (44 in S, 64 in M and L) and 44 in Compact (FIJ-002, D19).</summary>
-    /// <param name="settings">Size and view.</param>
+    /// <summary>
+    /// Height of a tile of the row: the size's (44 in S, 56 in M and L) and 44 in Compact (FIJ-002, D19, D20). A row
+    /// with names grows with the text scale by what its name grows, as the tiles of the grid (CUA-011); a row of icons
+    /// does not.
+    /// </summary>
+    /// <param name="settings">Size, view and text scale.</param>
     public static int TileHeight(PanelLayoutSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return settings.Compact ? CompactHeightPx : settings.Metrics.StripHeightPx;
+        var height = settings.Compact ? CompactHeightPx : settings.Metrics.StripHeightPx;
+        if (height <= PanelSizes.Layout.MinTouchTargetPx)
+        {
+            return height;
+        }
+
+        var scale = Math.Clamp(
+            settings.TextScalePercent,
+            (int)SettingsSchema.TextScalePercent.Min,
+            (int)SettingsSchema.TextScalePercent.Max
+        );
+        var growth =
+            (scale - 100)
+            / 100d
+            * settings.Metrics.StripLabelPx
+            * PanelSizes.Layout.TextScaleTileGrowth;
+        return (int)Math.Round(height + growth, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>

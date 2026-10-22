@@ -15,9 +15,9 @@ public sealed class HandoffFidelityTests
         StringComparer.Ordinal
     )
     {
-        ["S"] = Redesign(w: 84, h: 68, icon: 20, label: 12, foot: 11, strip: 44, stripIcon: 20),
-        ["M"] = Redesign(w: 100, h: 76, icon: 24, label: 14, foot: 11, strip: 64, stripIcon: 24),
-        ["L"] = Redesign(w: 124, h: 92, icon: 32, label: 16, foot: 12, strip: 64, stripIcon: 24),
+        ["S"] = Redesign(w: 84, h: 64, icon: 20, label: 12, foot: 11, strip: 44, stripIcon: 20),
+        ["M"] = Redesign(w: 100, h: 68, icon: 20, label: 14, foot: 11, strip: 56, stripIcon: 24),
+        ["L"] = Redesign(w: 124, h: 80, icon: 24, label: 16, foot: 12, strip: 56, stripIcon: 24),
     };
 
     /// <summary>Handoff key group → catalog group.</summary>
@@ -359,8 +359,10 @@ public sealed class HandoffFidelityTests
         // D12 (direction C, 2026-10-16): the panel takes the tiles of the mockup of C with a gap of 8, header buttons of
         // 44 and the Always visible row of 64 with its 24 icon and 12 label. D19 (2026-10-22): the tiles keep the widths
         // of C and come back near the heights of the handoff (84 × 68, 100 × 76, 124 × 92), S draws the 12 label it
-        // always drew, and the row of S is the handoff's row of icons, one touch target high. Every measure is the
-        // handoff's or the redesign's, and the redesign changes the whole size.
+        // always drew, and the row of S is the handoff's row of icons, one touch target high. D20 (2026-10-22): each
+        // tile holds its content and no more (84 × 64, 100 × 68, 124 × 80, icons of 20, 20 and 24) and the row with
+        // names of M and L is 56. Every measure is the handoff's or the redesign's, and the redesign changes the whole
+        // size.
         var redesign = RedesignSizes[sizeId];
         foreach (var (name, value) in pairs)
         {

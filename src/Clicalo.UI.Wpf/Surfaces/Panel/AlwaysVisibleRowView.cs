@@ -14,10 +14,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
 /// The Always visible row (FIJ-001 to FIJ-004) of direction C (D12): the section label «SIEMPRE VISIBLE»
-/// (<see cref="Overline"/>, hidden in Compact) <see cref="Space.S2"/> above four equal columns with the gap of the grid,
-/// <see cref="Space.S2"/>. Its tiles are as high as the size says: <see cref="ControlHeight.Large"/> in M and L, with
-/// the anatomy of every tile and their name (one or two lines with «…»), and one touch target in S and Compact, with
-/// icons alone (FIJ-002, VCO-001, D19). The «··· i/N» chip
+/// (<see cref="Overline"/>, hidden in Compact) <see cref="Space.S1"/> above four equal columns with the gap of the grid,
+/// <see cref="Space.S2"/>. Its tiles are as high as the size says (<c>sizes.json</c>): 56 in M and L, with the anatomy
+/// of every tile and their name in one line with «…», and one touch target in S and Compact, with icons alone
+/// (FIJ-002, VCO-001, D19, D20). The «··· i/N» chip
 /// takes the last column when the row pages. The panel decides whether the row is on screen; it only projects
 /// <see cref="AlwaysVisibleRowViewModel"/>.
 /// </summary>
@@ -25,7 +25,7 @@ public sealed class AlwaysVisibleRowView : StackPanel
 {
     private readonly AlwaysVisibleRowViewModel _viewModel;
     private readonly PanelViewModel _panel;
-    private readonly Overline _label = new() { Margin = new Thickness(0, 0, 0, Space.S2) };
+    private readonly Overline _label = new() { Margin = new Thickness(0, 0, 0, Space.S1) };
     private readonly UniformGrid _grid = new()
     {
         Columns = StripLayout.Columns,
@@ -155,15 +155,10 @@ public sealed class AlwaysVisibleRowView : StackPanel
         // At a larger text, when a name does not fit its quarter of the row, the row halves its columns instead of
         // cutting the names: two rows of two (D12: a column too narrow for its text gives way, the text never does).
         var layout = _panel.Layout;
-        var largeText = layout.TextScalePercent > TypeScale.MinScalePercent;
         var halves = Halves(layout);
         _halves = halves;
         _grid.Columns = halves ? StripLayout.Columns / 2 : StripLayout.Columns;
-        var look = TileLook.Strip(
-            cramped: layout.VoiceNumbers && !halves,
-            largeText,
-            _viewModel.ShowsNames
-        );
+        var look = TileLook.Strip(cramped: layout.VoiceNumbers && !halves, _viewModel.ShowsNames);
         foreach (var viewModel in _viewModel.Tiles)
         {
             var (control, handler) = TileFactory.Create(
@@ -194,7 +189,7 @@ public sealed class AlwaysVisibleRowView : StackPanel
     private bool Halves(PanelLayoutSettings layout)
     {
         var largeText = layout.TextScalePercent > TypeScale.MinScalePercent;
-        return largeText && !NamesFit(layout, TileLook.Strip(layout.VoiceNumbers, largeText));
+        return largeText && !NamesFit(layout, TileLook.Strip(layout.VoiceNumbers));
     }
 
     /// <summary>

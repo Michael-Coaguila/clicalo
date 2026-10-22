@@ -6,8 +6,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// <summary>
 /// The anatomy of a tile of the panel in direction C (D12, CUA-007, CUA-011): the box of its icon, the style of its
 /// name and of its key line (both grow with the text scale) and the lines its name may take before «…». S takes the
-/// small icon and the small label, so a name of the narrowest tile is still read whole at the largest text (CUA-011); L
-/// takes the larger icon and the <c>heading</c> name, so the size the person chose is seen in the text too.
+/// small icon and the small label, so a name of the narrowest tile is still read whole at the largest text (CUA-011),
+/// and its tile has no room for the key line; M takes the label of 14 and L the <c>heading</c> name and the medium
+/// icon, so the size the person chose is seen in the text too. Each fits whole in the height of its size (D20): icon,
+/// one line of name and the key line, or two lines of name.
 /// </summary>
 /// <param name="IconSize">The icon box (<see cref="IconBox"/>).</param>
 /// <param name="Name">The style of the name.</param>
@@ -37,24 +39,22 @@ internal sealed record TileLook(
                 TextStyleToken.KeysTile,
                 2
             ),
-            PanelSize.L => new(IconBox.Large, TextStyleToken.Heading, TextStyleToken.Keys, 2),
-            _ => new(IconBox.Medium, TextStyleToken.Label, TextStyleToken.KeysTile, 2),
+            PanelSize.L => new(IconBox.Medium, TextStyleToken.Heading, TextStyleToken.Keys, 2),
+            _ => new(IconBox.Small, TextStyleToken.Label, TextStyleToken.KeysTile, 2),
         };
 
     /// <summary>
-    /// The tiles of the Always visible row, in Full and Compact (64 high): the icon of the grid and the small label, with
-    /// the narrow side inset of a narrow tile. When its columns are too narrow to keep the voice number of the top left
-    /// slot beside the icon (<paramref name="cramped"/>), with the numbers on (ACC-009) the body starts under that slot,
-    /// with the small icon and one line of name; at a larger text the icon gives way, so the number never covers it and
-    /// the name is never cut (CUA-011).
+    /// The tiles of the Always visible row, in Full and Compact: the small label in one line with «…» and the narrow side
+    /// inset of a narrow tile, in the 56 of M and L (D20). With the voice numbers on in four narrow columns
+    /// (<paramref name="cramped"/>, ACC-009) the icon is the small one, so it stays beside the slot of the number and
+    /// never under it; a larger text grows the name, which still fits under the icon (CUA-011).
     /// </summary>
     /// <param name="cramped">Whether the voice number needs the top of the tile: numbers on in four narrow columns.</param>
-    /// <param name="largeText">Whether the text is above 100 %.</param>
     /// <param name="showsNames">
     /// Whether the row shows names. A row of icons alone (S, Compact: one touch target high, D19) takes the small icon,
     /// clear of the type mark at the top right; with the voice numbers on, under the slot of the number.
     /// </param>
-    public static TileLook Strip(bool cramped, bool largeText, bool showsNames = true) =>
+    public static TileLook Strip(bool cramped, bool showsNames = true) =>
         !showsNames
             ? new(
                 IconBox.Small,
@@ -64,21 +64,11 @@ internal sealed record TileLook(
                 cramped ? Space.S6 : Space.S1,
                 SideInset: Space.S1
             )
-        : cramped
-            ? new(
-                IconBox.Small,
+            : new(
+                cramped ? IconBox.Small : IconBox.Medium,
                 TextStyleToken.LabelSmall,
                 TextStyleToken.KeysTile,
                 1,
-                Space.S6,
-                ShowsIcon: !largeText,
                 SideInset: Space.S1
-            )
-        : new(
-            IconBox.Medium,
-            TextStyleToken.LabelSmall,
-            TextStyleToken.KeysTile,
-            2,
-            SideInset: Space.S1
-        );
+            );
 }
