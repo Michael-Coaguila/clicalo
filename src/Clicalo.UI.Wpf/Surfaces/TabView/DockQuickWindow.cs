@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.UI.Wpf.Controls;
@@ -23,7 +24,11 @@ public sealed class DockQuickWindow : TouchSurface
     /// <summary>The instance of the side window in the registry, after the three windows of the bar.</summary>
     public const int Instance = 4;
 
-    private const double SheetWidth = 288;
+    /// <summary>
+    /// The width of the panel M in its default layout, so the sheet beside the bar is the sheet of the panel (D19): at the
+    /// 288 it had, «Compacta» ended in «…», the themes went one under another and the sheet was most of the screen high.
+    /// </summary>
+    private static readonly double SheetWidth = GridMetrics.PanelWidth(PanelLayoutSettings.Default);
 
     private readonly QuickSettingsViewModel _viewModel;
     private readonly QuickSettingsSheet _sheet;

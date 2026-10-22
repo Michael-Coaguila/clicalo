@@ -14,7 +14,6 @@
     "src/Clicalo.UI.Wpf/Surfaces/TabView/DockFlyoutWindow.cs": 2,
     "src/Clicalo.UI.Wpf/Surfaces/TabView/DockMenuWindow.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/TabView/DockNoticeWindow.cs": 1,
-    "src/Clicalo.UI.Wpf/Surfaces/TabView/DockQuickWindow.cs": 1,
     "src/Clicalo.UI.Wpf/Windowing/DisplayMonitors.cs": 1,
     "src/Clicalo.UI.Wpf/Windowing/Internal/SurfaceHook.cs": 1,
     "src/Clicalo.UI.Wpf/Windowing/Internal/SurfaceShadow.cs": 2,

@@ -431,8 +431,15 @@ public sealed class DockBarViewModel : ObservableObject
     /// and longer with a larger text so its name keeps its words whole (PES-007 with the measures of direction C, D12;
     /// CUA-011). Never shorter than the size says.
     /// </summary>
-    public double TileLength =>
-        IsVertical
+    public double TileLength => TileLengthAlong(IsVertical);
+
+    /// <summary>
+    /// <see cref="TileLength"/> along a side bar (<paramref name="vertical"/>) or a top or bottom one, whatever edge is
+    /// in view: the bar of another edge builds its shortcuts with its own length, never with the one of the edge in view.
+    /// </summary>
+    /// <param name="vertical">Whether the bar is on the left or the right edge.</param>
+    public double TileLengthAlong(bool vertical) =>
+        vertical
             ? Math.Max(Metrics.DockVerticalTileHeightPx, _verticalTileLength)
             : Math.Max(Metrics.DockHorizontalTileWidthPx, _horizontalTileLength);
 

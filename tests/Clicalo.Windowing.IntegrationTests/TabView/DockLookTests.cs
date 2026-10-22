@@ -10,7 +10,6 @@ using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Automation;
-using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -205,7 +204,12 @@ public sealed class DockLookTests
     [InlineData(DockSide.Right, "es")]
     [InlineData(DockSide.Left, "en")]
     [Trait("Req", "PES-008")]
-    public void The_labeled_tools_of_a_side_bar_line_up_their_icons(DockSide side, string language)
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "REG-06")]
+    public void The_tools_of_a_side_bar_are_named_icons_of_44_in_pairs(
+        DockSide side,
+        string language
+    )
     {
         using var lab = SurfaceLab.Create();
         var time = new FakeTimeProvider();
@@ -227,13 +231,26 @@ public sealed class DockLookTests
                 using var host = AuditHost.OfWindow(bar, theme);
                 host.LayOut();
 
-                // Auto/Fixed, Pinned, Sticky keys and the lock: rows whose labels have different lengths.
-                var lefts = new[] { bar.Buttons[4], bar.Buttons[7], bar.Buttons[8], bar.Buttons[9] }
+                // D19: Auto/Fixed, Pinned, Sticky keys and the lock are icons of 44, their label only their name.
+                var tools = new[] { bar.Buttons[4], bar.Buttons[7], bar.Buttons[8], bar.Buttons[9] }
                     .Where(b => b.Visibility == Visibility.Visible)
-                    .Select(b => FirstIcon(b).TranslatePoint(default, host.Root).X)
                     .ToList();
-                lefts.Count.ShouldBeGreaterThan(2);
-                lefts.Max().ShouldBe(lefts.Min(), 0.5, string.Join(", ", lefts));
+                tools.Count.ShouldBeGreaterThan(2);
+                foreach (var tool in tools)
+                {
+                    tool.ActualWidth.ShouldBe(ControlHeight.Small);
+                    tool.ActualHeight.ShouldBe(ControlHeight.Small);
+                    System
+                        .Windows.Automation.AutomationProperties.GetName(tool)
+                        .ShouldNotBeNullOrWhiteSpace();
+                    VisibleTexts(tool).ShouldBeEmpty();
+                }
+
+                // Auto/Fixed and the lock side by side across the bar, as every pair.
+                var auto = bar.Buttons[4].TranslatePoint(default, host.Root);
+                var lockOpen = bar.Buttons[9].TranslatePoint(default, host.Root);
+                lockOpen.Y.ShouldBe(auto.Y, 0.5);
+                (lockOpen.X - auto.X).ShouldBe(ControlHeight.Small + Space.S1, 0.5);
             }
             finally
             {
@@ -398,26 +415,22 @@ public sealed class DockLookTests
     private static double Top(ShortcutTile tile, string part, UIElement root) =>
         ((FrameworkElement)tile.Template.FindName(part, tile)).TranslatePoint(default, root).Y;
 
-    private static SymbolIcon FirstIcon(DependencyObject parent) =>
-        FirstIconOrNull(parent) ?? throw new InvalidOperationException("No icon.");
-
-    private static SymbolIcon? FirstIconOrNull(DependencyObject parent)
+    /// <summary>The texts under <paramref name="parent"/> that are on screen, whatever their parents hide.</summary>
+    private static List<string> VisibleTexts(DependencyObject parent)
     {
+        var texts = new List<string>();
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
         {
             var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is SymbolIcon icon)
+            if (child is TextBlock { IsVisible: true } text && text.Text.Length > 0)
             {
-                return icon;
+                texts.Add(text.Text);
             }
 
-            if (FirstIconOrNull(child) is { } found)
-            {
-                return found;
-            }
+            texts.AddRange(VisibleTexts(child));
         }
 
-        return null;
+        return texts;
     }
 
     private static ThemeService Theme() =>

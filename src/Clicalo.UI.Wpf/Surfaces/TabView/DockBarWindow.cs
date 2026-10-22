@@ -22,17 +22,17 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// <see cref="Space.S2"/>, radius <see cref="Radii.Large"/> and four zones separated by a line:
 /// <list type="number">
 /// <item>close (the chevron toward the edge) and expand, two icon buttons of 44;</item>
-/// <item>«What to see»: the track of ★ Frequents and the profile (one of the two is «elegido») and Auto/Fixed;</item>
+/// <item>«What to see»: the track of ★ Frequents and the profile (one of the two is «elegido»), and Auto/Fixed beside
+/// the lock of the bar;</item>
 /// <item>the shortcuts that fit whole, with «▲ i/N ▼» under them on a side edge or ‹ › around them on the top and
 /// bottom ones;</item>
-/// <item>the tools: Search and Repeat, 📌 Pinned, Sticky keys, the lock of the bar, <c>tune</c> for Quick settings
-/// (PES-009) and the Mantener scroll up and down.</item>
+/// <item>the tools: Search and Repeat, 📌 Pinned and Sticky keys, <c>tune</c> for Quick settings (PES-009) and the
+/// Mantener scroll up and down.</item>
 /// </list>
 /// Every control is drawn at least 44 × 44 and never changes size: what is open or on shows the one look of «elegido».
 /// A side bar is as wide as two targets of 44 side by side (<see cref="PairWidth"/>), so the pairs are never drawn
-/// smaller than they answer; its labeled tools are rows of 44 with the icon before the label (two lines at most),
-/// while a top or bottom bar is a row of <see cref="ControlHeight.Large"/> whose labeled tools are cards of 52 with the
-/// icon above, as in the prototype. Its shortcuts open their menu with a long press and show the marks of test mode
+/// smaller than they answer, and a top or bottom bar is a row of <see cref="ControlHeight.Large"/>. Every tool is an
+/// icon of 44 with its label as its accessible name (D19), so the edge goes to the shortcuts. Its shortcuts open their menu with a long press and show the marks of test mode
 /// (PES-010, PES-014). One window per edge: its shape and its direction are fixed when it is created. It measures what
 /// is left for the shortcuts along the edge and hands it to the view model (PES-007: they are counted, not estimated).
 /// </summary>
@@ -119,7 +119,10 @@ public sealed class DockBarWindow : TouchSurface
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
-        var shape = _vertical ? DockToolShape.Row : DockToolShape.Stacked;
+        // The tools that switch a state are icons of 44 in pairs, as the icon buttons beside them, and their label is
+        // their accessible name (D19): as labeled rows they took four rows of the side bar, two of them labels cut in
+        // two lines, and left room for four shortcuts on the screen of the person.
+        const DockToolShape shape = DockToolShape.Icon;
 
         // 1. Controls: close (chevron toward the edge) and expand.
         _close = IconTool(CloseIcon(side), viewModel.CloseBar);
@@ -162,7 +165,7 @@ public sealed class DockBarWindow : TouchSurface
         _activeDot.SetResourceReference(Shape.FillProperty, ThemeBrushKey.For(ColorToken.Accent));
         _profile.Lead.Children.Add(_activeDot);
         var track = Track(_frequents.Button, _profile.Button);
-        _pill = new DockTool("autorenew", ButtonVariant.Secondary, shape, viewModel.ToggleLock);
+        _pill = new DockTool("autorenew", ButtonVariant.Tertiary, shape, viewModel.ToggleLock);
 
         // 3. The shortcuts, with their pager.
         _tiles = new StackPanel
@@ -171,7 +174,7 @@ public sealed class DockBarWindow : TouchSurface
             VerticalAlignment = VerticalAlignment.Center,
         };
         // The arrows of a pager are secondary, as in the panel (PagerView): one button for one role (D12), and a
-        // disabled arrow (dashed) never looks more present than the enabled one beside it.
+        // disabled arrow (no line, muted) never looks more present than the enabled one beside it.
         _previous = IconTool(_vertical ? "keyboard_arrow_up" : "chevron_left", viewModel.Previous);
         _next = IconTool(_vertical ? "keyboard_arrow_down" : "chevron_right", viewModel.Next);
         _previous.Variant = ButtonVariant.Secondary;
@@ -195,14 +198,14 @@ public sealed class DockBarWindow : TouchSurface
         // 4. The tools.
         _search = IconTool("search", viewModel.Search);
         _repeat = IconTool("replay", viewModel.Repeat);
-        _pinned = new DockTool("push_pin", ButtonVariant.Secondary, shape, viewModel.TogglePinned);
+        _pinned = new DockTool("push_pin", ButtonVariant.Tertiary, shape, viewModel.TogglePinned);
         _sticky = new DockTool(
             "keyboard_command_key",
-            ButtonVariant.Secondary,
+            ButtonVariant.Tertiary,
             shape,
             viewModel.ToggleSticky
         );
-        _lock = new DockTool("lock_open", ButtonVariant.Secondary, shape, viewModel.TogglePinOpen);
+        _lock = new DockTool("lock_open", ButtonVariant.Tertiary, shape, viewModel.TogglePinOpen);
 
         // PES-009: Quick settings beside the bar, the side of the Tab view included; an icon, as in the panel header.
         _tune = IconTool("tune", viewModel.QuickSettings);
@@ -239,7 +242,9 @@ public sealed class DockBarWindow : TouchSurface
 
         Add(Pair(_close, _expand), Space.S2);
         Add(track, Space.S1);
-        Add(_pill.Button, 0);
+
+        // Auto/Fixed and the lock side by side: the two that keep something as it is, the profile and the open bar.
+        Add(Pair(_pill.Button, _lock.Button), 0);
         Add(Divider(), 0, stretch: true);
         Add(_vertical ? _tiles : HorizontalTiles(), 0);
         if (_vertical)
@@ -250,9 +255,7 @@ public sealed class DockBarWindow : TouchSurface
         _toolsDivider = Divider();
         Add(_toolsDivider, 0, stretch: true);
         Add(Pair(_search, _repeat), Space.S1);
-        Add(_pinned.Button, Space.S1);
-        Add(_sticky.Button, Space.S1);
-        Add(_lock.Button, Space.S1);
+        Add(Pair(_pinned.Button, _sticky.Button), Space.S1);
         Add(_tune, Space.S1);
         Add(Pair(_scrollUp, _scrollDown), 0);
 
@@ -282,6 +285,18 @@ public sealed class DockBarWindow : TouchSurface
     {
         ArgumentNullException.ThrowIfNull(monitor);
         Monitor = monitor;
+
+        // PES-005: never longer than its edge allows, whatever its content asks for.
+        var longest = DockGeometry.MaxBarLength(Side, monitor) / monitor.Scale;
+        if (_vertical)
+        {
+            MaxHeight = longest;
+        }
+        else
+        {
+            MaxWidth = longest;
+        }
+
         if (_viewModel.Side != Side)
         {
             return;
@@ -628,12 +643,14 @@ public sealed class DockBarWindow : TouchSurface
         _tileControls.Clear();
         _tiles.Children.Clear();
         var metrics = _viewModel.Metrics;
-        var height = _vertical ? _viewModel.TileLength : TileHeight(vertical: false);
+        var height = _vertical
+            ? _viewModel.TileLengthAlong(vertical: true)
+            : TileHeight(vertical: false);
         foreach (var tile in _viewModel.PageTiles)
         {
             var (control, handler) = DockTileFactory.Create(
                 tile,
-                _vertical ? double.NaN : _viewModel.TileLength,
+                _vertical ? double.NaN : _viewModel.TileLengthAlong(vertical: false),
                 height,
                 metrics.DockTileIconPx,
                 NameLines(height),

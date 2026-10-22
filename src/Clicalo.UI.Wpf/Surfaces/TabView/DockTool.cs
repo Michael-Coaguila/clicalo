@@ -12,7 +12,9 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// <see cref="DockToolShape.Row"/> puts the icon before the label (a row of <see cref="ControlHeight.Small"/>, the label
 /// in up to two lines, icon and label from the start so the icons of a column line up) and
 /// <see cref="DockToolShape.Stacked"/> above it (a card of <see cref="ControlHeight.Medium"/>,
-/// one line), as the prototype did on a side edge and on the top and bottom ones. Pressed, the button draws «elegido»
+/// one line), as the prototype did on a side edge and on the top and bottom ones; <see cref="DockToolShape.Icon"/> is the
+/// icon alone in a square of <see cref="ControlHeight.Small"/>, its label only the accessible name (D19). Pressed, the
+/// button draws «elegido»
 /// (<see cref="TouchButton.IsActive"/> or <see cref="TouchButton.IsOn"/>) and its icon fills in <c>accentInk</c>, the
 /// one look of direction C; it never changes size.
 /// </summary>
@@ -25,10 +27,11 @@ internal sealed class DockTool
     /// <param name="tap">What a tap (or UI Automation) does.</param>
     public DockTool(string symbol, ButtonVariant variant, DockToolShape shape, Action tap)
     {
+        var iconOnly = shape == DockToolShape.Icon;
         Icon = new SymbolIcon
         {
             Symbol = symbol,
-            Size = IconBox.Small,
+            Size = iconOnly ? IconBox.Medium : IconBox.Small,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -49,7 +52,11 @@ internal sealed class DockTool
             VerticalAlignment = VerticalAlignment.Center,
         };
         DockPanel.SetDock(Lead, stacked ? Dock.Top : Dock.Left);
-        Lead.Margin = stacked ? new Thickness(0, 0, 0, Space.S1) : new Thickness(0, 0, Space.S2, 0);
+        Lead.Margin =
+            iconOnly ? new Thickness(0)
+            : stacked ? new Thickness(0, 0, 0, Space.S1)
+            : new Thickness(0, 0, Space.S2, 0);
+        Label.Visibility = iconOnly ? Visibility.Collapsed : Visibility.Visible;
         _ = parts.Children.Add(Lead);
         _ = parts.Children.Add(Label);
         Button = new TouchButton
@@ -57,16 +64,20 @@ internal sealed class DockTool
             Variant = variant,
             Size = stacked ? ControlSize.Medium : ControlSize.Small,
             Content = parts,
-            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
+            Padding = iconOnly ? new Thickness(0) : new Thickness(Space.S2, 0, Space.S2, 0),
 
             // In a column of rows the icons line up at the start, one under the other, whatever their labels.
-            HorizontalContentAlignment = stacked
-                ? HorizontalAlignment.Center
-                : HorizontalAlignment.Left,
+            HorizontalContentAlignment =
+                stacked || iconOnly ? HorizontalAlignment.Center : HorizontalAlignment.Left,
             MinWidth = stacked ? ControlHeight.Medium : ControlHeight.Small,
             Focusable = false,
             IsTabStop = false,
         };
+        if (iconOnly)
+        {
+            Button.Width = ControlHeight.Small;
+        }
+
         Button.Click += (_, _) => tap();
         Paint(pressed: false);
     }
