@@ -89,7 +89,7 @@ public sealed class PanelHeaderProjectionTests
     )]
     [InlineData(
         true,
-        "lock",
+        "sync_lock",
         "Fijo: el perfil no cambia al cambiar de app. Toca para volver a Auto."
     )]
     public void Auto_Fixed_is_said_by_its_icon_and_its_name_not_only_its_color(

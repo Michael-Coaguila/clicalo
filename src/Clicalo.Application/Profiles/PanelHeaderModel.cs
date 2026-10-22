@@ -27,8 +27,11 @@ public sealed record PanelHeaderModel(
     /// <summary>The Material Symbols icon of Auto (CAB-003).</summary>
     public static IconRef AutoIcon { get; } = new("autorenew");
 
-    /// <summary>The Material Symbols icon of Fixed (CAB-003).</summary>
-    public static IconRef FixedIcon { get; } = new("lock");
+    /// <summary>
+    /// The Material Symbols icon of Fixed (CAB-003): the arrows of Auto with a lock, Auto held, so it reads as the
+    /// other state of the same button and is never taken for the lock that keeps the bar of the Tab view open (D20).
+    /// </summary>
+    public static IconRef FixedIcon { get; } = new("sync_lock");
 
     /// <summary>The icon of the Auto/Fixed button for this state.</summary>
     public IconRef AutoFixedIcon => IsFixed ? FixedIcon : AutoIcon;

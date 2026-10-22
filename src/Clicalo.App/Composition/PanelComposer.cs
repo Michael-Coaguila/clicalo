@@ -50,7 +50,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private const string NoticeIcon = "info";
     private const string WarningIcon = "warning";
     private const string UndoIcon = "undo";
-    private const string LockedIcon = "lock";
+    private const string LockedIcon = "sync_lock";
     private const string FollowingIcon = "autorenew";
     private const string AdminIcon = "admin_panel_settings";
 
