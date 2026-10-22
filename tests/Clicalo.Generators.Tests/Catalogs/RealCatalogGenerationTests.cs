@@ -89,7 +89,7 @@ public sealed class RealCatalogGenerationTests
         var layout = assembly.Static(Sizes, "Layout")!;
 
         GeneratedAssembly.Property(medium, "TileWidthPx").ShouldBe(100);
-        GeneratedAssembly.Property(medium, "TileHeightPx").ShouldBe(80);
+        GeneratedAssembly.Property(medium, "TileHeightPx").ShouldBe(76);
         GeneratedAssembly.Property(medium, "GapPx").ShouldBe(8);
         GeneratedAssembly.Property(medium, "StripCapacity").ShouldBe(8);
         GeneratedAssembly.Property(layout, "PanelMinWidthPx").ShouldBe(288);

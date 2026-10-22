@@ -165,7 +165,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             Margin = new Thickness(Space.S3, Space.S3, Space.S3, 0),
             Visibility = header is null ? Visibility.Collapsed : Visibility.Visible,
         };
-        _body.Notices.Margin = new Thickness(0, Space.S3, 0, 0);
+        _body.Notices.Margin = new Thickness(0, Space.S2, 0, 0);
         _root = new StackPanel { Orientation = Orientation.Vertical };
         _root.Children.Add(_headerSlot);
         _root.Children.Add(_body);

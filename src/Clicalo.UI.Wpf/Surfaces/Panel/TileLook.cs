@@ -50,8 +50,21 @@ internal sealed record TileLook(
     /// </summary>
     /// <param name="cramped">Whether the voice number needs the top of the tile: numbers on in four narrow columns.</param>
     /// <param name="largeText">Whether the text is above 100 %.</param>
-    public static TileLook Strip(bool cramped, bool largeText) =>
-        cramped
+    /// <param name="showsNames">
+    /// Whether the row shows names. A row of icons alone (S, Compact: one touch target high, D19) takes the small icon,
+    /// clear of the type mark at the top right; with the voice numbers on, under the slot of the number.
+    /// </param>
+    public static TileLook Strip(bool cramped, bool largeText, bool showsNames = true) =>
+        !showsNames
+            ? new(
+                IconBox.Small,
+                TextStyleToken.LabelSmall,
+                TextStyleToken.KeysTile,
+                1,
+                cramped ? Space.S6 : Space.S1,
+                SideInset: Space.S1
+            )
+        : cramped
             ? new(
                 IconBox.Small,
                 TextStyleToken.LabelSmall,
@@ -61,11 +74,11 @@ internal sealed record TileLook(
                 ShowsIcon: !largeText,
                 SideInset: Space.S1
             )
-            : new(
-                IconBox.Medium,
-                TextStyleToken.LabelSmall,
-                TextStyleToken.KeysTile,
-                2,
-                SideInset: Space.S1
-            );
+        : new(
+            IconBox.Medium,
+            TextStyleToken.LabelSmall,
+            TextStyleToken.KeysTile,
+            2,
+            SideInset: Space.S1
+        );
 }

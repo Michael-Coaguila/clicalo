@@ -4,19 +4,17 @@ namespace Clicalo.Domain.PanelLayout;
 
 /// <summary>
 /// The Always visible row (FIJ-001 to FIJ-003): 4 columns; 4 shortcuts in S or Compact and 8 in M or L; with more,
-/// capacity − 1 per page and a «··· i/N» chip that cycles. Direction C (D12) keeps the name on every tile, in every size
-/// and view: a tile without a name was one of the causes of the critique, and the row of C is 64 high in every view.
+/// capacity − 1 per page and a «··· i/N» chip that cycles. In S and in Compact the row is a row of icons as high as a
+/// touch target (FIJ-002, VCO-001; D19): the name, in a quarter of the narrowest panel, ended in «…», and a row of the
+/// height of M made S and Compact as tall as M. In M and L it keeps the name, 64 high.
 /// </summary>
 public static class StripLayout
 {
     /// <summary>Columns of the row (FIJ-002).</summary>
     public const int Columns = 4;
 
-    /// <summary>
-    /// Height of the row in the Compact view: the large control height of direction C, as in Full (D12, FIJ-002), the
-    /// least that holds the icon and the name of a tile at the largest text.
-    /// </summary>
-    public const int CompactHeightPx = 64;
+    /// <summary>Height of the row in the Compact view: one touch target, for its icons (VCO-001, REG-02).</summary>
+    public static int CompactHeightPx => PanelSizes.Layout.MinTouchTargetPx;
 
     /// <summary>Shortcuts the row holds before paging: 4 in S or Compact, 8 in M or L (FIJ-003).</summary>
     /// <param name="settings">Size and view.</param>
@@ -28,7 +26,7 @@ public static class StripLayout
             : settings.Metrics.StripCapacity;
     }
 
-    /// <summary>Height of a tile of the row: 64 in S, M and L, in Full and in Compact (FIJ-002, D12).</summary>
+    /// <summary>Height of a tile of the row: the size's (44 in S, 64 in M and L) and 44 in Compact (FIJ-002, D19).</summary>
     /// <param name="settings">Size and view.</param>
     public static int TileHeight(PanelLayoutSettings settings)
     {
@@ -37,14 +35,15 @@ public static class StripLayout
     }
 
     /// <summary>
-    /// Whether the tiles show their name: always in direction C (D12), which replaced the icons alone of S and Compact
-    /// (FIJ-002) with a name in one line with «…».
+    /// Whether the tiles show their name: when the row is taller than one touch target, as in M and L. A row of the
+    /// height of a touch target shows icons alone (S, Compact); the name stays for UI Automation and the voice
+    /// numbers (FIJ-002, VCO-001).
     /// </summary>
     /// <param name="settings">Size and view.</param>
     public static bool ShowsNames(PanelLayoutSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return true;
+        return TileHeight(settings) > PanelSizes.Layout.MinTouchTargetPx;
     }
 
     /// <summary>The page <paramref name="page"/> of a row of <paramref name="count"/> shortcuts (FIJ-003).</summary>

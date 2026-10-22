@@ -10,11 +10,12 @@ public sealed class StripLayoutTests
     public static TheoryData<PanelSize, bool, int, int, bool> Rows =>
         new()
         {
-            { PanelSize.Small, false, 4, 64, true },
+            { PanelSize.Small, false, 4, 44, false },
             { PanelSize.Medium, false, 8, 64, true },
             { PanelSize.Large, false, 8, 64, true },
-            { PanelSize.Medium, true, 4, 64, true },
-            { PanelSize.Large, true, 4, 64, true },
+            { PanelSize.Small, true, 4, 44, false },
+            { PanelSize.Medium, true, 4, 44, false },
+            { PanelSize.Large, true, 4, 44, false },
         };
 
     /// <summary>Shortcuts, capacity, page asked, expected page, pages, start, count, chip.</summary>
@@ -37,6 +38,7 @@ public sealed class StripLayoutTests
     [MemberData(nameof(Rows))]
     [Trait("Req", "FIJ-002")]
     [Trait("Req", "FIJ-003")]
+    [Trait("Req", "VCO-001")]
     public void The_row_holds_four_in_S_or_Compact_and_eight_in_M_or_L(
         PanelSize size,
         bool compact,

@@ -13,7 +13,8 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The body of the panel in direction C (D12), the rows of PAN-007 <see cref="Space.S3"/> apart: the Always visible
+/// The body of the panel in direction C (D12), the rows of PAN-007 <see cref="Space.S2"/> apart, the gap of the
+/// tiles, so the rows read as one grid and not as boxes apart (D19): the Always visible
 /// row, the sticky keys, the row «Qué ver», the grid of shortcuts (or the empty card, or [noResults]) and the pager; the
 /// Compact view puts «Qué ver» at its foot, under the pager (VCO-002). The body has the size of its design: a row that a
 /// temporary state hides (the search with text, PAN-008) keeps its place under the layer that covers it, the pager row is
@@ -322,7 +323,7 @@ public sealed class PanelBodyView : StackPanel
             Children.Insert(compact ? Children.Count : Children.IndexOf(GridArea), Selector);
         }
 
-        // Every row Space.S3 under the one before it; the first one starts at the top.
+        // Every row Space.S2 under the one before it, as the tiles of the grid; the first one starts at the top.
         var first = true;
         foreach (FrameworkElement row in Children)
         {
@@ -331,7 +332,7 @@ public sealed class PanelBodyView : StackPanel
                 continue;
             }
 
-            var top = first ? 0 : Space.S3;
+            var top = first ? 0 : Space.S2;
             var side = ReferenceEquals(row, Sticky) ? -Space.S1 : 0;
             row.Margin = ReferenceEquals(row, Sticky)
                 ? new Thickness(side, top + side, side, side)

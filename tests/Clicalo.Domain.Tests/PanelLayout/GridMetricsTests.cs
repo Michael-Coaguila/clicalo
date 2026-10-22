@@ -13,16 +13,16 @@ public sealed class GridMetricsTests
     public static TheoryData<PanelSize, int, bool, int> TileHeights =>
         new()
         {
-            { PanelSize.Small, 100, false, 72 },
-            { PanelSize.Medium, 100, false, 80 },
-            { PanelSize.Large, 100, false, 96 },
-            { PanelSize.Small, 150, false, 83 },
-            { PanelSize.Medium, 150, false, 91 },
-            { PanelSize.Large, 120, false, 101 },
-            { PanelSize.Large, 150, false, 109 },
-            { PanelSize.Small, 100, true, 56 },
-            { PanelSize.Medium, 100, true, 64 },
-            { PanelSize.Large, 150, true, 93 },
+            { PanelSize.Small, 100, false, 68 },
+            { PanelSize.Medium, 100, false, 76 },
+            { PanelSize.Large, 100, false, 92 },
+            { PanelSize.Small, 150, false, 78 },
+            { PanelSize.Medium, 150, false, 87 },
+            { PanelSize.Large, 120, false, 97 },
+            { PanelSize.Large, 150, false, 105 },
+            { PanelSize.Small, 100, true, 52 },
+            { PanelSize.Medium, 100, true, 60 },
+            { PanelSize.Large, 150, true, 89 },
         };
 
     /// <summary>Size, columns, expected panel width.</summary>
@@ -70,8 +70,8 @@ public sealed class GridMetricsTests
         {
             { PanelSize.Medium, 0, -1, 3 },
             { PanelSize.Medium, 0, 10_000, 3 },
-            { PanelSize.Medium, 0, 168, 2 },
-            { PanelSize.Medium, 0, 167, 1 },
+            { PanelSize.Medium, 0, 160, 2 },
+            { PanelSize.Medium, 0, 159, 1 },
             { PanelSize.Medium, 0, 10, 1 },
             { PanelSize.Small, 0, 10_000, 2 },
             { PanelSize.Small, 3, 10_000, 3 },
@@ -146,7 +146,7 @@ public sealed class GridMetricsTests
     {
         var shape = GridMetrics.Shape(Settings(PanelSize.Medium), null);
 
-        shape.HeightPx.ShouldBe((3 * 80) + (2 * 8));
+        shape.HeightPx.ShouldBe((3 * 76) + (2 * 8));
         GridMetrics.HeightOf(0, 80, 8).ShouldBe(0);
     }
 

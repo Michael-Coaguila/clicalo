@@ -36,7 +36,7 @@ public sealed class PanelBodyViewTests
                 body.ActualWidth.ShouldBe(316);
                 body.ShortcutGrid.TileControls.Count.ShouldBe(9);
                 // Tiles of 80 with the gap of 8 of direction C (D12); each one keeps half the gap around it.
-                body.ShortcutGrid.ActualHeight.ShouldBe(3 * (80 + 8));
+                body.ShortcutGrid.ActualHeight.ShouldBe(3 * (76 + 8));
                 body.ShortcutGrid.TileControls[0].Control.AccessibleName.ShouldBe("Atajo 0");
                 body.Strip.TileControls.Count.ShouldBe(5);
                 body.Children.IndexOf(body.Strip)

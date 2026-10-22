@@ -271,9 +271,9 @@ public sealed class SurfacesAuditTests
     }
 
     [Theory]
-    [InlineData(SizeSetting.Small, 292, 508)]
-    [InlineData(SizeSetting.Medium, 340, 612)]
-    [InlineData(SizeSetting.Large, 412, 660)]
+    [InlineData(SizeSetting.Small, 292, 456)]
+    [InlineData(SizeSetting.Medium, 340, 576)]
+    [InlineData(SizeSetting.Large, 412, 624)]
     [Trait("Req", "PAN-002")]
     [Trait("Req", "PAN-009")]
     [Trait("Req", "CUA-004")]
@@ -304,7 +304,8 @@ public sealed class SurfacesAuditTests
                 host.LayOut();
                 var single = new Size(host.Root.ActualWidth, host.Root.ActualHeight);
 
-                // D16: M in the Full view with 3 rows is 340 × 612; S (2 rows) and L follow the same rows.
+                // D16 with the measures of D19: M in the Full view with 3 rows is 340 × 576; S (2 rows and the row of
+                // icons) and L follow the same rows.
                 paged.ShouldBe(new Size(width, height));
                 single.ShouldBe(paged);
 

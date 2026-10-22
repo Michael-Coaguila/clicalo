@@ -10,14 +10,14 @@ namespace Clicalo.Data.Tests.Catalogs;
 /// </summary>
 public sealed class HandoffFidelityTests
 {
-    /// <summary>The measures of the sizes that direction C replaced (D12), by size and handoff name.</summary>
+    /// <summary>The measures of the sizes that direction C replaced (D12, D19), by size and handoff name.</summary>
     private static readonly Dictionary<string, Dictionary<string, int>> RedesignSizes = new(
         StringComparer.Ordinal
     )
     {
-        ["S"] = Redesign(w: 84, h: 72, icon: 20, label: 14, foot: 11),
-        ["M"] = Redesign(w: 100, h: 80, icon: 24, label: 14, foot: 11),
-        ["L"] = Redesign(w: 124, h: 96, icon: 32, label: 16, foot: 12),
+        ["S"] = Redesign(w: 84, h: 68, icon: 20, label: 12, foot: 11, strip: 44, stripIcon: 20),
+        ["M"] = Redesign(w: 100, h: 76, icon: 24, label: 14, foot: 11, strip: 64, stripIcon: 24),
+        ["L"] = Redesign(w: 124, h: 92, icon: 32, label: 16, foot: 12, strip: 64, stripIcon: 24),
     };
 
     /// <summary>Handoff key group → catalog group.</summary>
@@ -356,9 +356,11 @@ public sealed class HandoffFidelityTests
             ("sicon", size["strip"]!["iconPx"]),
             ("slabel", size["strip"]!["labelPx"]),
         };
-        // D12 (direction C, 2026-10-16): the panel takes the tiles of the mockup of C (84 × 72, 100 × 80, 124 × 96 with a
-        // gap of 8), header buttons of 44 and the Always visible row of 64 with its 24 icon and 12 label. Every measure
-        // is the handoff's or the redesign's, and the redesign changes the whole size.
+        // D12 (direction C, 2026-10-16): the panel takes the tiles of the mockup of C with a gap of 8, header buttons of
+        // 44 and the Always visible row of 64 with its 24 icon and 12 label. D19 (2026-10-22): the tiles keep the widths
+        // of C and come back near the heights of the handoff (84 × 68, 100 × 76, 124 × 92), S draws the 12 label it
+        // always drew, and the row of S is the handoff's row of icons, one touch target high. Every measure is the
+        // handoff's or the redesign's, and the redesign changes the whole size.
         var redesign = RedesignSizes[sizeId];
         foreach (var (name, value) in pairs)
         {
@@ -370,7 +372,15 @@ public sealed class HandoffFidelityTests
         handoff.AsObject().Count.ShouldBe(pairs.Length, "every handoff measure is compared");
     }
 
-    private static Dictionary<string, int> Redesign(int w, int h, int icon, int label, int foot) =>
+    private static Dictionary<string, int> Redesign(
+        int w,
+        int h,
+        int icon,
+        int label,
+        int foot,
+        int strip,
+        int stripIcon
+    ) =>
         new(StringComparer.Ordinal)
         {
             ["w"] = w,
@@ -380,8 +390,8 @@ public sealed class HandoffFidelityTests
             ["foot"] = foot,
             ["gap"] = 8,
             ["hb"] = 44,
-            ["sh"] = 64,
-            ["sicon"] = 24,
+            ["sh"] = strip,
+            ["sicon"] = stripIcon,
             ["slabel"] = 12,
         };
 

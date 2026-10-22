@@ -129,7 +129,7 @@ public sealed class PanelBodyViewModelTests
     [Fact]
     [Trait("Req", "FIJ-002")]
     [Trait("Req", "FIJ-003")]
-    public void In_S_the_row_holds_four_and_keeps_the_names()
+    public void In_S_the_row_holds_four_icons()
     {
         var panel = Panel(0, strip: 5);
         panel.ApplyLayout(
@@ -139,7 +139,8 @@ public sealed class PanelBodyViewModelTests
             }
         );
 
-        panel.Strip.ShowsNames.ShouldBeTrue();
+        // D19: the row of S is the handoff's row of icons, one touch target high; the names stay for UI Automation.
+        panel.Strip.ShowsNames.ShouldBeFalse();
         panel.Strip.Tiles.Count.ShouldBe(3);
         panel.Strip.MoreLabel.ShouldBe("1/2");
         panel.Strip.TileHeightPx.ShouldBe(PanelSizes.S.StripHeightPx);

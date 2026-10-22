@@ -64,7 +64,7 @@ public sealed class NoticeBarView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Padding = new Thickness(0, 0, 0, Space.S3);
+        Padding = new Thickness(0, 0, 0, Space.S1);
         _icon.Margin = new Thickness(0, 0, Space.S2, 0);
         _text.VerticalAlignment = VerticalAlignment.Center;
         _undo.Click += (_, _) => _viewModel.Undo();
