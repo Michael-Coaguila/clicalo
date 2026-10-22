@@ -77,12 +77,14 @@ internal static class OptionChrome
             _ => ControlHeight.Small,
         };
 
-    /// <summary>The corner radius of <paramref name="kind"/>.</summary>
+    /// <summary>
+    /// The corner radius of <paramref name="kind"/>: a chip has the radius of every other control (D20), so a row of
+    /// filters reads as controls and not as ovals beside the rest of the window.
+    /// </summary>
     public static double Radius(OptionKind kind) =>
         kind switch
         {
             OptionKind.Segment => Radii.Small,
-            OptionKind.Chip => Radii.Pill,
             _ => Radii.Medium,
         };
 

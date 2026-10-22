@@ -9,8 +9,9 @@ using Clicalo.UI.Wpf.Workspace.Internal;
 namespace Clicalo.UI.Wpf.Workspace.Shortcuts;
 
 /// <summary>
-/// «Tu panel muestra: Siempre visible + Word + Frecuentes» (ATJ-001): one line at every width. The lead and the «+»
-/// keep their width; where the line is short, the chips give up width and end in «…», their muted part first.
+/// «Tu panel muestra: Siempre visible + Word + Frecuentes» (ATJ-001): one line at every width, a sentence and not a row
+/// of ovals (D20): what it shows only tells, so it is text with its icons, not controls. The lead and the «+» keep their
+/// width; where the line is short, the parts give up width and end in «…», their muted part first.
 /// </summary>
 internal static class SummaryBar
 {
@@ -47,7 +48,7 @@ internal static class SummaryBar
         return row;
     }
 
-    /// <summary>A chip that only tells (not a control): icon, name and its muted part, on a pill of the card.</summary>
+    /// <summary>A part that only tells (not a control): icon, name and its muted part, without a box.</summary>
     private static Border Chip(LayerChip layer)
     {
         var icon = Ui.Icon(layer.Icon, IconBox.Small, ColorToken.Muted);
@@ -67,14 +68,12 @@ internal static class SummaryBar
         line.Children.Add(icon);
         line.Children.Add(name);
         line.Children.Add(meta);
-        var chip = Ui.Card(
-            line,
-            ColorToken.Card,
-            ColorToken.Border,
-            Radii.Pill,
-            new Thickness(Space.S3, Space.S2, Space.S3, Space.S2)
-        );
-        chip.VerticalAlignment = VerticalAlignment.Center;
+        var chip = new Border
+        {
+            Child = line,
+            Padding = new Thickness(0, Space.S2, 0, Space.S2),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
         AutomationProperties.SetName(chip, layer.Label + " " + layer.Meta);
         return chip;
     }
