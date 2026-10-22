@@ -79,7 +79,7 @@ public sealed class TrayIcon : IDisposable
                         if (_wanted)
                         {
                             Volatile.Write(ref _added, false);
-                            Add();
+                            _ = TryAdd();
                         }
 
                         return false;
@@ -93,7 +93,9 @@ public sealed class TrayIcon : IDisposable
             }
             else
             {
-                Add();
+                // Without a notification area yet (sign-in, Explorer restarting) the icon comes with TaskbarCreated:
+                // the panel never waits for the taskbar to start.
+                _ = TryAdd();
             }
         });
     }
@@ -181,7 +183,8 @@ public sealed class TrayIcon : IDisposable
     private static PhysicalPoint Anchor(nint wParam) =>
         new((short)(wParam & 0xFFFF), (short)((wParam >> 16) & 0xFFFF));
 
-    private unsafe void Add()
+    /// <summary>Adds the icon to the notification area; false when the shell refuses it, as before its taskbar exists.</summary>
+    private unsafe bool TryAdd()
     {
         var data = Data();
         data.Flags = (uint)(
@@ -195,12 +198,13 @@ public sealed class TrayIcon : IDisposable
         CopyTooltip(ref data);
         if (!ShellNotifyIcon.Send(NOTIFY_ICON_MESSAGE.NIM_ADD, ref data))
         {
-            throw new InvalidOperationException("Shell_NotifyIcon(NIM_ADD) failed.");
+            return false;
         }
 
         data.TimeoutOrVersion = PInvoke.NOTIFYICON_VERSION_4;
         _ = ShellNotifyIcon.Send(NOTIFY_ICON_MESSAGE.NIM_SETVERSION, ref data);
         Volatile.Write(ref _added, true);
+        return true;
     }
 
     private void Modify()
