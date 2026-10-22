@@ -36,7 +36,7 @@ public sealed class SurfaceSetDesktopTests
     public void Every_form_shows_passively_inside_the_work_area()
     {
         using var lab = SurfaceLab.Create();
-        var (set, panel, theme, _) = WpfThread.Invoke(() => Build(lab));
+        var (set, panel, theme, _, _) = WpfThread.Invoke(() => Build(lab));
         try
         {
             foreach (
@@ -105,7 +105,7 @@ public sealed class SurfaceSetDesktopTests
     public void The_notice_surface_shows_beside_the_handle_or_the_bar_clear_of_the_other_windows()
     {
         using var lab = SurfaceLab.Create();
-        var (set, panel, theme, model) = WpfThread.Invoke(() => Build(lab));
+        var (set, panel, theme, model, _) = WpfThread.Invoke(() => Build(lab));
         try
         {
             WpfThread.Invoke(() =>
@@ -179,17 +179,144 @@ public sealed class SurfaceSetDesktopTests
         }
     }
 
-    private static SurfaceLayout Layout(PanelForm form) =>
+    [DesktopFact]
+    [Trait("Req", "GEN-010")]
+    [Trait("Req", "PES-005")]
+    [Trait("Req", "PES-007")]
+    public void Moving_the_open_bar_to_another_edge_ends_its_layout_with_one_bar_on_screen()
+    {
+        using var lab = SurfaceLab.Create();
+        var (set, panel, theme, _, dock) = WpfThread.Invoke(() => Build(lab));
+        try
+        {
+            // More shortcuts than fit along any edge, so the bar pages them by what it measures.
+            WpfThread.Invoke(() =>
+            {
+                dock.ApplyTiles(ManyTiles(), []);
+                set.Apply(Layout(PanelForm.Full));
+                panel.Present();
+            });
+            WpfThread.Invoke(WpfThread.DrainPendingWork);
+            foreach (
+                var side in new[]
+                {
+                    DockSide.Right,
+                    DockSide.Left,
+                    DockSide.Top,
+                    DockSide.Bottom,
+                    DockSide.Left,
+                    DockSide.Top,
+                }
+            )
+            {
+                // The order of the composition: the bar takes its new edge, then the surfaces are placed for it.
+                var moved = WpfThread.Dispatcher.InvokeAsync(() =>
+                {
+                    dock.Apply(BarState(side));
+                    set.Apply(
+                        Layout(PanelForm.DockOpen, side, perPage: 8) with
+                        {
+                            Flyout = DockFlyout.None,
+                        }
+                    );
+                });
+                moved
+                    .Wait(TimeSpan.FromSeconds(10))
+                    .ShouldBe(
+                        System.Windows.Threading.DispatcherOperationStatus.Completed,
+                        $"the layout never ended on the {side} edge"
+                    );
+                WpfThread.Invoke(WpfThread.DrainPendingWork);
+
+                WpfThread.Invoke(() =>
+                {
+                    var bar = set.Bar(side);
+                    bar.IsVisible.ShouldBeTrue(side.ToString());
+                    foreach (var other in Enum.GetValues<DockSide>().Where(edge => edge != side))
+                    {
+                        set.Bar(other).IsVisible.ShouldBeFalse($"{other} while on {side}");
+                    }
+
+                    // PES-005, PES-007: the shortcuts that fit whole, so the bar is never longer than its edge allows.
+                    var bounds = bar.ScreenBounds;
+                    var monitor = PanelGeometry.MonitorOf(bounds, set.Monitors);
+                    var length = DockGeometry.IsVertical(side) ? bounds.Height : bounds.Width;
+                    length.ShouldBeLessThanOrEqualTo(
+                        DockGeometry.MaxBarLength(side, monitor),
+                        side.ToString()
+                    );
+                    dock.HasPages.ShouldBeTrue(side.ToString());
+                });
+            }
+
+            lab.Guard.Violations.ShouldBe(0);
+        }
+        finally
+        {
+            // Bounded: a layout that never ends must fail the test, not hang it.
+            _ = WpfThread
+                .Dispatcher.InvokeAsync(() =>
+                {
+                    panel.Close();
+                    theme.Dispose();
+                })
+                .Wait(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    private static System.Collections.Immutable.ImmutableArray<TileModel> ManyTiles()
+    {
+        var tile = PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es).Tiles[
+            0
+        ];
+        return
+        [
+            .. Enumerable
+                .Range(0, 24)
+                .Select(i =>
+                    tile with
+                    {
+                        Id = new ShortcutId(FormattableString.Invariant($"many-{i}")),
+                        Name = FormattableString.Invariant($"Atajo {i}"),
+                    }
+                ),
+        ];
+    }
+
+    private static DockBarState BarState(DockSide side) =>
+        new(
+            Layout(PanelForm.DockOpen, side, perPage: 8).Dock,
+            PanelSizes.Get(SizeId.M),
+            ShowStripRow: false,
+            StickyRow: false,
+            VoiceNumbers: false,
+            Frequents: false,
+            ProfileName: "Word",
+            ProfileIcon: "description",
+            IsActiveApp: false,
+            IsFixed: false,
+            CanRepeat: false,
+            DockFlyout.None,
+            CoachStep: 0,
+            BarOpen: true,
+            AnythingHeld: false
+        );
+
+    private static SurfaceLayout Layout(
+        PanelForm form,
+        DockSide side = DockSide.Right,
+        int perPage = 5
+    ) =>
         new(
             form,
             new DockSettings
             {
-                Side = DockSide.Right,
+                Side = side,
                 HandlePositions = new DockHandlePositions(50, 50, 50, 50),
                 HandleLocked = false,
                 PinOpen = false,
                 Gutter = true,
-                PerPage = 5,
+                PerPage = perPage,
                 CoachDone = true,
             },
             [],
@@ -203,7 +330,8 @@ public sealed class SurfaceSetDesktopTests
         SurfaceSet Set,
         PanelWindow Panel,
         ThemeService Theme,
-        PanelViewModel Model
+        PanelViewModel Model,
+        DockBarViewModel Dock
     ) Build(SurfaceLab lab)
     {
         var time = TimeProvider.System;
@@ -256,7 +384,7 @@ public sealed class SurfaceSetDesktopTests
                 () => { }
             )
         );
-        return (set, panel, theme, viewModel);
+        return (set, panel, theme, viewModel, dock);
     }
 
     private sealed class SilentIntents : IDockIntents

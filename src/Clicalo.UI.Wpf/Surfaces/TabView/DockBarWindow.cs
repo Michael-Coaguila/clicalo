@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
@@ -260,7 +259,7 @@ public sealed class DockBarWindow : TouchSurface
         Content = _root;
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Labels.PropertyChanged += OnViewModelChanged;
-        _viewModel.PageTiles.CollectionChanged += OnPageChanged;
+        _viewModel.PageChanged += OnPageChanged;
         _theme.Changed += OnThemeChanged;
         LayoutUpdated += (_, _) => MeasureTileSpace();
         RebuildTiles();
@@ -272,6 +271,28 @@ public sealed class DockBarWindow : TouchSurface
 
     /// <summary>The monitor it is on: the longest it may be comes from its work area (PES-005).</summary>
     public DisplayMonitor? Monitor { get; set; }
+
+    /// <summary>
+    /// PES-005, PES-007: takes <paramref name="monitor"/> and fits the page to its edge before the bar is measured and
+    /// placed, so it appears at its size instead of showing shortcuts that do not fit and shrinking under the finger.
+    /// The second pass takes the pager the first one may have brought.
+    /// </summary>
+    /// <param name="monitor">The monitor the bar goes to.</param>
+    public void FitToEdge(DisplayMonitor monitor)
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+        Monitor = monitor;
+        if (_viewModel.Side != Side)
+        {
+            return;
+        }
+
+        for (var pass = 0; pass < 2; pass++)
+        {
+            _root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            ApplyTileSpace(monitor, monitor.Scale);
+        }
+    }
 
     /// <summary>📌 Pinned, where its window goes beside (PES-010).</summary>
     public PhysicalRect PinnedButtonBounds => PhysicalBounds(_pinned.Button, inflate: false);
@@ -338,7 +359,7 @@ public sealed class DockBarWindow : TouchSurface
     {
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _viewModel.Labels.PropertyChanged -= OnViewModelChanged;
-        _viewModel.PageTiles.CollectionChanged -= OnPageChanged;
+        _viewModel.PageChanged -= OnPageChanged;
         _theme.Changed -= OnThemeChanged;
         DockTileFactory.Detach(_viewModel.ScrollUp, _scrollUpHandler);
         DockTileFactory.Detach(_viewModel.ScrollDown, _scrollDownHandler);
@@ -505,8 +526,7 @@ public sealed class DockBarWindow : TouchSurface
         return row;
     }
 
-    private void OnPageChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        RebuildTiles();
+    private void OnPageChanged(object? sender, EventArgs e) => RebuildTiles();
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -715,31 +735,46 @@ public sealed class DockBarWindow : TouchSurface
     /// PES-007: what is left for the shortcuts along the edge, measured: the longest the bar may be, less everything
     /// else it shows. The view model counts the shortcuts that fit whole in it.
     /// </summary>
+    /// <remarks>
+    /// Only the bar of the edge in view measures: the bars of every edge share the view model, and the bar of the edge
+    /// being left is still on screen while the new one is laid out, so two measures along two edges would page the
+    /// shortcuts back and forth inside one layout pass and never let it end. The lengths are what each zone asks for
+    /// (a stack measures its children without a limit along its direction), never what the window was given: a window
+    /// cut to the longest the edge allows would otherwise count the cut part as room for the shortcuts.
+    /// </remarks>
     private void MeasureTileSpace()
     {
-        if (_measuring || Monitor is not { } monitor || !IsVisible || _root.ActualWidth <= 0)
+        if (
+            _measuring
+            || Monitor is not { } monitor
+            || !IsVisible
+            || _viewModel.Side != Side
+            || !_root.IsMeasureValid
+        )
         {
             return;
         }
 
+        ApplyTileSpace(monitor, DpiScale > 0 ? DpiScale : 1);
+    }
+
+    /// <summary>Hands the view model the longest the bar may be at <paramref name="scale"/>, less what it asks for besides its shortcuts.</summary>
+    private void ApplyTileSpace(DisplayMonitor monitor, double scale)
+    {
         _measuring = true;
         try
         {
-            var scale = DpiScale > 0 ? DpiScale : 1;
             var maxLength = DockGeometry.MaxBarLength(Side, monitor) / scale;
             var border = BorderThickness;
             var rootLength = _vertical
-                ? _root.ActualHeight
-                    + _root.Margin.Top
-                    + _root.Margin.Bottom
-                    + border.Top
-                    + border.Bottom
-                : _root.ActualWidth
-                    + _root.Margin.Left
-                    + _root.Margin.Right
-                    + border.Left
-                    + border.Right;
-            var tilesLength = _vertical ? _tiles.ActualHeight : _tiles.ActualWidth;
+                ? _root.Margin.Top + _root.Margin.Bottom + border.Top + border.Bottom
+                : _root.Margin.Left + _root.Margin.Right + border.Left + border.Right;
+            foreach (UIElement zone in _root.Children)
+            {
+                rootLength += _vertical ? zone.DesiredSize.Height : zone.DesiredSize.Width;
+            }
+
+            var tilesLength = _vertical ? _tiles.DesiredSize.Height : _tiles.DesiredSize.Width;
             var chrome = rootLength - tilesLength;
             _viewModel.ApplyTileSpace(Math.Max(0, maxLength - chrome));
         }

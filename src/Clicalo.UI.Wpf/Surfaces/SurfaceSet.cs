@@ -425,6 +425,7 @@ public sealed class SurfaceSet : IDisposable
         var taken = new List<PhysicalRect>();
         PhysicalRect? panicAnchor = null;
         PhysicalRect? noticeAnchor = null;
+        ConcealOtherEdges(form, side);
 
         switch (form)
         {
@@ -462,7 +463,7 @@ public sealed class SurfaceSet : IDisposable
 
             case PanelForm.DockOpen:
                 var bar = Bar(side);
-                bar.Monitor = monitor;
+                bar.FitToEdge(monitor);
                 var (width, height) = bar.MeasurePhysical(monitor.Scale);
                 var barRect = DockGeometry.Bar(
                     side,
@@ -527,6 +528,29 @@ public sealed class SurfaceSet : IDisposable
 
         _dimmer.UpdatePresence();
         _dimmer.Apply();
+    }
+
+    /// <summary>
+    /// The handle and the bar of one edge at a time: those of another edge, or of a form that is not in view, go before
+    /// the new ones are shown and laid out, so two bars never share the screen, and their view model, for a pass.
+    /// </summary>
+    private void ConcealOtherEdges(PanelForm form, DockSide side)
+    {
+        foreach (var (edge, handle) in _handles)
+        {
+            if ((form != PanelForm.DockClosed || edge != side) && handle.IsVisible)
+            {
+                handle.Conceal();
+            }
+        }
+
+        foreach (var (edge, bar) in _bars)
+        {
+            if ((form != PanelForm.DockOpen || edge != side) && bar.IsVisible)
+            {
+                bar.Conceal();
+            }
+        }
     }
 
     private void PlaceFlyouts(

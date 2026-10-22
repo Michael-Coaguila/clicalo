@@ -130,6 +130,12 @@ public sealed class DockBarViewModel : ObservableObject
     /// <summary>The shortcuts of the page of the bar, in order (PES-007).</summary>
     public ObservableCollection<DockTileViewModel> PageTiles { get; } = [];
 
+    /// <summary>
+    /// <see cref="PageTiles"/> holds another page: raised once per change, after the collection is whole, so a view
+    /// builds the page once and not once per shortcut that moved.
+    /// </summary>
+    public event EventHandler? PageChanged;
+
     /// <summary>The shortcuts of Always visible, for the «Pinned» window (PES-010).</summary>
     public ObservableCollection<DockTileViewModel> PinnedTiles { get; } = [];
 
@@ -307,7 +313,7 @@ public sealed class DockBarViewModel : ObservableObject
     {
         _list = SyncById(_listById, list.IsDefault ? [] : list);
         _pinned = SyncById(_pinnedById, pinned.IsDefault ? [] : pinned);
-        Sync(PinnedTiles, _pinned);
+        _ = Sync(PinnedTiles, _pinned);
         ApplyEngine(_engine);
         OnPropertyChanged(nameof(ShowsPinned));
     }
@@ -579,7 +585,11 @@ public sealed class DockBarViewModel : ObservableObject
             _pinned[i].ApplyVoiceNumber(numbers ? VoiceNumbers.ForStrip(_list.Count, i) : null);
         }
 
-        Sync(PageTiles, page);
+        if (Sync(PageTiles, page))
+        {
+            PageChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         PageLabel = _localization.Current.Format(
             L.DockPageOf(index: _window.Page + 1, total: _window.PageCount)
         );
@@ -589,15 +599,18 @@ public sealed class DockBarViewModel : ObservableObject
         OnPropertyChanged(nameof(CanGoNext));
     }
 
-    /// <summary>Makes <paramref name="target"/> hold <paramref name="items"/>, in order, touching it only when they differ.</summary>
-    private static void Sync(
+    /// <summary>
+    /// Makes <paramref name="target"/> hold <paramref name="items"/>, in order, touching it only when they differ;
+    /// true when it changed.
+    /// </summary>
+    private static bool Sync(
         ObservableCollection<DockTileViewModel> target,
         IReadOnlyList<DockTileViewModel> items
     )
     {
         if (target.SequenceEqual(items))
         {
-            return;
+            return false;
         }
 
         target.Clear();
@@ -605,6 +618,8 @@ public sealed class DockBarViewModel : ObservableObject
         {
             target.Add(item);
         }
+
+        return true;
     }
 
     private static TileModel ScrollModel(DockTileViewModel tile, string name) =>
