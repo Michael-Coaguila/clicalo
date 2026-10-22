@@ -18,7 +18,7 @@ namespace Clicalo.UI.Wpf.Controls;
 /// with <see cref="IsOn"/>, which also draws it pressed exactly as «elegido» (wash, ring of 2 and filled icon).
 /// </summary>
 /// <remarks>
-/// States: under the pointer a step of wash; disabled, no fill, a dashed line and muted text. The button never changes
+/// States: under the pointer a step of wash; disabled, no fill, no line and muted content (D19). The button never changes
 /// size between states. The content is product text, already localized by the view model (CLC0006).
 /// </remarks>
 public class TouchButton : Button

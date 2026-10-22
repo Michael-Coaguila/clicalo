@@ -12,7 +12,7 @@ namespace Clicalo.UI.Wpf.Controls.Internal;
 
 /// <summary>
 /// The layered chrome of every base control of direction C (D12): a fill, a rest line drawn inside (1, or 2 in high
-/// contrast; dashed while disabled) and the «elegido» ring of <see cref="Stroke.Selected"/>, also inside. The control
+/// contrast; none while disabled) and the «elegido» ring of <see cref="Stroke.Selected"/>, also inside. The control
 /// never changes size between its states: the rest line and the ring are shapes inside the same box, never a border
 /// that pushes the content. The corner radius comes from <see cref="RadiusProperty"/>.
 /// </summary>
@@ -37,9 +37,6 @@ internal static class ControlChrome
         typeof(ControlChrome),
         new FrameworkPropertyMetadata(Radii.Medium)
     );
-
-    /// <summary>The dash of the rest line of a disabled control, in units of its thickness.</summary>
-    public static DoubleCollection DisabledDash => DashedLine.Dash;
 
     /// <summary>Reads the corner radius of <paramref name="element"/>.</summary>
     public static double GetRadius(DependencyObject element) =>
@@ -105,13 +102,15 @@ internal static class ControlChrome
             .. extra,
         ];
 
-    /// <summary>The setters of a disabled control: no fill, a dashed rest line and muted text.</summary>
+    /// <summary>
+    /// The setters of a disabled control: no fill, no line and muted content, as Windows draws it, so it is never more
+    /// present than an enabled one beside it (D19). The dashed line is only for a slot where something is added
+    /// (<see cref="DashedLine"/>): a disabled button drawn with it read as one more place to add to.
+    /// </summary>
     public static SetterBase[] Disabled() =>
         [
             new Setter(Border.BackgroundProperty, Brushes.Transparent, FillPart),
-            new Setter(UIElement.VisibilityProperty, Visibility.Visible, LinePart),
-            Templates.Brush(Shape.StrokeProperty, ColorToken.Line, LinePart),
-            new Setter(Shape.StrokeDashArrayProperty, DisabledDash, LinePart),
+            new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart),
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, RingPart),
             Templates.Brush(TextElement.ForegroundProperty, ColorToken.Muted, ContentPart),
         ];

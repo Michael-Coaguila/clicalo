@@ -6,8 +6,8 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// The one dashed line of direction C (D12): the rest line of a disabled control and the outline of a place that is not
-/// a control yet (the dashed «+ [add]» tile, «Biblioteca», «+ Más» of the profiles, the empty grid). Every surface draws
+/// The one dashed line of direction C (D12): the outline of a place that is not a control yet, never the look of a
+/// disabled control (D19) (the dashed «+ [add]» tile, «Biblioteca», «+ Más» of the profiles, the empty grid). Every surface draws
 /// it with the same dash, the same <c>line</c> color and the same thickness (2 in high contrast), so the panel, the Tab
 /// view, the Control Center and the welcome show the same thing the same way.
 /// </summary>

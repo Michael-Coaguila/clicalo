@@ -288,7 +288,6 @@ public sealed class ToggleSwitch : ToggleButton
             Templates.When(
                 IsEnabledProperty,
                 false,
-                new Setter(Shape.StrokeDashArrayProperty, ControlChrome.DisabledDash, OutlinePart),
                 Templates.Brush(Control.ForegroundProperty, ColorToken.Muted)
             )
         );
