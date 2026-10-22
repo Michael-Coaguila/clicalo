@@ -68,7 +68,7 @@ repartir un hueco entre dos vecinos.
 | `Radii.Small` | 8 | Tecla, segmento interior, insignia de texto, ventana de Windows, caja del icono de una fila de navegación |
 | `Radii.Medium` | 12 | Botón, ficha, campo, tarjeta de opción, fila |
 | `Radii.Large` | 16 | Panel, tarjeta grande (`Card`) |
-| `Radii.Pill` | 999 | Interruptor, chip, contador |
+| `Radii.Pill` | 999 | Interruptor y contador (un chip lleva `Radii.Medium`, como los demás controles, D20) |
 
 ### 2.4 Cajas de icono · `IconBox`
 
@@ -190,7 +190,7 @@ abierto.
   `Kind` (`OptionKind`), `IsSelected` (= `IsChecked`), `Symbol`, `Caption` (fila de lista), `Count` (riel),
   `IsMonospace` (teclas), `Role` (`OptionRole`). Constante `OptionButton.FillPart`.
 - **`OptionKind`:** `Tile` (tarjeta de 44 con su línea, icono o ✓ y texto en fila), `Card` (tarjeta de 64, icono
-  sobre el texto), `Chip` (pastilla de 44), `Segment` (segmento sin relleno dentro de una pista), `ListRow` (fila de 52
+  sobre el texto), `Chip` (opción de 44 con el radio de los controles, D20), `Segment` (segmento sin relleno dentro de una pista), `ListRow` (fila de 52
   sin relleno: icono, título y subtítulo a la izquierda) y `Rail` (elemento del riel: icono con el contador al lado y
   etiqueta de hasta dos líneas).
 - **Elegido:** `AccentWash`, anillo `Stroke.Selected` en `Accent` por dentro, icono relleno en `AccentInk`; si no hay
@@ -266,8 +266,10 @@ JetBrains Mono y `Muted`, solo si cabe). El estado en palabras (`AccessibleState
 si está armada), y nunca el hueco de arriba, demasiado estrecho junto al número y al icono. Fondo `Card` con su línea por dentro, radio `Radii.Medium`. Estados:
 Alternar activo y mantener (el aspecto único de elegido; mantener además escala 0,95), armado (`WarnWash` y anillo
 `WarnText`), destello (`AccentWash`), tecla fija bloqueada (relleno `Accent`), menú abierto (anillo). Tamaños de la
-maqueta, aligerados en D19: rejilla de 84 × 68, 100 × 76 y 124 × 92 en S, M y L, y fila fija de 64 con nombre en M y L
-o de 44 con solo iconos en S y en Compacta.
+maqueta, aligerados en D19 y D20: rejilla de 84 × 64, 100 × 68 y 124 × 80 en S, M y L, con icono 20/20/24 y nombre
+12/14/16 (`labelSmall`, `label` y `heading`), para que la talla elegida se vea también en el texto; fila fija de 56 con
+nombre en M y L o de 44 con solo iconos en S y en Compacta. En la Pestaña, la ficha sin tarjeta (`ShowsCard = false`)
+deja solo el icono, para Subir y Bajar.
 
 ### 3.11 Barra de estado · `StatusBar`
 

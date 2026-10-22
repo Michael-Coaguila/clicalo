@@ -1,0 +1,5 @@
+# Novedad para usuarios (ACT-004, blueprint §11): la app la muestra y viaja en el manifiesto firmado.
+# Una frase por idioma, en palabras de usuario, sin jerga ni nombres internos.
+type: feat # feat, fix, a11y o perf
+es: "La barra de la pestaña cambia con las tallas S, M y L y ordena sus botones por parejas sin huecos, las ventanas que abre ya no la tapan, el botón Fijo ya no se confunde con el candado de la barra y los botones del panel son más compactos."
+en: "The Tab bar now changes with sizes S, M and L and groups its buttons in pairs without gaps, the windows it opens no longer cover it, the Fixed button no longer looks like the bar's lock, and the panel buttons are more compact."
