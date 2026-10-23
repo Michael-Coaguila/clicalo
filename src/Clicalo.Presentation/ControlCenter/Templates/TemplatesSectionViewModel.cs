@@ -16,6 +16,7 @@ using Clicalo.Domain.Privacy;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
 using Clicalo.Presentation.ControlCenter.Editor;
+using Clicalo.Presentation.ControlCenter.General;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter.Templates;
@@ -52,6 +53,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
     private string _iconQuery = string.Empty;
     private string? _iconCategory;
     private bool _hasKey;
+    private AiProvider _keyProvider;
     private bool _queued;
 
     /// <summary>Creates the section and projects it.</summary>
@@ -113,6 +115,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
     public void OnOpened()
     {
         _hasKey = _t.Ai.HasKey;
+        _keyProvider = _t.Ai.Provider;
         _ = LoadAppsAsync();
         Invalidate();
     }
@@ -186,6 +189,23 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
         {
             ToggleKey();
         }
+    }
+
+    /// <summary>
+    /// [aiProviderAnthropic] or [aiProviderGemini] in the key field (ADR-0033): the key pasted next is the one of that
+    /// provider, and the consent is asked again before the first attempt. It enters the undo history.
+    /// </summary>
+    /// <param name="provider">The provider.</param>
+    public void SetProvider(AiProvider provider)
+    {
+        if (_t.Ai.SetProvider(provider))
+        {
+            _hasKey = _t.Ai.HasKey;
+            _keyProvider = provider;
+            Notify(L.Saved, "check", false, undo: true);
+        }
+
+        Invalidate();
     }
 
     /// <summary>[Listo] of the key field: saves the pasted key, which is never shown again (PLA-003, ADR-0008).</summary>
@@ -777,6 +797,16 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
     private AiCardModel AiCard()
     {
         var ai = _t.Ai;
+        var provider = ai.Provider;
+        if (provider != _keyProvider)
+        {
+            // Another provider, or an undo that brought one back: its own key decides the state (ADR-0033).
+            _keyProvider = provider;
+            _hasKey = ai.HasKey;
+        }
+
+        var name = AiProviderTexts.Name(provider);
+        var notice = AiProviderTexts.Notice(provider) is { } free ? T(free) : null;
         return new AiCardModel(
             T(L.AiHero),
             T(L.AiHeroD),
@@ -787,22 +817,39 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
             !ai.Generating && _query.Trim().Length > 0,
             AiExamples.All,
             T(L.AiPrivacy4),
-            T(_hasKey ? L.QuotaKey : L.KeyNone),
+            T(_hasKey ? L.QuotaKey : L.KeyNone(provider: name)),
             T(_hasKey ? L.KeyChange : L.KeyUse),
             _keyOpen,
+            T(L.AiProvider),
+            [
+                .. AiProviderTexts.All.Select(p => new SettingOption<AiProvider>(
+                    p,
+                    T(AiProviderTexts.Name(p)),
+                    T(AiProviderTexts.Name(p)),
+                    p == provider
+                )),
+            ],
+            T(AiProviderTexts.Detail(provider)),
+            notice,
             T(L.KeyPh),
             T(L.KeyPaste),
             T(L.Done),
             _hasKey ? T(DeleteKeyArmed ? L.DelConfirm : L.KeyDelete) : null,
             ai.AskingConsent
-                ? new ConsentModel(T(L.ConsentT), T(L.ConsentD4), T(L.ConsentOk), T(L.ConsentNo))
+                ? new ConsentModel(
+                    T(L.ConsentT),
+                    T(L.ConsentD4(provider: name)),
+                    T(L.ConsentOk),
+                    T(L.ConsentNo),
+                    notice
+                )
                 : null,
-            Error(ai.Error),
+            Error(ai.Error, name),
             Keyboard()
         );
     }
 
-    private AiErrorModel? Error(AiError error)
+    private AiErrorModel? Error(AiError error, Message provider)
     {
         var (icon, title, text, first) = error switch
         {
@@ -813,7 +860,12 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
                 (ErrorActionKind.Enable, L.AiEnable)
             ),
             AiError.Offline => ("wifi_off", L.ErrOffT, L.ErrOffD, (ErrorActionKind.Retry, L.Retry)),
-            AiError.NoKey => ("key", L.ErrNoKeyT, L.ErrNoKeyD, (ErrorActionKind.Key, L.KeyUse)),
+            AiError.NoKey => (
+                "key",
+                L.ErrNoKeyT,
+                L.ErrNoKeyD(provider: provider),
+                (ErrorActionKind.Key, L.KeyUse)
+            ),
             AiError.BadKey => ("key_off", L.ErrKeyT, L.ErrKeyD, (ErrorActionKind.Key, L.KeyChange)),
             AiError.Unavailable => (
                 "cloud_off",

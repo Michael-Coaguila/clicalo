@@ -58,8 +58,11 @@ public sealed class AiAssistant
     /// <summary>The program name of the last generation: [Reintentar] repeats it, «Perfil vacío» starts with it.</summary>
     public string LastApp { get; private set; } = string.Empty;
 
-    /// <summary>Whether a key is saved.</summary>
+    /// <summary>Whether a key of the chosen provider is saved.</summary>
     public bool HasKey => _keys.HasKey();
+
+    /// <summary>The chosen provider (ADR-0033).</summary>
+    public AiProvider Provider => Settings.Provider;
 
     private AiSettings Settings => _store.Current.Settings.Ai;
 
@@ -190,6 +193,41 @@ public sealed class AiAssistant
         return _store.Dispatch(new SetSetting(SettingPaths.AiConsent, given)).IsSuccess;
     }
 
+    /// <summary>
+    /// The provider of General › IA or of the key field of Plantillas (ADR-0033). From then on its own key is the one
+    /// used, and the consent is asked again before the first attempt, because a consent belongs to its provider (the
+    /// same step clears it, so undoing the change gives it back).
+    /// </summary>
+    /// <param name="provider">The provider.</param>
+    /// <returns>Whether the setting was written.</returns>
+    public bool SetProvider(AiProvider provider)
+    {
+        if (provider == Settings.Provider)
+        {
+            return false;
+        }
+
+        AskingConsent = false;
+        if (Error is AiError.NoKey or AiError.BadKey)
+        {
+            Error = AiError.None;
+        }
+
+        if (!_store.Dispatch(new SetSetting(SettingPaths.AiProvider, provider)).IsSuccess)
+        {
+            return false;
+        }
+
+        // The document keeps where the key of the chosen provider is, or nothing without one.
+        var reference = _keys.HasKey() ? _keys.Target : null;
+        if (!string.Equals(Settings.ApiKeyRef, reference, StringComparison.Ordinal))
+        {
+            _ = _store.Dispatch(new SetSetting(SettingPaths.AiApiKeyRef, reference));
+        }
+
+        return true;
+    }
+
     /// <summary>Saves the pasted key (PLA-003, ADR-0008): the document only keeps where it is.</summary>
     /// <param name="key">The key; an empty one is ignored.</param>
     /// <returns>Whether it was saved.</returns>
@@ -213,11 +251,11 @@ public sealed class AiAssistant
         return true;
     }
 
-    /// <summary>Deletes the saved key.</summary>
+    /// <summary>Deletes the saved key of the chosen provider; the key of another one stays.</summary>
     public void DeleteKey()
     {
         _ = _keys.Delete();
-        if (Settings.ApiKeyRef is not null)
+        if (string.Equals(Settings.ApiKeyRef, _keys.Target, StringComparison.Ordinal))
         {
             _ = _store.Dispatch(new SetSetting(SettingPaths.AiApiKeyRef, null));
         }

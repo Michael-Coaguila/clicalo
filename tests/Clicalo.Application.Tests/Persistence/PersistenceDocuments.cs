@@ -65,6 +65,7 @@ internal static class PersistenceDocuments
                 FreeLeftToday = 5,
                 FreeResetAt = null,
                 ApiKeyRef = null,
+                Provider = AiProvider.Anthropic,
             },
             Reliability = new ReliabilitySettings(true, autoBackup, true, true, false),
             Updates = new UpdateSettings(true, true, true, UpdateChannel.Stable),

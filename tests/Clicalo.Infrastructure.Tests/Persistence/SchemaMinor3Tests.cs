@@ -6,30 +6,30 @@ using Clicalo.TestKit;
 namespace Clicalo.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Schema 1.2 (ADR-0034): the done flag of the guide of the Full and Compact views is an optional member of the
-/// settings, so the immutable 1.2 fixture reads with it, a 1.1 document reads with the guide still to show, the flag
-/// survives a round trip and a 1.1 version keeps it as an unknown member (REG-08).
+/// Schema 1.3 (ADR-0034): the done flag of the guide of the Full and Compact views is an optional member of the
+/// settings, so the immutable 1.3 fixture reads with it, a 1.2 document reads with the guide still to show, the flag
+/// survives a round trip and a 1.2 version keeps it as an unknown member (REG-08).
 /// </summary>
 [Trait("Req", "DAT-001")]
 [Trait("Req", "PES-015")]
-public sealed class SchemaMinor2PanelCoachTests
+public sealed class SchemaMinor3Tests
 {
     [Fact]
-    public void The_1_2_fixture_reads_with_a_matching_hash_and_no_unknown_members()
+    public void The_1_3_fixture_reads_with_a_matching_hash_and_no_unknown_members()
     {
-        var read = Read("1.2");
+        var read = Read("1.3");
 
         read.HashMatches.ShouldBeTrue();
-        read.Envelope.Schema.ShouldBe(new SchemaVersion(1, 2));
+        read.Envelope.Schema.ShouldBe(new SchemaVersion(1, 3));
         var dto = read.Envelope.Payload.Deserialize(DocumentJsonContext.Default.PayloadDto)!;
         dto.Extra.ShouldBeNull();
         dto.Settings!.Extra.ShouldBeNull();
     }
 
     [Fact]
-    public void The_1_2_fixture_decodes_the_done_flag_of_the_panel_guide_apart_from_the_tab_one()
+    public void The_1_3_fixture_decodes_the_done_flag_of_the_panel_guide_apart_from_the_tab_one()
     {
-        var decoded = new DocumentCodec().Decode(Read("1.2").Envelope.Payload, live: false).Value;
+        var decoded = new DocumentCodec().Decode(Read("1.3").Envelope.Payload, live: false).Value;
 
         decoded.Repairs.ShouldBeEmpty();
         decoded.Document.Settings.PanelCoachDone.ShouldBeTrue();
@@ -37,9 +37,9 @@ public sealed class SchemaMinor2PanelCoachTests
     }
 
     [Fact]
-    public void A_1_1_document_still_shows_the_panel_guide()
+    public void A_1_2_document_still_shows_the_panel_guide()
     {
-        var decoded = new DocumentCodec().Decode(Read("1.1").Envelope.Payload, live: false).Value;
+        var decoded = new DocumentCodec().Decode(Read("1.2").Envelope.Payload, live: false).Value;
 
         decoded.Repairs.ShouldBeEmpty();
         decoded.Document.Settings.PanelCoachDone.ShouldBeFalse();
@@ -64,10 +64,10 @@ public sealed class SchemaMinor2PanelCoachTests
     }
 
     [Fact]
-    public void A_1_1_version_keeps_the_flag_as_an_unknown_member_of_the_settings()
+    public void A_1_2_version_keeps_the_flag_as_an_unknown_member_of_the_settings()
     {
-        // What a 1.1 version reads: the settings without the member it does not know.
-        var payload = Read("1.2").Envelope.Payload;
+        // What a 1.2 version reads: the settings without the member it does not know.
+        var payload = Read("1.3").Envelope.Payload;
         var settings = payload["settings"]!.AsObject();
         var flag = settings["panelCoachDone"]!.DeepClone();
         _ = settings.Remove("panelCoachDone");

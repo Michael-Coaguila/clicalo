@@ -6,8 +6,8 @@
   },
   "writtenBy": "2.0.0",
   "seq": 44,
-  "writtenAtUtc": "2026-10-23T10:05:12.000Z",
-  "payloadSha256": "ccd554762fb55d2c1ca9fd754349ac76eb91c0d624437c26e046634c728344f5",
+  "writtenAtUtc": "2026-10-23T08:30:00.000Z",
+  "payloadSha256": "c07077ae04db81504046f9893c8da2109109cdff4fe5a75e4f67eb2d6a639526",
   "payload": {
     "settings": {
       "lang": "es",
@@ -71,9 +71,10 @@
         "detected": true
       },
       "ai": {
-        "consent": false,
+        "consent": true,
         "disabled": false,
-        "freeLeftToday": 5
+        "freeLeftToday": 5,
+        "apiKeyRef": "Clicalo/ai/gemini"
       },
       "reliability": {
         "startWithWindows": true,
@@ -119,7 +120,7 @@
         "combo": "ctrl-alt-f10"
       },
       "timeMultiplier": 2,
-      "panelCoachDone": true
+      "aiProvider": "gemini"
     },
     "always": {
       "shortcuts": [

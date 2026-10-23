@@ -59,8 +59,16 @@ public sealed class StringsParityTests
                 "adminFailed",
                 "adminNotInstalled",
                 "adminRestarting",
+                // ADR-0033 (R-38): aiGeminiFree and the five aiProvider keys after aiPrivacy4, the AI provider of
+                // General › IA and of the key field, and the free tier notice.
+                "aiGeminiFree",
                 // Texts of the M4 Templates section and of sharing a profile (catalog §6.1, R-26).
                 "aiPrivacy4",
+                "aiProvider",
+                "aiProviderAnthropic",
+                "aiProviderAnthropicD",
+                "aiProviderGemini",
+                "aiProviderGeminiD",
                 "aiUse",
                 "aiUseD",
                 "alreadyAdded",

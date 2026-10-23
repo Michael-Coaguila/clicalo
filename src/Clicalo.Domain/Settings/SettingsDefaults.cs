@@ -66,6 +66,7 @@ internal static class SettingsDefaults
                 FreeLeftToday = Timings.Ai.AiFreeDailyQuota,
                 FreeResetAt = null,
                 ApiKeyRef = null,
+                Provider = AiProvider.Anthropic,
             },
             Reliability = new ReliabilitySettings(
                 StartWithWindows: true,

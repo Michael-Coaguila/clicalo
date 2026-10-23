@@ -67,6 +67,7 @@ internal static class TestDocuments
                 FreeLeftToday = 5,
                 FreeResetAt = null,
                 ApiKeyRef = null,
+                Provider = AiProvider.Anthropic,
             },
             Reliability = new ReliabilitySettings(true, true, true, true, false),
             Updates = new UpdateSettings(true, true, true, UpdateChannel.Stable),

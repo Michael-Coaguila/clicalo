@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/document.schema.json",
-  "title": "Clícalo document 1.1",
-  "description": "clicalo.json and every backup (blueprint §6.5, ADR-0007, ADR-0018): the envelope and the payload of schema 1.2 (1.0 plus the optional members of ADR-0028 in 1.1 and of ADR-0034 in 1.2). A later minor only adds optional members, which an older version keeps when rewriting; a greater major is never written by an older version. Also defines the shared profile of DAT-007 ($defs/profileShare).",
+  "title": "Clícalo document 1.3",
+  "description": "clicalo.json and every backup (blueprint §6.5, ADR-0007, ADR-0018): the envelope and the payload of schema 1.3 (1.0 plus the optional members of ADR-0028 in 1.1, settings.aiProvider of ADR-0033 in 1.2 and the done flags of the first-use guides of ADR-0034 in 1.3). A later minor only adds optional members, which an older version keeps when rewriting; a greater major is never written by an older version. Also defines the shared profile of DAT-007 ($defs/profileShare).",
   "type": "object",
   "required": ["format", "schema", "writtenBy", "seq", "writtenAtUtc", "payloadSha256", "payload"],
   "properties": {
@@ -240,8 +240,12 @@
           "description": "Since 1.1 (ADR-0028, ACC-006): multiplier of the two-tap confirmation window and of the duration of notices, 1, 2 or 3.",
           "type": "integer"
         },
+        "aiProvider": {
+          "description": "Since 1.2 (ADR-0033): the AI provider of «Crear con IA», always with the person's own key. Missing or unknown: anthropic. Changing it clears ai.consent.",
+          "enum": ["anthropic", "gemini"]
+        },
         "panelCoachDone": {
-          "description": "Since 1.2 (ADR-0034, R-39): the first-use guide of the Full and Compact views was finished or skipped. The guide of the Tab view keeps dock.coachDone.",
+          "description": "Since 1.3 (ADR-0034, R-39): the first-use guide of the Full and Compact views was finished or skipped. The guide of the Tab view keeps dock.coachDone.",
           "type": "boolean"
         }
       }

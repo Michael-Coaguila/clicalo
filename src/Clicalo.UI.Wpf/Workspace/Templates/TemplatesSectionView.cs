@@ -520,8 +520,26 @@ public sealed class TemplatesSectionView : Grid
         row.Children.Add(done);
         row.Children.Add(paste);
         row.Children.Add(box);
+
+        // ADR-0033: whose key it is comes first, with where it comes from and what the free tier of Gemini means.
+        var providers = Parts.Track([
+            .. model.Providers.Select(option =>
+                (UIElement)
+                    Parts.Segment(
+                        option.Label,
+                        option.Selected,
+                        () => _viewModel.SetProvider(option.Value)
+                    )
+            ),
+        ]);
+        AutomationProperties.SetName(providers, model.ProviderTitle);
         var column = Parts.Section(
-            null,
+            model.ProviderTitle,
+            providers,
+            Parts.Note(model.ProviderDetail, style: TextStyleToken.Caption),
+            model.ProviderNotice is { } notice
+                ? Parts.IconLine("shield", notice, style: TextStyleToken.Caption)
+                : null,
             Parts.Note(model.KeyPlaceholder, style: TextStyleToken.Caption),
             row
         );
@@ -576,6 +594,11 @@ public sealed class TemplatesSectionView : Grid
                 null,
                 new StyledText(model.Title, TextStyleToken.Label) { MaxLines = 0 },
                 Parts.Note(model.Text),
+                // ADR-0033: with Gemini the consent also says what the free tier lets Google do with what is sent.
+                model.Notice
+                    is { } notice
+                    ? Parts.IconLine("shield", notice)
+                    : null,
                 Ui.Columns(2, Space.S2, [ok, no])
             )
         );

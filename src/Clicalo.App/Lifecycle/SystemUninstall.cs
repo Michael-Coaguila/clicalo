@@ -43,8 +43,12 @@ internal sealed class SystemUninstall(
         {
             if (UninstallDataWipe.RunIfRequested(DataLocations.ForCurrentUser()))
             {
-                // The data includes the AI key the person saved in the Credential Manager (ADR-0014).
-                _ = new CredentialKeyStore(AiServices.CredentialTarget).Delete();
+                // The data includes the AI keys the person saved in the Credential Manager, one per provider
+                // (ADR-0014, ADR-0033).
+                foreach (var target in AiServices.CredentialTargets)
+                {
+                    _ = new CredentialKeyStore(target).Delete();
+                }
             }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)

@@ -103,6 +103,13 @@ public sealed class ControlCenterAuditTests
             templates.ToggleKeyboard();
             templates.ToggleBlank();
         },
+        ["templates-gemini"] = static cc =>
+        {
+            // ADR-0033: the key field with Gemini chosen shows where its key comes from and the free tier notice.
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.ToggleKey();
+            cc.Templates.SetProvider(AiProvider.Gemini);
+        },
         ["templates-icons"] = static cc =>
         {
             cc.Select(ControlCenterSection.Templates);

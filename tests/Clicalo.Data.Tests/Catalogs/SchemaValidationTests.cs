@@ -13,8 +13,8 @@ public sealed class SchemaValidationTests
     public static TheoryData<string> SchemaFiles() => [.. CatalogSchemas.SchemaFileNames()];
 
     /// <summary>
-    /// The persisted formats (ADR-0007, ADR-0018, ADR-0028, ADR-0034): no catalog or content file uses them; the
-    /// immutable 1.0, 1.1 and 1.2 fixtures of the Infrastructure tests (blueprint §6.6) do.
+    /// The persisted formats (ADR-0007, ADR-0018, ADR-0028, ADR-0033, ADR-0034): no catalog or content file uses them;
+    /// the immutable 1.0, 1.1, 1.2 and 1.3 fixtures of the Infrastructure tests (blueprint §6.6) do.
     /// </summary>
     public static TheoryData<string, string, string> PersistedFixtures() =>
         new()
@@ -24,6 +24,7 @@ public sealed class SchemaValidationTests
             { "1.0", "ai-template.json", "ai-template.v1.schema.json" },
             { "1.1", "document.json", "document.schema.json" },
             { "1.2", "document.json", "document.schema.json" },
+            { "1.3", "document.json", "document.schema.json" },
         };
 
     [Theory]

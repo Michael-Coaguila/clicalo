@@ -95,8 +95,12 @@ internal static class SettingsMapper
                     FreeLeftToday = ai.FreeLeftToday ?? defaults.Ai.FreeLeftToday,
                     FreeResetAt = ai.FreeResetAt,
                     ApiKeyRef = ai.ApiKeyRef,
+                    Provider = ProviderOf(dto, defaults),
                 }
-                : defaults.Ai,
+                : defaults.Ai with
+                {
+                    Provider = ProviderOf(dto, defaults),
+                },
             Reliability = dto.Reliability is { } reliability
                 ? new ReliabilitySettings(
                     reliability.StartWithWindows ?? defaults.Reliability.StartWithWindows,
@@ -284,12 +288,17 @@ internal static class SettingsMapper
                 Combo = settings.GlobalHotkey.Combo,
             },
             TimeMultiplier = settings.TimeMultiplier,
+            AiProvider = PersistedNames.AiProvider.Name(settings.Ai.Provider),
             PanelCoachDone = settings.PanelCoachDone,
             Extra = extra is null
                 ? null
                 : new Dictionary<string, JsonElement>(extra, StringComparer.Ordinal),
         };
     }
+
+    // ADR-0033: at the level of settings, so a 1.1 version keeps it; a missing or unknown one is Anthropic, as before 1.2.
+    private static AiProvider ProviderOf(SettingsDto dto, UserSettings defaults) =>
+        PersistedNames.AiProvider.ParseOr(dto.AiProvider, defaults.Ai.Provider);
 
     /// <summary>A duration persisted in milliseconds, exact to the tick.</summary>
     /// <param name="milliseconds">Milliseconds.</param>
