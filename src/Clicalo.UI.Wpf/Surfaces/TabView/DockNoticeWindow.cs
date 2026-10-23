@@ -208,6 +208,9 @@ public sealed class DockNoticeWindow : TouchSurface
     /// <summary>What it announced last, and how.</summary>
     public LiveAnnouncer Announcer => _announcer;
 
+    /// <summary>Whether touches go through the surface to the app (the moment of a confirmation in Compact, D21).</summary>
+    public bool LetsTouchesThrough => IsClickThrough;
+
     /// <summary>Whether the row of the notice shows (a notice is on show).</summary>
     public bool ShowsNotice => _notice.Visibility == Visibility.Visible;
 
@@ -270,15 +273,25 @@ public sealed class DockNoticeWindow : TouchSurface
     /// </summary>
     private void ApplyFace()
     {
+        // The moment of a confirmation under a Compact panel lets the app show through and takes no touch: a tap there
+        // reaches the app, so the moment never stands in the way (D21 review: it swallowed taps for 3 to 10 s). A
+        // warning, [undo] or [cancel] keeps a solid face and its buttons.
+        var moment =
+            _translucent
+            && _notices.Tone != NoticeTone.Warning
+            && !_notices.CanUndo
+            && !_notices.CanCancel;
         Background = SurfaceParts.TouchBand;
         var highContrast = Theme.Effective is ThemeId.HighContrast or ThemeId.SystemHighContrast;
-        _face.Opacity = _translucent && !highContrast ? 0.8 : 1;
+        _face.Opacity = moment && !highContrast ? 0.8 : 1;
+        IsClickThrough = moment;
     }
 
     private void Refresh()
     {
         Title = _labels.Notices;
         var tone = _notices.Tone;
+        ApplyFace();
 
         // At rest the Tab view shows no «Listo»: the surface is there only while there is something to tell.
         _notice.Visibility = SurfaceParts.Shown(tone != NoticeTone.Rest);

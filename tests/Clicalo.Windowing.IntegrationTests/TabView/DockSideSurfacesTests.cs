@@ -109,6 +109,66 @@ public sealed class DockSideSurfacesTests
     }
 
     [Fact]
+    [Trait("Req", "VCO-001")]
+    [Trait("Req", "AVI-002")]
+    public void Under_a_Compact_panel_a_confirmation_lets_touches_through_and_an_undo_keeps_them()
+    {
+        // D21: the moment of «Ctrl+N enviado» never stands in the way of the app; [undo] keeps its button and a solid face.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var panel = Panel(time, new RecordingBodyIntents());
+            var notice = new DockNoticeWindow(
+                panel,
+                testMode: null,
+                new DockLabels(PanelTestData.Localization("es")),
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch
+            )
+            {
+                ServesCompact = true,
+            };
+            try
+            {
+                panel.ApplyContext(
+                    new PanelBodyContext(
+                        Notice: new PanelNotice(
+                            L.TapSent(keys: "Ctrl+N", app: "Word"),
+                            new IconRef("check_circle"),
+                            NoticeTone.Notice
+                        )
+                    )
+                );
+                notice.LetsTouchesThrough.ShouldBeTrue();
+
+                panel.ApplyContext(
+                    new PanelBodyContext(
+                        Notice: new PanelNotice(
+                            L.Deleted,
+                            new IconRef("delete"),
+                            NoticeTone.Notice,
+                            CanUndo: true
+                        )
+                    )
+                );
+                notice.LetsTouchesThrough.ShouldBeFalse();
+
+                notice.ServesCompact = false;
+                notice.LetsTouchesThrough.ShouldBeFalse();
+            }
+            finally
+            {
+                notice.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
     [Trait("Req", "PES-014")]
     [Trait("Req", "EJE-013")]
     public void The_notice_surface_shows_the_administrator_notice_with_its_button()

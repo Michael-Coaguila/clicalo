@@ -74,6 +74,7 @@ public abstract class NonActivatingWindow : Window
     );
 
     private nint _handle;
+    private bool _clickThrough;
     private SurfaceLook? _look;
     private SurfaceLook? _shadowShape;
     private Thickness _shadowInset;
@@ -360,6 +361,24 @@ public abstract class NonActivatingWindow : Window
         return width > 0 && height > 0 && double.IsFinite(width) && double.IsFinite(height);
     }
 
+    /// <summary>
+    /// Whether touches and clicks go through the surface to the app under it, as through its shadow: a surface that only
+    /// tells something for a moment and has nothing to tap (the moment of a notice of the Compact view, D21).
+    /// </summary>
+    protected bool IsClickThrough
+    {
+        get => _clickThrough;
+        set
+        {
+            _clickThrough = value;
+            var handle = Volatile.Read(ref _handle);
+            if (handle != 0)
+            {
+                _ = SurfaceStyles.SetClickThrough((HWND)handle, value);
+            }
+        }
+    }
+
     /// <summary>Puts <c>WS_EX_NOACTIVATE</c> back after a violation (<see cref="ActivationGuard"/>).</summary>
     internal void ReapplyNonActivation()
     {
@@ -400,6 +419,11 @@ public abstract class NonActivatingWindow : Window
         _ = SurfaceStyles.PlaceOnTop(window, show: false);
         _ = PointerSetup.DisableTouchFeedback(new WindowToken(window));
         HwndSource.FromHwnd(window).AddHook(new SurfaceHook(this, Registry).WndProc);
+        if (_clickThrough)
+        {
+            _ = SurfaceStyles.SetClickThrough(window, clickThrough: true);
+        }
+
         Volatile.Write(ref _handle, window);
         try
         {
