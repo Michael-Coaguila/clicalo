@@ -820,6 +820,10 @@ public sealed class TemplatesSectionView : Grid
 
     // ---- Apps abiertas, plantillas y perfiles ---------------------------------------------------------------
 
+    /// <summary>
+    /// «Apps abiertas sin perfil» (PLA-011): one header line with the dot of attention, the title and the switch
+    /// [asShort] at its end, which says in its help what it detects; then a card per suggested template.
+    /// </summary>
     private StackPanel Suggested(SuggestedModel model)
     {
         var detect = Ui.SwitchRow(
@@ -829,7 +833,27 @@ public sealed class TemplatesSectionView : Grid
             model.DetectOn,
             _viewModel.ToggleDetect
         );
-        var column = Parts.Section(model.Title, detect);
+        detect.HorizontalAlignment = HorizontalAlignment.Right;
+        detect.Margin = new Thickness(Space.S3, 0, 0, 0);
+        AutomationProperties.SetHelpText(detect, model.Title);
+        var dot = new Border
+        {
+            Width = Space.S2,
+            Height = Space.S2,
+            CornerRadius = new CornerRadius(Radii.Pill),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, Space.S2, 0),
+        };
+        Ui.Ink(dot, Border.BackgroundProperty, ColorToken.Warn);
+        var title = new Overline(model.Title) { VerticalAlignment = VerticalAlignment.Center };
+        var head = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(detect, Dock.Right);
+        DockPanel.SetDock(dot, Dock.Left);
+        head.Children.Add(detect);
+        head.Children.Add(dot);
+        head.Children.Add(title);
+        var column = new StackPanel();
+        column.Children.Add(head);
         foreach (var card in model.Cards)
         {
             var preview = Parts.Button(
@@ -869,7 +893,7 @@ public sealed class TemplatesSectionView : Grid
 
         if (model.EmptyText is { } empty)
         {
-            column.Children.Add(Parts.Note(empty));
+            column.Children.Add(Spaced(Parts.Note(empty), Space.S2));
         }
 
         return column;

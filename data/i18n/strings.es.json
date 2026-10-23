@@ -218,7 +218,7 @@
   "waitLonger": "Esperar más",
   "aiPrivacy4": "Solo se envían el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. Nada de tus documentos.",
   "consentD4": "Para crear atajos se envían a un servicio externo de IA, con tu propia clave, el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. No se envía nada más. Puedes desactivarlo cuando quieras.",
-  "keyNone": "Sin clave: la IA usa tu propia clave de API de Anthropic",
+  "keyNone": "Sin clave: para generar con IA hace falta tu clave de API de Anthropic.",
   "keyPaste": "Pegar",
   "keyDelete": "Borrar clave",
   "keySaved": "Clave guardada en el Administrador de credenciales",

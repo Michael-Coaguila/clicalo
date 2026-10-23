@@ -63,7 +63,7 @@ public sealed class TemplatesSectionTests
                     "OBS",
                 ]);
                 screen.Ai.KeyStatus.ShouldBe(
-                    "Sin clave: la IA usa tu propia clave de API de Anthropic"
+                    "Sin clave: para generar con IA hace falta tu clave de API de Anthropic."
                 );
                 screen.Ai.Keyboard.Line.ShouldBe(
                     "Teclado: Español (Latinoamérica) · Office y apps en español"
@@ -221,7 +221,9 @@ public sealed class TemplatesSectionTests
                 setup.Keys.HasKey().ShouldBeFalse();
                 ai = general.Screen.Ai.ShouldNotBeNull();
                 ai.DeleteKeyText.ShouldBeNull();
-                ai.KeyState.ShouldBe("Sin clave: la IA usa tu propia clave de API de Anthropic");
+                ai.KeyState.ShouldBe(
+                    "Sin clave: para generar con IA hace falta tu clave de API de Anthropic."
+                );
             });
         }
         finally
@@ -252,7 +254,7 @@ public sealed class TemplatesSectionTests
                 templates.Screen.Ai.DeleteKeyText.ShouldBe("Confirmar");
                 string.Equals(
                         templates.Screen.Ai.KeyStatus,
-                        "Sin clave: la IA usa tu propia clave de API de Anthropic",
+                        "Sin clave: para generar con IA hace falta tu clave de API de Anthropic.",
                         StringComparison.Ordinal
                     )
                     .ShouldBeFalse("one tap only arms the button");
@@ -260,7 +262,7 @@ public sealed class TemplatesSectionTests
                 templates.DeleteKey();
                 WpfThread.DrainPendingWork();
                 templates.Screen.Ai.KeyStatus.ShouldBe(
-                    "Sin clave: la IA usa tu propia clave de API de Anthropic"
+                    "Sin clave: para generar con IA hace falta tu clave de API de Anthropic."
                 );
                 templates.Screen.Ai.DeleteKeyText.ShouldBeNull();
             });

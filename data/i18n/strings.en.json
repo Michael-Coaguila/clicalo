@@ -218,7 +218,7 @@
   "waitLonger": "Wait longer",
   "aiPrivacy4": "Only the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent. Nothing from your documents.",
   "consentD4": "To create shortcuts, the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent to an external AI service with your own key. Nothing else. You can turn it off anytime.",
-  "keyNone": "No key: AI uses your own Anthropic API key",
+  "keyNone": "No key yet: AI needs your own Anthropic API key.",
   "keyPaste": "Paste",
   "keyDelete": "Delete key",
   "keySaved": "Key saved in Credential Manager",

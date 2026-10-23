@@ -1045,9 +1045,9 @@
       "text": { "es": "Para crear atajos se envían a un servicio externo de IA, con tu propia clave, el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. No se envía nada más. Puedes desactivarlo cuando quieras.", "en": "To create shortcuts, the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent to an external AI service with your own key. Nothing else. You can turn it off anytime." }
     },
     "keyNone": {
-      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
+      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26). Revisado en M7: «Sin clave: la IA usa tu propia clave» se leía como una contradicción y no decía que sin clave la IA no funciona. Pendiente de ratificar (D21).",
       "after": "consentD4",
-      "text": { "es": "Sin clave: la IA usa tu propia clave de API de Anthropic", "en": "No key: AI uses your own Anthropic API key" }
+      "text": { "es": "Sin clave: para generar con IA hace falta tu clave de API de Anthropic.", "en": "No key yet: AI needs your own Anthropic API key." }
     },
     "keyPaste": {
       "notes": "Botón que pega la clave del portapapeles en el campo oculto (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
