@@ -303,19 +303,29 @@ public sealed class WelcomeWindow : Window
             languages.Add(language);
         }
 
-        return Ui.Column(
-            Space.S6,
-            brand,
-            Head(screen),
-            story,
-            screen.Reinstall is { } reinstall ? Reinstall(reinstall) : null,
-            SettingsUi.Options(languages.Count, languages)
-        );
+        // On a reinstallation the decision and the languages come first, in view at 600 × 640; the story follows.
+        return screen.Reinstall is { } reinstall
+            ? Ui.Column(
+                Space.S6,
+                brand,
+                Head(screen),
+                Reinstall(reinstall),
+                SettingsUi.Options(languages.Count, languages),
+                story
+            )
+            : Ui.Column(
+                Space.S6,
+                brand,
+                Head(screen),
+                story,
+                SettingsUi.Options(languages.Count, languages)
+            );
     }
 
     /// <summary>
-    /// The question of a reinstallation that found data from before (P6): «Conservar mis datos» is the option in force
-    /// and «Empezar de cero» takes two taps (REG-04), both 52 high (REG-02).
+    /// The question of a reinstallation that found data from before (P6): «Conservar mis datos» is what happens unless
+    /// the person chooses otherwise, so it is a line with its ✓, not a button that does nothing; «Empezar de cero» takes
+    /// two taps (REG-04) and is 52 high (REG-02).
     /// </summary>
     private Card Reinstall(WelcomeReinstallCard card)
     {
@@ -330,15 +340,13 @@ public sealed class WelcomeWindow : Window
             return new Card { Content = Ui.Row(Space.S2, check, done) };
         }
 
-        var keep = SettingsUi.Option(
-            OptionKind.Tile,
-            card.KeepText,
-            card.KeepText,
-            true,
-            static () => { }
-        );
-        keep.Height = ControlHeight.Medium;
-        AutomationProperties.SetAutomationId(keep, "reinstall.keep");
+        var kept = Ui.Icon("check_circle", IconBox.Medium, ColorToken.Success);
+        kept.IsFilled = true;
+        kept.VerticalAlignment = VerticalAlignment.Center;
+        var keepText = SettingsUi.Styled(card.KeepText, TextStyleToken.Label, lines: 0);
+        keepText.VerticalAlignment = VerticalAlignment.Center;
+        var keep = Ui.Row(Space.S2, kept, keepText);
+        AutomationProperties.SetAutomationId(keepText, "reinstall.keep");
         var fresh = SettingsUi.Button(
             card.FreshText,
             ButtonVariant.Danger,
@@ -347,6 +355,7 @@ public sealed class WelcomeWindow : Window
             ControlSize.Medium
         );
         fresh.IsActive = card.FreshArmed;
+        fresh.HorizontalAlignment = HorizontalAlignment.Left;
         AutomationProperties.SetAutomationId(fresh, "reinstall.fresh");
         AutomationProperties.SetHelpText(fresh, card.Description);
         return new Card
@@ -355,7 +364,8 @@ public sealed class WelcomeWindow : Window
                 Space.S3,
                 title,
                 SettingsUi.Styled(card.Description, TextStyleToken.BodySmall, ColorToken.Muted, 0),
-                SettingsUi.Options(2, [keep, fresh])
+                keep,
+                fresh
             ),
         };
     }
