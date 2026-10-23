@@ -408,6 +408,46 @@ public static class DockGeometry
         return PanelGeometry.ClampInto(rect, monitor.WorkArea, 0);
     }
 
+    /// <summary>
+    /// The side of the floating panel a window of <paramref name="width"/> opens on (AJR-001, D21): the one it already
+    /// has while it fits there whole, else the side of the screen with room, else the other one; when neither fits, the
+    /// side of the screen with room, which has more of it. Expressed as the edge <see cref="Beside"/> places it from: <see cref="DockSide.Right"/> puts
+    /// it on the left of the panel and <see cref="DockSide.Left"/> on its right. It never jumps across the panel while
+    /// the panel is dragged past the middle of the screen, and never covers it while one side has room.
+    /// </summary>
+    /// <param name="panel">The panel, in physical pixels.</param>
+    /// <param name="width">Width of the window, in physical pixels.</param>
+    /// <param name="gap">Space between the panel and the window, in physical pixels.</param>
+    /// <param name="monitor">The monitor of the panel.</param>
+    /// <param name="kept">The side it has now, or null when it opens.</param>
+    public static DockSide SideBesidePanel(
+        PhysicalRect panel,
+        int width,
+        int gap,
+        DisplayMonitor monitor,
+        DockSide? kept
+    )
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+        var onLeft = panel.Left - gap - monitor.WorkArea.Left;
+        var onRight = monitor.WorkArea.Right - panel.Right - gap;
+        bool Fits(DockSide side) => (side == DockSide.Right ? onLeft : onRight) >= width;
+
+        if (kept is DockSide.Left or DockSide.Right && Fits(kept.Value))
+        {
+            return kept.Value;
+        }
+
+        var toward =
+            panel.Center.X > monitor.WorkArea.Left + (monitor.WorkArea.Width / 2)
+                ? DockSide.Right
+                : DockSide.Left;
+        var other = toward == DockSide.Right ? DockSide.Left : DockSide.Right;
+
+        // The side of the screen with room is also the one with more room when neither fits.
+        return Fits(toward) || !Fits(other) ? toward : other;
+    }
+
     /// <summary>The tallest a window beside the bar may be (PES-010, PES-011): the work area less 140.</summary>
     /// <param name="monitor">The monitor of the panel.</param>
     public static int MaxSideWindowHeight(DisplayMonitor monitor)

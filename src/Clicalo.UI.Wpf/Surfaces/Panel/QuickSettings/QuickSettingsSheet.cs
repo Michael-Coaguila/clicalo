@@ -13,9 +13,8 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
 
 /// <summary>
-/// The Quick settings sheet (AJR-001) of direction C (D12): in the panel, a layer over its body at the level of the
-/// panel (the <c>win</c> surface with the decorative line on top), so the panel keeps its size and nothing moves under
-/// the finger. With <see cref="ShowsHeader"/>, a title row of <see cref="ControlHeight.Medium"/> with [quick] in
+/// The Quick settings sheet (AJR-001) of direction C (D12): in its own window beside the panel or the bar of the Tab
+/// view (D21, the <c>win</c> surface with the decorative line on top), as tall as its content up to the work area. With <see cref="ShowsHeader"/>, a title row of <see cref="ControlHeight.Medium"/> with [quick] in
 /// <c>heading</c> and «Cerrar», a 44 × 44 icon button. Below, the designed scroll (<see cref="ThemedScrollViewer"/>:
 /// the thin bar in its own channel and the fade at the foot while there is more), with, in order: the way to the
 /// Control Center (<see cref="NavRow"/>); Vista (three option cards); Opacidad with its value aligned with the controls
@@ -33,9 +32,6 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
 /// </remarks>
 public sealed class QuickSettingsSheet : Border
 {
-    /// <summary>AJR-001: the sheet is at most 62 % of the screen high.</summary>
-    public const double ScreenShare = 0.62;
-
     private readonly QuickSettingsViewModel _viewModel;
     private readonly DockPanel _header = new()
     {
@@ -72,7 +68,6 @@ public sealed class QuickSettingsSheet : Border
     private readonly ThemedScrollViewer _scroller;
     private readonly SegmentedControl _themes;
     private readonly bool _showsAlways;
-    private double _screenLimit = double.PositiveInfinity;
     private uint? _contact;
     private bool _sliding;
     private bool _onTrack;
@@ -239,14 +234,6 @@ public sealed class QuickSettingsSheet : Border
     /// <summary>The scroll of the sheet.</summary>
     public ThemedScrollViewer Scroller => _scroller;
 
-    /// <summary>Limits the sheet to 62 % of the screen it is on (AJR-001); the rest scrolls inside.</summary>
-    /// <param name="screenHeight">The height of the monitor's work area, in device-independent pixels.</param>
-    public void ApplyScreenHeight(double screenHeight)
-    {
-        _screenLimit = screenHeight > 0 ? screenHeight * ScreenShare : double.PositiveInfinity;
-        MaxHeight = _screenLimit;
-    }
-
     /// <summary>
     /// Whether the sheet shows whatever the view model says: in the window beside the bar of the Tab view (PES-009) the
     /// window itself appears and goes away, and a sheet that collapsed first would shrink it to its border for a moment.
@@ -261,9 +248,6 @@ public sealed class QuickSettingsSheet : Border
         }
     }
 
-    /// <summary>62 % of the height of the work area of its monitor (<see cref="ApplyScreenHeight"/>), in DIPs.</summary>
-    public double ScreenLimit => _screenLimit;
-
     /// <summary>
     /// The height of the whole content of the sheet, its title row and border included, once it was laid out; null
     /// before. It is what the sheet takes when that is less than its limit.
@@ -277,14 +261,14 @@ public sealed class QuickSettingsSheet : Border
             : null;
 
     /// <summary>
-    /// Limits the sheet to <paramref name="room"/>, the height left for it down to the bottom of the work area
-    /// (<see cref="QuickSheetFit.Room"/>), and never above 62 % of the screen: what does not fit scrolls inside (AJR-001).
+    /// Limits the sheet to <paramref name="room"/>, the height left for it down to the bottom of the work area, and never
+    /// below its minimum: what does not fit scrolls inside (AJR-001).
     /// </summary>
     /// <param name="room">The free height for the sheet, in device-independent pixels.</param>
     /// <returns>The height the sheet will have once laid out (<see cref="QuickSheetFit.Height"/>).</returns>
     public double FitHeight(double room)
     {
-        var height = QuickSheetFit.MaxHeight(room, _screenLimit);
+        var height = QuickSheetFit.MaxHeight(room);
         if (!MaxHeight.Equals(height))
         {
             MaxHeight = height;

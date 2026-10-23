@@ -63,6 +63,7 @@ public sealed class SurfaceSet : IDisposable
     private TouchSettings _touch;
     private string? _monitorId;
     private PhysicalPoint? _topLeft;
+    private DockSide? _quickSide;
     private PhysicalPoint? _beforeKeyboard;
     private PhysicalRect _occluded;
     private PhysicalRect _dragOrigin;
@@ -530,6 +531,11 @@ public sealed class SurfaceSet : IDisposable
         {
             PlaceQuickBesidePanel(quick, monitor, shown);
         }
+        else
+        {
+            // AJR-001: the next time it opens, it picks its side again.
+            _quickSide = null;
+        }
 
         if (layout.Panic && form is PanelForm.Bubble or PanelForm.DockClosed or PanelForm.DockOpen)
         {
@@ -795,12 +801,14 @@ public sealed class SurfaceSet : IDisposable
         var maxHeight = QuickMaxHeight(monitor);
         quick.FitHeight(maxHeight);
         var (width, height) = quick.MeasurePhysical(monitor.Scale);
+        var gap = monitor.ToPhysical(DockGeometry.BarWindowGapPx);
+        _quickSide = DockGeometry.SideBesidePanel(panel, width, gap, monitor, _quickSide);
         var rect = DockGeometry.Beside(
-            TowardRoom(panel, monitor),
+            _quickSide.Value,
             panel,
             width,
             Math.Min(height, monitor.ToPhysical(maxHeight)),
-            monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+            gap,
             DockAlign.Start,
             monitor
         );

@@ -389,4 +389,51 @@ public sealed class DockGeometryTests
             .PanicClear(DockSide.Bottom, 140, 44, Monitor, bottom, 8, [above])
             .Bottom.ShouldBeLessThanOrEqualTo(above.Top - 8);
     }
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
+    public void Quick_settings_keep_their_side_of_the_panel_while_they_fit_there_whole()
+    {
+        // A panel 340 wide: in the left half they open on its right; dragged past the middle they stay there.
+        const int width = 340;
+        const int gap = 8;
+        var left = new PhysicalRect(300, 100, 340, 612);
+        DockGeometry.SideBesidePanel(left, width, gap, Monitor, kept: null).ShouldBe(DockSide.Left);
+
+        var pastMiddle = new PhysicalRect(1100, 100, 340, 612);
+        DockGeometry
+            .SideBesidePanel(pastMiddle, width, gap, Monitor, kept: DockSide.Left)
+            .ShouldBe(DockSide.Left, "1440 + 8 + 340 still fits in 1920");
+        DockGeometry
+            .SideBesidePanel(pastMiddle, width, gap, Monitor, kept: null)
+            .ShouldBe(DockSide.Right, "opened there, the side with room is the left one");
+
+        // Near the right edge they no longer fit on the right: they go to the left, never over the panel.
+        var nearRight = new PhysicalRect(1500, 100, 340, 612);
+        DockGeometry
+            .SideBesidePanel(nearRight, width, gap, Monitor, kept: DockSide.Left)
+            .ShouldBe(DockSide.Right);
+        DockGeometry
+            .Beside(DockSide.Right, nearRight, width, 600, gap, DockAlign.Start, Monitor)
+            .Right.ShouldBeLessThanOrEqualTo(nearRight.Left - gap);
+    }
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
+    public void With_no_room_on_either_side_quick_settings_take_the_side_with_more_room()
+    {
+        var narrow = new DisplayMonitor(
+            "DISPLAY2",
+            new PhysicalRect(0, 0, 1000, 800),
+            new PhysicalRect(0, 0, 1000, 760),
+            IsPrimary: false,
+            Scale: 1
+        );
+        var panel = new PhysicalRect(300, 50, 500, 612);
+
+        // 292 free on the left and 192 on the right: neither holds 340, the left has more.
+        DockGeometry
+            .SideBesidePanel(panel, 340, 8, narrow, kept: DockSide.Left)
+            .ShouldBe(DockSide.Right);
+    }
 }

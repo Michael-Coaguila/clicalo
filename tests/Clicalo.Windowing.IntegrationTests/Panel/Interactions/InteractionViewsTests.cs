@@ -53,18 +53,16 @@ public sealed class InteractionViewsTests
 
     [Fact]
     [Trait("Req", "AJR-001")]
-    public void The_sheet_fits_the_free_space_but_never_passes_62_percent_of_the_screen() =>
+    public void The_sheet_fits_the_free_space_and_never_gets_below_its_minimum() =>
         WpfThread.Invoke(() =>
         {
             var world = new InteractionsWorld();
             var sheet = new QuickSettingsSheet(world.QuickSettings);
-            sheet.ApplyScreenHeight(1000);
-            sheet.MaxHeight.ShouldBe(620);
 
             sheet.FitHeight(300);
             sheet.MaxHeight.ShouldBe(300);
             sheet.FitHeight(2000);
-            sheet.MaxHeight.ShouldBe(620);
+            sheet.MaxHeight.ShouldBe(2000, "D21: as tall as the work area, no longer 62 % of it");
             sheet.FitHeight(10);
             sheet.MaxHeight.ShouldBe(120);
         });
