@@ -88,7 +88,7 @@ public sealed class GeneralTouchViewTests
                     () => { }
                 )
             );
-            var view = new GeneralSectionView(section);
+            var view = new GeneralSectionView(section, static (_, _) => { });
             theme.Attach(view);
             view.Width = 1300;
             view.Measure(new Size(1300, 3000));

@@ -196,21 +196,14 @@ public sealed class SurfacesAuditTests
         },
         ["edit-mode-armed"] = static w =>
         {
-            // REG-04, CUA-012: the first tap on the × of «Negrita» arms it with «Confirmar».
+            // REG-04, CUA-012: the first tap on the × of «Negrita» arms it with «Confirmar», which grows to the left,
+            // inside its tile.
             w.Layers.EditMode.Enter();
             w.Layers.EditMode.ApplyView(frequents: false, searching: false, PanelBodyTestData.Word);
             w.Layers.EditMode.Remove(new ShortcutId("w0"));
             w.Layers.EditMode.Armed.ShouldBe(new ShortcutId("w0"));
             w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
             w.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
-        },
-        // CUA-012, REG-04: the first tap on a × arms it, and «Confirmar» grows to the left, inside its tile.
-        ["edit-mode-armed"] = static w =>
-        {
-            w.Layers.EditMode.Enter();
-            w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
-            w.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
-            w.Layers.EditMode.Remove(new ShortcutId("w1"));
         },
         ["tile-menu"] = static w =>
             w.Layers.Menu.Open(new ShortcutId("w0"), "Negrita", "format_bold", inFrequents: false),
