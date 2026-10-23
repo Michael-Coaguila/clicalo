@@ -22,6 +22,7 @@ using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.Windowing.IntegrationTests.Automation.Rules;
 using Clicalo.Windowing.IntegrationTests.Interactions;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
@@ -365,6 +366,49 @@ public sealed class SurfacesAuditTests
                 );
                 host.LayOut();
                 world.Panel.Shape.Columns.ShouldBe(3);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(SizeSetting.Small, false)]
+    [InlineData(SizeSetting.Medium, false)]
+    [InlineData(SizeSetting.Large, false)]
+    [InlineData(SizeSetting.Medium, true)]
+    [Trait("Req", "SEG-002")]
+    [Trait("Req", "REG-03")]
+    public void Release_all_sits_whole_inside_the_panic_strip(SizeSetting size, bool compact)
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(AuditLook.Dark);
+            var world = new PanelWorld("es", time);
+            world.Panel.ApplyLayout(
+                PanelLayoutSettings.Default with
+                {
+                    Size = size,
+                    Compact = compact,
+                }
+            );
+            var window = NewPanelWindow(world, lab, time, theme);
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                PanelStates["panic"](world);
+                host.LayOut();
+                window.IsPanicStripVisible.ShouldBeTrue();
+
+                // D19 made the status row 44 + 4: the strip over it cut the foot of «Release all» (D20 review).
+                var button = window.ReleaseAllButton;
+                var bottom = button.TranslatePoint(new Point(0, button.ActualHeight), host.Root).Y;
+                button.ActualHeight.ShouldBe(ControlHeight.Small);
+                bottom.ShouldBeLessThanOrEqualTo(host.Root.ActualHeight - Space.S2 + 0.5);
             }
             finally
             {

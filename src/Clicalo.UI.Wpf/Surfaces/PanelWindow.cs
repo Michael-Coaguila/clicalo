@@ -538,8 +538,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         {
             Child = row,
             CornerRadius = new CornerRadius(0, 0, Radii.Large, Radii.Large),
-            // The strip covers the status row and the foot of the panel: «Release all» sits S2 from the right and
-            // the bottom and S1 from the top, so it reads centered in the red instead of hanging from its top edge.
+            // The strip covers the gap above the status row, the row and the foot of the panel: «Release all» sits S2
+            // from the right and the bottom and S1 from the top, so it reads centered in the red instead of hanging
+            // from its top edge.
             Padding = new Thickness(Space.S3, Space.S1, Space.S2, Space.S2),
             Visibility = Visibility.Collapsed,
         };
@@ -713,9 +714,15 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         );
     }
 
-    /// <summary>The status row (the panic strip).</summary>
+    /// <summary>
+    /// The status row and the gap above it (the panic strip): the row is 44 + <see cref="Space.S1"/> since D19, so the
+    /// strip also takes the gap to keep «Release all» whole, <see cref="Space.S1"/> under its top edge.
+    /// </summary>
     private Rect StatusRegion() =>
-        Span(TopOf(_body.Notices), TopOf(_body.Notices) + _body.Notices.ActualHeight);
+        Span(
+            TopOf(_body.Notices) - _body.Notices.Margin.Top,
+            TopOf(_body.Notices) + _body.Notices.ActualHeight
+        );
 
     private void ApplyVisibility()
     {
