@@ -358,4 +358,35 @@ public sealed class DockGeometryTests
             window.Right.ShouldBe(button.Right);
         }
     }
+
+    [Fact]
+    [Trait("Req", "PES-013")]
+    [Trait("Req", "REG-03")]
+    public void The_floating_release_never_covers_the_open_bar_nor_a_window_beside_it()
+    {
+        // A bar narrower than the inset: the floating «Release all» stays 110 from the edge, as PES-013 says.
+        var narrow = new PhysicalRect(1920 - 92, 12, 92, 1016);
+        DockGeometry
+            .PanicClear(DockSide.Right, 140, 44, Monitor, narrow, 8, [])
+            .ShouldBe(DockGeometry.Panic(DockSide.Right, 140, 44, Monitor));
+
+        // The bar of L is 124: the button goes 8 clear of it instead of over its edge (D20).
+        var large = new PhysicalRect(1920 - 124, 12, 124, 1016);
+        DockGeometry
+            .PanicClear(DockSide.Right, 140, 44, Monitor, large, 8, [])
+            .Right.ShouldBe(large.Left - 8);
+
+        // Quick settings beside the bar, across the middle of the edge: the button goes beyond it, never on it.
+        var bar = new PhysicalRect(1920 - 108, 12, 108, 1016);
+        var quick = new PhysicalRect(bar.Left - 8 - 340, 300, 340, 500);
+        var pill = DockGeometry.PanicClear(DockSide.Right, 140, 44, Monitor, bar, 8, [quick]);
+        pill.Right.ShouldBe(quick.Left - 8);
+
+        // The same at the bottom edge, with a window above the bar.
+        var bottom = new PhysicalRect(400, 1040 - 80, 900, 80);
+        var above = new PhysicalRect(700, bottom.Top - 8 - 300, 340, 300);
+        DockGeometry
+            .PanicClear(DockSide.Bottom, 140, 44, Monitor, bottom, 8, [above])
+            .Bottom.ShouldBeLessThanOrEqualTo(above.Top - 8);
+    }
 }

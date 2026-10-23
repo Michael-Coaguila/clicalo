@@ -490,16 +490,28 @@ public sealed class SurfaceSet : IDisposable
         if (layout.Panic && form is PanelForm.Bubble or PanelForm.DockClosed or PanelForm.DockOpen)
         {
             var (pillWidth, pillHeight) = _panicPill.MeasurePhysical(monitor.Scale);
-            var pillRect = panicAnchor is { } anchor
-                ? DockGeometry.Beside(
-                    form == PanelForm.Bubble ? DockSide.Right : side,
-                    anchor,
-                    pillWidth,
-                    pillHeight,
-                    monitor.ToPhysical(DockGeometry.BarWindowGapPx),
-                    DockAlign.Center,
-                    monitor
-                )
+            var pillRect =
+                panicAnchor is { } anchor
+                    ? DockGeometry.Beside(
+                        form == PanelForm.Bubble ? DockSide.Right : side,
+                        anchor,
+                        pillWidth,
+                        pillHeight,
+                        monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                        DockAlign.Center,
+                        monitor
+                    )
+                // The open bar: clear of the bar and of the windows beside it (D20).
+                : form == PanelForm.DockOpen && noticeAnchor is { } openBar
+                    ? DockGeometry.PanicClear(
+                        side,
+                        pillWidth,
+                        pillHeight,
+                        monitor,
+                        openBar,
+                        monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                        taken
+                    )
                 : DockGeometry.Panic(side, pillWidth, pillHeight, monitor);
             Present(_panicPill, pillRect, shown);
             taken.Add(pillRect);

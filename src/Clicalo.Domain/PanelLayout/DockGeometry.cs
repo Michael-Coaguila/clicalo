@@ -369,6 +369,45 @@ public static class DockGeometry
         return PanelGeometry.ClampInto(rect, work, 0);
     }
 
+    /// <summary>
+    /// The floating «Release all» of the open bar (PES-013) where <see cref="Panic"/> puts it, but never over the bar
+    /// (a bar of L, 124, is wider than the inset of 110) nor over a window beside it (D20: they open
+    /// <see cref="BarWindowGapPx"/> from the bar): it moves away from the edge until it is clear, so it never hides a
+    /// control nor turns a tap meant for one into a release.
+    /// </summary>
+    /// <param name="side">The edge of the bar.</param>
+    /// <param name="width">Width of the button, in physical pixels.</param>
+    /// <param name="height">Height of the button, in physical pixels.</param>
+    /// <param name="monitor">The monitor of the panel.</param>
+    /// <param name="bar">The open bar on screen.</param>
+    /// <param name="gap">Space kept from the bar and from each window, in physical pixels.</param>
+    /// <param name="taken">The windows already beside the bar.</param>
+    public static PhysicalRect PanicClear(
+        DockSide side,
+        int width,
+        int height,
+        DisplayMonitor monitor,
+        PhysicalRect bar,
+        int gap,
+        IReadOnlyList<PhysicalRect> taken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(taken);
+        var rect = Away(side, Panic(side, width, height, monitor), bar, gap);
+        for (var pass = 0; pass < taken.Count; pass++)
+        {
+            var hit = taken.FirstOrDefault(other => Overlap(rect.Inflate(gap), other));
+            if (hit.IsEmpty)
+            {
+                break;
+            }
+
+            rect = Away(side, rect, hit, gap);
+        }
+
+        return PanelGeometry.ClampInto(rect, monitor.WorkArea, 0);
+    }
+
     /// <summary>The tallest a window beside the bar may be (PES-010, PES-011): the work area less 140.</summary>
     /// <param name="monitor">The monitor of the panel.</param>
     public static int MaxSideWindowHeight(DisplayMonitor monitor)
@@ -397,6 +436,34 @@ public static class DockGeometry
             : (int)Math.Floor((Math.Max(0, availablePx) + gapPx) / (tilePx + gapPx));
         return Math.Max(1, Math.Min(preference, fit));
     }
+
+    /// <summary><paramref name="rect"/> moved away from the edge until it is <paramref name="gap"/> clear of <paramref name="other"/>.</summary>
+    private static PhysicalRect Away(
+        DockSide side,
+        PhysicalRect rect,
+        PhysicalRect other,
+        int gap
+    ) =>
+        side switch
+        {
+            DockSide.Right when rect.Right > other.Left - gap => rect with
+            {
+                Left = other.Left - gap - rect.Width,
+            },
+            DockSide.Left when rect.Left < other.Right + gap => rect with
+            {
+                Left = other.Right + gap,
+            },
+            DockSide.Top when rect.Top < other.Bottom + gap => rect with
+            {
+                Top = other.Bottom + gap,
+            },
+            DockSide.Bottom when rect.Bottom > other.Top - gap => rect with
+            {
+                Top = other.Top - gap - rect.Height,
+            },
+            _ => rect,
+        };
 
     private static bool Overlap(PhysicalRect a, PhysicalRect b) =>
         !a.IsEmpty
