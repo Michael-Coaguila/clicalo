@@ -726,6 +726,14 @@ public sealed class ShortcutsSectionView : Grid
         {
             var button = Parts.Button(action, null, ButtonVariant.Tertiary, _viewModel.LinkAction);
             button.IsExpanded = model.State == LinkState.Waiting ? null : model.Expanded;
+            if (button.IsExpanded is { } open)
+            {
+                // It opens the options of the binding: ▾ like every fold, and «elegido» while they are open, so it
+                // reads as the way to close them.
+                button.IsActive = open;
+                button.Content = Folding(action, open);
+            }
+
             AutomationProperties.SetHelpText(button, model.Title);
             button.Margin = new Thickness(Space.S2, 0, 0, 0);
             DockPanel.SetDock(button, Dock.Right);
@@ -743,6 +751,30 @@ public sealed class ShortcutsSectionView : Grid
         card.MinHeight = ControlHeight.Large;
         card.Margin = new Thickness(0, Space.S3, 0, 0);
         return card;
+    }
+
+    /// <summary>The text of a tertiary button that folds something, with its caret after it.</summary>
+    private static StackPanel Folding(string text, bool open)
+    {
+        var caret = Ui.Icon(
+            open ? "expand_less" : "expand_more",
+            IconBox.Small,
+            ColorToken.AccentInk
+        );
+        caret.Margin = new Thickness(Space.S1, 0, 0, 0);
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(
+            new StyledText(
+                text,
+                TextStyleToken.Label,
+                open ? ColorToken.Text : ColorToken.AccentInk
+            )
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+            }
+        );
+        line.Children.Add(caret);
+        return line;
     }
 
     /// <summary>

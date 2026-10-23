@@ -1339,7 +1339,8 @@ public sealed class ShortcutEditorView : Grid
 
     /// <summary>
     /// Probar (primary: it opens and closes the test layer), Duplicar (secondary) and Eliminar (danger, two taps,
-    /// REG-04): one row that shares its width, so no text is cut while another button has room to spare.
+    /// REG-04): one row that shares its width, so no text is cut while another button has room to spare. While the
+    /// layer is open, Probar is what closes it: a secondary drawn «elegido», so «Probar ahora» is the one primary.
     /// </summary>
     private ShareRow Footer(FooterModel model)
     {
@@ -1347,7 +1348,8 @@ public sealed class ShortcutEditorView : Grid
         {
             Content = model.TestText,
             Symbol = "play_arrow",
-            Variant = ButtonVariant.Primary,
+            Variant = model.TestOpen ? ButtonVariant.Secondary : ButtonVariant.Primary,
+            IsActive = model.TestOpen,
             IsExpanded = model.TestOpen,
             Padding = new Thickness(Space.S2, 0, Space.S2, 0),
         };
