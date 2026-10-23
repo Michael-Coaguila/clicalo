@@ -125,6 +125,8 @@ public sealed class PanelFormsTests
             { DockUse.HoldReleased, true, false },
             { DockUse.ToggleChanged, true, false },
             { DockUse.ConfirmArmed, true, false },
+            { DockUse.Navigated, false, false },
+            { DockUse.Navigated, true, false },
         };
 
     [Theory]
@@ -135,6 +137,31 @@ public sealed class PanelFormsTests
         bool pinOpen,
         bool expected
     ) => DockRules.CollapsesAfter(use, pinOpen).ShouldBe(expected);
+
+    [Fact]
+    [Trait("Req", "PES-012")]
+    public void Releasing_a_tool_of_the_bar_only_moved_through_the_document()
+    {
+        // ⏶ ⏷ and the arrows are held or tapped many times in a row: the bar stays open (D21 review).
+        DockRules.UseOfRelease(barTool: true).ShouldBe(DockUse.Navigated);
+        DockRules.UseOfRelease(barTool: false).ShouldBe(DockUse.HoldReleased);
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false, true)]
+    [InlineData(true, false, false, false, false)]
+    [InlineData(false, true, false, false, false)]
+    [InlineData(false, false, true, false, false)]
+    [InlineData(false, false, false, true, false)]
+    [Trait("Req", "PES-012")]
+    [Trait("Req", "PAN-009")]
+    public void The_bar_never_folds_under_a_finger_with_a_sheet_open_or_while_a_macro_runs(
+        bool pinOpen,
+        bool touched,
+        bool sheetOpen,
+        bool macroRunning,
+        bool expected
+    ) => DockRules.FoldsNow(pinOpen, touched, sheetOpen, macroRunning).ShouldBe(expected);
 
     [Theory]
     [InlineData(true, 3, true)]

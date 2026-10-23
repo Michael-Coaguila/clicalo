@@ -22,6 +22,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.ProfileResolution;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
+using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.ContextMenu;
 using Clicalo.Presentation.Panel.EditMode;
@@ -55,9 +56,9 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private const string AdminIcon = "admin_panel_settings";
 
     /// <summary>The ids of ⏶ and ⏷ of the Tab bar (<c>DockBarViewModel</c>): the panic strip names them (SEG-001).</summary>
-    private const string DockScrollUpId = "dock.scrollUp";
+    private const string DockScrollUpId = DockTileViewModel.ToolIdPrefix + "scrollUp";
 
-    private const string DockScrollDownId = "dock.scrollDown";
+    private const string DockScrollDownId = DockTileViewModel.ToolIdPrefix + "scrollDown";
 
     private readonly DocumentStore _store;
     private readonly SessionStore _session;

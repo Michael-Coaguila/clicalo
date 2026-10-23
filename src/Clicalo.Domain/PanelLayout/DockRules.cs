@@ -19,6 +19,22 @@ public static class DockRules
         !pinOpen && use is DockUse.Ran or DockUse.HoldReleased;
 
     /// <summary>
+    /// Whether the open bar folds once its wait after a use passed (PES-012, PAN-009): never under a finger, with its
+    /// menu or quick settings open, or while a macro still runs (it waits again once the macro ends, D21 review).
+    /// </summary>
+    /// <param name="pinOpen">The lock of the bar is «Open».</param>
+    /// <param name="touched">A finger, the pen or the pointer is on the bar.</param>
+    /// <param name="sheetOpen">The menu or quick settings are open beside the bar.</param>
+    /// <param name="macroRunning">A macro is running.</param>
+    public static bool FoldsNow(bool pinOpen, bool touched, bool sheetOpen, bool macroRunning) =>
+        !pinOpen && !touched && !sheetOpen && !macroRunning;
+
+    /// <summary>What releasing a held button of the bar did (PES-012): a tool of the bar only moved through the document.</summary>
+    /// <param name="barTool">The button is a tool of the bar (⏶ ⏷, an arrow), not a shortcut.</param>
+    public static DockUse UseOfRelease(bool barTool) =>
+        barTool ? DockUse.Navigated : DockUse.HoldReleased;
+
+    /// <summary>
     /// Whether the floating «Release all» of the Tab view and the bubble shows (PES-013, D20 review): for anything held
     /// with no finger on it (a latched Toggle, a locked sticky key, a drag). A Mantener under a finger ends when it
     /// lifts; a pill over the screen for it only covered what the person was working on.

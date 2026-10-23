@@ -14,4 +14,7 @@ public enum DockUse
 
     /// <summary>The first tap of a shortcut that asks for confirmation armed it.</summary>
     ConfirmArmed,
+
+    /// <summary>A tool of the bar moved through the document (⏶ ⏷, the arrows): it is used many times in a row (D21).</summary>
+    Navigated,
 }

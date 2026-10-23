@@ -43,11 +43,16 @@ public sealed class DockTileViewModel : ObservableObject, IIgnoredTouchState
     /// <summary>The shortcut.</summary>
     public ShortcutId Id => _model.Id;
 
+    /// <summary>Whether <paramref name="id"/> is one of the bar's own tools (⏶ ⏷, the arrows), not a shortcut.</summary>
+    /// <param name="id">The id.</param>
+    public static bool IsToolId(ShortcutId id) =>
+        id.Value.StartsWith(ToolIdPrefix, StringComparison.Ordinal);
+
     /// <summary>
     /// Whether it is one of the bar's own tools (⏶ ⏷, PES-008), not a shortcut of the library: releasing it does not fold
     /// the bar, since it is held to read a page (PES-012, D21 review).
     /// </summary>
-    public bool IsBarTool => _model.Id.Value.StartsWith(ToolIdPrefix, StringComparison.Ordinal);
+    public bool IsBarTool => IsToolId(_model.Id);
 
     /// <summary>How it reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;

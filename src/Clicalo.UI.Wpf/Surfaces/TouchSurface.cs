@@ -38,9 +38,9 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     private readonly Dictionary<object, int> _ids = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<uint> _dragged = [];
 
-    // Holds whose release does not fold the bar: one taken by test mode or the open menu (nothing ran) and one of the
-    // bar's own tools (D21 review).
-    private readonly HashSet<uint> _quietHolds = [];
+    // The button each contact holds, for its release (PES-012); none for a hold taken by test mode or the open menu,
+    // since nothing ran.
+    private readonly Dictionary<uint, DockTileViewModel> _holds = [];
     private readonly DragTracker _drag;
     private TouchSettings _touch;
     private FrameworkElement? _dragZone;
@@ -92,8 +92,8 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     /// <summary>An accepted tap ran a shortcut of the surface (PES-010, PES-012).</summary>
     public event EventHandler<DockTileEventArgs>? TileTapped;
 
-    /// <summary>A Mantener of the surface was released (PES-012).</summary>
-    public event EventHandler? HoldReleased;
+    /// <summary>A held button of the surface was released (PES-012).</summary>
+    public event EventHandler<DockTileEventArgs>? HoldReleased;
 
     /// <summary>Whether a finger, the pen or the pointer is on the surface.</summary>
     public bool IsPointerInside => _hovered || _touching;
@@ -488,15 +488,10 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
             case GestureKind.HoldStart when TargetOf(gesture)?.Tile is { } held:
                 if (Modes?.HoldStarted(held) == true)
                 {
-                    _ = _quietHolds.Add(gesture.PointerId);
                     break;
                 }
 
-                if (held.IsBarTool)
-                {
-                    _ = _quietHolds.Add(gesture.PointerId);
-                }
-
+                _holds[gesture.PointerId] = held;
                 held.HoldStarted(
                     gesture.PointerId,
                     _contacts.DeviceOf(gesture.PointerId),
@@ -525,9 +520,9 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                     _contacts.Summarize(gesture.PointerId, gesture.Timestamp, DpiScale),
                     gesture.HoldEnd
                 );
-                if (!_quietHolds.Remove(gesture.PointerId))
+                if (_holds.Remove(gesture.PointerId, out var released))
                 {
-                    HoldReleased?.Invoke(this, EventArgs.Empty);
+                    HoldReleased?.Invoke(this, new DockTileEventArgs(released));
                 }
 
                 break;

@@ -381,7 +381,7 @@ public sealed class SurfaceSetDesktopTests
                 _ => { },
                 (_, _, _) => { },
                 (_, _) => { },
-                () => { }
+                _ => { }
             )
         );
         return (set, panel, theme, viewModel, dock);

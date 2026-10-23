@@ -47,7 +47,7 @@ public sealed class SurfaceSet : IDisposable
     private readonly Action<MonitorPosition> _savePosition;
     private readonly Action<string, DockSide, int> _saveHandle;
     private readonly Action<DockTileViewModel, bool> _tileUsed;
-    private readonly Action _holdReleased;
+    private readonly Action<bool> _holdReleased;
     private readonly BubbleWindow _bubble;
     private readonly PanicPillWindow _panicPill;
     private readonly Dictionary<DockFlyout, DockFlyoutWindow> _flyouts = [];
@@ -158,7 +158,7 @@ public sealed class SurfaceSet : IDisposable
                 DimSurface.Dock
             );
             window.TileTapped += (_, used) => _tileUsed(used.Tile, true);
-            window.HoldReleased += (_, _) => _holdReleased();
+            window.HoldReleased += (_, released) => _holdReleased(released.Tile.IsBarTool);
             window.SizeChanged += (_, _) => Reflow();
             _flyouts[flyout] = window;
         }
@@ -309,7 +309,7 @@ public sealed class SurfaceSet : IDisposable
                 DimSurface.Dock
             );
             bar.TileTapped += (_, used) => _tileUsed(used.Tile, false);
-            bar.HoldReleased += (_, _) => _holdReleased();
+            bar.HoldReleased += (_, released) => _holdReleased(released.Tile.IsBarTool);
             bar.SizeChanged += (_, _) => Reflow();
             _bars[side] = bar;
         }

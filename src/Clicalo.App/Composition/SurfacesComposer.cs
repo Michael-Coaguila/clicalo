@@ -54,6 +54,7 @@ internal sealed class SurfacesComposer : IDockIntents
     private readonly MenuOutsideCancel? _menuCancel;
     private SurfaceSet? _surfaces;
     private ITimer? _collapseTimer;
+    private bool _foldAfterMacro;
     private bool _refreshQueued;
 
     /// <summary>Creates the view models of the bubble and the Tab view on the UI thread.</summary>
@@ -160,6 +161,13 @@ internal sealed class SurfacesComposer : IDockIntents
         {
             Dock.ApplyEngine(change.Snapshot);
             Bubble.ApplyEngine(change.Snapshot);
+            if (_foldAfterMacro && change.Snapshot.Macro is null)
+            {
+                // PES-012: the macro that ran from the bar ended; the bar folds after its wait.
+                _foldAfterMacro = false;
+                ScheduleCollapse(DockUse.Ran);
+            }
+
             Invalidate();
         };
         _relay.UsageCounted += (_, counted) => OnUsage(counted.Shortcut);
@@ -558,15 +566,18 @@ internal sealed class SurfacesComposer : IDockIntents
             return;
         }
 
+        // A Mantener folds the bar when it is released (OnHoldReleased); a tool of the bar never folds it.
         var behavior = _store.Current.Library.TryGetShortcut(shortcut, out var found)
             ? PanelProjector.BehaviorOf(found.Action)
             : TileBehavior.Hold;
-        var use = behavior switch
-        {
-            TileBehavior.Toggle => DockUse.ToggleChanged,
-            TileBehavior.Hold => (DockUse?)null,
-            _ => DockUse.Ran,
-        };
+        var use = DockTileViewModel.IsToolId(shortcut)
+            ? DockUse.Navigated
+            : behavior switch
+            {
+                TileBehavior.Toggle => DockUse.ToggleChanged,
+                TileBehavior.Hold => (DockUse?)null,
+                _ => DockUse.Ran,
+            };
         if (use is { } ran)
         {
             ScheduleCollapse(ran);
@@ -589,11 +600,11 @@ internal sealed class SurfacesComposer : IDockIntents
         }
     }
 
-    private void OnHoldReleased()
+    private void OnHoldReleased(bool barTool)
     {
         if (CurrentForm() == PanelForm.DockOpen)
         {
-            ScheduleCollapse(DockUse.HoldReleased);
+            ScheduleCollapse(DockRules.UseOfRelease(barTool));
         }
     }
 
@@ -619,16 +630,28 @@ internal sealed class SurfacesComposer : IDockIntents
             _collapseTimer?.Dispose();
             _collapseTimer = null;
             // PAN-009: never under a finger. A hold started within the 900 ms would be cut and the bar would fold under
-            // it; when that hold ends, it schedules the fold again (PES-012).
+            // it; when that hold ends, it schedules the fold again (PES-012). A macro still running folds it once it
+            // ends.
+            if (CurrentForm() != PanelForm.DockOpen)
+            {
+                return;
+            }
+
+            var macroRunning = _relay.Latest.Macro is not null;
             if (
-                CurrentForm() == PanelForm.DockOpen
-                && !_store.Current.Settings.Dock.PinOpen
-                && !_panel.QuickSettings.IsOpen
-                && !_panel.Menu.IsOpen
-                && _surfaces?.IsTouched != true
+                DockRules.FoldsNow(
+                    _store.Current.Settings.Dock.PinOpen,
+                    _surfaces?.IsTouched == true,
+                    _panel.QuickSettings.IsOpen || _panel.Menu.IsOpen,
+                    macroRunning
+                )
             )
             {
                 CloseBar();
+            }
+            else
+            {
+                _foldAfterMacro = macroRunning;
             }
         });
 
