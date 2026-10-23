@@ -22,7 +22,7 @@
     "src/Clicalo.UI.Wpf/Workspace/Internal/Ui.cs": 2,
     "src/Clicalo.UI.Wpf/Workspace/ShortcutEditorView.cs": 5,
     "src/Clicalo.UI.Wpf/Workspace/ShortcutsSectionView.cs": 1,
-    "src/Clicalo.UI.Wpf/Workspace/Templates/TemplatesSectionView.cs": 3,
+    "src/Clicalo.UI.Wpf/Workspace/Templates/TemplatesSectionView.cs": 2,
     "src/Clicalo.UI.Wpf/Workspace/TouchPrecision/TouchPrecisionView.cs": 2,
     "src/Clicalo.UI.Wpf/Workspace/Welcome/WelcomeWindow.cs": 2
   }

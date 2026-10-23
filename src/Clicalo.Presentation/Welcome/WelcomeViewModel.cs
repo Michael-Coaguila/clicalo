@@ -5,6 +5,7 @@ using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
+using Clicalo.Presentation.ControlCenter.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PanelSize = Clicalo.Domain.Settings.PanelSize;
 
@@ -34,6 +35,7 @@ public sealed class WelcomeViewModel : ObservableObject
     private readonly TimeProvider? _time;
     private readonly Action<Action>? _post;
     private WelcomeScreen? _screen;
+    private bool _keyboardOpen;
 
     /// <summary>Creates the view model of <paramref name="session"/>.</summary>
     /// <param name="session">The welcome.</param>
@@ -123,6 +125,21 @@ public sealed class WelcomeViewModel : ObservableObject
     /// <param name="optionId">The kit option id.</param>
     public void ToggleKit(string optionId) => Session.ToggleKit(optionId);
 
+    /// <summary>[Cambiar] / [Listo] of the keyboard line of step 2 (BIE-006, PLA-009).</summary>
+    public void ToggleKeyboard()
+    {
+        _keyboardOpen = !_keyboardOpen;
+        Refresh();
+    }
+
+    /// <summary>A layout of the keyboard line of step 2: the templates install its combinations.</summary>
+    /// <param name="layout">The layout.</param>
+    public void SetLayout(string layout) => Session.SetKeyboardLayout(layout);
+
+    /// <summary>A language of the programs of the keyboard line of step 2.</summary>
+    /// <param name="code">The language code.</param>
+    public void SetAppsLanguage(string code) => Session.SetAppsLanguage(new LangCode(code));
+
     /// <summary>A card of step 3.</summary>
     /// <param name="density">The view.</param>
     public void SetDensity(PanelDensity density) => Session.SetDensity(density);
@@ -208,7 +225,49 @@ public sealed class WelcomeViewModel : ObservableObject
             T(L.Skip),
             T(Session.IsLastStep ? L.Finish : L.Next),
             T(L.Size),
-            T(L.Theme)
+            T(L.Theme),
+            Keyboard(settings)
+        );
+    }
+
+    /// <summary>
+    /// The keyboard line of step 2 as Plantillas has it (BIE-006: «que se puede cambiar», PLA-009): the layout in use,
+    /// the detected one marked, and the language of the programs, which decides which variant of a template installs.
+    /// </summary>
+    private KeyboardModel Keyboard(UserSettings settings)
+    {
+        var detected = _detectedLayout?.Invoke() ?? KeyboardLayouts.Detect(null);
+        var layout = KeyboardLayouts.Effective(settings.Keyboard.Layout, detected);
+        var apps = settings.Keyboard.AppsLanguage;
+        return new KeyboardModel(
+            T(
+                L.KbForLine(
+                    app: apps == LangCode.En ? L.KbAppsEn : L.KbAppsEs,
+                    name: LayoutLabel(layout)
+                )
+            ),
+            T(L.KbWhy),
+            T(_keyboardOpen ? L.Done : L.Change),
+            _keyboardOpen,
+            T(L.KbLayout),
+            [
+                .. KeyboardLayouts.All.Items.Select(id => new KbOption(
+                    id,
+                    T(LayoutLabel(id)),
+                    string.Equals(id, layout, StringComparison.Ordinal),
+                    string.Equals(id, detected, StringComparison.Ordinal)
+                )),
+            ],
+            T(L.KbApps),
+            [
+                .. KeyboardLayouts.AppsLanguages.Items.Select(code => new KbOption(
+                    code.Value,
+                    T(code == LangCode.En ? L.KbAppsEn : L.KbAppsEs),
+                    code == apps,
+                    false
+                )),
+            ],
+            T(L.Detected)
         );
     }
 
@@ -304,13 +363,17 @@ public sealed class WelcomeViewModel : ObservableObject
             }
             else if (content.Template(option.Id) is { } template)
             {
+                // A repeated welcome says which templates are already in (BIE-010): unmarking them removes nothing.
+                var installed = Session.Installed.IsChosen(option.Id);
                 options.Add(
                     new WelcomeOption(
                         option.Id,
                         template.Icon.Name,
                         template.Name.Get(language, LangCode.Es),
                         string.Empty,
-                        Session.Kit.IsChosen(option.Id)
+                        Session.Kit.IsChosen(option.Id),
+                        installed ? T(L.KitInstalled) : string.Empty,
+                        installed ? T(L.KitInstalledD) : string.Empty
                     )
                 );
             }

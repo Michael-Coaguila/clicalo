@@ -453,10 +453,18 @@ public sealed class WelcomeWindow : Window
     /// </summary>
     private StackPanel Step2(WelcomeScreen screen)
     {
-        var keyboard = SettingsUi.SettingRow("keyboard", screen.KeyboardLine, null, null);
-        keyboard.MinHeight = ControlHeight.Small;
+        // BIE-006: the detected keyboard can be changed here, as in Plantillas, before the templates install.
+        UIElement keyboard = screen.Keyboard is { } line
+            ? KeyboardChooser.Build(
+                line,
+                _viewModel.ToggleKeyboard,
+                _viewModel.SetLayout,
+                _viewModel.SetAppsLanguage
+            )
+            : SettingsUi.SettingRow("keyboard", screen.KeyboardLine, null, null);
         UIElement? basics = null;
         var templates = new List<UIElement>();
+        var anyInstalled = screen.Kit.Any(static option => option.Status.Length > 0);
         foreach (var option in screen.Kit)
         {
             OptionButton chip;
@@ -483,6 +491,32 @@ public sealed class WelcomeWindow : Window
                 AutomationProperties.SetHelpText(chip, option.Description);
                 basics = chip;
             }
+            else if (option.Status.Length > 0)
+            {
+                // Already installed (BIE-010): its name and «Ya instalada» under it, so it is told from one that is
+                // only marked; unmarking it removes nothing, as its help says.
+                var texts = Ui.Column(
+                    0,
+                    SettingsUi.Styled(option.Label, TextStyleToken.Label),
+                    SettingsUi.Styled(option.Status, TextStyleToken.Caption, ColorToken.Muted)
+                );
+                chip = SettingsUi.Tall(
+                    SettingsUi.Option(
+                        OptionKind.Tile,
+                        texts,
+                        option.Label,
+                        option.Selected,
+                        () => _viewModel.ToggleKit(option.Id),
+                        option.Icon,
+                        OptionRole.Toggle
+                    ),
+                    ControlHeight.Medium
+                );
+                chip.HorizontalContentAlignment = HorizontalAlignment.Left;
+                AutomationProperties.SetItemStatus(chip, option.Status);
+                AutomationProperties.SetHelpText(chip, option.Help);
+                templates.Add(chip);
+            }
             else
             {
                 chip = SettingsUi.Option(
@@ -494,6 +528,12 @@ public sealed class WelcomeWindow : Window
                     option.Icon,
                     OptionRole.Toggle
                 );
+                if (anyInstalled)
+                {
+                    // Beside templates with their «Ya instalada» line, every tile takes the same height.
+                    chip = SettingsUi.Tall(chip, ControlHeight.Medium);
+                }
+
                 chip.HorizontalContentAlignment = HorizontalAlignment.Left;
                 templates.Add(chip);
             }

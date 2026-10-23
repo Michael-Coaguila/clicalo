@@ -203,6 +203,8 @@ public sealed class StringsParityTests
                 "kgMods",
                 "kitBasics",
                 "kitBasicsD",
+                "kitInstalled",
+                "kitInstalledD",
                 "langBarNote",
                 "langBoth",
                 "lastBackupAt",

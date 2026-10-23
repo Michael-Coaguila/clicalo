@@ -1,4 +1,5 @@
 using Clicalo.Domain.Primitives;
+using Clicalo.Presentation.ControlCenter.Templates;
 
 namespace Clicalo.Presentation.Welcome;
 
@@ -35,6 +36,10 @@ namespace Clicalo.Presentation.Welcome;
 /// <param name="NextText">[next], or [finish] on the last step.</param>
 /// <param name="SizeTitle">[size], the label of the sizes of step 4.</param>
 /// <param name="ThemeTitle">[theme], the label of the themes of step 4.</param>
+/// <param name="Keyboard">
+/// The keyboard line of the apps step as Plantillas draws it (BIE-006, PLA-009): its line, [kbWhy] and [change], which
+/// unfolds the layouts and the languages of the programs to change them before installing.
+/// </param>
 public sealed record WelcomeScreen(
     int Step,
     int StepCount,
@@ -63,5 +68,6 @@ public sealed record WelcomeScreen(
     string SkipText,
     string NextText,
     string SizeTitle = "",
-    string ThemeTitle = ""
+    string ThemeTitle = "",
+    KeyboardModel? Keyboard = null
 );

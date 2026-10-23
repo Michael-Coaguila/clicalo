@@ -9,10 +9,19 @@ namespace Clicalo.Presentation.Welcome;
 /// <param name="Label">Its text and accessible name.</param>
 /// <param name="Description">Its description (the help text); empty for none.</param>
 /// <param name="Selected">Whether it is chosen.</param>
+/// <param name="Status">
+/// [kitInstalled] under the name of a template of step 2 that is already installed (BIE-010); empty otherwise.
+/// </param>
+/// <param name="Help">
+/// What UI Automation adds to a template that is already installed ([kitInstalledD]: unmarking it does not remove it);
+/// empty for any other choice.
+/// </param>
 public sealed record WelcomeOption(
     string Id,
     string Icon,
     string Label,
     string Description,
-    bool Selected
+    bool Selected,
+    string Status = "",
+    string Help = ""
 );

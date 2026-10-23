@@ -218,6 +218,87 @@ public sealed class WelcomeWindowTests
     }
 
     [Fact]
+    [Trait("Req", "BIE-006")]
+    [Trait("Req", "PLA-009")]
+    public void The_keyboard_of_the_apps_step_can_be_changed_before_installing()
+    {
+        var world = new WelcomeTestWorld();
+        var (window, theme, viewModel) = Build(world, world.Session);
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                viewModel.Next();
+                viewModel.Next();
+                var line = viewModel.Screen.Keyboard.ShouldNotBeNull();
+                line.Open.ShouldBeFalse();
+                line.ActionText.ShouldBe("Cambiar");
+
+                viewModel.ToggleKeyboard();
+                var open = viewModel.Screen.Keyboard.ShouldNotBeNull();
+                open.Open.ShouldBeTrue();
+                open.Layouts.Count.ShouldBe(KeyboardLayouts.All.Count);
+
+                viewModel.SetLayout(KeyboardLayouts.EnglishUs);
+                viewModel.SetAppsLanguage("en");
+                var keyboard = world.Store.Current.Settings.Keyboard;
+                keyboard.Layout.ShouldBe(KeyboardLayouts.EnglishUs);
+                keyboard.AppsLanguage.ShouldBe(LangCode.En);
+                viewModel
+                    .Screen.Keyboard.ShouldNotBeNull()
+                    .Layouts.Single(l => l.Selected)
+                    .Id.ShouldBe(KeyboardLayouts.EnglishUs);
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-010")]
+    [Trait("Req", "REG-08")]
+    public void A_repeated_welcome_tells_the_installed_templates_from_the_marked_ones()
+    {
+        var world = new WelcomeTestWorld();
+        world.Session.Next();
+        world.Session.Next();
+        world.Session.ToggleKit("browser");
+        while (!world.Session.HasEnded)
+        {
+            world.Session.Next();
+        }
+
+        var repeated = new WelcomeSession(world.Store, WelcomeTestWorld.Content(), repeat: true);
+        var (window, theme, viewModel) = Build(world, repeated);
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                var browser = viewModel.Screen.Kit.Single(k =>
+                    string.Equals(k.Id, "browser", StringComparison.Ordinal)
+                );
+                browser.Selected.ShouldBeTrue("the answers of before are marked");
+                browser.Status.ShouldBe("Ya instalada");
+                browser.Help.ShouldBe(
+                    "Desmarcarla no la quita; para quitar el perfil, ve a Atajos."
+                );
+                viewModel
+                    .Screen.Kit.Where(k =>
+                        !string.Equals(k.Id, "browser", StringComparison.Ordinal)
+                        && k.Description.Length == 0
+                    )
+                    .ShouldAllBe(k => k.Status.Length == 0);
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
     [Trait("Req", "NFR-010")]
     [Trait("Req", "REG-04")]
     public void A_reinstallation_asks_on_step_0_and_starting_from_scratch_takes_two_taps()

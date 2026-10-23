@@ -5,7 +5,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Templates;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
@@ -602,111 +601,14 @@ public sealed class TemplatesSectionView : Grid
         return body;
     }
 
-    /// <summary>
-    /// The keyboard the shortcuts are made for (PLA-013): one row that unfolds the layouts and the languages of the
-    /// programs, side by side.
-    /// </summary>
-    private StackPanel KeyboardLine(KeyboardModel model)
-    {
-        var icon = Ui.Icon("keyboard", IconBox.Medium, ColorToken.AccentInk);
-        icon.Margin = new Thickness(0, 0, Space.S3, 0);
-        var action = new StyledText(model.ActionText, TextStyleToken.Label, ColorToken.AccentInk)
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(Space.S2, 0, 0, 0),
-        };
-        var caret = Ui.Icon(
-            model.Open ? "expand_less" : "expand_more",
-            IconBox.Medium,
-            ColorToken.Muted
+    /// <summary>The keyboard the shortcuts are made for (PLA-013): the row of <see cref="KeyboardChooser"/>.</summary>
+    private StackPanel KeyboardLine(KeyboardModel model) =>
+        KeyboardChooser.Build(
+            model,
+            _viewModel.ToggleKeyboard,
+            _viewModel.SetLayout,
+            _viewModel.SetAppsLanguage
         );
-        var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        lines.Children.Add(new StyledText(model.Line, TextStyleToken.Label));
-        lines.Children.Add(
-            new StyledText(Parts.Unbroken(model.Why), TextStyleToken.Caption, ColorToken.Muted)
-            {
-                MaxLines = 2,
-            }
-        );
-        var content = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(icon, Dock.Left);
-        DockPanel.SetDock(caret, Dock.Right);
-        DockPanel.SetDock(action, Dock.Right);
-        content.Children.Add(icon);
-        content.Children.Add(caret);
-        content.Children.Add(action);
-        content.Children.Add(lines);
-        var toggle = new TouchButton
-        {
-            Content = content,
-            Variant = ButtonVariant.Secondary,
-            Size = ControlSize.Large,
-            IsExpanded = model.Open,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(Space.S3, Space.S2, Space.S3, Space.S2),
-        };
-        toggle.Height = double.NaN;
-        toggle.MinHeight = ControlHeight.Large;
-        AutomationProperties.SetName(toggle, model.Line);
-        AutomationProperties.SetHelpText(toggle, model.Why);
-        toggle.Click += (_, _) => _viewModel.ToggleKeyboard();
-        var column = new StackPanel();
-        column.Children.Add(toggle);
-        if (model.Open)
-        {
-            var options = Ui.Columns(
-                2,
-                Space.S4,
-                [
-                    Options(
-                        model.LayoutTitle,
-                        model.Layouts,
-                        model.DetectedText,
-                        _viewModel.SetLayout
-                    ),
-                    Options(
-                        model.AppsTitle,
-                        model.AppsLanguages,
-                        model.DetectedText,
-                        _viewModel.SetAppsLanguage
-                    ),
-                ]
-            );
-            options.Margin = new Thickness(0, Space.S4, 0, 0);
-            column.Children.Add(options);
-        }
-
-        return column;
-    }
-
-    private static StackPanel Options(
-        string title,
-        ValueList<KbOption> options,
-        string detected,
-        Action<string> choose
-    )
-    {
-        var column = Parts.Section(title);
-        foreach (var option in options)
-        {
-            var button = new OptionButton
-            {
-                Kind = OptionKind.ListRow,
-                Content = option.Label,
-                Caption = option.Detected ? detected : null,
-                IsSelected = option.Selected,
-                Margin = new Thickness(0, Space.S1, 0, 0),
-            };
-            AutomationProperties.SetName(
-                button,
-                option.Detected ? option.Label + ", " + detected : option.Label
-            );
-            button.Click += (_, _) => choose(option.Id);
-            column.Children.Add(button);
-        }
-
-        return column;
-    }
 
     // ---- Perfil vacío ---------------------------------------------------------------------------------------
 

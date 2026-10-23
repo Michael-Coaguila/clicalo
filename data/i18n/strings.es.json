@@ -98,6 +98,8 @@
   "generating": "Generando…",
   "install": "Instalar",
   "installed": "Instalado",
+  "kitInstalled": "Ya instalada",
+  "kitInstalledD": "Desmarcarla no la quita; para quitar el perfil, ve a Atajos.",
   "preview": "Vista previa",
   "installSel": "Instalar",
   "shortcutsW": "atajos",

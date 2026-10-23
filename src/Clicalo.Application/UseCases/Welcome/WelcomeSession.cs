@@ -241,6 +241,26 @@ public sealed class WelcomeSession
     /// <param name="theme">The theme.</param>
     public void SetTheme(ThemeChoice theme) => Set(SettingPaths.Theme, theme);
 
+    /// <summary>
+    /// A layout of the keyboard line of the apps step (BIE-006, PLA-009): the templates install the combinations of
+    /// that keyboard. Nothing for a layout that is not one of <see cref="KeyboardLayouts.All"/>.
+    /// </summary>
+    /// <param name="layout">The layout.</param>
+    public void SetKeyboardLayout(string layout)
+    {
+        if (KeyboardLayouts.All.Items.Contains(layout, StringComparer.Ordinal))
+        {
+            Set(SettingPaths.KeyboardLayout, layout);
+        }
+    }
+
+    /// <summary>
+    /// The language of the programs of the keyboard line (BIE-006, PLA-009): it decides which variant of a template
+    /// installs.
+    /// </summary>
+    /// <param name="language">The language.</param>
+    public void SetAppsLanguage(LangCode language) => Set(SettingPaths.AppsLanguage, language);
+
     /// <summary>[Siguiente], or [Empezar] on the last step.</summary>
     public void Next()
     {

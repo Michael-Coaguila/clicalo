@@ -98,6 +98,8 @@
   "generating": "Generating…",
   "install": "Install",
   "installed": "Installed",
+  "kitInstalled": "Already installed",
+  "kitInstalledD": "Unmarking it doesn’t remove it; to remove the profile, go to Shortcuts.",
   "preview": "Preview",
   "installSel": "Install",
   "shortcutsW": "shortcuts",

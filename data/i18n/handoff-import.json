@@ -1658,6 +1658,16 @@
       "after": "updBackupOn",
       "text": { "es": "Se instalará sin copia previa.", "en": "It will install without a backup first." }
     },
+    "kitInstalled": {
+      "notes": "Línea bajo el nombre de una plantilla ya instalada en el paso de apps de una bienvenida repetida (BIE-010): sin ella no se distinguía de una solo marcada. También es su estado para UI Automation. Pendiente de ratificar (D21).",
+      "after": "installed",
+      "text": { "es": "Ya instalada", "en": "Already installed" }
+    },
+    "kitInstalledD": {
+      "notes": "Ayuda de UI Automation de una plantilla ya instalada en la bienvenida (BIE-010, REG-08): desmarcarla no desinstala nada. Pendiente de ratificar (D21).",
+      "after": "kitInstalled",
+      "text": { "es": "Desmarcarla no la quita; para quitar el perfil, ve a Atajos.", "en": "Unmarking it doesn’t remove it; to remove the profile, go to Shortcuts." }
+    },
     "waitValue": {
       "notes": "Valor del selector − / + de un paso «Esperar» de una macro (EDI-013): solo los segundos, porque la cabecera del paso ya dice [stepWait] «Esperar 0,5 s» y repetirlo era ruido. {seconds} con coma en ES y punto en EN, como [stepWait]. Pendiente de ratificar (D21).",
       "after": "stepWait",
