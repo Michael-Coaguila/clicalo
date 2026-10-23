@@ -74,6 +74,10 @@ Al terminar verás «¡Todo listo!».
 - Para repetirla: Centro de control › «General y panel» › «Ver la bienvenida otra vez». Repetirla nunca
   quita atajos: solo añade lo que marques.
 
+Después sale una guía de tres pasos: junto al panel en las vistas Completa y Compacta, y junto a la barra la
+primera vez que abres la Pestaña. Toca «Siguiente» para avanzar o «No volver a mostrar» para cerrarla. Para
+verla otra vez: «General y panel» › «Ver la guía del panel» (en la Pestaña, «Ver la guía de la pestaña»).
+
 ## 3. El panel y sus vistas
 
 ### Lo más importante
