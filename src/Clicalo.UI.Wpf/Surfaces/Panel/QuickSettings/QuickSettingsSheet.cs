@@ -134,7 +134,9 @@ public sealed class QuickSettingsSheet : Border
         opacityTitle.Children.Add(_opacityHeading);
 
         _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionKind.Tile));
-        var layout = new StackPanel { Margin = new Thickness(Space.S3, 0, Space.S1, Space.S6) };
+        // S3 at both sides: the options spread S1 past them, so they sit S2 from the edge and S2 from the scroll bar
+        // (with S1 they touched it, D20 review).
+        var layout = new StackPanel { Margin = new Thickness(Space.S3, 0, Space.S3, Space.S6) };
         layout.Children.Add(_controlCenter);
         layout.Children.Add(Section(_viewHeading, Group(viewModel.Views, 3, OptionKind.Card)));
         layout.Children.Add(Section(opacityTitle, _opacity));
@@ -493,14 +495,22 @@ public sealed class QuickSettingsSheet : Border
         var fits = true;
         foreach (var (owner, item, _) in _options)
         {
+            if (!ReferenceEquals(owner, _themes))
+            {
+                continue;
+            }
+
+            // The inner padding of a card, not of a tile: with 12 at each side «Como Windows» fitted two columns of
+            // the sheet of 340 by 1.4 px, so a rounding left the themes in one column in high contrast and in two in
+            // the other themes (D20 review). With 8 the names keep room to spare.
+            item.Padding = new Thickness(Space.S2, 0, Space.S2, 0);
             if (
-                ReferenceEquals(owner, _themes)
+                fits
                 && item.Content is DockPanel row
                 && item.Padding.Left + item.Padding.Right + ThemeSwatch.WholeWidth(row) > cell
             )
             {
                 fits = false;
-                break;
             }
         }
 
