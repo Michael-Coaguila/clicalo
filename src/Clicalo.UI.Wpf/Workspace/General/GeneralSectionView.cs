@@ -806,7 +806,7 @@ public sealed class GeneralSectionView : ContentControl
         };
         AutomationProperties.SetName(coach, start.CoachTitle);
         AutomationProperties.SetHelpText(coach, start.CoachDescription);
-        coach.Click += (_, _) => _viewModel.SeeTabGuide();
+        coach.Click += (_, _) => _viewModel.SeeGuide();
         return SettingsUi.Group(
             start.Caption,
             welcome,

@@ -311,13 +311,28 @@ public sealed class GeneralSectionViewModel : ObservableObject
     /// <summary>[seeWelcome] (GEN-014): closes the Control Center and opens the welcome at step 0.</summary>
     public void SeeWelcome() => _s.OpenWelcome();
 
-    /// <summary>«Ver la guía de la pestaña» (GEN-014, PES-015): the guide shows again the next time the bar opens.</summary>
-    public void SeeTabGuide()
+    /// <summary>
+    /// «Ver la guía» (GEN-014) of the view in use: in the Tab view the guide of the bar shows again the next time the bar
+    /// opens (PES-015); in the Full and Compact views the guide of the panel shows beside it at once (R-38).
+    /// </summary>
+    public void SeeGuide()
     {
-        if (_s.Store.Dispatch(new SetSetting(SettingPaths.DockCoachDone, false)).IsSuccess)
+        var tab = Settings.Density == PanelDensity.Dock;
+        if (
+            _s
+                .Store.Dispatch(
+                    new SetSetting(
+                        tab ? SettingPaths.DockCoachDone : SettingPaths.PanelCoachDone,
+                        false
+                    )
+                )
+                .IsSuccess
+        )
         {
             Refresh();
-            Notify(new WorkspaceNotice(L.SeeCoachD, CoachIcon, false, false));
+            Notify(
+                new WorkspaceNotice(tab ? L.SeeCoachD : L.SeePanelCoachD, CoachIcon, false, false)
+            );
         }
     }
 
@@ -425,8 +440,8 @@ public sealed class GeneralSectionViewModel : ObservableObject
                 T(L.SecStart),
                 T(L.SeeWelcome),
                 T(L.SeeWelcomeD),
-                T(L.SeeCoach),
-                T(L.SeeCoachD),
+                T(settings.Density == PanelDensity.Dock ? L.SeeCoach : L.SeePanelCoach),
+                T(settings.Density == PanelDensity.Dock ? L.SeeCoachD : L.SeePanelCoachD),
                 Switch("keyboard_off", L.UNokb, L.UNokbD, settings.NoKeyboardUser)
             ),
             Ai(settings)
