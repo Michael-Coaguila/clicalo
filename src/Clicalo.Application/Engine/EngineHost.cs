@@ -47,6 +47,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
     private long _publishedVersion = -1;
     private long? _lastPublishTicks;
+    private long? _buttonCheckDue;
     private bool _stopped;
     private int _disposed;
 
@@ -188,6 +189,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             Handle(engineEvent);
         }
 
+        CheckLatchedButton();
         now = _time.GetTimestamp();
         Publish(now);
         ArmWake(now);
@@ -481,6 +483,38 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
         _ports.Observer.OnSnapshot(snapshot);
     }
 
+    /// <summary>
+    /// EJE-007 (D21): while a latched drag holds the primary button, every <c>Timings.Engine.DragButtonCheck</c> the
+    /// engine asks Windows whether it is still down. Let go of by hand (a touchpad click, a touch on the app), the drag
+    /// ends as if its tile had been tapped again, its sticky keys with it, instead of staying latched.
+    /// </summary>
+    private void CheckLatchedButton()
+    {
+        if (
+            IsStopped
+            || !_state.Keys.Items.Values.Any(static item =>
+                item.Buttons != MouseButtons.None && item.ContactId is null
+            )
+        )
+        {
+            _buttonCheckDue = null;
+            return;
+        }
+
+        var now = _time.GetTimestamp();
+        if (_buttonCheckDue is { } due && now < due)
+        {
+            return;
+        }
+
+        var first = _buttonCheckDue is null;
+        _buttonCheckDue = now + ToTicks(Timings.Engine.DragButtonCheck);
+        if (!first && !_ports.Injector.IsPrimaryButtonDown())
+        {
+            Handle(new EngineEvent.ButtonLiftedOutside());
+        }
+    }
+
     private void ArmWake(long now)
     {
         if (Volatile.Read(ref _disposed) != 0)
@@ -488,7 +522,7 @@ public sealed partial class EngineHost : IEngineInbox, IDisposable
             return;
         }
 
-        var next = long.MaxValue;
+        var next = _buttonCheckDue ?? long.MaxValue;
         foreach (var due in _timers.Values)
         {
             next = Math.Min(next, due);

@@ -230,6 +230,11 @@
     "Engine": {
       "description": "Engine actor.",
       "entries": {
+        "DragButtonCheck": {
+          "duration": "250ms",
+          "description": "While a latched drag holds the primary button, how often the engine asks Windows whether it is still down: the person may let go of it by hand (a touchpad click, a touch on the app), and the drag and its sticky keys must not stay latched (D21).",
+          "req": ["EJE-007", "REG-03"]
+        },
         "InternalChordWait": {
           "duration": "1s",
           "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H); a hung engine answers «not sent».",

@@ -123,6 +123,30 @@ public sealed class OtherPlannersTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-007")]
+    [Trait("Req", "REG-03")]
+    public void A_drag_let_go_of_by_hand_ends_instead_of_staying_latched()
+    {
+        // D21: the person drops it with a touchpad click; Windows says the button is up, the engine lets go too.
+        var engine = Engine();
+        var drag = Shortcuts.Mouse("drag", MouseOp.Drag);
+        engine.Tap(drag);
+        engine.Receiver.Buttons.ShouldBe(MouseButtons.Left);
+
+        var effects = engine.Apply(new EngineEvent.ButtonLiftedOutside());
+
+        engine.Receiver.IsEmpty.ShouldBeTrue();
+        engine.State.IsQuiet.ShouldBeTrue();
+        effects.OfType<EngineEffect.Notice>().ShouldHaveSingleItem();
+
+        // Nothing latched: nothing happens.
+        engine
+            .Apply(new EngineEvent.ButtonLiftedOutside())
+            .OfType<EngineEffect.Inject>()
+            .ShouldBeEmpty();
+    }
+
+    [Fact]
     [Trait("Req", "EJE-009")]
     public void A_scroll_repeats_while_its_contact_lasts_and_speeds_up()
     {

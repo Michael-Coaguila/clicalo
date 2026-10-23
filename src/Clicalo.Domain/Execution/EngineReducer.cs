@@ -70,6 +70,21 @@ public static class EngineReducer
             case EngineEvent.ReleaseAll releaseAll:
                 ReleaseAll(step, releaseAll.Reason);
                 break;
+            case EngineEvent.ButtonLiftedOutside:
+                // Every latched holder of a button lets go of it, its sticky keys with it; never a contact's hold.
+                foreach (
+                    var held in step
+                        .State.Keys.Items.Values.Where(static item =>
+                            item.Buttons != MouseButtons.None && item.ContactId is null
+                        )
+                        .Select(static item => item.Holder)
+                        .ToList()
+                )
+                {
+                    KeyPlanner.Unlatch(step, held);
+                }
+
+                break;
             case EngineEvent.InjectFailed failed:
                 InjectFailed(step, failed.Effect);
                 break;

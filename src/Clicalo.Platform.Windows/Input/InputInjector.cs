@@ -41,6 +41,9 @@ public sealed class InputInjector(
     Func<PhysicalPoint, bool>? isOnClicalo = null
 ) : IInputInjector
 {
+    private const byte PrimaryButton = 0x01;
+    private const byte SecondaryButton = 0x02;
+
     private const int StackInputs = 32;
     private const int WheelStep = 120;
 
@@ -188,6 +191,14 @@ public sealed class InputInjector(
             ? Result(outcome.Send, outcome.Events)
             : new InjectionResult(InjectionStatus.Blocked, 0, SendResult.AccessDenied);
     }
+
+    /// <inheritdoc />
+    public bool IsPrimaryButtonDown() =>
+        keys.IsDown(
+            PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_SWAPBUTTON) != 0
+                ? SecondaryButton
+                : PrimaryButton
+        );
 
     /// <summary>The injection result of a <c>SendInput</c> call for a batch of <paramref name="count"/> inputs.</summary>
     /// <param name="send">What <c>SendInput</c> returned.</param>

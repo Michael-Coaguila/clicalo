@@ -41,4 +41,11 @@ public interface IInputInjector
     /// the release of an engine that caught an exception (NFR-005), whose own state may be the broken part.
     /// </summary>
     InjectionResult ReleasePressed();
+
+    /// <summary>
+    /// Whether the primary mouse button is down as Windows sees it (injected input included, left and right swapped as
+    /// the person set them): a drag the engine latched whose button the person let go of by hand is no longer held
+    /// (EJE-007, D21). Without a way to tell, it says down, so nothing is released.
+    /// </summary>
+    bool IsPrimaryButtonDown() => true;
 }

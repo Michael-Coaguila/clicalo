@@ -88,6 +88,16 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
+    /// <summary>
+    /// The primary button is up although a latched drag holds it: the person let go of it by hand (a touchpad click,
+    /// a touch on the app), so the drag ends as if its tile had been tapped again (EJE-007, D21).
+    /// </summary>
+    public sealed record ButtonLiftedOutside : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Priority;
+    }
+
     /// <summary>Release everything and keep running (SEG-003, SEG-005).</summary>
     /// <param name="Reason">Why.</param>
     public sealed record ReleaseAll(ReleaseReason Reason) : EngineEvent

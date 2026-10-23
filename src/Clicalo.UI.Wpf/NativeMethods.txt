@@ -94,4 +94,7 @@ IsMouseInPointerEnabled
 GetWindowFeedbackSetting
 TOUCH_MASK_CONTACTAREA
 GetCursorPos
+GetAsyncKeyState
+GetSystemMetrics
+SYSTEM_METRICS_INDEX
 // ---- end of Pointer ----

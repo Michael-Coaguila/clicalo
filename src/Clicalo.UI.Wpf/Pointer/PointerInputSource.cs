@@ -192,9 +192,10 @@ public sealed class PointerInputSource : IDisposable
                 OnEnter(PointerIdOf(wParam));
                 break;
             case PInvoke.WM_POINTERLEAVE:
-                // Windows sends the leave of a contact only once the contact is over: if it is still tracked, its up
-                // was lost (no hold may stay down, REG-03). A mouse or a touchpad that only went out for Clícalo's own
-                // cursor round trip of a wheel step (EJE-009) is not over: its hold goes on and ends with its up.
+                // A finger or a pen sends its leave only once its contact is over: if it is still tracked, its up was
+                // lost (no hold may stay down, REG-03). A mouse or a touchpad leaves whenever the cursor goes out; one
+                // that only went out for Clícalo's own round trip of a wheel step (EJE-009), its button still down, is
+                // not over: its hold goes on and ends with its up.
                 if (!LeftForRoundTrip(hwnd, PointerIdOf(wParam)))
                 {
                     _ = EndLostContact(PointerIdOf(wParam));
@@ -522,11 +523,26 @@ public sealed class PointerInputSource : IDisposable
             return false;
         }
 
-        return CurrentOrigin() == PointerInputOrigin.Injected
-            || (
-                PInvoke.GetCursorPos(out var cursor)
-                && IsOver(hwnd, new PhysicalPoint(cursor.X, cursor.Y))
+        // The button must still be down: an assistive tool (Voice Access, Mouse Keys) that lets go of it outside ends
+        // the contact, or a held scroll would go on by itself (REG-03).
+        return PrimaryButtonDown()
+            && (
+                CurrentOrigin() == PointerInputOrigin.Injected
+                || (
+                    PInvoke.GetCursorPos(out var cursor)
+                    && IsOver(hwnd, new PhysicalPoint(cursor.X, cursor.Y))
+                )
             );
+    }
+
+    /// <summary>Whether the primary button is down now, as Windows sees it (left and right swapped as the person set them).</summary>
+    private static bool PrimaryButtonDown()
+    {
+        const int Left = 0x01;
+        const int Right = 0x02;
+        var primary =
+            PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_SWAPBUTTON) != 0 ? Right : Left;
+        return PInvoke.GetAsyncKeyState(primary) < 0;
     }
 
     private bool IsOverWindow(PhysicalPoint position) => IsOver(_window, position);
