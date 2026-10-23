@@ -9,6 +9,7 @@ using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
@@ -168,6 +169,49 @@ public sealed class SurfaceWindowsTests
 
                 dock.ApplyTileSpace(130);
                 bar.TileControls.Count.ShouldBe(2);
+            }
+            finally
+            {
+                bar.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-014")]
+    [Trait("Req", "ACC-001")]
+    public void The_bar_says_what_the_Tab_view_keeps_off_the_screen_through_its_window()
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var bar = new DockBarWindow(
+                DockSide.Right,
+                Dock(time),
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                // The row of its tiles has no UI Automation peer: what it said there was never heard.
+                bar.Announcer.Region.ShouldBeSameAs(bar);
+                System
+                    .Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(bar)
+                    .ShouldNotBeNull();
+
+                bar.Announcer.Say("Ctrl+S enviado a Word", AnnouncementUrgency.Polite);
+
+                bar.Announcer.LastText.ShouldBe("Ctrl+S enviado a Word");
+                bar.Announcer.Announcements.ShouldBe(1);
+                System
+                    .Windows.Automation.AutomationProperties.GetLiveSetting(bar)
+                    .ShouldBe(System.Windows.Automation.AutomationLiveSetting.Off);
             }
             finally
             {

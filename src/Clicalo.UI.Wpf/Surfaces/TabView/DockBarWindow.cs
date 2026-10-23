@@ -186,7 +186,9 @@ public sealed class DockBarWindow : TouchSurface
             Margin = new Thickness(Pad),
         };
         Content = _root;
-        Announcer = new LiveAnnouncer(_root);
+        // ACC-001: the bar says it through its window; the row of its tiles has no UI Automation peer, so nothing
+        // said through it was ever heard.
+        Announcer = new LiveAnnouncer(this);
         Compose();
 
         _viewModel.PropertyChanged += OnViewModelChanged;
@@ -199,7 +201,10 @@ public sealed class DockBarWindow : TouchSurface
     /// <summary>The edge of this bar.</summary>
     public DockSide Side { get; }
 
-    /// <summary>Says what the Tab view keeps off the screen while the bar is open (a plain confirmation, D21).</summary>
+    /// <summary>
+    /// Says what the Tab view keeps off the screen while the bar is open (a plain confirmation, D21), as a notification
+    /// of the bar's window.
+    /// </summary>
     public LiveAnnouncer Announcer { get; }
 
     /// <summary>The monitor it is on: the longest it may be comes from its work area (PES-005).</summary>
