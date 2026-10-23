@@ -30,6 +30,7 @@ public sealed class TileRemoveButton : TouchButton
     private readonly EditModeViewModel _editMode;
     private readonly TileViewModel _tile;
     private readonly ShortcutTile? _control;
+    private Thickness _restMargin;
 
     /// <summary>Creates the × of <paramref name="tile"/>.</summary>
     /// <param name="editMode">Edit mode.</param>
@@ -61,6 +62,21 @@ public sealed class TileRemoveButton : TouchButton
         Refresh();
     }
 
+    /// <summary>
+    /// Where the × sits on its tile, its 44 × 44 box reaching past its drawing (<see cref="Overflow"/>). Armed, the pill
+    /// «Confirmar» is its own box and keeps inside the tile, <see cref="Space.S1"/> from its corner (D21 review: it
+    /// reached 6 past the tile).
+    /// </summary>
+    public Thickness RestMargin
+    {
+        get => _restMargin;
+        set
+        {
+            _restMargin = value;
+            Refresh();
+        }
+    }
+
     /// <summary>The × as a tap target of the panel while it shows.</summary>
     public PanelTapTarget TapTarget => new(this, Remove);
 
@@ -89,6 +105,18 @@ public sealed class TileRemoveButton : TouchButton
         Content = armed ? _editMode.ConfirmText : null;
         Width = armed ? double.NaN : IconBox.Medium;
         Padding = armed ? new Thickness(Space.S2, 0, Space.S2, 0) : new Thickness(0);
+        Margin = armed
+            ? new Thickness(
+                _restMargin.Left,
+                _restMargin.Top,
+                _restMargin.Right + Overflow,
+                _restMargin.Bottom
+            )
+            : _restMargin;
+        MaxWidth =
+            armed && _control is { ActualWidth: > 0 } tile
+                ? Math.Max(IconBox.Medium, tile.ActualWidth - (2 * Space.S1))
+                : double.PositiveInfinity;
         AutomationProperties.SetName(this, _editMode.RemoveNameOf(_tile.AccessibleName));
         AutomationProperties.SetItemStatus(this, armed ? _editMode.ConfirmText : string.Empty);
     }

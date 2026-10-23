@@ -78,7 +78,7 @@ internal sealed class TileCell
             // The × takes the slot at the top right of the tile, Space.S1 inside its corner (direction C: never
             // outside the tile nor over its icon); its 44 × 44 box reaches past the drawing around it.
             remove = new TileRemoveButton(layers.EditMode, viewModel, control);
-            remove.Margin = new Thickness(
+            remove.RestMargin = new Thickness(
                 0,
                 control.Margin.Top + Space.S1 - TileRemoveButton.Overflow,
                 control.Margin.Right + Space.S1 - TileRemoveButton.Overflow,
