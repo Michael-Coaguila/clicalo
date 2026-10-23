@@ -34,6 +34,7 @@ public sealed class AboutSectionView : Border
     private readonly TextInput _message;
     private AboutScreen? _shown;
     private bool _wide;
+    private bool _previewShown;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
@@ -293,7 +294,14 @@ public sealed class AboutSectionView : Border
             Ui.Ink(box, BackgroundProperty, ColorToken.Field);
             Ui.Ink(box, BorderBrushProperty, ColorToken.Line);
             previewText = box;
+            if (!_previewShown)
+            {
+                // Only when it opens: the log comes into view under the button that opened it.
+                box.Loaded += (_, _) => box.BringIntoView();
+            }
         }
+
+        _previewShown = screen.PreviewOpen;
 
         var send = SettingsUi.Button(
             screen.SendText,
@@ -403,11 +411,14 @@ public sealed class AboutSectionView : Border
             if (first is FrameworkElement left)
             {
                 left.Margin = new Thickness(0, 0, Space.S4 / 2, 0);
+                left.VerticalAlignment = VerticalAlignment.Top;
             }
 
+            // Each card ends where its content ends: the shorter one never stretches into an empty band.
             if (second is FrameworkElement right)
             {
                 right.Margin = new Thickness(Space.S4 / 2, 0, 0, 0);
+                right.VerticalAlignment = VerticalAlignment.Top;
             }
 
             Grid.SetColumn(second, 1);
