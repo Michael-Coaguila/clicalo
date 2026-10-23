@@ -203,6 +203,56 @@ public sealed class M6PanelViewTests
             header.DragZones.Count.ShouldBe(1);
         });
 
+    [Fact]
+    [Trait("Req", "PAN-004")]
+    [Trait("Req", "ACC-001")]
+    public void The_grip_is_a_thumb_named_move_panel_that_never_takes_the_keyboard() =>
+        WpfThread.Invoke(() =>
+        {
+            var world = new InteractionsWorld();
+            var viewModel = new PanelHeaderViewModel(
+                new ProfileViewCoordinator(world.Store),
+                world.Localization,
+                PanelHeaderActions.None
+            );
+            var header = new PanelHeader(viewModel);
+
+            // A name on a plain Border never reached UI Automation.
+            var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(
+                header.Grip
+            );
+            peer.GetAutomationControlType()
+                .ShouldBe(System.Windows.Automation.Peers.AutomationControlType.Thumb);
+            peer.GetName().ShouldBe(viewModel.MoveName);
+            peer.GetName().ShouldBe("Mover panel");
+            peer.IsKeyboardFocusable().ShouldBeFalse();
+            (peer.GetChildren() ?? []).ShouldBeEmpty("the glyph ⋮⋮ is its drawing");
+            header.Detach();
+        });
+
+    [Fact]
+    [Trait("Req", "FIJ-005")]
+    [Trait("Req", "ACC-001")]
+    public void The_sticky_keys_row_is_a_group_named_after_it_around_its_keys() =>
+        WithBody(
+            PanelLayoutSettings.Default,
+            PanelBodyContext.Idle,
+            (body, _) =>
+            {
+                // A name on a plain UniformGrid never reached UI Automation.
+                var peer =
+                    System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(
+                        body.Sticky
+                    );
+                peer.GetAutomationControlType()
+                    .ShouldBe(System.Windows.Automation.Peers.AutomationControlType.Group);
+                peer.GetName().ShouldBe("Teclas fijas");
+                peer.IsKeyboardFocusable().ShouldBeFalse();
+                peer.ResetChildrenCache();
+                (peer.GetChildren() ?? []).Count.ShouldBe(body.Sticky.KeyControls.Count);
+            }
+        );
+
     private static void WithBody(
         PanelLayoutSettings layout,
         PanelBodyContext context,

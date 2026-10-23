@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Clicalo.Domain.Geometry;
@@ -494,6 +495,10 @@ public sealed class QuickSettingsSheet : Border
             Refresh();
         }
     }
+
+    /// <inheritdoc />
+    /// <remarks>A Group named [quick] around its sections (ACC-001): a Border has no peer of its own.</remarks>
+    protected override AutomationPeer OnCreateAutomationPeer() => new GroupAutomationPeer(this);
 
     private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
 

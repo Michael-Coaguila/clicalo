@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Presentation.Panel.TestMode;
 using Clicalo.UI.Wpf.Controls;
@@ -55,6 +54,9 @@ public sealed class TestModeIndicator : Border
         Refresh();
     }
 
+    /// <summary>«Modo prueba · {s} s» as the band shows it; UI Automation reads it as it is.</summary>
+    public string Text => _text.Text;
+
     /// <summary>Stops following test mode when the panel closes.</summary>
     public void Detach() => _testMode.PropertyChanged -= OnChanged;
 
@@ -63,7 +65,7 @@ public sealed class TestModeIndicator : Border
     private void Refresh()
     {
         Visibility = _testMode.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        // ACC-001: the text is read as it is; a name on the band would never reach UI Automation.
         _text.Text = _testMode.IndicatorText;
-        AutomationProperties.SetName(this, _testMode.IndicatorText);
     }
 }

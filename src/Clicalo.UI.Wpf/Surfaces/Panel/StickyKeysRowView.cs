@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Clicalo.Domain.StickyModifiers;
@@ -114,6 +115,10 @@ public sealed class StickyKeysRowView : UniformGrid
             key.PropertyChanged -= OnKeyChanged;
         }
     }
+
+    /// <inheritdoc />
+    /// <remarks>A Group named «Teclas fijas» around its four keys (ACC-001): a UniformGrid has no peer of its own.</remarks>
+    protected override AutomationPeer OnCreateAutomationPeer() => new GroupAutomationPeer(this);
 
     private void OnRowChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 

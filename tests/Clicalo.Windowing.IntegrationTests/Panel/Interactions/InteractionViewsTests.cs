@@ -21,6 +21,7 @@ public sealed class InteractionViewsTests
     [Fact]
     [Trait("Req", "AJR-001")]
     [Trait("Req", "REG-02")]
+    [Trait("Req", "ACC-001")]
     public void The_sheet_shows_its_sections_only_while_open_and_every_target_is_44() =>
         WpfThread.Invoke(() =>
         {
@@ -36,6 +37,14 @@ public sealed class InteractionViewsTests
 
             sheet.Visibility.ShouldBe(Visibility.Visible);
             AutomationProperties.GetName(sheet).ShouldBe("Ajustes rápidos");
+            // A name on a plain Border never reached UI Automation: the sheet is a Group named [quick].
+            var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(
+                sheet
+            );
+            peer.GetAutomationControlType()
+                .ShouldBe(System.Windows.Automation.Peers.AutomationControlType.Group);
+            peer.GetName().ShouldBe("Ajustes rápidos");
+            peer.IsKeyboardFocusable().ShouldBeFalse();
             var targets = sheet.TapTargets.ToList();
             // Card, 3 views, 3 sizes, 4 sides, 4 themes, − and +, 4 switches.
             targets.Count.ShouldBe(21);
@@ -96,6 +105,7 @@ public sealed class InteractionViewsTests
     [Fact]
     [Trait("Req", "CUA-014")]
     [Trait("Req", "REG-02")]
+    [Trait("Req", "ACC-001")]
     public void The_menu_shows_its_header_and_rows_of_44() =>
         WpfThread.Invoke(() =>
         {
@@ -112,6 +122,16 @@ public sealed class InteractionViewsTests
             rows.Select(static r => AutomationProperties.GetName(r.Element))
                 .ShouldBe(["Fijar en Frecuentes", "Quitar de Frecuentes", "Editar", "Cancelar"]);
             rows.ShouldAllBe(static r => r.Element.ActualHeight >= 44);
+            // A name on a plain Border never reached UI Automation: the menu is a Group around its rows, with the tile
+            // it belongs to as its help.
+            var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(
+                view
+            );
+            peer.GetAutomationControlType()
+                .ShouldBe(System.Windows.Automation.Peers.AutomationControlType.Group);
+            peer.GetName().ShouldBe(AutomationProperties.GetName(view));
+            peer.GetName().ShouldNotBeNullOrWhiteSpace();
+            peer.GetHelpText().ShouldBe("Negrita");
 
             rows[3].Tap();
             Layout(view);
@@ -155,6 +175,7 @@ public sealed class InteractionViewsTests
     [Fact]
     [Trait("Req", "TAC-008")]
     [Trait("Req", "CUA-009")]
+    [Trait("Req", "ACC-001")]
     public void The_mark_and_the_indicator_follow_test_mode() =>
         WpfThread.Invoke(() =>
         {
@@ -170,7 +191,9 @@ public sealed class InteractionViewsTests
             world.TestMode.OnCounted(InteractionsWorld.Bold);
 
             indicator.Visibility.ShouldBe(Visibility.Visible);
-            AutomationProperties.GetName(indicator).ShouldBe("Modo prueba · 30 s");
+            indicator.Text.ShouldBe("Modo prueba · 30 s");
+            // ACC-001: its text is read as it is; a name on the band, a Border, never reached UI Automation.
+            AutomationProperties.GetName(indicator).ShouldBeEmpty();
             badge.Visibility.ShouldBe(Visibility.Visible);
             badge.IsHitTestVisible.ShouldBeFalse();
             AutomationProperties.GetItemStatus(badge).ShouldBe("Toque registrado (no se envió)");

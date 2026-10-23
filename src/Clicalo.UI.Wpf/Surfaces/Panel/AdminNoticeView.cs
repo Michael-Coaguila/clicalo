@@ -51,6 +51,9 @@ public sealed class AdminNoticeView : Border
         Refresh();
     }
 
+    /// <summary>[adminMsg] as the card shows it.</summary>
+    public string Message => _message.Text;
+
     /// <summary>[adminBtn] while the card shows.</summary>
     public IEnumerable<PanelTapTarget> TapTargets =>
         _viewModel.IsVisible ? [new PanelTapTarget(_relaunch, _viewModel.Relaunch)] : [];
@@ -64,7 +67,7 @@ public sealed class AdminNoticeView : Border
     {
         Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
         _message.Text = _viewModel.Message;
+        // ACC-001: the text and the button are read as they are; a name on the card would never reach UI Automation.
         _relaunch.Content = _viewModel.ButtonName;
-        System.Windows.Automation.AutomationProperties.SetName(this, _viewModel.Message);
     }
 }

@@ -233,6 +233,7 @@ public sealed class DockSideSurfacesTests
     [Fact]
     [Trait("Req", "PES-014")]
     [Trait("Req", "EJE-013")]
+    [Trait("Req", "ACC-001")]
     public void The_notice_surface_shows_the_administrator_notice_with_its_button()
     {
         using var lab = SurfaceLab.Create();
@@ -258,7 +259,9 @@ public sealed class DockSideSurfacesTests
                 panel.ApplyContext(new PanelBodyContext(ElevatedApp: "regedit"));
 
                 notice.AdminNotice.Visibility.ShouldBe(Visibility.Visible);
-                AutomationProperties.GetName(notice.AdminNotice).ShouldContain("regedit");
+                notice.AdminNotice.Message.ShouldContain("regedit");
+                // ACC-001: its text is read as it is; a name on the card, a Border, never reached UI Automation.
+                AutomationProperties.GetName(notice.AdminNotice).ShouldBeEmpty();
                 notice.AdminNotice.TapTargets.ShouldHaveSingleItem().Tap();
                 intents.Calls.ShouldBe([nameof(IPanelBodyIntents.RelaunchElevated)]);
                 notice.ShowsNotice.ShouldBeFalse();

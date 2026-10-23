@@ -29,7 +29,7 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.Header;
 public sealed class PanelHeader : Grid
 {
     private readonly PanelHeaderViewModel _viewModel;
-    private readonly Border _grip;
+    private readonly PanelGrip _grip;
     private readonly DockPanel _title;
     private readonly ShortcutTile _titleButton;
     private readonly SymbolIcon _titleIcon;
@@ -49,7 +49,7 @@ public sealed class PanelHeader : Grid
         _viewModel = viewModel;
         Height = ControlHeight.Small;
 
-        _grip = new Border
+        _grip = new PanelGrip
         {
             Child = PanelChrome.Icon("drag_indicator", IconBox.Small, ColorToken.Muted),
             Margin = new Thickness(-Space.S1, 0, Space.S2, 0),
@@ -107,6 +107,9 @@ public sealed class PanelHeader : Grid
         _title.SizeChanged += (_, _) => FitTitle();
         Refresh();
     }
+
+    /// <summary>The grip ⋮⋮ (PAN-004), a Thumb named [move] for UI Automation.</summary>
+    public PanelGrip Grip => _grip;
 
     /// <summary>The zone that drags the panel (PAN-004): the grip, the icon and the name.</summary>
     public IReadOnlyList<FrameworkElement> DragZones => [_title];
@@ -167,6 +170,7 @@ public sealed class PanelHeader : Grid
     private void Refresh()
     {
         var vm = _viewModel;
+        // PAN-004: [move], the name of the grip, a Thumb for UI Automation.
         AutomationProperties.SetName(_grip, vm.MoveName);
         _titleIcon.Symbol = vm.TitleIcon.Length == 0 ? null : vm.TitleIcon;
         _titleText.Text = vm.Title;

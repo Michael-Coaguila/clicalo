@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using Clicalo.Domain.Frequents;
 using Clicalo.Presentation.Panel.ContextMenu;
@@ -72,6 +73,10 @@ public sealed class TileContextMenuView : Border
         _viewModel.PropertyChanged -= OnChanged;
         _viewModel.Rows.CollectionChanged -= OnRowsChanged;
     }
+
+    /// <inheritdoc />
+    /// <remarks>A Group named «Más opciones» with the name of the tile as its help (ACC-001): a Border has no peer of its own.</remarks>
+    protected override AutomationPeer OnCreateAutomationPeer() => new GroupAutomationPeer(this);
 
     private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
 
