@@ -269,6 +269,7 @@ public sealed class DockBarWindow : TouchSurface
             return;
         }
 
+        ApplyTileShape();
         for (var pass = 0; pass < 2; pass++)
         {
             _root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -535,11 +536,25 @@ public sealed class DockBarWindow : TouchSurface
         Add(_tools, Space.S1);
         Add(Zone(_scrollUp, _scrollDown), 0);
 
-        _viewModel.ApplyTileGap(_shape.Columns > 1 && _shape.IconTiles ? Space.S1 : Space.S2);
-        _viewModel.ApplyTileColumns(_shape.IconTiles && _vertical ? _shape.Columns : 1);
+        ApplyTileShape();
         ApplyTextScale();
         RebuildTiles();
         Refresh();
+    }
+
+    /// <summary>
+    /// Gives the view model the gap and the columns of this bar's shortcuts. The four bars share it, so only the bar of
+    /// the edge in view says them: a top bar composed later must not leave a side bar of S one icon across.
+    /// </summary>
+    private void ApplyTileShape()
+    {
+        if (_viewModel.Side != Side)
+        {
+            return;
+        }
+
+        _viewModel.ApplyTileGap(_shape.Columns > 1 && _shape.IconTiles ? Space.S1 : Space.S2);
+        _viewModel.ApplyTileColumns(_shape.IconTiles && _vertical ? _shape.Columns : 1);
     }
 
     /// <summary>A tool of the bar, as high as the controls of its size; an icon tool is as wide too.</summary>
@@ -588,7 +603,9 @@ public sealed class DockBarWindow : TouchSurface
     /// <summary>
     /// The track of «What to see» (PES-006): <c>side</c> with its line, radius <see cref="Radii.Large"/> around the two
     /// segments of radius <see cref="Radii.Medium"/>, <see cref="Space.S1"/> inside. Only the segment in view is drawn
-    /// «elegido». Across a side bar the segments with names go one under the other, and the icons of S side by side.
+    /// «elegido». Across a side bar the segments with names go one under the other. The icons of S go side by side as the
+    /// other pairs of the bar, without the frame: two targets of 44 and their gap fill the 92 of the bar, and the frame
+    /// around them cut the chosen one (D20 review).
     /// </summary>
     private Border Track(FrameworkElement frequents, FrameworkElement profile)
     {
@@ -608,6 +625,11 @@ public sealed class DockBarWindow : TouchSurface
 
         _ = segments.Children.Add(frequents);
         _ = segments.Children.Add(profile);
+        if (_shape.IconChoices)
+        {
+            return new Border { Child = segments };
+        }
+
         var track = new Border
         {
             Child = segments,
@@ -801,6 +823,34 @@ public sealed class DockBarWindow : TouchSurface
         _tileControls.Clear();
     }
 
+    /// <summary>
+    /// While the shortcuts have pages, their zone keeps the length of a full page (PES-007, D20 review): a last page of
+    /// three after a page of five would shrink the bar and centre it again, so the pager and every control under it
+    /// would jump away from the finger. With one page the bar is as long as its shortcuts.
+    /// </summary>
+    /// <param name="height">The height of one shortcut.</param>
+    /// <param name="width">The width of one shortcut along a top or bottom bar.</param>
+    private void ReservePage(double height, double width)
+    {
+        var count = _viewModel.HasPages ? _viewModel.PerPage : 0;
+        _tiles.ClearValue(MinHeightProperty);
+        _tiles.ClearValue(MinWidthProperty);
+        if (count <= 0)
+        {
+            return;
+        }
+
+        if (!_vertical)
+        {
+            _tiles.MinWidth = (count * width) + ((count - 1) * Space.S2);
+            return;
+        }
+
+        var rows = _shape.IconTiles ? (count + _shape.Columns - 1) / _shape.Columns : count;
+        var gap = _shape.IconTiles ? Space.S1 : Space.S2;
+        _tiles.MinHeight = (rows * height) + ((rows - 1) * gap);
+    }
+
     private void RebuildTiles()
     {
         DetachTiles();
@@ -866,6 +916,8 @@ public sealed class DockBarWindow : TouchSurface
                 _ = _tiles.Children.Add(cells[i]);
             }
         }
+
+        ReservePage(height, width);
 
         // Without shortcuts (Frequents still empty) one line separates «What to see» from the tools, not two.
         _toolsDivider.Visibility = SurfaceParts.Shown(_tileControls.Count > 0);

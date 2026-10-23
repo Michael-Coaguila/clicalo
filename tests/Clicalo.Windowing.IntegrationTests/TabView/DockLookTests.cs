@@ -272,6 +272,21 @@ public sealed class DockLookTests
                 {
                     auto.ActualWidth.ShouldBe(ControlHeight.Small);
                     VisibleTexts(auto).ShouldBeEmpty();
+
+                    // ★ and the profile are two whole targets of 44 inside the bar, never cut by a frame (D20 review).
+                    foreach (var segment in new[] { bar.Buttons[2], bar.Buttons[3] })
+                    {
+                        segment.ActualWidth.ShouldBe(ControlHeight.Small);
+                        segment
+                            .TranslatePoint(new Point(segment.ActualWidth, 0), host.Root)
+                            .X.ShouldBeLessThanOrEqualTo(
+                                host.Root.ActualWidth - DockGeometry.BarPaddingPx + 0.5
+                            );
+                    }
+
+                    var star = bar.Buttons[2].TranslatePoint(default, host.Root);
+                    var profile = bar.Buttons[3].TranslatePoint(default, host.Root);
+                    (profile.X - star.X).ShouldBe(ControlHeight.Small + Space.S1, 0.5);
                 }
                 else
                 {
@@ -282,6 +297,103 @@ public sealed class DockLookTests
             finally
             {
                 bar.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(DockSide.Right, SizeId.M)]
+    [InlineData(DockSide.Bottom, SizeId.M)]
+    [InlineData(DockSide.Left, SizeId.L)]
+    [Trait("Req", "PES-007")]
+    [Trait("Req", "PAN-009")]
+    public void The_last_page_keeps_the_length_of_a_full_one_so_nothing_jumps(
+        DockSide side,
+        SizeId size
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var dock = Dock(time, side, "es", coachStep: 0, size);
+            var bar = new DockBarWindow(
+                side,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(bar, theme);
+                host.LayOut();
+
+                // Room for three of the four shortcuts: a page of three, then a page of one.
+                var vertical = DockGeometry.IsVertical(side);
+                var tile = dock.TileLengthAlong(vertical);
+                dock.ApplyTileSpace((3 * tile) + (2 * Space.S2));
+                host.LayOut();
+                dock.HasPages.ShouldBeTrue();
+                var full = vertical ? host.Root.ActualHeight : host.Root.ActualWidth;
+
+                dock.Next();
+                host.LayOut();
+                dock.PageTiles.Count.ShouldBeLessThan(dock.PerPage);
+                (vertical ? host.Root.ActualHeight : host.Root.ActualWidth).ShouldBe(full, 0.5);
+            }
+            finally
+            {
+                bar.Close();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-007")]
+    public void A_bar_of_another_edge_never_changes_how_many_shortcuts_the_bar_in_view_holds()
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = Theme();
+            var dock = Dock(time, DockSide.Right, "es", coachStep: 0, SizeId.S);
+            var right = new DockBarWindow(
+                DockSide.Right,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            DockBarWindow? top = null;
+            try
+            {
+                // Two rows of icons of S, two across: four shortcuts.
+                dock.ApplyTileSpace((2 * ControlHeight.Small) + Space.S1);
+                dock.PerPage.ShouldBe(4);
+
+                // The four bars share the view model: the top one, one icon across, must not halve the side bar (D20).
+                top = new DockBarWindow(
+                    DockSide.Top,
+                    dock,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch,
+                    static (_, _, _) => { }
+                );
+                dock.PerPage.ShouldBe(4);
+            }
+            finally
+            {
+                top?.Close();
+                right.Close();
             }
         });
     }

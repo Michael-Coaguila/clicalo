@@ -10,7 +10,7 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// A labeled tool of the bar of the Tab view in direction C (D12, PES-006, PES-008): a <see cref="TouchButton"/> whose
 /// content is an icon in a box of <see cref="IconBox.Small"/> and a <see cref="TextStyleToken.LabelSmall"/> label.
 /// <see cref="DockToolShape.Row"/> puts the icon before the label (a row of <see cref="ControlHeight.Small"/>, the label
-/// in up to two lines, icon and label from the start so the icons of a column line up) and
+/// in up to two lines, both centred in the row: since D20 it is the one row of the bar, Auto/Fixed) and
 /// <see cref="DockToolShape.Stacked"/> above it (a card of <see cref="ControlHeight.Medium"/>,
 /// one line), as the prototype did on a side edge and on the top and bottom ones; <see cref="DockToolShape.Icon"/> is the
 /// icon alone in a square of <see cref="ControlHeight.Small"/>, its label only the accessible name (D19). Pressed, the
@@ -48,7 +48,7 @@ internal sealed class DockTool
         var parts = new DockPanel
         {
             LastChildFill = true,
-            HorizontalAlignment = stacked ? HorizontalAlignment.Center : HorizontalAlignment.Left,
+            HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
         DockPanel.SetDock(Lead, stacked ? Dock.Top : Dock.Left);
@@ -65,10 +65,7 @@ internal sealed class DockTool
             Size = stacked ? ControlSize.Medium : ControlSize.Small,
             Content = parts,
             Padding = iconOnly ? new Thickness(0) : new Thickness(Space.S2, 0, Space.S2, 0),
-
-            // In a column of rows the icons line up at the start, one under the other, whatever their labels.
-            HorizontalContentAlignment =
-                stacked || iconOnly ? HorizontalAlignment.Center : HorizontalAlignment.Left,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
             MinWidth = stacked ? ControlHeight.Medium : ControlHeight.Small,
             Focusable = false,
             IsTabStop = false,
