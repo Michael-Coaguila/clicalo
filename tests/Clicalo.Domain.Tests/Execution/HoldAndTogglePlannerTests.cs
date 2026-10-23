@@ -178,7 +178,7 @@ public sealed class HoldAndTogglePlannerTests
         effects
             .OfType<EngineEffect.Notice>()
             .ShouldHaveSingleItem()
-            .Urgency.ShouldBe(NoticeUrgency.Assertive);
+            .Urgency.ShouldBe(NoticeUrgency.Polite);
     }
 
     [Fact]

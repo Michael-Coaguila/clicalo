@@ -24,4 +24,11 @@ public sealed record Notice(
 {
     /// <summary>Whether it offers [undo] (AVI-003).</summary>
     public bool CanUndo => Kind == NoticeKind.Undo;
+
+    /// <summary>
+    /// Whether it only confirms that something went well or is going on («Ctrl+N enviado a Word», «Manteniendo…»): a
+    /// plain, polite notice without [undo] or [cancel]. The Tab view shows beside the bar only what PES-014 lists
+    /// (warnings, safety notices, [undo], [cancel]); a confirmation there covered the app being used (D20 review).
+    /// </summary>
+    public bool IsConfirmation => !Warning && Kind == NoticeKind.Normal && !CanCancel;
 }

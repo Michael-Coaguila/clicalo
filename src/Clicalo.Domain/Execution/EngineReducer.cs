@@ -503,7 +503,13 @@ public static class EngineReducer
                 step.Notice(EngineNotices.ReleasedOnSwitch, NoticeUrgency.Assertive);
             }
         }
-        else if (reason == ReleaseReason.User || wasBusy)
+        else if (reason == ReleaseReason.User)
+        {
+            // «Soltar todo» of the person (SEG-003): a polite confirmation of what they asked, not a warning (D21 review:
+            // it popped beside the bar as one even with nothing held).
+            step.Notice(EngineNotices.ReleasedAll, NoticeUrgency.Polite);
+        }
+        else if (wasBusy)
         {
             step.Notice(EngineNotices.ReleasedAll, NoticeUrgency.Assertive);
         }

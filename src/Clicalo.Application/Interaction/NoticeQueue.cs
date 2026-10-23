@@ -8,7 +8,9 @@ namespace Clicalo.Application.Interaction;
 /// <see cref="InteractionState"/> and changed only through <see cref="InteractionReducer"/>. One notice shows at a
 /// time (<see cref="Shown"/>):
 /// <list type="bullet">
-/// <item>a notice that was posted shows at once, for its duration; a plain one is replaced by the next;</item>
+/// <item>a notice that was posted shows at once, for its duration; a plain one is replaced by the next. A confirmation
+/// («Ctrl+N enviado a Word») never takes the place of a notice that warns or offers something: that one goes on, and
+/// the flash of the tile confirms (D21 review: [undo] went away for 3,2 s and came back);</item>
 /// <item>a safety notice or one with [undo] is never lost: when another notice arrives it waits and shows again, for
 /// its whole duration, once the current one ends; among the waiting ones a safety notice goes first, then in order of
 /// arrival. Only the newest notice with [undo] is kept, because that is the operation the button undoes;</item>
@@ -72,6 +74,11 @@ public sealed class NoticeQueue
         ArgumentNullException.ThrowIfNull(notice);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(duration, TimeSpan.Zero);
         var queue = Advance(now);
+        if (notice.IsConfirmation && queue.Current is { IsConfirmation: false })
+        {
+            return queue;
+        }
+
         var waiting = queue.Waiting.RemoveAll(other => Supersedes(notice, other.Notice));
         if (
             queue.Current is { Kind: not NoticeKind.Normal } displaced

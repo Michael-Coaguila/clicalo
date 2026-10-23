@@ -16,6 +16,14 @@ public sealed class NoticeQueueTests
     private static readonly TimeSpan Long = Timings.Notices.UndoNoticeDuration;
 
     private static readonly Notice Sent = Plain(L.Released);
+
+    // A plain notice that is not a confirmation (a warning): it takes the place of the one on show like any other.
+    private static readonly Notice Warned = new(L.Released, new IconRef("warning"), Warning: true);
+    private static readonly Notice WarnedAgain = new(
+        L.CopiedEmail,
+        new IconRef("warning"),
+        Warning: true
+    );
     private static readonly Notice Copied = Plain(L.CopiedEmail);
     private static readonly Notice Deleted = new(
         L.Deleted,
@@ -34,6 +42,39 @@ public sealed class NoticeQueueTests
         Warning: true,
         Kind: NoticeKind.Safety
     );
+
+    [Fact]
+    [Trait("Req", "PES-014")]
+    public void Only_a_plain_notice_is_a_confirmation_the_Tab_view_keeps_quiet()
+    {
+        // What PES-014 lists shows beside the bar: warnings, safety notices, [undo] and [cancel]; «sent to Word» does not.
+        Sent.IsConfirmation.ShouldBeTrue();
+        Deleted.IsConfirmation.ShouldBeFalse();
+        ReleasedOnSwitch.IsConfirmation.ShouldBeFalse();
+        new Notice(L.Released, new IconRef("info"), Warning: true).IsConfirmation.ShouldBeFalse();
+        new Notice(L.Released, new IconRef("info"), CanCancel: true).IsConfirmation.ShouldBeFalse();
+    }
+
+    [Fact]
+    [Trait("Req", "AVI-002")]
+    [Trait("Req", "PES-014")]
+    public void A_confirmation_never_takes_the_place_of_a_notice_that_warns_or_offers_something()
+    {
+        // «Ctrl+N enviado» while [undo] or a safety notice shows: they go on, on their own time (the tile flashes).
+        foreach (var protectedNotice in new[] { Deleted, ReleasedOnSwitch, Warned })
+        {
+            var queue = NoticeQueue.Empty.Post(protectedNotice, Long, Now);
+
+            var after = queue.Post(Sent, Short, Now + Second(1));
+
+            after.Shown.ShouldBe(protectedNotice);
+            after.EndsAt.ShouldBe(Now + Long);
+            after.Waiting.ShouldBeEmpty();
+        }
+
+        // Over another confirmation it shows, as any plain notice does.
+        NoticeQueue.Empty.Post(Copied, Short, Now).Post(Sent, Short, Now).Shown.ShouldBe(Sent);
+    }
 
     [Fact]
     [Trait("Req", "AVI-002")]
@@ -73,10 +114,10 @@ public sealed class NoticeQueueTests
     [Trait("Req", "AVI-005")]
     public void A_notice_with_undo_is_not_lost_when_another_arrives()
     {
-        var queue = NoticeQueue.Empty.Post(Deleted, Long, Now).Post(Sent, Short, Now + Second(1));
+        var queue = NoticeQueue.Empty.Post(Deleted, Long, Now).Post(Warned, Short, Now + Second(1));
 
         // One at a time: the new one shows, the one with [undo] waits.
-        queue.Shown.ShouldBe(Sent);
+        queue.Shown.ShouldBe(Warned);
         queue.Waiting.ShouldHaveSingleItem().Notice.ShouldBe(Deleted);
 
         // Once the current one ends it shows again, for its whole 6 s.
@@ -94,10 +135,10 @@ public sealed class NoticeQueueTests
     {
         var queue = NoticeQueue
             .Empty.Post(ReleasedOnSwitch, Short, Now)
-            .Post(Sent, Short, Now + Second(1))
-            .Post(Copied, Short, Now + Second(2));
+            .Post(Warned, Short, Now + Second(1))
+            .Post(WarnedAgain, Short, Now + Second(2));
 
-        queue.Shown.ShouldBe(Copied);
+        queue.Shown.ShouldBe(WarnedAgain);
         queue.Waiting.ShouldHaveSingleItem().Notice.ShouldBe(ReleasedOnSwitch);
         queue.Advance(Now + Second(2) + Short).Shown.ShouldBe(ReleasedOnSwitch);
     }
@@ -110,8 +151,8 @@ public sealed class NoticeQueueTests
             .Empty.Post(Deleted, Long, Now)
             .Post(ReleasedOnSwitch, Short, Now)
             .Post(ReleasedAlone, Short, Now)
-            .Post(Sent, Short, Now);
-        queue.Shown.ShouldBe(Sent);
+            .Post(Warned, Short, Now);
+        queue.Shown.ShouldBe(Warned);
 
         var first = queue.Advance(queue.EndsAt!.Value);
         first.Shown.ShouldBe(ReleasedOnSwitch);
@@ -135,7 +176,7 @@ public sealed class NoticeQueueTests
 
         var waiting = NoticeQueue
             .Empty.Post(Deleted, Long, Now)
-            .Post(Sent, Short, Now)
+            .Post(Warned, Short, Now)
             .Post(newer, Long, Now + Second(1));
         waiting.Shown.ShouldBe(newer);
         waiting.Waiting.ShouldBeEmpty();
@@ -154,7 +195,7 @@ public sealed class NoticeQueueTests
 
         var whileWaiting = NoticeQueue
             .Empty.Post(ReleasedOnSwitch, Short, Now)
-            .Post(Sent, Short, Now)
+            .Post(Warned, Short, Now)
             .Post(ReleasedOnSwitch, Short, Now + Second(1));
         whileWaiting.Shown.ShouldBe(ReleasedOnSwitch);
         whileWaiting.Waiting.ShouldBeEmpty();
@@ -214,7 +255,7 @@ public sealed class NoticeQueueTests
         // The safety notice waits behind a plain one; a Mantener starts and takes the plain one away.
         var queue = NoticeQueue
             .Empty.Post(ReleasedOnSwitch, Short, Now)
-            .Post(Sent, Short, Now)
+            .Post(Warned, Short, Now)
             .ShowSticky(hold, holding, Now + TimeSpan.FromSeconds(1));
 
         queue.Shown.ShouldBe(ReleasedOnSwitch);
@@ -271,9 +312,9 @@ public sealed class NoticeQueueTests
         onShow.Shown.ShouldBe(ReleasedOnSwitch);
         onShow.EndsAt.ShouldBe(Now + Second(1) + Short);
 
-        var waiting = NoticeQueue.Empty.Post(Deleted, Long, Now).Post(Sent, Short, Now);
+        var waiting = NoticeQueue.Empty.Post(Deleted, Long, Now).Post(Warned, Short, Now);
         waiting.Dismiss(NoticeKind.Undo, Now).Waiting.ShouldBeEmpty();
-        waiting.Dismiss(NoticeKind.Undo, Now).Shown.ShouldBe(Sent);
+        waiting.Dismiss(NoticeKind.Undo, Now).Shown.ShouldBe(Warned);
         waiting.Dismiss(NoticeKind.Safety, Now).ShouldBeSameAs(waiting);
     }
 
@@ -282,7 +323,17 @@ public sealed class NoticeQueueTests
     public void No_protected_notice_is_ever_lost_whatever_arrives_meanwhile()
     {
         // Every safety notice and the newest undo posted are shown to their end at some point.
-        var posted = new[] { Deleted, Sent, ReleasedOnSwitch, Copied, ReleasedAlone, Sent, Copied };
+        var posted = new[]
+        {
+            Deleted,
+            Warned,
+            ReleasedOnSwitch,
+            WarnedAgain,
+            ReleasedAlone,
+            Warned,
+            WarnedAgain,
+            Copied,
+        };
         var queue = NoticeQueue.Empty;
         var at = Now;
         foreach (var notice in posted)
@@ -298,7 +349,8 @@ public sealed class NoticeQueueTests
             queue = queue.Advance(end);
         }
 
-        completed.ShouldBe([Copied, ReleasedOnSwitch, ReleasedAlone, Deleted]);
+        // The last confirmation never took the place of the warning before it (D21).
+        completed.ShouldBe([WarnedAgain, ReleasedOnSwitch, ReleasedAlone, Deleted]);
         queue.Shown.ShouldBeNull();
     }
 
