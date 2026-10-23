@@ -361,7 +361,7 @@ public sealed class PanelBodyViewModelTests
         panel.Admin.Message.ShouldStartWith(
             "Administrador de tareas se ejecuta como administrador."
         );
-        panel.Admin.ButtonName.ShouldBe("Iniciar Clícalo como administrador");
+        panel.Admin.ButtonName.ShouldBe("Reabrir como administrador");
         panel.Admin.Relaunch();
         _intents.Calls.ShouldBe(["RelaunchElevated"]);
     }

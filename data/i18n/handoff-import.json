@@ -595,9 +595,9 @@
       "text": { "es": "Algo falló; se soltaron las teclas", "en": "Something failed; the keys were released" }
     },
     "incompleteTap": {
-      "notes": "Toque en un atajo incompleto en el panel (EJE-015). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Toque en un atajo incompleto en el panel (EJE-015). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo. Revisado en M7: el ✏ escrito no es el icono del botón Editar del panel, así que se nombra el botón. Pendiente de ratificar (D21).",
       "after": "engineFault",
-      "text": { "es": "Este atajo está incompleto · Toca ✏ para completarlo", "en": "This shortcut is incomplete · Tap ✏ to complete it" }
+      "text": { "es": "Este atajo está incompleto · Toca Editar para completarlo", "en": "This shortcut is incomplete · Tap Edit to complete it" }
     },
     "elevatedRefused": {
       "notes": "Un toque no enviado porque la app de delante es de administrador (EJE-013). Texto nuevo de la integración de M2, pendiente de ratificar en §6.1 del catálogo.",
@@ -1671,10 +1671,10 @@
   "revised": {
     "notes": "Claves del paquete cuyo texto visible cambió por una decisión del usuario: se importan con el texto de «text» y cada una lleva su motivo. La prueba del texto visible las salta y comprueba la lista.",
     "followAppD": {
-      "notes": "Descripción del interruptor «Cambiar con la app activa» (PER-006, CAB-003). Rediseño C (D12, 2026-10-16): el botón Auto/Fijo ya no es azul ni rojo, porque el rojo solo significa peligro y Fijo se dibuja como «elegido»; el texto nombra los estados en vez de los colores. Ratificado por el usuario el 2026-10-17 (D15, R-33).",
+      "notes": "Descripción del interruptor «Cambiar con la app activa» (PER-006, CAB-003). Rediseño C (D12, 2026-10-16): el botón Auto/Fijo ya no es azul ni rojo, porque el rojo solo significa peligro y Fijo se dibuja como «elegido»; el texto nombra los estados en vez de los colores. Ratificado por el usuario el 2026-10-17 (D15, R-33). Revisado en M7: 🔄 / 🔒 no son los iconos del botón (sync y sync_lock, D20) y 🔒 es el candado de la Pestaña, así que se nombra el botón; en inglés, «Frequents» como nombre. Pendiente de ratificar (D21).",
       "text": {
-        "es": "Es el botón 🔄 / 🔒 del panel: Auto sigue la app activa y Fijo lo deja en el perfil elegido. Frecuentes nunca cambia.",
-        "en": "Same as the panel’s 🔄 / 🔒 button: Auto follows the active app, Fixed keeps the chosen profile. Frequent never switches."
+        "es": "Es el botón Auto / Fijo del panel: Auto sigue la app activa y Fijo deja el perfil elegido. Frecuentes nunca cambia.",
+        "en": "Same as the panel’s Auto / Fixed button: Auto follows the active app, Fixed keeps the chosen profile. Frequents never switches."
       }
     },
     "autoA": {
@@ -1773,6 +1773,20 @@
       "text": {
         "es": "Ocúltala si quieres un panel más bajo; esos botones siguen en la vista Pestaña.",
         "en": "Hide it for a shorter panel; those buttons stay in the Edge tab view."
+      }
+    },
+    "shareHint": {
+      "notes": "Nota de importar en Plantillas (PLA-014). El ✏ escrito y la flecha no son controles de la pantalla: se nombran el botón [editProf] y [shareProf]. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Para compartir uno, ábrelo en Atajos, toca Editar perfil y luego Compartir.",
+        "en": "To share one, open it in Shortcuts, tap Edit profile and then Share."
+      }
+    },
+    "adminBtn": {
+      "notes": "Botón de la tarjeta de app de administrador (EJE-013). Clícalo ya está abierto, así que «Iniciar» no era cierto; es la misma acción que «Reabrir como administrador» de Sistema y cabe en una línea del panel en S. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Reabrir como administrador",
+        "en": "Reopen as administrator"
       }
     }
   }

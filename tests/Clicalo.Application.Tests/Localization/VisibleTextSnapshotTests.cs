@@ -77,6 +77,7 @@ public sealed partial class VisibleTextSnapshotTests
             .Order(StringComparer.Ordinal)
             .ShouldBe([
                 "aboutTitle",
+                "adminBtn",
                 "autoA",
         revised
             .Order(StringComparer.Ordinal)
@@ -98,6 +99,7 @@ public sealed partial class VisibleTextSnapshotTests
             ]);
                 "navAbout2",
                 "secBar",
+                "shareHint",
                 "showStripD",
             ]);
             ]);
