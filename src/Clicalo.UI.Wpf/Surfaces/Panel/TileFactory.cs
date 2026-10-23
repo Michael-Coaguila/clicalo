@@ -133,6 +133,9 @@ internal static class TileFactory
         );
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
+        // Beside the number the icon takes the middle of the tile: the type mark of its corner would sit on it, so it
+        // only stays in the help of the tile («Mantener»).
+        ShowPart(control, ShortcutTileTemplate.TypePart, !look.CentresNumber);
         if (Part(control, ShortcutTileTemplate.VoiceNumberPart) is { } number)
         {
             if (look.CentresNumber)

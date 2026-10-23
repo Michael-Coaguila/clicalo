@@ -137,7 +137,9 @@ public sealed class DockFlyoutWindow : TouchSurface
                 }
 
                 body = _arrows;
-                Width = PinnedWidth;
+
+                // Three keys of 64 with their gaps, the insets and the channel of the thin bar: the → was cut at 230.
+                Width = (3 * (ControlHeight.Large + (2 * Space.S1))) + (2 * Space.S3) + Space.S3;
                 break;
             default:
                 // Two columns and as many rows as the keys need: the row of the panel is a single row of four.
