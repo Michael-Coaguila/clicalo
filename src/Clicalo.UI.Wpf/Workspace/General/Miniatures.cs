@@ -49,6 +49,24 @@ internal static class Miniatures
         return Box(layers);
     }
 
+    /// <summary>
+    /// A view of the panel (BIE-007): Completa with its header, its fixed row, the profile selector, a grid of 3 × 3
+    /// and its status line; Compacta lower, with an icon-only fixed row, shorter tiles and the selector at the foot;
+    /// Pestaña as a screen with the bar on its right edge. The three share one box, so their names line up.
+    /// </summary>
+    public static Border View(PanelDensity density, bool selected)
+    {
+        UIElement picture = density switch
+        {
+            PanelDensity.Compact => Panel(selected, compact: true),
+            PanelDensity.Dock => Screen(selected),
+            _ => Panel(selected, compact: false),
+        };
+        var box = Box(picture);
+        box.Height = ControlHeight.Large + Space.S4;
+        return box;
+    }
+
     /// <summary>«Columnas»: two rows of <paramref name="columns"/> tiles.</summary>
     public static Border Columns(int columns, bool selected)
     {
@@ -126,6 +144,86 @@ internal static class Miniatures
 
         area.Children.Add(bar);
         return Box(area);
+    }
+
+    private static StackPanel Panel(bool selected, bool compact)
+    {
+        var stack = new StackPanel();
+        void Add(UIElement element, double above)
+        {
+            if (element is FrameworkElement framed)
+            {
+                framed.Margin = new Thickness(0, stack.Children.Count == 0 ? 0 : above, 0, 0);
+            }
+
+            stack.Children.Add(element);
+        }
+
+        Add(Bar(selected, Space.S1), 0);
+        if (compact)
+        {
+            // The fixed row has only its icons.
+            var icons = new UniformGrid { Columns = 4, Rows = 1 };
+            for (var i = 0; i < 4; i++)
+            {
+                var icon = Cell(selected);
+                icon.Height = Space.S2;
+                icon.Margin = new Thickness(Space.S1 / 2, 0, Space.S1 / 2, 0);
+                icons.Children.Add(icon);
+            }
+
+            Add(icons, Space.S1);
+        }
+        else
+        {
+            Add(Bar(selected, Space.S2), Space.S1);
+            Add(Bar(selected, Space.S1), Space.S1);
+        }
+
+        var grid = new UniformGrid { Columns = 3, Rows = 3 };
+        for (var i = 0; i < 9; i++)
+        {
+            var tile = Cell(selected);
+            tile.Height = compact ? Space.S1 + (Space.S1 / 2) : Space.S2;
+            tile.Margin = new Thickness(Space.S1 / 2);
+            grid.Children.Add(tile);
+        }
+
+        Add(grid, Space.S1 / 2);
+        Add(Bar(selected, Space.S1), Space.S1 / 2);
+        return stack;
+    }
+
+    private static Grid Screen(bool selected)
+    {
+        var screen = new Grid();
+        var page = new StackPanel { Margin = new Thickness(0, Space.S1, Space.S4, 0) };
+        for (var i = 0; i < 3; i++)
+        {
+            var line = new Border
+            {
+                Height = Space.S1,
+                CornerRadius = new CornerRadius(Space.S1 / 2),
+                Margin = new Thickness(0, i == 0 ? 0 : Space.S2, 0, 0),
+            };
+            Ui.Ink(line, Border.BackgroundProperty, ColorToken.Border);
+            page.Children.Add(line);
+        }
+
+        screen.Children.Add(page);
+        var bar = Cell(selected);
+        bar.Width = Space.S2;
+        bar.HorizontalAlignment = HorizontalAlignment.Right;
+        bar.Margin = new Thickness(0, Space.S3, 0, Space.S3);
+        screen.Children.Add(bar);
+        return screen;
+    }
+
+    private static Border Bar(bool selected, double height)
+    {
+        var bar = Cell(selected);
+        bar.Height = height;
+        return bar;
     }
 
     private static Border Cell(bool selected)

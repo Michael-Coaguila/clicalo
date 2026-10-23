@@ -550,7 +550,10 @@ public sealed class WelcomeWindow : Window
         );
     }
 
-    /// <summary>BIE-007: the three views as option cards with their icon, name and description.</summary>
+    /// <summary>
+    /// BIE-007: the three views as option cards with their miniature (the panel of each view in small, in one box so
+    /// the names line up), name and description.
+    /// </summary>
     private StackPanel Step3(WelcomeScreen screen)
     {
         var cards = new List<UIElement>();
@@ -565,14 +568,16 @@ public sealed class WelcomeWindow : Window
                 lines: 0
             );
             description.TextAlignment = TextAlignment.Center;
+            var miniature = Miniatures.View(view.Density, view.Selected);
+            miniature.Margin = new Thickness(0, 0, 0, Space.S2);
             var card = SettingsUi.Tall(
                 SettingsUi.Option(
                     OptionKind.Card,
-                    Ui.Column(Space.S1, name, description),
+                    Ui.Column(Space.S1, miniature, name, description),
                     view.Label,
                     view.Selected,
                     () => _viewModel.SetDensity(view.Density),
-                    view.Icon
+                    null
                 )
             );
             card.VerticalContentAlignment = VerticalAlignment.Top;
