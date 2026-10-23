@@ -53,9 +53,11 @@ public sealed class DockNoticeWindow : TouchSurface
         Size = IconBox.Small,
         VerticalAlignment = VerticalAlignment.Center,
     };
+
+    // The window grows with its text: the part of a notice that says why or what to do is never cut (D21 review).
     private readonly StyledText _text = new(string.Empty, TextStyleToken.BodySmall)
     {
-        MaxLines = 2,
+        MaxLines = 4,
         VerticalAlignment = VerticalAlignment.Center,
         Margin = new Thickness(Space.S2, 0, Space.S2, 0),
     };
