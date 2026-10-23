@@ -375,9 +375,9 @@
       "text": { "es": "Incluye clicalo.log para encontrar el fallo.", "en": "Includes clicalo.log to find the bug." }
     },
     "fbSendLogD": {
-      "notes": "Nota bajo [Enviar por correo] cuando se adjunta el registro (ACE-004): un enlace de correo no adjunta archivos, así que se abre la carpeta con el registro depurado para añadirlo. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Nota bajo [Enviar por correo] cuando se adjunta el registro (ACE-004): un enlace de correo no adjunta archivos, así que se abre la carpeta con el registro depurado para añadirlo. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo. Revisado en M7: la copia que se adjunta se llama clicalo.log, como dice [fbLogFile] (ACE-003), y no clicalo-registro.log, un nombre distinto y en español también en inglés. Pendiente de ratificar (D21).",
       "after": "fbSendD",
-      "text": { "es": "Se abrirá tu app de correo y la carpeta del registro: adjunta el archivo clicalo-registro.log.", "en": "Your email app and the log folder open: attach the file clicalo-registro.log." }
+      "text": { "es": "Se abrirá tu app de correo y la carpeta del registro: adjunta el archivo clicalo.log.", "en": "Your email app and the log folder open: attach the file clicalo.log." }
     },
     "fbSubject": {
       "notes": "Asunto del correo de opinión (ACE-004): «[Clícalo] {tipo}», con {name} = el tipo elegido. Texto nuevo de Acerca de y la bienvenida (M4), pendiente de ratificar en §6.1 del catálogo.",

@@ -788,7 +788,7 @@
   "fbSysD": "App and Windows version. Nothing personal.",
   "fbSend": "Send by email",
   "fbSendD": "Your email app opens with the message ready.",
-  "fbSendLogD": "Your email app and the log folder open: attach the file clicalo-registro.log.",
+  "fbSendLogD": "Your email app and the log folder open: attach the file clicalo.log.",
   "fbSubject": "[Clícalo] {name}",
   "fbBodySys": "Clícalo v{version} · {name}",
   "fbBodyLog": "Log to attach: {name}",

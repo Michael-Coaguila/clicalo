@@ -23,15 +23,21 @@ namespace Clicalo.App.Composition;
 /// address of the project (ACE-004, ADR-0029), and without that entry (a start with <c>--no-input</c>) or without an
 /// address the view model copies the message instead;</item>
 /// <item>the log preview is the tail of <c>clicalo.log</c>, already redacted when it was written (LOG-001), and the
-/// copy to attach is written with <see cref="IAtomicFileWriter"/> next to it as <c>clicalo-registro.log</c>, whose
-/// folder Explorer opens with the file selected.</item>
+/// copy to attach is written with <see cref="IAtomicFileWriter"/> as <c>send\clicalo.log</c>, beside it, with the
+/// name the texts give it in every language (ACE-003), and Explorer opens its folder with the file selected.</item>
 /// </list>
 /// Logs nothing: no address, path or text of the person leaves through here (LOG-001, LOG-002).
 /// </summary>
 internal static class AboutServicesFactory
 {
-    /// <summary>The file the feedback asks to attach (ACE-004).</summary>
-    public const string AttachmentName = "clicalo-registro.log";
+    /// <summary>
+    /// The file the feedback asks to attach (ACE-004): the redacted copy of the log, with the name of the log that
+    /// [fbLogFile] and [fbSendLogD] give it (ACE-003), in a folder of its own so it never takes the place of the log.
+    /// </summary>
+    public const string AttachmentName = "clicalo.log";
+
+    /// <summary>The folder of the copy to attach, inside the folder of the log.</summary>
+    private const string AttachmentFolder = "send";
 
     /// <summary>The most of the log the preview shows and the attachment holds: its newest part.</summary>
     private const int LogTailBytes = 64 * 1024;
@@ -145,7 +151,7 @@ internal static class AboutServicesFactory
         CancellationToken cancellationToken
     )
     {
-        var path = Path.Combine(locations.Logs, AttachmentName);
+        var path = Path.Combine(locations.Logs, AttachmentFolder, AttachmentName);
         var written = await files
             .WriteAsync(path, Encoding.UTF8.GetBytes(text), cancellationToken)
             .ConfigureAwait(true);

@@ -788,7 +788,7 @@
   "fbSysD": "Versión de la app y de Windows. Nada personal.",
   "fbSend": "Enviar por correo",
   "fbSendD": "Se abrirá tu app de correo con el mensaje listo.",
-  "fbSendLogD": "Se abrirá tu app de correo y la carpeta del registro: adjunta el archivo clicalo-registro.log.",
+  "fbSendLogD": "Se abrirá tu app de correo y la carpeta del registro: adjunta el archivo clicalo.log.",
   "fbSubject": "[Clícalo] {name}",
   "fbBodySys": "Clícalo v{version} · {name}",
   "fbBodyLog": "Registro para adjuntar: {name}",

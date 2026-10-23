@@ -214,7 +214,7 @@ public sealed class AboutSectionTests
         query.ShouldContain(
             "El botón Copiar no responde\r\n\r\n—\r\nClícalo v2.0.0 · Windows 11 (26300)"
         );
-        query.ShouldContain("Registro para adjuntar: clicalo-registro.log");
+        query.ShouldContain("Registro para adjuntar: clicalo.log");
         world.Notices.ShouldHaveSingleItem().Text.ShouldBe(Clicalo.Domain.Messages.L.SentMail);
         viewModel.Screen.Sending.ShouldBeFalse();
     }
@@ -416,7 +416,7 @@ public sealed class AboutSectionTests
                 (text, _) =>
                 {
                     Saved.Add(text);
-                    return ValueTask.FromResult<string?>("clicalo-registro.log");
+                    return ValueTask.FromResult<string?>("clicalo.log");
                 },
                 Notices.Add
             );
