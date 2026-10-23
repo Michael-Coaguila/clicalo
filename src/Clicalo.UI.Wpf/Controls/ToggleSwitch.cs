@@ -36,6 +36,16 @@ public sealed class ToggleSwitch : ToggleButton
         new FrameworkPropertyMetadata(null)
     );
 
+    /// <summary>Identifies <see cref="DescriptionLines"/>.</summary>
+    public static readonly DependencyProperty DescriptionLinesProperty =
+        DependencyProperty.Register(
+            nameof(DescriptionLines),
+            typeof(int),
+            typeof(ToggleSwitch),
+            new FrameworkPropertyMetadata(2),
+            static value => value is int lines && lines >= 0
+        );
+
     /// <summary>Width of the track.</summary>
     public const double TrackWidth = ComponentSize.SwitchWidth;
 
@@ -109,6 +119,16 @@ public sealed class ToggleSwitch : ToggleButton
     {
         get => (string?)GetValue(DescriptionProperty);
         set => SetValue(DescriptionProperty, value);
+    }
+
+    /// <summary>
+    /// Lines the <see cref="Description"/> may take before «…»: 2 by default, as in the design; 0 for no limit, in a
+    /// zone that scrolls, where a description explains what the switch does and must be read whole.
+    /// </summary>
+    public int DescriptionLines
+    {
+        get => (int)GetValue(DescriptionLinesProperty);
+        set => SetValue(DescriptionLinesProperty, value);
     }
 
     /// <summary>Where the knob is now, from 0 (off) to <see cref="KnobTravel"/> (on); for tests and diagnostics.</summary>
@@ -248,7 +268,7 @@ public sealed class ToggleSwitch : ToggleButton
             .With(TextBlock.TextProperty, Templates.Bind(DescriptionProperty))
             .With(StyledText.TextStyleProperty, TextStyleToken.Caption)
             .With(StyledText.InkProperty, ColorToken.Muted)
-            .With(StyledText.MaxLinesProperty, 2);
+            .With(StyledText.MaxLinesProperty, Templates.Bind(DescriptionLinesProperty));
         var text = Templates
             .Element<StackPanel>()
             .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center)

@@ -895,7 +895,8 @@ public sealed class ShortcutsSectionView : Grid
             model.CompatTitle,
             model.CompatText,
             model.Compatible,
-            _viewModel.ToggleCompatible
+            _viewModel.ToggleCompatible,
+            wholeDescription: true
         );
         var done = Parts.Button(
             model.DoneText,

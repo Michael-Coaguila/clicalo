@@ -232,7 +232,8 @@ public sealed class ShortcutEditorView : Grid
                     model.Pin.Title,
                     model.Pin.Description,
                     model.Pin.On,
-                    _viewModel.TogglePin
+                    _viewModel.TogglePin,
+                    wholeDescription: true
                 )
             );
         }
@@ -1023,7 +1024,8 @@ public sealed class ShortcutEditorView : Grid
                     model.ConfirmTitle,
                     model.ConfirmText,
                     model.Confirm,
-                    _viewModel.ToggleConfirm
+                    _viewModel.ToggleConfirm,
+                    wholeDescription: true
                 )
             )
         );

@@ -404,14 +404,17 @@ internal static class Ui
 
     /// <summary>
     /// A row that is a switch as a whole (docs/07: «toda la fila es tocable»): icon, title and description, and the
-    /// 48 × 28 switch at the end; the Toggle pattern for UI Automation. Its state is the view model's.
+    /// 48 × 28 switch at the end; the Toggle pattern for UI Automation. Its state is the view model's. With
+    /// <paramref name="wholeDescription"/>, in a zone that scrolls, the description is never cut: it says what the
+    /// switch does.
     /// </summary>
     public static ToggleSwitch SwitchRow(
         string? icon,
         string title,
         string description,
         bool on,
-        Action click
+        Action click,
+        bool wholeDescription = false
     )
     {
         ArgumentNullException.ThrowIfNull(click);
@@ -423,6 +426,11 @@ internal static class Ui
             IsChecked = on,
             FollowsViewModel = true,
         };
+        if (wholeDescription)
+        {
+            row.DescriptionLines = 0;
+        }
+
         AutomationProperties.SetName(row, title);
         AutomationProperties.SetHelpText(row, description);
         row.Click += (_, _) => click();
