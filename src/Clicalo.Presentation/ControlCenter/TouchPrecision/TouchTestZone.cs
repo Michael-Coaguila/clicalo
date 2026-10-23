@@ -76,13 +76,22 @@ public sealed class TouchTestZone
     /// <param name="phase">What it did.</param>
     /// <param name="at">Where, in physical screen pixels.</param>
     /// <param name="now">When, on the caller's clock (never backwards).</param>
+    /// <param name="kind">
+    /// The device: a finger, a pen or a mouse (the minimum contact is only for fingers and pens, TAC-002).
+    /// </param>
     /// <returns>Whether a touch was judged (the counters or the last touch changed).</returns>
-    public bool Feed(uint pointerId, PointerPhase phase, PhysicalPoint at, DateTimeOffset now)
+    public bool Feed(
+        uint pointerId,
+        PointerPhase phase,
+        PhysicalPoint at,
+        DateTimeOffset now,
+        PointerKind kind = PointerKind.Finger
+    )
     {
         _events.Clear();
         var sample = new PointerSample(
             pointerId,
-            PointerKind.Mouse,
+            kind,
             phase,
             at,
             new PhysicalRect(at.X, at.Y, 1, 1),

@@ -72,6 +72,26 @@ public sealed class HoldAndTogglePlannerTests
     }
 
     [Fact]
+    [Trait("Req", "EJE-004")]
+    [Trait("Req", "EJE-005")]
+    public void A_hold_clicked_with_the_mouse_latches_until_the_next_click()
+    {
+        // One pointer cannot hold the tile and click in the app: the click latches, the next one releases.
+        var engine = Engine();
+        var hold = Shortcuts.Hold("shift", "shift");
+
+        engine.Press(hold, origin: ActivationOrigin.Mouse);
+        engine.Lift();
+        engine.Receiver.Keys.ShouldBe([Shift]);
+        engine.State.Keys.Items[HolderId.ForToggle(hold.Id)].Origin.ShouldBe(HoldOrigin.Invoke);
+
+        engine.Advance(TimeSpan.FromSeconds(2));
+        engine.Press(hold, contact: 2, origin: ActivationOrigin.Mouse);
+        engine.Lift(2);
+        engine.Receiver.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
     [Trait("Req", "EJE-005")]
     public void A_hold_invoked_without_contact_behaves_as_a_toggle()
     {

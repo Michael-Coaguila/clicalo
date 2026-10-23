@@ -291,7 +291,11 @@ public static class EngineReducer
             case TapAction tap:
                 KeyPlanner.Tap(step, origin, ChordFor(shortcut, tap, step));
                 break;
-            case HoldAction hold when invoked:
+            // EJE-005: invoked, a Mantener latches until the next activation. So does one clicked with the mouse or the
+            // touchpad: its one pointer cannot hold the tile and click in the app at once, so pressed and released it
+            // only sent its keys down and up (D21 review).
+            case HoldAction hold
+                when invoked || activation.Request.Origin == ActivationOrigin.Mouse:
                 KeyPlanner.Toggle(step, origin, shortcut, hold.Chord, HoldOrigin.Invoke);
                 break;
             case HoldAction hold:

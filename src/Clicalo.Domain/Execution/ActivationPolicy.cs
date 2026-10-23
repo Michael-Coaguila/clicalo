@@ -39,7 +39,19 @@ public static class ActivationPolicy
         switch (request.Phase)
         {
             case ActivationPhase.ContactEnded when request.Contact is { } contact:
-                verdict = TouchFilter.Evaluate(ref filter, contact, context.Touch, request.At);
+                // A click of a mouse or a touchpad is a down and an up at once: the minimum contact is for fingers and
+                // pens (TAC-002), or it ignored a touchpad tap and a click of Voice Access.
+                verdict = TouchFilter.Evaluate(
+                    ref filter,
+                    contact,
+                    request.Origin == ActivationOrigin.Mouse
+                        ? context.Touch with
+                        {
+                            MinContact = TimeSpan.Zero,
+                        }
+                        : context.Touch,
+                    request.At
+                );
                 if (verdict == TouchVerdict.IgnoredDouble && armedHere)
                 {
                     // EC-TAC-03: the debounce of the armed tile never refuses its confirmation tap.

@@ -139,9 +139,15 @@ public sealed class TouchPrecisionViewModel : ObservableObject
     /// <param name="pointerId">The contact.</param>
     /// <param name="phase">What it did.</param>
     /// <param name="at">Where, in physical screen pixels.</param>
-    public void TestContact(uint pointerId, PointerPhase phase, PhysicalPoint at)
+    /// <param name="kind">The device: a finger, a pen or a mouse, judged as the panel judges it.</param>
+    public void TestContact(
+        uint pointerId,
+        PointerPhase phase,
+        PhysicalPoint at,
+        PointerKind kind = PointerKind.Finger
+    )
     {
-        if (_zone.Feed(pointerId, phase, at, _s.Time.GetUtcNow()))
+        if (_zone.Feed(pointerId, phase, at, _s.Time.GetUtcNow(), kind))
         {
             Screen = Project();
         }

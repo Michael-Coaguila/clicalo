@@ -433,12 +433,23 @@ public sealed class TouchPrecisionView : ContentControl
 
     // ---- The test zone (TAC-006) ---------------------------------------------------------------------------------
 
+    /// <summary>
+    /// The device of a mouse event of the zone: a touch or a pen promoted to the mouse keeps its kind, so the zone judges
+    /// it as the panel does (the minimum contact is for fingers and pens, TAC-002).
+    /// </summary>
+    private static PointerKind KindOf(MouseEventArgs e) =>
+        e.StylusDevice is { } stylus
+            ? stylus.TabletDevice?.Type == TabletDeviceType.Touch
+                ? PointerKind.Finger
+                : PointerKind.Pen
+            : PointerKind.Mouse;
+
     private void OnDown(object sender, MouseButtonEventArgs e)
     {
         PlaceTargets();
         _pressed = true;
         _ = _zone.CaptureMouse();
-        _viewModel.TestContact(MousePointer, PointerPhase.Down, ScreenPoint(e));
+        _viewModel.TestContact(MousePointer, PointerPhase.Down, ScreenPoint(e), KindOf(e));
         e.Handled = true;
     }
 
@@ -446,7 +457,7 @@ public sealed class TouchPrecisionView : ContentControl
     {
         if (_pressed && e.LeftButton == MouseButtonState.Pressed)
         {
-            _viewModel.TestContact(MousePointer, PointerPhase.Move, ScreenPoint(e));
+            _viewModel.TestContact(MousePointer, PointerPhase.Move, ScreenPoint(e), KindOf(e));
         }
     }
 
@@ -458,7 +469,7 @@ public sealed class TouchPrecisionView : ContentControl
         }
 
         _pressed = false;
-        _viewModel.TestContact(MousePointer, PointerPhase.Up, ScreenPoint(e));
+        _viewModel.TestContact(MousePointer, PointerPhase.Up, ScreenPoint(e), KindOf(e));
         _zone.ReleaseMouseCapture();
         e.Handled = true;
     }

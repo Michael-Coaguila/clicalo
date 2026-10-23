@@ -188,14 +188,18 @@ internal sealed class EngineHarness
         int? contact,
         TimeSpan? duration = null,
         long? epoch = null,
-        bool editMode = false
+        bool editMode = false,
+        ActivationOrigin? origin = null
     ) =>
         new(
             new ActivationRequest(
                 phase,
-                phase == ActivationPhase.Invoke
-                    ? ActivationOrigin.UiaInvoke
-                    : ActivationOrigin.Touch,
+                origin
+                    ?? (
+                        phase == ActivationPhase.Invoke
+                            ? ActivationOrigin.UiaInvoke
+                            : ActivationOrigin.Touch
+                    ),
                 phase == ActivationPhase.Invoke ? null : contact,
                 phase == ActivationPhase.ContactEnded
                     ? new ContactSummary(
@@ -226,9 +230,12 @@ internal sealed class EngineHarness
     public IReadOnlyList<EngineEffect> Invoke(Shortcut shortcut) =>
         Apply(Activation(shortcut, ActivationPhase.Invoke, contact: null));
 
-    /// <summary>A finger rests on the tile (a Hold presses here).</summary>
-    public IReadOnlyList<EngineEffect> Press(Shortcut shortcut, int contact = 1) =>
-        Apply(Activation(shortcut, ActivationPhase.ContactStarted, contact));
+    /// <summary>A finger (or <paramref name="origin"/>) rests on the tile (a Hold presses here).</summary>
+    public IReadOnlyList<EngineEffect> Press(
+        Shortcut shortcut,
+        int contact = 1,
+        ActivationOrigin? origin = null
+    ) => Apply(Activation(shortcut, ActivationPhase.ContactStarted, contact, origin: origin));
 
     /// <summary>The finger lifts (or the contact is cancelled).</summary>
     public IReadOnlyList<EngineEffect> Lift(int contact = 1, bool cancelled = false) =>

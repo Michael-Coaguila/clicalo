@@ -390,6 +390,7 @@ public sealed class GestureRecognizer
         contact.Position = sample.Position;
         contact.DownTime = now;
         contact.PalmLike = _thresholds.IsPalm(sample.Contact);
+        contact.IsMouse = sample.Kind == PointerKind.Mouse;
         var hit = HitResolver.Resolve(Targets.AsSpan(), sample.Position, _thresholds.HitSlop);
         if (hit >= 0)
         {
@@ -411,8 +412,12 @@ public sealed class GestureRecognizer
         }
         else if (contact.Target.Kind == TouchTargetKind.Hold)
         {
-            var minContact = _thresholds.Settings.MinContact;
-            if (contact.Target.InScrollZone && minContact < Timings.Touch.HoldInScrollDelay)
+            var minContact = contact.IsMouse ? TimeSpan.Zero : _thresholds.Settings.MinContact;
+            if (
+                !contact.IsMouse
+                && contact.Target.InScrollZone
+                && minContact < Timings.Touch.HoldInScrollDelay
+            )
             {
                 // TAC-004: in a zone that scrolls, wait until the finger shows that it is not scrolling.
                 minContact = Timings.Touch.HoldInScrollDelay;
@@ -578,7 +583,12 @@ public sealed class GestureRecognizer
             contact.MaxDisplacement / thresholds.DpiScale,
             contact.PalmLike
         );
-        var settings = thresholds.Settings;
+        var settings = contact.IsMouse
+            ? thresholds.Settings with
+            {
+                MinContact = TimeSpan.Zero,
+            }
+            : thresholds.Settings;
         var index = IndexOf(contact.Target.Id);
         TouchVerdict verdict;
         if (index >= 0)
