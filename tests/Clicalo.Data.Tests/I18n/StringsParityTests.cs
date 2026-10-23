@@ -67,6 +67,8 @@ public sealed class StringsParityTests
                 "alwaysOn",
                 "appGone",
                 "appName",
+                // The examples of the empty fields of the editor and the value of a wait step (D21, pending).
+                "appPh",
                 "autoBackupD",
                 // Texts of the M2 integration: failures, undo labels and notices of the five packages (catalog §6.1).
                 "autoReleaseNever",
@@ -296,6 +298,7 @@ public sealed class StringsParityTests
                 "testPaused",
                 "testReset",
                 "textBigger",
+                "textPh",
                 "textSmaller",
                 "textTyped",
                 "textTypedPrivate",
@@ -328,6 +331,7 @@ public sealed class StringsParityTests
                 "updUnavailT",
                 "updateVariantEn",
                 "updateVariantEs",
+                "urlPh",
                 "userGuide",
                 "userGuideD",
                 "variantUpdatedN",
@@ -335,6 +339,7 @@ public sealed class StringsParityTests
                 "voiceSay",
                 "waitLonger",
                 "waitShorter",
+                "waitValue",
                 "welcomeTitle",
                 "whenDate",
                 "whenToday",
