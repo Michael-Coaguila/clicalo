@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Editor;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Resources;
 using Clicalo.UI.Wpf.Theming;
@@ -52,16 +53,29 @@ public sealed class ShortcutEditorView : Grid
     private readonly TextInput _target;
     private readonly ProgramListView _programs;
     private readonly Dictionary<int, TextInput> _stepTexts = [];
+
+    // The main combination and the keys of a step of a macro take turns: one box on show at a time.
+    private readonly ComboLines _comboLines = new();
+    private readonly SpokenLines _lines;
     private EditorModel? _shown;
     private string _shownKey = string.Empty;
     private int? _openStep;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The editor.</param>
-    public ShortcutEditorView(ShortcutEditorViewModel viewModel)
+    /// <param name="say">
+    /// How its window says the lines this view draws again on every change (ACC-001): <see cref="LiveAnnouncer.Say"/> of
+    /// the window.
+    /// </param>
+    public ShortcutEditorView(
+        ShortcutEditorViewModel viewModel,
+        Action<string, AnnouncementUrgency> say
+    )
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(say);
         _viewModel = viewModel;
+        _lines = new SpokenLines(say);
         _name = new TextInput(string.Empty, string.Empty);
         _name.Changed += (_, _) => _viewModel.Rename(_name.Text);
         _name.DictateRequested += (_, _) => _viewModel.DictateName();
@@ -121,6 +135,12 @@ public sealed class ShortcutEditorView : Grid
     /// choices are not built again when a letter is typed.
     /// </summary>
     public ProgramListView Programs => _programs;
+
+    /// <summary>What the warning of a blocked or special combination announced last, and how (ACC-001, EDI-008).</summary>
+    public LiveAnnouncer WarningAnnouncer => _comboLines.WarningAnnouncer;
+
+    /// <summary>What the line of the recording announced last, and how (ACC-001, EDI-010).</summary>
+    public LiveAnnouncer RecordingAnnouncer => _comboLines.RecordingAnnouncer;
 
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
@@ -207,7 +227,9 @@ public sealed class ShortcutEditorView : Grid
         {
             Show(
                 _combo,
-                model.Combo is { } combo && !stepKeys ? ComboView.Build(combo, _viewModel) : null
+                model.Combo is { } combo && !stepKeys
+                    ? ComboView.Build(combo, _viewModel, _comboLines)
+                    : null
             );
         }
 
@@ -254,6 +276,8 @@ public sealed class ShortcutEditorView : Grid
             _footer.Content = Footer(model.Footer);
         }
 
+        Speak(model, keyChanged);
+
         if (keyChanged && model.Identity.Name.Length == 0)
         {
             _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, () => Keyboard.Focus(_name.Box));
@@ -263,6 +287,27 @@ public sealed class ShortcutEditorView : Grid
         {
             _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, RevealFields);
         }
+    }
+
+    /// <summary>
+    /// ACC-001: the lines that are drawn again on every change are said by the window, each once when it appears or
+    /// changes: the head of the repeated card (REP-004) and, in «Probar», its phase, the pause, the button waiting for
+    /// its second tap, «¿Funcionó?» and the answer (PRB-001 to PRB-005).
+    /// </summary>
+    private void Speak(EditorModel model, bool keyChanged)
+    {
+        if (keyChanged)
+        {
+            _lines.Clear();
+        }
+
+        _lines.Show("duplicate", model.Duplicate?.Head);
+        var test = model.Test;
+        _lines.Show("phase", test?.Phase);
+        _lines.Show("paused", test?.PausedText);
+        _lines.Show("armed", test is { LiveArmed: true } ? test.LiveText : null);
+        _lines.Show("question", test?.Question);
+        _lines.Show("answer", test?.Answer);
     }
 
     private static ActionKind? Chosen(KindsModel kinds) =>
@@ -354,7 +399,6 @@ public sealed class ShortcutEditorView : Grid
         bar.Children.Add(next);
         bar.Children.Add(previous);
         bar.Children.Add(head);
-        AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);
         var body = new StackPanel();
         body.Children.Add(bar);
         if (model.Expanded)
@@ -708,7 +752,7 @@ public sealed class ShortcutEditorView : Grid
             group.Children.Add(card);
             if (step.Editor == StepEditorKind.Keys && combo is not null)
             {
-                var keys = ComboView.Build(combo, _viewModel);
+                var keys = ComboView.Build(combo, _viewModel, _comboLines);
                 keys.Margin = new Thickness(0, Space.S3, 0, Space.S2);
                 group.Children.Add(keys);
             }
@@ -1213,7 +1257,6 @@ public sealed class ShortcutEditorView : Grid
                 ColorToken.Text,
                 TextStyleToken.Label
             );
-            AutomationProperties.SetLiveSetting(phaseLine, AutomationLiveSetting.Polite);
             body.Children.Add(Spaced(phaseLine, Space.S3));
         }
 
@@ -1254,7 +1297,6 @@ public sealed class ShortcutEditorView : Grid
                 ColorToken.Text,
                 TextStyleToken.Label
             );
-            AutomationProperties.SetLiveSetting(paused, AutomationLiveSetting.Polite);
             body.Children.Add(Spaced(paused, Space.S4));
         }
 
@@ -1309,7 +1351,6 @@ public sealed class ShortcutEditorView : Grid
                 ColorToken.Text,
                 TextStyleToken.Label
             );
-            AutomationProperties.SetLiveSetting(ok, AutomationLiveSetting.Polite);
             body.Children.Add(Spaced(ok, Space.S4));
         }
 

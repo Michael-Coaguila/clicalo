@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.General;
@@ -22,13 +23,23 @@ public sealed class SystemSectionView : Border
 {
     private readonly SystemSectionViewModel _viewModel;
     private readonly ContentControl _content = new() { Focusable = false };
+    private readonly SpokenLines _lines;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
-    public SystemSectionView(SystemSectionViewModel viewModel)
+    /// <param name="say">
+    /// How its window says the lines this view draws again on every change (ACC-001): <see cref="LiveAnnouncer.Say"/> of
+    /// the window.
+    /// </param>
+    public SystemSectionView(
+        SystemSectionViewModel viewModel,
+        Action<string, AnnouncementUrgency> say
+    )
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(say);
         _viewModel = viewModel;
+        _lines = new SpokenLines(say);
         _content.Margin = new Thickness(Space.S6);
         Child = new ThemedScrollViewer { Content = _content };
         viewModel.PropertyChanged += OnChanged;
@@ -69,6 +80,9 @@ public sealed class SystemSectionView : Border
             SettingsUi.PageHeader(title, subtitle),
             Ui.Column(Space.S4, Tabs(screen), body)
         );
+
+        // ACC-001: the state of the updates (SIS-001) is drawn again with its tab, so the window says each new one.
+        _lines.Show("update", screen.Tab == SystemTab.Updates ? screen.Updates.Card.Title : null);
     }
 
     /// <summary>

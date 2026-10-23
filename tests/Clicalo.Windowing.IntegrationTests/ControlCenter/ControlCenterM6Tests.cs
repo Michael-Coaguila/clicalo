@@ -14,6 +14,7 @@ using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.Editor;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Workspace;
 using Clicalo.Windowing.IntegrationTests.Theming;
@@ -33,6 +34,7 @@ public sealed class ControlCenterM6Tests
     [Fact]
     [Trait("Req", "EDI-010")]
     [Trait("Req", "BIE-005")]
+    [Trait("Req", "ACC-001")]
     public void Recording_with_the_keyboard_takes_the_keys_the_window_receives_in_press_order()
     {
         var world = new ControlCenterTestWorld();
@@ -44,6 +46,7 @@ public sealed class ControlCenterM6Tests
             viewModel =>
             {
                 var editor = viewModel.Shortcuts.Editor;
+                var view = new ShortcutEditorView(editor, static (_, _) => { });
                 var combo = editor.Model!.Combo.ShouldNotBeNull();
                 combo.RecordText.ShouldBe("Grabar con teclado");
                 combo.RecordHint.ShouldBe("Opcional, si alguien tiene un teclado a mano.");
@@ -56,6 +59,9 @@ public sealed class ControlCenterM6Tests
                 combo = editor.Model!.Combo.ShouldNotBeNull();
                 combo.Recording.ShouldBe("Pulsa la combinación en tu teclado…");
                 combo.RecordText.ShouldBe("Cancelar");
+                // ACC-001: the line that says the window listens lives across the draws of the box and is read out.
+                view.RecordingAnnouncer.LastText.ShouldBe("Pulsa la combinación en tu teclado…");
+                view.RecordingAnnouncer.Announcements.ShouldBe(1);
 
                 // Modifiers alone do not end it; the first other key does, with the modifiers held and their side.
                 editor.RecordKeyDown(RecordedKeys.IdOf(Key.RightShift));
@@ -93,12 +99,14 @@ public sealed class ControlCenterM6Tests
                 _ = world.Store.Dispatch(new SetSetting(SettingPaths.NoKeyboardUser, true));
                 WpfThread.DrainPendingWork();
                 editor.Model!.Combo!.RecordText.ShouldBeNull();
+                view.Detach();
             }
         );
     }
 
     [Fact]
     [Trait("Req", "EDI-007")]
+    [Trait("Req", "ACC-001")]
     public void The_warning_of_a_blocked_combination_offers_its_alternative()
     {
         var world = new ControlCenterTestWorld();
@@ -108,12 +116,28 @@ public sealed class ControlCenterM6Tests
             viewModel =>
             {
                 var editor = viewModel.Shortcuts.Editor;
+                var view = new ShortcutEditorView(editor, static (_, _) => { });
                 world.Shortcuts.RecordChord(KeyChord.FromKeys(KeyIds.Win, KeyIds.L));
                 WpfThread.DrainPendingWork();
                 var tap = editor.Model!.Combo.ShouldNotBeNull();
                 tap.Warning.ShouldBe(WarningTone.Danger);
                 tap.WarningText.ShouldNotBeNull()
                     .ShouldContain("En su lugar, al tocar el botón Clícalo bloquea el equipo");
+
+                // ACC-001: the warning is one text that lives across the draws of its box, an assertive live region
+                // that UI Automation sees (the card around it is a Border, which it never sees).
+                var warning = view.WarningAnnouncer;
+                warning.LastText.ShouldBe(tap.WarningText);
+                warning.LastUrgency.ShouldBe(AnnouncementUrgency.Assertive);
+                warning.Announcements.ShouldBe(1);
+                System
+                    .Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(
+                        warning.Region
+                    )
+                    .ShouldNotBeNull();
+                AutomationProperties
+                    .GetLiveSetting(warning.Region)
+                    .ShouldBe(AutomationLiveSetting.Assertive);
 
                 // A Hold of the same keys has no alternative: the button does nothing.
                 world.Shortcuts.Select(Talk);
@@ -122,6 +146,9 @@ public sealed class ControlCenterM6Tests
                 var hold = editor.Model!.Combo.ShouldNotBeNull();
                 hold.Warning.ShouldBe(WarningTone.Danger);
                 hold.WarningText.ShouldNotBeNull().ShouldEndWith("El botón no hará nada.");
+                warning.LastText.ShouldBe(hold.WarningText);
+                warning.Announcements.ShouldBe(2, "a new warning is read out once");
+                view.Detach();
             }
         );
     }
@@ -171,6 +198,7 @@ public sealed class ControlCenterM6Tests
 
     [Fact]
     [Trait("Req", "EDI-014")]
+    [Trait("Req", "ACC-001")]
     public void While_the_installed_programs_are_read_the_first_time_the_card_says_so()
     {
         var world = new ControlCenterTestWorld();
@@ -185,7 +213,7 @@ public sealed class ControlCenterM6Tests
             viewModel =>
             {
                 var editor = viewModel.Shortcuts.Editor;
-                var view = new ShortcutEditorView(editor);
+                var view = new ShortcutEditorView(editor, static (_, _) => { });
                 editor.SetKind(ActionKind.App);
                 WpfThread.DrainPendingWork();
                 WpfThread.DrainPendingWork();
@@ -195,6 +223,9 @@ public sealed class ControlCenterM6Tests
                 target.Programs.ShouldBeEmpty();
                 view.Programs.Note.ShouldBe("Leyendo los programas instalados…");
                 view.Programs.Buttons.ShouldBeEmpty();
+                // ACC-001: the line is a live region that keeps its element, so it is read out when it appears.
+                view.Programs.NoteAnnouncer.LastText.ShouldBe("Leyendo los programas instalados…");
+                view.Programs.NoteAnnouncer.Announcements.ShouldBe(1);
 
                 reading.SetResult([new InstalledProgram("Calculadora", "calc.exe")]);
                 WpfThread.DrainPendingWork();
@@ -204,6 +235,7 @@ public sealed class ControlCenterM6Tests
                 target.ProgramsLoading.ShouldBeNull();
                 target.Programs.ShouldHaveSingleItem().Name.ShouldBe("Calculadora");
                 view.Programs.Note.ShouldBeEmpty();
+                view.Programs.NoteAnnouncer.Announcements.ShouldBe(1, "silence is never announced");
                 view.Programs.ShownNames.ShouldBe(["Calculadora"]);
                 view.Detach();
             }
@@ -296,7 +328,7 @@ public sealed class ControlCenterM6Tests
             viewModel =>
             {
                 var editor = viewModel.Shortcuts.Editor;
-                var view = new ShortcutEditorView(editor);
+                var view = new ShortcutEditorView(editor, static (_, _) => { });
                 editor.SetKind(ActionKind.App);
                 WpfThread.DrainPendingWork();
                 WpfThread.DrainPendingWork();
@@ -336,6 +368,7 @@ public sealed class ControlCenterM6Tests
 
     [Fact]
     [Trait("Req", "PRB-004")]
+    [Trait("Req", "ACC-001")]
     public void A_shortcut_that_asks_for_confirmation_is_confirmed_before_it_is_tried()
     {
         var world = new ControlCenterTestWorld();
@@ -351,7 +384,7 @@ public sealed class ControlCenterM6Tests
         Run(
             services,
             world,
-            viewModel =>
+            (viewModel, window) =>
             {
                 var editor = viewModel.Shortcuts.Editor;
                 world.Shortcuts.SetConfirm(true);
@@ -369,11 +402,22 @@ public sealed class ControlCenterM6Tests
                 test = editor.Model!.Test.ShouldNotBeNull();
                 test.LiveArmed.ShouldBeTrue();
                 test.LiveText.ShouldBe("Toca otra vez para confirmar");
+                // ACC-001: the button is drawn again, so the window says that it waits for the second tap.
+                window.Announcer.LastText.ShouldBe("Toca otra vez para confirmar");
+                var said = window.Announcer.Announcements;
 
                 editor.TryLive();
                 WpfThread.DrainPendingWork();
                 tries.ShouldHaveSingleItem().Id.ShouldBe(Bold);
                 editor.Model!.Test!.Question.ShouldBe("¿Hizo lo esperado en Word?");
+                window.Announcer.LastText.ShouldBe("¿Hizo lo esperado en Word?");
+                window.Announcer.Announcements.ShouldBeGreaterThan(said);
+
+                // Drawn again without a change, nothing is said twice.
+                said = window.Announcer.Announcements;
+                viewModel.Shortcuts.Invalidate();
+                WpfThread.DrainPendingWork();
+                window.Announcer.Announcements.ShouldBe(said);
             }
         );
     }
@@ -381,6 +425,7 @@ public sealed class ControlCenterM6Tests
     [Fact]
     [Trait("Req", "BUR-004")]
     [Trait("Req", "PRB-004")]
+    [Trait("Req", "ACC-001")]
     public void Paused_the_test_card_says_so_and_its_button_resumes_instead_of_trying()
     {
         var world = new ControlCenterTestWorld();
@@ -400,7 +445,7 @@ public sealed class ControlCenterM6Tests
         Run(
             services,
             world,
-            viewModel =>
+            (viewModel, window) =>
             {
                 var editor = viewModel.Shortcuts.Editor;
                 editor.ToggleTest();
@@ -410,6 +455,7 @@ public sealed class ControlCenterM6Tests
                 test.PausedText.ShouldBe(
                     "Clícalo está en pausa y no envía nada. Reanuda para probar."
                 );
+                window.Announcer.LastText.ShouldBe(test.PausedText);
                 test.LiveText.ShouldBe("Reanudar");
                 test.CanLive.ShouldBeTrue();
                 test.LiveArmed.ShouldBeFalse();

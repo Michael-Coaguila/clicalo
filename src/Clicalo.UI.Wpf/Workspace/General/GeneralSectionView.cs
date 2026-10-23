@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter.General;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -56,16 +57,26 @@ public sealed class GeneralSectionView : ContentControl
     private readonly SettingSlider _opacity;
     private readonly SettingSlider _dim;
     private readonly Border _preview = new() { CornerRadius = new CornerRadius(Radii.Small) };
+    private readonly SpokenLines _lines;
     private GeneralScreen? _shown;
     private bool? _narrow;
     private bool? _narrowTop;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
-    public GeneralSectionView(GeneralSectionViewModel viewModel)
+    /// <param name="say">
+    /// How its window says the lines this view draws again on every change (ACC-001): <see cref="LiveAnnouncer.Say"/> of
+    /// the window.
+    /// </param>
+    public GeneralSectionView(
+        GeneralSectionViewModel viewModel,
+        Action<string, AnnouncementUrgency> say
+    )
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(say);
         _viewModel = viewModel;
+        _lines = new SpokenLines(say);
         Focusable = false;
         (_title, _subtitle) = SettingsUi.NewHeader();
         _opacity = new SettingSlider(viewModel.SetOpacityPercent, withDescription: false);
@@ -227,6 +238,14 @@ public sealed class GeneralSectionView : ContentControl
             _ai.Content = screen.Ai is { } ai ? AiGroup(ai) : null;
             _ai.Visibility = screen.Ai is null ? Visibility.Collapsed : Visibility.Visible;
         }
+
+        // ACC-001, REG-04: a button armed by its first tap says it waits for the second. It is drawn again with its
+        // group, so the window says it.
+        _lines.Show("reset", screen.Access.ResetArmed ? screen.Access.ResetTitle : null);
+        _lines.Show(
+            "deleteKey",
+            screen.Ai is { DeleteKeyArmed: true } armed ? armed.DeleteKeyText : null
+        );
     }
 
     // ---- The 2 × 2 grid ------------------------------------------------------------------------------------------

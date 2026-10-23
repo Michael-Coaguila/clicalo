@@ -58,7 +58,7 @@ public sealed class GeneralTouchViewTests
         );
 
         Check(
-            () => new GeneralSectionView(section),
+            () => new GeneralSectionView(section, static (_, _) => { }),
             width,
             3000,
             "general-" + language + "-" + width

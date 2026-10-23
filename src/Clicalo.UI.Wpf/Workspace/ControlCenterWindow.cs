@@ -71,6 +71,7 @@ public sealed class ControlCenterWindow : Window
     private readonly TitleBar _titleBar = new();
     private readonly Grid _grip = Grip();
     private readonly LiveAnnouncer _statusAnnouncer;
+    private readonly LiveAnnouncer _announcer;
     private string? _announced;
     private bool _closing;
 
@@ -83,6 +84,8 @@ public sealed class ControlCenterWindow : Window
         ArgumentNullException.ThrowIfNull(theme);
         _viewModel = viewModel;
         _statusAnnouncer = new LiveAnnouncer(_status.Message);
+        // ACC-001: the single way of the window to say the lines its sections draw again on every change.
+        _announcer = new LiveAnnouncer(this);
         theme.Attach(this);
         Width = DefaultWidth;
         Height = DefaultHeight;
@@ -95,12 +98,20 @@ public sealed class ControlCenterWindow : Window
         ApplyLeastSize();
         Ui.Ink(this, BackgroundProperty, ColorToken.Win);
         Ui.Ink(_root, Border.BackgroundProperty, ColorToken.Win);
-        _shortcuts = new ShortcutsSectionView(viewModel.Shortcuts);
-        _system = viewModel.System is { } system ? new SystemSectionView(system) : null;
+        _shortcuts = new ShortcutsSectionView(
+            viewModel.Shortcuts,
+            (text, urgency) => SayFrom(_shortcuts, text, urgency)
+        );
+        _system = viewModel.System is { } system
+            ? new SystemSectionView(system, (text, urgency) => SayFrom(_system, text, urgency))
+            : null;
         _templates = viewModel.Templates is { } templates
             ? new TemplatesSectionView(templates)
             : null;
-        _general = new GeneralSectionView(viewModel.General);
+        _general = new GeneralSectionView(
+            viewModel.General,
+            (text, urgency) => SayFrom(_general, text, urgency)
+        );
         _touch = new TouchPrecisionView(viewModel.TouchPrecision);
         _about = viewModel.About is { } about ? new AboutSectionView(about) : null;
         // D13: a real Windows window, with minimize, maximize (and Snap) and close, and edges that resize it.
@@ -161,6 +172,12 @@ public sealed class ControlCenterWindow : Window
 
     /// <summary>The window handle, for the foreground lease.</summary>
     public WindowToken Token => new(new WindowInteropHelper(this).EnsureHandle());
+
+    /// <summary>
+    /// What the window said last of the lines its sections draw again on every change (ACC-001): «Probar» and its
+    /// question, a button armed by its first tap, the question of a binding, the state of the updates.
+    /// </summary>
+    public LiveAnnouncer Announcer => _announcer;
 
     /// <summary>Closes it for good (the app is exiting).</summary>
     public void Destroy()
@@ -601,6 +618,18 @@ public sealed class ControlCenterWindow : Window
             {
                 _announced = null;
             }
+        }
+    }
+
+    /// <summary>
+    /// Says <paramref name="text"/>, a line <paramref name="section"/> drew again, while that section is the one on show:
+    /// a section out of view speaks no more than a live region out of the tree would (ACC-001).
+    /// </summary>
+    private void SayFrom(UIElement? section, string text, AnnouncementUrgency urgency)
+    {
+        if (section is not null && ReferenceEquals(_section.Content, section))
+        {
+            _announcer.Say(text, urgency);
         }
     }
 }

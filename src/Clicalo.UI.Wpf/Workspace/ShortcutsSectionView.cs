@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Editor;
@@ -91,14 +92,24 @@ public sealed class ShortcutsSectionView : Grid
     private UIElement? _dragTile;
     private AutoFillGrid? _tiles;
     private Point _pressPoint;
+    private readonly SpokenLines _lines;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
-    public ShortcutsSectionView(ShortcutsSectionViewModel viewModel)
+    /// <param name="say">
+    /// How its window says the lines this view and its editor draw again on every change (ACC-001):
+    /// <see cref="LiveAnnouncer.Say"/> of the window.
+    /// </param>
+    public ShortcutsSectionView(
+        ShortcutsSectionViewModel viewModel,
+        Action<string, AnnouncementUrgency> say
+    )
     {
         ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(say);
         _viewModel = viewModel;
-        _editor = new ShortcutEditorView(viewModel.Editor);
+        _lines = new SpokenLines(say);
+        _editor = new ShortcutEditorView(viewModel.Editor, say);
         _profileName = new TextInput(string.Empty, string.Empty);
         _profileName.Left += (_, _) =>
         {
@@ -460,6 +471,10 @@ public sealed class ShortcutsSectionView : Grid
             _listLayerContent.Content = layer;
             _listLayer.Visibility = layer is null ? Visibility.Collapsed : Visibility.Visible;
         }
+
+        // ACC-001: the question of a binding (ATJ-007) is drawn again with its layer, so the window says it when it
+        // appears.
+        _lines.Show("takeOver", screen.ProfileEdit is null ? screen.Link?.Question : null);
 
         if (
             before is null

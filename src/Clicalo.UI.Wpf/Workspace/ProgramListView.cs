@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Clicalo.Presentation.ControlCenter.Editor;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -25,6 +26,7 @@ public sealed class ProgramListView : StackPanel
     private readonly DockPanel _searchRow;
     private readonly StyledText _label;
     private readonly StyledText _note;
+    private readonly LiveAnnouncer _noteAnnouncer;
     private readonly WrapPanel _choices;
     private readonly ThemedScrollViewer _scroll;
     private readonly List<(ProgramChip Program, OptionButton Button)> _buttons = [];
@@ -57,7 +59,7 @@ public sealed class ProgramListView : StackPanel
         {
             MaxLines = 0,
         };
-        AutomationProperties.SetLiveSetting(_note, AutomationLiveSetting.Polite);
+        _noteAnnouncer = new LiveAnnouncer(_note);
         _choices = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
         _scroll = new ThemedScrollViewer { Content = _choices, MaxHeight = ListHeight };
         Children.Add(_label);
@@ -82,6 +84,9 @@ public sealed class ProgramListView : StackPanel
 
     /// <summary>The line on show: «Leyendo los programas instalados…», «Nada coincide…» or nothing.</summary>
     public string Note => _note.Visibility == Visibility.Visible ? _note.Text : string.Empty;
+
+    /// <summary>What the line announced last, and how (ACC-001).</summary>
+    public LiveAnnouncer NoteAnnouncer => _noteAnnouncer;
 
     /// <summary>Shows <paramref name="target"/>: builds the choices only for another list, then filters and marks.</summary>
     /// <param name="target">The target of the App shortcut.</param>
@@ -118,7 +123,13 @@ public sealed class ProgramListView : StackPanel
         }
 
         var note = target.ProgramsLoading ?? target.ProgramsNoMatch;
-        _note.Text = note ?? string.Empty;
+        if (!string.Equals(_note.Text, note ?? string.Empty, StringComparison.Ordinal))
+        {
+            // ACC-001: the line stays, so «Leyendo los programas instalados…» and «Nada coincide…» are read out when
+            // they appear; going back to nothing is not.
+            _noteAnnouncer.Announce(note ?? string.Empty, AnnouncementUrgency.Polite);
+        }
+
         _note.Visibility = note is null ? Visibility.Collapsed : Visibility.Visible;
         var any = _buttons.Count > 0;
         _searchRow.Visibility = any ? Visibility.Visible : Visibility.Collapsed;

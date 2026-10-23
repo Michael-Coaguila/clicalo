@@ -18,8 +18,10 @@ using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.Templates;
 using Clicalo.TestKit;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Workspace;
+using Clicalo.UI.Wpf.Workspace.Templates;
 using Clicalo.Windowing.IntegrationTests.Theming;
 
 namespace Clicalo.Windowing.IntegrationTests.ControlCenter;
@@ -132,6 +134,7 @@ public sealed class TemplatesSectionTests
 
     [Fact]
     [Trait("Req", "PLA-006")]
+    [Trait("Req", "ACC-001")]
     public void Without_a_key_the_error_card_offers_three_ways_out()
     {
         var setup = new Setup(consent: true);
@@ -141,11 +144,28 @@ public sealed class TemplatesSectionTests
             WpfThread.Invoke(() =>
             {
                 var templates = viewModel.Templates!;
+                viewModel.Select(ControlCenterSection.Templates);
+                WpfThread.DrainPendingWork();
+                var view = Logical(window).OfType<TemplatesSectionView>().ShouldHaveSingleItem();
                 templates.SetQuery("Spotify");
                 _ = templates.GenerateAsync();
                 WpfThread.DrainPendingWork();
                 var error = templates.Screen.Ai.Error.ShouldNotBeNull();
                 error.Title.ShouldBe("Falta tu clave");
+                // ACC-001: the text of the error lives across the rebuilds of its card and is an assertive live region
+                // that UI Automation sees; it says the title and the text at once.
+                var announcer = view.ErrorAnnouncer;
+                announcer.LastText.ShouldBe(error.Title + ". " + error.Text);
+                announcer.LastUrgency.ShouldBe(AnnouncementUrgency.Assertive);
+                announcer.Announcements.ShouldBe(1);
+                System
+                    .Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(
+                        announcer.Region
+                    )
+                    .ShouldNotBeNull();
+                System
+                    .Windows.Automation.AutomationProperties.GetLiveSetting(announcer.Region)
+                    .ShouldBe(System.Windows.Automation.AutomationLiveSetting.Assertive);
                 error
                     .Actions.Select(a => a.Kind)
                     .ShouldBe([
@@ -438,6 +458,18 @@ public sealed class TemplatesSectionTests
         var folder = Path.Combine(RepoPaths.Root, "artifacts", "cc-preview");
         Directory.CreateDirectory(folder);
         File.WriteAllBytes(Path.Combine(folder, name + ".png"), png);
+    }
+
+    private static IEnumerable<DependencyObject> Logical(DependencyObject root)
+    {
+        yield return root;
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            foreach (var node in Logical(child))
+            {
+                yield return node;
+            }
+        }
     }
 
     private static void Close(ControlCenterWindow window, ThemeService theme) =>

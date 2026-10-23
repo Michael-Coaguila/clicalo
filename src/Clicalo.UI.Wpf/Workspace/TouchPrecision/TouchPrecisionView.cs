@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.ControlCenter.TouchPrecision;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -79,6 +80,7 @@ public sealed class TouchPrecisionView : ContentControl
         ColorToken.Muted,
         lines: 2
     );
+    private readonly LiveAnnouncer _messageAnnouncer;
     private readonly ContentControl _reset = new() { Focusable = false };
     private TouchScreen? _shown;
     private bool? _narrow;
@@ -127,7 +129,7 @@ public sealed class TouchPrecisionView : ContentControl
         _zone.MouseMove += OnMove;
         _zone.MouseLeftButtonUp += OnUp;
         _zone.LostMouseCapture += OnLostCapture;
-        AutomationProperties.SetLiveSetting(_message, AutomationLiveSetting.Polite);
+        _messageAnnouncer = new LiveAnnouncer(_message);
         // Two lines are kept for the message: the counters and the button never move under the finger.
         _message.MinHeight = TextStyles.Get(TextStyleToken.BodySmall).LineHeight * 2;
         // The counters share the columns of the targets above them (the same gap of 24), so their edges line up.
@@ -178,6 +180,9 @@ public sealed class TouchPrecisionView : ContentControl
 
     /// <summary>Stops following the view model (the window is closing for good).</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
+
+    /// <summary>What the line of the last touch announced last, and how (ACC-001).</summary>
+    public LiveAnnouncer MessageAnnouncer => _messageAnnouncer;
 
     /// <summary>A counter of the zone: the number in <c>title</c> over its name, on a card with its line.</summary>
     private static Border Counter(StyledText value, StyledText label)
@@ -341,7 +346,16 @@ public sealed class TouchPrecisionView : ContentControl
         _registeredLabel.Text = test.RegisteredLabel;
         _ignored.Text = test.Ignored.ToString(System.Globalization.CultureInfo.CurrentCulture);
         _ignoredLabel.Text = test.IgnoredLabel;
-        _message.Text = test.Message;
+        if (shown is null)
+        {
+            _message.Text = test.Message;
+        }
+        else if (!string.Equals(_message.Text, test.Message, StringComparison.Ordinal))
+        {
+            // ACC-001: the line stays, so the result of a new touch is a change of its live region and is read out.
+            _messageAnnouncer.Announce(test.Message, AnnouncementUrgency.Polite);
+        }
+
         _message.Ink = test.IsWarning ? ColorToken.WarnText : ColorToken.Muted;
         if (!string.Equals(shown?.Test.ResetLabel, test.ResetLabel, StringComparison.Ordinal))
         {

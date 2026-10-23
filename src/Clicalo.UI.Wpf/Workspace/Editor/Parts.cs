@@ -108,6 +108,16 @@ internal static class Parts
         ColorToken iconInk = ColorToken.Muted,
         ColorToken ink = ColorToken.Muted,
         TextStyleToken style = TextStyleToken.BodySmall
+    ) => IconLine(icon, Note(text, ink, style), iconInk);
+
+    /// <summary>An icon of <see cref="IconBox.Small"/> followed by <paramref name="text"/>, a text element of its own.</summary>
+    /// <param name="icon">The icon.</param>
+    /// <param name="text">The text; it must have no parent.</param>
+    /// <param name="iconInk">The color of the icon.</param>
+    public static DockPanel IconLine(
+        string? icon,
+        UIElement text,
+        ColorToken iconInk = ColorToken.Muted
     )
     {
         var line = new DockPanel { LastChildFill = true };
@@ -120,7 +130,7 @@ internal static class Parts
             line.Children.Add(symbol);
         }
 
-        line.Children.Add(Note(text, ink, style));
+        line.Children.Add(text);
         return line;
     }
 

@@ -68,7 +68,14 @@ public sealed class TemplatesSectionView : Grid
         FocusVisualStyle = null,
     };
     private readonly Grid _keyLayers = new();
-    private readonly LiveAnnouncer _announcer;
+
+    // The text of an error of the AI lives across the rebuilds of its card, so it is one live region (ACC-001): the card
+    // is a Border, which UI Automation never sees.
+    private readonly StyledText _errorText = Parts.Note(string.Empty, ColorToken.Text);
+    private readonly LiveAnnouncer _errorAnnouncer;
+
+    // The keys of one row of the preview are open at a time.
+    private readonly ComboLines _rowComboLines = new();
     private TemplatesScreen? _shown;
     private bool _narrow;
     private int? _renaming;
@@ -83,7 +90,8 @@ public sealed class TemplatesSectionView : Grid
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        _announcer = new LiveAnnouncer(this);
+        AutomationProperties.SetLiveSetting(_errorText, AutomationLiveSetting.Assertive);
+        _errorAnnouncer = new LiveAnnouncer(_errorText);
         _query = new TextInput(string.Empty, string.Empty);
         _query.Changed += (_, _) => _viewModel.SetQuery(_query.Text);
         _query.DictateRequested += (_, _) => _viewModel.Dictate();
@@ -179,6 +187,9 @@ public sealed class TemplatesSectionView : Grid
         viewModel.PropertyChanged += OnChanged;
         Render();
     }
+
+    /// <summary>What the text of an error of the AI announced last, and how (ACC-001).</summary>
+    public LiveAnnouncer ErrorAnnouncer => _errorAnnouncer;
 
     /// <summary>
     /// Lays the section out for <paramref name="width"/>, the width beside the rail (CCM-005): the preview beside the
@@ -311,7 +322,8 @@ public sealed class TemplatesSectionView : Grid
             _keyboard.Content = KeyboardLine(screen.Ai.Keyboard);
             if (screen.Ai.Error is { } error && before?.Ai.Error != error)
             {
-                _announcer.Announce(error.Title + ". " + error.Text, AnnouncementUrgency.Assertive);
+                // The card shows the title and the text; the region says both, at once (ACC-001).
+                _errorAnnouncer.Say(error.Title + ". " + error.Text, AnnouncementUrgency.Assertive);
             }
         }
 
@@ -582,7 +594,11 @@ public sealed class TemplatesSectionView : Grid
                 return (UIElement)button;
             })
             .ToList();
-        var body = Divided(
+        Detach(_errorText);
+        _errorText.Text = Parts.Unbroken(model.Text);
+        // The section spaces its parts by their top margin, which the text would otherwise keep from the card before.
+        _errorText.Margin = default;
+        return Divided(
             Parts.Section(
                 null,
                 Parts.IconLine(
@@ -592,13 +608,10 @@ public sealed class TemplatesSectionView : Grid
                     ColorToken.Text,
                     TextStyleToken.Label
                 ),
-                Parts.Note(model.Text, ColorToken.Text),
+                _errorText,
                 Ui.Columns(Math.Max(1, buttons.Count), Space.S2, buttons)
             )
         );
-        AutomationProperties.SetLiveSetting(body, AutomationLiveSetting.Assertive);
-        AutomationProperties.SetName(body, model.Title);
-        return body;
     }
 
     /// <summary>The keyboard the shortcuts are made for (PLA-013): the row of <see cref="KeyboardChooser"/>.</summary>
@@ -1185,7 +1198,9 @@ public sealed class TemplatesSectionView : Grid
         if (row.Combo is { } combo)
         {
             _keysOpen = row.Index;
-            column.Children.Add(Spaced(ComboView.Build(combo, _viewModel.RowKeys), Space.S3));
+            column.Children.Add(
+                Spaced(ComboView.Build(combo, _viewModel.RowKeys, _rowComboLines), Space.S3)
+            );
             if (_keysShown != row.Index)
             {
                 // Only when the keys open: the row and its keys come into view in the narrow preview column.

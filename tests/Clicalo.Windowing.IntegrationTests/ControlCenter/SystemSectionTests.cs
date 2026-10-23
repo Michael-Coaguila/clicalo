@@ -410,7 +410,10 @@ public sealed class SystemSectionTests
         WpfThread.Invoke(() =>
         {
             var viewModel = new SystemSectionViewModel(world.Services, world.Services.System!);
-            var view = new Clicalo.UI.Wpf.Workspace.SystemSection.SystemSectionView(viewModel);
+            var view = new Clicalo.UI.Wpf.Workspace.SystemSection.SystemSectionView(
+                viewModel,
+                static (_, _) => { }
+            );
             view.Measure(new Size(1000, 900));
             view.Arrange(new Rect(0, 0, 1000, 900));
             view.UpdateLayout();
