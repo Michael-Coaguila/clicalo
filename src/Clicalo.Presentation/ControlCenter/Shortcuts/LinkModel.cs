@@ -16,6 +16,7 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <param name="Question">[processTaken] while it waits for an answer.</param>
 /// <param name="YesText">The answer that moves the process.</param>
 /// <param name="NoText">[cancel].</param>
+/// <param name="DoneText">[done]: closes the options, the touch way out of their layer besides the action above.</param>
 public sealed record LinkModel(
     LinkState State,
     string Icon,
@@ -29,5 +30,6 @@ public sealed record LinkModel(
     string NoneText,
     string? Question,
     string YesText,
-    string NoText
+    string NoText,
+    string DoneText
 );

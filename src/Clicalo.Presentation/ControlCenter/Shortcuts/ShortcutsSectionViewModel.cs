@@ -292,6 +292,16 @@ public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
         Invalidate();
     }
 
+    /// <summary>[done] at the end of the options of the binding (ATJ-006): closes them, as the action above does.</summary>
+    public void CloseLinkOptions()
+    {
+        if (_linkOpen)
+        {
+            _linkOpen = false;
+            Invalidate();
+        }
+    }
+
     /// <summary>A chip of [linkOpenApps] (ATJ-006).</summary>
     /// <param name="process">The process.</param>
     public void BindApp(string process) => Profiles.Bind(new ProcessName(process));
@@ -622,7 +632,8 @@ public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
             T(L.LinkNone),
             question,
             T(L.TakeOverYes),
-            T(L.Cancel)
+            T(L.Cancel),
+            T(L.Done)
         );
 
         // «Se activa solo con Word»: the open app's name, or the profile's when it follows a single app.

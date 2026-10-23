@@ -51,6 +51,7 @@ public sealed class ShortcutsSectionView : Grid
     private readonly ContentControl _link = new() { Focusable = false };
     private readonly ContentControl _grid = new() { Focusable = false };
     private readonly ContentControl _listLayerContent = new() { Focusable = false };
+    private readonly ContentControl _listLayerFoot = new() { Focusable = false };
     private readonly ContentControl _profilesLayerContent = new() { Focusable = false };
     private readonly ContentControl _editorColumn = new() { Focusable = false };
     private readonly ContentControl _pageHead = new() { Focusable = false };
@@ -59,6 +60,7 @@ public sealed class ShortcutsSectionView : Grid
     private readonly Border _listPane;
     private readonly Grid _editorPane = new();
     private readonly Border _listLayer;
+    private readonly Border _listFoot;
     private readonly Border _profilesLayer;
     private readonly IconPickerView _picker = new();
     private readonly ShortcutEditorView _editor;
@@ -170,13 +172,24 @@ public sealed class ShortcutsSectionView : Grid
         _listScroll.Content = _grid;
         // S2 and the channel of the bar are the S4 of the header and the binding above: the grid lines up with them.
         _listScroll.Padding = new Thickness(Space.S4, Space.S1, Space.S2, Space.S6);
-        _listLayer = Parts.Layer(
+        // The card of the profile and the options of the binding scroll over the grid; their way out («Listo», with
+        // «Compartir» on the card) is a foot of the layer, in view in the smallest window too.
+        var listLayer = new Grid();
+        listLayer.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+        listLayer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        listLayer.Children.Add(
             new ThemedScrollViewer
             {
                 Content = _listLayerContent,
                 Padding = new Thickness(Space.S4, Space.S1, Space.S2, Space.S6),
             }
         );
+        _listFoot = ShortcutEditorView.Foot(_listLayerFoot);
+        SetRow(_listFoot, 1);
+        listLayer.Children.Add(_listFoot);
+        _listLayer = Parts.Layer(listLayer);
         _listLayer.Visibility = Visibility.Collapsed;
         _profilesLayer = Parts.Layer(
             new ThemedScrollViewer
@@ -221,6 +234,11 @@ public sealed class ShortcutsSectionView : Grid
         SetColumn(_picker, 1);
         SetColumnSpan(_picker, 2);
         body.Children.Add(_picker);
+
+        // What a layer covers answers nothing while it is open: not the finger, not Tab, not UI Automation (D21).
+        Parts.Cover(_listLayer, _listScroll);
+        Parts.Cover(_profilesLayer, _link, _listScroll);
+        Parts.Cover(_picker, list, _pageHead, _editorColumn);
 
         viewModel.PropertyChanged += OnChanged;
         viewModel.Editor.PropertyChanged += OnEditorChanged;
@@ -463,12 +481,14 @@ public sealed class ShortcutsSectionView : Grid
 
         if (before?.ProfileEdit != screen.ProfileEdit || before?.Link != screen.Link)
         {
-            UIElement? layer =
+            var (layer, foot) =
                 screen.ProfileEdit is { } edit ? ProfileEdit(edit)
                 : screen.Link is { } open && (open.Expanded || open.Question is not null)
                     ? LinkOptions(open)
-                : null;
+                : (null, null);
             _listLayerContent.Content = layer;
+            _listLayerFoot.Content = foot;
+            _listFoot.Visibility = foot is null ? Visibility.Collapsed : Visibility.Visible;
             _listLayer.Visibility = layer is null ? Visibility.Collapsed : Visibility.Visible;
         }
 
@@ -844,9 +864,9 @@ public sealed class ShortcutsSectionView : Grid
 
     /// <summary>
     /// The options of the binding as a layer over the grid (ATJ-006 to ATJ-008): the question when another profile has
-    /// the app, the open apps, «Detectar» and «Ninguna».
+    /// the app, the open apps, «Detectar» and «Ninguna», and «Listo» in the foot of the layer.
     /// </summary>
-    private StackPanel LinkOptions(LinkModel model)
+    private (UIElement? Body, UIElement? Foot) LinkOptions(LinkModel model)
     {
         var column = new StackPanel();
         if (model.Question is { } question)
@@ -879,7 +899,7 @@ public sealed class ShortcutsSectionView : Grid
 
         if (!model.Expanded)
         {
-            return column;
+            return (column, null);
         }
 
         var apps = new WrapPanel { Margin = new Thickness(0, 0, -Space.S2, -Space.S2) };
@@ -923,16 +943,24 @@ public sealed class ShortcutsSectionView : Grid
         detect.Margin = new Thickness(0, Space.S4, 0, Space.S2);
         column.Children.Add(detect);
         column.Children.Add(none);
-        return column;
+        // The layer ends as the card of the profile does: «Listo», the one primary, closes it under the finger.
+        var done = Parts.Button(
+            model.DoneText,
+            "check",
+            ButtonVariant.Primary,
+            _viewModel.CloseLinkOptions
+        );
+        return (column, done);
     }
 
     // ---- The card of the profile (ATJ-004) ---------------------------------------------------------------------
 
     /// <summary>
-    /// «Editar perfil» as a layer over the grid: its name with 🎤, its icon (which opens the icon picker, D14), «Modo
-    /// compatible», «Listo» (primary), «Compartir» and «Eliminar perfil» (two taps, REG-04).
+    /// «Editar perfil» as a layer over the grid: its name with 🎤, its icon (which opens the icon picker, D14) and «Modo
+    /// compatible»; then, in the foot of the layer, «Compartir», «Eliminar perfil» (two taps, REG-04) and «Listo»
+    /// (primary).
     /// </summary>
-    private StackPanel ProfileEdit(ProfileEditModel model)
+    private (UIElement? Body, UIElement? Foot) ProfileEdit(ProfileEditModel model)
     {
         Detach(_profileName);
         AutomationProperties.SetName(_profileName.Box, model.NameLabel);
@@ -989,11 +1017,11 @@ public sealed class ShortcutsSectionView : Grid
             );
         }
 
+        // DAT-007, PQ-37: the texts travel in clear only when the person chooses so.
         var column = Parts.Section(
             model.NameLabel,
             name,
             compat,
-            Ui.Columns(actions.Count, Space.S2, actions),
             model.ShareTextsText is { } shareTexts
                 ? Parts.Button(
                     shareTexts,
@@ -1001,11 +1029,10 @@ public sealed class ShortcutsSectionView : Grid
                     ButtonVariant.Secondary,
                     () => _ = _viewModel.ShareAsync(withTexts: true)
                 )
-                : null,
-            done
+                : null
         );
-        // DAT-007, PQ-37: the texts travel in clear only when the person chooses so.
-        return column;
+        var foot = Ui.Column(Space.S2, Ui.Columns(actions.Count, Space.S2, actions), done);
+        return (column, foot);
     }
 
     // ---- The grid (ATJ-009) ------------------------------------------------------------------------------------

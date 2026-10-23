@@ -47,6 +47,7 @@ public sealed class ShortcutEditorView : Grid
     private readonly ContentControl _footer = new() { Focusable = false };
     private readonly Border _test;
     private readonly ContentControl _testContent = new() { Focusable = false };
+    private readonly ContentControl _testFoot = new() { Focusable = false };
     private readonly ThemedScrollViewer _scroll;
     private readonly TextInput _name;
     private readonly TextInput _text;
@@ -105,24 +106,28 @@ public sealed class ShortcutEditorView : Grid
             Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
         };
         Children.Add(_scroll);
-        // «Probar» is a layer over the regions (D12): it never pushes them, and the foot stays where the finger is.
-        _test = Parts.Layer(
+        // «Probar» is a layer over the regions (D12): it never pushes them, and the foot stays where the finger is. What
+        // it tries in and «Probar ahora» are a foot of their own, so they are in view in the smallest window too.
+        var test = new Grid();
+        test.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+        test.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        test.Children.Add(
             new ThemedScrollViewer
             {
                 Content = _testContent,
                 Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
             }
         );
+        var testFoot = Foot(_testFoot);
+        SetRow(testFoot, 1);
+        test.Children.Add(testFoot);
+        _test = Parts.Layer(test);
         _test.Visibility = Visibility.Collapsed;
         Children.Add(_test);
-        var foot = new Border
-        {
-            Child = _footer,
-            Padding = new Thickness(Space.S4, Space.S3, Space.S4, Space.S3),
-            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
-        };
-        Ui.Ink(foot, Border.BackgroundProperty, ColorToken.Win);
-        Ui.Ink(foot, Border.BorderBrushProperty, ColorToken.Border);
+        Parts.Cover(_test, _scroll);
+        var foot = Foot(_footer);
         SetRow(foot, 1);
         Children.Add(foot);
 
@@ -144,6 +149,20 @@ public sealed class ShortcutEditorView : Grid
 
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
+
+    /// <summary>A fixed foot: its line above and the surface of the window, so what scrolls never shows through.</summary>
+    internal static Border Foot(UIElement child)
+    {
+        var foot = new Border
+        {
+            Child = child,
+            Padding = new Thickness(Space.S4, Space.S3, Space.S4, Space.S3),
+            BorderThickness = new Thickness(0, Theming.Generated.Stroke.Line, 0, 0),
+        };
+        Ui.Ink(foot, Border.BackgroundProperty, ColorToken.Win);
+        Ui.Ink(foot, Border.BorderBrushProperty, ColorToken.Border);
+        return foot;
+    }
 
     // A region starts collapsed: one whose model is empty from the first render is never shown, so its gap never
     // pushes the regions under it.
@@ -267,7 +286,8 @@ public sealed class ShortcutEditorView : Grid
 
         if (before?.Test != model.Test)
         {
-            _testContent.Content = model.Test is { } test ? Test(test) : null;
+            _testContent.Content = model.Test is { } test ? Test(test, before?.Test) : null;
+            _testFoot.Content = model.Test is { } tryIn ? TestFoot(tryIn) : null;
             _test.Visibility = model.Test is null ? Visibility.Collapsed : Visibility.Visible;
         }
 
@@ -1155,7 +1175,12 @@ public sealed class ShortcutEditorView : Grid
 
     // ---- Probar (PRB-001 to PRB-007) -----------------------------------------------------------------------------
 
-    private StackPanel Test(TestModel model)
+    /// <summary>
+    /// What scrolls in the «Probar» layer: its title with ✕, the sequence with «Mostrar» and what the kind does, the
+    /// phase, how a try works and, after one, the question, the answer or the tips, which come into view as they
+    /// appear.
+    /// </summary>
+    private StackPanel Test(TestModel model, TestModel? before)
     {
         var close = Parts.Button(
             string.Empty,
@@ -1263,62 +1288,7 @@ public sealed class ShortcutEditorView : Grid
             body.Children.Add(Spaced(phaseLine, Space.S3));
         }
 
-        var targets = Parts.Section(model.TargetsLabel);
-        if (model.NoApps is { } noApps)
-        {
-            targets.Children.Add(Spaced(Parts.Note(noApps), Space.S2));
-        }
-        else
-        {
-            var chips = new WrapPanel { Margin = new Thickness(0, Space.S2, -Space.S2, -Space.S2) };
-            foreach (var target in model.Targets)
-            {
-                var chip = new OptionButton
-                {
-                    Kind = OptionKind.Chip,
-                    Content = target.Name,
-                    Symbol = "apps",
-                    IsSelected = target.Selected,
-                    Margin = new Thickness(0, 0, Space.S2, Space.S2),
-                };
-                AutomationProperties.SetName(chip, target.Name);
-                chip.Click += (_, _) => _viewModel.ChooseTarget(target.Process);
-                chips.Children.Add(chip);
-            }
-
-            targets.Children.Add(chips);
-        }
-
-        body.Children.Add(Spaced(targets, Space.S6));
-        if (model.PausedText is { } pausedText)
-        {
-            // BUR-004: paused, «Probar ahora» would send nothing; the card says why and its button resumes.
-            var paused = Parts.IconLine(
-                "pause",
-                pausedText,
-                ColorToken.WarnText,
-                ColorToken.Text,
-                TextStyleToken.Label
-            );
-            body.Children.Add(Spaced(paused, Space.S4));
-        }
-
-        var live = Parts.Button(
-            model.LiveText,
-            model.PausedText is not null ? "play_arrow"
-                : model.LiveArmed ? "verified"
-                : "send",
-            ButtonVariant.Primary,
-            _viewModel.TryLive
-        );
-        if (model.LiveArmed)
-        {
-            AutomationProperties.SetLiveSetting(live, AutomationLiveSetting.Polite);
-        }
-
-        live.IsEnabled = model.CanLive;
-        body.Children.Add(Spaced(live, Space.S4));
-        body.Children.Add(Spaced(Parts.Note(model.How, style: TextStyleToken.Caption), Space.S2));
+        body.Children.Add(Spaced(Parts.Note(model.How, style: TextStyleToken.Caption), Space.S3));
         if (model.Question is { } question)
         {
             var yes = Parts.Button(
@@ -1373,7 +1343,85 @@ public sealed class ShortcutEditorView : Grid
             body.Children.Add(Spaced(new Card { Content = list, Tone = CardTone.Warn }, Space.S4));
         }
 
+        var result =
+            before is not null
+            && (
+                (model.Question is not null && before.Question is null)
+                || (model.Answer is not null && before.Answer is null)
+                || (model.TipsTitle is not null && before.TipsTitle is null)
+            );
+        if (result && body.Children[^1] is FrameworkElement last)
+        {
+            // The outcome of a try appears under the finger that answered, above the foot.
+            last.Loaded += (_, _) => last.BringIntoView();
+        }
+
         return body;
+    }
+
+    /// <summary>
+    /// The foot of the «Probar» layer, fixed under what scrolls: «Probar en» with the open apps, the pause when there
+    /// is one, and «Probar ahora», the one primary.
+    /// </summary>
+    private StackPanel TestFoot(TestModel model)
+    {
+        var targets = Parts.Section(model.TargetsLabel);
+        if (model.NoApps is { } noApps)
+        {
+            targets.Children.Add(Spaced(Parts.Note(noApps), Space.S2));
+        }
+        else
+        {
+            var chips = new WrapPanel { Margin = new Thickness(0, Space.S2, -Space.S2, -Space.S2) };
+            foreach (var target in model.Targets)
+            {
+                var chip = new OptionButton
+                {
+                    Kind = OptionKind.Chip,
+                    Content = target.Name,
+                    Symbol = "apps",
+                    IsSelected = target.Selected,
+                    Margin = new Thickness(0, 0, Space.S2, Space.S2),
+                };
+                AutomationProperties.SetName(chip, target.Name);
+                chip.Click += (_, _) => _viewModel.ChooseTarget(target.Process);
+                chips.Children.Add(chip);
+            }
+
+            targets.Children.Add(chips);
+        }
+
+        var foot = new StackPanel();
+        foot.Children.Add(targets);
+        if (model.PausedText is { } pausedText)
+        {
+            // BUR-004: paused, «Probar ahora» would send nothing; the card says why and its button resumes.
+            var paused = Parts.IconLine(
+                "pause",
+                pausedText,
+                ColorToken.WarnText,
+                ColorToken.Text,
+                TextStyleToken.Label
+            );
+            foot.Children.Add(Spaced(paused, Space.S3));
+        }
+
+        var live = Parts.Button(
+            model.LiveText,
+            model.PausedText is not null ? "play_arrow"
+                : model.LiveArmed ? "verified"
+                : "send",
+            ButtonVariant.Primary,
+            _viewModel.TryLive
+        );
+        if (model.LiveArmed)
+        {
+            AutomationProperties.SetLiveSetting(live, AutomationLiveSetting.Polite);
+        }
+
+        live.IsEnabled = model.CanLive;
+        foot.Children.Add(Spaced(live, Space.S3));
+        return foot;
     }
 
     private static FrameworkElement Spaced(FrameworkElement element, double above)

@@ -184,6 +184,8 @@ public sealed class TemplatesSectionView : Grid
         Children.Add(_preview);
         SetColumnSpan(_picker, 2);
         Children.Add(_picker);
+        // The picker of «Perfil vacío» covers the templates and the preview for every input, not only for the eye.
+        Parts.Cover(_picker, sections, preview);
         viewModel.PropertyChanged += OnChanged;
         Render();
     }

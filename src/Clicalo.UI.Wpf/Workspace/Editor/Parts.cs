@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -207,4 +210,125 @@ internal static class Parts
         Ui.Ink(layer, Border.BackgroundProperty, ColorToken.Win);
         return layer;
     }
+
+    /// <summary>
+    /// Makes <paramref name="layer"/> cover <paramref name="covered"/> for every input, not only for the eye (D21): while
+    /// it is shown, what it covers is hidden (it keeps its place and its scroll), so neither the finger, the Tab key, UI
+    /// Automation nor the numbers of voice access reach it; it comes back when the layer closes. When the keyboard is
+    /// in the window, it goes to the first control of the layer and, when the layer closes, back to the control that
+    /// had it. Several layers can cover the same element: it comes back when the last one closes. Nothing covered may
+    /// hold the layer.
+    /// </summary>
+    /// <param name="layer">The layer.</param>
+    /// <param name="covered">What it covers; none of them may contain the layer.</param>
+    public static void Cover(FrameworkElement layer, params UIElement[] covered)
+    {
+        ArgumentNullException.ThrowIfNull(layer);
+        ArgumentNullException.ThrowIfNull(covered);
+        IInputElement? opener = null;
+        var shown = false;
+        layer.IsVisibleChanged += (_, _) =>
+        {
+            if (layer.IsVisible == shown)
+            {
+                return;
+            }
+
+            shown = layer.IsVisible;
+            var keyboard = Window.GetWindow(layer) is { IsKeyboardFocusWithin: true };
+            // Whether the keyboard is in the layer that closes: only then does it go back to the opener.
+            var inside = Keyboard.FocusedElement is Visual focused && focused.IsDescendantOf(layer);
+            if (shown)
+            {
+                opener = keyboard ? Keyboard.FocusedElement : null;
+            }
+
+            foreach (var element in covered)
+            {
+                var count = (int)element.GetValue(CoveredByProperty) + (shown ? 1 : -1);
+                element.SetValue(CoveredByProperty, Math.Max(0, count));
+                element.Visibility = count > 0 ? Visibility.Hidden : Visibility.Visible;
+            }
+
+            if (!keyboard || (!shown && !inside))
+            {
+                if (!shown)
+                {
+                    opener = null;
+                }
+
+                return;
+            }
+
+            if (shown)
+            {
+                _ = layer.Dispatcher.BeginInvoke(
+                    DispatcherPriority.Input,
+                    () =>
+                    {
+                        if (
+                            layer.IsVisible
+                            && !layer.IsKeyboardFocusWithin
+                            && FirstControl(layer) is { } first
+                        )
+                        {
+                            _ = Keyboard.Focus(first);
+                        }
+                    }
+                );
+                return;
+            }
+
+            var back = opener;
+            opener = null;
+            _ = layer.Dispatcher.BeginInvoke(
+                DispatcherPriority.Input,
+                () =>
+                {
+                    if (back is UIElement { IsVisible: true, Focusable: true } target)
+                    {
+                        _ = Keyboard.Focus(target);
+                    }
+                }
+            );
+        };
+    }
+
+    /// <summary>The first control under <paramref name="root"/> that takes the keyboard, in the order it is drawn.</summary>
+    private static UIElement? FirstControl(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is UIElement { IsVisible: false })
+            {
+                continue;
+            }
+
+            // A scroll area is where the controls are, not one of them.
+            if (
+                child is Control { Focusable: true, IsEnabled: true, IsTabStop: true } control
+                && child is not ScrollViewer
+            )
+            {
+                return control;
+            }
+
+            if (FirstControl(child) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>How many shown layers cover an element (<see cref="Cover"/>).</summary>
+    private static readonly DependencyProperty CoveredByProperty =
+        DependencyProperty.RegisterAttached(
+            "CoveredBy",
+            typeof(int),
+            typeof(Parts),
+            new PropertyMetadata(0)
+        );
 }

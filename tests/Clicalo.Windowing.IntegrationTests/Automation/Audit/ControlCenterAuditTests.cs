@@ -298,6 +298,70 @@ public sealed class ControlCenterAuditTests
             Documents.GetValueOrDefault(state)
         );
 
+    /// <summary>The states with a layer over the content, at the default size and in the smallest window.</summary>
+    public static TheoryData<string, string, double, double> LayerCases()
+    {
+        var cases = new TheoryData<string, string, double, double>();
+        foreach (
+            var state in new[]
+            {
+                "shortcuts-profile-edit",
+                "shortcuts-link",
+                "shortcuts-icons",
+                "shortcuts-profile-icons",
+                "shortcuts-test",
+                "templates-icons",
+            }
+        )
+        {
+            cases.Add(
+                state,
+                "es",
+                ControlCenterWindow.DefaultWidth,
+                ControlCenterWindow.DefaultHeight
+            );
+            cases.Add(state, "en", 760, 520);
+        }
+
+        cases.Add("shortcuts-profiles", "en", 760, 520);
+        return cases;
+    }
+
+    [Theory]
+    [MemberData(nameof(LayerCases))]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "CCM-005")]
+    public void What_a_layer_covers_answers_neither_the_finger_nor_UI_Automation(
+        string state,
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+                else if (string.Equals(state, "shortcuts-profiles", StringComparison.Ordinal))
+                {
+                    window.ShowShortcutProfiles();
+                }
+
+                host.LayOut();
+                var violations = Rules.Uia011CoveredTargetRule.Verify(host.Root);
+                violations.ShouldBeEmpty(string.Join(Environment.NewLine, violations));
+            }
+        );
+
     [Fact]
     [Trait("Req", "ACC-001")]
     [Trait("Req", "CCM-002")]

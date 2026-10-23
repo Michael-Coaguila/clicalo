@@ -257,6 +257,27 @@ public sealed class ShortcutsProjectionTests
     }
 
     [Fact]
+    [Trait("Req", "ATJ-006")]
+    public void The_options_of_the_binding_end_with_Done_which_closes_them()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                section.LinkAction();
+                section.Refresh();
+                var link = section.Screen.Link.ShouldNotBeNull();
+                link.Expanded.ShouldBeTrue();
+                link.DoneText.ShouldBe("Listo");
+
+                section.CloseLinkOptions();
+                section.Refresh();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeFalse();
+            }
+        );
+    }
+
+    [Fact]
     [Trait("Req", "REP-004")]
     public void A_repeated_combination_shows_its_card_folded_with_how_many_places_repeat_it()
     {
