@@ -163,7 +163,10 @@ internal static class AppServices
         // The Shell thread and the paste reach outside Clícalo; with --no-input nothing does (EJE-011, EJE-008).
         services.AddSingleton(_ => new ShellExecutor(Environment.IsPrivilegedProcess));
         services.AddSingleton(sp => new ClipboardPaster(sp.Get<SysEventsThread>(), sp.Time()));
-        services.AddSingleton(sp => new PointerPositionTracker(sp.Get<SysEventsThread>()));
+        services.AddSingleton(sp => new PointerPositionTracker(
+            sp.Get<SysEventsThread>(),
+            sp.Time()
+        ));
         // CUA-014: Esc and a touch on another app cancel the menu of a shortcut of the Tab view.
         services.AddSingleton(sp => new MenuCancelSignals(
             sp.Get<SysEventsThread>(),

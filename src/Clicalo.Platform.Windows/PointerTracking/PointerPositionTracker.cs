@@ -21,6 +21,11 @@ namespace Clicalo.Platform.Windows.PointerTracking;
 /// Clícalo's. It is not a keyboard or mouse hook and never delays anybody's cursor. <see cref="MovedOutside"/> tells
 /// when that point changes: a finger touched another app (CUA-014).
 /// </summary>
+/// <remarks>
+/// A finger jumps onto the panel, but a touchpad or a mouse slides into it, so the last point outside is the border it
+/// crossed, not where the person works: the place that counts is where the cursor last rested outside Clícalo
+/// (<see cref="CursorTrail"/>, D21).
+/// </remarks>
 public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
 {
     private const int CursorObject = -9; // OBJID_CURSOR
@@ -28,18 +33,21 @@ public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
     private static readonly ConcurrentDictionary<nint, PointerPositionTracker> Hooks = new();
 
     private readonly SysEventsThread _thread;
+    private readonly TimeProvider _time;
     private readonly uint _ownProcessId = (uint)Environment.ProcessId;
-    private StrongBox<PhysicalPoint>? _last;
+    private StrongBox<CursorTrail> _trail = new(default);
     private HWINEVENTHOOK _hook;
     private int _samplePending;
     private int _disposed;
 
     /// <summary>Installs the hook on <paramref name="thread"/> and takes a first sample.</summary>
     /// <param name="thread">The SysEvents thread.</param>
-    public PointerPositionTracker(SysEventsThread thread)
+    /// <param name="time">The clock that tells whether the cursor rested somewhere.</param>
+    public PointerPositionTracker(SysEventsThread thread, TimeProvider? time = null)
     {
         ArgumentNullException.ThrowIfNull(thread);
         _thread = thread;
+        _time = time ?? TimeProvider.System;
         _thread.Post(Install);
     }
 
@@ -54,16 +62,16 @@ public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
     {
         get
         {
-            if (Volatile.Read(ref _last) is not { } last)
+            if (Volatile.Read(ref _trail).Value.Place is not { } place)
             {
                 return null;
             }
 
             // A monitor that is gone (unplugged since) makes the point useless: the action falls back to the window.
-            var point = new System.Drawing.Point(last.Value.X, last.Value.Y);
+            var point = new System.Drawing.Point(place.X, place.Y);
             return PInvoke.MonitorFromPoint(point, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONULL).IsNull
                 ? null
-                : last.Value;
+                : place;
         }
     }
 
@@ -172,6 +180,7 @@ public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
             return;
         }
 
+        var now = _time.GetTimestamp();
         var under = PInvoke.WindowFromPoint(point);
         if (!under.IsNull)
         {
@@ -180,14 +189,15 @@ public sealed class PointerPositionTracker : IPointerPositionSource, IDisposable
             _ = PInvoke.GetWindowThreadProcessId(root.IsNull ? under : root, &processId);
             if (processId == _ownProcessId)
             {
+                Volatile.Write(ref _trail, new(_trail.Value.OnClicalo(now, _time)));
                 return;
             }
         }
 
         var next = new PhysicalPoint(point.X, point.Y);
-        var previous = Volatile.Read(ref _last);
-        Volatile.Write(ref _last, new StrongBox<PhysicalPoint>(next));
-        if (previous is not null && previous.Value != next)
+        var previous = _trail.Value.Last;
+        Volatile.Write(ref _trail, new(_trail.Value.Outside(next, now, _time)));
+        if (previous is { } before && before != next)
         {
             MovedOutside?.Invoke(this, EventArgs.Empty);
         }

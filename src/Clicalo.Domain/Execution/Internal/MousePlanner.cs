@@ -262,11 +262,37 @@ internal static class MousePlanner
             : interval;
     }
 
+    /// <summary>
+    /// EJE-009: the drop of a latched drag goes where the person points now. A finger on the tile took the cursor to the
+    /// panel, so a bare button up dropped the item on Clícalo (D21 review); the move comes before the release, and only
+    /// where a press could go (INV-6: the current epoch, never an elevated target). The release itself is never held
+    /// back (INV-8).
+    /// </summary>
+    /// <param name="step">The step being planned.</param>
+    /// <param name="origin">The activation that drops it.</param>
+    public static void MoveForDrop(EngineStep step, ExecutionOrigin origin)
+    {
+        if (!step.CanPress(origin))
+        {
+            return;
+        }
+
+        step.Emit(
+            new EngineEffect.MouseAction(
+                MouseOp.Drag,
+                ScrollSpeed.Normal,
+                origin.ExternalPointer,
+                origin.Epoch
+            )
+        );
+    }
+
     private static void Drag(EngineStep step, ExecutionOrigin origin, Shortcut shortcut)
     {
         var holder = HolderId.ForToggle(shortcut.Id);
         if (step.State.Keys.Items.ContainsKey(holder))
         {
+            MoveForDrop(step, origin);
             KeyPlanner.Unlatch(step, holder);
             return;
         }

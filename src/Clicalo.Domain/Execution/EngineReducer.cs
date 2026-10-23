@@ -211,6 +211,14 @@ public static class EngineReducer
             if (KeyPlanner.IsHeld(step, toggle))
             {
                 Disarm(step);
+                if (
+                    outcome.Decision is ActivationDecision.Execute
+                    && shortcut.Action is MouseAction { Op: MouseOp.Drag }
+                )
+                {
+                    MousePlanner.MoveForDrop(step, origin);
+                }
+
                 KeyPlanner.Unlatch(step, toggle);
                 return;
             }

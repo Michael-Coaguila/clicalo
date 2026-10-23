@@ -184,6 +184,11 @@
     "Mouse": {
       "description": "Mouse actions.",
       "entries": {
+        "PointerRest": {
+          "duration": "300ms",
+          "description": "How long the cursor rests outside Clícalo for that place to count as where the person works: a touchpad or a mouse slides into the panel, so the last point before it is the border it crossed (D21).",
+          "req": ["EJE-009"]
+        },
         "ScrollRepeatSlow": {
           "duration": "60ms",
           "description": "Wheel repeat interval while a slow scroll is held.",
