@@ -1,5 +1,9 @@
 using Clicalo.Application.Engine;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Execution;
+using Clicalo.Domain.Keys;
+using Clicalo.Domain.Library;
+using Clicalo.Domain.Primitives;
 
 namespace Clicalo.Application.Tests.Engine;
 
@@ -28,6 +32,68 @@ public sealed class EngineMailboxTests
         third.ShouldBe(timer);
         mailbox.TryTake(out _).ShouldBeFalse();
     }
+
+    [Fact]
+    [Trait("Req", "REG-03")]
+    [Trait("Req", "EJE-004")]
+    public void The_end_of_a_contact_never_overtakes_the_start_of_its_own_hold()
+    {
+        using var mailbox = new EngineMailbox();
+        var start = Start(contact: 7);
+        var otherLift = new EngineEvent.ContactEnded(8, default, false);
+        var lift = new EngineEvent.ContactEnded(7, default, false);
+
+        // The engine was busy: the start of the hold and its end both wait. The end goes after the start, so the start
+        // is released instead of pressing a key that nothing releases; the end of another contact is not delayed.
+        mailbox.Post(start);
+        mailbox.Post(otherLift);
+        mailbox.Post(lift);
+
+        mailbox.TryTake(out var first).ShouldBeTrue();
+        first.ShouldBe(otherLift);
+        mailbox.TryTake(out var second).ShouldBeTrue();
+        second.ShouldBe(start);
+        mailbox.TryTake(out var third).ShouldBeTrue();
+        third.ShouldBe(lift);
+
+        // Once the start was taken, an end goes first again.
+        mailbox.Post(new EngineEvent.TimerFired(new TimerKey("macro")));
+        mailbox.Post(lift);
+        mailbox.TryTake(out var next).ShouldBeTrue();
+        next.ShouldBe(lift);
+    }
+
+    private static EngineEvent.Activation Start(int contact) =>
+        new(
+            new ActivationRequest(
+                ActivationPhase.ContactStarted,
+                ActivationOrigin.Touch,
+                contact,
+                null,
+                DateTimeOffset.UnixEpoch
+            ),
+            new Shortcut(
+                new ShortcutId("ptt"),
+                LocalizedText.Same("ptt", LangCode.Es, LangCode.En),
+                new IconRef("keyboard"),
+                AutoIcon: false,
+                new CategoryId("edit"),
+                new HoldAction(KeyChord.Empty),
+                new ShortcutOptions(
+                    Confirm: false,
+                    new HoldLimit.InheritGlobal(),
+                    IsPrivate: false
+                ),
+                Origin: null,
+                PinnedFrom: null
+            ),
+            OriginProfile: null,
+            InjectionMode.ScanCode,
+            LastExternalPointer: null,
+            EditMode: false,
+            Epoch: 0,
+            RequiredForeground: null
+        );
 
     [Fact]
     public void Waiting_returns_at_once_when_an_event_is_queued_and_after_the_timeout_otherwise()

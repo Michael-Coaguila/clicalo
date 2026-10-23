@@ -33,10 +33,28 @@ public sealed class EngineMailbox : IDisposable
             return false;
         }
 
-        (engineEvent.Lane == EngineLane.Priority ? _priority : _normal).Enqueue(engineEvent);
+        var lane = engineEvent.Lane == EngineLane.Priority ? _priority : _normal;
+
+        // The end of a contact never overtakes its own start (REG-03): when the activation that contact started still
+        // waits in the normal lane, the end goes after it there; ahead of it, it would release nothing and the start
+        // would then press a key that no end releases. The UI thread posts both, in order, so the check cannot race
+        // with that start; if the engine takes it meanwhile, the end only waits behind the normal events.
+        if (engineEvent is EngineEvent.ContactEnded ended && StartWaits(ended.ContactId))
+        {
+            lane = _normal;
+        }
+
+        lane.Enqueue(engineEvent);
         Wake();
         return true;
     }
+
+    private bool StartWaits(int contactId) =>
+        _normal.Any(waiting =>
+            waiting is EngineEvent.Activation activation
+            && activation.Request.Phase == ActivationPhase.ContactStarted
+            && activation.Request.ContactId == contactId
+        );
 
     /// <summary>Takes the next event: the oldest priority event, or else the oldest normal one.</summary>
     /// <param name="engineEvent">The event.</param>
