@@ -32,13 +32,14 @@ internal static class PanelChrome
 
     /// <summary>
     /// The look of a key of the sticky row (FIJ-005): a card of <see cref="Radii.Medium"/> with its line; once (On), the
-    /// single look of «elegido»; locked (Indeterminate), the accent fill.
+    /// single look of «elegido»; locked (Indeterminate), the accent fill; under a mouse or a touchpad, <c>cardHi</c>.
     /// </summary>
     public static ControlTemplate Key { get; } = CreateKey();
 
     /// <summary>
     /// The look of a segment inside a track (the row «Qué ver»): no fill at rest and, while its <c>ToggleState</c> is On,
-    /// the single look of «elegido» (wash and the ring of 2 inside), whatever its UI Automation pattern.
+    /// the single look of «elegido» (wash and the ring of 2 inside), whatever its UI Automation pattern; under a mouse or
+    /// a touchpad, <c>cardHi</c>.
     /// </summary>
     public static ControlTemplate Segment { get; } = CreateSegment();
 
@@ -239,6 +240,7 @@ internal static class PanelChrome
         layers.AppendChild(content);
 
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = box };
+        template.Triggers.Add(Hover());
         var once = new Trigger
         {
             Property = ShortcutTile.ToggleStateProperty,
@@ -301,6 +303,7 @@ internal static class PanelChrome
         layers.AppendChild(content);
 
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = box };
+        template.Triggers.Add(Hover());
         var chosen = new Trigger
         {
             Property = ShortcutTile.ToggleStateProperty,
@@ -382,6 +385,17 @@ internal static class PanelChrome
         var template = new ControlTemplate(typeof(ShortcutTile)) { VisualTree = box };
         template.Seal();
         return template;
+    }
+
+    /// <summary>
+    /// The fill under a mouse or a touchpad, as on the tiles and the controls around them: <c>cardHi</c>, never another
+    /// line, size or shape. It comes before the states, so «elegido» and locked still paint the control under the pointer.
+    /// </summary>
+    private static Trigger Hover()
+    {
+        var over = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        over.Setters.Add(Brush(Border.BackgroundProperty, ColorToken.CardHi, FillPart));
+        return over;
     }
 
     private static Setter Brush(DependencyProperty property, ColorToken token, string part) =>

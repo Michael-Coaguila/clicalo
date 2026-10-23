@@ -195,6 +195,59 @@ public sealed class ShortcutTileLookTests
         });
 
     [Fact]
+    [Trait("Req", "CUA-009")]
+    public void Under_the_pointer_a_card_takes_card_hi_and_a_tool_the_wash_below_every_state() =>
+        WpfThread.Invoke(() =>
+        {
+            var template = ShortcutTileTemplate.Default;
+            var hover = PointerHover.Of(template);
+            var chrome = ShortcutTileTemplate.ChromePart;
+
+            hover.Count.ShouldBe(2);
+            PointerHover
+                .Paints(hover.OfType<Trigger>().Single())
+                .ShouldBe(
+                    [(chrome, Border.BackgroundProperty, ColorToken.CardHi)],
+                    "a card takes a step of fill: never another line, size or shape"
+                );
+            var tool = hover.OfType<MultiTrigger>().Single();
+            tool.Conditions.ShouldContain(static condition =>
+                condition.Property == ShortcutTile.ShowsCardProperty
+                && Equals(condition.Value, false)
+            );
+            PointerHover
+                .Paints(tool)
+                .ShouldBe(
+                    [(chrome, Border.BackgroundProperty, ColorToken.AccentWash)],
+                    "⏶ ⏷ answer as a tertiary button; a card never takes the wash of the flash"
+                );
+            template
+                .Triggers.IndexOf(tool)
+                .ShouldBeGreaterThan(template.Triggers.IndexOf(hover.OfType<Trigger>().Single()));
+            var withoutCard = template
+                .Triggers.OfType<Trigger>()
+                .First(static trigger => trigger.Property == ShortcutTile.ShowsCardProperty);
+            template
+                .Triggers.IndexOf(hover[0])
+                .ShouldBeGreaterThan(
+                    template.Triggers.IndexOf(withoutCard),
+                    "a tile without its card is transparent at rest, not under the pointer"
+                );
+            foreach (
+                var state in new[]
+                {
+                    ShortcutTile.IsFlashingProperty,
+                    ShortcutTile.ToggleStateProperty,
+                    ShortcutTile.IsArmedProperty,
+                    ShortcutTile.IsHeldProperty,
+                }
+            )
+            {
+                PointerHover.StateWins(template, state).ShouldBeTrue(state.Name);
+            }
+        });
+
+    [Fact]
     [Trait("Req", "ACC-009")]
     public void The_voice_number_is_dark_text_on_warn() =>
         WpfThread.Invoke(() =>

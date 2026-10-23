@@ -25,7 +25,8 @@ namespace Clicalo.UI.Wpf.Automation;
 /// States (CUA-009), all inside the same box: Alternar on, the single look of «elegido» (accent wash, a ring of
 /// <see cref="Stroke.Selected"/> inside and the icon and the type filled in <c>accentInk</c>); held, the same at scale
 /// 0.95; armed, <c>warnWash</c> and a ring, the type and the state in <c>warnText</c>; flash, accent wash; sticky key locked (indeterminate), <c>accent</c> fill; menu open
-/// (expanded), the accent ring. The template is sealed, so one instance serves every UI thread.
+/// (expanded), the accent ring; under a mouse or a touchpad, <c>cardHi</c> (the wash of a tertiary button on a tool of
+/// the bar), below every other state. The template is sealed, so one instance serves every UI thread.
 /// </remarks>
 public static class ShortcutTileTemplate
 {
@@ -247,6 +248,11 @@ public static class ShortcutTileTemplate
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart),
             Brush(IconPart, SymbolIcon.ForegroundProperty, ColorToken.Text)
         );
+        foreach (var hover in Hover())
+        {
+            yield return hover;
+        }
+
         yield return Collapse(ShortcutTile.VoiceNumberProperty, null, VoiceNumberPart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, string.Empty, StatePart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, null, StatePart);
@@ -314,6 +320,29 @@ public static class ShortcutTileTemplate
             true,
             new Setter(UIElement.VisibilityProperty, Visibility.Visible, RingPart)
         );
+    }
+
+    /// <summary>
+    /// Under a mouse or a touchpad the tile answers as the controls around it, with a step of fill and never another
+    /// line, size or shape (the <c>.tile:hover</c> of mockup C): a card takes <c>cardHi</c> and a tool of the bar
+    /// (⏶ ⏷, without its card) the wash of a tertiary button. Never the wash on a card, which would hide the flash of
+    /// «enviado». They come before the states, so held, chosen, armed and flashing still paint the tile under the pointer.
+    /// </summary>
+    private static TriggerBase[] Hover()
+    {
+        var tool = new MultiTrigger();
+        tool.Conditions.Add(new System.Windows.Condition(UIElement.IsMouseOverProperty, true));
+        tool.Conditions.Add(new System.Windows.Condition(ShortcutTile.ShowsCardProperty, false));
+        tool.Setters.Add(Brush(ChromePart, Border.BackgroundProperty, ColorToken.AccentWash));
+        return
+        [
+            Set(
+                UIElement.IsMouseOverProperty,
+                true,
+                Brush(ChromePart, Border.BackgroundProperty, ColorToken.CardHi)
+            ),
+            tool,
+        ];
     }
 
     /// <summary>The single look of «elegido»: wash, the ring of 2 inside, the icon filled and the type in accent.</summary>
