@@ -97,6 +97,15 @@ public sealed class LaunchSafetyTests
     [InlineData(@"C:\Users\Public\Documents\report.docx", LaunchVerdict.Allowed)]
     [InlineData(@"C:\tools\setup.bat", LaunchVerdict.Interpreter)]
     [InlineData(@"C:\tools\cmd.pdf", LaunchVerdict.Allowed)]
+    [InlineData(@"C:\Windows\System32\cmd.exe", LaunchVerdict.Interpreter)]
+    [InlineData(
+        @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell",
+        LaunchVerdict.Interpreter
+    )]
+    [InlineData(@"C:\Users\Public\Desktop\sitio.url", LaunchVerdict.Interpreter)]
+    [InlineData(@"C:\Users\Public\Downloads\setup.msi", LaunchVerdict.Interpreter)]
+    [InlineData(@"C:\Users\Public\Downloads\ayuda.chm", LaunchVerdict.Interpreter)]
+    [Trait("Req", "LOG-008")]
     public void Documents_open_unless_they_are_scripts(string path, LaunchVerdict expected) =>
         LaunchSafety.Check(Document(path), confirmed: false).ShouldBe(expected);
 

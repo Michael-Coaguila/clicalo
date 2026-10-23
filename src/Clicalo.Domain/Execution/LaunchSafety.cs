@@ -61,6 +61,18 @@ public static class LaunchSafety
         ".inf",
         ".sct",
         ".cpl",
+        // They run code or open any protocol through the shell, and a shortcut never needs them as a document (D20
+        // review): «Web» is http and https only, and a program is opened by its executable.
+        ".url",
+        ".appref-ms",
+        ".application",
+        ".chm",
+        ".jar",
+        ".py",
+        ".pyw",
+        ".msi",
+        ".msp",
+        ".settingcontent-ms",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="request"/> may start.</summary>
@@ -196,7 +208,13 @@ public static class LaunchSafety
             return LaunchVerdict.Interpreter;
         }
 
-        return executable && Interpreters.Contains(stem)
+        // An interpreter is refused as an executable and also when it comes as a «document» (cmd.exe opened through the
+        // shell starts the same interpreter).
+        var runs =
+            executable
+            || extension.Length == 0
+            || string.Equals(extension, ".exe", StringComparison.OrdinalIgnoreCase);
+        return runs && Interpreters.Contains(stem)
             ? LaunchVerdict.Interpreter
             : LaunchVerdict.Allowed;
     }
