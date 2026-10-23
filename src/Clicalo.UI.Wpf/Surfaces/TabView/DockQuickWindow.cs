@@ -62,11 +62,13 @@ public sealed class DockQuickWindow : TouchSurface
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        // With its title and «Cerrar», as the other windows beside the bar have their heading (D21 review).
         _sheet = new QuickSettingsSheet(viewModel)
         {
             Margin = new Thickness(0),
             BorderThickness = new Thickness(0),
             ShowsAlways = true,
+            ShowsHeader = true,
         };
         _sheet.Background = System.Windows.Media.Brushes.Transparent;
         Width = SheetWidth;

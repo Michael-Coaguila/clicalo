@@ -35,7 +35,8 @@ internal static class DockTileFactory
         double iconPx,
         int nameLines,
         DockTileModes? modes = null,
-        TextStyleToken label = TextStyleToken.LabelSmall
+        TextStyleToken label = TextStyleToken.LabelSmall,
+        bool reservesLines = true
     )
     {
         var control = new ShortcutTile
@@ -44,7 +45,7 @@ internal static class DockTileFactory
             Focusable = false,
             IsTabStop = false,
             Pattern =
-                viewModel.Behavior == TileBehavior.Tap
+                viewModel.Behavior == TileBehavior.Tap || viewModel.ScrollsWhileHeld
                     ? ShortcutTilePattern.Invoke
                     : ShortcutTilePattern.Toggle,
             Width = width,
@@ -54,8 +55,9 @@ internal static class DockTileFactory
             IconSize = iconPx,
             MaxNameLines = nameLines,
 
-            // Two lines of name are kept even for a short one, so the icons of a row stay on one line.
-            ReservesNameLines = nameLines > 1,
+            // Two lines of name are kept even for a short one, so the icons of a row stay on one line; a tile alone in
+            // its row (a side bar) centres a one-line name instead of leaving a band under it.
+            ReservesNameLines = reservesLines && nameLines > 1,
         };
         control.SetResourceReference(
             Control.FontSizeProperty,
@@ -125,5 +127,6 @@ internal static class DockTileFactory
         control.Category = TileFactory.CategoryOf(viewModel.Category);
         control.IsHeld = viewModel.IsLatched && viewModel.Behavior == TileBehavior.Hold;
         control.IsArmed = viewModel.IsArmed;
+        control.IsFlashing = viewModel.IsFlashing;
     }
 }

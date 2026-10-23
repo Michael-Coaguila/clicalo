@@ -37,6 +37,10 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
     private readonly Dictionary<int, SurfaceTarget> _targets = [];
     private readonly Dictionary<object, int> _ids = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<uint> _dragged = [];
+
+    // Holds whose release does not fold the bar: one taken by test mode or the open menu (nothing ran) and one of the
+    // bar's own tools (D21 review).
+    private readonly HashSet<uint> _quietHolds = [];
     private readonly DragTracker _drag;
     private TouchSettings _touch;
     private FrameworkElement? _dragZone;
@@ -484,7 +488,13 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
             case GestureKind.HoldStart when TargetOf(gesture)?.Tile is { } held:
                 if (Modes?.HoldStarted(held) == true)
                 {
+                    _ = _quietHolds.Add(gesture.PointerId);
                     break;
+                }
+
+                if (held.IsBarTool)
+                {
+                    _ = _quietHolds.Add(gesture.PointerId);
                 }
 
                 held.HoldStarted(
@@ -515,7 +525,11 @@ public abstract class TouchSurface : NonActivatingWindow, IPointerFrameSink, IPo
                     _contacts.Summarize(gesture.PointerId, gesture.Timestamp, DpiScale),
                     gesture.HoldEnd
                 );
-                HoldReleased?.Invoke(this, EventArgs.Empty);
+                if (!_quietHolds.Remove(gesture.PointerId))
+                {
+                    HoldReleased?.Invoke(this, EventArgs.Empty);
+                }
+
                 break;
         }
     }

@@ -112,9 +112,12 @@ public sealed class SurfaceWindowsTests
             {
                 handle.Button.Width.ShouldBe(width);
                 handle.Button.Height.ShouldBe(height);
-                var face = handle.Button.Content.ShouldBeOfType<System.Windows.Controls.Border>();
-                face.CornerRadius.ShouldBe(SurfaceLook.DockHandle(side).Corners);
-                // D12: no control is drawn smaller than it answers; the dot of what is held has a slot of its own.
+                var face = handle.Button.Content.ShouldBeOfType<System.Windows.Controls.Grid>();
+                var backdrop = face.Children.OfType<System.Windows.Controls.Border>().First();
+                backdrop.CornerRadius.ShouldBe(SurfaceLook.DockHandle(side).Corners);
+                // D21: the face lets a little of the app behind show through, the glyphs stay solid.
+                backdrop.Opacity.ShouldBeInRange(0.5, 0.99);
+                // D12: no control is drawn smaller than it answers; the dot of what is held has a corner of its own.
                 (DockGeometry.IsVertical(side) ? face.Width : face.Height).ShouldBe(44);
                 handle.Title.ShouldBe("Abrir barra");
             }

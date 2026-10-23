@@ -69,22 +69,36 @@ public sealed class PanelFormsTests
     }
 
     [Theory]
-    [InlineData(PanelForm.DockOpen, true, false, false, true)]
-    [InlineData(PanelForm.DockClosed, true, false, false, true)]
-    [InlineData(PanelForm.DockClosed, false, true, false, true)]
-    [InlineData(PanelForm.DockOpen, false, false, true, true)]
-    [InlineData(PanelForm.DockOpen, false, false, false, false)]
-    [InlineData(PanelForm.Full, true, true, true, false)]
-    [InlineData(PanelForm.Bubble, true, false, false, false)]
-    [InlineData(PanelForm.Hidden, true, false, false, false)]
+    [InlineData(PanelForm.DockOpen, true, false, false, false, true)]
+    [InlineData(PanelForm.DockClosed, true, false, false, false, true)]
+    [InlineData(PanelForm.DockClosed, false, false, true, false, true)]
+    [InlineData(PanelForm.DockOpen, false, false, false, true, true)]
+    [InlineData(PanelForm.DockOpen, false, false, false, false, false)]
+    // D21: a plain confirmation is only said in the Tab view; in Compact it shows for a moment under the panel.
+    [InlineData(PanelForm.DockOpen, true, true, false, false, false)]
+    [InlineData(PanelForm.DockClosed, true, true, false, false, false)]
+    [InlineData(PanelForm.DockOpen, true, true, true, false, true)]
+    [InlineData(PanelForm.Compact, true, true, false, false, true)]
+    [InlineData(PanelForm.Full, true, false, true, true, false)]
+    [InlineData(PanelForm.Compact, true, false, false, false, true)]
+    [InlineData(PanelForm.Compact, false, false, true, true, false)]
+    [InlineData(PanelForm.Bubble, true, false, false, false, true)]
+    [InlineData(PanelForm.Bubble, true, true, false, false, false)]
+    [InlineData(PanelForm.Bubble, false, false, true, true, false)]
+    [InlineData(PanelForm.Hidden, true, false, false, false, false)]
     [Trait("Req", "PES-014")]
+    [Trait("Req", "VCO-001")]
     public void The_notice_surface_shows_in_the_Tab_view_while_there_is_something_to_tell(
         PanelForm form,
         bool notice,
+        bool confirmation,
         bool adminNotice,
         bool testMode,
         bool expected
-    ) => DockRules.ShowsNotices(form, notice, adminNotice, testMode).ShouldBe(expected);
+    ) =>
+        DockRules
+            .ShowsNotices(form, notice, confirmation, adminNotice, testMode)
+            .ShouldBe(expected);
 
     [Theory]
     [InlineData(PanelForm.DockOpen, true, true)]
@@ -185,4 +199,27 @@ public sealed class PanelFormsTests
     [Trait("Req", "VCO-002")]
     public void Its_arrows_and_dots_show_with_several_pages(int pages, bool empty, bool expected) =>
         CompactRowRules.ShowsPager(pages, empty).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(new int[0], false, false)]
+    [InlineData(new[] { 7 }, false, false)]
+    [InlineData(new[] { 7 }, true, true)]
+    [InlineData(new int[0], true, true)]
+    [Trait("Req", "PES-013")]
+    [Trait("Req", "REG-03")]
+    public void The_floating_release_shows_for_what_outlasts_its_finger(
+        int[] underFingers,
+        bool latched,
+        bool expected
+    )
+    {
+        // A Mantener under a finger ends when it lifts; a latched Toggle or a locked sticky key needs the button.
+        IEnumerable<int?> held = underFingers.Select(static c => (int?)c);
+        if (latched)
+        {
+            held = held.Append(null);
+        }
+
+        DockRules.ShowsFloatingRelease(held).ShouldBe(expected);
+    }
 }

@@ -238,11 +238,14 @@ public static class ShortcutTileTemplate
     private static IEnumerable<TriggerBase> Triggers()
     {
         // First, so held, chosen, armed and flashing, after it, still paint the chrome of a tile without its card.
+        // A tile without its card is a tool of the bar (⏶ ⏷): its icon is drawn as the other tools, in text, not tinted
+        // by a category (D21 review).
         yield return Set(
             ShortcutTile.ShowsCardProperty,
             false,
             new Setter(Border.BackgroundProperty, Brushes.Transparent, ChromePart),
-            new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart)
+            new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart),
+            Brush(IconPart, SymbolIcon.ForegroundProperty, ColorToken.Text)
         );
         yield return Collapse(ShortcutTile.VoiceNumberProperty, null, VoiceNumberPart);
         yield return Collapse(ShortcutTile.BadgeTextProperty, string.Empty, StatePart);

@@ -31,6 +31,8 @@ public sealed class DockLabels : ObservableObject
     private string _activeApp = string.Empty;
     private string _quickSettings = string.Empty;
     private string _notices = string.Empty;
+    private string _emptyFrequents = string.Empty;
+    private string _emptyProfile = string.Empty;
 
     /// <summary>Creates the texts in the current language.</summary>
     /// <param name="localization">The interface language.</param>
@@ -181,6 +183,20 @@ public sealed class DockLabels : ObservableObject
         private set => SetProperty(ref _activeApp, value);
     }
 
+    /// <summary>[freqEmptyT]: the bar in Frequents before anything was used (CUA-010).</summary>
+    public string EmptyFrequents
+    {
+        get => _emptyFrequents;
+        private set => SetProperty(ref _emptyFrequents, value);
+    }
+
+    /// <summary>[emptyProfT]: the bar of a profile without shortcuts (CUA-010).</summary>
+    public string EmptyProfile
+    {
+        get => _emptyProfile;
+        private set => SetProperty(ref _emptyProfile, value);
+    }
+
     /// <summary>Formats every text again in the current language.</summary>
     public void Relocalize()
     {
@@ -205,5 +221,7 @@ public sealed class DockLabels : ObservableObject
         ActiveApp = l.Format(L.ActiveApp);
         QuickSettings = l.Format(L.Quick);
         Notices = l.Format(L.DockNotices);
+        EmptyFrequents = l.Format(L.FreqEmptyT);
+        EmptyProfile = l.Format(L.EmptyProfT);
     }
 }

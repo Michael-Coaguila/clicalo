@@ -109,6 +109,7 @@ internal sealed class SurfacesComposer : IDockIntents
         }
 
         Dock = new DockBarViewModel(controller, localization, this, panel.Layers);
+        panel.FlashDock = Dock.Flash;
         if (Dock.Modes is { } modes)
         {
             // TAC-003: an ignored touch on the bar or on a window beside it answers like one on the panel.
@@ -658,6 +659,10 @@ internal sealed class SurfacesComposer : IDockIntents
         var panel = _panel.Panel;
         var held = !panel.Engine.Held.IsEmpty;
 
+        var latched = DockRules.ShowsFloatingRelease(
+            panel.Engine.Held.Items.Select(static item => item.ContactId)
+        );
+
         // docs/04: panic, the search and the profile grid keep every surface awake.
         _ = _interaction.Dispatch(new InteractionAction.SetOpen(DimExceptions.Panic, held));
         _ = _interaction.Dispatch(
@@ -703,6 +708,7 @@ internal sealed class SurfacesComposer : IDockIntents
             )
             {
                 QuickOpen = DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen),
+                MenuOpen = DockRules.ShowsBesideBar(form, _panel.Menu.IsOpen),
             }
         );
         var showsMenu = DockRules.ShowsBesideBar(form, _panel.Menu.IsOpen);
@@ -713,7 +719,7 @@ internal sealed class SurfacesComposer : IDockIntents
                 settings.Dock,
                 settings.PanelPositions,
                 SettingsProjection.Size(settings),
-                held,
+                latched,
                 form == PanelForm.DockOpen ? interaction.Flyout : DockFlyout.None,
                 form == PanelForm.DockOpen && Dock.ShowsCoach
             )
@@ -721,7 +727,8 @@ internal sealed class SurfacesComposer : IDockIntents
                 Settings = settings,
                 ShowsNotice = DockRules.ShowsNotices(
                     form,
-                    _panel.CurrentNotice is not null,
+                    _panel.HasNotice,
+                    _panel.ShowsConfirmation,
                     panel.Admin.IsVisible,
                     _panel.TestMode.IsOn
                 ),
@@ -729,7 +736,8 @@ internal sealed class SurfacesComposer : IDockIntents
 
                 // One window at a time: the menu of a shortcut covers Quick settings while it is open.
                 ShowsQuick =
-                    !showsMenu && DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen),
+                    (!showsMenu && DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen))
+                    || DockRules.ShowsQuickBesidePanel(form, _panel.QuickSettings.IsOpen),
             }
         );
     }

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -10,6 +11,14 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// <summary>The small pieces the surfaces of the Tab view and the bubble are built from: icons, texts and buttons.</summary>
 internal static class SurfaceParts
 {
+    /// <summary>
+    /// Paints a part of a surface that must not show yet must take the touch (the band around the handle, the window
+    /// under a translucent face): alpha 0 would let touches through the per-pixel transparent window.
+    /// </summary>
+    public static readonly Brush TouchBand = Frozen(
+        new SolidColorBrush(AlmostTransparent(ThemeCatalog.GetPalette(ThemeId.Dark).Shadow))
+    );
+
     /// <summary>A Material Symbols icon in the color of <paramref name="token"/>.</summary>
     public static SymbolIcon Icon(string symbol, double size, ColorToken token)
     {
@@ -177,4 +186,13 @@ internal static class SurfaceParts
     /// <summary><see cref="Visibility.Visible"/> or <see cref="Visibility.Collapsed"/>.</summary>
     public static Visibility Shown(bool visible) =>
         visible ? Visibility.Visible : Visibility.Collapsed;
+
+    private static Color AlmostTransparent(Color color) =>
+        Color.FromArgb(byte.MinValue + 1, color.R, color.G, color.B);
+
+    private static Brush Frozen(Brush brush)
+    {
+        brush.Freeze();
+        return brush;
+    }
 }

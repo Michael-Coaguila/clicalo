@@ -3,11 +3,13 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Shapes;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
@@ -183,6 +185,7 @@ public sealed class DockBarWindow : TouchSurface
             Margin = new Thickness(Pad),
         };
         Content = _root;
+        Announcer = new LiveAnnouncer(_root);
         Compose();
 
         _viewModel.PropertyChanged += OnViewModelChanged;
@@ -194,6 +197,9 @@ public sealed class DockBarWindow : TouchSurface
 
     /// <summary>The edge of this bar.</summary>
     public DockSide Side { get; }
+
+    /// <summary>Says what the Tab view keeps off the screen while the bar is open (a plain confirmation, D21).</summary>
+    public LiveAnnouncer Announcer { get; }
 
     /// <summary>The monitor it is on: the longest it may be comes from its work area (PES-005).</summary>
     public DisplayMonitor? Monitor { get; set; }
@@ -218,6 +224,21 @@ public sealed class DockBarWindow : TouchSurface
 
     /// <summary>The <c>tune</c> button (PES-009).</summary>
     public TouchButton TuneButton => _tune;
+
+    /// <summary>Where the tile of <paramref name="shortcut"/> is on screen, or empty when it is not on this page.</summary>
+    /// <param name="shortcut">The shortcut.</param>
+    public PhysicalRect TileBounds(ShortcutId shortcut)
+    {
+        foreach (var (viewModel, control, _) in _tileControls)
+        {
+            if (viewModel.Id == shortcut)
+            {
+                return PhysicalBounds(control, inflate: false);
+            }
+        }
+
+        return PhysicalRect.Empty;
+    }
 
     /// <summary>The shortcut tiles of the page, in order.</summary>
     public IReadOnlyList<ShortcutTile> TileControls =>
@@ -341,6 +362,12 @@ public sealed class DockBarWindow : TouchSurface
         if (tile.Template?.FindName(ShortcutTileTemplate.LabelPart, tile) is FrameworkElement label)
         {
             label.Visibility = Visibility.Collapsed;
+        }
+
+        // An icon alone keeps no room under it for the name: it is centred in its tile (D21 review).
+        if (tile.Template?.FindName(ShortcutTileTemplate.IconPart, tile) is FrameworkElement icon)
+        {
+            icon.Margin = new Thickness(0);
         }
     }
 
@@ -469,9 +496,10 @@ public sealed class DockBarWindow : TouchSurface
             ProfileNameRow(_profile, _profileCaret);
         }
 
-        // Beside the icon, inside the segment: a segment of an icon alone has no room past the icon (D12, D20).
+        // Beside the icon, inside the segment: a segment of an icon alone has no room past the icon (D12, D20), and the
+        // dot stays inside its ring, never on it (D21 review).
         _activeDot.Margin = _shape.IconChoices
-            ? new Thickness(0, -Space.S1, -Space.S2, 0)
+            ? new Thickness(0, 0, -Space.S1, 0)
             : new Thickness(0, 0, -Space.S3, 0);
         _profile.Lead.Children.Add(_activeDot);
         _pill = Tool(
@@ -482,22 +510,24 @@ public sealed class DockBarWindow : TouchSurface
 
         // 4. The tools that switch a state are icons, as the icon buttons beside them (D19).
         _pinned = Tool("push_pin", DockToolShape.Icon, _viewModel.TogglePinned);
-        _sticky = Tool("keyboard_command_key", DockToolShape.Icon, _viewModel.ToggleSticky);
+        // The same glyph as the row «Teclas fijas» of Quick settings: a keyboard with a lock, not the ⌘ of a Mac.
+        _sticky = Tool("keyboard_lock", DockToolShape.Icon, _viewModel.ToggleSticky);
         _lock = Tool("lock_open", DockToolShape.Icon, _viewModel.TogglePinOpen);
 
         // 5. Scroll up and down: Mantener tiles that look like the tools at rest (PES-008).
+        // With the icon of the tool buttons beside them, 24 (D21 review: they were 20 and tinted, another family).
         (_scrollUp, _scrollUpHandler) = DockTileFactory.Create(
             _viewModel.ScrollUp,
             _shape.Tool,
             _shape.Tool,
-            IconBox.Small,
+            IconBox.Medium,
             1
         );
         (_scrollDown, _scrollDownHandler) = DockTileFactory.Create(
             _viewModel.ScrollDown,
             _shape.Tool,
             _shape.Tool,
-            IconBox.Small,
+            IconBox.Medium,
             1
         );
         _scrollUp.ShowsCard = false;
@@ -553,7 +583,7 @@ public sealed class DockBarWindow : TouchSurface
             return;
         }
 
-        _viewModel.ApplyTileGap(_shape.Columns > 1 && _shape.IconTiles ? Space.S1 : Space.S2);
+        _viewModel.ApplyTileGap(TileGap);
         _viewModel.ApplyTileColumns(_shape.IconTiles && _vertical ? _shape.Columns : 1);
     }
 
@@ -620,7 +650,8 @@ public sealed class DockBarWindow : TouchSurface
             : new Thickness(0, 0, Space.S1, 0);
         if (!_vertical && !_shape.IconChoices)
         {
-            profile.MaxWidth = _shape.Across;
+            // As wide whatever the profile's name, so a top or bottom bar keeps its length when the profile changes.
+            profile.Width = _shape.Across;
         }
 
         _ = segments.Children.Add(frequents);
@@ -842,14 +873,80 @@ public sealed class DockBarWindow : TouchSurface
 
         if (!_vertical)
         {
-            _tiles.MinWidth = (count * width) + ((count - 1) * Space.S2);
+            _tiles.MinWidth = (count * width) + ((count - 1) * TileGap);
             return;
         }
 
         var rows = _shape.IconTiles ? (count + _shape.Columns - 1) / _shape.Columns : count;
-        var gap = _shape.IconTiles ? Space.S1 : Space.S2;
-        _tiles.MinHeight = (rows * height) + ((rows - 1) * gap);
+        _tiles.MinHeight = (rows * height) + ((rows - 1) * TileGap);
     }
+
+    /// <summary>How wide <paramref name="text"/> is drawn in the font of <paramref name="like"/>, rounded up.</summary>
+    private static double TextWidth(TextBlock like, string text) =>
+        Math.Ceiling(
+            new FormattedText(
+                text,
+                System.Globalization.CultureInfo.CurrentUICulture,
+                like.FlowDirection,
+                new Typeface(like.FontFamily, like.FontStyle, like.FontWeight, like.FontStretch),
+                like.FontSize,
+                like.Foreground,
+                VisualTreeHelper.GetDpi(like).PixelsPerDip
+            ).WidthIncludingTrailingWhitespace
+        );
+
+    /// <summary>
+    /// The dashed card of an empty view (CUA-010): its icon and its text in two lines at most, as wide as two icons and
+    /// two high on a side bar of S, beside the icon on a top or bottom bar of S, and one shortcut high elsewhere.
+    /// </summary>
+    private Grid EmptyCard(string icon, string text, double height, double width)
+    {
+        var across = _shape.IconTiles && !_vertical;
+        var card = new Grid
+        {
+            Height = _shape.IconTiles && _vertical ? (2 * ControlHeight.Small) + Space.S1 : height,
+        };
+        if (across)
+        {
+            card.Width = (3 * ControlHeight.Small) + (2 * Space.S1);
+        }
+        else if (!double.IsNaN(width) && !_vertical)
+        {
+            card.Width = (2 * width) + TileGap;
+        }
+
+        card.Children.Add(DashedLine.Outline());
+        var body = new StackPanel
+        {
+            Orientation = across ? Orientation.Horizontal : Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S1),
+        };
+        var symbol = SurfaceParts.Icon(icon, IconBox.Small, ColorToken.Muted);
+        symbol.VerticalAlignment = VerticalAlignment.Center;
+        _ = body.Children.Add(symbol);
+        _ = body.Children.Add(
+            new StyledText(text, TextStyleToken.LabelSmall, ColorToken.Muted)
+            {
+                MaxLines = 2,
+                TextAlignment = across ? TextAlignment.Left : TextAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = across
+                    ? new Thickness(Space.S1, 0, 0, 0)
+                    : new Thickness(0, Space.S1, 0, 0),
+            }
+        );
+        card.Children.Add(body);
+        return card;
+    }
+
+    /// <summary>
+    /// The gap between two shortcuts, the same the paging counts with: icons alone sit <see cref="Space.S1"/> apart on
+    /// every edge (S counted 4 but laid a top bar out 8 apart, and its last tool ran off the bar), named tiles
+    /// <see cref="Space.S2"/>.
+    /// </summary>
+    private double TileGap => _shape.IconTiles ? Space.S1 : Space.S2;
 
     private void RebuildTiles()
     {
@@ -877,16 +974,17 @@ public sealed class DockBarWindow : TouchSurface
                 metrics.DockTileIconPx,
                 Math.Max(1, lines),
                 Modes,
-                _shape.Label
+                _shape.Label,
+                reservesLines: !_vertical
             );
             if (lines == 0)
             {
-                // An icon alone has no room beside the voice number: the number takes the top and the icon goes under
-                // it, as in the row of icons of the panel (ACC-009).
+                // An icon alone shares the tile with the voice number: the number takes the top left and the icon the
+                // bottom right, clear of both edges (ACC-009; it was pressed against the bottom edge, D21 review).
                 HideLabel(control);
                 if (_voiceNumbers)
                 {
-                    control.Padding = new Thickness(Space.S1, Space.S6, Space.S1, 0);
+                    control.Padding = new Thickness(Space.S4, Space.S3, Space.S1, Space.S1);
                 }
             }
 
@@ -900,7 +998,12 @@ public sealed class DockBarWindow : TouchSurface
             cells.Add(cell);
         }
 
-        if (_vertical && _shape.IconTiles)
+        if (cells.Count == 0 && _viewModel.EmptyView is { Text.Length: > 0 } empty)
+        {
+            // CUA-010: an empty Frequents or profile says so, as the card of the panel, instead of leaving no zone.
+            _ = _tiles.Children.Add(EmptyCard(empty.Icon, empty.Text, height, width));
+        }
+        else if (_vertical && _shape.IconTiles)
         {
             // Two icons across, in rows that never leave a place empty.
             Flow(_tiles, cells);
@@ -911,8 +1014,8 @@ public sealed class DockBarWindow : TouchSurface
             {
                 cells[i].Margin =
                     i == 0 ? new Thickness(0)
-                    : _vertical ? new Thickness(0, Space.S2, 0, 0)
-                    : new Thickness(Space.S2, 0, 0, 0);
+                    : _vertical ? new Thickness(0, TileGap, 0, 0)
+                    : new Thickness(TileGap, 0, 0, 0);
                 _ = _tiles.Children.Add(cells[i]);
             }
         }
@@ -951,7 +1054,13 @@ public sealed class DockBarWindow : TouchSurface
 
         var pickerOpen = state?.Flyout == DockFlyout.Profiles;
         _profile.Icon.Symbol = state is { ProfileIcon.Length: > 0 } ? state.ProfileIcon : "apps";
-        _profile.Say(state?.ProfileName ?? string.Empty, labels.SwitchProfile);
+        // Named by the profile it shows, as it reads (voice: «clic Word»), also in S where the label is hidden; what a
+        // tap does goes in its help.
+        _profile.Say(
+            state?.ProfileName ?? string.Empty,
+            state?.ProfileName ?? labels.SwitchProfile
+        );
+        AutomationProperties.SetHelpText(_profile.Button, labels.SwitchProfile);
         _profileCaret.Symbol = vm.ProfileCaret;
         _activeDot.Visibility = SurfaceParts.Shown(state?.IsActiveApp == true);
         _profile.Button.IsActive = !frequents;
@@ -969,6 +1078,15 @@ public sealed class DockBarWindow : TouchSurface
         _pill.Icon.Symbol = vm.AutoFixedIcon;
         _pill.Say(vm.AutoFixedLabel, vm.AutoFixedName);
         _pill.Paint(isFixed);
+        if (!_vertical && !_shape.IconChoices)
+        {
+            // A top or bottom bar is centred on its edge: a pill as wide as the longer of its two words keeps the fold,
+            // the shortcuts and the tools in place when Auto and Fixed swap (D21 review).
+            _pill.Label.MinWidth = vm
+                .AutoFixedLabels.Select(label => TextWidth(_pill.Label, label))
+                .DefaultIfEmpty(0)
+                .Max();
+        }
 
         _previous.IsEnabled = vm.CanGoPrevious;
         _next.IsEnabled = vm.CanGoNext;

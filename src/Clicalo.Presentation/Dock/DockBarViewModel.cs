@@ -28,6 +28,7 @@ namespace Clicalo.Presentation.Dock;
 public sealed class DockBarViewModel : ObservableObject
 {
     private const string FrequentsIcon = "star";
+    private const string EmptyProfileIcon = "inbox";
     private const string NoProfileIcon = "keyboard";
     private const string ScrollUpIcon = "keyboard_double_arrow_up";
     private const string ScrollDownIcon = "keyboard_double_arrow_down";
@@ -87,13 +88,13 @@ public sealed class DockBarViewModel : ObservableObject
         _localization = localization;
         _intents = intents;
         ScrollUp = ScrollTile(
-            "dock.scrollUp",
+            DockTileViewModel.ToolIdPrefix + "scrollUp",
             MouseOp.ScrollUp,
             ScrollUpIcon,
             localization.Current.Format(L.DockScrollUp)
         );
         ScrollDown = ScrollTile(
-            "dock.scrollDown",
+            DockTileViewModel.ToolIdPrefix + "scrollDown",
             MouseOp.ScrollDown,
             ScrollDownIcon,
             localization.Current.Format(L.DockScrollDown)
@@ -166,6 +167,29 @@ public sealed class DockBarViewModel : ObservableObject
         private set => SetProperty(ref _pageLabel, value);
     }
 
+    /// <summary>The shortcut <paramref name="shortcut"/> ran: its tiles on the bar and in Pinned flash (EJE-012).</summary>
+    /// <param name="shortcut">The shortcut.</param>
+    /// <param name="flashing">Whether the flash starts or ends.</param>
+    public void Flash(ShortcutId shortcut, bool flashing)
+    {
+        foreach (var tile in PageTiles.Concat(PinnedTiles))
+        {
+            if (tile.Id == shortcut)
+            {
+                tile.Flash(flashing);
+            }
+        }
+    }
+
+    /// <summary>
+    /// CUA-010 on the bar: with no shortcut in view, what the empty place says (Frequents still empty, or a profile
+    /// without shortcuts) and its icon, as the card of the panel; empty while there are shortcuts.
+    /// </summary>
+    public (string Icon, string Text) EmptyView =>
+        PageTiles.Count > 0 ? (string.Empty, string.Empty)
+        : _state?.Frequents == true ? (FrequentsIcon, Labels.EmptyFrequents)
+        : (EmptyProfileIcon, Labels.EmptyProfile);
+
     /// <summary>The icon of the handle: ★ in Frequents, the profile's, or keyboard without a profile (PES-001).</summary>
     public string HandleIcon
     {
@@ -193,6 +217,9 @@ public sealed class DockBarViewModel : ObservableObject
         get => _autoFixedLabel;
         private set => SetProperty(ref _autoFixedLabel, value);
     }
+
+    /// <summary>Both words the pill may say, «Auto» and «Fijo»: a pill as wide as the longer keeps the bar's length.</summary>
+    public IReadOnlyList<string> AutoFixedLabels { get; private set; } = [];
 
     /// <summary>[autoA] or [lockA]: the accessible name of the pill.</summary>
     public string AutoFixedName
@@ -293,10 +320,11 @@ public sealed class DockBarViewModel : ObservableObject
         AutoFixedIcon = state.IsFixed
             ? PanelHeaderModel.FixedIcon.Name
             : PanelHeaderModel.AutoIcon.Name;
+        // PES-015: no other window beside the bar, Quick settings and the menu of a shortcut included (D21 review).
         ShowsCoach = DockRules.ShowsCoach(
             state.BarOpen,
             state.Dock.CoachDone,
-            state.Flyout != DockFlyout.None
+            state.Flyout != DockFlyout.None || state.QuickOpen || state.MenuOpen
         );
         Format();
         Repage();
@@ -565,6 +593,7 @@ public sealed class DockBarViewModel : ObservableObject
         var state = _state;
         var isFixed = state?.IsFixed == true;
         AutoFixedLabel = l.Format(isFixed ? L.LockOn2 : L.Auto2);
+        AutoFixedLabels = [l.Format(L.Auto2), l.Format(L.LockOn2)];
         AutoFixedName = l.Format(isFixed ? L.LockA : L.AutoA);
         var pinOpen = state?.Dock.PinOpen == true;
         PinLabel = l.Format(pinOpen ? L.PinOn : L.PinFolds);

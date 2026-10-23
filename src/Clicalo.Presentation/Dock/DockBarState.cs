@@ -43,4 +43,7 @@ public sealed record DockBarState(
 {
     /// <summary>Quick settings are open beside the bar (PES-009).</summary>
     public bool QuickOpen { get; init; }
+
+    /// <summary>The menu of a shortcut is open beside the bar (CUA-014).</summary>
+    public bool MenuOpen { get; init; }
 }

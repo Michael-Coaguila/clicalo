@@ -26,8 +26,15 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// or assertive for a warning, announced when it changes and when the surface appears.
 /// </summary>
 /// <remarks>
+/// <para>
 /// It projects the same view models as the panel (<see cref="NoticeBarViewModel"/>, <see cref="AdminNoticeViewModel"/>,
 /// <see cref="TestModeViewModel"/>), so the Tab view can never tell something else than the panel would.
+/// </para>
+/// <para>
+/// D21: the Compact view has no status row and shows its notices here for a moment, under the panel, on a face that
+/// lets the app behind show through (<see cref="ServesCompact"/>), without ↻ Repeat. The Tab view keeps a plain
+/// confirmation («Ctrl+S enviado a Word») off the screen and only says it (<see cref="QuietAnnouncer"/>).
+/// </para>
 /// </remarks>
 public sealed class DockNoticeWindow : TouchSurface
 {
@@ -55,7 +62,11 @@ public sealed class DockNoticeWindow : TouchSurface
     private readonly TouchButton _undo = NoticeButton(ButtonVariant.Tertiary, "undo");
     private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Tertiary, null);
     private readonly LiveAnnouncer _announcer;
+    private readonly Border _face = new();
+    private readonly StackPanel _tabParts = new();
     private string _announced = string.Empty;
+    private string _said = string.Empty;
+    private bool _translucent;
 
     /// <summary>Creates the surface on the UI thread of <paramref name="registry"/>.</summary>
     /// <param name="panel">The panel: its notice bar and its administrator notice.</param>
@@ -88,7 +99,8 @@ public sealed class DockNoticeWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(labels);
         _notices = panel.Notices;
         _labels = labels;
-        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
+        _face.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
+        ApplyFace();
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
 
@@ -116,28 +128,70 @@ public sealed class DockNoticeWindow : TouchSurface
         {
             Margin = new Thickness(Space.S2, Space.S2, Space.S2, 0),
         };
-        var stack = new StackPanel();
         if (testMode is not null)
         {
             _testMode = new TestModeIndicator(testMode)
             {
                 Margin = new Thickness(Space.S2, Space.S2, Space.S2, 0),
             };
-            _ = stack.Children.Add(_testMode);
+            _ = _tabParts.Children.Add(_testMode);
         }
 
-        _ = stack.Children.Add(_admin);
+        _ = _tabParts.Children.Add(_admin);
+        var stack = new StackPanel();
+        _ = stack.Children.Add(_tabParts);
         _ = stack.Children.Add(_notice);
         Width = SurfaceWidth;
         FixedWidth = SurfaceWidth;
         SizeToContent = SizeToContent.Height;
-        Content = stack;
+        var root = new Grid();
+        root.Children.Add(_face);
+        root.Children.Add(stack);
+        Content = root;
 
         _notices.PropertyChanged += OnChanged;
         _labels.PropertyChanged += OnChanged;
         IsVisibleChanged += (_, _) => Say();
+        Theme.Changed += OnThemeChanged;
         Refresh();
     }
+
+    /// <summary>
+    /// Whether the surface serves the Compact view (D21): only the moment of its notice, on a face that lets what is
+    /// behind show through (never in high contrast, where the text keeps its full contrast); the administrator notice and
+    /// test mode are inside the panel then.
+    /// </summary>
+    public bool ServesCompact
+    {
+        get => _translucent;
+        set
+        {
+            _translucent = value;
+            _tabParts.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
+            ApplyFace();
+        }
+    }
+
+    /// <summary>
+    /// Takes <paramref name="width"/> (the width of the Compact panel it shows under, so their edges line up), or its own
+    /// width beside the bar or the bubble when <see langword="null"/>.
+    /// </summary>
+    /// <param name="width">The width in DIPs, or <see langword="null"/>.</param>
+    public void UseWidth(double? width)
+    {
+        var wanted = width ?? SurfaceWidth;
+        if (Math.Abs(Width - wanted) > 0.5)
+        {
+            Width = wanted;
+            FixedWidth = wanted;
+        }
+    }
+
+    /// <summary>
+    /// Where a notice is said while the surface is not on screen (the Tab view keeps a plain confirmation off the
+    /// screen): the announcer of the bar or the handle on show, or <see langword="null"/> when the panel says it itself.
+    /// </summary>
+    public LiveAnnouncer? QuietAnnouncer { get; set; }
 
     /// <summary>The text of the notice (the live region).</summary>
     public TextBlock MessageText => _text;
@@ -160,9 +214,12 @@ public sealed class DockNoticeWindow : TouchSurface
     /// <inheritdoc />
     protected override IEnumerable<SurfaceTarget> CollectTargets()
     {
-        foreach (var target in _admin.TapTargets)
+        if (!_translucent)
         {
-            yield return SurfaceTarget.Button(target.Element, target.Tap);
+            foreach (var target in _admin.TapTargets)
+            {
+                yield return SurfaceTarget.Button(target.Element, target.Tap);
+            }
         }
 
         if (_notices.Tone == NoticeTone.Rest)
@@ -186,6 +243,7 @@ public sealed class DockNoticeWindow : TouchSurface
     {
         _notices.PropertyChanged -= OnChanged;
         _labels.PropertyChanged -= OnChanged;
+        Theme.Changed -= OnThemeChanged;
         _admin.Detach();
         _testMode?.Detach();
         base.OnClosed(e);
@@ -203,6 +261,19 @@ public sealed class DockNoticeWindow : TouchSurface
         };
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
+
+    private void OnThemeChanged(object? sender, EventArgs e) => ApplyFace();
+
+    /// <summary>
+    /// The window itself stays all but transparent (alpha 1, so a touch still lands on it) and the face under the content
+    /// gives it its surface: solid, or translucent for the moment of a notice of the Compact view.
+    /// </summary>
+    private void ApplyFace()
+    {
+        Background = SurfaceParts.TouchBand;
+        var highContrast = Theme.Effective is ThemeId.HighContrast or ThemeId.SystemHighContrast;
+        _face.Opacity = _translucent && !highContrast ? 0.8 : 1;
+    }
 
     private void Refresh()
     {
@@ -247,12 +318,28 @@ public sealed class DockNoticeWindow : TouchSurface
     {
         var tone = _notices.Tone;
         var message = tone == NoticeTone.Rest ? string.Empty : _notices.Message;
+        var urgency =
+            tone == NoticeTone.Warning ? AnnouncementUrgency.Assertive : AnnouncementUrgency.Polite;
         if (!IsVisible || message.Length == 0)
         {
             _text.Text = message;
             _announced = string.Empty;
+
+            // Kept off the screen, it is still said once by the surface on show (ACC-001).
+            if (
+                message.Length > 0
+                && QuietAnnouncer is { } quiet
+                && !string.Equals(message, _said, StringComparison.Ordinal)
+            )
+            {
+                quiet.Say(message, urgency);
+            }
+
+            _said = message;
             return;
         }
+
+        _said = message;
 
         if (string.Equals(message, _announced, StringComparison.Ordinal))
         {
@@ -260,9 +347,6 @@ public sealed class DockNoticeWindow : TouchSurface
         }
 
         _announced = message;
-        _announcer.Announce(
-            message,
-            tone == NoticeTone.Warning ? AnnouncementUrgency.Assertive : AnnouncementUrgency.Polite
-        );
+        _announcer.Announce(message, urgency);
     }
 }

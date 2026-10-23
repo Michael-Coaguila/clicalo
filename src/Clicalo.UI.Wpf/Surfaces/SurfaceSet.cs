@@ -10,8 +10,10 @@ using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
 using Microsoft.Win32;
 
@@ -177,9 +179,11 @@ public sealed class SurfaceSet : IDisposable
                 DimSurface.Dock
             );
             _menu.SizeChanged += (_, _) => Reflow();
+            // Quick settings never dim, as the notices: they set the opacity, and fading with the value being set made
+            // them hard to read at 30 % (D21 review). The bar or the panel beside them shows the value live.
             _quick = Track(
                 new DockQuickWindow(layers.QuickSettings, registry, time, theme, touch),
-                DimSurface.Dock
+                kind: null
             );
             _quick.SizeChanged += (_, _) => Reflow();
         }
@@ -187,9 +191,28 @@ public sealed class SurfaceSet : IDisposable
         panel.Placer = PlacePanel;
         _dimmer.Follow(panel);
         panel.DragStarted += (_, _) => _dragOrigin = _panel.ScreenBounds;
-        panel.Dragged += (_, drag) => MoveDragged(_panel, drag.Offset);
+        panel.Dragged += (_, drag) =>
+        {
+            MoveDragged(_panel, drag.Offset);
+
+            // Quick settings beside the panel, and the notice under a Compact one, go with it while it is dragged
+            // (AJR-001, D21).
+            if (
+                _layout is { } dragged
+                && PanelForms.IsPanel(dragged.Form)
+                && (
+                    dragged.ShowsQuick || (dragged.ShowsNotice && dragged.Form == PanelForm.Compact)
+                )
+            )
+            {
+                Reflow();
+            }
+        };
         panel.DragEnded += (_, _) => SaveDragged(_panel.ScreenBounds);
         panel.SizeChanged += (_, _) => KeepPanelInside();
+
+        // Quick settings beside the panel follow it when it is moved (AJR-001, D21).
+        panel.DragEnded += (_, _) => Reflow();
         panel.ContactsEnded += (_, _) => KeepPanelInside();
         panel.Closed += (_, _) => Dispose();
         panel.Presented += (_, _) =>
@@ -432,6 +455,7 @@ public sealed class SurfaceSet : IDisposable
         var taken = new List<PhysicalRect>();
         PhysicalRect? panicAnchor = null;
         PhysicalRect? noticeAnchor = null;
+        LiveAnnouncer? quiet = null;
         ConcealOtherEdges(form, side);
 
         switch (form)
@@ -452,11 +476,17 @@ public sealed class SurfaceSet : IDisposable
                 );
                 Present(_bubble, bubbleRect, shown);
                 panicAnchor = bubbleRect;
+                noticeAnchor = bubbleRect;
+
+                // What shows beside the bubble goes toward the side of the screen with room (D21 review: the pill went
+                // to its left always, and over it near the left edge).
+                side = TowardRoom(bubbleRect, monitor);
                 break;
 
             case PanelForm.DockClosed:
                 var handle = Handle(side);
                 handle.IsLocked = layout.Dock.HandleLocked;
+                quiet = handle.Announcer;
                 var handleRect = DockGeometry.Handle(
                     side,
                     HandlePercent(side),
@@ -484,7 +514,13 @@ public sealed class SurfaceSet : IDisposable
                 bar.UpdateLayout();
                 PlaceFlyouts(layout, bar, monitor, shown, taken);
                 noticeAnchor = barRect;
+                quiet = bar.Announcer;
                 break;
+        }
+
+        if (PanelForms.IsPanel(form) && layout.ShowsQuick && _quick is { } quick)
+        {
+            PlaceQuickBesidePanel(quick, monitor, shown);
         }
 
         if (layout.Panic && form is PanelForm.Bubble or PanelForm.DockClosed or PanelForm.DockOpen)
@@ -493,7 +529,7 @@ public sealed class SurfaceSet : IDisposable
             var pillRect =
                 panicAnchor is { } anchor
                     ? DockGeometry.Beside(
-                        form == PanelForm.Bubble ? DockSide.Right : side,
+                        side,
                         anchor,
                         pillWidth,
                         pillHeight,
@@ -517,6 +553,31 @@ public sealed class SurfaceSet : IDisposable
             taken.Add(pillRect);
         }
 
+        // PES-014 (D21): the Tab view says a plain confirmation from the bar or the handle without showing it; the
+        // Compact view shows its notices for a moment on a translucent face.
+        _notice.QuietAnnouncer = quiet;
+        _notice.ServesCompact = form == PanelForm.Compact;
+        var noticeSide = side;
+        var noticeAlign = form == PanelForm.Bubble ? DockAlign.Center : DockAlign.End;
+        _notice.UseWidth(
+            form == PanelForm.Compact && _panel.ScreenBounds is { IsEmpty: false } under
+                ? under.Width / monitor.Scale
+                : null
+        );
+        if (form == PanelForm.Compact && _panel.ScreenBounds is { IsEmpty: false } compact)
+        {
+            // D21: the Compact view has no status row; its notices show for a moment under the panel, or above it when
+            // the panel stands at the foot of the screen.
+            var (_, below) = _notice.MeasurePhysical(monitor.Scale);
+            noticeAnchor = compact;
+            noticeSide =
+                compact.Bottom + monitor.ToPhysical(DockGeometry.BarWindowGapPx) + below
+                <= monitor.WorkArea.Bottom
+                    ? DockSide.Top
+                    : DockSide.Bottom;
+            noticeAlign = DockAlign.Center;
+        }
+
         if (layout.ShowsNotice && noticeAnchor is { } beside)
         {
             // PES-014: beside the bar, or the handle when it is closed, clear of whatever is already there.
@@ -524,12 +585,12 @@ public sealed class SurfaceSet : IDisposable
             Present(
                 _notice,
                 DockGeometry.BesideClear(
-                    side,
+                    noticeSide,
                     beside,
                     noticeWidth,
                     noticeHeight,
                     monitor.ToPhysical(DockGeometry.BarWindowGapPx),
-                    DockAlign.End,
+                    noticeAlign,
                     monitor,
                     taken
                 ),
@@ -603,7 +664,7 @@ public sealed class SurfaceSet : IDisposable
                 width,
                 Math.Min(height, monitor.ToPhysical(maxHeight)),
                 monitor.ToPhysical(DockGeometry.BarWindowGapPx),
-                byButton ? DockAlign.End : DockAlign.Start,
+                byButton ? AlongFrom(side, barRect, anchor) : DockAlign.Start,
                 monitor
             );
             Present(flyout, rect, shown);
@@ -628,18 +689,34 @@ public sealed class SurfaceSet : IDisposable
 
         if (layout.ShowsMenu && _menu is { } menu)
         {
-            // CUA-014, PES-010: the menu of a shortcut beside the bar, or beside «Pinned» when it is open.
+            // CUA-014, PES-010: the menu of a shortcut beside the bar at the height of the shortcut pressed (D21
+            // review: it opened at the top of the bar, far from it), or beside «Pinned» when it is open.
             var (width, height) = menu.MeasurePhysical(monitor.Scale);
-            var rect = DockGeometry.BesideClear(
-                side,
-                barRect,
-                width,
-                height,
-                monitor.ToPhysical(DockGeometry.BarWindowGapPx),
-                DockAlign.Start,
-                monitor,
-                taken
-            );
+            var tile =
+                layout.Flyout == DockFlyout.None && menu.Shortcut is { } pressed
+                    ? bar.TileBounds(pressed)
+                    : PhysicalRect.Empty;
+            var rect = tile.IsEmpty
+                ? DockGeometry.BesideClear(
+                    side,
+                    barRect,
+                    width,
+                    height,
+                    monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                    DockAlign.Start,
+                    monitor,
+                    taken
+                )
+                : DockGeometry.BesideClear(
+                    side,
+                    DockGeometry.AtButton(side, barRect, tile),
+                    width,
+                    height,
+                    monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                    DockAlign.Center,
+                    monitor,
+                    taken
+                );
             Present(menu, rect, shown);
             taken.Add(rect);
         }
@@ -647,7 +724,8 @@ public sealed class SurfaceSet : IDisposable
         if (layout.ShowsQuick && _quick is { } quick)
         {
             // PES-009: Quick settings beside the tune button, as «Pinned» is beside its button.
-            quick.FitHeight(maxHeight);
+            var quickHeight = QuickMaxHeight(monitor);
+            quick.FitHeight(quickHeight);
             var (width, height) = quick.MeasurePhysical(monitor.Scale);
             var anchor = bar.TuneButtonBounds;
             var byButton = !anchor.IsEmpty;
@@ -655,9 +733,9 @@ public sealed class SurfaceSet : IDisposable
                 side,
                 byButton ? DockGeometry.AtButton(side, barRect, anchor) : barRect,
                 width,
-                Math.Min(height, monitor.ToPhysical(maxHeight)),
+                Math.Min(height, monitor.ToPhysical(quickHeight)),
                 monitor.ToPhysical(DockGeometry.BarWindowGapPx),
-                byButton ? DockAlign.End : DockAlign.Start,
+                byButton ? AlongFrom(side, barRect, anchor) : DockAlign.Start,
                 monitor,
                 taken
             );
@@ -665,6 +743,68 @@ public sealed class SurfaceSet : IDisposable
             taken.Add(rect);
         }
     }
+
+    /// <summary>
+    /// How a window beside the bar lines up with the button that opened it: from the button's start when it sits in the
+    /// first half of the bar (Quick settings, zone 1), from its end otherwise (Pinned, Sticky keys), so the window grows
+    /// along the bar and starts at the button instead of being pushed off the end of the screen.
+    /// </summary>
+    private static DockAlign AlongFrom(DockSide side, PhysicalRect bar, PhysicalRect button) =>
+        (
+            DockGeometry.IsVertical(side)
+                ? button.Center.Y < bar.Center.Y
+                : button.Center.X < bar.Center.X
+        )
+            ? DockAlign.Start
+            : DockAlign.End;
+
+    /// <summary>
+    /// The tallest Quick settings may be, in DIPs (AJR-001, D21): the work area less <see cref="Space.S2"/> above and
+    /// below, so the whole window fits on a screen like the maintainer's; the reserve of 140 of the other windows beside
+    /// the bar cut its last switches.
+    /// </summary>
+    private static double QuickMaxHeight(DisplayMonitor monitor) =>
+        Math.Max(0, (monitor.WorkArea.Height / monitor.Scale) - (2 * Space.S2));
+
+    /// <summary>
+    /// AJR-001 (D21): Quick settings beside the panel, toward the side of the screen with room, its top lined up with
+    /// the panel's and as tall as it needs up to the work area less the reserve of the side windows.
+    /// </summary>
+    private void PlaceQuickBesidePanel(
+        DockQuickWindow quick,
+        DisplayMonitor monitor,
+        HashSet<TouchSurface> shown
+    )
+    {
+        var panel = _panel.ScreenBounds;
+        if (panel.IsEmpty)
+        {
+            return;
+        }
+
+        var maxHeight = QuickMaxHeight(monitor);
+        quick.FitHeight(maxHeight);
+        var (width, height) = quick.MeasurePhysical(monitor.Scale);
+        var rect = DockGeometry.Beside(
+            TowardRoom(panel, monitor),
+            panel,
+            width,
+            Math.Min(height, monitor.ToPhysical(maxHeight)),
+            monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+            DockAlign.Start,
+            monitor
+        );
+        Present(quick, rect, shown);
+    }
+
+    /// <summary>
+    /// The edge a window beside <paramref name="anchor"/> is placed from, so it lands on the side of the screen with
+    /// room: from the right edge (toward the left) when the anchor is in the right half, from the left one otherwise.
+    /// </summary>
+    private static DockSide TowardRoom(PhysicalRect anchor, DisplayMonitor monitor) =>
+        anchor.Center.X > monitor.WorkArea.Left + (monitor.WorkArea.Width / 2)
+            ? DockSide.Right
+            : DockSide.Left;
 
     private static void Present(
         TouchSurface surface,

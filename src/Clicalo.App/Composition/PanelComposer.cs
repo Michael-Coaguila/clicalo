@@ -210,10 +210,10 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                     EditMode.Toggle();
                 },
                 QuickSettings: ToggleQuickSettings,
-                // PAN-001 a: «−» turns the panel into the bubble; Quick settings close with it.
+                // PAN-001 a: «−» turns the panel into the bubble; what was open on it closes with it.
                 Minimize: () =>
                 {
-                    CloseLayers();
+                    LeaveTransientStates();
                     _ = _interaction.Dispatch(new InteractionAction.Minimize());
                 }
             )
@@ -292,6 +292,18 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
     /// <summary>The notice on show now, or <see langword="null"/> at rest (AVI-002).</summary>
     public PanelNotice? CurrentNotice => ToPanel(_interaction.Current.Notices.Shown);
+
+    /// <summary>
+    /// Flashes the tiles of a shortcut in the Tab view as well (EJE-012): set by the composition of the surfaces, which
+    /// owns the bar.
+    /// </summary>
+    public Action<ShortcutId, bool>? FlashDock { get; set; }
+
+    /// <summary>Whether a notice is on show (AVI-002).</summary>
+    public bool HasNotice => _interaction.Current.Notices.Shown is not null;
+
+    /// <summary>Whether the notice on show is a plain confirmation, which the Tab view only says (PES-014, D21).</summary>
+    public bool ShowsConfirmation => _interaction.Current.Notices.Shown is { IsConfirmation: true };
 
     /// <summary>The last projection of the view in front: the shortcuts of the grid and of Always visible.</summary>
     public PanelModel LastModel { get; private set; } = PanelModel.Empty;
@@ -378,6 +390,14 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         var after = change.After.Settings;
         if (!ReferenceEquals(before, after))
         {
+            if (
+                before.Density != after.Density
+                && (before.Density == PanelDensity.Dock || after.Density == PanelDensity.Dock)
+            )
+            {
+                LeaveTransientStates();
+            }
+
             Panel.ApplyLayout(PanelLayoutSettings.From(after));
             QuickSettings.Apply(after);
             if (before.StickyModifiersRow && !after.StickyModifiersRow)
@@ -553,7 +573,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             .Tiles.Concat(Panel.Strip.Tiles)
             .Where(tile => tile.Id == shortcut)
             .ToArray();
-        if (tiles.Length == 0)
+        var dock = FlashDock;
+        if (tiles.Length == 0 && dock is null)
         {
             return;
         }
@@ -562,6 +583,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         {
             tile.Flash(true);
         }
+
+        dock?.Invoke(shortcut, true);
 
         ITimer? timer = null;
         timer = _time.CreateTimer(
@@ -572,6 +595,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                     {
                         tile.Flash(false);
                     }
+
+                    dock?.Invoke(shortcut, false);
 
                     if (timer is not null && _flashTimers.Remove(timer))
                     {
@@ -861,6 +886,19 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             _ = Search.CloseAsync();
             _ = _session.Dispatch(new SessionAction.ClosePicker());
         }
+    }
+
+    /// <summary>
+    /// Leaves what is only open on the panel on screen (edit mode, the search, the profile grid, Quick settings and the
+    /// tile menu) when the panel turns into the bubble or the Tab view: it belongs to the panel that went away, and while
+    /// open it would keep the bubble and the handle from dimming (PES-004).
+    /// </summary>
+    private void LeaveTransientStates()
+    {
+        CloseLayers();
+        EditMode.Exit();
+        _ = Search.CloseAsync();
+        _ = _session.Dispatch(new SessionAction.ClosePicker());
     }
 
     /// <summary>Closes Quick settings and the tile menu (another layer opens or the panel goes away).</summary>

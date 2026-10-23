@@ -10,6 +10,7 @@ using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -20,9 +21,9 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// <summary>
 /// The closed handle of the Tab view (PES-001, PES-002, PES-004) in direction C (D12): 44 × 116 on a side edge or
 /// 128 × 44 on the top and bottom ones, so it is drawn as deep as it answers, rounded only toward the screen
-/// (<see cref="Radii.Medium"/>), with its shadow; a chevron pointing inside in <c>accentInk</c>, the icon of the profile
-/// in view (boxes of <see cref="IconBox.Medium"/>) and, in a slot of its own after them, a <c>warn</c> dot of
-/// <see cref="Space.S2"/> while anything is held. A tap opens the bar; a drag along the edge moves it, without opening
+/// (<see cref="Radii.Medium"/>), with its shadow and a face that lets a little of what is behind show through (D21); a
+/// small chevron pointing inside and the mark of Clícalo in <c>accentInk</c> (<see cref="IconBox.Medium"/>), centred,
+/// and, in a corner of its own, a <c>warn</c> dot of <see cref="Space.S2"/> while anything is held. A tap opens the bar; a drag along the edge moves it, without opening
 /// it (PAN-004). One window per edge, since the shape of its corners is fixed when it is created.
 /// </summary>
 /// <remarks>
@@ -34,10 +35,8 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// </remarks>
 public sealed class DockHandleWindow : TouchSurface
 {
-    /// <summary>Paints the touch band around the drawn handle without showing it: alpha 0 would let touches through.</summary>
-    private static readonly Brush TouchBand = Frozen(
-        new SolidColorBrush(AlmostTransparent(ThemeCatalog.GetPalette(ThemeId.Dark).Shadow))
-    );
+    /// <summary>The mark of Clícalo on the handle, the one of the bubble (BUR-001).</summary>
+    private const string BrandSymbol = "touch_app";
 
     private readonly DockBarViewModel _viewModel;
     private readonly TouchButton _button;
@@ -83,13 +82,14 @@ public sealed class DockHandleWindow : TouchSurface
             DockSide.Bottom => new Thickness(0, band, 0, 0),
             _ => new Thickness(band, 0, 0, 0),
         };
-        Background = TouchBand;
+        Background = SurfaceParts.TouchBand;
         BorderThickness = new Thickness(0);
-        var face = new Border
+        // PES-001 (D21): drawn at its whole 44 × 116 (128 × 44). The face lets a little of what is behind show through
+        // while its line and its glyphs stay solid, so the folded Tab view is discreet but never lost; the dimming of
+        // PES-004 still applies on top.
+        var corners = SurfaceLook.DockHandle(side).Corners;
+        var face = new Grid
         {
-            CornerRadius = SurfaceLook.DockHandle(side).Corners,
-            // PES-001: drawn at its whole 44 × 116 (128 × 44): the text button centers its content across, so the face
-            // takes its length here, and the chevron, the icon and the dot sit centered in it, never on its edge.
             Width = vertical ? layout.DockHandleThicknessPx : layout.DockHandleHorizontalLengthPx,
             Height = vertical ? layout.DockHandleVerticalLengthPx : layout.DockHandleThicknessPx,
             HorizontalAlignment = side switch
@@ -105,12 +105,23 @@ public sealed class DockHandleWindow : TouchSurface
                 _ => VerticalAlignment.Stretch,
             },
         };
-        face.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
-        face.SetResourceReference(Border.BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
-        face.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        // How much of the face covers what is behind it: the line and the glyphs stay solid.
+        var backdrop = new Border { CornerRadius = corners, Opacity = 0.86 };
+        backdrop.SetResourceReference(
+            Border.BackgroundProperty,
+            ThemeBrushKey.For(ColorToken.Panel)
+        );
+        var outline = new Border { CornerRadius = corners };
+        outline.SetResourceReference(
+            Border.BorderBrushProperty,
+            ThemeBrushKey.For(ColorToken.Line)
+        );
+        outline.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        face.Children.Add(backdrop);
+        face.Children.Add(outline);
 
-        // The chevron says what a tap does (open, toward the screen) and the icon what the bar shows; the warn dot of
-        // anything held has a slot of its own after them, so it is never cut by the edge nor drawn over an icon (D12).
+        // The mark of Clícalo, as on the bubble (BUR-001), says what the handle opens, and the small chevron where; the
+        // warn dot of anything held goes in a corner of its own, so the pair stays centred whether it shows or not.
         var chevron = SurfaceParts.Icon(
             side switch
             {
@@ -119,16 +130,17 @@ public sealed class DockHandleWindow : TouchSurface
                 DockSide.Bottom => "expand_less",
                 _ => "chevron_left",
             },
-            IconBox.Medium,
-            ColorToken.AccentInk
+            IconBox.Small,
+            ColorToken.Muted
         );
-        _icon = SurfaceParts.Icon(viewModel.HandleIcon, IconBox.Medium, ColorToken.Text);
+        _icon = SurfaceParts.Icon(BrandSymbol, IconBox.Medium, ColorToken.AccentInk);
         _dot = new Ellipse
         {
             Width = Space.S2,
             Height = Space.S2,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = vertical ? HorizontalAlignment.Center : HorizontalAlignment.Right,
+            VerticalAlignment = vertical ? VerticalAlignment.Bottom : VerticalAlignment.Center,
+            Margin = vertical ? new Thickness(0, 0, 0, Space.S3) : new Thickness(0, 0, Space.S3, 0),
         };
         _dot.SetResourceReference(Shape.FillProperty, ThemeBrushKey.For(ColorToken.Warn));
         var stack = new StackPanel
@@ -137,13 +149,13 @@ public sealed class DockHandleWindow : TouchSurface
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var gap = vertical ? new Thickness(0, Space.S1, 0, 0) : new Thickness(Space.S1, 0, 0, 0);
-        _icon.Margin = gap;
-        _dot.Margin = gap;
+        _icon.Margin = vertical
+            ? new Thickness(0, Space.S1, 0, 0)
+            : new Thickness(Space.S1, 0, 0, 0);
         _ = stack.Children.Add(chevron);
         _ = stack.Children.Add(_icon);
-        _ = stack.Children.Add(_dot);
-        face.Child = stack;
+        face.Children.Add(stack);
+        face.Children.Add(_dot);
         var depth = Math.Max(layout.DockHandleThicknessPx, layout.MinTouchTargetPx);
         _button = new TouchButton
         {
@@ -162,6 +174,7 @@ public sealed class DockHandleWindow : TouchSurface
         };
         _button.Click += (_, _) => _viewModel.OpenBar();
         Content = _button;
+        Announcer = new LiveAnnouncer(_button);
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Labels.PropertyChanged += OnViewModelChanged;
         Refresh();
@@ -184,6 +197,9 @@ public sealed class DockHandleWindow : TouchSurface
 
     /// <summary>The button that fills the handle.</summary>
     public TouchButton Button => _button;
+
+    /// <summary>Says what the Tab view keeps off the screen while the bar is closed (a plain confirmation, D21).</summary>
+    public LiveAnnouncer Announcer { get; }
 
     /// <inheritdoc />
     protected override IEnumerable<FrameworkElement> DragZones => IsLocked ? [] : [_button];
@@ -218,21 +234,11 @@ public sealed class DockHandleWindow : TouchSurface
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
-    private static Color AlmostTransparent(Color color) =>
-        Color.FromArgb(byte.MinValue + 1, color.R, color.G, color.B);
-
-    private static Brush Frozen(Brush brush)
-    {
-        brush.Freeze();
-        return brush;
-    }
-
     private void Refresh()
     {
-        _icon.Symbol = _viewModel.HandleIcon;
-        // The slot of the dot stays when it is off: nothing moves when it appears.
+        // The dot is drawn in its own corner: nothing moves when it appears.
         _dot.Visibility =
-            _viewModel.State?.AnythingHeld == true ? Visibility.Visible : Visibility.Hidden;
+            _viewModel.State?.AnythingHeld == true ? Visibility.Visible : Visibility.Collapsed;
         SurfaceParts.Name(_button, _viewModel.Labels.OpenBar);
         Title = _viewModel.Labels.OpenBar;
     }

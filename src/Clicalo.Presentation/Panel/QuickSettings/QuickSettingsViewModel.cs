@@ -38,7 +38,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
     private const string PercentSign = "%";
     private const string TestModeIcon = "science";
     private const string AutoDimIcon = "blur_on";
-    private const string StickyIcon = "keyboard";
+    private const string StickyIcon = "keyboard_lock";
     private const string VoiceIcon = "pin";
 
     private readonly DocumentStore _store;

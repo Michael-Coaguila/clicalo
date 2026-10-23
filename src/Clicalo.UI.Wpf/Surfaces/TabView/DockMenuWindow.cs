@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.ContextMenu;
 using Clicalo.UI.Wpf.Controls;
@@ -22,7 +23,8 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// </summary>
 public sealed class DockMenuWindow : TouchSurface
 {
-    private const double MenuWidth = 230;
+    // As wide as the guide beside the bar: at 230 «Remove from Frequents» ended in «…» (D21 review).
+    private const double MenuWidth = 260;
 
     private readonly TileContextMenuViewModel _viewModel;
     private readonly TileContextMenuView _view;
@@ -75,6 +77,9 @@ public sealed class DockMenuWindow : TouchSurface
 
     /// <summary>The menu.</summary>
     public TileContextMenuView Menu => _view;
+
+    /// <summary>The shortcut whose menu is open, or null: the menu opens at its height (CUA-014, D21 review).</summary>
+    public ShortcutId? Shortcut => _viewModel.Shortcut;
 
     /// <inheritdoc />
     protected override IEnumerable<SurfaceTarget> CollectTargets()
