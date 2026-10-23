@@ -358,6 +358,51 @@ public sealed class BaseControlTests
             UIElementAutomationPeer.CreatePeerForElement(icon)?.IsControlElement().ShouldBeFalse();
         });
 
+    [Fact]
+    [Trait("Req", "AJR-001")]
+    [Trait("Req", "ACC-001")]
+    public void A_navigation_row_never_leaves_the_last_word_of_its_caption_alone() =>
+        WpfThread.Invoke(() =>
+        {
+            const string caption = "Atajos, plantillas, columnas, idioma y más";
+            var row = new NavRow
+            {
+                Content = "Centro de control",
+                Caption = caption,
+                Symbol = "tune",
+                Width = 300,
+            };
+            using var service = Host(row);
+
+            // «más» goes with «y», and «y» with what follows it: the second line is never a word alone.
+            row.ShownCaption.ShouldBe("Atajos, plantillas, columnas, idioma y más");
+            NavRow
+                .Settle("Shortcuts, templates and more")
+                .ShouldBe("Shortcuts, templates and more");
+            NavRow
+                .Settle("Colores de la app o del sistema")
+                .ShouldBe("Colores de la app o del sistema");
+            NavRow.Settle("Uno").ShouldBe("Uno");
+            var drawn = Descendants(row)
+                .OfType<StyledText>()
+                .Single(static t => t.Text.Contains("idioma", StringComparison.Ordinal));
+            drawn.Text.ShouldBe(row.ShownCaption);
+            PeerOf(row).GetHelpText().ShouldBe(caption, "UI Automation reads it as written");
+        });
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in Descendants(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
     internal static ThemeService Host(params FrameworkElement[] elements)
     {
         var service = new ThemeService(new FakeSystemTheme(), ThemeChoice.Dark);

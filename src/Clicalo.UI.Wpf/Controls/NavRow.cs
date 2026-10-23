@@ -24,7 +24,36 @@ public sealed class NavRow : Button
 
     /// <summary>Identifies <see cref="Caption"/>.</summary>
     public static readonly DependencyProperty CaptionProperty =
-        OptionButton.CaptionProperty.AddOwner(typeof(NavRow));
+        OptionButton.CaptionProperty.AddOwner(
+            typeof(NavRow),
+            new FrameworkPropertyMetadata(null, OnCaptionChanged)
+        );
+
+    private static readonly DependencyPropertyKey ShownCaptionKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(ShownCaption),
+            typeof(string),
+            typeof(NavRow),
+            new FrameworkPropertyMetadata(null)
+        );
+
+    /// <summary>Identifies <see cref="ShownCaption"/>.</summary>
+    public static readonly DependencyProperty ShownCaptionProperty =
+        ShownCaptionKey.DependencyProperty;
+
+    /// <summary>The words that never end a line of the caption: they go with the word after them.</summary>
+    private static readonly HashSet<string> Leading = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "y",
+        "e",
+        "o",
+        "de",
+        "and",
+        "or",
+    };
+
+    /// <summary>U+00A0 NO-BREAK SPACE.</summary>
+    private const char NoBreakSpace = ' ';
 
     private const string IconPart = "PART_Icon";
     private const string CaptionPart = "PART_Caption";
@@ -71,11 +100,46 @@ public sealed class NavRow : Button
         set => SetValue(SymbolProperty, value);
     }
 
-    /// <summary>What the place holds, under the title; null for none.</summary>
+    /// <summary>What the place holds, under the title; null for none. UI Automation reads it as it is written.</summary>
     public string? Caption
     {
         get => (string?)GetValue(CaptionProperty);
         set => SetValue(CaptionProperty, value);
+    }
+
+    /// <summary>
+    /// <see cref="Caption"/> as it is drawn (<see cref="Settle"/>): its last word never sits alone on a line, and a
+    /// conjunction or a short preposition never ends one.
+    /// </summary>
+    public string? ShownCaption => (string?)GetValue(ShownCaptionProperty);
+
+    /// <summary>
+    /// <paramref name="text"/> with no-break spaces where a line must not break: before its last word, so it never
+    /// sits alone on the second line («más», D21 review), and after «y», «e», «o», «de», «and» and «or», which go
+    /// with the word after them.
+    /// </summary>
+    /// <param name="text">A caption as written.</param>
+    public static string Settle(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var words = text.Split(' ');
+        if (words.Length < 2)
+        {
+            return text;
+        }
+
+        var result = new System.Text.StringBuilder(text.Length);
+        for (var i = 0; i < words.Length; i++)
+        {
+            result.Append(words[i]);
+            if (i < words.Length - 1)
+            {
+                var glue = i == words.Length - 2 || Leading.Contains(words[i]);
+                result.Append(glue ? NoBreakSpace : ' ');
+            }
+        }
+
+        return result.ToString();
     }
 
     /// <inheritdoc />
@@ -94,6 +158,11 @@ public sealed class NavRow : Button
 
     /// <inheritdoc />
     protected override AutomationPeer OnCreateAutomationPeer() => new NavRowAutomationPeer(this);
+
+    private static void OnCaptionChanged(
+        DependencyObject row,
+        DependencyPropertyChangedEventArgs e
+    ) => row.SetValue(ShownCaptionKey, e.NewValue is string text ? Settle(text) : null);
 
     private static ControlTemplate CreateTemplate()
     {
@@ -126,7 +195,7 @@ public sealed class NavRow : Button
             .With(ContentPresenter.RecognizesAccessKeyProperty, false);
         var caption = Templates
             .Element<StyledText>(CaptionPart)
-            .With(TextBlock.TextProperty, Templates.Bind(CaptionProperty))
+            .With(TextBlock.TextProperty, Templates.Bind(ShownCaptionProperty))
             .With(StyledText.TextStyleProperty, TextStyleToken.Caption)
             .With(StyledText.InkProperty, ColorToken.Muted)
             .With(StyledText.MaxLinesProperty, 2);
