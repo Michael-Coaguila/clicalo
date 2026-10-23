@@ -298,6 +298,7 @@ public sealed class TemplatesSectionView : Grid
             : new GridLength(PreviewWidth);
         _preview.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
         _preview.BorderThickness = new Thickness(page ? 0 : Theming.Generated.Stroke.Line, 0, 0, 0);
+        _picker.Compact = _narrow;
     }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Render();

@@ -33,8 +33,36 @@ internal sealed class IconPickerView : Border
         Visibility = Visibility.Collapsed,
         Margin = new Thickness(0, Space.S4, 0, 0),
     };
+    private readonly ColumnDefinition _categoriesColumn = new()
+    {
+        Width = new GridLength(CategoriesWidth),
+    };
+    private readonly ThemedScrollViewer _categoriesScroll = new()
+    {
+        Padding = new Thickness(0, 0, Space.S2, Space.S6),
+    };
+    private readonly ThemedScrollViewer _categoriesList = new()
+    {
+        Padding = new Thickness(0, 0, Space.S2, Space.S6),
+    };
+    private readonly Border _categoriesLayer;
+    private readonly TouchButton _category = new()
+    {
+        Variant = ButtonVariant.Secondary,
+        Size = ControlSize.Medium,
+        Width = CategoriesWidth,
+        VerticalAlignment = VerticalAlignment.Top,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        Padding = new Thickness(Space.S3, 0, Space.S2, 0),
+        Margin = new Thickness(Space.S2, 0, 0, 0),
+        Visibility = Visibility.Collapsed,
+    };
+    private readonly DockPanel _right;
     private IIconPicker? _owner;
     private IconPickerModel? _shown;
+    private bool _compact;
+    private bool _listOpen;
+    private string _categoryLabel = string.Empty;
 
     /// <summary>Creates the layer, hidden until it gets a model.</summary>
     public IconPickerView()
@@ -47,6 +75,8 @@ internal sealed class IconPickerView : Border
         _search.DictateRequested += (_, _) => _owner?.DictateIconSearch();
         _close.Click += (_, _) => _owner?.CloseIconPicker();
         _grid.Pick = icon => _owner?.PickIcon(icon);
+        // The grid works out its cells on its own resize first; the suggestions follow them.
+        _grid.SizeChanged += (_, _) => ResizeSuggested();
         Ui.Ink(_currentIcon, SymbolIcon.ForegroundProperty, ColorToken.AccentInk);
 
         var preview = Ui.Card(
@@ -66,41 +96,72 @@ internal sealed class IconPickerView : Border
         head.Children.Add(preview);
         head.Children.Add(_close);
         head.Children.Add(_title);
-        _search.Margin = new Thickness(0, Space.S3, 0, Space.S4);
-
-        var categories = new ThemedScrollViewer
-        {
-            Content = _categories,
-            Padding = new Thickness(0, 0, Space.S2, Space.S6),
-        };
-        var right = new DockPanel
+        // In the narrow window the selector of categories goes beside the search, as wide as their column: it takes no
+        // height from the icons, which the smallest window has little of.
+        var searchRow = new DockPanel
         {
             LastChildFill = true,
-            Margin = new Thickness(Space.S4, 0, 0, 0),
+            Margin = new Thickness(0, Space.S3, 0, Space.S4),
         };
+        DockPanel.SetDock(_category, Dock.Right);
+        searchRow.Children.Add(_category);
+        searchRow.Children.Add(_search);
+
+        _categoriesScroll.Content = _categories;
+        _right = new DockPanel { LastChildFill = true, Margin = new Thickness(Space.S4, 0, 0, 0) };
         DockPanel.SetDock(_suggested, Dock.Top);
         DockPanel.SetDock(_empty, Dock.Top);
-        right.Children.Add(_suggested);
-        right.Children.Add(_empty);
-        right.Children.Add(_grid);
+        _right.Children.Add(_suggested);
+        _right.Children.Add(_empty);
+        _right.Children.Add(_grid);
+        // In the narrow window the categories are a selector whose list is a layer over the icons (R-35 (4)), as the
+        // profiles of «Atajos» are: a column of 216 would leave the grid a few columns.
+        _categoriesLayer = Parts.Layer(_categoriesList);
+        _categoriesLayer.Visibility = Visibility.Collapsed;
+        _category.Click += (_, _) =>
+        {
+            _listOpen = !_listOpen;
+            ApplyMode();
+        };
         var body = new System.Windows.Controls.Grid();
-        body.ColumnDefinitions.Add(
-            new ColumnDefinition { Width = new GridLength(CategoriesWidth) }
-        );
+        body.ColumnDefinitions.Add(_categoriesColumn);
         body.ColumnDefinitions.Add(
             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
         );
-        System.Windows.Controls.Grid.SetColumn(right, 1);
-        body.Children.Add(categories);
-        body.Children.Add(right);
+        System.Windows.Controls.Grid.SetColumn(_right, 1);
+        System.Windows.Controls.Grid.SetColumn(_categoriesLayer, 1);
+        body.Children.Add(_categoriesScroll);
+        body.Children.Add(_right);
+        body.Children.Add(_categoriesLayer);
+        Parts.Cover(_categoriesLayer, _right);
 
         var layout = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(head, Dock.Top);
-        DockPanel.SetDock(_search, Dock.Top);
+        DockPanel.SetDock(searchRow, Dock.Top);
         layout.Children.Add(head);
-        layout.Children.Add(_search);
+        layout.Children.Add(searchRow);
         layout.Children.Add(body);
         Child = layout;
+    }
+
+    /// <summary>
+    /// Whether the picker is in the narrow window (CCM-005, R-35 (4)): the categories become a selector beside the
+    /// search whose list is a layer over the icons; otherwise they are a column on the left.
+    /// </summary>
+    public bool Compact
+    {
+        get => _compact;
+        set
+        {
+            if (_compact == value)
+            {
+                return;
+            }
+
+            _compact = value;
+            _listOpen = false;
+            ApplyMode();
+        }
     }
 
     /// <summary>The search field (it keeps what is typed across the changes of the picker).</summary>
@@ -121,6 +182,12 @@ internal sealed class IconPickerView : Border
         if (model is null)
         {
             Visibility = Visibility.Collapsed;
+            if (_listOpen)
+            {
+                _listOpen = false;
+                ApplyMode();
+            }
+
             return;
         }
 
@@ -177,8 +244,75 @@ internal sealed class IconPickerView : Border
                 Margin = new Thickness(0, 0, 0, Space.S1),
             };
             AutomationProperties.SetName(option, category.Label);
-            option.Click += (_, _) => _owner?.ChooseIconCategory(category.Id);
+            option.Click += (_, _) =>
+            {
+                // A category chosen in the list of the narrow window closes it: the icons are what comes next.
+                _listOpen = false;
+                ApplyMode();
+                _owner?.ChooseIconCategory(category.Id);
+            };
             _categories.Children.Add(option);
+        }
+
+        var chosen = model.Categories.Items.FirstOrDefault(static c => c.Selected);
+        _categoryLabel = chosen?.Label ?? string.Empty;
+        ApplyMode();
+    }
+
+    /// <summary>
+    /// The categories as a column (wide) or as the selector with its list as a layer (narrow): the same options, moved
+    /// from one place to the other.
+    /// </summary>
+    private void ApplyMode()
+    {
+        _categoriesColumn.Width = new GridLength(_compact ? 0 : CategoriesWidth);
+        _categoriesScroll.Visibility = _compact ? Visibility.Collapsed : Visibility.Visible;
+        _right.Margin = new Thickness(_compact ? 0 : Space.S4, 0, 0, 0);
+        var home = _compact ? _categoriesList : _categoriesScroll;
+        if (!ReferenceEquals(_categories.Parent, home))
+        {
+            _categoriesScroll.Content = null;
+            _categoriesList.Content = null;
+            home.Content = _categories;
+        }
+
+        _category.Visibility = _compact ? Visibility.Visible : Visibility.Collapsed;
+        _category.IsExpanded = _compact ? _listOpen : null;
+        _category.IsActive = _compact && _listOpen;
+        _category.Content = Selector(_categoryLabel, _listOpen);
+        AutomationProperties.SetName(_category, _categoryLabel);
+        _categoriesLayer.Visibility =
+            _compact && _listOpen ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The content of the selector of the narrow window: the chosen category and ▾.</summary>
+    private static DockPanel Selector(string label, bool open)
+    {
+        var caret = Ui.Icon(open ? "expand_less" : "expand_more", IconBox.Medium, ColorToken.Muted);
+        caret.Margin = new Thickness(Space.S2, 0, 0, 0);
+        var line = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(caret, Dock.Right);
+        line.Children.Add(caret);
+        line.Children.Add(
+            new StyledText(label, TextStyleToken.Label)
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+            }
+        );
+        return line;
+    }
+
+    private void ResizeSuggested()
+    {
+        if (
+            _suggested.Content is StackPanel { Children.Count: > 1 } column
+            && column.Children[1] is Panel cells
+        )
+        {
+            foreach (var cell in cells.Children.OfType<OptionButton>())
+            {
+                cell.Width = _grid.CellWidth;
+            }
         }
     }
 
@@ -200,12 +334,13 @@ internal sealed class IconPickerView : Border
                 SymbolIcon.ForegroundProperty,
                 option.Selected ? ColorToken.AccentInk : ColorToken.Text
             );
+            // As wide as a cell of the grid under it, so the suggestions and the grid share their columns.
             var cell = new OptionButton
             {
                 Kind = OptionKind.Tile,
                 Content = icon,
                 IsSelected = option.Selected,
-                Width = IconGrid.Cell,
+                Width = _grid.CellWidth,
                 Height = IconGrid.Cell,
                 Padding = new Thickness(0),
                 Margin = new Thickness(0, 0, IconGrid.Gap, IconGrid.Gap),

@@ -586,6 +586,53 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Fact]
+    [Trait("Req", "EDI-004")]
+    [Trait("Req", "CCM-005")]
+    public void In_the_narrow_window_the_categories_of_the_picker_are_a_selector_with_its_list_as_a_layer() =>
+        Run(
+            "es",
+            760,
+            520,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                viewModel.Shortcuts.Editor.TogglePicker();
+                WpfThread.DrainPendingWork();
+                window.ShowShortcutPage();
+                host.LayOut();
+
+                var selector = host.Peer("Todos", AutomationControlType.Button);
+                var fold = selector
+                    .GetPattern(PatternInterface.ExpandCollapse)
+                    .ShouldBeAssignableTo<IExpandCollapseProvider>()!;
+                fold.ExpandCollapseState.ShouldBe(ExpandCollapseState.Collapsed);
+                Named(host, "Interfaz").ShouldBeEmpty("the list opens from the selector");
+
+                fold.Expand();
+                host.LayOut();
+                Named(host, "Todos")
+                    .Count(static peer =>
+                        peer.GetAutomationControlType() == AutomationControlType.RadioButton
+                    )
+                    .ShouldBe(1, "«Todos» in the list over the icons");
+                Selection(host.Peer("Interfaz", AutomationControlType.RadioButton)).Select();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                viewModel
+                    .Shortcuts.Editor.Model!.Picker!.Categories.Single(static c => c.Selected)
+                    .Id.ShouldBe("uiActions");
+                host.Peer("Interfaz", AutomationControlType.Button)
+                    .GetPattern(PatternInterface.ExpandCollapse)
+                    .ShouldBeAssignableTo<IExpandCollapseProvider>()!
+                    .ExpandCollapseState.ShouldBe(
+                        ExpandCollapseState.Collapsed,
+                        "choosing closes the list"
+                    );
+            }
+        );
+
     private static List<AutomationPeer> Named(AuditHost host, string name)
     {
         var found = new List<AutomationPeer>();

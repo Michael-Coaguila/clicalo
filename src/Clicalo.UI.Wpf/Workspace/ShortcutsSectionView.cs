@@ -389,6 +389,8 @@ public sealed class ShortcutsSectionView : Grid
             _narrow && _profilesOpen && !page ? Visibility.Visible : Visibility.Collapsed;
         SetColumn(_picker, page ? 2 : 1);
         SetColumnSpan(_picker, page ? 1 : 2);
+        // Narrow, the categories of the picker are a selector, as the profiles are (R-35 (4)).
+        _picker.Compact = _narrow;
         if (_shown is { } current)
         {
             _profilesLayerContent.Content =
