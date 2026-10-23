@@ -99,7 +99,8 @@ public sealed class ControlCenterViewModel : ObservableObject
                 services.Post,
                 services.OpenWelcome ?? (static () => { }),
                 services.Templates?.Ai,
-                () => services.Catalogs().KeyLabels
+                () => services.Catalogs().KeyLabels,
+                Templates is null ? null : OpenKey
             )
         );
         TouchPrecision = new TouchPrecisionViewModel(
@@ -390,6 +391,13 @@ public sealed class ControlCenterViewModel : ObservableObject
         _s.Shortcuts.Open(new ListRef.InProfile(profile), null, library);
         Shortcuts.OnOpened();
         Select(ControlCenterSection.Shortcuts);
+    }
+
+    // «Usar mi clave» of General › IA: the key is pasted in Plantillas, next to «Crear con IA» (GEN-015, PLA-003).
+    private void OpenKey()
+    {
+        Templates?.OpenKey();
+        Select(ControlCenterSection.Templates);
     }
 
     private NavItem Item(

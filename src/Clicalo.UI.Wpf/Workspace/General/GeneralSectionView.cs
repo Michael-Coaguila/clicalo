@@ -751,19 +751,24 @@ public sealed class GeneralSectionView : ContentControl
             ButtonVariant.Secondary,
             _viewModel.ToggleAiConsent
         );
-        TouchButton? delete = null;
-        if (ai.DeleteKeyText is { } text)
+        TouchButton? keyAction = null;
+        if (ai.UseKeyText is { } use)
         {
-            delete = SettingsUi.Button(
+            // Without a key: the way to the field where it is pasted, in Plantillas (PLA-003).
+            keyAction = SettingsUi.Button(use, ButtonVariant.Tertiary, _viewModel.UseAiKey, "key");
+        }
+        else if (ai.DeleteKeyText is { } text)
+        {
+            keyAction = SettingsUi.Button(
                 text,
                 ButtonVariant.Danger,
                 _viewModel.DeleteAiKey,
                 ai.DeleteKeyArmed ? "warning" : "delete"
             );
-            delete.IsActive = ai.DeleteKeyArmed;
+            keyAction.IsActive = ai.DeleteKeyArmed;
             if (ai.DeleteKeyArmed)
             {
-                AutomationProperties.SetLiveSetting(delete, AutomationLiveSetting.Polite);
+                AutomationProperties.SetLiveSetting(keyAction, AutomationLiveSetting.Polite);
             }
         }
 
@@ -777,7 +782,7 @@ public sealed class GeneralSectionView : ContentControl
                     ai.ConsentDetail,
                     consent
                 ),
-                SettingsUi.SettingBlock("key", ai.KeyState, null, delete)
+                SettingsUi.SettingBlock("key", ai.KeyState, null, keyAction)
             )
         );
     }

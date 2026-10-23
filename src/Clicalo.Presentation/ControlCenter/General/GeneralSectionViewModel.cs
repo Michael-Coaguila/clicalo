@@ -268,6 +268,12 @@ public sealed class GeneralSectionViewModel : ObservableObject
     }
 
     /// <summary>
+    /// [keyUse] of the AI card without a saved key (GEN-015, PLA-003): Plantillas with the field of the key open, next
+    /// to «Crear con IA», where the key is pasted.
+    /// </summary>
+    public void UseAiKey() => _s.OpenKey?.Invoke();
+
+    /// <summary>
     /// [keyDelete] (GEN-015, PLA-003, REG-04): the first tap arms it ([delConfirm]); the second one deletes the saved
     /// key. It cannot be undone, because Clícalo never keeps a copy of the key: pasting it again in Plantillas
     /// restores it.
@@ -499,7 +505,8 @@ public sealed class GeneralSectionViewModel : ObservableObject
             T(L.ConsentD4),
             T(_hasKey ? L.QuotaKey : L.KeyNone),
             _hasKey ? T(armed ? L.DelConfirm : L.KeyDelete) : null,
-            armed
+            armed,
+            _hasKey || _s.OpenKey is null ? null : T(L.KeyUse)
         );
     }
 

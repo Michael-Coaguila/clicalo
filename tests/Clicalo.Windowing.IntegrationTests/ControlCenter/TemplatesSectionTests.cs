@@ -253,6 +253,40 @@ public sealed class TemplatesSectionTests
     }
 
     [Fact]
+    [Trait("Req", "GEN-015")]
+    [Trait("Req", "PLA-003")]
+    public void Without_a_key_General_opens_the_field_of_the_key_in_Plantillas()
+    {
+        var setup = new Setup(consent: true);
+        var (window, theme, viewModel) = setup.Build();
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                viewModel.Select(ControlCenterSection.Panel);
+                var ai = viewModel.General.Screen.Ai.ShouldNotBeNull();
+                ai.UseKeyText.ShouldBe("Usar mi clave");
+                ai.DeleteKeyText.ShouldBeNull();
+
+                viewModel.General.UseAiKey();
+                WpfThread.DrainPendingWork();
+                viewModel.Section.ShouldBe(ControlCenterSection.Templates);
+                viewModel.Templates!.Screen.Ai.KeyFieldOpen.ShouldBeTrue();
+
+                viewModel.Templates.SaveKey("sk-test");
+                viewModel.Select(ControlCenterSection.Panel);
+                ai = viewModel.General.Screen.Ai.ShouldNotBeNull();
+                ai.UseKeyText.ShouldBeNull("with a key, the row offers to delete it");
+                ai.DeleteKeyText.ShouldBe("Borrar clave");
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
     [Trait("Req", "REG-04")]
     [Trait("Req", "PLA-003")]
     public void Deleting_the_key_takes_two_taps()

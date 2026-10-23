@@ -434,7 +434,8 @@ public sealed class TemplatesSectionView : Grid
         var keyLine = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(keyButton, Dock.Right);
         keyLine.Children.Add(keyButton);
-        var status = Parts.IconLine("bolt", model.KeyStatus, style: TextStyleToken.Caption);
+        // The state of the key (PLA-003) carries the icon of the key, as its button and «General › IA» do.
+        var status = Parts.IconLine("key", model.KeyStatus, style: TextStyleToken.Caption);
         status.VerticalAlignment = VerticalAlignment.Center;
         keyLine.Children.Add(status);
 

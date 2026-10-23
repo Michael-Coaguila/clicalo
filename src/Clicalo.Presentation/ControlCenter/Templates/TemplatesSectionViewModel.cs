@@ -176,6 +176,18 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
         Invalidate();
     }
 
+    /// <summary>
+    /// Opens the field of the key, as [Usar mi clave] does, when it is closed: «Usar mi clave» of General › IA comes
+    /// here (GEN-015, PLA-003).
+    /// </summary>
+    public void OpenKey()
+    {
+        if (!_keyOpen)
+        {
+            ToggleKey();
+        }
+    }
+
     /// <summary>[Listo] of the key field: saves the pasted key, which is never shown again (PLA-003, ADR-0008).</summary>
     /// <param name="key">The key in the hidden field; empty closes the field.</param>
     public void SaveKey(string key)

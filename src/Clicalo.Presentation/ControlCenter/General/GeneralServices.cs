@@ -15,6 +15,7 @@ namespace Clicalo.Presentation.ControlCenter.General;
 /// <param name="OpenWelcome">«Ver la bienvenida otra vez»: closes the Control Center and opens the welcome at step 0 (GEN-014).</param>
 /// <param name="Ai">The AI, for its card (GEN-015); null hides the card.</param>
 /// <param name="KeyLabels">The names of the keys, for the combinations of the global shortcut (BUR-005).</param>
+/// <param name="OpenKey">«Usar mi clave» of the AI card: Plantillas with the field of the key open (PLA-003).</param>
 public sealed record GeneralServices(
     DocumentStore Store,
     ILocalizationContext Localization,
@@ -23,5 +24,6 @@ public sealed record GeneralServices(
     Action<Action> Post,
     Action OpenWelcome,
     AiAssistant? Ai = null,
-    Func<KeyLabelCatalog>? KeyLabels = null
+    Func<KeyLabelCatalog>? KeyLabels = null,
+    Action? OpenKey = null
 );

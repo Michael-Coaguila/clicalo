@@ -14,6 +14,9 @@ namespace Clicalo.Presentation.ControlCenter.General;
 /// <param name="KeyState">[quotaKey] or [keyNone].</param>
 /// <param name="DeleteKeyText">[keyDelete], or [delConfirm] while armed; null without a saved key.</param>
 /// <param name="DeleteKeyArmed">Whether the first tap armed the delete: danger fill (REG-04).</param>
+/// <param name="UseKeyText">
+/// [keyUse] without a saved key: it opens Plantillas with the field of the key, where the key is pasted; null with one.
+/// </param>
 public sealed record AiModel(
     string Caption,
     SwitchItem Use,
@@ -23,5 +26,6 @@ public sealed record AiModel(
     string ConsentDetail,
     string KeyState,
     string? DeleteKeyText,
-    bool DeleteKeyArmed
+    bool DeleteKeyArmed,
+    string? UseKeyText = null
 );
