@@ -98,7 +98,8 @@ public sealed class SurfacesAuditTests
             w.Panel.ApplyContext(
                 PanelBodyContext.Idle with
                 {
-                    ElevatedApp = "Taskmgr",
+                    // EJE-003: the app as Windows names it, a long name for the card (D21 review).
+                    ElevatedApp = "Administrador de tareas",
                     SuggestionApp = "Notion",
                     CanRepeat = true,
                     Notice = new PanelNotice(
@@ -360,6 +361,18 @@ public sealed class SurfacesAuditTests
                 var atLeast = string.Equals(state, "search-text", StringComparison.Ordinal) ? 7 : 8;
                 SurfaceAudit.ShouldPass(host, name, atLeast, TouchInput.PointerLayer, "Panel");
                 NoTileShowsInPartUnderALayer(host, window, name);
+                if (
+                    string.Equals(state, "notices", StringComparison.Ordinal)
+                    && compact
+                    && size == SizeSetting.Small
+                    && !allOn
+                )
+                {
+                    // CUA-011 (D21 review): the administrator notice is whole over «Qué ver» and the pager, which are
+                    // hidden under it, so no edge of the pager shows below the card and UI Automation does not reach them.
+                    window.Body.Selector.Visibility.ShouldBe(Visibility.Hidden, name);
+                    window.Body.Pager.Visibility.ShouldNotBe(Visibility.Visible, name);
+                }
                 if (PagedStates.Contains(state))
                 {
                     world.Panel.Pager.PageCount.ShouldBeGreaterThan(1, name);

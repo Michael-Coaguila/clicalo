@@ -31,6 +31,7 @@ public sealed class PanelBodyView : StackPanel
     private bool _coversChooser;
     private bool _coversGrid;
     private bool _coversPager;
+    private bool _coversFoot;
 
     /// <summary>Creates the body of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The panel.</param>
@@ -220,9 +221,18 @@ public sealed class PanelBodyView : StackPanel
     /// <param name="chooser">The row «Qué ver».</param>
     /// <param name="grid">The grid and the pager.</param>
     /// <param name="pager">The pager.</param>
-    public void Cover(bool chooser, bool grid, bool pager)
+    /// <param name="foot">
+    /// The rows under a notice card that takes the whole Compact body: «Qué ver» and the pager, hidden where they are
+    /// (D21 review), without reserving a pager row that one page does not have.
+    /// </param>
+    public void Cover(bool chooser, bool grid, bool pager, bool foot = false)
     {
-        if (_coversChooser == chooser && _coversGrid == grid && _coversPager == pager)
+        if (
+            _coversChooser == chooser
+            && _coversGrid == grid
+            && _coversPager == pager
+            && _coversFoot == foot
+        )
         {
             return;
         }
@@ -230,6 +240,7 @@ public sealed class PanelBodyView : StackPanel
         _coversChooser = chooser;
         _coversGrid = grid;
         _coversPager = pager;
+        _coversFoot = foot;
         Apply();
     }
 
@@ -304,7 +315,7 @@ public sealed class PanelBodyView : StackPanel
             compact
                 ? Shown(CompactRowRules.Visible(layout, searching), keepsPlace: true)
                 : Shown(_viewModel.Selector.IsVisible, searching && layout.ShowSelectorRow),
-            _coversChooser
+            _coversChooser || _coversFoot
         );
         GridArea.Visibility = Covered(Visibility.Visible, _coversGrid);
 
@@ -320,7 +331,7 @@ public sealed class PanelBodyView : StackPanel
         Pager.ShowPages(paged);
         Pager.Visibility = Covered(
             paged || _coversChooser || _coversPager ? Visibility.Visible : Visibility.Collapsed,
-            _coversGrid || _coversPager
+            _coversGrid || _coversPager || _coversFoot
         );
 
         var shape = _viewModel.Shape;

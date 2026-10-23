@@ -74,6 +74,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private readonly Border _headerSlot;
     private readonly PanelBodyView _body;
     private readonly Border _bottomLayer;
+    private bool _footTakesBody;
+    private bool _footCovered;
     private readonly SearchBar? _searchBar;
     private readonly SuggestionCard? _suggestionCard;
     private readonly Border _panicStrip;
@@ -640,10 +642,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     /// </summary>
     private void ApplyCover()
     {
+        _footCovered = FootCovers();
         _body.Cover(
             chooser: _search?.IsOpen == true,
             grid: _viewModel.Picker.IsVisible,
-            pager: _layers?.TestMode.IsOn == true
+            pager: _layers?.TestMode.IsOn == true,
+            foot: _footCovered
         );
     }
 
@@ -690,13 +694,24 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             || _body.TileMenu?.Visibility == Visibility.Visible
         )
         {
+            _footTakesBody = false;
             return body;
         }
 
         var above = Span(BodyTop(), TopOf(_body.Selector) - Space.S2);
         _bottomLayer.Measure(new Size(above.Width, double.PositiveInfinity));
-        return _bottomLayer.DesiredSize.Height > above.Height ? body : above;
+        _footTakesBody = _bottomLayer.DesiredSize.Height > above.Height;
+        return _footTakesBody ? body : above;
     }
+
+    /// <summary>
+    /// Whether the layer at the foot of the body shows over the whole Compact body (<see cref="FootLayerRegion"/>): the
+    /// rows under it are hidden then, as under any layer, so neither the finger nor UI Automation reaches them.
+    /// </summary>
+    private bool FootCovers() =>
+        _footTakesBody
+        && _bottomLayer.Visibility == Visibility.Visible
+        && _viewModel.Layout.Compact;
 
     /// <summary>
     /// <paramref name="top"/>, or the middle of the gap above the row of the body it would cut (a row of tiles, the row
@@ -935,6 +950,12 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         try
         {
             KeepGridUnderFinger();
+            if (FootCovers() != _footCovered)
+            {
+                // The notice card at the foot of the Compact body grew over «Qué ver», or went away.
+                ApplyCover();
+            }
+
             RefreshTargets();
             if (!_touching && IsVisible)
             {
