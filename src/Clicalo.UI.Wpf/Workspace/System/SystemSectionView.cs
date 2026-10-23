@@ -470,9 +470,15 @@ public sealed class SystemSectionView : Border
             var texts = Ui.Column(
                 0,
                 SettingsUi.Styled(row.Name, TextStyleToken.Label),
+                // LOG-008: the whole address, target or steps, wrapped, never cut with «…».
                 row.Detail.Length == 0
                     ? null
-                    : SettingsUi.Styled(row.Detail, TextStyleToken.Caption, ColorToken.Muted)
+                    : SettingsUi.Styled(
+                        row.Detail,
+                        TextStyleToken.Caption,
+                        ColorToken.Muted,
+                        lines: 0
+                    )
             );
             var id = row.Id;
             var toggle = SettingsUi.Tall(
@@ -487,6 +493,7 @@ public sealed class SystemSectionView : Border
                 ),
                 ControlHeight.Medium
             );
+            AutomationProperties.SetHelpText(toggle, row.Detail);
             toggle.HorizontalContentAlignment = HorizontalAlignment.Left;
             AutomationProperties.SetHelpText(toggle, row.Detail);
             AutomationProperties.SetAutomationId(toggle, "system.review." + row.Id.Value);

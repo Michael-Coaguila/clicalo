@@ -11,6 +11,7 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Presentation.ControlCenter.Editor;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter.SystemSection;
@@ -919,13 +920,7 @@ public sealed class SystemSectionViewModel : ObservableObject
                 shortcut.Id,
                 shortcut.Icon.Name,
                 shortcut.Name.Get(language, LangCode.Es),
-                shortcut.Action switch
-                {
-                    UrlAction url => Targets.Text(url.Target),
-                    AppAction app => Targets.Text(app.Target),
-                    MacroAction macro => T(L.StepsN(count: macro.Steps.Count)),
-                    _ => string.Empty,
-                },
+                ActionDetail.Of(shortcut.Action, _s.Catalogs(), language, T),
                 _confirmed.Contains(shortcut.Id)
             )),
         ];

@@ -1135,10 +1135,12 @@ public sealed class TemplatesSectionView : Grid
         check.Margin = new Thickness(0, 0, Space.S3, 0);
         var lines = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         lines.Children.Add(new StyledText(row.Name, TextStyleToken.Label));
+        // A combination in the font of keys; what a Web, App or Macro row does, whole and wrapped (LOG-008).
         lines.Children.Add(
-            row.AlreadyIn
-                ? new StyledText(row.Foot, TextStyleToken.Caption, ColorToken.Muted)
-                : new StyledText(row.Foot, TextStyleToken.Keys, ColorToken.Muted)
+            row.AlreadyIn ? new StyledText(row.Foot, TextStyleToken.Caption, ColorToken.Muted)
+            : row.KeysName is not null
+                ? new StyledText(row.Foot, TextStyleToken.Keys, ColorToken.Muted)
+            : new StyledText(row.Foot, TextStyleToken.Caption, ColorToken.Muted) { MaxLines = 0 }
         );
         if (row.Warning is { } warning)
         {

@@ -1057,9 +1057,9 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
         }
     }
 
+    // LOG-008: a Web, App or Macro row says whole what it does (the address, the target, every step), never a count.
     private string Foot(Shortcut shortcut, KeyLabelCatalog labels) =>
         ActionKinds.ChordOf(shortcut.Action) is { } chord
             ? KeyChordFormatter.Format(chord, labels, KeyLabelStyle.Full, Language, LangCode.Es)
-        : shortcut.Action is MacroAction macro ? T(L.StepsN(macro.Steps.Count))
-        : string.Empty;
+            : ActionDetail.Of(shortcut.Action, _s.Catalogs(), Language, T);
 }
