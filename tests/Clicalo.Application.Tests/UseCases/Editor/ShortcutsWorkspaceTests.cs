@@ -248,6 +248,28 @@ public sealed class ShortcutsWorkspaceTests
     }
 
     [Fact]
+    [Trait("Req", "ATJ-009")]
+    public void A_tile_dropped_where_it_already_is_changes_nothing_and_leaves_no_undo_step()
+    {
+        _workspace.SelectList(Word);
+        _workspace.Shortcuts.Select(s => s.Id).ShouldBe([StoreSamples.Bold, StoreSamples.Save]);
+
+        _workspace.Reorder(StoreSamples.Bold, StoreSamples.Save);
+        _workspace.Reorder(StoreSamples.Save, null);
+
+        _workspace.Shortcuts.Select(s => s.Id).ShouldBe([StoreSamples.Bold, StoreSamples.Save]);
+        _harness.Changes.ShouldBeEmpty();
+        _harness.Store.CanUndo.ShouldBeFalse();
+
+        _workspace.Reorder(StoreSamples.Bold, null);
+
+        _workspace
+            .Shortcuts.Select(s => s.Id)
+            .ShouldBe([StoreSamples.Save, StoreSamples.Bold], "past its right-hand neighbour");
+        _harness.Store.CanUndo.ShouldBeTrue();
+    }
+
+    [Fact]
     [Trait("Req", "EDI-016")]
     public void The_position_buttons_move_it_inside_its_list()
     {

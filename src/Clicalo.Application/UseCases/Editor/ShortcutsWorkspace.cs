@@ -695,17 +695,25 @@ public sealed class ShortcutsWorkspace
 
     /// <summary>
     /// A tile dropped in the grid (ATJ-009): <paramref name="moved"/> goes before <paramref name="before"/>, or to the
-    /// end when it is null. One undo step.
+    /// end when it is null. One undo step; a drop where the tile already is changes nothing and leaves no undo step.
     /// </summary>
     /// <param name="moved">The dragged shortcut.</param>
-    /// <param name="before">The tile it was dropped on, or null for the end.</param>
+    /// <param name="before">The tile it goes in front of, or null for the end.</param>
     public void Reorder(ShortcutId moved, ShortcutId? before)
     {
-        var others = Shortcuts.Items.Where(s => s.Id != moved).ToList();
-        var position =
+        var all = Shortcuts.Items.ToList();
+        var from = all.FindIndex(s => s.Id == moved);
+        var others = all.Where(s => s.Id != moved).ToList();
+        var to =
             before is { } target && others.FindIndex(s => s.Id == target) is var index and >= 0
-                ? ListPosition.At(index)
-                : ListPosition.End;
+                ? index
+                : others.Count;
+        if (from == to)
+        {
+            return;
+        }
+
+        var position = to == others.Count ? ListPosition.End : ListPosition.At(to);
         _store.SealCoalescing();
         if (Dispatch(new MoveShortcut(moved, List, position)))
         {

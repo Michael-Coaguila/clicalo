@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -74,6 +75,13 @@ public sealed class ShortcutsSectionView : Grid
         Width = new GridLength(EditorWidth),
     };
     private readonly DispatcherTimer _pressTimer;
+    private readonly Canvas _dropLayer = new() { IsHitTestVisible = false };
+    private readonly Border _dropMark = new()
+    {
+        Width = Theming.Generated.Stroke.Selected,
+        Height = GridTiles.TileHeight,
+        Visibility = Visibility.Collapsed,
+    };
     private ShortcutsScreen? _shown;
     private bool _narrow;
     private bool _pageOpen;
@@ -81,6 +89,8 @@ public sealed class ShortcutsSectionView : Grid
     private ShortcutId? _pressed;
     private ShortcutId? _dragging;
     private UIElement? _dragTile;
+    private AutoFillGrid? _tiles;
+    private Point _pressPoint;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
@@ -110,6 +120,8 @@ public sealed class ShortcutsSectionView : Grid
             Interval = LongPress,
         };
         _pressTimer.Tick += (_, _) => StartDrag();
+        Ui.Ink(_dropMark, Border.BackgroundProperty, ColorToken.Accent);
+        _dropLayer.Children.Add(_dropMark);
 
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -914,10 +926,17 @@ public sealed class ShortcutsSectionView : Grid
         }
 
         grid.Children.Add(GridTiles.Library(model.LibraryText, OpenLibraryPage));
+        _tiles = grid;
+        _dropMark.Visibility = Visibility.Collapsed;
+        // The mark of where a dragged tile lands is drawn over the grid, never in its flow.
+        Detach(_dropLayer);
+        var layers = new Grid();
+        layers.Children.Add(grid);
+        layers.Children.Add(_dropLayer);
         var hint = Parts.Note(model.Hint, style: TextStyleToken.Caption);
         hint.Margin = new Thickness(0, Space.S3, 0, 0);
         var column = new StackPanel();
-        column.Children.Add(grid);
+        column.Children.Add(layers);
         column.Children.Add(hint);
         return column;
     }
@@ -931,7 +950,7 @@ public sealed class ShortcutsSectionView : Grid
     private OptionButton Tile(GridTile tile, string incompleteText)
     {
         var button = GridTiles.Tile(tile, incompleteText);
-        button.PreviewMouseLeftButtonDown += (_, _) => Press(tile.Id, button);
+        button.PreviewMouseLeftButtonDown += (_, e) => Press(tile.Id, button, e);
         button.Click += (_, _) =>
         {
             if (_dragging is null)
@@ -943,10 +962,11 @@ public sealed class ShortcutsSectionView : Grid
         return button;
     }
 
-    private void Press(ShortcutId id, UIElement tile)
+    private void Press(ShortcutId id, UIElement tile, MouseButtonEventArgs e)
     {
         _pressed = id;
         _dragTile = tile;
+        _pressPoint = _tiles is null ? default : e.GetPosition(_tiles);
         _pressTimer.Stop();
         _pressTimer.Start();
         tile.PreviewMouseMove -= OnTileMove;
@@ -957,7 +977,10 @@ public sealed class ShortcutsSectionView : Grid
         tile.LostMouseCapture += OnTileCaptureLost;
     }
 
-    /// <summary>A long press picks a tile up (ATJ-009): it follows the finger until it is dropped.</summary>
+    /// <summary>
+    /// A long press picks a tile up (ATJ-009): it follows the finger above the others, and a line of the accent marks
+    /// the gap where it will land, until it is dropped.
+    /// </summary>
     private void StartDrag()
     {
         _pressTimer.Stop();
@@ -973,14 +996,28 @@ public sealed class ShortcutsSectionView : Grid
         _listScroll.CancelPan();
         _dragging = id;
         _dragTile.Opacity = 0.55;
+        _dragTile.RenderTransform = new TranslateTransform();
+        Panel.SetZIndex(_dragTile, 1);
         _ = _dragTile.CaptureMouse();
     }
 
     private void OnTileMove(object sender, MouseEventArgs e)
     {
+        if (_dragging is { } moved && _dragTile is not null && _tiles is not null)
+        {
+            var point = e.GetPosition(_tiles);
+            if (_dragTile.RenderTransform is TranslateTransform follow)
+            {
+                follow.X = point.X - _pressPoint.X;
+                follow.Y = point.Y - _pressPoint.Y;
+            }
+
+            ShowDrop(DropAt(moved, point));
+            return;
+        }
+
         if (
-            _dragging is null
-            && _pressed is not null
+            _pressed is not null
             && _dragTile is not null
             && !_dragTile.IsMouseCaptured
             && e.LeftButton != MouseButtonState.Pressed
@@ -995,15 +1032,14 @@ public sealed class ShortcutsSectionView : Grid
         _pressTimer.Stop();
         if (_dragging is { } moved && _dragTile is not null)
         {
-            var target = TileUnder(e.GetPosition(_grid));
-            _dragTile.Opacity = 1;
+            var drop = _tiles is null ? null : DropAt(moved, e.GetPosition(_tiles));
+            EndDrag();
             _dragTile.ReleaseMouseCapture();
-            _dragging = null;
             _pressed = null;
             e.Handled = true;
-            if (target != moved)
+            if (drop is { Moves: true } landing)
             {
-                _viewModel.Reorder(moved, target);
+                _viewModel.Reorder(moved, landing.Before);
             }
 
             return;
@@ -1015,25 +1051,95 @@ public sealed class ShortcutsSectionView : Grid
     private void OnTileCaptureLost(object sender, MouseEventArgs e)
     {
         _pressTimer.Stop();
-        if (_dragging is not null && _dragTile is not null)
+        if (_dragging is not null)
         {
-            _dragTile.Opacity = 1;
-            _dragging = null;
+            EndDrag();
         }
     }
 
-    /// <summary>The shortcut of the tile under <paramref name="point"/>; null for the library tile or a gap (the end).</summary>
-    private ShortcutId? TileUnder(Point point)
+    /// <summary>Puts the dragged tile back in its place and hides the mark.</summary>
+    private void EndDrag()
     {
-        var hit = _grid.InputHitTest(point) as DependencyObject;
-        for (var node = hit; node is not null; node = VisualTreeHelper.GetParent(node))
+        if (_dragTile is not null)
         {
-            if (node is FrameworkElement { Tag: ShortcutId id })
+            _dragTile.Opacity = 1;
+            _dragTile.RenderTransform = Transform.Identity;
+            Panel.SetZIndex(_dragTile, 0);
+        }
+
+        _dragging = null;
+        _dropMark.Visibility = Visibility.Collapsed;
+    }
+
+    private void ShowDrop(Landing? drop)
+    {
+        if (drop is not { Moves: true } landing)
+        {
+            _dropMark.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        Canvas.SetLeft(_dropMark, landing.MarkX - (_dropMark.Width / 2));
+        Canvas.SetTop(_dropMark, landing.MarkTop);
+        _dropMark.Height = landing.MarkHeight;
+        _dropMark.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// Where <paramref name="moved"/> lands when it is dropped at <paramref name="point"/> of the grid: before the tile
+    /// under the finger when the finger is on its first half, after it on its second half, and at the end on «Biblioteca»
+    /// or past the last tile. Null over a gap that is not a place; <see cref="Landing.Moves"/> is false where it already
+    /// is, so the drop changes nothing.
+    /// </summary>
+    private Landing? DropAt(ShortcutId moved, Point point)
+    {
+        if (_tiles is null)
+        {
+            return null;
+        }
+
+        var order = new List<(ShortcutId? Id, Rect Slot)>();
+        foreach (FrameworkElement child in _tiles.Children)
+        {
+            order.Add((child.Tag as ShortcutId?, LayoutInformation.GetLayoutSlot(child)));
+        }
+
+        var from = order.FindIndex(entry => entry.Id == moved);
+        var half = _tiles.Gap / 2;
+        for (var i = 0; i < order.Count; i++)
+        {
+            var (id, slot) = order[i];
+            var area = slot;
+            area.Inflate(half, half);
+            if (i == from || !area.Contains(point))
             {
-                return id;
+                continue;
             }
+
+            // «Biblioteca», the last child, is the end of the list.
+            var after = id is not null && point.X > slot.Left + (slot.Width / 2);
+            var at =
+                id is null ? i
+                : after ? i + 1
+                : i;
+            var before = order
+                .Skip(at)
+                .Select(static entry => entry.Id)
+                .FirstOrDefault(other => other != moved);
+            var to = at > from ? at - 1 : at;
+            var markX = after ? slot.Right + half : slot.Left - half;
+            return new Landing(before, to != from, markX, slot.Top, slot.Height);
         }
 
         return null;
     }
+
+    /// <summary>Where a dragged tile lands: in front of <see cref="Before"/> (null for the end) and where its mark goes.</summary>
+    private sealed record Landing(
+        ShortcutId? Before,
+        bool Moves,
+        double MarkX,
+        double MarkTop,
+        double MarkHeight
+    );
 }
