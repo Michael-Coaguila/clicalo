@@ -232,7 +232,7 @@
   "errUnavD": "El servicio de IA falló. Inténtalo de nuevo en un momento.",
   "errInvT": "Respuesta no válida",
   "errInvD": "La IA respondió algo que no son atajos válidos. Reinténtalo o elige otra opción.",
-  "kbForLine": "Para {name} · {app}",
+  "kbForLine": "Teclado: {name} · {app}",
   "kbEsLa": "Español (Latinoamérica)",
   "kbEsEs": "Español (España)",
   "kbEnUs": "Inglés (EE. UU.)",

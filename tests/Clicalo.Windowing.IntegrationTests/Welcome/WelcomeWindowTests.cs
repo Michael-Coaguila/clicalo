@@ -139,7 +139,7 @@ public sealed class WelcomeWindowTests
                 screen = viewModel.Screen;
                 screen.Title.ShouldBe("¿Qué apps usas más?");
                 screen.KeyboardLine.ShouldBe(
-                    "Para Español (España) · Office y apps en español",
+                    "Teclado: Español (España) · Office y apps en español",
                     "the keyboard Windows reports and the programs language, as in Plantillas"
                 );
                 screen.Kit.Count.ShouldBe(10);

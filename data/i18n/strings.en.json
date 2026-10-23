@@ -232,7 +232,7 @@
   "errUnavD": "The AI service failed. Try again in a moment.",
   "errInvT": "Invalid answer",
   "errInvD": "The AI answered something that isn’t valid shortcuts. Retry or choose another option.",
-  "kbForLine": "For {name} · {app}",
+  "kbForLine": "Keyboard: {name} · {app}",
   "kbEsLa": "Spanish (Latin America)",
   "kbEsEs": "Spanish (Spain)",
   "kbEnUs": "English (US)",

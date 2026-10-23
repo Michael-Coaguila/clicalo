@@ -1115,9 +1115,9 @@
       "text": { "es": "La IA respondió algo que no son atajos válidos. Reinténtalo o elige otra opción.", "en": "The AI answered something that isn’t valid shortcuts. Retry or choose another option." }
     },
     "kbForLine": {
-      "notes": "Línea del teclado «[kbFor] {distribución} · {programas}» sin concatenar fragmentos (PLA-009, IDI-004). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
+      "notes": "Línea del teclado «[kbFor] {distribución} · {programas}» sin concatenar fragmentos (PLA-009, IDI-004). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26). Revisado en M7: «Para Español (España)» no decía que es el teclado, el dato que explica por qué cambian las combinaciones; {name} sigue con mayúscula porque es también el nombre de la opción. Pendiente de ratificar (D21).",
       "after": "errInvD",
-      "text": { "es": "Para {name} · {app}", "en": "For {name} · {app}" }
+      "text": { "es": "Teclado: {name} · {app}", "en": "Keyboard: {name} · {app}" }
     },
     "kbEsLa": {
       "notes": "Distribución del teclado (PLA-009). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",

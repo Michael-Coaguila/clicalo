@@ -66,7 +66,7 @@ public sealed class TemplatesSectionTests
                     "Sin clave: la IA usa tu propia clave de API de Anthropic"
                 );
                 screen.Ai.Keyboard.Line.ShouldBe(
-                    "Para Español (Latinoamérica) · Office y apps en español"
+                    "Teclado: Español (Latinoamérica) · Office y apps en español"
                 );
                 screen.Ai.Keyboard.Layouts.Count.ShouldBe(4);
                 screen.Suggested.Cards.ShouldHaveSingleItem().Id.ShouldBe("notes");
