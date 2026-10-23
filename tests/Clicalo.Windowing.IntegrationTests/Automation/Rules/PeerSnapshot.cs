@@ -50,6 +50,9 @@ public static class PeerSnapshot
             Name = peer.GetName() ?? string.Empty,
             ControlType = Enum.Parse<ControlType>(peer.GetAutomationControlType().ToString()),
             Patterns = PatternsOf(peer),
+            IsReadOnlyRange =
+                peer.GetPattern(PatternInterface.RangeValue)
+                    is IRangeValueProvider { IsReadOnly: true },
             ToggleState = toggle is null ? null : Map(toggle.ToggleState),
             ExpandCollapseState = expand is null ? null : Map(expand.ExpandCollapseState),
             LiveSetting = Map(peer.GetLiveSetting()),

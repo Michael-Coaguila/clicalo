@@ -60,6 +60,8 @@ public static class FlaUiSnapshot
                 )
                 | (patterns.RangeValue.IsSupported ? UiaPatterns.RangeValue : UiaPatterns.None)
                 | (patterns.Value.IsSupported ? UiaPatterns.Value : UiaPatterns.None),
+            IsReadOnlyRange =
+                patterns.RangeValue.PatternOrDefault?.IsReadOnly.ValueOrDefault == true,
             ToggleState = patterns.Toggle.PatternOrDefault?.ToggleState.ValueOrDefault,
             ExpandCollapseState = patterns
                 .ExpandCollapse

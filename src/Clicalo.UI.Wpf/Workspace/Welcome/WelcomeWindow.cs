@@ -9,6 +9,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Welcome;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -42,9 +43,11 @@ public sealed class WelcomeWindow : Window
     public const double WelcomeHeight = 640;
 
     private readonly WelcomeViewModel _viewModel;
-    private readonly Grid _progress = new();
+    private readonly StepProgress _progress = new();
     private readonly ThemedScrollViewer _scroll = new();
     private readonly ContentControl _footer = new() { Focusable = false };
+    private readonly LiveAnnouncer _announcer;
+    private readonly SpokenLines _lines;
     private int _shownStep = -1;
     private bool _closing;
 
@@ -56,6 +59,9 @@ public sealed class WelcomeWindow : Window
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(theme);
         _viewModel = viewModel;
+        // ACC-001: the single way of the window to say the lines its steps draw again on every change.
+        _announcer = new LiveAnnouncer(this);
+        _lines = new SpokenLines(_announcer.Say);
         theme.Attach(this);
         Width = WelcomeWidth;
         Height = WelcomeHeight;
@@ -109,6 +115,15 @@ public sealed class WelcomeWindow : Window
     /// <summary>The window handle, for the foreground lease.</summary>
     public WindowToken Token => new(new WindowInteropHelper(this).EnsureHandle());
 
+    /// <summary>
+    /// What the window said last of the lines its steps draw again on every change (ACC-001): the step in view, the
+    /// question of a reinstallation and its answer, and what [Siguiente] changes on a repeated welcome (BIE-010).
+    /// </summary>
+    public LiveAnnouncer Announcer => _announcer;
+
+    /// <summary>The progress bars, one progress bar for UI Automation.</summary>
+    public StepProgress Progress => _progress;
+
     /// <summary>Closes it for good (it ended, or the app is exiting).</summary>
     public void Destroy()
     {
@@ -160,7 +175,7 @@ public sealed class WelcomeWindow : Window
             (Keyboard.FocusedElement as FrameworkElement) is { } element && IsAncestorOf(element)
                 ? AutomationProperties.GetAutomationId(element)
                 : null;
-        Progress(screen);
+        _progress.Show(screen.Step, screen.StepCount, screen.StepName);
         var step = Step(screen);
         _scroll.Content = step;
         if (screen.Step != _shownStep)
@@ -171,6 +186,7 @@ public sealed class WelcomeWindow : Window
         }
 
         _footer.Content = Footer(screen);
+        Speak(screen);
         if (!string.IsNullOrEmpty(focused) && Content is DependencyObject root)
         {
             _ = Dispatcher.BeginInvoke(() => Refocus(root, focused));
@@ -200,36 +216,33 @@ public sealed class WelcomeWindow : Window
         }
     }
 
-    /// <summary>The five progress bars: the steps done and the one in view in the accent, the rest in the line.</summary>
-    private void Progress(WelcomeScreen screen)
+    /// <summary>What [Siguiente] changes and keeps (BIE-010), as one text: the name of its card and what is said.</summary>
+    private static string ChangesText(WelcomeChangesNote note) =>
+        string.Join(
+            ". ",
+            new[] { note.Changes.IsEmpty ? null : note.ChangesTitle }
+                .Concat(note.Changes)
+                .Concat([note.Kept.IsEmpty ? null : note.KeptTitle])
+                .Concat(note.Kept)
+                .Where(text => !string.IsNullOrEmpty(text))
+        );
+
+    /// <summary>
+    /// ACC-001: the lines that are drawn again with every step are said by the window, each once when it appears or
+    /// changes: the step in view and its title (the keyboard stays on [Siguiente], so nothing else would say it), the
+    /// question of a reinstallation, its first tap and its answer (REG-04), and what [Siguiente] changes (BIE-010).
+    /// </summary>
+    private void Speak(WelcomeScreen screen)
     {
-        _progress.Children.Clear();
-        _progress.ColumnDefinitions.Clear();
-        AutomationProperties.SetName(_progress, screen.StepName);
-        for (var i = 0; i < screen.StepCount; i++)
-        {
-            _progress.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
-            );
-            var bar = new Border
-            {
-                Height = Space.S1,
-                CornerRadius = new CornerRadius(Space.S1 / 2),
-                Margin = new Thickness(
-                    i == 0 ? 0 : Space.S1 / 2,
-                    0,
-                    i == screen.StepCount - 1 ? 0 : Space.S1 / 2,
-                    0
-                ),
-            };
-            Ui.Ink(
-                bar,
-                Border.BackgroundProperty,
-                i <= screen.Step ? ColorToken.Accent : ColorToken.Line
-            );
-            Grid.SetColumn(bar, i);
-            _progress.Children.Add(bar);
-        }
+        _lines.Show("step", screen.StepName + ". " + screen.Title);
+        var reinstall = screen.Reinstall;
+        _lines.Show("reinstall", reinstall is { Done.Length: 0 } ? reinstall.Title : null);
+        _lines.Show(
+            "reinstallArmed",
+            reinstall is { FreshArmed: true } ? reinstall.FreshText : null
+        );
+        _lines.Show("reinstallDone", reinstall?.Done);
+        _lines.Show("changes", screen.Changes is { } note ? ChangesText(note) : null);
     }
 
     private StackPanel Step(WelcomeScreen screen) =>
@@ -402,17 +415,7 @@ public sealed class WelcomeWindow : Window
         Add(note.KeptTitle, note.Kept, "lock");
         var card = new Card { Content = column };
         AutomationProperties.SetLiveSetting(card, AutomationLiveSetting.Polite);
-        AutomationProperties.SetName(
-            card,
-            string.Join(
-                ". ",
-                new[] { note.Changes.IsEmpty ? null : note.ChangesTitle }
-                    .Concat(note.Changes)
-                    .Concat([note.Kept.IsEmpty ? null : note.KeptTitle])
-                    .Concat(note.Kept)
-                    .Where(text => !string.IsNullOrEmpty(text))
-            )
-        );
+        AutomationProperties.SetName(card, ChangesText(note));
         return card;
     }
 

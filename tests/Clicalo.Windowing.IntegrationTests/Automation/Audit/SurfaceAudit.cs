@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Windows;
 using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -136,7 +137,7 @@ internal static class SurfaceAudit
                         Owner: { IsVisible: true, IsEnabled: true } element
                     }
                 && peer.IsControlElement()
-                && Actionable.Any(pattern => peer.GetPattern(pattern) is not null)
+                && IsActionable(peer)
             )
             {
                 var box =
@@ -220,6 +221,19 @@ internal static class SurfaceAudit
             }
         }
     }
+
+    /// <summary>
+    /// Whether voice or the finger can act on <paramref name="peer"/>: a read-only RangeValue (a progress bar) only shows
+    /// a value.
+    /// </summary>
+    private static bool IsActionable(AutomationPeer peer) =>
+        Actionable.Any(pattern =>
+            peer.GetPattern(pattern) is { } provider
+            && !(
+                pattern == PatternInterface.RangeValue
+                && provider is IRangeValueProvider { IsReadOnly: true }
+            )
+        );
 
     private static string What(TouchInput input) =>
         input == TouchInput.PointerLayer

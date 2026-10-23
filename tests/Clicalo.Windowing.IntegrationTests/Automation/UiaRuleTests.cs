@@ -172,6 +172,30 @@ public sealed class UiaRuleTests
     }
 
     [Fact]
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "ACC-001")]
+    public void A_read_only_progress_bar_is_not_a_target_and_a_slider_is()
+    {
+        // The progress bars of the welcome: one progress bar of 4 px whose value nothing changes.
+        var progress = new UiaNode
+        {
+            Name = "Paso 2 de 5",
+            ControlType = ControlType.ProgressBar,
+            Patterns = UiaPatterns.RangeValue,
+            IsReadOnlyRange = true,
+            Bounds = new Rect(0, 0, 536, 4),
+        };
+
+        progress.IsActionable.ShouldBeFalse();
+        Passes(Root(progress), []);
+        Fails(
+            "UIA005",
+            Root(progress with { ControlType = ControlType.Slider, IsReadOnlyRange = false }),
+            []
+        );
+    }
+
+    [Fact]
     [Trait("Req", "ACC-001")]
     public void UIA006_rejects_a_notice_region_that_is_not_live()
     {

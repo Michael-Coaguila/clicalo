@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using Clicalo.Application.UseCases.Welcome;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Primitives;
@@ -168,7 +170,49 @@ public sealed class WelcomeWindowTests
     }
 
     [Fact]
+    [Trait("Req", "BIE-001")]
+    [Trait("Req", "ACC-001")]
+    public void The_progress_bars_are_one_progress_bar_and_each_new_step_is_said()
+    {
+        var world = new WelcomeTestWorld();
+        var (window, theme, viewModel) = Build(world);
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                // A name on a plain Grid never reached UI Automation: the bars are one read-only progress bar.
+                var peer = UIElementAutomationPeer.CreatePeerForElement(window.Progress);
+                peer.GetAutomationControlType().ShouldBe(AutomationControlType.ProgressBar);
+                peer.GetName().ShouldBe("Paso 1 de 5");
+                peer.IsKeyboardFocusable().ShouldBeFalse();
+                (peer.GetChildren() ?? []).ShouldBeEmpty("the bars are its drawing");
+                var range = peer.GetPattern(PatternInterface.RangeValue)
+                    .ShouldBeAssignableTo<IRangeValueProvider>()!;
+                range.IsReadOnly.ShouldBeTrue();
+                (range.Minimum, range.Value, range.Maximum).ShouldBe((1d, 1d, 5d));
+                Should.Throw<InvalidOperationException>(() => range.SetValue(3));
+                var said = window.Announcer.Announcements;
+
+                viewModel.Next();
+                peer.GetName().ShouldBe("Paso 2 de 5");
+                range.Value.ShouldBe(2);
+                // The keyboard stays on [Siguiente]: the window says the step that came and its title.
+                window.Announcer.LastText.ShouldBe("Paso 2 de 5. " + viewModel.Screen.Title);
+                window.Announcer.Announcements.ShouldBe(said + 1);
+
+                viewModel.Refresh();
+                window.Announcer.Announcements.ShouldBe(said + 1, "the same step is said once");
+            });
+        }
+        finally
+        {
+            Close(window, theme);
+        }
+    }
+
+    [Fact]
     [Trait("Req", "BIE-010")]
+    [Trait("Req", "ACC-001")]
     public void A_repeated_welcome_says_what_changes_and_what_stays_as_it_was_left()
     {
         var world = new WelcomeTestWorld();
@@ -202,6 +246,9 @@ public sealed class WelcomeWindowTests
                 ]);
                 note.KeptTitle.ShouldBe("Esto se queda como lo dejaste:");
                 note.Kept.ShouldBe(["Tamaño del panel: Pequeño"]);
+                // ACC-001: the card is drawn again with the step, so the window says it.
+                window.Announcer.LastText.ShouldStartWith("Al continuar, esto cambia:");
+                window.Announcer.LastText.ShouldEndWith("Tamaño del panel: Pequeño");
 
                 viewModel.Next();
                 var settings = world.Store.Current.Settings;
@@ -301,6 +348,7 @@ public sealed class WelcomeWindowTests
     [Fact]
     [Trait("Req", "NFR-010")]
     [Trait("Req", "REG-04")]
+    [Trait("Req", "ACC-001")]
     public void A_reinstallation_asks_on_step_0_and_starting_from_scratch_takes_two_taps()
     {
         var world = new WelcomeTestWorld();
@@ -325,6 +373,7 @@ public sealed class WelcomeWindowTests
                 viewModel.StartFromScratch();
                 viewModel.Screen.Reinstall!.FreshArmed.ShouldBeTrue();
                 viewModel.Screen.Reinstall.FreshText.ShouldBe("¿Seguro?");
+                window.Announcer.LastText.ShouldBe("¿Seguro?", "the first tap is said");
                 world.Store.Current.Onboarding.Completed.ShouldBeTrue("one tap changes nothing");
                 world.Time.Advance(TimeSpan.FromSeconds(4));
                 viewModel.Screen.Reinstall!.FreshArmed.ShouldBeFalse("the button disarms on time");
@@ -333,6 +382,7 @@ public sealed class WelcomeWindowTests
                 viewModel.StartFromScratch();
                 var done = viewModel.Screen.Reinstall.ShouldNotBeNull();
                 done.Done.ShouldStartWith("Empezaste de cero");
+                window.Announcer.LastText.ShouldBe(done.Done);
                 world.Store.Current.Onboarding.Completed.ShouldBeFalse();
                 world.Store.Current.Library.AlwaysVisible.ShouldBeEmpty();
             });
