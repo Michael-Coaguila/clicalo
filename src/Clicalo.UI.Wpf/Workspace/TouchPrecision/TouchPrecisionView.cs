@@ -6,10 +6,12 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.ControlCenter.TouchPrecision;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -193,15 +195,11 @@ public sealed class TouchPrecisionView : ContentControl
 
     private Grid Target(int index)
     {
-        // The dashed line of a place to touch, as the tile «Biblioteca» of the mockup: dashes of 4 in stroke units.
-        var face = new Rectangle
-        {
-            RadiusX = Radii.Large,
-            RadiusY = Radii.Large,
-            StrokeThickness = Stroke.Selected,
-            StrokeDashArray = [Space.S1 / Stroke.Selected, Space.S1 / Stroke.Selected],
-        };
-        Ui.Ink(face, Shape.StrokeProperty, ColorToken.Accent);
+        // A solid control to touch, with the line of every control: the dashed line is only for the places to add
+        // something (D19, sistema §3.3), and a target is not one.
+        var face = new Rectangle { RadiusX = Radii.Large, RadiusY = Radii.Large };
+        face.SetResourceReference(Shape.StrokeThicknessProperty, ThemeKeys.LineThickness);
+        Ui.Ink(face, Shape.StrokeProperty, ColorToken.Line);
         Ui.Ink(face, Shape.FillProperty, ColorToken.Card);
         var label = SettingsUi.Styled(string.Empty, TextStyleToken.Heading, lines: 2);
         label.TextAlignment = TextAlignment.Center;
@@ -366,18 +364,25 @@ public sealed class TouchPrecisionView : ContentControl
     {
         // Four in a row where each keeps its whole name, two by two otherwise: never three and one alone.
         var grid = new UniformGrid { Columns = 4, Margin = new Thickness(-Space.S1) };
-        grid.SizeChanged += (_, e) => grid.Columns = e.NewSize.Width >= PresetWidth * 4 ? 4 : 2;
+        var descriptions = new List<TextBlock>();
+        grid.SizeChanged += (_, e) =>
+        {
+            grid.Columns = e.NewSize.Width >= PresetWidth * 4 ? 4 : 2;
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => FitLines(descriptions));
+        };
         foreach (var preset in screen.Presets)
         {
-            // The description always keeps its two lines, so the names of the four presets share one baseline.
+            // Every description keeps the lines of the longest one, so the names of the four presets share one
+            // baseline; two only when one of them wraps, so cards of one line are not left with an empty band.
             var description = SettingsUi.Styled(
                 preset.Description,
                 TextStyleToken.Caption,
                 ColorToken.Muted,
                 lines: 2
             );
-            description.MinHeight = TextStyles.Caption.LineHeight * 2;
+            description.MinHeight = TextStyles.Caption.LineHeight;
             description.VerticalAlignment = VerticalAlignment.Top;
+            descriptions.Add(description);
             var texts = Ui.Column(
                 0,
                 SettingsUi.Styled(preset.Label, TextStyleToken.Label),
@@ -420,6 +425,38 @@ public sealed class TouchPrecisionView : ContentControl
         }
 
         return grid;
+    }
+
+    /// <summary>
+    /// Gives <paramref name="texts"/> the lines of the longest of them: two when one does not fit its width in one
+    /// line, one otherwise.
+    /// </summary>
+    private static void FitLines(List<TextBlock> texts)
+    {
+        var wraps = texts.Exists(static text =>
+        {
+            if (text.ActualWidth <= 0)
+            {
+                return false;
+            }
+
+            var line = new FormattedText(
+                text.Text,
+                System.Globalization.CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
+                text.FontSize,
+                text.Foreground,
+                VisualTreeHelper.GetDpi(text).PixelsPerDip
+            );
+            return line.WidthIncludingTrailingWhitespace > text.ActualWidth;
+        });
+        foreach (var text in texts)
+        {
+            text.MinHeight = wraps
+                ? TextStyles.Caption.LineHeight * 2
+                : TextStyles.Caption.LineHeight;
+        }
     }
 
     private static string PresetIcon(string id) =>
