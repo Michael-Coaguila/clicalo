@@ -200,7 +200,9 @@ public sealed class TrayController : IDisposable
                 .Select(entry => new TrayMenuItem(
                     (int)entry.Command,
                     localizer.Format(entry.Text),
-                    entry.IsEnabled
+                    entry.IsEnabled,
+                    entry.StartsGroup,
+                    entry.IsDefault
                 )),
         ];
     }

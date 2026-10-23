@@ -33,6 +33,22 @@ public sealed class TrayMenuModelTests
             .ShouldBe([L.HidePanel, L.Cc, L.ReleaseAll, L.PauseApp, L.ExitApp]);
     }
 
+    [Fact]
+    [Trait("Req", "BUR-003")]
+    public void The_menu_keeps_exit_apart_and_marks_the_click_of_the_icon_as_its_default()
+    {
+        var entries = TrayMenuModel.Entries(new TrayState(true, AnythingHeld: true, false));
+
+        // [Mostrar u ocultar, Centro de control] | [Soltar todo, Pausar] | [Salir]
+        entries
+            .Where(static e => e.StartsGroup)
+            .Select(static e => e.Command)
+            .ShouldBe([TrayCommand.ReleaseAll, TrayCommand.Exit]);
+        entries
+            .Single(static e => e.IsDefault)
+            .Command.ShouldBe(TrayCommand.ShowHide, "a click on the icon shows or hides the panel");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

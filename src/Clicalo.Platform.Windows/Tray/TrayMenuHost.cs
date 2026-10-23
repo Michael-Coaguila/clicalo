@@ -130,12 +130,20 @@ public sealed class TrayMenuHost : IDisposable
         }
     }
 
-    [SuppressMessage(
-        "ApiDesign",
-        "RS0030:Do not use banned APIs",
-        Justification = "The tray menu opens only here, inside the TrayMenu lease, with verified restoration afterwards (ADR-0005)."
-    )]
-    private unsafe int? ShowMenu(IReadOnlyList<TrayMenuItem> items, PhysicalPoint anchor)
+    /// <summary>
+    /// Builds the popup menu of <paramref name="items"/>, as <see cref="ShowMenuAsync"/> shows it: a separator before
+    /// each entry that starts a group (never before the first) and the default entry in bold. The caller destroys it
+    /// with <c>DestroyMenu</c>.
+    /// </summary>
+    /// <param name="items">The entries, in order; their ids are positive.</param>
+    /// <returns>The handle of the menu.</returns>
+    internal static unsafe nint CreateMenu(IReadOnlyList<TrayMenuItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return (nint)NewMenu(items).Value;
+    }
+
+    private static HMENU NewMenu(IReadOnlyList<TrayMenuItem> items)
     {
         var menu = PInvoke.CreatePopupMenu();
         if (menu.IsNull)
@@ -145,22 +153,56 @@ public sealed class TrayMenuHost : IDisposable
 
         try
         {
-            foreach (var item in items)
-            {
-                if (item.Id <= 0)
-                {
-                    throw new ArgumentException("Menu item ids are positive.", nameof(items));
-                }
+            Fill(menu, items);
+            return menu;
+        }
+        catch
+        {
+            _ = PInvoke.DestroyMenu(menu);
+            throw;
+        }
+    }
 
-                var flags = item.IsEnabled
-                    ? MENU_ITEM_FLAGS.MF_STRING
-                    : MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED;
-                fixed (char* text = item.Text)
-                {
-                    _ = PInvoke.AppendMenu(menu, flags, (nuint)item.Id, text);
-                }
+    private static unsafe void Fill(HMENU menu, IReadOnlyList<TrayMenuItem> items)
+    {
+        for (var position = 0; position < items.Count; position++)
+        {
+            var item = items[position];
+            if (item.Id <= 0)
+            {
+                throw new ArgumentException("Menu item ids are positive.", nameof(items));
             }
 
+            if (item.StartsGroup && position > 0)
+            {
+                _ = PInvoke.AppendMenu(menu, MENU_ITEM_FLAGS.MF_SEPARATOR, 0, (char*)null);
+            }
+
+            var flags = item.IsEnabled
+                ? MENU_ITEM_FLAGS.MF_STRING
+                : MENU_ITEM_FLAGS.MF_STRING | MENU_ITEM_FLAGS.MF_GRAYED;
+            fixed (char* text = item.Text)
+            {
+                _ = PInvoke.AppendMenu(menu, flags, (nuint)item.Id, text);
+            }
+
+            if (item.IsDefault)
+            {
+                _ = PInvoke.SetMenuDefaultItem(menu, (uint)item.Id, 0);
+            }
+        }
+    }
+
+    [SuppressMessage(
+        "ApiDesign",
+        "RS0030:Do not use banned APIs",
+        Justification = "The tray menu opens only here, inside the TrayMenu lease, with verified restoration afterwards (ADR-0005)."
+    )]
+    private unsafe int? ShowMenu(IReadOnlyList<TrayMenuItem> items, PhysicalPoint anchor)
+    {
+        var menu = NewMenu(items);
+        try
+        {
             Volatile.Write(ref _menuOpen, 1);
             var chosen = PInvoke.TrackPopupMenuEx(
                 menu,

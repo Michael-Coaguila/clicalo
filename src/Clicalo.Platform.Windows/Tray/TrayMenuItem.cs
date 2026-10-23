@@ -4,4 +4,12 @@ namespace Clicalo.Platform.Windows.Tray;
 /// <param name="Id">Command identifier returned by <see cref="TrayMenuHost.ShowMenuAsync"/>; positive.</param>
 /// <param name="Text">Localized text, rendered by the caller (never a literal).</param>
 /// <param name="IsEnabled">False to show it greyed out.</param>
-public sealed record TrayMenuItem(int Id, string Text, bool IsEnabled = true);
+/// <param name="StartsGroup">True to draw a separator before it, unless it is the first entry.</param>
+/// <param name="IsDefault">True for what a click on the icon does: Windows draws it in bold.</param>
+public sealed record TrayMenuItem(
+    int Id,
+    string Text,
+    bool IsEnabled = true,
+    bool StartsGroup = false,
+    bool IsDefault = false
+);

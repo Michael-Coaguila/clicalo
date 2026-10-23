@@ -8,6 +8,11 @@ namespace Clicalo.Platform.Windows.Tray;
 /// control», «Soltar todo» (enabled while something is held), «Pausar» or «Reanudar», and «Salir», in that order. Pure:
 /// the controller formats the texts and runs the commands.
 /// </summary>
+/// <remarks>
+/// The rows of the Windows menu are small for a touchpad, so it is grouped by what each entry does: the panel and the
+/// Control Center, what is held and the pause, and «Salir» apart, so a slip from «Pausar» never ends Clícalo. «Mostrar
+/// u ocultar» is in bold, the default of the menu: it is what a click on the icon does.
+/// </remarks>
 public static class TrayMenuModel
 {
     /// <summary>The entries of the menu, in order.</summary>
@@ -17,12 +22,18 @@ public static class TrayMenuModel
             // Paused, the panel is hidden and showing it resumes (BUR-005: every way of hiding can be undone).
             new(
                 TrayCommand.ShowHide,
-                state.PanelVisible && !state.Paused ? L.HidePanel : L.Restore
+                state.PanelVisible && !state.Paused ? L.HidePanel : L.Restore,
+                IsDefault: true
             ),
             new(TrayCommand.ControlCenter, L.Cc),
-            new(TrayCommand.ReleaseAll, L.ReleaseAll, IsEnabled: state.AnythingHeld),
+            new(
+                TrayCommand.ReleaseAll,
+                L.ReleaseAll,
+                IsEnabled: state.AnythingHeld,
+                StartsGroup: true
+            ),
             new(TrayCommand.Pause, state.Paused ? L.ResumeApp : L.PauseApp),
-            new(TrayCommand.Exit, L.ExitApp),
+            new(TrayCommand.Exit, L.ExitApp, StartsGroup: true),
         ];
 
     /// <summary>
