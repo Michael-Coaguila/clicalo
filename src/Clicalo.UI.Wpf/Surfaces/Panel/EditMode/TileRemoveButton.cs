@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Data;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.EditMode;
 using Clicalo.UI.Wpf.Automation;
@@ -56,6 +57,16 @@ public sealed class TileRemoveButton : TouchButton
         VerticalAlignment = VerticalAlignment.Top;
         Focusable = false;
         IsTabStop = false;
+        if (control is not null)
+        {
+            // Armed, «Confirmar» is written in the font of the name of its tile (labelSmall in S), which follows the text
+            // scale: the label of 14 of a button did not fit the narrowest tile and ended in «…».
+            SetBinding(
+                FontSizeProperty,
+                new Binding(nameof(FontSize)) { Source = control, Mode = BindingMode.OneWay }
+            );
+        }
+
         Click += (_, _) => Remove();
         _editMode.PropertyChanged += OnChanged;
         _tile.PropertyChanged += OnChanged;

@@ -204,6 +204,14 @@ public sealed class SurfacesAuditTests
             w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
             w.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
         },
+        // CUA-012, REG-04: the first tap on a × arms it, and «Confirmar» grows to the left, inside its tile.
+        ["edit-mode-armed"] = static w =>
+        {
+            w.Layers.EditMode.Enter();
+            w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
+            w.Layers.EditMode.Remove(new ShortcutId("w1"));
+        },
         ["tile-menu"] = static w =>
             w.Layers.Menu.Open(new ShortcutId("w0"), "Negrita", "format_bold", inFrequents: false),
         ["test-mode"] = static w =>
