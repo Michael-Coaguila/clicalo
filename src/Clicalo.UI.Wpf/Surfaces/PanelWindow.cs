@@ -677,14 +677,26 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     /// <summary>
     /// The region of the layer at the foot of the body (the notices that wait for an answer, the tile menu): the body,
     /// and in Compact the body above «Qué ver», so the cards of a notice never bury the row of the profiles and the
-    /// pages. The tile menu keeps the whole body: any tap outside it only closes it (CUA-014).
+    /// pages. A card taller than that covers the row too rather than being cut (CUA-011, D21 review: the administrator
+    /// notice in S Compact without the sticky keys row). The tile menu keeps the whole body: any tap outside it only
+    /// closes it (CUA-014).
     /// </summary>
-    private Rect FootLayerRegion() =>
-        _viewModel.Layout.Compact
-        && _body.Selector.Visibility != Visibility.Collapsed
-        && _body.TileMenu?.Visibility != Visibility.Visible
-            ? Span(BodyTop(), TopOf(_body.Selector) - Space.S2)
-            : BodyRegion();
+    private Rect FootLayerRegion()
+    {
+        var body = BodyRegion();
+        if (
+            !_viewModel.Layout.Compact
+            || _body.Selector.Visibility == Visibility.Collapsed
+            || _body.TileMenu?.Visibility == Visibility.Visible
+        )
+        {
+            return body;
+        }
+
+        var above = Span(BodyTop(), TopOf(_body.Selector) - Space.S2);
+        _bottomLayer.Measure(new Size(above.Width, double.PositiveInfinity));
+        return _bottomLayer.DesiredSize.Height > above.Height ? body : above;
+    }
 
     /// <summary>
     /// <paramref name="top"/>, or the middle of the gap above the row of the body it would cut (a row of tiles, the row

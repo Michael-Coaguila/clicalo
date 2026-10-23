@@ -52,11 +52,6 @@ public sealed class SurfacesAuditTests
     /// <summary>Half a logical pixel: what layout rounding may move an edge.</summary>
     private const double Rounding = 0.5;
 
-    /// <summary>Why the one known defect of the panel is not audited outside the gallery, until the panel is fixed.</summary>
-    private const string KnownCut =
-        "Known defect of the panel: in S Compact without the Sticky keys row the layer of the notices cuts the "
-        + "administrator notice (CUA-011); the gallery (CLICALO_GALLERY) still draws and audits it.";
-
     private static readonly DimSettings NoDim = new(AutoDim: false, Opacity: 1, DimTo: 1);
 
     /// <summary>The states of the panel audited: a name and what happened to get there.</summary>
@@ -230,28 +225,9 @@ public sealed class SurfacesAuditTests
             // The panel of the mockup of direction C (D12): M, Full, in Spanish, 340 wide.
             cases.Add(state, SizeSetting.Medium, false, "es", AuditLook.Dark, false);
             cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.Dark, false);
-            if (string.Equals(state, "notices", StringComparison.Ordinal))
-            {
-                // A defect the Sticky keys row, always on before, hid: in S Compact without it the layer of the
-                // notices is lower than the administrator notice and cuts its text (CUA-011). The gallery draws it.
-                cases.Add(
-                    new TheoryDataRow<string, SizeSetting, bool, string, AuditLook, bool>(
-                        state,
-                        SizeSetting.Small,
-                        true,
-                        "es",
-                        AuditLook.Dark,
-                        false
-                    )
-                    {
-                        Skip = AuditGallery.Folder is null ? KnownCut : null,
-                    }
-                );
-            }
-            else
-            {
-                cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark, false);
-            }
+            // In S Compact without the Sticky keys row the administrator notice is taller than the body above «Qué
+            // ver»: it covers that row too and is never cut (CUA-011, D21 review).
+            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark, false);
 
             cases.Add(state, SizeSetting.Large, false, "en", AuditLook.Dark, false);
             cases.Add(state, SizeSetting.Large, true, "es", AuditLook.Dark, false);
