@@ -607,11 +607,12 @@ public sealed class SystemSectionView : Border
         );
         wipe.IsEnabled = model.Available;
         AutomationProperties.SetAutomationId(wipe, "system.uninstall.deleteData");
+        // The choice that changes what the button does comes before the button.
         return SettingsUi.Frame(
             Ui.Column(
                 0,
-                SettingsUi.SettingRow("delete", model.Title, model.Description, button),
-                wipe
+                wipe,
+                SettingsUi.SettingRow("delete", model.Title, model.Description, button)
             ),
             model.Title
         );
