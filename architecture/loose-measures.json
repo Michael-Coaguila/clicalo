@@ -5,11 +5,11 @@
   "baseline": {
     "src/Clicalo.UI.Wpf/Automation/ShortcutTileBody.cs": 1,
     "src/Clicalo.UI.Wpf/Automation/ShortcutTileTemplate.cs": 1,
+    "src/Clicalo.UI.Wpf/Surfaces/CoachWindow.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/Panel/IgnoredTouchOutline.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/Panel/QuickSettings/QuickSheetFit.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/Panel/TestMode/TestMarkBadge.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/SurfaceParts.cs": 9,
-    "src/Clicalo.UI.Wpf/Surfaces/TabView/DockCoachWindow.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/TabView/DockFlyoutWindow.cs": 2,
     "src/Clicalo.UI.Wpf/Surfaces/TabView/DockMenuWindow.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/TabView/DockNoticeWindow.cs": 1,
