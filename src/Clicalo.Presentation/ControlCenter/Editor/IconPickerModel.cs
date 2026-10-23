@@ -21,6 +21,10 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// ones first. All of them, however many: the grid only builds the rows in view.
 /// </param>
 /// <param name="EmptyText">[noResults] when nothing matches; else null.</param>
+/// <param name="IconNames">
+/// The name of each of <paramref name="Icons"/>, in the same order, in the language of the interface: what UI
+/// Automation and voice access call its cell («negrita», not «format bold», REG-06).
+/// </param>
 public sealed record IconPickerModel(
     string Title,
     string CloseName,
@@ -32,5 +36,6 @@ public sealed record IconPickerModel(
     string DictateName,
     ValueList<IconCategoryOption> Categories,
     ValueList<string> Icons,
-    string? EmptyText
+    string? EmptyText,
+    ValueList<string> IconNames
 );

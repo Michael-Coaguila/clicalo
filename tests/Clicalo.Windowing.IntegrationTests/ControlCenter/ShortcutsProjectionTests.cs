@@ -134,6 +134,30 @@ public sealed class ShortcutsProjectionTests
     }
 
     [Fact]
+    [Trait("Req", "EDI-004")]
+    [Trait("Req", "REG-06")]
+    public void The_icons_of_the_picker_are_named_in_the_language_of_the_interface()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                section.Editor.TogglePicker();
+                section.Refresh();
+
+                var picker = section.Editor.Model.ShouldNotBeNull().Picker.ShouldNotBeNull();
+                picker.IconNames.Count.ShouldBe(picker.Icons.Count);
+                var names = picker
+                    .Icons.Items.Zip(picker.IconNames.Items)
+                    .ToDictionary(StringComparer.Ordinal);
+                names["content_copy"].ShouldBe("copiar", "voice access says «clic copiar»");
+                names["save"].ShouldBe("guardar");
+                picker.Suggested.ShouldAllBe(option => option.Name.Length > 0);
+            }
+        );
+    }
+
+    [Fact]
     [Trait("Req", "REP-004")]
     public void A_repeated_combination_shows_its_card_folded_with_how_many_places_repeat_it()
     {

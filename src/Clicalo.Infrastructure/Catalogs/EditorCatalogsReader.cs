@@ -28,11 +28,17 @@ public static class EditorCatalogsReader
                 foreach (var icon in root.GetProperty("icons").EnumerateArray())
                 {
                     var tags = new List<string>();
+                    var label = new List<KeyValuePair<LangCode, string>>();
                     if (icon.TryGetProperty("tags", out var languages))
                     {
                         foreach (var language in languages.EnumerateObject())
                         {
-                            tags.AddRange(Words(language.Value));
+                            var words = Words(language.Value).ToList();
+                            tags.AddRange(words);
+                            if (words.Count > 0)
+                            {
+                                label.Add(new(new LangCode(language.Name), words[0]));
+                            }
                         }
                     }
 
@@ -48,7 +54,8 @@ public static class EditorCatalogsReader
                         new IconEntry(
                             new IconRef(ContentJson.String(icon, "id")),
                             [.. tags],
-                            category
+                            category,
+                            label.Count > 0 ? new LocalizedText(label) : null
                         )
                     );
                 }

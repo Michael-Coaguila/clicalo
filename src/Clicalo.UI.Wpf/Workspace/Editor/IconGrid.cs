@@ -10,8 +10,8 @@ namespace Clicalo.UI.Wpf.Workspace.Editor;
 /// The grid of the icon picker (D14): every icon it is given, however many (the whole collection has 3925), in cells of
 /// <see cref="Cell"/> that fill the width. It only builds the rows in view and reuses them as it scrolls
 /// (a virtualizing stack of rows inside the designed scroll area), so opening a category or typing a letter never
-/// builds thousands of buttons. Each cell is an option (SelectionItem) named with the icon; the icon in use has the
-/// single look of «elegido».
+/// builds thousands of buttons. Each cell is an option (SelectionItem) named in the language of the interface; the icon
+/// in use has the single look of «elegido».
 /// </summary>
 internal sealed class IconGrid : ItemsControl
 {
@@ -22,6 +22,7 @@ internal sealed class IconGrid : ItemsControl
     public const double Gap = Space.S2;
 
     private IReadOnlyList<string> _icons = [];
+    private IReadOnlyList<string> _names = [];
     private string _current = string.Empty;
     private int _columns;
 
@@ -56,14 +57,21 @@ internal sealed class IconGrid : ItemsControl
 
     /// <summary>Shows <paramref name="icons"/>, with <paramref name="current"/> marked.</summary>
     /// <param name="icons">The icons, in order.</param>
+    /// <param name="names">The name of each icon in the language of the interface, in the same order.</param>
     /// <param name="current">The icon in use.</param>
-    public void Show(IReadOnlyList<string> icons, string current)
+    public void Show(IReadOnlyList<string> icons, IReadOnlyList<string> names, string current)
     {
         ArgumentNullException.ThrowIfNull(icons);
+        ArgumentNullException.ThrowIfNull(names);
         var same =
-            ReferenceEquals(icons, _icons) || icons.SequenceEqual(_icons, StringComparer.Ordinal);
+            (ReferenceEquals(icons, _icons) || icons.SequenceEqual(_icons, StringComparer.Ordinal))
+            && (
+                ReferenceEquals(names, _names)
+                || names.SequenceEqual(_names, StringComparer.Ordinal)
+            );
         var marked = string.Equals(current, _current, StringComparison.Ordinal);
         _icons = icons;
+        _names = names;
         _current = current ?? string.Empty;
         if (!same)
         {
@@ -97,9 +105,9 @@ internal sealed class IconGrid : ItemsControl
     protected override void PrepareContainerForItemOverride(DependencyObject element, object item)
     {
         base.PrepareContainerForItemOverride(element, item);
-        if (element is IconGridRow row && item is string[] icons)
+        if (element is IconGridRow row && item is RowCells cells)
         {
-            row.Show(icons, _current);
+            row.Show(cells, _current);
         }
     }
 
@@ -136,21 +144,28 @@ internal sealed class IconGrid : ItemsControl
             return;
         }
 
-        var rows = new List<string[]>((_icons.Count + columns - 1) / columns);
+        var rows = new List<RowCells>((_icons.Count + columns - 1) / columns);
         for (var start = 0; start < _icons.Count; start += columns)
         {
             var count = Math.Min(columns, _icons.Count - start);
-            var row = new string[count];
+            var icons = new string[count];
+            var names = new string[count];
             for (var i = 0; i < count; i++)
             {
-                row[i] = _icons[start + i];
+                icons[i] = _icons[start + i];
+                names[i] = start + i < _names.Count ? _names[start + i] : icons[i];
             }
 
-            rows.Add(row);
+            rows.Add(new RowCells(icons, names));
         }
 
         ItemsSource = rows;
     }
+
+    /// <summary>The cells of a row: its icons and their names, in the same order.</summary>
+    /// <param name="Icons">The Material Symbols names.</param>
+    /// <param name="Names">What UI Automation and voice access call each cell.</param>
+    internal sealed record RowCells(string[] Icons, string[] Names);
 
     /// <summary>The grid is one group for UI Automation; its cells, the rows in view, are its options.</summary>
     private sealed class Peer(IconGrid owner) : FrameworkElementAutomationPeer(owner)

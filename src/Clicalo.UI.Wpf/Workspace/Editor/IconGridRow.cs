@@ -8,8 +8,8 @@ namespace Clicalo.UI.Wpf.Workspace.Editor;
 
 /// <summary>
 /// A row of the <see cref="IconGrid"/>: its cells, reused for another row as the grid scrolls. A cell is an option of
-/// <see cref="IconGrid.Cell"/> with the icon centered in its box of <see cref="IconBox.Medium"/>, named with the icon
-/// («content copy»); the icon in use is drawn «elegido» and filled.
+/// <see cref="IconGrid.Cell"/> with the icon centered in its box of <see cref="IconBox.Medium"/>, named in the language
+/// of the interface («negrita», REG-06); the icon in use is drawn «elegido» and filled.
 /// </summary>
 internal sealed class IconGridRow : StackPanel
 {
@@ -24,12 +24,13 @@ internal sealed class IconGridRow : StackPanel
         Margin = new Thickness(0, 0, 0, IconGrid.Gap);
     }
 
-    /// <summary>Shows <paramref name="icons"/>, with <paramref name="current"/> marked.</summary>
-    /// <param name="icons">The icons of the row.</param>
+    /// <summary>Shows <paramref name="cells"/>, with <paramref name="current"/> marked.</summary>
+    /// <param name="cells">The icons of the row and their names.</param>
     /// <param name="current">The icon in use.</param>
-    public void Show(string[] icons, string current)
+    public void Show(IconGrid.RowCells cells, string current)
     {
-        ArgumentNullException.ThrowIfNull(icons);
+        ArgumentNullException.ThrowIfNull(cells);
+        var icons = cells.Icons;
         while (Children.Count < icons.Length)
         {
             Children.Add(NewCell());
@@ -48,7 +49,7 @@ internal sealed class IconGridRow : StackPanel
             cell.Visibility = Visibility.Visible;
             cell.Tag = icon;
             ((SymbolIcon)cell.Content).Symbol = icon;
-            AutomationProperties.SetName(cell, icon.Replace('_', ' '));
+            AutomationProperties.SetName(cell, cells.Names[i]);
             Mark(cell, current);
         }
     }

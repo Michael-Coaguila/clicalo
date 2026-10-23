@@ -13,4 +13,13 @@ namespace Clicalo.Domain.Icons;
 /// Material Symbols metadata.
 /// </param>
 /// <param name="Category">The <see cref="IconCategory.Id"/> of its category; empty when it has none.</param>
-public sealed record IconEntry(IconRef Icon, ValueList<string> Tags, string Category = "");
+/// <param name="Label">
+/// The first hand-written word of each language («negrita», «bold»): the name of the icon for UI Automation and voice
+/// access in the language of the interface (REG-06); null when the icon has no hand-written words.
+/// </param>
+public sealed record IconEntry(
+    IconRef Icon,
+    ValueList<string> Tags,
+    string Category = "",
+    LocalizedText? Label = null
+);

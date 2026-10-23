@@ -275,7 +275,19 @@ internal sealed class ControlCenterTestWorld
                             .EnumerateArray()
                             .Select(t => t.GetString()!),
                     ],
-                    icon.GetProperty("category").GetString()!
+                    icon.GetProperty("category").GetString()!,
+                    // As the reader of Infrastructure: the first hand-written word of each language names the icon.
+                    icon.TryGetProperty("tags", out var named)
+                        ? new LocalizedText(
+                            named
+                                .EnumerateObject()
+                                .Where(l => l.Value.GetArrayLength() > 0)
+                                .Select(l => new KeyValuePair<LangCode, string>(
+                                    new LangCode(l.Name),
+                                    l.Value[0].GetString()!
+                                ))
+                        )
+                        : null
                 ))
                 .ToList(),
             root.GetProperty("featured")

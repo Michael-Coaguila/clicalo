@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Icons.Internal;
@@ -21,6 +22,7 @@ public sealed class IconCatalog
 
     private readonly ImmutableArray<string> _haystacks;
     private readonly ImmutableArray<ImmutableArray<string>> _words;
+    private readonly FrozenDictionary<string, LocalizedText> _labels;
 
     /// <summary>Creates the catalog.</summary>
     /// <param name="entries">Every icon with its words, in the order of the file.</param>
@@ -58,6 +60,13 @@ public sealed class IconCatalog
         ]);
         _haystacks = [.. Entries.Items.Select(Haystack)];
         _words = [.. Entries.Items.Select(FoldedWords)];
+        _labels = Entries
+            .Items.Where(static e => e.Label is not null)
+            .ToFrozenDictionary(
+                static e => e.Icon.Name,
+                static e => e.Label!,
+                StringComparer.Ordinal
+            );
     }
 
     /// <summary>A catalog without icons: only the defaults are offered.</summary>
@@ -126,6 +135,23 @@ public sealed class IconCatalog
         }
 
         return new ValueList<IconRef>(result.ToImmutable());
+    }
+
+    /// <summary>
+    /// The name of <paramref name="icon"/> for UI Automation and voice access (REG-06): its first hand-written word in
+    /// <paramref name="language"/> («negrita»), or in Spanish, or its Material Symbols name with spaces («format bold»)
+    /// when it has no hand-written words.
+    /// </summary>
+    /// <param name="icon">The Material Symbols name.</param>
+    /// <param name="language">The language of the interface.</param>
+    public string NameOf(string icon, LangCode language)
+    {
+        ArgumentNullException.ThrowIfNull(icon);
+        return
+            _labels.TryGetValue(icon, out var label)
+            && label.Get(language, LangCode.Es) is { Length: > 0 } name
+            ? name
+            : icon.Replace('_', ' ');
     }
 
     /// <summary>The words of the tags of the entry at <paramref name="index"/>, folded once (EDI-005).</summary>

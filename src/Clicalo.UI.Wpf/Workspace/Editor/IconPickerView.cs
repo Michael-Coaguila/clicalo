@@ -157,7 +157,7 @@ internal sealed class IconPickerView : Border
                     !string.Equals(before.Query, model.Query, StringComparison.Ordinal)
                     || before.Categories != model.Categories
                 );
-        _grid.Show(model.Icons.Items, model.Current);
+        _grid.Show(model.Icons.Items, model.IconNames.Items, model.Current);
         if (newList)
         {
             _grid.ScrollToTop();
@@ -210,7 +210,7 @@ internal sealed class IconPickerView : Border
                 Padding = new Thickness(0),
                 Margin = new Thickness(0, 0, IconGrid.Gap, IconGrid.Gap),
             };
-            AutomationProperties.SetName(cell, option.Icon.Replace('_', ' '));
+            AutomationProperties.SetName(cell, option.Name);
             cell.Click += (_, _) => _owner?.PickIcon(option.Icon);
             cells.Children.Add(cell);
         }

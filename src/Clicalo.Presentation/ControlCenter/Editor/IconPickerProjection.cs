@@ -82,7 +82,8 @@ internal static class IconPickerProjection
             [
                 .. suggested.Select(icon => new IconOption(
                     icon.Name,
-                    string.Equals(icon.Name, current, StringComparison.Ordinal)
+                    string.Equals(icon.Name, current, StringComparison.Ordinal),
+                    catalog.NameOf(icon.Name, language)
                 )),
             ],
             query,
@@ -97,7 +98,8 @@ internal static class IconPickerProjection
                 )),
             ],
             icons,
-            icons.IsEmpty ? text(L.NoResults) : null
+            icons.IsEmpty ? text(L.NoResults) : null,
+            [.. icons.Items.Select(icon => catalog.NameOf(icon, language))]
         );
     }
 }
