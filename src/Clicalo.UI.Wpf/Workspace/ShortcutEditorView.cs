@@ -507,7 +507,8 @@ public sealed class ShortcutEditorView : Grid
         _name.SetPlaceholder(model.Placeholder);
         _name.Show(model.Name, force: keyChanged);
         _name.Margin = new Thickness(0, Space.S2, 0, 0);
-        var right = new StackPanel();
+        // The label and the field sit at the foot of the preview, so the field and the tile share their lower edge.
+        var right = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom };
         right.Children.Add(new Overline(model.NameLabel));
         right.Children.Add(_name);
         var top = new DockPanel { LastChildFill = true };

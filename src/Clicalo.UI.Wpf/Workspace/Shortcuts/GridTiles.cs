@@ -92,10 +92,13 @@ internal static class GridTiles
         };
         center.Children.Add(icon);
         center.Children.Add(name);
-        if (tile.Incomplete || tile.Foot.Length > 0)
+        // The line of keys is kept even when it is empty, so the icons and the names of a row stay level.
+        if (!tile.Incomplete && tile.Foot.Length == 0)
         {
-            center.Children.Add(foot);
+            foot.Visibility = Visibility.Hidden;
         }
+
+        center.Children.Add(foot);
 
         var layers = new Grid();
         layers.Children.Add(center);
@@ -150,6 +153,14 @@ internal static class GridTiles
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(Space.S2, Space.S1, Space.S2, 0),
+            }
+        );
+        // The line of keys of a tile, kept empty, so its icon and its name are level with those of its row.
+        content.Children.Add(
+            new StyledText(string.Empty, TextStyleToken.KeysTile)
+            {
+                Visibility = Visibility.Hidden,
+                Margin = new Thickness(0, Space.S1, 0, 0),
             }
         );
         var button = new TouchButton

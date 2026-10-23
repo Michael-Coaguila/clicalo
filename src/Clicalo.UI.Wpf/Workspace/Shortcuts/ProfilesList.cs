@@ -62,13 +62,25 @@ internal static class ProfilesList
             column.Children.Add(button);
         }
 
+        // «Nuevo perfil» has the inset and the icon box of the rows above, so its + and its text fall in their columns.
+        var plus = Ui.Icon("add", IconBox.Medium, ColorToken.AccentInk);
+        plus.Margin = new Thickness(0, 0, Space.S3, 0);
+        var line = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(plus, Dock.Left);
+        line.Children.Add(plus);
+        line.Children.Add(
+            new StyledText(model.NewProfile, TextStyleToken.Label, ColorToken.AccentInk)
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+            }
+        );
         var add = new TouchButton
         {
-            Content = model.NewProfile,
-            Symbol = "add",
+            Content = line,
             Variant = ButtonVariant.Tertiary,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(Space.S3, 0, Space.S3, 0),
             Margin = new Thickness(0, Space.S1, 0, 0),
         };
         AutomationProperties.SetName(add, model.NewProfile);
