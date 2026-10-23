@@ -746,21 +746,12 @@ public sealed class TemplatesSectionView : Grid
     // ---- Apps abiertas, plantillas y perfiles ---------------------------------------------------------------
 
     /// <summary>
-    /// «Apps abiertas sin perfil» (PLA-011): one header line with the dot of attention, the title and the switch
-    /// [asShort] at its end, which says in its help what it detects; then a card per suggested template.
+    /// «Apps abiertas sin perfil» (PLA-011): one header line with the dot of attention, the title and [asShort] with its
+    /// switch at the end; the whole line is the switch (DIS-30), named with what it does and what it detects. Then a
+    /// card per suggested template.
     /// </summary>
     private StackPanel Suggested(SuggestedModel model)
     {
-        var detect = Ui.SwitchRow(
-            null,
-            model.DetectText,
-            string.Empty,
-            model.DetectOn,
-            _viewModel.ToggleDetect
-        );
-        detect.HorizontalAlignment = HorizontalAlignment.Right;
-        detect.Margin = new Thickness(Space.S3, 0, 0, 0);
-        AutomationProperties.SetHelpText(detect, model.Title);
         var dot = new Border
         {
             Width = Space.S2,
@@ -771,12 +762,25 @@ public sealed class TemplatesSectionView : Grid
         };
         Ui.Ink(dot, Border.BackgroundProperty, ColorToken.Warn);
         var title = new Overline(model.Title) { VerticalAlignment = VerticalAlignment.Center };
-        var head = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(detect, Dock.Right);
+        var label = new StyledText(model.DetectText, TextStyleToken.Body)
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S3, 0, 0, 0),
+        };
+        var line = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(label, Dock.Right);
         DockPanel.SetDock(dot, Dock.Left);
-        head.Children.Add(detect);
-        head.Children.Add(dot);
-        head.Children.Add(title);
+        line.Children.Add(label);
+        line.Children.Add(dot);
+        line.Children.Add(title);
+        var head = new ToggleSwitch
+        {
+            Content = line,
+            IsChecked = model.DetectOn,
+            FollowsViewModel = true,
+        };
+        AutomationProperties.SetName(head, model.DetectText + " " + model.Title);
+        head.Click += (_, _) => _viewModel.ToggleDetect();
         var column = new StackPanel();
         column.Children.Add(head);
         foreach (var card in model.Cards)
@@ -1136,9 +1140,34 @@ public sealed class TemplatesSectionView : Grid
         AutomationProperties.SetHelpText(toggle, row.Warning ?? string.Empty);
         toggle.Click += (_, _) => _viewModel.ToggleRow(row.Index);
 
-        var line = new DockPanel { LastChildFill = true };
+        // The row, then the slots of ⌨ and ✏: a row without ⌨ (a web, an app, a macro) keeps its slot empty, so every
+        // row that can still change ends at the same x, and the tools keep the gap between controls, so two rings of
+        // «elegido» never touch.
+        var line = new Grid();
+        line.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        line.Children.Add(toggle);
         if (!row.AlreadyIn)
         {
+            FrameworkElement keys = new Border { Width = ControlHeight.Small };
+            if (row.KeysName is { } keysName)
+            {
+                // PLA-016: the keys of the row can change before installing.
+                var change = Parts.Button(
+                    string.Empty,
+                    "keyboard",
+                    ButtonVariant.Tertiary,
+                    () => _viewModel.EditRowKeys(row.Index),
+                    keysName + ": " + row.Name
+                );
+                change.IsExpanded = row.Combo is not null;
+                change.IsActive = row.Combo is not null;
+                keys = change;
+            }
+
             var edit = Parts.Button(
                 string.Empty,
                 "edit",
@@ -1148,31 +1177,18 @@ public sealed class TemplatesSectionView : Grid
             );
             edit.IsExpanded = row.Editing;
             edit.IsActive = row.Editing;
-            edit.VerticalAlignment = VerticalAlignment.Center;
-            // The tools of the row keep the gap between controls, so two rings of «elegido» never touch.
-            edit.Margin = new Thickness(Space.S2, 0, 0, 0);
-            DockPanel.SetDock(edit, Dock.Right);
-            line.Children.Add(edit);
-            if (row.KeysName is { } keysName)
+            foreach (var (tool, slot) in new[] { (keys, 1), ((FrameworkElement)edit, 2) })
             {
-                // PLA-016: the keys of the row can change before installing.
-                var keys = Parts.Button(
-                    string.Empty,
-                    "keyboard",
-                    ButtonVariant.Tertiary,
-                    () => _viewModel.EditRowKeys(row.Index),
-                    keysName + ": " + row.Name
-                );
-                keys.IsExpanded = row.Combo is not null;
-                keys.IsActive = row.Combo is not null;
-                keys.VerticalAlignment = VerticalAlignment.Center;
-                keys.Margin = new Thickness(Space.S2, 0, 0, 0);
-                DockPanel.SetDock(keys, Dock.Right);
-                line.Children.Add(keys);
+                tool.VerticalAlignment = VerticalAlignment.Center;
+                tool.Margin = new Thickness(Space.S2, 0, 0, 0);
+                Grid.SetColumn(tool, slot);
+                line.Children.Add(tool);
             }
         }
-
-        line.Children.Add(toggle);
+        else
+        {
+            Grid.SetColumnSpan(toggle, 3);
+        }
         var column = new StackPanel();
         column.Children.Add(line);
         if (row.Editing)

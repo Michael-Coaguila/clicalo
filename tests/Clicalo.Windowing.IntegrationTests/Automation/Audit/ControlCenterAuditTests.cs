@@ -345,8 +345,12 @@ public sealed class ControlCenterAuditTests
                     .ShouldBeAssignableTo<IExpandCollapseProvider>()!
                     .ExpandCollapseState.ShouldBe(ExpandCollapseState.Expanded);
 
-                // A row with a switch is the switch (PLA-011): one Toggle with the state, nothing nameless inside.
-                var detect = host.Peer("Detectar", AutomationControlType.Button);
+                // A row with a switch is the switch (PLA-011, DIS-30): the whole header is one Toggle with the state,
+                // named with what it does and what it detects, and nothing nameless inside.
+                var detect = host.Peer(
+                    "Detectar Apps abiertas sin perfil",
+                    AutomationControlType.Button
+                );
                 detect
                     .GetPattern(PatternInterface.Toggle)
                     .ShouldBeAssignableTo<IToggleProvider>()!
@@ -356,8 +360,34 @@ public sealed class ControlCenterAuditTests
                     .ShouldAllBe(static child =>
                         child.GetAutomationControlType() == AutomationControlType.Text
                     );
+                // The title is inside the switch, so a tap on it toggles too.
+                var row = (System.Windows.FrameworkElement)((UIElementAutomationPeer)detect).Owner;
+                InTree(row)
+                    .OfType<Clicalo.UI.Wpf.Controls.Overline>()
+                    .ShouldContain(static title =>
+                        string.Equals(
+                            title.Text,
+                            "Apps abiertas sin perfil",
+                            StringComparison.Ordinal
+                        )
+                    );
             }
         );
+
+    private static IEnumerable<System.Windows.DependencyObject> InTree(
+        System.Windows.DependencyObject root
+    )
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in InTree(child))
+            {
+                yield return nested;
+            }
+        }
+    }
 
     [Fact]
     [Trait("Req", "ACC-001")]
