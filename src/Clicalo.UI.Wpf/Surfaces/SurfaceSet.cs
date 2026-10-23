@@ -11,6 +11,7 @@ using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -22,7 +23,8 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// <summary>
 /// Every surface of the panel on the UI thread of the Surfaces role (blueprint §8.1): the panel, the bubble, the handle
 /// and the bar of the Tab view with the windows beside it (Pinned, the profile grid, sticky keys, Quick settings, the
-/// menu of a shortcut and the notice surface), and the floating «Release all». It shows exactly the form the
+/// menu of a shortcut and the notice surface), the guide beside the panel, and the floating «Release all». It shows
+/// exactly the form the
 /// composition decides (PAN-001), places each surface in physical pixels inside the work area of its monitor (PAN-002,
 /// PAN-006, <see cref="PanelGeometry"/>, <see cref="DockGeometry"/>), moves the panel, the bubble and the handle when
 /// they are dragged and reports where they end, places everything again on any change of size, display, scale or work
@@ -55,6 +57,7 @@ public sealed class SurfaceSet : IDisposable
     private readonly DockNoticeWindow _notice;
     private readonly DockMenuWindow? _menu;
     private readonly DockQuickWindow? _quick;
+    private readonly PanelCoachWindow? _panelCoach;
     private readonly Dictionary<DockSide, DockHandleWindow> _handles = [];
     private readonly Dictionary<DockSide, DockBarWindow> _bars = [];
     private readonly List<TouchSurface> _surfaces = [];
@@ -64,6 +67,7 @@ public sealed class SurfaceSet : IDisposable
     private string? _monitorId;
     private PhysicalPoint? _topLeft;
     private DockSide? _quickSide;
+    private DockSide? _panelCoachSide;
     private PhysicalPoint? _beforeKeyboard;
     private PhysicalRect _occluded;
     private PhysicalRect _dragOrigin;
@@ -89,6 +93,10 @@ public sealed class SurfaceSet : IDisposable
     /// Quick settings, the menu of a shortcut and test mode, shared with the panel: beside the bar they get windows of
     /// their own (PES-009, PES-010, PES-014). <see langword="null"/> for a set without them.
     /// </param>
+    /// <param name="panelCoach">
+    /// The guide of the Full and Compact views, in a window beside the panel (R-38); <see langword="null"/> for a set
+    /// without it.
+    /// </param>
     public SurfaceSet(
         PanelWindow panel,
         PanelViewModel panelModel,
@@ -100,7 +108,8 @@ public sealed class SurfaceSet : IDisposable
         TimeProvider time,
         TouchSettings touch,
         SurfaceCallbacks callbacks,
-        PanelLayerModels? layers = null
+        PanelLayerModels? layers = null,
+        PanelCoachViewModel? panelCoach = null
     )
     {
         ArgumentNullException.ThrowIfNull(panel);
@@ -197,6 +206,16 @@ public sealed class SurfaceSet : IDisposable
             _quick.SizeChanged += (_, _) => Reflow();
         }
 
+        if (panelCoach is not null)
+        {
+            // R-38: the guide follows the opacity of the panel it explains; nothing dims while it shows.
+            _panelCoach = Track(
+                new PanelCoachWindow(panelCoach, registry, time, theme, touch),
+                DimSurface.Panel
+            );
+            _panelCoach.SizeChanged += (_, _) => Reflow();
+        }
+
         panel.Placer = PlacePanel;
         _dimmer.Follow(panel);
         panel.DragStarted += (_, _) => _dragOrigin = _panel.ScreenBounds;
@@ -204,13 +223,15 @@ public sealed class SurfaceSet : IDisposable
         {
             MoveDragged(_panel, drag.Offset);
 
-            // Quick settings beside the panel, and the notice under a Compact one, go with it while it is dragged
-            // (AJR-001, D21).
+            // Quick settings and the guide beside the panel, and the notice under a Compact one, go with it while it
+            // is dragged (AJR-001, D21, R-38).
             if (
                 _layout is { } dragged
                 && PanelForms.IsPanel(dragged.Form)
                 && (
-                    dragged.ShowsQuick || (dragged.ShowsNotice && dragged.Form == PanelForm.Compact)
+                    dragged.ShowsQuick
+                    || dragged.ShowsPanelCoach
+                    || (dragged.ShowsNotice && dragged.Form == PanelForm.Compact)
                 )
             )
             {
@@ -220,7 +241,7 @@ public sealed class SurfaceSet : IDisposable
         panel.DragEnded += (_, _) => SaveDragged(_panel.ScreenBounds);
         panel.SizeChanged += (_, _) => KeepPanelInside();
 
-        // Quick settings beside the panel follow it when it is moved (AJR-001, D21).
+        // Quick settings and the guide beside the panel follow it when it is moved (AJR-001, D21, R-38).
         panel.DragEnded += (_, _) => Reflow();
         panel.ContactsEnded += (_, _) => KeepPanelInside();
         panel.Closed += (_, _) => Dispose();
@@ -256,6 +277,9 @@ public sealed class SurfaceSet : IDisposable
 
     /// <summary>Quick settings beside the bar (PES-009); <see langword="null"/> without the layers.</summary>
     public DockQuickWindow? Quick => _quick;
+
+    /// <summary>The guide beside the panel (R-38); <see langword="null"/> for a set without it.</summary>
+    public PanelCoachWindow? PanelCoach => _panelCoach;
 
     /// <summary>The monitor the panel and the Tab view are on (PES-016).</summary>
     public string MonitorId => CurrentMonitor().Id;
@@ -535,6 +559,15 @@ public sealed class SurfaceSet : IDisposable
         {
             // AJR-001: the next time it opens, it picks its side again.
             _quickSide = null;
+        }
+
+        if (PanelForms.IsPanel(form) && layout.ShowsPanelCoach && _panelCoach is { } guide)
+        {
+            PlaceCoachBesidePanel(guide, monitor, shown);
+        }
+        else
+        {
+            _panelCoachSide = null;
         }
 
         if (layout.Panic && form is PanelForm.Bubble or PanelForm.DockClosed or PanelForm.DockOpen)
@@ -830,6 +863,40 @@ public sealed class SurfaceSet : IDisposable
             monitor
         );
         Present(quick, rect, shown);
+    }
+
+    /// <summary>
+    /// R-38: the guide of the panel beside it, as Quick settings are (AJR-001): toward the side of the screen with room,
+    /// lined up with the top of the panel, and on the same side while the panel is dragged and it still fits there.
+    /// </summary>
+    private void PlaceCoachBesidePanel(
+        PanelCoachWindow guide,
+        DisplayMonitor monitor,
+        HashSet<TouchSurface> shown
+    )
+    {
+        var panel = _panel.ScreenBounds;
+        if (panel.IsEmpty)
+        {
+            return;
+        }
+
+        var (width, height) = guide.MeasurePhysical(monitor.Scale);
+        var gap = monitor.ToPhysical(DockGeometry.BarWindowGapPx);
+        _panelCoachSide = DockGeometry.SideBesidePanel(panel, width, gap, monitor, _panelCoachSide);
+        Present(
+            guide,
+            DockGeometry.Beside(
+                _panelCoachSide.Value,
+                panel,
+                width,
+                height,
+                gap,
+                DockAlign.Start,
+                monitor
+            ),
+            shown
+        );
     }
 
     /// <summary>

@@ -6,7 +6,7 @@ namespace Clicalo.Application.Interaction;
 /// <summary>
 /// The state that crosses the surfaces of the panel (blueprint §6.4, <c>InteractionState</c>): not persisted, owned by
 /// <see cref="InteractionStore"/> on the Surfaces role and changed only through <see cref="InteractionReducer"/>. It
-/// holds the forms that are not settings (the bubble, the bar open, the window beside it, the step of the guide) and
+/// holds the forms that are not settings (the bubble, the bar open, the window beside it, the steps of the guides) and
 /// the automatic dimming (docs/04 «Opacidad y atenuado»): what is open elsewhere that keeps every surface awake, and
 /// whether a finger or the pointer is on a surface. It also holds the notices (<see cref="Notices"/>, AVI-002), which the
 /// notice bar of the panel, the notice surface of the Tab view (PES-014) and the status bar of the control center
@@ -44,6 +44,12 @@ public sealed record InteractionState(
     /// closes or a result runs; the saved view stays the Tab view.
     /// </summary>
     public bool SearchPeek { get; init; }
+
+    /// <summary>
+    /// The step of the guide of the Full and Compact views on show, from 0 (R-38); apart from <see cref="CoachStep"/>, so
+    /// the two guides never share where they are.
+    /// </summary>
+    public int PanelCoachStep { get; init; }
 
     /// <summary>The notices and which one shows now (AVI-002).</summary>
     public NoticeQueue Notices { get; init; } = NoticeQueue.Empty;

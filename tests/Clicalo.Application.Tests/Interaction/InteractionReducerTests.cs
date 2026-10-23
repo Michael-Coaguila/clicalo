@@ -100,6 +100,22 @@ public sealed class InteractionReducerTests
     }
 
     [Fact]
+    [Trait("Req", "PES-015")]
+    public void The_guide_of_the_panel_walks_its_own_three_steps_apart_from_the_tab_guide()
+    {
+        var state = Reduce(InteractionState.Initial, new InteractionAction.CoachNext());
+        state = Reduce(state, new InteractionAction.PanelCoachNext());
+        state.PanelCoachStep.ShouldBe(1);
+        state.CoachStep.ShouldBe(1);
+        state = Reduce(state, new InteractionAction.PanelCoachNext());
+        state.PanelCoachStep.ShouldBe(2);
+        Reduce(state, new InteractionAction.PanelCoachNext()).PanelCoachStep.ShouldBe(0);
+        var reset = Reduce(state, new InteractionAction.PanelCoachReset());
+        reset.PanelCoachStep.ShouldBe(0);
+        reset.CoachStep.ShouldBe(1);
+    }
+
+    [Fact]
     public void An_action_without_effect_returns_the_same_state()
     {
         var state = InteractionState.Initial;

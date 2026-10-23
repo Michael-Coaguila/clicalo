@@ -27,9 +27,10 @@ namespace Clicalo.App.Composition;
 /// Wires the forms of the panel (docs/04 «Vista compacta», «Vista pestaña», «Burbuja minimizada», «Opacidad y
 /// atenuado», «Posición») on the UI thread of the Surfaces role: the bubble, the handle and the bar of the Tab view with
 /// the windows beside it (Quick settings, the menu of a shortcut and the notices among them: PES-009, PES-010,
-/// PES-014), the floating «Release all», the dimming of every surface and the positions, the handle's per monitor
-/// (PES-016) and the panel's away from the touch keyboard (BUS-002). It owns no rule:
-/// the form is <see cref="PanelForms"/>', the collapse and the guide <see cref="DockRules"/>', the places
+/// PES-014), the guide beside the Full and Compact panel (R-38), the floating «Release all», the dimming of every
+/// surface and the positions, the handle's per monitor (PES-016) and the panel's away from the touch keyboard (BUS-002).
+/// It owns no rule: the form is <see cref="PanelForms"/>', the collapse and the guide of the bar
+/// <see cref="DockRules"/>', the guide of the panel <see cref="PanelCoachRules"/>', the places
 /// <see cref="PanelGeometry"/>' and <see cref="DockGeometry"/>', the opacity <see cref="DimPolicy"/>'s through the
 /// <see cref="InteractionStore"/>. It implements what the handle and the bar ask for (<see cref="IDockIntents"/>) by
 /// sending it to the interaction store, the session, the document or the panel's own intentions.
@@ -122,6 +123,7 @@ internal sealed class SurfacesComposer : IDockIntents
             () => _ = _interaction.Dispatch(new InteractionAction.Restore()),
             ReleaseAll
         );
+        PanelCoach = new PanelCoachViewModel(localization, PanelCoachNext, PanelCoachSkip);
 
         _store.Changed += (_, change) => _ = _ui.BeginInvoke(() => OnDocumentChanged(change));
         _session.Changed += OnSessionChanged;
@@ -135,7 +137,11 @@ internal sealed class SurfacesComposer : IDockIntents
                 || before.DockOpen != after.DockOpen
                 || before.Flyout != after.Flyout
                 || before.CoachStep != after.CoachStep
+                || before.PanelCoachStep != after.PanelCoachStep
                 || before.SearchPeek != after.SearchPeek
+                // R-38: the guide of the panel waits for the welcome.
+                || before.Open.HasFlag(DimExceptions.WelcomeOpen)
+                    != after.Open.HasFlag(DimExceptions.WelcomeOpen)
             )
             {
                 Invalidate();
@@ -176,6 +182,7 @@ internal sealed class SurfacesComposer : IDockIntents
             {
                 Dock.Relocalize();
                 Bubble.Relocalize();
+                PanelCoach.Relocalize();
             });
     }
 
@@ -184,6 +191,9 @@ internal sealed class SurfacesComposer : IDockIntents
 
     /// <summary>The bubble.</summary>
     public BubbleViewModel Bubble { get; }
+
+    /// <summary>The first-time guide of the Full and Compact views (R-38).</summary>
+    public PanelCoachViewModel PanelCoach { get; }
 
     /// <summary>The surfaces, once attached.</summary>
     public SurfaceSet? Surfaces => _surfaces;
@@ -214,7 +224,8 @@ internal sealed class SurfacesComposer : IDockIntents
                 OnTileUsed,
                 OnHoldReleased
             ),
-            _panel.Layers
+            _panel.Layers,
+            PanelCoach
         );
         if (_keyboard is { } keyboard)
         {
@@ -364,6 +375,25 @@ internal sealed class SurfacesComposer : IDockIntents
 
     /// <inheritdoc />
     public void ReleaseAll() => _ = _controller.ReleaseAll();
+
+    /// <summary>[next] in the guide of the panel; [understood] on its last step ends it as [coachSkip] does (R-38).</summary>
+    private void PanelCoachNext()
+    {
+        if (PanelCoachRules.NextStep(_interaction.Current.PanelCoachStep) is null)
+        {
+            PanelCoachSkip();
+            return;
+        }
+
+        _ = _interaction.Dispatch(new InteractionAction.PanelCoachNext());
+    }
+
+    /// <summary>[coachSkip] in the guide of the panel: it never shows again until General asks for it (R-38).</summary>
+    private void PanelCoachSkip()
+    {
+        _ = _interaction.Dispatch(new InteractionAction.PanelCoachReset());
+        _ = _store.Dispatch(new SetSetting(SettingPaths.PanelCoachDone, true));
+    }
 
     private void ChangeView(PanelDensity density)
     {
@@ -746,6 +776,22 @@ internal sealed class SurfacesComposer : IDockIntents
         );
         var showsMenu = DockRules.ShowsBesideBar(form, _panel.Menu.IsOpen);
         _menuCancel?.Apply(showsMenu, Dock.Modes?.MenuOpenedByFinger == true);
+        PanelCoach.Apply(
+            interaction.PanelCoachStep,
+            PanelCoachRules.Shows(
+                form,
+                settings.Density,
+                settings.PanelCoachDone,
+                _panel.QuickSettings.IsOpen,
+                interaction.Open.HasFlag(DimExceptions.WelcomeOpen)
+            )
+        );
+        var showsDockCoach = form == PanelForm.DockOpen && Dock.ShowsCoach;
+
+        // R-38: a guide is read without touching anything; nothing dims while one shows.
+        _ = _interaction.Dispatch(
+            new InteractionAction.SetOpen(DimExceptions.Guide, showsDockCoach || PanelCoach.IsShown)
+        );
         _surfaces?.Apply(
             new SurfaceLayout(
                 form,
@@ -754,7 +800,7 @@ internal sealed class SurfacesComposer : IDockIntents
                 SettingsProjection.Size(settings),
                 latched,
                 form == PanelForm.DockOpen ? interaction.Flyout : DockFlyout.None,
-                form == PanelForm.DockOpen && Dock.ShowsCoach
+                showsDockCoach
             )
             {
                 Settings = settings,
@@ -771,6 +817,7 @@ internal sealed class SurfacesComposer : IDockIntents
                 ShowsQuick =
                     (!showsMenu && DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen))
                     || DockRules.ShowsQuickBesidePanel(form, _panel.QuickSettings.IsOpen),
+                ShowsPanelCoach = PanelCoach.IsShown,
             }
         );
     }

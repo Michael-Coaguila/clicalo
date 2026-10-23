@@ -55,6 +55,12 @@ public abstract record InteractionAction
     /// <summary>The guide closes ([coachSkip] or [understood]): back to its first step (PES-015).</summary>
     public sealed record CoachReset : InteractionAction;
 
+    /// <summary>[next] in the guide of the panel: the next step (R-38); after the last one it is back at 0.</summary>
+    public sealed record PanelCoachNext : InteractionAction;
+
+    /// <summary>The guide of the panel closes ([coachSkip] or [understood]): back to its first step (R-38).</summary>
+    public sealed record PanelCoachReset : InteractionAction;
+
     /// <summary>
     /// Something that keeps the surfaces awake opened or closed elsewhere (docs/04): Quick settings, a context menu,
     /// edit mode, the Control Center, the welcome, the search, the profile grid or the panic.

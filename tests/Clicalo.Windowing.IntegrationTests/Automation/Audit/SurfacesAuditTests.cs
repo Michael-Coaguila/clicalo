@@ -1115,6 +1115,71 @@ public sealed class SurfacesAuditTests
     [Theory]
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "ACC-002")]
+    [Trait("Req", "PES-015")]
+    [MemberData(nameof(TabWindowCases))]
+    public void The_guide_of_the_panel_keeps_44_and_its_size_in_its_three_steps(
+        string language,
+        AuditLook look
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(look);
+            var model = new PanelCoachViewModel(
+                PanelTestData.Localization(language),
+                static () => { },
+                static () => { }
+            );
+            var guide = new Clicalo.UI.Wpf.Surfaces.Panel.PanelCoachWindow(
+                model,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch
+            );
+            try
+            {
+                // R-38: «Qué ver», the grid with its pages and the header, as PES-015 draws the guide of the bar.
+                var heights = new List<double>();
+                for (var step = 0; step < PanelCoachRules.Steps; step++)
+                {
+                    model.Apply(step, shown: true);
+                    using var host = AuditHost.OfWindow(guide, theme);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"panel guide step {step + 1} ({language}, {look})"
+                        ),
+                        atLeast: 2,
+                        TouchInput.PointerLayer,
+                        "Panel"
+                    );
+                    heights.Add(host.Root.ActualHeight);
+
+                    // REG-06: the window keeps its name in every step; the step is its text.
+                    guide.Title.ShouldBe(model.Name);
+                    AutomationProperties.GetName(guide.NextButton).ShouldBe(model.NextLabel);
+                    AutomationProperties.GetName(guide.SkipButton).ShouldBe(model.SkipLabel);
+                }
+
+                // D12: the window never changes size from one step to the next.
+                heights.ShouldAllBe(height => Math.Abs(height - heights[0]) <= Rounding);
+            }
+            finally
+            {
+                guide.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
     [Trait("Req", "SEG-002")]
     [InlineData(AuditLook.Dark)]
