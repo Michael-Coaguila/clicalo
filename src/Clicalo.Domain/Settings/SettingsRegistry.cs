@@ -582,6 +582,14 @@ internal static class SettingsRegistry
                 In(SettingsSchema.TimeMultiplier),
                 SettingsSchema.TimeMultiplier
             ),
+            Leaf(
+                SettingPaths.PanelCoachDone,
+                Presentation,
+                L.CoachSkip,
+                null,
+                s => s.PanelCoachDone,
+                (s, v) => s with { PanelCoachDone = v }
+            ),
         ];
 
     private static SettingLeaf<T> Leaf<T>(

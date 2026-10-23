@@ -151,6 +151,7 @@ internal static class SettingsMapper
                 )
                 : defaults.GlobalHotkey,
             TimeMultiplier = dto.TimeMultiplier ?? defaults.TimeMultiplier,
+            PanelCoachDone = dto.PanelCoachDone ?? defaults.PanelCoachDone,
         };
     }
 
@@ -283,6 +284,7 @@ internal static class SettingsMapper
                 Combo = settings.GlobalHotkey.Combo,
             },
             TimeMultiplier = settings.TimeMultiplier,
+            PanelCoachDone = settings.PanelCoachDone,
             Extra = extra is null
                 ? null
                 : new Dictionary<string, JsonElement>(extra, StringComparer.Ordinal),

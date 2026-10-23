@@ -79,6 +79,9 @@ internal sealed record SettingsDto
     /// <summary>Multiplier of the confirmation window and of notices (ACC-006): 1, 2 or 3; since 1.1.</summary>
     public int? TimeMultiplier { get; init; }
 
+    /// <summary>The guide of the Full and Compact views was finished or skipped (R-38); since 1.2 (ADR-0033).</summary>
+    public bool? PanelCoachDone { get; init; }
+
     /// <summary>Settings of a later minor, kept when rewriting (§6.5).</summary>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
