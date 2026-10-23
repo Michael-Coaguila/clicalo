@@ -273,8 +273,9 @@ public static class DockGeometry
 
     /// <summary>
     /// <see cref="Beside"/>, clear of the surfaces already placed there (PES-014): while the place is taken by one of
-    /// <paramref name="taken"/>, the surface goes further from the edge, beside that one too. The notice surface of the
-    /// Tab view uses it, so it never covers a window beside the bar nor the floating «Release all».
+    /// <paramref name="taken"/>, the surface goes further from the edge, beside that one too. Only the depth of the
+    /// anchor grows, so a surface centered on a button stays on it (D21 review). The notice surface of the Tab view uses
+    /// it, so it never covers a window beside the bar nor the floating «Release all»; so does the menu of a shortcut.
     /// </summary>
     /// <param name="side">The edge of the Tab view.</param>
     /// <param name="anchor">The bar, the handle or a button, in physical pixels.</param>
@@ -314,12 +315,19 @@ public static class DockGeometry
                 break;
             }
 
-            anchor = PhysicalRect.FromEdges(
-                Math.Min(anchor.Left, covered.Left),
-                Math.Min(anchor.Top, covered.Top),
-                Math.Max(anchor.Right, covered.Right),
-                Math.Max(anchor.Bottom, covered.Bottom)
-            );
+            anchor = IsVertical(side)
+                ? PhysicalRect.FromEdges(
+                    Math.Min(anchor.Left, covered.Left),
+                    anchor.Top,
+                    Math.Max(anchor.Right, covered.Right),
+                    anchor.Bottom
+                )
+                : PhysicalRect.FromEdges(
+                    anchor.Left,
+                    Math.Min(anchor.Top, covered.Top),
+                    anchor.Right,
+                    Math.Max(anchor.Bottom, covered.Bottom)
+                );
             rect = Beside(side, anchor, width, height, gap, align, monitor);
         }
 

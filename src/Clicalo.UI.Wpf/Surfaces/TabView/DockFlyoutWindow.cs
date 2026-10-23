@@ -7,6 +7,7 @@ using System.Windows.Media;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
@@ -189,6 +190,24 @@ public sealed class DockFlyoutWindow : TouchSurface
 
     /// <summary>The shortcut tiles of «Pinned», in order.</summary>
     public IReadOnlyList<ShortcutTile> TileControls => [.. _tiles.Select(static t => t.Control)];
+
+    /// <summary>
+    /// Where the tile of <paramref name="shortcut"/> is on screen, for its menu beside it (CUA-014, PES-010), or empty
+    /// when the window does not show it.
+    /// </summary>
+    /// <param name="shortcut">The shortcut.</param>
+    public PhysicalRect TileBounds(ShortcutId shortcut)
+    {
+        foreach (var (viewModel, control, _) in _tiles)
+        {
+            if (viewModel.Id == shortcut)
+            {
+                return PhysicalBounds(control, inflate: false);
+            }
+        }
+
+        return PhysicalRect.Empty;
+    }
 
     /// <summary>The zone that scrolls when the window is taller than it may be (TAC-004).</summary>
     public ScrollViewer Scroller => _scroller;

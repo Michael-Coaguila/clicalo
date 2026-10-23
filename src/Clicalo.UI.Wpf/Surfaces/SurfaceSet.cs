@@ -658,20 +658,24 @@ public sealed class SurfaceSet : IDisposable
         var side = layout.Dock.Side;
         var barRect = bar.ScreenBounds;
         var maxHeight = DockGeometry.MaxSideWindowHeight(monitor) / monitor.Scale;
+        DockFlyoutWindow? open = null;
+        var openRect = PhysicalRect.Empty;
         if (layout.Flyout != DockFlyout.None && _flyouts.TryGetValue(layout.Flyout, out var flyout))
         {
             flyout.MaxContentHeight = maxHeight;
             var (width, height) = flyout.MeasurePhysical(monitor.Scale);
+
+            // The profile grid starts at its button on a top or bottom bar and grows along it; a side bar keeps it
+            // lined up with its top (PES-011, D21 review: it opened at the start of a horizontal bar).
             var anchor = layout.Flyout switch
             {
                 DockFlyout.Pinned => bar.PinnedButtonBounds,
                 DockFlyout.Sticky => bar.StickyButtonBounds,
                 DockFlyout.Arrows => bar.ArrowsButtonBounds,
+                DockFlyout.Profiles when !DockGeometry.IsVertical(side) => bar.ProfileButtonBounds,
                 _ => barRect,
             };
-            var byButton =
-                layout.Flyout is DockFlyout.Pinned or DockFlyout.Sticky or DockFlyout.Arrows
-                && !anchor.IsEmpty;
+            var byButton = anchor != barRect && !anchor.IsEmpty;
 
             // Beside the edge of the bar, lined up with the button that opened it: never over the bar (D20).
             var rect = DockGeometry.Beside(
@@ -685,6 +689,8 @@ public sealed class SurfaceSet : IDisposable
             );
             Present(flyout, rect, shown);
             taken.Add(rect);
+            open = flyout;
+            openRect = rect;
         }
 
         if (layout.ShowsCoach)
@@ -706,12 +712,23 @@ public sealed class SurfaceSet : IDisposable
         if (layout.ShowsMenu && _menu is { } menu)
         {
             // CUA-014, PES-010: the menu of a shortcut beside the bar at the height of the shortcut pressed (D21
-            // review: it opened at the top of the bar, far from it), or beside «Pinned» when it is open.
+            // review: it opened at the top of the bar, far from it), or beside its tile in «Pinned» when it is open.
             var (width, height) = menu.MeasurePhysical(monitor.Scale);
-            var tile =
-                layout.Flyout == DockFlyout.None && menu.Shortcut is { } pressed
-                    ? bar.TileBounds(pressed)
-                    : PhysicalRect.Empty;
+            var tile = PhysicalRect.Empty;
+            var across = barRect;
+            if (menu.Shortcut is { } pressed)
+            {
+                if (layout.Flyout == DockFlyout.None)
+                {
+                    tile = bar.TileBounds(pressed);
+                }
+                else if (open is not null)
+                {
+                    tile = open.TileBounds(pressed);
+                    across = openRect;
+                }
+            }
+
             var rect = tile.IsEmpty
                 ? DockGeometry.BesideClear(
                     side,
@@ -725,7 +742,7 @@ public sealed class SurfaceSet : IDisposable
                 )
                 : DockGeometry.BesideClear(
                     side,
-                    DockGeometry.AtButton(side, barRect, tile),
+                    DockGeometry.AtButton(side, across, tile),
                     width,
                     height,
                     monitor.ToPhysical(DockGeometry.BarWindowGapPx),

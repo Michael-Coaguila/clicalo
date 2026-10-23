@@ -296,6 +296,31 @@ public sealed class DockGeometryTests
     }
 
     [Fact]
+    [Trait("Req", "CUA-014")]
+    [Trait("Req", "PES-010")]
+    public void A_menu_centered_on_a_tile_stays_on_it_when_it_goes_beyond_a_window()
+    {
+        // The menu of a shortcut of «Pinned»: beside the window, centered on the tile, never pulled along the edge.
+        var bar = new PhysicalRect(1832, 100, 88, 840);
+        var pinned = new PhysicalRect(1832 - 8 - 230, 300, 230, 500);
+        var tile = new PhysicalRect(pinned.Left + 8, 600, 100, 80);
+
+        var menu = DockGeometry.BesideClear(
+            DockSide.Right,
+            DockGeometry.AtButton(DockSide.Right, bar, tile),
+            260,
+            200,
+            8,
+            DockAlign.Center,
+            Monitor,
+            [pinned]
+        );
+
+        menu.Right.ShouldBe(pinned.Left - 8);
+        (menu.Top + (menu.Height / 2)).ShouldBe(tile.Top + (tile.Height / 2));
+    }
+
+    [Fact]
     [Trait("Req", "PES-013")]
     public void Release_all_floats_110_from_the_edge_or_180_from_the_bottom()
     {

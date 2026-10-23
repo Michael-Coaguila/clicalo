@@ -223,6 +223,9 @@ public sealed class DockBarWindow : TouchSurface
     /// <summary>The arrows, where their window goes beside (D21).</summary>
     public PhysicalRect ArrowsButtonBounds => PhysicalBounds(_arrows.Button, inflate: false);
 
+    /// <summary>The profile segment, where the profile grid goes beside on a top or bottom bar (PES-011, D21).</summary>
+    public PhysicalRect ProfileButtonBounds => PhysicalBounds(_profile.Button, inflate: false);
+
     /// <summary>The <c>tune</c> button, where Quick settings go beside (PES-009).</summary>
     public PhysicalRect TuneButtonBounds => PhysicalBounds(_tune, inflate: false);
 
