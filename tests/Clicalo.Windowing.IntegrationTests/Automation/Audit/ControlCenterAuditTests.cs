@@ -788,6 +788,69 @@ public sealed class ControlCenterAuditTests
         );
 
     [Theory]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 760, 520)]
+    [InlineData("es", 1120, 680)]
+    [Trait("Req", "PRB-001")]
+    [Trait("Req", "PRB-003")]
+    [Trait("Req", "CCM-005")]
+    public void Probar_covers_the_foot_of_the_editor_and_shows_its_keys_above_its_own_foot(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States["shortcuts-test"](viewModel);
+                WpfThread.DrainPendingWork();
+                window.ShowShortcutPage();
+                host.LayOut();
+
+                var model = viewModel.Shortcuts.Editor.Model.ShouldNotBeNull();
+                var test = model.Test.ShouldNotBeNull();
+                // The foot of the editor is under the layer: neither the finger nor UI Automation reach it.
+                Named(host, model.Footer.DuplicateText).ShouldBeEmpty();
+                Named(host, model.Footer.DeleteText).ShouldBeEmpty();
+                // The way out and what tries are in view: ✕ of the title and «Probar ahora» in the foot of the layer.
+                var editor = InTree(host.Root).OfType<ShortcutEditorView>().Single();
+                var close = InTree(editor)
+                    .OfType<Clicalo.UI.Wpf.Controls.IconButton>()
+                    .Single(button =>
+                        button.IsVisible
+                        && string.Equals(
+                            AutomationProperties.GetName(button),
+                            test.CloseName,
+                            StringComparison.Ordinal
+                        )
+                    );
+                AboveFade(close).ShouldBeGreaterThanOrEqualTo(-0.5, "✕ of «Probar»");
+                var live = (System.Windows.FrameworkElement)
+                    (
+                        (UIElementAutomationPeer)
+                            host.Peer(test.LiveText, AutomationControlType.Button)
+                    ).Owner;
+                Bounds(live, editor).Bottom.ShouldBeLessThanOrEqualTo(editor.ActualHeight + 0.5);
+                // The keys it sends are above the fade, not squeezed between two feet (D21 review).
+                var key = InTree(host.Root)
+                    .OfType<System.Windows.Controls.TextBlock>()
+                    .Single(block =>
+                        block.IsVisible
+                        && string.Equals(
+                            block.Text,
+                            test.Sequence[^1].Label,
+                            StringComparison.Ordinal
+                        )
+                    );
+                AboveFade(key).ShouldBeGreaterThanOrEqualTo(-0.5, "the keys of «Probar»");
+            }
+        );
+
+    [Theory]
     [InlineData("shortcuts-macro-keys", "es", 1120, 680)]
     [InlineData("shortcuts-hold", "es", 1371, 859)]
     [InlineData("shortcuts-macro-keys", "en", 760, 520)]
