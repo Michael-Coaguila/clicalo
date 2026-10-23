@@ -130,6 +130,12 @@ public sealed class PanelInteractionController
     /// <summary>«Release all» on the panic strip or the tray (SEG-003).</summary>
     public bool ReleaseAll() => _engine.Post(new EngineEvent.ReleaseAll(ReleaseReason.User));
 
+    /// <summary>
+    /// The view changed (SEG-007): whatever is held, latched or running is released, as when the panel hides, so a
+    /// Toggle or a macro never goes on unseen in the bubble or the Tab view.
+    /// </summary>
+    public bool ViewChanged() => _engine.Post(new EngineEvent.Terminal(TerminalReason.ViewChange));
+
     private static ActivationOrigin Origin(PointerKind device) =>
         device switch
         {

@@ -499,8 +499,10 @@ internal sealed class SurfacesComposer : IDockIntents
 
         if (before.Density != after.Density)
         {
-            // PAN-001 c: another view leaves the bubble, folds the bar and starts on page 1.
+            // PAN-001 c: another view leaves the bubble, folds the bar and starts on page 1; SEG-007: it releases
+            // everything.
             _ = _interaction.Dispatch(new InteractionAction.ViewChanged());
+            _ = _controller.ViewChanged();
             Dock.FirstPage();
         }
 
