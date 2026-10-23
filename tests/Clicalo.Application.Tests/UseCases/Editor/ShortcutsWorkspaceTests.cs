@@ -270,6 +270,40 @@ public sealed class ShortcutsWorkspaceTests
     }
 
     [Fact]
+    [Trait("Req", "ATJ-009")]
+    public void With_three_tiles_a_drop_lands_in_front_of_the_tile_it_names_and_a_drop_in_place_says_nothing()
+    {
+        _workspace.SelectList(Word);
+        _workspace.OpenLibrary();
+        var category = _workspace
+            .Categories()
+            .Single(c => string.Equals(c.Id, "edit", StringComparison.Ordinal));
+        _workspace.AddFromLibrary(category, category.Items[0]);
+        var paste = _workspace.Shortcuts[^1].Id;
+        _workspace.Select(StoreSamples.Bold);
+        _notices.Clear();
+        var undoable = _harness.Changes.Count;
+
+        // Where it already is: in front of its right-hand neighbour, or at the end for the last one.
+        _workspace.Reorder(StoreSamples.Bold, StoreSamples.Save);
+        _workspace.Reorder(paste, null);
+        _harness.Changes.Count.ShouldBe(undoable);
+        _notices.ShouldBeEmpty("a drop that changes nothing says nothing");
+
+        // On the second half of its right-hand neighbour: past it, in front of the third.
+        _workspace.Reorder(StoreSamples.Bold, paste);
+        _workspace
+            .Shortcuts.Select(s => s.Id)
+            .ShouldBe([StoreSamples.Save, StoreSamples.Bold, paste]);
+
+        // The last one in front of the first.
+        _workspace.Reorder(paste, StoreSamples.Save);
+        _workspace
+            .Shortcuts.Select(s => s.Id)
+            .ShouldBe([paste, StoreSamples.Save, StoreSamples.Bold]);
+    }
+
+    [Fact]
     [Trait("Req", "EDI-016")]
     public void The_position_buttons_move_it_inside_its_list()
     {

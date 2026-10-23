@@ -1142,6 +1142,7 @@ public sealed class ShortcutsSectionView : Grid
             }
 
             ShowDrop(DropAt(moved, point));
+            ScrollNearEdge(e.GetPosition(_listScroll));
             return;
         }
 
@@ -1153,6 +1154,25 @@ public sealed class ShortcutsSectionView : Grid
         )
         {
             _pressTimer.Stop();
+        }
+    }
+
+    /// <summary>
+    /// A dragged tile near the top or the bottom of the list scrolls it, so a gap out of view can be reached in the
+    /// smallest window (ATJ-009): a step of <see cref="Space.S4"/> each time the finger moves within a touch target of
+    /// the edge.
+    /// </summary>
+    private void ScrollNearEdge(Point inView)
+    {
+        if (inView.Y < ControlHeight.Small)
+        {
+            _listScroll.ScrollToVerticalOffset(Math.Max(0, _listScroll.VerticalOffset - Space.S4));
+        }
+        else if (inView.Y > _listScroll.ActualHeight - ControlHeight.Small)
+        {
+            _listScroll.ScrollToVerticalOffset(
+                Math.Min(_listScroll.ScrollableHeight, _listScroll.VerticalOffset + Space.S4)
+            );
         }
     }
 
