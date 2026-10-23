@@ -4,6 +4,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Editor;
 using Clicalo.UI.Wpf.Controls;
@@ -27,8 +28,11 @@ namespace Clicalo.UI.Wpf.Workspace;
 /// </summary>
 public sealed class ShortcutEditorView : Grid
 {
-    /// <summary>The space between two regions.</summary>
-    private const double RegionGap = Space.S6;
+    /// <summary>
+    /// The space between two regions: the one between the sections of a sheet, so the keys, the text or the address
+    /// of the kind start as high as they can in the default window.
+    /// </summary>
+    private const double RegionGap = Space.S4;
 
     private readonly ShortcutEditorViewModel _viewModel;
     private readonly StackPanel _regions = new();
@@ -169,6 +173,8 @@ public sealed class ShortcutEditorView : Grid
             _viewModel.ShortcutKey,
             StringComparison.Ordinal
         );
+        var kindChanged =
+            !keyChanged && before is not null && Chosen(before.Kinds) != Chosen(model.Kinds);
         _shown = model;
         _shownKey = _viewModel.ShortcutKey;
         if (keyChanged)
@@ -243,6 +249,45 @@ public sealed class ShortcutEditorView : Grid
         {
             _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, () => Keyboard.Focus(_name.Box));
         }
+
+        if (kindChanged)
+        {
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, RevealFields);
+        }
+    }
+
+    private static ActionKind? Chosen(KindsModel kinds) =>
+        kinds.Options.Items.FirstOrDefault(static option => option.Selected)?.Kind;
+
+    /// <summary>
+    /// After another kind is chosen (EDI-006), scrolls the least that shows its first field above the fade: the keys,
+    /// the text, the action of the mouse, the steps or the address appear under the finger that chose the kind, and its
+    /// description stays in view when there is room for it.
+    /// </summary>
+    private void RevealFields()
+    {
+        var region =
+            _combo.Visibility == Visibility.Visible ? _combo
+            : _fields.Visibility == Visibility.Visible ? _fields
+            : null;
+        if (region is null || !region.IsLoaded)
+        {
+            return;
+        }
+
+        // A region is its overline and its first field, then the rest: the first field is what must be seen.
+        var bottom = region.ActualHeight;
+        if (
+            region.Content is Panel { Children.Count: > 1 } column
+            && column.Children[1] is FrameworkElement { IsVisible: true } first
+        )
+        {
+            bottom = first.TranslatePoint(default, region).Y + first.ActualHeight;
+        }
+
+        region.BringIntoView(
+            new Rect(new Point(), new Size(region.ActualWidth, bottom + ComponentSize.ScrollFade))
+        );
     }
 
     // ---- Combinación repetida (REP-001 to REP-004) ---------------------------------------------------------------
