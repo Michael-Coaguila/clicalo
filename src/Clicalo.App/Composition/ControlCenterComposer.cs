@@ -364,7 +364,10 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        if (_lease is not { IsActive: true })
+        // Already open but behind another app or minimized, a tap on ✏ or «+ Añadir» must still bring it to the front,
+        // or the change goes to an editor nobody sees (D20 review): the lease is asked again whenever the window is not
+        // the active one, and a new lease replaces the old one without giving the foreground back.
+        if (_lease is not { IsActive: true } || !window.IsActive)
         {
             var result = await _foreground
                 .AcquireAsync(
@@ -372,7 +375,13 @@ internal sealed class ControlCenterComposer : IDisposable, ITryNowWindow
                     CancellationToken.None
                 )
                 .ConfigureAwait(true);
-            _lease = result is LeaseResult.Granted granted ? granted.Lease : null;
+            _lease = result is LeaseResult.Granted granted ? granted.Lease : _lease;
+        }
+
+        if (_lease is { IsActive: true } && window.WindowState == WindowState.Minimized)
+        {
+            // Restoring activates the window, so it waits for the lease, as maximizing does.
+            window.WindowState = WindowState.Normal;
         }
 
         if (_maximize && _lease is { IsActive: true })
