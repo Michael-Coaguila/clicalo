@@ -76,6 +76,9 @@ public sealed class GestureRecognizer
     /// <summary>The targets hit-tested by <see cref="Feed"/>, in physical screen pixels.</summary>
     public ImmutableArray<TouchTarget> Targets { get; private set; } = [];
 
+    /// <summary>The layers drawn over other targets: a contact on one reaches only its own targets (TAC-002).</summary>
+    public ImmutableArray<TouchOccluder> Occluders { get; private set; } = [];
+
     /// <summary>Contacts currently down on the surface (drives the frozen layout of PAN-009).</summary>
     public int ActiveContacts => _count;
 
@@ -107,8 +110,14 @@ public sealed class GestureRecognizer
     /// survives (TAC-002).
     /// </summary>
     /// <exception cref="ArgumentException">Two targets share an identifier.</exception>
-    public void SetTargets(ImmutableArray<TouchTarget> targets)
+    /// <param name="targets">The targets.</param>
+    /// <param name="occluders">The layers drawn over other targets (<see cref="TouchOccluder"/>); none by default.</param>
+    public void SetTargets(
+        ImmutableArray<TouchTarget> targets,
+        ImmutableArray<TouchOccluder> occluders = default
+    )
     {
+        Occluders = occluders.IsDefault ? [] : occluders;
         var next = targets.IsDefault ? [] : targets;
         var states = new ButtonFilterState[next.Length];
         for (var i = 0; i < next.Length; i++)
@@ -391,7 +400,12 @@ public sealed class GestureRecognizer
         contact.DownTime = now;
         contact.PalmLike = _thresholds.IsPalm(sample.Contact);
         contact.IsMouse = sample.Kind == PointerKind.Mouse;
-        var hit = HitResolver.Resolve(Targets.AsSpan(), sample.Position, _thresholds.HitSlop);
+        var hit = HitResolver.Resolve(
+            Targets.AsSpan(),
+            sample.Position,
+            _thresholds.HitSlop,
+            Occluders.AsSpan()
+        );
         if (hit >= 0)
         {
             contact.HasTarget = true;

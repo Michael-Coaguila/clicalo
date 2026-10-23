@@ -1055,6 +1055,8 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             .Where(static cover => !cover.Bounds.IsEmpty)
             .ToList();
 
+        var added = new List<(FrameworkElement Element, int Id)>();
+
         // CUA-014: while the tile menu is open, its rows act and any other tap only closes it.
         Action? closeMenu = _layers is { Menu.IsOpen: true } open ? open.Menu.Close : null;
         foreach (var tile in _body.TileControls)
@@ -1117,7 +1119,22 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             );
         }
 
-        gestures.Recognizer.SetTargets(targets.ToImmutable());
+        // A layer on screen also blocks the extra hit area of what it covers: a touch on its edge, or on its text, never
+        // reaches the tile under it (TAC-002, D21 review); its own controls keep theirs.
+        var occluders = covers
+            .Select(cover => new TouchOccluder(
+                cover.Bounds,
+                [
+                    .. added
+                        .Where(a =>
+                            ReferenceEquals(a.Element, cover.Layer)
+                            || cover.Layer.IsAncestorOf(a.Element)
+                        )
+                        .Select(static a => new TouchTargetId(a.Id)),
+                ]
+            ))
+            .ToImmutableArray();
+        gestures.Recognizer.SetTargets(targets.ToImmutable(), occluders);
 
         // REG-02: every target answers on at least 44 × 44 with an invisible touch margin around its drawing. What a layer
         // covers is off the screen for UI Automation as well, so voice and Narrator never reach a tile under a card.
@@ -1135,6 +1152,7 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             }
 
             targets.Add(new GestureTarget(new TouchTargetId(id), bounds, kind));
+            added.Add((element, id));
             _targets[id] = target;
         }
 
