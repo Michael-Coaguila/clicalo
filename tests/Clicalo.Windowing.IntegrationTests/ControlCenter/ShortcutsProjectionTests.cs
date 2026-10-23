@@ -91,7 +91,33 @@ public sealed class ShortcutsProjectionTests
             {
                 section.Screen.Column.ShouldBe(EditorColumn.Empty);
                 section.Screen.EmptyText.ShouldBe("Elige un atajo para editarlo.");
+                section.Screen.EmptyList.ShouldBeNull("the list has shortcuts to pick");
                 section.Editor.Model.ShouldBeNull();
+            }
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-020")]
+    [Trait("Req", "CUA-010")]
+    public void A_list_without_shortcuts_says_how_to_fill_it_instead_of_asking_to_pick_one()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                section.SelectList(new ListRef.InProfile(new ProfileId("chrome")));
+                section.Refresh();
+                section.Editor.Delete();
+                section.Editor.Delete();
+                section.Refresh();
+
+                section.Screen.Column.ShouldBe(EditorColumn.Empty);
+                var empty = section.Screen.EmptyList.ShouldNotBeNull();
+                empty.Title.ShouldBe("Este perfil aún no tiene atajos");
+                empty.Text.ShouldBe("Añade el primero para «Navegador».");
+                empty.AddText.ShouldBe("Añadir atajo");
+                empty.TemplatesText.ShouldBe("Ver plantillas");
             }
         );
     }

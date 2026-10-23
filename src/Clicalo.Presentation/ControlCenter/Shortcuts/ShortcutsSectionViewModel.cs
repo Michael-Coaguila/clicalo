@@ -140,6 +140,9 @@ public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
     /// <summary>«+ Nuevo perfil» (ATJ-002): the Plantillas section.</summary>
     public void NewProfile() => _s.OpenTemplates();
 
+    /// <summary>[seeTpl] of an empty list: Plantillas, which adds the shortcuts of a whole app.</summary>
+    public void SeeTemplates() => _s.OpenTemplates();
+
     /// <summary>✏ of the header, or [done] of the card (ATJ-004).</summary>
     public void ToggleProfileEdit()
     {
@@ -436,7 +439,19 @@ public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
                 _ => EditorColumn.Empty,
             },
             T(L.PickOne),
-            Workspace.Pane is EditorPane.Library ? Library() : null
+            Workspace.Pane is EditorPane.Library ? Library() : null,
+            Workspace.Pane is EditorPane.Empty && Workspace.Shortcuts.Count == 0
+                ? new EmptyListModel(
+                    T(L.EmptyProfT),
+                    T(
+                        L.EmptyProfS(
+                            profile: profile?.Name.Get(Language, LangCode.Es) ?? T(L.Always)
+                        )
+                    ),
+                    T(L.AddShortcut),
+                    T(L.SeeTpl)
+                )
+                : null
         );
     }
 

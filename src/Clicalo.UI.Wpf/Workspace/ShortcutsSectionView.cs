@@ -466,6 +466,7 @@ public sealed class ShortcutsSectionView : Grid
             || before.Column != screen.Column
             || before.Library != screen.Library
             || !string.Equals(before.EmptyText, screen.EmptyText, StringComparison.Ordinal)
+            || before.EmptyList != screen.EmptyList
         )
         {
             Detach(_editor);
@@ -483,6 +484,7 @@ public sealed class ShortcutsSectionView : Grid
                     Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
                 },
                 EditorColumn.Editor => _editor,
+                _ when screen.EmptyList is { } emptyList => EmptyList(emptyList),
                 _ => Empty(screen.EmptyText),
             };
         }
@@ -518,6 +520,43 @@ public sealed class ShortcutsSectionView : Grid
         {
             _viewModel.CloseLibrary();
         }
+    }
+
+    /// <summary>
+    /// A list without shortcuts: the empty state of the panel (CUA-010) in the editor column, with «Añadir atajo»
+    /// (primary) and «Ver plantillas», instead of asking to choose a shortcut that does not exist.
+    /// </summary>
+    private StackPanel EmptyList(EmptyListModel model)
+    {
+        var icon = Ui.Icon("inbox", IconBox.Large, ColorToken.Muted);
+        icon.HorizontalAlignment = HorizontalAlignment.Center;
+        var title = new StyledText(model.Title, TextStyleToken.Heading)
+        {
+            MaxLines = 0,
+            TextAlignment = TextAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        var text = new StyledText(model.Text, TextStyleToken.BodySmall, ColorToken.Muted)
+        {
+            MaxLines = 0,
+            TextAlignment = TextAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        var add = Parts.Button(model.AddText, "add", ButtonVariant.Primary, OpenLibraryPage);
+        var templates = Parts.Button(
+            model.TemplatesText,
+            "auto_awesome",
+            ButtonVariant.Secondary,
+            _viewModel.SeeTemplates
+        );
+        var column = Ui.Column(Space.S3, icon, title, text);
+        add.Margin = new Thickness(0, Space.S3, 0, 0);
+        templates.Margin = new Thickness(0, Space.S2, 0, 0);
+        column.Children.Add(add);
+        column.Children.Add(templates);
+        column.VerticalAlignment = VerticalAlignment.Center;
+        column.Margin = new Thickness(Space.S6);
+        return column;
     }
 
     private void Review()
