@@ -351,6 +351,12 @@ public sealed class DockFlyoutWindow : TouchSurface
                 Modes
             );
             DockTileFactory.ShowIconOnly(control);
+
+            // Keys, not shortcuts of a category: the arrow is drawn in the text color, as the keys of Sticky keys.
+            control.SetResourceReference(
+                ShortcutTile.CategoryTintProperty,
+                ThemeBrushKey.For(ColorToken.Text)
+            );
             control.Margin = new Thickness(Space.S1);
             Grid.SetRow(control, places[i].Row);
             Grid.SetColumn(control, places[i].Column);

@@ -507,8 +507,9 @@ public sealed class DockBarWindow : TouchSurface
         // The same glyph as the row «Teclas fijas» of Quick settings: a keyboard with a lock, not the ⌘ of a Mac.
         _sticky = Tool("keyboard_lock", DockToolShape.Icon, _viewModel.ToggleSticky);
 
-        // D21 (asked by the maintainer): ↑ ↓ ← → at hand, in a window that this button opens and closes.
-        _arrows = Tool("open_with", DockToolShape.Icon, _viewModel.ToggleArrows);
+        // D21 (asked by the maintainer): ↑ ↓ ← → at hand, in a window that this button opens and closes; the cross of a
+        // pad, not the four arrows of «move» that the position of the tab already draws.
+        _arrows = Tool("gamepad", DockToolShape.Icon, _viewModel.ToggleArrows);
         _lock = Tool("lock_open", DockToolShape.Icon, _viewModel.TogglePinOpen);
 
         // 5. Scroll up and down: Mantener tiles that look like the tools at rest (PES-008).
@@ -647,8 +648,9 @@ public sealed class DockBarWindow : TouchSurface
             : new Thickness(0, 0, Space.S1, 0);
         if (!_vertical && !_shape.IconChoices)
         {
-            // As wide whatever the profile's name, so a top or bottom bar keeps its length when the profile changes.
-            profile.Width = _shape.Across;
+            // As wide as its name, up to the width of a shortcut: a fixed width cost an L bar one shortcut per page on
+            // the maintainer's screen (D21 review), more than the few DIP the bar moves when the profile changes.
+            profile.MaxWidth = _shape.Across;
         }
 
         _ = segments.Children.Add(frequents);
