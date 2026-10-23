@@ -353,7 +353,9 @@ public sealed class ShortcutsSectionView : Grid
             : page ? new GridLength(1, GridUnitType.Star)
             : new GridLength(0);
         _editorPane.Visibility = !_narrow || page ? Visibility.Visible : Visibility.Collapsed;
-        _pageHead.Content = page && _shown is { } shown ? PageHead(shown) : null;
+        // «Añadir atajo» as a page has its own ✕ (ATJ-010), which goes back as «← Volver» does: no second way back.
+        _pageHead.Content =
+            page && _shown is { Column: not EditorColumn.Library } shown ? PageHead(shown) : null;
         _profilesLayer.Visibility =
             _narrow && _profilesOpen && !page ? Visibility.Visible : Visibility.Collapsed;
         SetColumn(_picker, page ? 2 : 1);
@@ -473,7 +475,7 @@ public sealed class ShortcutsSectionView : Grid
                 {
                     Content = LibraryPane.Build(
                         library,
-                        _viewModel.CloseLibrary,
+                        CloseLibrary,
                         _viewModel.CreateOwn,
                         _viewModel.ChooseCategory,
                         _viewModel.AddFromLibrary
@@ -508,6 +510,15 @@ public sealed class ShortcutsSectionView : Grid
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(Space.S6),
         };
+
+    /// <summary>✕ of «Añadir atajo»: as a page of the narrow window, back to the grid, as «← Volver» did.</summary>
+    private void CloseLibrary()
+    {
+        if (!ClosePage())
+        {
+            _viewModel.CloseLibrary();
+        }
+    }
 
     private void Review()
     {
