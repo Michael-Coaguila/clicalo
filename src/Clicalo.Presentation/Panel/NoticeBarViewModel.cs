@@ -19,6 +19,7 @@ public sealed class NoticeBarViewModel : ObservableObject
     private bool _canRepeat;
     private string _repeatName = string.Empty;
     private bool _canCancel;
+    private bool _isConfirmation;
     private string _cancelName = string.Empty;
 
     internal NoticeBarViewModel(IPanelBodyIntents intents) => _intents = intents;
@@ -79,6 +80,13 @@ public sealed class NoticeBarViewModel : ObservableObject
         private set => SetProperty(ref _repeatName, value);
     }
 
+    /// <summary>Whether the notice is a plain confirmation, which the Tab view only says (PES-014, D21).</summary>
+    public bool IsConfirmation
+    {
+        get => _isConfirmation;
+        private set => SetProperty(ref _isConfirmation, value);
+    }
+
     /// <summary>Whether [cancel] shows.</summary>
     public bool CanCancel
     {
@@ -112,9 +120,11 @@ public sealed class NoticeBarViewModel : ObservableObject
         string undoName,
         string repeatName,
         bool canCancel = false,
-        string cancelName = ""
+        string cancelName = "",
+        bool isConfirmation = false
     )
     {
+        IsConfirmation = isConfirmation;
         CanCancel = canCancel;
         CancelName = cancelName;
         Icon = icon;

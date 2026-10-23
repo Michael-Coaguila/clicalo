@@ -13,10 +13,12 @@ namespace Clicalo.Presentation.Panel;
 /// <param name="Tone">Notice or warning.</param>
 /// <param name="CanUndo">The notice belongs to an operation that can be undone and the stack is not empty (AVI-003).</param>
 /// <param name="CanCancel">The notice offers [cancel] (the capture mode of a binding, ATJ-008).</param>
+/// <param name="IsConfirmation">A plain confirmation («Ctrl+S enviado a Word»): the Tab view only says it (PES-014, D21).</param>
 public sealed record PanelNotice(
     Message Text,
     IconRef Icon,
     NoticeTone Tone,
     bool CanUndo = false,
-    bool CanCancel = false
+    bool CanCancel = false,
+    bool IsConfirmation = false
 );

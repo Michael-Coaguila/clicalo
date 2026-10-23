@@ -726,7 +726,8 @@ public sealed class PanelViewModel : ObservableObject
             l.Format(L.Undo),
             l.Format(L.Repeat),
             notice?.CanCancel ?? false,
-            l.Format(L.Cancel)
+            l.Format(L.Cancel),
+            notice?.IsConfirmation ?? false
         );
         Admin.Apply(
             layers.AdminNotice,

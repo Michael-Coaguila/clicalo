@@ -338,9 +338,11 @@ public sealed class DockNoticeWindow : TouchSurface
             _text.Text = message;
             _announced = string.Empty;
 
-            // Kept off the screen, it is still said once by the surface on show (ACC-001).
+            // A confirmation kept off the screen is still said once by the surface on show (ACC-001); any other notice
+            // is said by this window when it appears, only once (D21 review: it was said twice).
             if (
                 message.Length > 0
+                && _notices.IsConfirmation
                 && QuietAnnouncer is { } quiet
                 && !string.Equals(message, _said, StringComparison.Ordinal)
             )

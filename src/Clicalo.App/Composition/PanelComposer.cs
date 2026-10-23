@@ -1086,7 +1086,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
                 notice.Icon,
                 notice.Warning ? NoticeTone.Warning : NoticeTone.Notice,
                 notice.CanUndo && _store.CanUndo,
-                notice.CanCancel
+                notice.CanCancel,
+                notice.IsConfirmation
             );
 
     /// <summary>Projects again once the current work of the dispatcher is done.</summary>

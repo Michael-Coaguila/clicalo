@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Messages;
@@ -8,6 +9,7 @@ using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
@@ -159,6 +161,66 @@ public sealed class DockSideSurfacesTests
 
                 notice.ServesCompact = false;
                 notice.LetsTouchesThrough.ShouldBeFalse();
+            }
+            finally
+            {
+                notice.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-014")]
+    [Trait("Req", "AVI-001")]
+    public void Off_the_screen_only_a_confirmation_is_said_by_the_bar_so_nothing_is_said_twice()
+    {
+        // D21 review: [undo] was said by the bar while hidden and again by the notice window when it appeared.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var panel = Panel(time, new RecordingBodyIntents());
+            var quiet = new LiveAnnouncer(new TextBlock());
+            var notice = new DockNoticeWindow(
+                panel,
+                testMode: null,
+                new DockLabels(PanelTestData.Localization("es")),
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch
+            )
+            {
+                QuietAnnouncer = quiet,
+            };
+            try
+            {
+                panel.ApplyContext(
+                    new PanelBodyContext(
+                        Notice: new PanelNotice(
+                            L.Deleted,
+                            new IconRef("delete"),
+                            NoticeTone.Notice,
+                            CanUndo: true
+                        )
+                    )
+                );
+                quiet.Announcements.ShouldBe(0, "the window says it when it appears");
+
+                panel.ApplyContext(
+                    new PanelBodyContext(
+                        Notice: new PanelNotice(
+                            L.TapSent(keys: "Ctrl+N", app: "Word"),
+                            new IconRef("check_circle"),
+                            NoticeTone.Notice,
+                            IsConfirmation: true
+                        )
+                    )
+                );
+                quiet.Announcements.ShouldBe(1, "a confirmation never shows in the Tab view");
+                quiet.LastText.ShouldBe(notice.MessageText.Text);
             }
             finally
             {
