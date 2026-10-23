@@ -3,9 +3,12 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
+using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Profiles;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Commands;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.PanelLayout;
@@ -19,6 +22,7 @@ using Clicalo.Presentation.Panel.Header;
 using Clicalo.Presentation.Panel.Search;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
@@ -45,6 +49,14 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 /// </summary>
 public sealed class SurfacesAuditTests
 {
+    /// <summary>Half a logical pixel: what layout rounding may move an edge.</summary>
+    private const double Rounding = 0.5;
+
+    /// <summary>Why the one known defect of the panel is not audited outside the gallery, until the panel is fixed.</summary>
+    private const string KnownCut =
+        "Known defect of the panel: in S Compact without the Sticky keys row the layer of the notices cuts the "
+        + "administrator notice (CUA-011); the gallery (CLICALO_GALLERY) still draws and audits it.";
+
     private static readonly DimSettings NoDim = new(AutoDim: false, Opacity: 1, DimTo: 1);
 
     /// <summary>The states of the panel audited: a name and what happened to get there.</summary>
@@ -114,12 +126,53 @@ public sealed class SurfacesAuditTests
                     ),
                 }
             ),
+        ["safety-notice"] = static w =>
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { Notice = PanelWorld.SafetyNotice }),
         ["panic"] = static w =>
             w.Panel.ApplyEngine(PanelBodyTestData.Holding(new ShortcutId("w0"))),
         ["search"] = static w =>
         {
             _ = w.Search.OpenAsync(SearchTrigger.Touch);
             w.Header.ApplyLayers(searchOpen: true, editing: false, quickSettingsOpen: false);
+        },
+        ["search-results"] = static w =>
+        {
+            // BUS-005: the results in place of the list, more than a page holds.
+            _ = w.Search.OpenAsync(SearchTrigger.Touch);
+            w.Search.Query = "a";
+            w.Panel.ApplySearch([.. w.Search.Results], w.Search.NoResultsText);
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { SearchingWithText = true });
+            w.Header.ApplyLayers(searchOpen: true, editing: false, quickSettingsOpen: false);
+        },
+        ["one-full-page"] = static w =>
+        {
+            // As many shortcuts as one page holds: no pager (D21). The shape can follow the names, so twice.
+            for (var i = 0; i < 2; i++)
+            {
+                w.Panel.Apply(
+                    PanelProjector.Project(
+                        PanelBodyTestData.GalleryLibrary(wordCount: w.Panel.Shape.PerPage),
+                        PanelBodyTestData.Word,
+                        LangCode.Es,
+                        LangCode.Es,
+                        PanelBodyTestData.GalleryKeys
+                    )
+                );
+            }
+        },
+        ["picker-four-profiles"] = static w =>
+        {
+            // H11.2: four profiles in the grid, over a profile of several pages.
+            w.Panel.Apply(
+                PanelProjector.Project(
+                    PanelBodyTestData.GalleryLibrary(extraProfiles: 1),
+                    PanelBodyTestData.Word,
+                    LangCode.Es,
+                    LangCode.Es,
+                    PanelBodyTestData.GalleryKeys
+                )
+            );
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true });
         },
         ["suggestion"] = static w =>
             w.Suggestion.Apply(new ProcessName("excel.exe"), searching: false),
@@ -132,42 +185,94 @@ public sealed class SurfacesAuditTests
         {
             w.Layers.EditMode.Enter();
             w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
-            w.Panel.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
+            w.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
+        },
+        ["edit-mode-armed"] = static w =>
+        {
+            // REG-04, CUA-012: the first tap on the × of «Negrita» arms it with «Confirmar».
+            w.Layers.EditMode.Enter();
+            w.Layers.EditMode.ApplyView(frequents: false, searching: false, PanelBodyTestData.Word);
+            w.Layers.EditMode.Remove(new ShortcutId("w0"));
+            w.Layers.EditMode.Armed.ShouldBe(new ShortcutId("w0"));
+            w.Header.ApplyLayers(searchOpen: false, editing: true, quickSettingsOpen: false);
+            w.ApplyContext(PanelBodyContext.Idle with { EditMode = true, AddTile = true });
         },
         ["tile-menu"] = static w =>
             w.Layers.Menu.Open(new ShortcutId("w0"), "Negrita", "format_bold", inFrequents: false),
-        ["test-mode"] = static w => w.Layers.TestMode.Start(),
+        ["test-mode"] = static w =>
+        {
+            // TAC-008: while test mode is on, the status row says [tmStart], as in the app.
+            w.Layers.TestMode.Start();
+            w.ApplyContext(PanelBodyContext.Idle);
+        },
+    };
+
+    /// <summary>The states that show more than one page of tiles in every shape.</summary>
+    private static readonly HashSet<string> PagedStates = new(StringComparer.Ordinal)
+    {
+        "idle",
+        "search-results",
     };
 
     /// <summary>
-    /// Every state as it is drawn (dark, text at 100 %) in four shapes of the panel. With the largest text, which only
-    /// makes the tiles grow (CUA-011), not every combination: with high contrast, whose thicker borders leave the least
-    /// room, in the two shapes of the smallest panel; with the light theme, which only changes colors, in one.
+    /// Every state as it is drawn (dark, text at 100 %) in the six shapes of the panel, with the rows of a new document
+    /// (no Sticky keys row, no voice numbers), and with every row on («all on») in two of them. With the largest text,
+    /// which only makes the tiles grow (CUA-011), not every combination and always with every row on: with high
+    /// contrast, whose thicker borders leave the least room, in the two shapes of the smallest panel; with the light
+    /// theme, which only changes colors, in one.
     /// </summary>
-    public static TheoryData<string, SizeSetting, bool, string, AuditLook> PanelCases()
+    public static TheoryData<string, SizeSetting, bool, string, AuditLook, bool> PanelCases()
     {
-        var cases = new TheoryData<string, SizeSetting, bool, string, AuditLook>();
+        var cases = new TheoryData<string, SizeSetting, bool, string, AuditLook, bool>();
         foreach (var state in PanelStates.Keys)
         {
-            cases.Add(state, SizeSetting.Small, false, "es", AuditLook.Dark);
+            cases.Add(state, SizeSetting.Small, false, "es", AuditLook.Dark, false);
             // The panel of the mockup of direction C (D12): M, Full, in Spanish, 340 wide.
-            cases.Add(state, SizeSetting.Medium, false, "es", AuditLook.Dark);
-            cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.Dark);
-            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark);
-            cases.Add(state, SizeSetting.Large, false, "en", AuditLook.Dark);
-            cases.Add(state, SizeSetting.Small, false, "es", AuditLook.ContrastLargeText);
-            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.ContrastLargeText);
-            cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.LightLargeText);
+            cases.Add(state, SizeSetting.Medium, false, "es", AuditLook.Dark, false);
+            cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.Dark, false);
+            if (string.Equals(state, "notices", StringComparison.Ordinal))
+            {
+                // A defect the Sticky keys row, always on before, hid: in S Compact without it the layer of the
+                // notices is lower than the administrator notice and cuts its text (CUA-011). The gallery draws it.
+                cases.Add(
+                    new TheoryDataRow<string, SizeSetting, bool, string, AuditLook, bool>(
+                        state,
+                        SizeSetting.Small,
+                        true,
+                        "es",
+                        AuditLook.Dark,
+                        false
+                    )
+                    {
+                        Skip = AuditGallery.Folder is null ? KnownCut : null,
+                    }
+                );
+            }
+            else
+            {
+                cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark, false);
+            }
+
+            cases.Add(state, SizeSetting.Large, false, "en", AuditLook.Dark, false);
+            cases.Add(state, SizeSetting.Large, true, "es", AuditLook.Dark, false);
+            cases.Add(state, SizeSetting.Medium, false, "es", AuditLook.Dark, true);
+            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.Dark, true);
+            cases.Add(state, SizeSetting.Small, false, "es", AuditLook.ContrastLargeText, true);
+            cases.Add(state, SizeSetting.Small, true, "es", AuditLook.ContrastLargeText, true);
+            cases.Add(state, SizeSetting.Medium, true, "en", AuditLook.LightLargeText, true);
         }
 
         // D16 and D17: M in the Full view at the largest text, in both languages, and Quick settings in English.
-        cases.Add("idle", SizeSetting.Medium, false, "es", AuditLook.LightLargeText);
-        cases.Add("idle", SizeSetting.Medium, false, "en", AuditLook.ContrastLargeText);
-        cases.Add("quick-settings", SizeSetting.Medium, false, "en", AuditLook.Dark);
+        cases.Add("idle", SizeSetting.Medium, false, "es", AuditLook.LightLargeText, true);
+        cases.Add("idle", SizeSetting.Medium, false, "en", AuditLook.ContrastLargeText, true);
+        cases.Add("quick-settings", SizeSetting.Medium, false, "en", AuditLook.Dark, false);
         return cases;
     }
 
-    /// <summary>The four sides of the Tab view, in Spanish and in English (D12: no label of the bar is cut).</summary>
+    /// <summary>
+    /// The four sides of the Tab view, and S, M and L on the right, in Spanish and in English (D12: no label of the bar
+    /// is cut).
+    /// </summary>
     public static TheoryData<DockSide, SizeId, string, AuditLook> BarCases()
     {
         var cases = new TheoryData<DockSide, SizeId, string, AuditLook>();
@@ -176,6 +281,8 @@ public sealed class SurfacesAuditTests
             foreach (var language in new[] { "es", "en" })
             {
                 cases.Add(DockSide.Right, SizeId.S, language, look);
+                cases.Add(DockSide.Right, SizeId.M, language, look);
+                cases.Add(DockSide.Right, SizeId.L, language, look);
                 cases.Add(DockSide.Left, SizeId.M, language, look);
                 cases.Add(DockSide.Top, SizeId.S, language, look);
                 cases.Add(DockSide.Bottom, SizeId.L, language, look);
@@ -185,17 +292,22 @@ public sealed class SurfacesAuditTests
         return cases;
     }
 
-    public static TheoryData<DockFlyout, int, string, AuditLook> FlyoutCases()
+    /// <summary>The windows beside the bar in S, M and L (the tiles of Pinned and the keys follow the size).</summary>
+    public static TheoryData<DockFlyout, int, SizeId, string, AuditLook> FlyoutCases()
     {
-        var cases = new TheoryData<DockFlyout, int, string, AuditLook>();
+        var cases = new TheoryData<DockFlyout, int, SizeId, string, AuditLook>();
         foreach (var look in Enum.GetValues<AuditLook>())
         {
             foreach (var language in new[] { "es", "en" })
             {
-                cases.Add(DockFlyout.Pinned, 3, language, look);
-                cases.Add(DockFlyout.Profiles, 3, language, look);
-                cases.Add(DockFlyout.Sticky, 4, language, look);
-                cases.Add(DockFlyout.Arrows, 4, language, look);
+                foreach (var size in new[] { SizeId.S, SizeId.M, SizeId.L })
+                {
+                    cases.Add(DockFlyout.Pinned, 3, size, language, look);
+                    cases.Add(DockFlyout.Sticky, 4, size, language, look);
+                    cases.Add(DockFlyout.Arrows, 4, size, language, look);
+                }
+
+                cases.Add(DockFlyout.Profiles, 3, SizeId.M, language, look);
             }
         }
 
@@ -220,12 +332,15 @@ public sealed class SurfacesAuditTests
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-001")]
     [Trait("Req", "ACC-002")]
+    [Trait("Req", "PAN-009")]
+    [Trait("Req", "AJR-001")]
     public void Every_state_of_the_panel_follows_the_UIA_rules_and_keeps_44(
         string state,
         SizeSetting size,
         bool compact,
         string language,
-        AuditLook look
+        AuditLook look,
+        bool allOn
     )
     {
         using var lab = SurfaceLab.Create();
@@ -234,26 +349,14 @@ public sealed class SurfacesAuditTests
         {
             using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld(language, time);
-            world.Panel.ApplyLayout(
-                PanelLayoutSettings.Default with
-                {
-                    Size = size,
-                    Compact = compact,
-                    StickyRow = true,
-                    VoiceNumbers = true,
-                    TextScalePercent = AuditLooks.TextScalePercent(look),
-                }
-            );
-            var window = new PanelWindow(
-                world.Panel,
+            world.ApplySettings(size, compact, allOn, AuditLooks.TextScalePercent(look));
+            var window = NewPanelWindow(world, lab, time, theme);
+            var quick = new DockQuickWindow(
+                world.Layers.QuickSettings,
                 lab.Registry,
                 time,
                 theme,
-                NoDim,
-                world.Header,
-                world.Search,
-                world.Suggestion,
-                world.Layers
+                PanelDesktopFixture.Touch
             );
             try
             {
@@ -261,15 +364,113 @@ public sealed class SurfacesAuditTests
                 PanelStates[state](world);
                 host.LayOut();
 
-                var name =
-                    $"panel {state} ({size}, {(compact ? "compact" : "full")}, {language}, {look})";
+                var shape =
+                    $"{size}, {(compact ? "compact" : "full")}, {language}{(allOn ? ", all on" : string.Empty)}, {look}";
+                var name = $"panel {state} ({shape})";
                 SurfaceAudit.ShouldPass(host, name, atLeast: 8, TouchInput.PointerLayer, "Panel");
+                NoTileShowsInPartUnderALayer(host, window, name);
+                if (PagedStates.Contains(state))
+                {
+                    world.Panel.Pager.PageCount.ShouldBeGreaterThan(1, name);
+                }
+                else if (string.Equals(state, "one-full-page", StringComparison.Ordinal))
+                {
+                    world.Panel.Pager.PageCount.ShouldBe(1, name);
+                    world.Panel.Tiles.Count.ShouldBe(world.Panel.Shape.PerPage, name);
+                }
+
+                if (string.Equals(state, "quick-settings", StringComparison.Ordinal))
+                {
+                    // AJR-001 (D21): beside the panel, in the window of the Tab view, showing the size and the view of
+                    // this panel, as tall as its content up to the work area of the person's screen.
+                    quick.FitHeight(AuditGallery.QuickRoom);
+                    using var beside = AuditHost.OfWindow(quick, theme);
+                    SurfaceAudit.ShouldPass(
+                        beside,
+                        $"quick settings beside the panel ({shape})",
+                        atLeast: 13,
+                        TouchInput.PointerLayer,
+                        "Panel"
+                    );
+                    QuickSettingsFitTheScreen(beside, quick, look);
+                }
             }
             finally
             {
                 window.Close();
+                quick.Close();
             }
         });
+    }
+
+    /// <summary>
+    /// AJR-001 (D21): Quick settings are never taller than the work area of the person's screen less
+    /// <see cref="Space.S2"/> above and below and, as drawn, show every row without scrolling.
+    /// </summary>
+    private static void QuickSettingsFitTheScreen(
+        AuditHost host,
+        DockQuickWindow quick,
+        AuditLook look
+    )
+    {
+        host.Root.ActualHeight.ShouldBeLessThanOrEqualTo(AuditGallery.QuickRoom + 0.5);
+        if (look == AuditLook.Dark)
+        {
+            quick.Sheet.Scroller.ScrollableHeight.ShouldBe(0, 0.5, "every row shows at 100 %");
+        }
+    }
+
+    /// <summary>
+    /// H1.1, PAN-009: a layer of the panel starts in the gap between two rows, so a tile is wholly under it or wholly
+    /// out of it; a tile a card cuts would still show and be read.
+    /// </summary>
+    private static void NoTileShowsInPartUnderALayer(
+        AuditHost host,
+        PanelWindow window,
+        string name
+    )
+    {
+        var root = host.Root;
+        // The layers are the children of the host of the panel after its rows (PanelLayerHost).
+        var layers = ((UserControl)root).Content is System.Windows.Controls.Panel layerHost
+            ? layerHost
+                .Children.OfType<FrameworkElement>()
+                .Skip(1)
+                .Where(static layer => layer.IsVisible)
+                .Select(layer => (Layer: layer, Bounds: BoundsIn(layer, root)))
+                .Where(static cover => cover.Bounds is { Width: > 0, Height: > 0 })
+                .ToList()
+            : [];
+        foreach (var tile in window.TileControls.Where(static tile => tile.IsVisible))
+        {
+            var box = BoundsIn(tile, root);
+            foreach (var (layer, cover) in layers)
+            {
+                var under = Rect.Intersect(box, cover);
+                if (
+                    layer.IsAncestorOf(tile)
+                    || under.IsEmpty
+                    || under.Width < Rounding
+                    || under.Height < Rounding
+                    || (
+                        under.Width + Rounding >= box.Width && under.Height + Rounding >= box.Height
+                    )
+                )
+                {
+                    continue;
+                }
+
+                throw new Xunit.Sdk.XunitException(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"«{name}»: {under.Width:0.#} × {under.Height:0.#} of the {box.Width:0.#} × {box.Height:0.#} of the tile «{AutomationProperties.GetName(tile)}» is under a layer that leaves the rest in view."
+                    )
+                );
+            }
+        }
+
+        static Rect BoundsIn(FrameworkElement element, Visual root) =>
+            element.TransformToAncestor(root).TransformBounds(new Rect(element.RenderSize));
     }
 
     [Theory]
@@ -316,6 +517,60 @@ public sealed class SurfacesAuditTests
                 theme.Preference = ThemeChoice.HighContrast;
                 host.LayOut();
                 new Size(host.Root.ActualWidth, host.Root.ActualHeight).ShouldBe(single);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    /// <summary>
+    /// PAN-002 and VCO-001 in the Compact view: D20 made M 340 × 460 and D21 (3) took away its status row, so M is 44
+    /// lower; S and L follow the same rows.
+    /// </summary>
+    [Theory]
+    [InlineData(SizeSetting.Small, 292, 348)]
+    [InlineData(SizeSetting.Medium, 340, 416)]
+    [InlineData(SizeSetting.Large, 412, 452)]
+    [Trait("Req", "PAN-002")]
+    [Trait("Req", "VCO-001")]
+    [Trait("Req", "PAN-009")]
+    public void The_Compact_panel_has_the_size_of_its_design_in_every_size(
+        SizeSetting size,
+        int width,
+        int height
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(AuditLook.Dark);
+            var world = new PanelWorld("es", time);
+            world.Panel.ApplyLayout(
+                PanelLayoutSettings.Default with
+                {
+                    Size = size,
+                    Compact = true,
+                }
+            );
+            var window = NewPanelWindow(world, lab, time, theme);
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                host.LayOut();
+                world.Panel.Pager.PageCount.ShouldBeGreaterThan(1);
+                new Size(host.Root.ActualWidth, host.Root.ActualHeight).ShouldBe(
+                    new Size(width, height)
+                );
+
+                // The lines go inside: the thicker ones of high contrast do not make the panel grow.
+                theme.Preference = ThemeChoice.HighContrast;
+                host.LayOut();
+                new Size(host.Root.ActualWidth, host.Root.ActualHeight).ShouldBe(
+                    new Size(width, height)
+                );
             }
             finally
             {
@@ -380,7 +635,9 @@ public sealed class SurfacesAuditTests
     [InlineData(SizeSetting.Small, false)]
     [InlineData(SizeSetting.Medium, false)]
     [InlineData(SizeSetting.Large, false)]
+    [InlineData(SizeSetting.Small, true)]
     [InlineData(SizeSetting.Medium, true)]
+    [InlineData(SizeSetting.Large, true)]
     [Trait("Req", "SEG-002")]
     [Trait("Req", "REG-03")]
     public void Release_all_sits_whole_inside_the_panic_strip(SizeSetting size, bool compact)
@@ -480,11 +737,24 @@ public sealed class SurfacesAuditTests
                 {
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"handle ({side}, {language}, {look})",
+                        $"handle ({side}, {size}, {language}, {look})",
                         atLeast: 1,
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
+
+                    // At rest, as it usually is: nothing held, no dot.
+                    var held = State(side, size, DockFlyout.None, coachStep: 0);
+                    dock.Apply(held with { AnythingHeld = false });
+                    host.LayOut();
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"handle at rest ({side}, {size}, {language}, {look})",
+                        atLeast: 1,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
+                    dock.Apply(held);
                 }
 
                 using (var host = AuditHost.OfWindow(bar, theme))
@@ -553,6 +823,7 @@ public sealed class SurfacesAuditTests
     public void The_windows_beside_the_bar_follow_the_UIA_rules_and_keep_44(
         DockFlyout flyout,
         int atLeast,
+        SizeId size,
         string language,
         AuditLook look
     )
@@ -563,7 +834,18 @@ public sealed class SurfacesAuditTests
         {
             using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld(language, time);
-            world.Panel.ApplyLayout(PanelLayoutSettings.Default with { StickyRow = true });
+            world.Panel.ApplyLayout(
+                PanelLayoutSettings.Default with
+                {
+                    Size = size switch
+                    {
+                        SizeId.S => SizeSetting.Small,
+                        SizeId.L => SizeSetting.Large,
+                        _ => SizeSetting.Medium,
+                    },
+                    StickyRow = true,
+                }
+            );
             // Word is the active app, as the bar says with its dot (State: IsActiveApp), so its tile shows the dot too.
             world.Panel.ApplyContext(
                 PanelBodyContext.Idle with
@@ -572,7 +854,7 @@ public sealed class SurfacesAuditTests
                     ActiveAppProfile = PanelBodyTestData.Word,
                 }
             );
-            var dock = Dock(time, DockSide.Right, SizeId.M, flyout, coachStep: 0, language);
+            var dock = Dock(time, DockSide.Right, size, flyout, coachStep: 0, language);
             var window = new DockFlyoutWindow(
                 flyout,
                 dock,
@@ -588,7 +870,7 @@ public sealed class SurfacesAuditTests
                 using var host = AuditHost.OfWindow(window, theme);
                 SurfaceAudit.ShouldPass(
                     host,
-                    $"flyout {flyout} ({language}, {look})",
+                    $"flyout {flyout} ({size}, {language}, {look})",
                     atLeast,
                     TouchInput.PointerLayer,
                     "Pestaña"
@@ -657,11 +939,18 @@ public sealed class SurfacesAuditTests
             );
             try
             {
-                using (var host = AuditHost.OfWindow(coach, theme))
+                // PES-015: the three steps of the guide, each with its own title and text.
+                for (var step = 0; step < DockRules.CoachSteps; step++)
                 {
+                    var state = State(DockSide.Right, SizeId.M, DockFlyout.None, coachStep: step);
+                    dock.Apply(state with { Dock = state.Dock with { CoachDone = false } });
+                    using var host = AuditHost.OfWindow(coach, theme);
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"coach ({language}, {look})",
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"coach step {step + 1} ({language}, {look})"
+                        ),
                         atLeast: 2,
                         TouchInput.PointerLayer,
                         "Pestaña"
@@ -707,6 +996,18 @@ public sealed class SurfacesAuditTests
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
+
+                    // The longest warning of key safety, which must be read whole.
+                    world.Layers.TestMode.Stop();
+                    world.Panel.ApplyContext(new PanelBodyContext(Notice: PanelWorld.SafetyNotice));
+                    host.LayOut();
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"safety notice ({language}, {look})",
+                        atLeast: 0,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
                 }
 
                 world.Layers.Menu.Open(
@@ -747,25 +1048,56 @@ public sealed class SurfacesAuditTests
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
-                }
-
-                notice.ServesCompact = false;
-                world.Layers.QuickSettings.Views[2].Select();
-                world.Layers.QuickSettings.Open();
-                using (var host = AuditHost.OfWindow(quick, theme))
-                {
+                    world.Panel.ApplyContext(new PanelBodyContext(Notice: PanelWorld.SafetyNotice));
+                    host.LayOut();
                     SurfaceAudit.ShouldPass(
                         host,
-                        $"Quick settings beside the bar ({language}, {look})",
-                        atLeast: 17,
+                        $"Compact safety notice ({language}, {look})",
+                        atLeast: 0,
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
                 }
 
+                // Quick settings as the person opens them: test mode, switched on above, is off again.
+                notice.ServesCompact = false;
+                world.Layers.TestMode.Stop();
+                world.Layers.QuickSettings.Views[2].Select();
+                world.Layers.QuickSettings.Open();
+                quick.FitHeight(AuditGallery.QuickRoom);
+                using (var host = AuditHost.OfWindow(quick, theme))
+                {
+                    var name = $"Quick settings beside the bar ({language}, {look})";
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        name,
+                        atLeast: 17,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
+                    host.Root.ActualHeight.ShouldBeLessThanOrEqualTo(AuditGallery.QuickRoom + 0.5);
+
+                    // What does not fit scrolls inside: its last rows too.
+                    var scroller = quick.Sheet.Scroller;
+                    if (scroller.ScrollableHeight > 0)
+                    {
+                        scroller.ScrollToEnd();
+                        host.LayOut();
+                        SurfaceAudit.ShouldPass(
+                            host,
+                            $"Quick settings beside the bar scrolled to the end ({language}, {look})",
+                            atLeast: 4,
+                            TouchInput.PointerLayer,
+                            "Pestaña"
+                        );
+                        scroller.ScrollToTop();
+                    }
+                }
+
                 // AJR-001 (D21): the Quick settings of the panel, in the same window beside it, without the side of the
                 // Tab view.
                 world.Layers.QuickSettings.Views[0].Select();
+                world.Layers.QuickSettings.Open();
                 using (var host = AuditHost.OfWindow(quick, theme))
                 {
                     SurfaceAudit.ShouldPass(
@@ -775,6 +1107,7 @@ public sealed class SurfacesAuditTests
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
+                    QuickSettingsFitTheScreen(host, quick, look);
                 }
             }
             finally
@@ -791,6 +1124,7 @@ public sealed class SurfacesAuditTests
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
+    [Trait("Req", "SEG-002")]
     [InlineData(AuditLook.Dark)]
     [InlineData(AuditLook.LightLargeText)]
     [InlineData(AuditLook.ContrastLargeText)]
@@ -839,6 +1173,17 @@ public sealed class SurfacesAuditTests
                         TouchInput.PointerLayer,
                         "Burbuja y Soltar todo"
                     );
+
+                    // SEG-002: its text is onDanger on the danger fill, also as the audit draws it (the theme on the
+                    // content painted it in the color of plain text).
+                    Color(pill.Button.Foreground)
+                        .ShouldBe(
+                            Color(pill.Button.FindResource(ThemeBrushKey.For(ColorToken.OnDanger)))
+                        );
+                    Color(pill.Button.Background)
+                        .ShouldBe(
+                            Color(pill.Button.FindResource(ThemeBrushKey.For(ColorToken.Danger)))
+                        );
                 }
             }
             finally
@@ -1220,6 +1565,9 @@ public sealed class SurfacesAuditTests
     private static AutomationPeer PeerOf(UIElement element) =>
         UIElementAutomationPeer.CreatePeerForElement(element);
 
+    private static System.Windows.Media.Color Color(object brush) =>
+        brush.ShouldBeAssignableTo<SolidColorBrush>()!.Color;
+
     private static ExpandCollapseState Expanded(UIElement element) =>
         PeerOf(element)
             .GetPattern(PatternInterface.ExpandCollapse)
@@ -1318,6 +1666,8 @@ public sealed class SurfacesAuditTests
             _language = new LangCode(language);
             ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Word));
             Search = SearchSurfaceTests.Search(language);
+            // The search finds the shortcuts the panel shows.
+            Search.ApplyLibrary(PanelBodyTestData.GalleryLibrary());
             Suggestion = SearchSurfaceTests.Suggestion(language);
             Layers = new PanelLayerModels(
                 Interactions.QuickSettings,
@@ -1332,7 +1682,55 @@ public sealed class SurfacesAuditTests
 
         private readonly LangCode _language;
 
+        /// <summary>
+        /// The longest notice of key safety (REG-03): the key protection is off; an assertive warning to read whole.
+        /// </summary>
+        public static PanelNotice SafetyNotice { get; } =
+            new(L.GuardianUnstable, new IconRef("warning"), NoticeTone.Warning);
+
         public InteractionsWorld Interactions { get; }
+
+        /// <summary>
+        /// The settings of the case, in the document as well, so what reads them there (Quick settings: the size and the
+        /// view chosen, the switches of the rows) shows the panel that is drawn.
+        /// </summary>
+        public void ApplySettings(SizeSetting size, bool compact, bool allOn, int textScalePercent)
+        {
+            Set(SettingPaths.Size, size);
+            Set(SettingPaths.Density, compact ? PanelDensity.Compact : PanelDensity.Full);
+            Set(SettingPaths.StickyModifiersRow, allOn);
+            Set(SettingPaths.VoiceNumbers, allOn);
+            Interactions.QuickSettings.Apply(Interactions.Settings);
+            Panel.ApplyLayout(
+                PanelLayoutSettings.Default with
+                {
+                    Size = size,
+                    Compact = compact,
+                    StickyRow = allOn,
+                    VoiceNumbers = allOn,
+                    TextScalePercent = textScalePercent,
+                }
+            );
+
+            void Set(string path, object value) =>
+                Interactions
+                    .Store.Dispatch(new SetSetting(path, value))
+                    .IsSuccess.ShouldBeTrue(path);
+        }
+
+        /// <summary>
+        /// Applies <paramref name="context"/> with the fixed notice of edit mode or test mode in the status row when it
+        /// says nothing else, as the composition of the app does (AVI-002).
+        /// </summary>
+        public void ApplyContext(PanelBodyContext context) =>
+            Panel.ApplyContext(
+                context.Notice is null
+                    ? context with
+                    {
+                        Notice = Interactions.Notices.Sticky,
+                    }
+                    : context
+            );
 
         /// <summary>
         /// Gives the header the view the body shows: the profile, with the same icon as the row «Qué ver», or

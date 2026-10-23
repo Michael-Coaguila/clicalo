@@ -43,7 +43,12 @@ internal static class PanelBodyTestData
     /// names, icons and categories, a Mantener in the row and a macro in Word, so the gallery shows names of every
     /// length, the key lines and the type icons. The ids are those of <see cref="Library"/> («w0»… and «a0»…).
     /// </summary>
-    public static ShortcutLibrary GalleryLibrary()
+    /// <param name="wordCount">How many of the shortcuts of Word it keeps, from the first; all of them by default.</param>
+    /// <param name="extraProfiles">How many profiles of other apps it adds after Excel.</param>
+    public static ShortcutLibrary GalleryLibrary(
+        int wordCount = int.MaxValue,
+        int extraProfiles = 0
+    )
     {
         (string Name, string Icon, string Category)[] word =
         [
@@ -69,7 +74,8 @@ internal static class PanelBodyTestData
             ("Silenciar", "mic_off", "voice"),
             ("Escritorio", "desktop_windows", "win"),
         ];
-        var shortcuts = word.Select(
+        var shortcuts = word.Take(wordCount)
+            .Select(
                 (s, i) =>
                     Gallery(
                         "w" + Number(i),
@@ -95,10 +101,23 @@ internal static class PanelBodyTestData
                     )
             )
             .ToList();
+        (string Name, string Icon)[] others =
+        [
+            ("Navegador", "public"),
+            ("Correo", "mail"),
+            ("Bloc de notas", "edit_note"),
+            ("Explorador", "folder"),
+        ];
         var profiles = new ValueList<Profile>([
             Profile(ProfileId.General, "General", "apps", []),
             Profile(Word, "Word", "description", shortcuts),
             Profile(Excel, "Excel", "table_chart", []),
+            .. others
+                .Take(extraProfiles)
+                .Select(
+                    static (p, i) =>
+                        Profile(new ProfileId("p-other" + Number(i)), p.Name, p.Icon, [])
+                ),
         ]);
         return ShortcutLibrary.CreateValidated(new ValueList<Shortcut>([.. row]), profiles).Value;
     }
