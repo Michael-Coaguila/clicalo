@@ -114,6 +114,26 @@ internal static class DockTileFactory
         }
     }
 
+    /// <summary>
+    /// Draws the tile as its icon alone, centred, with no room kept for a name (an arrow key, a tool of the bar); its
+    /// name stays its accessible name.
+    /// </summary>
+    /// <param name="tile">The tile.</param>
+    public static void ShowIconOnly(ShortcutTile tile)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        tile.ApplyTemplate();
+        if (tile.Template?.FindName(ShortcutTileTemplate.LabelPart, tile) is FrameworkElement label)
+        {
+            label.Visibility = Visibility.Collapsed;
+        }
+
+        if (tile.Template?.FindName(ShortcutTileTemplate.IconPart, tile) is FrameworkElement icon)
+        {
+            icon.Margin = new Thickness(0);
+        }
+    }
+
     private static void Paint(ShortcutTile control, DockTileViewModel viewModel)
     {
         control.Keys = string.Empty;

@@ -43,6 +43,9 @@ public interface IDockIntents
     /// <summary>Sticky keys: its window beside the button, or closes it (PES-008, AUD-13).</summary>
     void ToggleSticky();
 
+    /// <summary>The arrow keys: their window beside the button, or closes it (D21).</summary>
+    void ToggleArrows();
+
     /// <summary>The lock of the bar: «Collapses» or «Open» (PES-008, PES-012).</summary>
     void TogglePinOpen();
 

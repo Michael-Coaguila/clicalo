@@ -830,9 +830,34 @@
       "after": "dockScrollUp",
       "text": { "es": "Bajar", "en": "Scroll down" }
     },
+    "dockArrows": {
+      "notes": "Herramienta de flechas de la barra de la Pestaña y su ventana (D21, pedida por el usuario): nombre del botón que abre y cierra las flechas y título de su ventana. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (D21).",
+      "after": "dockScrollDown",
+      "text": { "es": "Flechas", "en": "Arrows" }
+    },
+    "dockArrowUp": {
+      "notes": "Herramienta de flechas de la barra de la Pestaña y su ventana (D21, pedida por el usuario): nombre de la tecla ↑, como en el catálogo de teclas. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (D21).",
+      "after": "dockArrows",
+      "text": { "es": "Flecha arriba", "en": "Up arrow" }
+    },
+    "dockArrowDown": {
+      "notes": "Herramienta de flechas de la barra de la Pestaña y su ventana (D21, pedida por el usuario): nombre de la tecla ↓. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (D21).",
+      "after": "dockArrowUp",
+      "text": { "es": "Flecha abajo", "en": "Down arrow" }
+    },
+    "dockArrowLeft": {
+      "notes": "Herramienta de flechas de la barra de la Pestaña y su ventana (D21, pedida por el usuario): nombre de la tecla ←. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (D21).",
+      "after": "dockArrowDown",
+      "text": { "es": "Flecha izquierda", "en": "Left arrow" }
+    },
+    "dockArrowRight": {
+      "notes": "Herramienta de flechas de la barra de la Pestaña y su ventana (D21, pedida por el usuario): nombre de la tecla →. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (D21).",
+      "after": "dockArrowLeft",
+      "text": { "es": "Flecha derecha", "en": "Right arrow" }
+    },
     "dockPageOf": {
       "notes": "Paginador vertical de la barra de la Pestaña, «▲ 1/3 ▼» (PES-007). Formato del prototipo sin clave en el paquete.",
-      "after": "dockScrollDown",
+      "after": "dockArrowRight",
       "text": { "es": "{index}/{total}", "en": "{index}/{total}" }
     },
     "pinFolds": {
@@ -1644,6 +1669,34 @@
       "text": {
         "es": "Fijo: el perfil no cambia al cambiar de app. Toca para volver a Auto.",
         "en": "Fixed: profile won’t switch with the app. Tap to go back to Auto."
+      }
+    },
+    "co1t": {
+      "notes": "Título del paso 1 de la guía de la Pestaña (PES-015). D20 puso el candado y Ajustes rápidos junto a plegar y expandir, y en una barra de arriba o de abajo esa zona va a la izquierda: «Arriba» era falso. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Al principio: la barra",
+        "en": "At the start: the bar"
+      }
+    },
+    "co1d": {
+      "notes": "Texto del paso 1 de la guía de la Pestaña (PES-015): nombra los cuatro controles de la zona 1 desde D20. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Plegarla, abrir el panel completo, dejarla abierta con el candado y Ajustes rápidos.",
+        "en": "Fold it, open the full panel, keep it open with the lock, and Quick settings."
+      }
+    },
+    "co3t": {
+      "notes": "Título del paso 3 de la guía de la Pestaña (PES-015): en una barra de arriba o de abajo las herramientas van a la derecha, no «abajo». Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Al final: herramientas",
+        "en": "At the end: tools"
+      }
+    },
+    "co3d": {
+      "notes": "Texto del paso 3 de la guía de la Pestaña (PES-015): desde D20 el candado ya no está entre las herramientas, y la fila se llama «Siempre visible», como su ventana. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Buscar, repetir, Siempre visible, Teclas fijas y subir o bajar la página.",
+        "en": "Search, repeat, Always visible, sticky keys and scrolling the page up or down."
       }
     }
   }

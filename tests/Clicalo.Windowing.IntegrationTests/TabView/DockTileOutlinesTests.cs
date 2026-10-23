@@ -341,6 +341,8 @@ public sealed class DockTileOutlinesTests
 
         public void ToggleSticky() { }
 
+        public void ToggleArrows() { }
+
         public void TogglePinOpen() { }
 
         public void QuickSettings() { }

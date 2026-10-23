@@ -195,6 +195,7 @@ public sealed class SurfacesAuditTests
                 cases.Add(DockFlyout.Pinned, 3, language, look);
                 cases.Add(DockFlyout.Profiles, 3, language, look);
                 cases.Add(DockFlyout.Sticky, 4, language, look);
+                cases.Add(DockFlyout.Arrows, 4, language, look);
             }
         }
 
@@ -725,6 +726,30 @@ public sealed class SurfacesAuditTests
                     );
                 }
 
+                // D21: the Compact view shows a notice for a moment under the panel, a confirmation included, on a
+                // translucent face and without the administrator notice or test mode.
+                notice.ServesCompact = true;
+                world.Panel.ApplyContext(
+                    new PanelBodyContext(
+                        Notice: new PanelNotice(
+                            L.TapSent(keys: "Ctrl+N", app: "Word"),
+                            new IconRef("check_circle"),
+                            NoticeTone.Notice
+                        )
+                    )
+                );
+                using (var host = AuditHost.OfWindow(notice, theme))
+                {
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"Compact notice ({language}, {look})",
+                        atLeast: 0,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
+                }
+
+                notice.ServesCompact = false;
                 world.Layers.QuickSettings.Views[2].Select();
                 world.Layers.QuickSettings.Open();
                 using (var host = AuditHost.OfWindow(quick, theme))
@@ -733,6 +758,20 @@ public sealed class SurfacesAuditTests
                         host,
                         $"Quick settings beside the bar ({language}, {look})",
                         atLeast: 17,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
+                }
+
+                // AJR-001 (D21): the Quick settings of the panel, in the same window beside it, without the side of the
+                // Tab view.
+                world.Layers.QuickSettings.Views[0].Select();
+                using (var host = AuditHost.OfWindow(quick, theme))
+                {
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"Quick settings beside the panel ({language}, {look})",
+                        atLeast: 13,
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
@@ -1014,8 +1053,9 @@ public sealed class SurfacesAuditTests
             );
             try
             {
-                // Close, expand, Frequents, profile, Auto/Fixed, search, repeat, pinned, sticky, lock, tune.
+                // Close, expand, Frequents, profile, Auto/Fixed, search, repeat, pinned, sticky, lock, tune, arrows.
                 var buttons = bar.Buttons;
+                Expanded(buttons[11]).ShouldBe(ExpandCollapseState.Collapsed, "the arrows");
                 Expanded(buttons[3]).ShouldBe(ExpandCollapseState.Collapsed, "the profile button");
                 Expanded(buttons[7]).ShouldBe(ExpandCollapseState.Expanded, "Pinned is open");
                 Expanded(buttons[8]).ShouldBe(ExpandCollapseState.Collapsed, "sticky keys");
@@ -1347,6 +1387,8 @@ public sealed class SurfacesAuditTests
         public void TogglePinned() { }
 
         public void ToggleSticky() { }
+
+        public void ToggleArrows() { }
 
         public void TogglePinOpen() { }
 

@@ -156,10 +156,11 @@ public sealed class SurfaceWindowsTests
                 bar.Look.ShouldBe(SurfaceLook.Panel);
                 bar.TileControls.Select(static t => t.AccessibleName)
                     .ShouldBe(["Copiar", "Mantener Ctrl", "Mayús fija", "Web"]);
-                bar.Buttons.Count.ShouldBe(11);
+                // D21: the arrows are the twelfth.
+                bar.Buttons.Count.ShouldBe(12);
 
-                // PES-009: tune, the last of the tools, opens Quick settings beside the bar.
-                bar.Buttons[^1].ShouldBeSameAs(bar.TuneButton);
+                // PES-009: tune, the last of the tools of D20, opens Quick settings beside the bar.
+                bar.Buttons[10].ShouldBeSameAs(bar.TuneButton);
                 bar.TuneButton.Symbol.ShouldBe("tune");
                 System
                     .Windows.Automation.AutomationProperties.GetName(bar.TuneButton)
@@ -295,6 +296,8 @@ public sealed class SurfaceWindowsTests
         public void TogglePinned() { }
 
         public void ToggleSticky() { }
+
+        public void ToggleArrows() { }
 
         public void TogglePinOpen() { }
 

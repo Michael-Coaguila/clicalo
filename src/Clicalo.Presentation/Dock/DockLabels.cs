@@ -32,6 +32,8 @@ public sealed class DockLabels : ObservableObject
     private string _quickSettings = string.Empty;
     private string _notices = string.Empty;
     private string _emptyFrequents = string.Empty;
+    private string _on = string.Empty;
+    private string _arrows = string.Empty;
     private string _emptyProfile = string.Empty;
 
     /// <summary>Creates the texts in the current language.</summary>
@@ -183,6 +185,20 @@ public sealed class DockLabels : ObservableObject
         private set => SetProperty(ref _activeApp, value);
     }
 
+    /// <summary>[dockArrows]: the button of the arrows and the title of their window (D21).</summary>
+    public string Arrows
+    {
+        get => _arrows;
+        private set => SetProperty(ref _arrows, value);
+    }
+
+    /// <summary>[on]: the state UI Automation tells of the chosen view of «Qué ver», as the panel does.</summary>
+    public string On
+    {
+        get => _on;
+        private set => SetProperty(ref _on, value);
+    }
+
     /// <summary>[freqEmptyT]: the bar in Frequents before anything was used (CUA-010).</summary>
     public string EmptyFrequents
     {
@@ -222,6 +238,8 @@ public sealed class DockLabels : ObservableObject
         QuickSettings = l.Format(L.Quick);
         Notices = l.Format(L.DockNotices);
         EmptyFrequents = l.Format(L.FreqEmptyT);
+        On = l.Format(L.On);
+        Arrows = l.Format(L.DockArrows);
         EmptyProfile = l.Format(L.EmptyProfT);
     }
 }

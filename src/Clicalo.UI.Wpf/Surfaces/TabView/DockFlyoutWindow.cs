@@ -31,7 +31,10 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// holds or latches;</item>
 /// <item>the profile grid (PES-011): 236 wide, the header [pickProfile] and the same grid as SEL-003, without a box of
 /// its own (two levels: the window and its tiles);</item>
-/// <item>sticky keys (PES-008, AUD-13): Ctrl, Alt, Shift and Win with their three states.</item>
+/// <item>sticky keys (PES-008, AUD-13): Ctrl, Alt, Shift and Win with their three states;</item>
+/// <item>the arrows (D21): ↑ above, ← and → beside it and ↓ below, as on a keyboard, each a key of
+/// <see cref="ControlHeight.Large"/>; it stays open while they are used, since moving through a document takes many
+/// taps, and the sticky keys go with them (Mayús fija + → selects).</item>
 /// </list>
 /// Its size comes from what it shows when it opens, up to the work area less 140; taller content scrolls, with the
 /// finger: a contact that slides past the «cancel if you slide» distance scrolls and activates nothing (TAC-004), and
@@ -47,6 +50,7 @@ public sealed class DockFlyoutWindow : TouchSurface
     private readonly UniformGrid? _pinnedGrid;
     private readonly PickerGridView? _picker;
     private readonly StickyKeysRowView? _sticky;
+    private readonly Grid? _arrows;
     private readonly Overline _header;
     private readonly ScrollViewer _scroller;
     private readonly TouchSurfaceScroll _scroll = new();
@@ -58,7 +62,7 @@ public sealed class DockFlyoutWindow : TouchSurface
     private readonly List<Clicalo.UI.Wpf.Surfaces.Panel.TestMode.TestMarkBadge> _badges = [];
 
     /// <summary>Creates the window of <paramref name="flyout"/> on the UI thread of <paramref name="registry"/>.</summary>
-    /// <param name="flyout">Which window: Pinned, Profiles or Sticky.</param>
+    /// <param name="flyout">Which window: Pinned, Profiles, Sticky or Arrows.</param>
     /// <param name="viewModel">The bar (its pinned shortcuts and its texts).</param>
     /// <param name="panel">The panel: its profile grid and its sticky keys.</param>
     /// <param name="registry">The surfaces of the process.</param>
@@ -123,6 +127,17 @@ public sealed class DockFlyoutWindow : TouchSurface
                 _picker.BorderThickness = new Thickness(0);
                 body = _picker;
                 Width = ProfilesWidth;
+                break;
+            case DockFlyout.Arrows:
+                _arrows = new Grid { HorizontalAlignment = HorizontalAlignment.Center };
+                for (var i = 0; i < 3; i++)
+                {
+                    _arrows.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    _arrows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                }
+
+                body = _arrows;
+                Width = PinnedWidth;
                 break;
             default:
                 // Two columns and as many rows as the keys need: the row of the panel is a single row of four.
@@ -189,10 +204,11 @@ public sealed class DockFlyoutWindow : TouchSurface
         {
             if (InView(view, control))
             {
+                // An arrow is a key of the bar, not a shortcut of the person: it has no menu.
                 yield return SurfaceTarget.For(
                     control,
                     viewModel,
-                    longPress: Modes is not null
+                    longPress: Modes is not null && !viewModel.IsBarTool
                 ) with
                 {
                     InScrollZone = scrolls,
@@ -304,13 +320,53 @@ public sealed class DockFlyoutWindow : TouchSurface
         {
             DockFlyout.Pinned => labels.Pinned,
             DockFlyout.Profiles => labels.PickProfile,
+            DockFlyout.Arrows => labels.Arrows,
             _ => labels.Sticky,
         };
         Title = _header.Text;
     }
 
+    /// <summary>The four arrows in their cross: ↑ in the middle of the top row, ← and → in the middle one, ↓ below.</summary>
+    private void RebuildArrows(Grid cross)
+    {
+        foreach (var (viewModel, _, handler) in _tiles)
+        {
+            DockTileFactory.Detach(viewModel, handler);
+        }
+
+        _tiles.Clear();
+        cross.Children.Clear();
+        (int Row, int Column)[] places = [(0, 1), (1, 0), (1, 2), (2, 1)];
+        for (var i = 0; i < _viewModel.ArrowTiles.Count && i < places.Length; i++)
+        {
+            var tile = _viewModel.ArrowTiles[i];
+            var (control, handler) = DockTileFactory.Create(
+                tile,
+                ControlHeight.Large,
+                ControlHeight.Large,
+                IconBox.Medium,
+                1,
+                Modes
+            );
+            DockTileFactory.ShowIconOnly(control);
+            control.Margin = new Thickness(Space.S1);
+            Grid.SetRow(control, places[i].Row);
+            Grid.SetColumn(control, places[i].Column);
+            _tiles.Add((tile, control, handler));
+            _ = cross.Children.Add(control);
+        }
+
+        RefreshTargets();
+    }
+
     private void RebuildPinned()
     {
+        if (_arrows is not null)
+        {
+            RebuildArrows(_arrows);
+            return;
+        }
+
         if (_pinnedGrid is null)
         {
             return;

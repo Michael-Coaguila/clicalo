@@ -134,7 +134,15 @@ public sealed class SurfaceSet : IDisposable
             new PanicPillWindow(registry, time, theme, touch, callbacks.ReleaseAll),
             kind: null
         );
-        foreach (var flyout in new[] { DockFlyout.Pinned, DockFlyout.Profiles, DockFlyout.Sticky })
+        foreach (
+            var flyout in new[]
+            {
+                DockFlyout.Pinned,
+                DockFlyout.Profiles,
+                DockFlyout.Sticky,
+                DockFlyout.Arrows,
+            }
+        )
         {
             var window = Track(
                 new DockFlyoutWindow(
@@ -652,10 +660,12 @@ public sealed class SurfaceSet : IDisposable
             {
                 DockFlyout.Pinned => bar.PinnedButtonBounds,
                 DockFlyout.Sticky => bar.StickyButtonBounds,
+                DockFlyout.Arrows => bar.ArrowsButtonBounds,
                 _ => barRect,
             };
             var byButton =
-                layout.Flyout is DockFlyout.Pinned or DockFlyout.Sticky && !anchor.IsEmpty;
+                layout.Flyout is DockFlyout.Pinned or DockFlyout.Sticky or DockFlyout.Arrows
+                && !anchor.IsEmpty;
 
             // Beside the edge of the bar, lined up with the button that opened it: never over the bar (D20).
             var rect = DockGeometry.Beside(

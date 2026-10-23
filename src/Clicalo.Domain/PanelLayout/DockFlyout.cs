@@ -14,4 +14,7 @@ public enum DockFlyout
 
     /// <summary>Sticky keys: Ctrl, Alt, Shift and Win (PES-008, AUD-13).</summary>
     Sticky,
+
+    /// <summary>The arrow keys ↑ ↓ ← → at hand, in a cross (D21, asked by the maintainer).</summary>
+    Arrows,
 }

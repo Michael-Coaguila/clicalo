@@ -31,6 +31,15 @@ public sealed class DockBarViewModel : ObservableObject
     private const string EmptyProfileIcon = "inbox";
     private const string NoProfileIcon = "keyboard";
     private const string ScrollUpIcon = "keyboard_double_arrow_up";
+
+    /// <summary>The four arrow keys of the window of arrows (D21), in the order of the cross: ↑, ←, →, ↓.</summary>
+    private static readonly (string Id, string Key, string Icon, Message Name)[] Arrows =
+    [
+        ("arrowUp", "up", "arrow_upward", L.DockArrowUp),
+        ("arrowLeft", "left", "arrow_back", L.DockArrowLeft),
+        ("arrowRight", "right", "arrow_forward", L.DockArrowRight),
+        ("arrowDown", "down", "arrow_downward", L.DockArrowDown),
+    ];
     private const string ScrollDownIcon = "keyboard_double_arrow_down";
     private const string ScrollCategory = "nav";
 
@@ -99,6 +108,12 @@ public sealed class DockBarViewModel : ObservableObject
             ScrollDownIcon,
             localization.Current.Format(L.DockScrollDown)
         );
+        ArrowTiles =
+        [
+            .. Arrows.Select(arrow =>
+                ArrowTile(arrow.Id, arrow.Key, arrow.Icon, localization.Current.Format(arrow.Name))
+            ),
+        ];
         Labels = new DockLabels(localization);
         Modes = layers is null
             ? null
@@ -144,6 +159,12 @@ public sealed class DockBarViewModel : ObservableObject
 
     /// <summary>⏶ Scroll up: a Mantener of the mouse wheel (PES-008).</summary>
     public DockTileViewModel ScrollUp { get; }
+
+    /// <summary>
+    /// ↑, ←, → and ↓ (D21, asked by the maintainer): each sends its arrow key to the app in front, with the sticky keys
+    /// on (Mayús fija + → selects), from a window beside the bar that stays open while they are used.
+    /// </summary>
+    public IReadOnlyList<DockTileViewModel> ArrowTiles { get; }
 
     /// <summary>⏷ Scroll down: a Mantener of the mouse wheel (PES-008).</summary>
     public DockTileViewModel ScrollDown { get; }
@@ -469,6 +490,11 @@ public sealed class DockBarViewModel : ObservableObject
         Labels.Relocalize();
         ScrollUp.Update(ScrollModel(ScrollUp, _localization.Current.Format(L.DockScrollUp)));
         ScrollDown.Update(ScrollModel(ScrollDown, _localization.Current.Format(L.DockScrollDown)));
+        for (var i = 0; i < Arrows.Length; i++)
+        {
+            ArrowTiles[i]
+                .Update(ScrollModel(ArrowTiles[i], _localization.Current.Format(Arrows[i].Name)));
+        }
         Format();
         Repage();
         ApplyEngine(_engine);
@@ -545,6 +571,9 @@ public sealed class DockBarViewModel : ObservableObject
     /// <summary>Sticky keys.</summary>
     public void ToggleSticky() => _intents.ToggleSticky();
 
+    /// <summary>The arrows: their window beside the button, or closes it (D21).</summary>
+    public void ToggleArrows() => _intents.ToggleArrows();
+
     /// <summary>The lock of the bar.</summary>
     public void TogglePinOpen() => _intents.TogglePinOpen();
 
@@ -579,6 +608,33 @@ public sealed class DockBarViewModel : ObservableObject
                 shortcutId,
                 name,
                 TileBehavior.Hold,
+                new TileBinding(shortcut, null, InjectionMode.VirtualKey),
+                new IconRef(icon),
+                new CategoryId(ScrollCategory)
+            ),
+            _controller
+        );
+    }
+
+    private DockTileViewModel ArrowTile(string id, string key, string icon, string name)
+    {
+        var shortcutId = new ShortcutId(DockTileViewModel.ToolIdPrefix + id);
+        var shortcut = new Shortcut(
+            shortcutId,
+            LocalizedText.Same(id, LangCode.Es),
+            new IconRef(icon),
+            AutoIcon: false,
+            new CategoryId(ScrollCategory),
+            new TapAction(KeyChord.Create([new KeyStroke(new KeyId(key))]), []),
+            new ShortcutOptions(Confirm: false, new HoldLimit.InheritGlobal(), IsPrivate: false),
+            Origin: null,
+            PinnedFrom: null
+        );
+        return new DockTileViewModel(
+            new TileModel(
+                shortcutId,
+                name,
+                TileBehavior.Tap,
                 new TileBinding(shortcut, null, InjectionMode.VirtualKey),
                 new IconRef(icon),
                 new CategoryId(ScrollCategory)

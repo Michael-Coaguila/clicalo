@@ -80,6 +80,7 @@ public sealed class DockBarWindow : TouchSurface
     private DockTool _pill = null!;
     private DockTool _pinned = null!;
     private DockTool _sticky = null!;
+    private DockTool _arrows = null!;
     private DockTool _lock = null!;
     private ShortcutTile _scrollUp = null!;
     private ShortcutTile _scrollDown = null!;
@@ -219,6 +220,9 @@ public sealed class DockBarWindow : TouchSurface
     /// <summary>Sticky keys, where its window goes beside.</summary>
     public PhysicalRect StickyButtonBounds => PhysicalBounds(_sticky.Button, inflate: false);
 
+    /// <summary>The arrows, where their window goes beside (D21).</summary>
+    public PhysicalRect ArrowsButtonBounds => PhysicalBounds(_arrows.Button, inflate: false);
+
     /// <summary>The <c>tune</c> button, where Quick settings go beside (PES-009).</summary>
     public PhysicalRect TuneButtonBounds => PhysicalBounds(_tune, inflate: false);
 
@@ -261,6 +265,7 @@ public sealed class DockBarWindow : TouchSurface
             _sticky.Button,
             _lock.Button,
             _tune,
+            _arrows.Button,
         ];
 
     /// <summary>
@@ -319,6 +324,7 @@ public sealed class DockBarWindow : TouchSurface
         yield return SurfaceTarget.Button(_repeat, _viewModel.Repeat);
         yield return SurfaceTarget.Button(_pinned.Button, _viewModel.TogglePinned);
         yield return SurfaceTarget.Button(_sticky.Button, _viewModel.ToggleSticky);
+        yield return SurfaceTarget.Button(_arrows.Button, _viewModel.ToggleArrows);
         yield return SurfaceTarget.For(_scrollUp, _viewModel.ScrollUp);
         yield return SurfaceTarget.For(_scrollDown, _viewModel.ScrollDown);
     }
@@ -356,20 +362,8 @@ public sealed class DockBarWindow : TouchSurface
             _ => "chevron_right",
         };
 
-    private static void HideLabel(ShortcutTile tile)
-    {
-        tile.ApplyTemplate();
-        if (tile.Template?.FindName(ShortcutTileTemplate.LabelPart, tile) is FrameworkElement label)
-        {
-            label.Visibility = Visibility.Collapsed;
-        }
-
-        // An icon alone keeps no room under it for the name: it is centred in its tile (D21 review).
-        if (tile.Template?.FindName(ShortcutTileTemplate.IconPart, tile) is FrameworkElement icon)
-        {
-            icon.Margin = new Thickness(0);
-        }
-    }
+    // An icon alone keeps no room under it for the name: it is centred in its tile (D21 review).
+    private static void HideLabel(ShortcutTile tile) => DockTileFactory.ShowIconOnly(tile);
 
     /// <summary>Takes <paramref name="element"/> out of whatever holds it, so a zone composed again can hold it.</summary>
     private static void Release(FrameworkElement element)
@@ -512,6 +506,9 @@ public sealed class DockBarWindow : TouchSurface
         _pinned = Tool("push_pin", DockToolShape.Icon, _viewModel.TogglePinned);
         // The same glyph as the row «Teclas fijas» of Quick settings: a keyboard with a lock, not the ⌘ of a Mac.
         _sticky = Tool("keyboard_lock", DockToolShape.Icon, _viewModel.ToggleSticky);
+
+        // D21 (asked by the maintainer): ↑ ↓ ← → at hand, in a window that this button opens and closes.
+        _arrows = Tool("open_with", DockToolShape.Icon, _viewModel.ToggleArrows);
         _lock = Tool("lock_open", DockToolShape.Icon, _viewModel.TogglePinOpen);
 
         // 5. Scroll up and down: Mantener tiles that look like the tools at rest (PES-008).
@@ -707,8 +704,8 @@ public sealed class DockBarWindow : TouchSurface
     }
 
     /// <summary>
-    /// The tools of zone 4 in rows of two: Search and Repeat, and Pinned and Sticky keys when they apply (PES-008), so a
-    /// tool that is not there never leaves its place empty.
+    /// The tools of zone 4 in rows of two: Search and Repeat, Pinned and Sticky keys when they apply (PES-008), and the
+    /// arrows (D21), so a tool that is not there never leaves its place empty.
     /// </summary>
     private void FlowTools()
     {
@@ -730,6 +727,7 @@ public sealed class DockBarWindow : TouchSurface
             items.Add(_sticky.Button);
         }
 
+        items.Add(_arrows.Button);
         Flow(_tools, items);
     }
 
@@ -1052,6 +1050,15 @@ public sealed class DockBarWindow : TouchSurface
         _frequents.Button.IsActive = frequents;
         _frequents.Paint(frequents);
 
+        // What is drawn «elegido» is said too (ACC-001): the view in front, and the profile of the active app.
+        AutomationProperties.SetItemStatus(_frequents.Button, frequents ? labels.On : string.Empty);
+        AutomationProperties.SetItemStatus(
+            _profile.Button,
+            state?.IsActiveApp == true ? labels.ActiveApp
+                : frequents ? string.Empty
+                : labels.On
+        );
+
         var pickerOpen = state?.Flyout == DockFlyout.Profiles;
         _profile.Icon.Symbol = state is { ProfileIcon.Length: > 0 } ? state.ProfileIcon : "apps";
         // Named by the profile it shows, as it reads (voice: «clic Word»), also in S where the label is hidden; what a
@@ -1113,6 +1120,12 @@ public sealed class DockBarWindow : TouchSurface
         _sticky.Button.Visibility = SurfaceParts.Shown(vm.ShowsSticky);
         _sticky.Button.IsActive = stickyOpen;
         _sticky.Paint(stickyOpen);
+
+        var arrowsOpen = state?.Flyout == DockFlyout.Arrows;
+        _arrows.Say(labels.Arrows, labels.Arrows);
+        _arrows.Button.IsActive = arrowsOpen;
+        _arrows.Button.IsExpanded = arrowsOpen;
+        _arrows.Paint(arrowsOpen);
         FlowTools();
 
         var pinOpen = state?.Dock.PinOpen == true;

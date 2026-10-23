@@ -6,6 +6,7 @@ using System.Windows.Documents;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -30,6 +31,8 @@ public sealed class DockCoachWindow : TouchSurface
     private readonly Overline _step;
     private readonly StyledText _title;
     private readonly StyledText _text;
+    private readonly LiveAnnouncer _announcer;
+    private string _said = string.Empty;
     private readonly StackPanel _texts;
     private readonly TouchButton _skip;
     private readonly TouchButton _next;
@@ -76,7 +79,7 @@ public sealed class DockCoachWindow : TouchSurface
             MaxLines = 0,
             Margin = new Thickness(0, Space.S2, 0, 0),
         };
-        AutomationProperties.SetLiveSetting(_text, AutomationLiveSetting.Polite);
+        _announcer = new LiveAnnouncer(_text);
         _texts = new StackPanel { VerticalAlignment = VerticalAlignment.Top };
         _ = _texts.Children.Add(_title);
         _ = _texts.Children.Add(_text);
@@ -106,6 +109,7 @@ public sealed class DockCoachWindow : TouchSurface
 
         // Measured again once the window has its fonts and its theme.
         Loaded += (_, _) => Refresh();
+        IsVisibleChanged += (_, _) => Say();
         Refresh();
     }
 
@@ -174,6 +178,24 @@ public sealed class DockCoachWindow : TouchSurface
         KeepLongestStep();
         _title.Text = _viewModel.CoachTitle;
         Write(_text, _viewModel.CoachText);
+        Say();
+    }
+
+    /// <summary>Says the step once when it changes and when the guide appears (ACC-001): the region was never raised.</summary>
+    private void Say()
+    {
+        var step = _viewModel.CoachTitle + Environment.NewLine + _viewModel.CoachText;
+        if (!IsVisible || _viewModel.CoachTitle.Length == 0)
+        {
+            _said = string.Empty;
+            return;
+        }
+
+        if (!string.Equals(step, _said, StringComparison.Ordinal))
+        {
+            _said = step;
+            _announcer.Say(step, AnnouncementUrgency.Polite);
+        }
     }
 
     /// <summary>

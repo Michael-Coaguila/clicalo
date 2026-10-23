@@ -1,5 +1,6 @@
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -92,7 +93,7 @@ public sealed class DockBarViewModelTests
         _dock.Apply(State());
         _dock.ShowsCoach.ShouldBeTrue();
         _dock.CoachStepLabel.ShouldBe("1 / 3");
-        _dock.CoachTitle.ShouldBe("Arriba: cerrar y expandir");
+        _dock.CoachTitle.ShouldBe("Al principio: la barra");
         _dock.CoachNextLabel.ShouldBe("Siguiente");
 
         _dock.Apply(State() with { CoachStep = 2 });
@@ -148,6 +149,7 @@ public sealed class DockBarViewModelTests
         _dock.Repeat();
         _dock.TogglePinned();
         _dock.ToggleSticky();
+        _dock.ToggleArrows();
         _dock.TogglePinOpen();
         _dock.QuickSettings();
         _dock.CoachNext();
@@ -166,6 +168,7 @@ public sealed class DockBarViewModelTests
             "Repeat",
             "TogglePinned",
             "ToggleSticky",
+            "ToggleArrows",
             "TogglePinOpen",
             "QuickSettings",
             "CoachNext",
@@ -173,6 +176,25 @@ public sealed class DockBarViewModelTests
             "ReleaseAll",
             "MoveHandle 30",
         ]);
+    }
+
+    [Fact]
+    [Trait("Req", "PES-008")]
+    public void The_arrows_send_their_keys_in_the_order_of_the_cross()
+    {
+        // D21, asked by the maintainer: ↑ ← → ↓ at hand, each a tap that sends its arrow key (with the sticky keys).
+        var arrows = _dock.ArrowTiles;
+
+        arrows
+            .Select(static a => a.AccessibleName)
+            .ShouldBe(["Flecha arriba", "Flecha izquierda", "Flecha derecha", "Flecha abajo"]);
+        foreach (var (arrow, key) in arrows.Zip(["up", "left", "right", "down"]))
+        {
+            arrow.Behavior.ShouldBe(TileBehavior.Tap);
+            arrow.IsBarTool.ShouldBeTrue();
+            var tap = arrow.Binding.Shortcut.Action.ShouldBeOfType<TapAction>();
+            tap.Chord.Strokes.ShouldHaveSingleItem().Key.Value.ShouldBe(key);
+        }
     }
 
     private static DockSettings Dock() =>
@@ -231,6 +253,8 @@ public sealed class DockBarViewModelTests
         public void TogglePinned() => Calls.Add(nameof(TogglePinned));
 
         public void ToggleSticky() => Calls.Add(nameof(ToggleSticky));
+
+        public void ToggleArrows() => Calls.Add(nameof(ToggleArrows));
 
         public void TogglePinOpen() => Calls.Add(nameof(TogglePinOpen));
 

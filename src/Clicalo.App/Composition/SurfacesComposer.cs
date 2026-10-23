@@ -309,6 +309,14 @@ internal sealed class SurfacesComposer : IDockIntents
     }
 
     /// <inheritdoc />
+    public void ToggleArrows()
+    {
+        CloseLayers();
+        _ = _interaction.Dispatch(new InteractionAction.ToggleFlyout(DockFlyout.Arrows));
+        SyncPicker();
+    }
+
+    /// <inheritdoc />
     public void TogglePinOpen()
     {
         CancelCollapse();
@@ -567,9 +575,11 @@ internal sealed class SurfacesComposer : IDockIntents
 
     private void OnTileUsed(DockTileViewModel tile, bool inSideWindow)
     {
-        // PES-010: «Pinned» closes after one of its shortcuts is used, unless it holds or latches.
+        // PES-010: «Pinned» closes after one of its shortcuts is used, unless it holds or latches. The arrows stay at
+        // hand: moving through a document takes many taps (D21).
         if (
             inSideWindow
+            && !tile.IsBarTool
             && DockRules.SideWindowClosesAfterUse(
                 tile.Behavior is TileBehavior.Hold or TileBehavior.Toggle
             )
