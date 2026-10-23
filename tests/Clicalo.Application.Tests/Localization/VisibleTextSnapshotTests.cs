@@ -78,17 +78,25 @@ public sealed partial class VisibleTextSnapshotTests
             .ShouldBe([
                 "aboutTitle",
                 "adminBtn",
+                "aiPh",
                 "autoA",
         revised
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+                "autoRelease",
+            ]);
                 "autoW",
                 "barExplain",
                 "co1d",
                 "co1t",
                 "co2d",
+        revised
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
                 "co3d",
                 "co3t",
+                "compatT",
+            ]);
                 "ctxHide",
                 "ctxHideT",
                 "ctxPin",
@@ -96,6 +104,8 @@ public sealed partial class VisibleTextSnapshotTests
             ]);
                 "dCompactD",
                 "dFullD",
+                "dHold",
+                "dToggle",
                 "followAppD",
                 "freq",
                 "lockA",
@@ -114,6 +124,8 @@ public sealed partial class VisibleTextSnapshotTests
                 "shareHint",
                 "showStripD",
                 "showTabsD",
+                "uTremor",
+                "unknownBlank",
             ]);
             ]);
         mismatches.ShouldBeEmpty();

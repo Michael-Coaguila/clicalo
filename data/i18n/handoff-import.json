@@ -78,7 +78,7 @@
     "updErrT": {
       "notes": "Título de la tarjeta de actualización con error (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "rollbackBtn",
-      "text": { "es": "No se pudo actualizar", "en": "Couldn't update" }
+      "text": { "es": "No se pudo actualizar", "en": "Couldn’t update" }
     },
     "updErrOffline": {
       "notes": "Error de actualización: sin conexión (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
@@ -88,12 +88,12 @@
     "updErrDamaged": {
       "notes": "Error de actualización: el paquete no coincide con su suma de comprobación (ACT-001, ACT-003). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "updErrOffline",
-      "text": { "es": "La descarga llegó dañada y no se instaló.", "en": "The download arrived damaged and wasn't installed." }
+      "text": { "es": "La descarga llegó dañada y no se instaló.", "en": "The download arrived damaged and wasn’t installed." }
     },
     "updErrSpace": {
       "notes": "Error de actualización: sin espacio (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "updErrDamaged",
-      "text": { "es": "No hay espacio suficiente en el disco.", "en": "There isn't enough space on the disk." }
+      "text": { "es": "No hay espacio suficiente en el disco.", "en": "There isn’t enough space on the disk." }
     },
     "updErrStopped": {
       "notes": "Error de actualización: interrumpida (ACT-001). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
@@ -108,7 +108,7 @@
     "updUnavailD": {
       "notes": "Detalle de la tarjeta anterior. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "updUnavailT",
-      "text": { "es": "Esta copia de Clícalo no se instaló con el instalador.", "en": "This copy of Clícalo wasn't installed with the installer." }
+      "text": { "es": "Esta copia de Clícalo no se instaló con el instalador.", "en": "This copy of Clícalo wasn’t installed with the installer." }
     },
     "lastCheckAt": {
       "notes": "Subtítulo de «Estás al día» con la fecha real de la última comprobación (ACT-001); {date} es whenToday, whenYesterday o whenDate. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
@@ -196,12 +196,12 @@
     "exportFailed": {
       "notes": "Aviso de [Exportar] cuando no se pudo escribir el archivo (COP-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "exportDone",
-      "text": { "es": "No se pudo exportar la copia", "en": "Couldn't export the backup" }
+      "text": { "es": "No se pudo exportar la copia", "en": "Couldn’t export the backup" }
     },
     "backupFailed": {
       "notes": "Aviso de [Crear copia ahora] cuando no se pudo escribir (COP-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "exportFailed",
-      "text": { "es": "No se pudo crear la copia", "en": "Couldn't create the backup" }
+      "text": { "es": "No se pudo crear la copia", "en": "Couldn’t create the backup" }
     },
     "impSummary": {
       "notes": "Resumen del archivo elegido en Importar, antes de Combinar o Reemplazar (COP-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
@@ -216,7 +216,7 @@
       "after": "impSummary",
       "plural": {
         "es": { "one": "{count} texto cifrado no se puede leer en este equipo: tendrás que volver a escribirlo.", "other": "{count} textos cifrados no se pueden leer en este equipo: tendrás que volver a escribirlos." },
-        "en": { "one": "{count} encrypted text can't be read on this computer: you'll need to type it again.", "other": "{count} encrypted texts can't be read on this computer: you'll need to type them again." }
+        "en": { "one": "{count} encrypted text can’t be read on this computer: you’ll need to type it again.", "other": "{count} encrypted texts can’t be read on this computer: you’ll need to type them again." }
       }
     },
     "reopenAdmin": {
@@ -252,7 +252,7 @@
     "adminFailed": {
       "notes": "Aviso cuando Windows no pudo relanzar (D7). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "adminNotInstalled",
-      "text": { "es": "Windows no pudo reabrir Clícalo como administrador", "en": "Windows couldn't reopen Clícalo as administrator" }
+      "text": { "es": "Windows no pudo reabrir Clícalo como administrador", "en": "Windows couldn’t reopen Clícalo as administrator" }
     },
     "startNotInstalled": {
       "notes": "Aviso de «Iniciar con Windows» en una copia que no es la instalada (SIS-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
@@ -262,7 +262,7 @@
     "startFailed": {
       "notes": "Aviso cuando Windows no deja cambiar el inicio (SIS-002). Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
       "after": "startNotInstalled",
-      "text": { "es": "Windows no permitió cambiar el inicio", "en": "Windows didn't allow changing the startup" }
+      "text": { "es": "Windows no permitió cambiar el inicio", "en": "Windows didn’t allow changing the startup" }
     },
     "crashRecoveryD": {
       "notes": "Descripción de «Recuperación automática» con el mismo significado en ES y EN (§9 del catálogo, SIS-002, SIS-004) sin tocar [rCrashD]. Texto nuevo de Sistema (M5), pendiente de ratificar en §6.1 del catálogo.",
@@ -1448,7 +1448,7 @@
     "fbSendCopyD": {
       "notes": "Nota bajo [Enviar por correo] mientras no haya correo de contacto (ACE-004, decisión D11 del usuario): el mensaje se copia en lugar de abrir el correo. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "fbSendLogD",
-      "text": { "es": "Aún no hay un correo de contacto: copiaré el mensaje para que lo pegues donde quieras, por ejemplo en «Reportar en GitHub».", "en": "There is no contact email yet: I'll copy the message so you can paste it wherever you like, for example in “Report on GitHub”." }
+      "text": { "es": "Aún no hay un correo de contacto: copiaré el mensaje para que lo pegues donde quieras, por ejemplo en «Reportar en GitHub».", "en": "There is no contact email yet: I’ll copy the message so you can paste it wherever you like, for example in “Report on GitHub”." }
     },
     "userGuide": {
       "notes": "Enlace a la guía de usuario del repositorio, que se abre en el navegador (ACE-005). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
@@ -1468,7 +1468,7 @@
     "docRecovered": {
       "notes": "Aviso al arrancar cuando el documento no se pudo leer y se recuperó de la versión anterior o de la última copia válida (SIS-004, DAT-003). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "dataUnreadable",
-      "text": { "es": "No pude leer tus datos: restauré la última copia válida. Nada se borró.", "en": "I couldn't read your data: I restored the last valid copy. Nothing was deleted." }
+      "text": { "es": "No pude leer tus datos: restauré la última copia válida. Nada se borró.", "en": "I couldn’t read your data: I restored the last valid copy. Nothing was deleted." }
     },
     "obChangesT": {
       "notes": "Título del aviso del paso «¿Cómo usas tu equipo?» al repetir la bienvenida: qué ajustes cambian al continuar (BIE-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
@@ -1503,12 +1503,12 @@
     "obChNoKbOn": {
       "notes": "Línea del aviso de BIE-010: «No puedo usar el teclado» queda activado. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "obChVoiceOff",
-      "text": { "es": "No puedo usar el teclado: activado", "en": "I can't use the keyboard: on" }
+      "text": { "es": "No puedo usar el teclado: activado", "en": "I can’t use a keyboard: on" }
     },
     "obChNoKbOff": {
       "notes": "Línea del aviso de BIE-010: «No puedo usar el teclado» queda desactivado. Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "obChNoKbOn",
-      "text": { "es": "No puedo usar el teclado: desactivado", "en": "I can't use the keyboard: off" }
+      "text": { "es": "No puedo usar el teclado: desactivado", "en": "I can’t use a keyboard: off" }
     },
     "reinstallT": {
       "notes": "Título de la pregunta de la bienvenida al reinstalar con datos de una instalación anterior (NFR-010, propuesta P6). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
@@ -1558,7 +1558,7 @@
     "uninstallWipeD": {
       "notes": "Descripción de la opción de borrar los datos: antes se guarda una copia donde la persona elija (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "uninstallWipe",
-      "text": { "es": "Antes te pediré guardar una copia donde tú elijas. Sin esa copia no se borra nada.", "en": "First I'll ask you to save a copy wherever you choose. Without that copy nothing is deleted." }
+      "text": { "es": "Antes te pediré guardar una copia donde tú elijas. Sin esa copia no se borra nada.", "en": "First I’ll ask you to save a copy wherever you choose. Without that copy nothing is deleted." }
     },
     "uninstallBtn": {
       "notes": "Botón de «Desinstalar Clícalo», con dos toques (NFR-010, P6, REG-04). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
@@ -1568,7 +1568,7 @@
     "uninstallNotInstalled": {
       "notes": "Aviso al desinstalar una copia que no se instaló con el instalador (NFR-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "uninstallBtn",
-      "text": { "es": "Esta copia de Clícalo no se instaló con el instalador: no hay nada que desinstalar.", "en": "This copy of Clícalo wasn't installed with the installer: there is nothing to uninstall." }
+      "text": { "es": "Esta copia de Clícalo no se instaló con el instalador: no hay nada que desinstalar.", "en": "This copy of Clícalo wasn’t installed with the installer: there is nothing to uninstall." }
     },
     "uninstallNeedsCopy": {
       "notes": "Aviso cuando se pidió borrar los datos al desinstalar y no se guardó la copia (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
@@ -1578,7 +1578,7 @@
     "uninstallFailed": {
       "notes": "Aviso cuando Windows no pudo iniciar la desinstalación (NFR-010). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
       "after": "uninstallNeedsCopy",
-      "text": { "es": "Windows no pudo iniciar la desinstalación. Nada se borró.", "en": "Windows couldn't start the uninstaller. Nothing was deleted." }
+      "text": { "es": "Windows no pudo iniciar la desinstalación. Nada se borró.", "en": "Windows couldn’t start the uninstaller. Nothing was deleted." }
     },
     "uninstallCopyInside": {
       "notes": "Aviso cuando la copia previa a borrar los datos se quiso guardar dentro de la carpeta de datos, que el desinstalador borra (NFR-010, P6, REG-08). Texto nuevo de M6 (Sistema, datos y Acerca de), pendiente de ratificar en §6.1 del catálogo.",
@@ -1840,6 +1840,34 @@
     "autoW": {
       "notes": "Lo que muestra Frecuentes en la barra «Tu panel muestra» de Atajos (ATJ-001). En español «Frecuentes automático» no concordaba; en inglés «Frequents automatic» no se entendía. Pendiente de ratificar (D21).",
       "text": { "es": "automáticos", "en": "auto-filled" }
+    },
+    "uTremor": {
+      "notes": "Opción de la bienvenida (BIE-005). En inglés falta el artículo. El español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Tengo temblor", "en": "I have a tremor" }
+    },
+    "compatT": {
+      "notes": "Interruptor de la tarjeta del perfil (ATJ-004). En inglés el modo se llama «Compatibility mode». El español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Modo compatible", "en": "Compatibility mode" }
+    },
+    "autoRelease": {
+      "notes": "Sección de «Más opciones» de Mantener y Alternar (EDI-016). En inglés «by itself» sonaba raro. El español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Soltar sola tras", "en": "Release automatically after" }
+    },
+    "unknownBlank": {
+      "notes": "Botón de la tarjeta de una app sin plantilla (PLA-012). En inglés el orden de la frase era raro. El español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Mejor, crear «{app}» vacío", "en": "Create an empty “{app}” profile instead" }
+    },
+    "aiPh": {
+      "notes": "Texto guía del campo de la IA en Plantillas (PLA-004). El resto de los ejemplos dice «Ej.:» ([namePh], [comboEmpty], [urlPh]…); este decía «p. ej.». El inglés no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "¿Para qué app? Ej.: Photoshop, Spotify…", "en": "Which app? e.g. Photoshop, Spotify…" }
+    },
+    "dHold": {
+      "notes": "Descripción del tipo Mantener (EDI-006). El resto del producto dice «pulsar», no «presionar». El inglés no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Mantiene las teclas pulsadas mientras tu dedo esté en el botón. Ideal para «pulsar para hablar».", "en": "Keeps keys pressed while your finger is on the button. Great for push-to-talk." }
+    },
+    "dToggle": {
+      "notes": "Descripción del tipo Alternar (EDI-006). Mismo motivo que [dHold]. El inglés no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Un toque pulsa, otro toque suelta. Para mantener una tecla sin tener que sostener el dedo.", "en": "One tap presses, another releases. Hold a key without holding your finger." }
     }
   }
 }
