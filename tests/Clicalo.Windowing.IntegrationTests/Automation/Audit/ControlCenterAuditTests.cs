@@ -633,6 +633,67 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Theory]
+    [InlineData("es", 760, 520)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 1120, 680)]
+    [Trait("Req", "CCM-002")]
+    public void The_labels_of_the_rail_take_two_lines_at_most_never_break_a_word_and_keep_the_icon_on_their_axis(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                var items = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static item => item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail)
+                    .ToList();
+                items.Count.ShouldBe(6);
+                foreach (var item in items)
+                {
+                    var label = (string)item.Content;
+                    var text = InTree(item)
+                        .OfType<System.Windows.Controls.TextBlock>()
+                        .Single(block =>
+                            string.Equals(block.Text, label, StringComparison.Ordinal)
+                        );
+                    text.ActualHeight.ShouldBeLessThanOrEqualTo((2 * text.LineHeight) + 0.5, label);
+                    var face = new System.Windows.Media.Typeface(
+                        text.FontFamily,
+                        text.FontStyle,
+                        text.FontWeight,
+                        text.FontStretch
+                    );
+                    foreach (var word in label.Split(' '))
+                    {
+                        // A word wider than the label would be broken in two («Plantilla/s»).
+                        new System.Windows.Media.FormattedText(
+                            word,
+                            CultureInfo.InvariantCulture,
+                            System.Windows.FlowDirection.LeftToRight,
+                            face,
+                            text.FontSize,
+                            System.Windows.Media.Brushes.Black,
+                            System.Windows.Media.VisualTreeHelper.GetDpi(text).PixelsPerDip
+                        ).Width.ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, word);
+                    }
+
+                    var icon = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Icon", item);
+                    icon.TransformToAncestor(item)
+                        .Transform(new System.Windows.Point(icon.ActualWidth / 2, 0))
+                        .X.ShouldBe(item.ActualWidth / 2, 1, label);
+                }
+            }
+        );
+
     private static List<AutomationPeer> Named(AuditHost host, string name)
     {
         var found = new List<AutomationPeer>();
