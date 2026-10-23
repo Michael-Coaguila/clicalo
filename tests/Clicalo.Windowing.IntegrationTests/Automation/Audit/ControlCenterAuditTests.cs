@@ -760,6 +760,34 @@ public sealed class ControlCenterAuditTests
         );
 
     [Theory]
+    [InlineData(AuditLook.Dark)]
+    [InlineData(AuditLook.ContrastLargeText)]
+    [Trait("Req", "CCM-005")]
+    [Trait("Req", "CCM-002")]
+    public void In_the_smallest_window_the_section_in_view_is_above_the_fade_of_the_rail(
+        AuditLook look
+    ) =>
+        Run(
+            "en",
+            760,
+            520,
+            look,
+            (viewModel, _, host) =>
+            {
+                States["about-open"](viewModel);
+                host.LayOut();
+                host.LayOut();
+                var selected = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Single(static item =>
+                        item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail && item.IsSelected
+                    );
+                ((string)selected.Content).ShouldBe("About & contact");
+                AboveFade(selected).ShouldBeGreaterThanOrEqualTo(-0.5, "its second line faded");
+            }
+        );
+
+    [Theory]
     [InlineData("shortcuts-macro-keys", "es", 1120, 680)]
     [InlineData("shortcuts-hold", "es", 1371, 859)]
     [InlineData("shortcuts-macro-keys", "en", 760, 520)]
@@ -819,6 +847,24 @@ public sealed class ControlCenterAuditTests
         element
             .TransformToAncestor(ancestor)
             .TransformBounds(new System.Windows.Rect(element.RenderSize));
+
+    /// <summary>
+    /// How far the bottom of <paramref name="element"/> is above the fade of the scroll area it is in: 0 or more when it
+    /// is drawn whole and clear.
+    /// </summary>
+    private static double AboveFade(System.Windows.FrameworkElement element)
+    {
+        System.Windows.DependencyObject node = element;
+        while (node is not System.Windows.Controls.ScrollContentPresenter)
+        {
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        }
+
+        var presenter = (System.Windows.Controls.ScrollContentPresenter)node;
+        var scroll = (Clicalo.UI.Wpf.Controls.ThemedScrollViewer)presenter.TemplatedParent;
+        var fade = scroll.IsFading ? Clicalo.UI.Wpf.Theming.Generated.ComponentSize.ScrollFade : 0;
+        return presenter.ActualHeight - fade - Bounds(element, presenter).Bottom;
+    }
 
     /// <summary>The width of the whole text of <paramref name="text"/> in one line.</summary>
     private static double Natural(System.Windows.Controls.TextBlock text) =>

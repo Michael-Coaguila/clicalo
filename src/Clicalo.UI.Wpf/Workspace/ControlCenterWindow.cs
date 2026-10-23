@@ -503,8 +503,8 @@ public sealed class ControlCenterWindow : Window
     }
 
     /// <summary>
-    /// Keeps the section in view visible in the rail when the window is too short for the six (CCM-005): in the
-    /// smallest window «Clícalo y contacto» is under the fade otherwise.
+    /// Keeps the section in view visible in the rail when the window is too short for the six (CCM-005), above the
+    /// fade of the rail: in the smallest window the second line of «Clícalo y contacto» faded under it otherwise.
     /// </summary>
     private void RevealSelected()
     {
@@ -512,7 +512,15 @@ public sealed class ControlCenterWindow : Window
         {
             if (child is OptionButton { IsSelected: true } selected && selected.IsLoaded)
             {
-                selected.BringIntoView();
+                selected.BringIntoView(
+                    new Rect(
+                        new Point(),
+                        new Size(
+                            selected.ActualWidth,
+                            selected.ActualHeight + ComponentSize.ScrollFade
+                        )
+                    )
+                );
                 return;
             }
         }
