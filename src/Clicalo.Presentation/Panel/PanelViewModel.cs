@@ -304,7 +304,8 @@ public sealed class PanelViewModel : ObservableObject
                     result.Binding.Shortcut.Category,
                     result.Origin,
                     result.Origin,
-                    KeyLineIsOrigin: true
+                    KeyLineIsOrigin: true,
+                    OriginIcon: result.OriginIcon
                 ),
                 _controller,
                 result

@@ -48,6 +48,12 @@ public static class ShortcutTileTemplate
     /// <summary>Name of the icon.</summary>
     public const string IconPart = "PART_Icon";
 
+    /// <summary>Name of the icon of the profile of origin, over the corner of the icon (FRE-003, D21).</summary>
+    public const string OriginPart = "PART_Origin";
+
+    /// <summary>Name of the disc under the icon of the profile of origin.</summary>
+    public const string OriginDiscPart = "PART_OriginDisc";
+
     /// <summary>Name of the text block that shows the tile's name.</summary>
     public const string LabelPart = "PART_Label";
 
@@ -136,13 +142,41 @@ public static class ShortcutTileTemplate
             Bind(ShortcutTile.ReservesNameLinesProperty)
         );
 
+        // The icon and, over its lower right corner, the icon of the profile of origin of a Frequents tile or of a search
+        // result, on a disc of the card as the badge of an app (FRE-003, D21): two shortcuts of one name are told apart
+        // without words. The badge takes no width of the row, so the icon stays centred as on every tile, clear of the
+        // voice number at the top left and of the type at the top right, and it ends where the name starts.
+        var row = new FrameworkElementFactory(typeof(StackPanel));
+        row.SetValue(StackPanel.OrientationProperty, Orientation.Horizontal);
+        row.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         var icon = new FrameworkElementFactory(typeof(SymbolIcon), IconPart);
         icon.SetValue(SymbolIcon.SymbolProperty, Bind(ShortcutTile.SymbolProperty));
         icon.SetValue(SymbolIcon.SizeProperty, Bind(ShortcutTile.IconSizeProperty));
         icon.SetValue(SymbolIcon.ForegroundProperty, Bind(ShortcutTile.CategoryTintProperty));
         icon.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         icon.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, Space.S1));
-        body.AppendChild(icon);
+        row.AppendChild(icon);
+        var disc = new FrameworkElementFactory(typeof(Border), OriginDiscPart);
+        disc.SetValue(FrameworkElement.WidthProperty, IconBox.Badge);
+        disc.SetValue(FrameworkElement.HeightProperty, IconBox.Badge);
+        disc.SetValue(Border.CornerRadiusProperty, new CornerRadius(IconBox.Badge / 2));
+        disc.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Bottom);
+        disc.SetValue(
+            FrameworkElement.MarginProperty,
+            new Thickness(-(IconBox.Badge / 2), 0, -(IconBox.Badge / 2), 0)
+        );
+        disc.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        disc.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
+        var origin = new FrameworkElementFactory(typeof(SymbolIcon), OriginPart);
+        origin.SetValue(SymbolIcon.SymbolProperty, Bind(ShortcutTile.OriginSymbolProperty));
+        origin.SetValue(SymbolIcon.SizeProperty, IconBox.Badge);
+        origin.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
+        );
+        disc.AppendChild(origin);
+        row.AppendChild(disc);
+        body.AppendChild(row);
 
         var label = new FrameworkElementFactory(typeof(TextBlock), LabelPart);
         label.SetValue(TextBlock.TextProperty, Bind(ShortcutTile.AccessibleNameProperty));
@@ -277,6 +311,7 @@ public static class ShortcutTileTemplate
             Brush(KeysPart, TextBlock.ForegroundProperty, ColorToken.AccentInk)
         );
         yield return Collapse(ShortcutTile.SymbolProperty, null, IconPart);
+        yield return Collapse(ShortcutTile.OriginSymbolProperty, null, OriginDiscPart);
         yield return Set(
             ShortcutTile.MaxNameLinesProperty,
             1,

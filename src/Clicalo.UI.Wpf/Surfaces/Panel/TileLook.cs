@@ -54,14 +54,12 @@ internal sealed record TileLook(
 )
 {
     /// <summary>
-    /// A Frequents tile or a search result (FRE-003, BUS-005): the profile of origin goes under its name, in one line of
-    /// words (<see cref="KeysAreWords"/>), and the name takes one line with «…», as a tile with its key line does (D20).
-    /// Where the tile has room for its icon, one line of name and the origin (Full in M, L) it keeps the anatomy of the
-    /// grid. Where it has not (Compact; S, whose name takes the place of the key line; M at a larger text) the origin is
-    /// the line that tells two results of one name apart, so it takes the place of the icon: the name and the origin are
-    /// centred down the tile, with the narrow side inset so the name has the width of the tile, and with the voice
-    /// numbers on (<paramref name="numbered"/>, ACC-009) the number stays in its corner, where every tile has it, and the
-    /// two keep clear of it (<see cref="ClearsCornerNumber"/>).
+    /// A Frequents tile or a search result (FRE-003, BUS-005): it keeps its icon, and the icon of its profile of origin
+    /// goes beside it (D21, the maintainer's decision: the tiles without their icon read badly). Where the tile has room
+    /// for the icon, one line of name and the origin in words (Full in M, L) the origin also goes under its name, in one
+    /// line of words (<see cref="KeysAreWords"/>), and the name takes one line with «…», as a tile with its key line does
+    /// (D20). Where it has not (Compact; S; M at a larger text) the tile keeps the anatomy of the grid and its origin in
+    /// words only where the body still has room for it; the screen reader always says it.
     /// </summary>
     /// <param name="grid">The look of the grid in the size of the panel (<see cref="Grid"/>).</param>
     /// <param name="height">The height of the tile.</param>
@@ -84,11 +82,10 @@ internal sealed record TileLook(
         var withIcon = grid.TopInset + grid.IconSize + Space.S1 + lines + Space.S1;
         return Math.Round(withIcon, MidpointRounding.AwayFromZero) <= height
             ? words
-            : words with
+            : grid with
             {
-                ShowsIcon = false,
-                SideInset = Space.S1,
-                ClearsCornerNumber = numbered,
+                Keys = TextStyleToken.LabelSmall,
+                KeysAreWords = true,
             };
     }
 

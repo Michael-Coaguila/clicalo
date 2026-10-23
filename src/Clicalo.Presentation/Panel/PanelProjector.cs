@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Clicalo.Application.Coordinators;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Frequents;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
@@ -20,6 +21,9 @@ namespace Clicalo.Presentation.Panel;
 /// </remarks>
 public static class PanelProjector
 {
+    /// <summary>The icon of Always visible as the profile of origin of a shortcut (FRE-003): 📌, as its window.</summary>
+    public static readonly IconRef AlwaysVisibleIcon = new("push_pin");
+
     /// <summary>
     /// The injection mode of a tile (D24): the mode of its own profile when that profile is not General; otherwise
     /// the mode of the profile of the app in front, and General's own mode while that app has no profile.
@@ -173,6 +177,7 @@ public static class PanelProjector
                 ) with
                 {
                     KeyLineIsOrigin = true,
+                    OriginIcon = origin?.Icon ?? AlwaysVisibleIcon,
                 }
             );
         }

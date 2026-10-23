@@ -107,6 +107,14 @@ public sealed class ShortcutTile : Control
         new FrameworkPropertyMetadata(IconBox.Medium)
     );
 
+    /// <summary>Identifies <see cref="OriginSymbol"/>.</summary>
+    public static readonly DependencyProperty OriginSymbolProperty = DependencyProperty.Register(
+        nameof(OriginSymbol),
+        typeof(string),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(null)
+    );
+
     /// <summary>Identifies <see cref="TypeSymbol"/>.</summary>
     public static readonly DependencyProperty TypeSymbolProperty = DependencyProperty.Register(
         nameof(TypeSymbol),
@@ -368,6 +376,16 @@ public sealed class ShortcutTile : Control
     {
         get => (string?)GetValue(TypeSymbolProperty);
         set => SetValue(TypeSymbolProperty, value);
+    }
+
+    /// <summary>
+    /// Material Symbols name of the profile of origin of a Frequents tile or of a search result, drawn beside the icon in
+    /// a box of <see cref="IconBox.Badge"/> in <c>muted</c> (FRE-003, D21); null draws nothing.
+    /// </summary>
+    public string? OriginSymbol
+    {
+        get => (string?)GetValue(OriginSymbolProperty);
+        set => SetValue(OriginSymbolProperty, value);
     }
 
     /// <summary>Lines the name may take before «…»: 1 (direction C) or 2 (S at the largest text, CUA-011).</summary>
