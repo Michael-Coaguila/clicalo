@@ -67,12 +67,7 @@ public sealed partial class VisibleTextSnapshotTests
             .Order(StringComparer.Ordinal)
             .ShouldBe(["migD", "migT", "themeAutoS"]);
         // D12 (direction C, 2026-10-16): Fixed is no longer red nor Auto blue, so their texts name the states. D21: the
-        // Tab guide describes the bar of D20 without «top» and «bottom».
-        // D12 (direction C, 2026-10-16): Fixed is no longer red nor Auto blue, so their texts name the states.
-        // The texts the review of M7 found false or unclear, pending ratification (D21).
-        revised
-            .Order(StringComparer.Ordinal)
-            .ShouldBe([
+        // texts the review of M7 found false or unclear (the Tab guide among them), pending ratification.
         revised
             .Order(StringComparer.Ordinal)
             .ShouldBe([
@@ -80,28 +75,19 @@ public sealed partial class VisibleTextSnapshotTests
                 "adminBtn",
                 "aiPh",
                 "autoA",
-        revised
-            .Order(StringComparer.Ordinal)
-            .ShouldBe([
                 "autoRelease",
-            ]);
                 "autoW",
                 "barExplain",
                 "co1d",
                 "co1t",
                 "co2d",
-        revised
-            .Order(StringComparer.Ordinal)
-            .ShouldBe([
                 "co3d",
                 "co3t",
                 "compatT",
-            ]);
                 "ctxHide",
                 "ctxHideT",
                 "ctxPin",
                 "ctxPinT",
-            ]);
                 "dCompactD",
                 "dFullD",
                 "dHold",
@@ -109,13 +95,9 @@ public sealed partial class VisibleTextSnapshotTests
                 "followAppD",
                 "freq",
                 "lockA",
-        revised
-            .Order(StringComparer.Ordinal)
-            .ShouldBe([
                 "mFreq",
                 "manualSub",
                 "modeFreqT",
-            ]);
                 "navAbout2",
                 "resetFreq",
                 "resetFreqD",
@@ -126,7 +108,6 @@ public sealed partial class VisibleTextSnapshotTests
                 "showTabsD",
                 "uTremor",
                 "unknownBlank",
-            ]);
             ]);
         mismatches.ShouldBeEmpty();
     }
