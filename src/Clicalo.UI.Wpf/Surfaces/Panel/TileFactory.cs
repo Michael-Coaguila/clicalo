@@ -129,7 +129,7 @@ internal static class TileFactory
             look.LeadInset ?? look.SideInset,
             look.TopInset,
             look.SideInset,
-            look.TopInset > Space.S1 ? 0 : Space.S1
+            Bottom(look)
         );
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
@@ -142,6 +142,10 @@ internal static class TileFactory
             {
                 number.VerticalAlignment = VerticalAlignment.Center;
                 number.Margin = new Thickness(Space.S1, 0, 0, 0);
+                // The number is as wide as its digits: the body is placed once it is measured, and again when it grows.
+                SizeChangedEventHandler place = (_, _) => PlaceBesideNumber(control, number, look);
+                number.SizeChanged += place;
+                control.SizeChanged += place;
             }
             else
             {
@@ -149,6 +153,7 @@ internal static class TileFactory
                 number.ClearValue(FrameworkElement.MarginProperty);
             }
         }
+
         control.MaxNameLines = look.NameLines;
 
         control.SetResourceReference(
@@ -160,6 +165,39 @@ internal static class TileFactory
             ThemeKeys.FontSize(look.Keys, scaled: true)
         );
     }
+
+    /// <summary>
+    /// Puts the body of a tile beside its voice number, which is centred down the tile (<see cref="TileLook.CentresNumber"/>),
+    /// whatever the digits of the number: the body starts <see cref="Space.S1"/> after it, so a number of two digits
+    /// never covers the icon or the name. An icon alone makes one pair with the number, centred across the tile.
+    /// </summary>
+    private static void PlaceBesideNumber(
+        ShortcutTile control,
+        FrameworkElement number,
+        TileLook look
+    )
+    {
+        var badge = number.ActualWidth;
+        var width = control.ActualWidth;
+        if (badge <= 0 || width <= 0)
+        {
+            return;
+        }
+
+        var side = look.ShowsIcon
+            ? Math.Max(Space.S1, (width - (badge + Space.S1 + look.IconSize)) / 2)
+            : Space.S1;
+        number.Margin = new Thickness(side, 0, 0, 0);
+        control.Padding = new Thickness(
+            side + badge + Space.S1,
+            look.TopInset,
+            look.ShowsIcon ? side : look.SideInset,
+            Bottom(look)
+        );
+    }
+
+    /// <summary>The space under the body: none when the body already starts under the slot of the voice number.</summary>
+    private static double Bottom(TileLook look) => look.TopInset > Space.S1 ? 0 : Space.S1;
 
     private static FrameworkElement? Part(ShortcutTile control, string part)
     {

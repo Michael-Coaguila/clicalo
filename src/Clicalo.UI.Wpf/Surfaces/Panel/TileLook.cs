@@ -21,7 +21,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// <param name="LeadInset">
 /// The space before the body when it differs from <paramref name="SideInset"/>: the slot of the voice number beside it.
 /// </param>
-/// <param name="CentresNumber">Whether the voice number is centred down the tile, beside the body, not at its top.</param>
+/// <param name="CentresNumber">
+/// Whether the voice number is centred down the tile, beside the body, not at its top: the body then starts
+/// <see cref="Space.S1"/> after the number whatever its digits.
+/// </param>
 internal sealed record TileLook(
     double IconSize,
     TextStyleToken Name,
