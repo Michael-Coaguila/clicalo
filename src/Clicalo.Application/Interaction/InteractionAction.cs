@@ -1,4 +1,5 @@
 using Clicalo.Domain.Dimming;
+using Clicalo.Domain.Messages;
 using Clicalo.Domain.PanelLayout;
 
 namespace Clicalo.Application.Interaction;
@@ -88,6 +89,10 @@ public abstract record InteractionAction
     /// <summary>The notices of <paramref name="Kind"/> no longer apply: the operation was undone (AVI-003).</summary>
     /// <param name="Kind">The kind to drop.</param>
     public sealed record DismissNotices(NoticeKind Kind) : InteractionAction;
+
+    /// <summary>The notice whose text is <paramref name="Key"/> no longer tells the truth (EJE-002, AVI-002).</summary>
+    /// <param name="Key">The key of the text to drop.</param>
+    public sealed record WithdrawNotice(MessageKey Key) : InteractionAction;
 
     /// <summary>The notice on show reached its end: the next one shows (AVI-002).</summary>
     public sealed record NoticeTick : InteractionAction;

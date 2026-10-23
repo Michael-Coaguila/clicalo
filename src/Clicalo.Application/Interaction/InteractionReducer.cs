@@ -95,6 +95,10 @@ public static class InteractionReducer
             {
                 Notices = state.Notices.Dismiss(dismiss.Kind, now),
             },
+            InteractionAction.WithdrawNotice withdraw => state with
+            {
+                Notices = state.Notices.Withdraw(withdraw.Key, now),
+            },
             InteractionAction.NoticeTick => state with { Notices = state.Notices.Advance(now) },
             _ => throw new ArgumentOutOfRangeException(
                 nameof(action),

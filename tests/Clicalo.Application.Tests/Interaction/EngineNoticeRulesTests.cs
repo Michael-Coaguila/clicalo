@@ -1,9 +1,11 @@
 using Clicalo.Application.Engine;
 using Clicalo.Application.Interaction;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Timing;
 
 namespace Clicalo.Application.Tests.Interaction;
 
@@ -83,6 +85,48 @@ public sealed class EngineNoticeRulesTests
         EngineNoticeRules
             .MacroInProgress(ending)
             .ShouldBe(L.MacroRunning(name: "Informe", index: 3, total: 3));
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-002")]
+    [Trait("Req", "ACC-006")]
+    public void The_tap_again_notice_lasts_the_window_the_engine_stays_armed_for()
+    {
+        // Its own window, times the multiplier; never the 3,2 s of a plain notice.
+        var plain = Timings.Notices.NoticeDuration;
+        foreach (var multiplier in new[] { 1, 2, 3 })
+        {
+            EngineNoticeRules
+                .DurationOf(L.ConfirmCloseName(name: "Cerrar"), plain, multiplier)
+                .ShouldBe(Timings.Confirmation.ExecuteConfirmWindow * multiplier);
+            EngineNoticeRules
+                .DurationOf(L.Released, plain, multiplier)
+                .ShouldBe(plain * multiplier);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-002")]
+    [Trait("Req", "AVI-002")]
+    public void The_tap_again_notice_is_withdrawn_once_the_engine_is_no_longer_armed()
+    {
+        var armed = new Notice(
+            L.ConfirmCloseName(name: "Cerrar"),
+            new IconRef("warning"),
+            Warning: true
+        );
+        var waiting = EngineSnapshot.Empty with
+        {
+            Armed = new ArmedConfirmation(Shortcut, DateTimeOffset.UnixEpoch),
+        };
+
+        // Still armed: it stays; ran or disarmed: it goes; another notice on show is left alone.
+        EngineNoticeRules.Stale(waiting, armed).ShouldBeNull();
+        EngineNoticeRules.Stale(EngineSnapshot.Empty, armed).ShouldBe(armed.Text.Key);
+        EngineNoticeRules
+            .Stale(EngineSnapshot.Empty, new Notice(L.Released, new IconRef("info")))
+            .ShouldBeNull();
+        EngineNoticeRules.Stale(EngineSnapshot.Empty, null).ShouldBeNull();
     }
 
     private static EngineSnapshot With(params PressedItem[] held) =>

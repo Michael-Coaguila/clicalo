@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Clicalo.Domain.Messages;
 
 namespace Clicalo.Application.Interaction;
 
@@ -147,6 +148,25 @@ public sealed class NoticeQueue
     {
         var waiting = Waiting.RemoveAll(other => other.Notice.Kind == kind);
         if (Current?.Kind == kind)
+        {
+            return Next(waiting, now);
+        }
+
+        return waiting.Length == Waiting.Length
+            ? this
+            : new NoticeQueue(Current, CurrentDuration, EndsAt, waiting, Sticky);
+    }
+
+    /// <summary>
+    /// The notice whose text is <paramref name="key"/> no longer tells the truth (the armed shortcut ran or disarmed,
+    /// EJE-002): it goes away, on show or waiting, and the next one shows. Without it nothing changes.
+    /// </summary>
+    /// <param name="key">The key of the text to drop.</param>
+    /// <param name="now">The current time.</param>
+    public NoticeQueue Withdraw(MessageKey key, DateTimeOffset now)
+    {
+        var waiting = Waiting.RemoveAll(other => other.Notice.Text.Key == key);
+        if (Current?.Text.Key == key)
         {
             return Next(waiting, now);
         }

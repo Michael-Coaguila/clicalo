@@ -1,5 +1,7 @@
 using Clicalo.Application.Engine;
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.Timing;
 
 namespace Clicalo.Application.Interaction;
 
@@ -16,6 +18,8 @@ public static class EngineNoticeRules
         index: 1,
         total: 1
     ).Key;
+
+    private static readonly MessageKey ArmedKey = L.ConfirmCloseName(name: string.Empty).Key;
 
     private static readonly HashSet<MessageKey> Safety =
     [
@@ -46,6 +50,34 @@ public static class EngineNoticeRules
     {
         ArgumentNullException.ThrowIfNull(text);
         return text.Key == HoldingKey || text.Key == MacroRunningKey;
+    }
+
+    /// <summary>
+    /// How long a posted notice of the engine shows: «Toca otra vez para confirmar» lasts exactly the window the
+    /// engine stays armed for (EJE-002); the rest last <paramref name="plain"/>. Both scale with ACC-006.
+    /// </summary>
+    /// <param name="text">The notice.</param>
+    /// <param name="plain">How long a plain notice shows.</param>
+    /// <param name="multiplier">The time multiplier of the settings.</param>
+    public static TimeSpan DurationOf(Message text, TimeSpan plain, int multiplier)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return InteractionTime.Scale(
+            text.Key == ArmedKey ? Timings.Confirmation.ExecuteConfirmWindow : plain,
+            multiplier
+        );
+    }
+
+    /// <summary>
+    /// The key of the notice to withdraw because the engine no longer says it (EJE-002): «Toca otra vez para
+    /// confirmar» on show once the shortcut ran or disarmed; null when there is nothing to withdraw.
+    /// </summary>
+    /// <param name="snapshot">The engine snapshot.</param>
+    /// <param name="shown">The posted notice on show.</param>
+    public static MessageKey? Stale(EngineSnapshot snapshot, Notice? shown)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return snapshot.Armed is null && shown?.Text.Key == ArmedKey ? ArmedKey : null;
     }
 
     /// <summary>The fixed notice of a Mantener held under a finger (EJE-004), or null when none is.</summary>

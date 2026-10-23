@@ -544,12 +544,21 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
         }
 
         var warning = notice.Urgency != NoticeUrgency.Polite;
-        Post(
-            new Notice(
-                notice.Text,
-                new IconRef(warning ? WarningIcon : NoticeIcon),
-                warning,
-                EngineNoticeRules.KindOf(notice.Text)
+
+        // EJE-002: «Toca otra vez para confirmar» lasts as long as the engine stays armed, not 3,2 s.
+        _ = _interaction.Dispatch(
+            new InteractionAction.PostNotice(
+                new Notice(
+                    notice.Text,
+                    new IconRef(warning ? WarningIcon : NoticeIcon),
+                    warning,
+                    EngineNoticeRules.KindOf(notice.Text)
+                ),
+                EngineNoticeRules.DurationOf(
+                    notice.Text,
+                    Timings.Notices.NoticeDuration,
+                    _store.Current.Settings.TimeMultiplier
+                )
             )
         );
     }
@@ -1003,6 +1012,12 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     {
         Fixed(_holdOwner, EngineNoticeRules.HoldInProgress(snapshot));
         Fixed(_macroOwner, EngineNoticeRules.MacroInProgress(snapshot));
+
+        // EJE-002: the second tap ran the shortcut or the window ended, so «Toca otra vez para confirmar» goes too.
+        if (EngineNoticeRules.Stale(snapshot, _interaction.Current.Notices.Current) is { } stale)
+        {
+            _ = _interaction.Dispatch(new InteractionAction.WithdrawNotice(stale));
+        }
 
         void Fixed(object owner, Message? text) =>
             _ = _interaction.Dispatch(

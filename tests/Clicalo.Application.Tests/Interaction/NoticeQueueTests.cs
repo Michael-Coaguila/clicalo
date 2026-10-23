@@ -320,6 +320,29 @@ public sealed class NoticeQueueTests
 
     [Fact]
     [Trait("Req", "AVI-002")]
+    [Trait("Req", "EJE-002")]
+    public void A_notice_that_no_longer_tells_the_truth_goes_away_and_the_next_one_shows()
+    {
+        // «Toca otra vez para confirmar» on show while a safety notice waits: once confirmed, the safety notice shows.
+        var armed = new Notice(
+            L.ConfirmCloseName(name: "Cerrar"),
+            new IconRef("warning"),
+            Warning: true
+        );
+        var queue = NoticeQueue.Empty.Post(ReleasedOnSwitch, Short, Now).Post(armed, Short, Now);
+        queue.Shown.ShouldBe(armed);
+
+        var after = queue.Withdraw(armed.Text.Key, Now + Second(1));
+        after.Shown.ShouldBe(ReleasedOnSwitch);
+        after.EndsAt.ShouldBe(Now + Second(1) + Short);
+
+        // Another text, or the same once it is gone, changes nothing.
+        after.Withdraw(armed.Text.Key, Now + Second(1)).ShouldBeSameAs(after);
+        queue.Withdraw(L.CopiedEmail.Key, Now).ShouldBeSameAs(queue);
+    }
+
+    [Fact]
+    [Trait("Req", "AVI-002")]
     public void No_protected_notice_is_ever_lost_whatever_arrives_meanwhile()
     {
         // Every safety notice and the newest undo posted are shown to their end at some point.
