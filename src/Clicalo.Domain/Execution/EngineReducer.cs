@@ -58,6 +58,13 @@ public static class EngineReducer
             case EngineEvent.ForegroundChanged changed:
                 ForegroundChanged(step, changed.Info, changed.IsUserSwitch);
                 break;
+            case EngineEvent.ForegroundNamed named
+                when step.State.Foreground is { } foreground && foreground.Epoch == named.Epoch:
+                step.State = step.State with
+                {
+                    Foreground = foreground with { DisplayName = named.Name },
+                };
+                break;
             case EngineEvent.LayoutChanged layout when step.State.Foreground is { } foreground:
                 step.State = step.State with
                 {

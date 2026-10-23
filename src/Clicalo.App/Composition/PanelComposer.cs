@@ -83,6 +83,8 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     private string? _elevatedApp;
     private IForegroundMonitor? _monitor;
     private Func<ExternalForeground, ForegroundDetails>? _describe;
+    private Func<ProcessName, string?> _knownName = static _ => null;
+    private ProcessName _elevatedProcess;
     private Func<KeyChord?, Task<bool>>? _setHotkey;
     private bool _relaunching;
     private bool _refreshQueued;
@@ -332,15 +334,18 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
     /// </summary>
     /// <param name="monitor">The verified external foreground.</param>
     /// <param name="describe">Resolves the process of a foreground.</param>
+    /// <param name="knownName">The name of an app already read, for the administrator notice (EJE-003).</param>
     public void Follow(
         IForegroundMonitor monitor,
-        Func<ExternalForeground, ForegroundDetails> describe
+        Func<ExternalForeground, ForegroundDetails> describe,
+        Func<ProcessName, string?>? knownName = null
     )
     {
         ArgumentNullException.ThrowIfNull(monitor);
         ArgumentNullException.ThrowIfNull(describe);
         _monitor = monitor;
         _describe = describe;
+        _knownName = knownName ?? (static _ => null);
         monitor.ExternalForegroundChanged += (_, change) => Report(change.Foreground);
         if (monitor.Current is { } current)
         {
@@ -563,6 +568,26 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             )
         );
     }
+
+    /// <summary>
+    /// The name of an app in front was read (EJE-003), on any thread: the administrator notice of that app says it.
+    /// </summary>
+    /// <param name="process">Its executable.</param>
+    public void OnAppNamed(ProcessName process) =>
+        _ = _ui.BeginInvoke(() =>
+        {
+            if (_elevatedProcess.IsEmpty || _elevatedProcess != process)
+            {
+                return;
+            }
+
+            var name = DisplayName(process);
+            if (!string.Equals(name, _elevatedApp, StringComparison.Ordinal))
+            {
+                _elevatedApp = name;
+                Invalidate();
+            }
+        });
 
     /// <summary>Something ran: Frequents and ↻ Repeat may change (FRE-002, AVI-004).</summary>
     public void OnActionRan() => Invalidate();
@@ -874,6 +899,7 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
 
         var name = process.IsEmpty ? null : DisplayName(process);
         var elevatedApp = elevated ? name : null;
+        _elevatedProcess = elevated ? process : default;
         if (!string.Equals(elevatedApp, _elevatedApp, StringComparison.Ordinal))
         {
             _elevatedApp = elevatedApp;
@@ -1262,11 +1288,11 @@ internal sealed class PanelComposer : IPanelBodyIntents, IPanelNoticeSink, ICont
             _ => new KeyId("win"),
         };
 
-    /// <summary>The executable without «.exe», as the administrator notice names the app.</summary>
-    private static string DisplayName(ProcessName process) =>
-        process.Value.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-            ? process.Value[..^4]
-            : process.Value;
+    /// <summary>
+    /// The app as the administrator notice names it (EJE-003): the description of its executable once read, else its
+    /// executable without «.exe» and with a capital letter.
+    /// </summary>
+    private string DisplayName(ProcessName process) => _knownName(process) ?? process.AppName;
 
     private LangCode Language() => new(_localization.Current.Locale.Code);
 }

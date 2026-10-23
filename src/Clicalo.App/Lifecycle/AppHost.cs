@@ -464,11 +464,15 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
         };
         relay.NoticeRaised += (_, notice) => composer.OnEngineNotice(notice);
 
-        // PER-003, EJE-013, SEL-003: the panel follows the app in front.
+        // PER-003, EJE-013, SEL-003: the panel follows the app in front, and names it as Windows does (EJE-003).
+        var describer = services.GetRequiredService<ForegroundDescriber>();
         composer.Follow(
             services.GetRequiredService<IForegroundMonitor>(),
-            services.GetRequiredService<ForegroundDescriber>().Describe
+            describer.Describe,
+            describer.KnownName
         );
+        services.GetRequiredService<ForegroundChangeCoordinator>().AppNamed += (_, named) =>
+            composer.OnAppNamed(named.Process);
         return window;
     }
 

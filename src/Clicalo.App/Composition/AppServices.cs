@@ -228,7 +228,10 @@ internal static class AppServices
             sp.Get<IEngineInbox>(),
             sp.Get<ForegroundDescriber>().Describe,
             Environment.IsPrivilegedProcess
-        ));
+        )
+        {
+            Names = sp.Get<ForegroundDescriber>().NameAsync,
+        });
         services.AddSingleton<ActivationArbiterRelay>();
         services.AddSingleton(sp =>
         {

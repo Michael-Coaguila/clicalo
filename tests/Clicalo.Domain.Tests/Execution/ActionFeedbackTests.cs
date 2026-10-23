@@ -43,7 +43,8 @@ public sealed class ActionFeedbackTests
         var notice = Notices(engine.Tap(Shortcuts.Tap("save", "ctrl", "s"))).ShouldHaveSingleItem();
 
         notice.Key.Value.ShouldBe("tapSent");
-        Text(notice, "app").ShouldBe("winword");
+        // Until the description of its executable is read, the app is its executable with a capital letter (D21).
+        Text(notice, "app").ShouldBe("Winword");
         Text(notice, "keys").ShouldContain("+");
     }
 

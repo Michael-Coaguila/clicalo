@@ -72,6 +72,18 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
+    /// <summary>
+    /// The name of the app in front was read (EJE-003): the notices say it instead of its executable. A name read for
+    /// an older foreground changes nothing.
+    /// </summary>
+    /// <param name="Epoch">The epoch of the foreground it was read for.</param>
+    /// <param name="Name">The description of its executable («Microsoft Word»).</param>
+    public sealed record ForegroundNamed(long Epoch, string Name) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Normal;
+    }
+
     /// <summary>The foreground thread switched layout (<c>WM_INPUTLANGCHANGE</c>).</summary>
     /// <param name="Layout">The new layout.</param>
     public sealed record LayoutChanged(KeyboardLayoutSnapshot Layout) : EngineEvent

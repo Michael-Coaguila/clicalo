@@ -14,4 +14,11 @@ public sealed record ForegroundInfo(
     long Epoch,
     ElevationState Elevation,
     KeyboardLayoutSnapshot Layout
-);
+)
+{
+    /// <summary>
+    /// The app as the notices name it («Microsoft Word», «Editor del Registro»): the description of its executable once
+    /// it was read (<see cref="EngineEvent.ForegroundNamed"/>); null until then (EJE-003).
+    /// </summary>
+    public string? DisplayName { get; init; }
+}

@@ -16,6 +16,24 @@ public readonly record struct ProcessName
     /// <summary>Whether there is no name (a manual profile, and General).</summary>
     public bool IsEmpty => string.IsNullOrEmpty(Value);
 
+    /// <summary>
+    /// The app as the notices name it when nothing better is known (EJE-003, D21 review): the executable without
+    /// «.exe», starting with a capital letter («Regedit», «WINWORD»).
+    /// </summary>
+    public string AppName
+    {
+        get
+        {
+            var name = Value ?? string.Empty;
+            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                name = name[..^4];
+            }
+
+            return name.Length == 0 ? name : char.ToUpperInvariant(name[0]) + name[1..];
+        }
+    }
+
     /// <summary>Equality without distinguishing case (PER-002).</summary>
     /// <param name="other">The other name.</param>
     public bool Equals(ProcessName other) =>

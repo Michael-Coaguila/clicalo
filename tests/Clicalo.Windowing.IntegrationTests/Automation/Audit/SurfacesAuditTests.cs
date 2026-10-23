@@ -935,7 +935,8 @@ public sealed class SurfacesAuditTests
 
                 world.Panel.ApplyContext(
                     new PanelBodyContext(
-                        ElevatedApp: "regedit",
+                        // EJE-003: the app as Windows names it, not its executable (D21 review).
+                        ElevatedApp: "Editor del Registro",
                         Notice: new PanelNotice(
                             L.Deleted,
                             new IconRef("delete"),

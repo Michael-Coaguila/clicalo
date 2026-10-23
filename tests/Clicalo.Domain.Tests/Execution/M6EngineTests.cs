@@ -183,8 +183,40 @@ public sealed class M6EngineTests
         engine.Sent.ShouldBeEmpty();
         var notice = effects.OfType<EngineEffect.Notice>().ShouldHaveSingleItem();
         notice.Urgency.ShouldBe(NoticeUrgency.Assertive);
-        notice.Text.ShouldBe(L.KeyMissing(key: "Ñ", app: "notepad"));
+        notice.Text.ShouldBe(L.KeyMissing(key: "Ñ", app: "Notepad"));
         effects.OfType<EngineEffect.CountUsage>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-003")]
+    [Trait("Req", "EC-EJE-10")]
+    public void The_notices_name_the_app_as_Windows_does_once_its_name_is_read()
+    {
+        var engine = new EngineHarness(
+            EngineHarness.DefaultConfig with
+            {
+                InterEventDelay = TimeSpan.Zero,
+            }
+        );
+        engine.Foreground("notepad.exe", layout: Layouts.English);
+        var first = engine.Epoch;
+
+        // A name read for an older foreground changes nothing; the one of the app in front is said.
+        _ = engine.Foreground("WINWORD.EXE", userSwitch: false, layout: Layouts.English);
+        _ = engine.Apply(new EngineEvent.ForegroundNamed(first, "Bloc de notas"));
+        Missing(engine).ShouldBe(L.KeyMissing(key: "Ñ", app: "WINWORD"));
+
+        // Past the debounce of the tile (TAC-002).
+        engine.Advance(TimeSpan.FromSeconds(1));
+        _ = engine.Apply(new EngineEvent.ForegroundNamed(engine.Epoch, "Microsoft Word"));
+        Missing(engine).ShouldBe(L.KeyMissing(key: "Ñ", app: "Microsoft Word"));
+
+        static Message Missing(EngineHarness engine) =>
+            engine
+                .Tap(Shortcuts.Tap("enye", "ctrl", "char:ñ"))
+                .OfType<EngineEffect.Notice>()
+                .ShouldHaveSingleItem()
+                .Text;
     }
 
     [Theory]

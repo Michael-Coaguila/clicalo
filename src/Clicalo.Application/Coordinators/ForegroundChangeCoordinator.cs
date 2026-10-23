@@ -1,5 +1,6 @@
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Execution;
+using Clicalo.Domain.Primitives;
 
 namespace Clicalo.Application.Coordinators;
 
@@ -25,6 +26,7 @@ public sealed class ForegroundChangeCoordinator : IDisposable
     private readonly Func<ExternalForeground, ForegroundDetails> _describe;
     private readonly bool _selfElevated;
     private readonly Lock _gate = new();
+    private readonly CancellationTokenSource _stopping = new();
     private ExternalForeground? _last;
     private uint? _userApp;
     private long _epoch;
@@ -56,6 +58,21 @@ public sealed class ForegroundChangeCoordinator : IDisposable
     /// </summary>
     public Func<bool> IsTrying { get; set; } = static () => false;
 
+    /// <summary>
+    /// Reads the name of the app in front as the notices say it (EJE-003): the description of its executable, off the
+    /// SysEvents thread because it reads the file; null when it has none. Set once by the composition; without it the
+    /// notices name the executable.
+    /// </summary>
+    public Func<
+        ExternalForeground,
+        ProcessName,
+        CancellationToken,
+        Task<string?>
+    >? Names { get; init; }
+
+    /// <summary>The name of an app in front was read (EJE-003); raised on any thread.</summary>
+    public event EventHandler<AppNamedEventArgs>? AppNamed;
+
     /// <summary>The epoch of the last foreground posted to the engine; zero before the first one.</summary>
     public long CurrentEpoch => Interlocked.Read(ref _epoch);
 
@@ -79,7 +96,14 @@ public sealed class ForegroundChangeCoordinator : IDisposable
     }
 
     /// <summary>Stops following the monitor.</summary>
-    public void Dispose() => _monitor.ExternalForegroundChanged -= OnExternalForegroundChanged;
+    public void Dispose()
+    {
+        _monitor.ExternalForegroundChanged -= OnExternalForegroundChanged;
+        if (!_stopping.IsCancellationRequested)
+        {
+            _stopping.Cancel();
+        }
+    }
 
     /// <summary>
     /// Maps the elevation the monitor read to what the engine obeys (EJE-013): an elevated app blocks a medium Clícalo
@@ -147,5 +171,35 @@ public sealed class ForegroundChangeCoordinator : IDisposable
                 isUserSwitch
             )
         );
+        if (Names is { } names && !details.Process.IsEmpty)
+        {
+            _ = NameAsync(names, foreground, details.Process, epoch);
+        }
+    }
+
+    private async Task NameAsync(
+        Func<ExternalForeground, ProcessName, CancellationToken, Task<string?>> names,
+        ExternalForeground foreground,
+        ProcessName process,
+        long epoch
+    )
+    {
+        string? name;
+        try
+        {
+            name = await names(foreground, process, _stopping.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (name is not { Length: > 0 })
+        {
+            return;
+        }
+
+        _ = _engine.Post(new EngineEvent.ForegroundNamed(epoch, name));
+        AppNamed?.Invoke(this, new AppNamedEventArgs(process, name));
     }
 }
