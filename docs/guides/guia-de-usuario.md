@@ -254,22 +254,28 @@ añades los tuyos.
 
 La IA propone atajos para cualquier programa. Es opcional. Todo lo demás funciona sin ella.
 
-**Necesitas una clave de API de Anthropic que sea tuya.** Clícalo no trae una y no tiene servicio propio. El
-uso de esa clave lo cobra el proveedor, no Clícalo.
+**Necesitas una clave de API que sea tuya**, de uno de estos dos proveedores. Clícalo no trae una y no tiene
+servicio propio. Lo eliges en General › IA o junto al campo de la clave:
 
-1. En «Plantillas», toca «Usar mi clave» y pega la clave.
-2. La clave se guarda en el Administrador de credenciales de Windows. No se vuelve a mostrar.
-3. La primera vez, Clícalo te pide permiso y te dice qué se envía.
+- **Claude (Anthropic):** una clave de pago de la consola de Anthropic. El uso lo cobra Anthropic, no Clícalo.
+- **Gemini (Google):** una clave de Google AI Studio, que puede ser gratuita con límites de uso. **Con una clave
+  gratuita, Google puede usar lo que se envía y sus respuestas para mejorar sus productos, y personas revisoras
+  pueden leerlo.** Con una clave de pago, no. Las condiciones de Google piden tener 18 años o más.
+
+1. En «Plantillas», toca «Usar mi clave», elige el proveedor y pega la clave.
+2. La clave se guarda en el Administrador de credenciales de Windows. No se vuelve a mostrar. Cada proveedor
+   tiene la suya: cambiar de proveedor no borra la otra.
+3. La primera vez con cada proveedor, Clícalo te pide permiso y te dice qué se envía y a quién.
 4. Escribe o dicta el nombre del programa y toca «Generar con IA».
 5. Revisa la propuesta. Marca lo que quieras guardar. Nada se instala sin que lo confirmes.
 
 **Qué se envía:** solo cuatro datos. El nombre del programa, la distribución del teclado, el idioma de tus
 programas y el idioma de Clícalo. Nada de tus documentos ni de tus atajos.
 
-Para quitarla: «Borrar clave». Pide dos toques.
+Para quitarla: «Borrar clave». Pide dos toques y borra solo la del proveedor elegido.
 
-Si algo falla, una tarjeta te dice por qué: falta la clave, la clave no vale, no hay conexión o la respuesta
-no sirve. Siempre puedes seguir con plantillas o con un perfil vacío.
+Si algo falla, una tarjeta te dice por qué: falta la clave, la clave no vale o llegaste al límite de uso del
+proveedor (como el diario de la clave gratuita de Gemini), no hay conexión o la respuesta no sirve. Siempre puedes seguir con plantillas o con un perfil vacío.
 
 ## 6. Soltar teclas y la franja roja
 

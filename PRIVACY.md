@@ -17,7 +17,14 @@ preparación y esta política se revisará antes de publicarla.
   2. **La IA, solo si tú la activas con tu propia clave de un proveedor:** al pedir una plantilla se envían
      exactamente cuatro datos: el nombre de la app, la distribución de teclado, el idioma de los programas y
      el idioma de la interfaz. Nunca tus documentos, los títulos de tus ventanas ni tus atajos. Antes de la
-     primera vez se te pide consentimiento, y puedes desactivarla.
+     primera vez con cada proveedor se te pide consentimiento, y puedes desactivarla. Los datos van al
+     proveedor que eliges, con sus propias condiciones:
+     - **Claude (Anthropic)**, con una clave de pago.
+     - **Gemini (Google)**, con una clave de Google AI Studio. **Con una clave gratuita, Google puede usar lo
+       que se envía y sus respuestas para mejorar sus productos, y personas revisoras pueden leerlo**; con una
+       clave de pago, no. Si vives en el Espacio Económico Europeo, Suiza o el Reino Unido, Google dice que
+       aplica a todos sus servicios, también al gratuito, las condiciones de datos de pago. Sus condiciones
+       piden tener 18 años o más.
   3. **Tu opinión, solo si tú la envías:** Clícalo prepara un correo o un informe con lo que ves en la
      vista previa, y eres tú quien lo envía.
 - Todo lo demás se queda en tu equipo.
@@ -26,8 +33,8 @@ preparación y esta política se revisará antes de publicarla.
 
 - Tus perfiles, atajos, ajustes y copias de seguridad, en `%AppData%\Clicalo`. Los textos de los atajos de
   tipo Texto se guardan **cifrados** y ligados a tu cuenta de Windows.
-- La clave de la IA, si la usas, en el Administrador de credenciales de Windows. Clícalo nunca la vuelve a
-  mostrar.
+- La clave de la IA, si la usas, en el Administrador de credenciales de Windows, una por proveedor. Clícalo
+  nunca la vuelve a mostrar.
 - Un registro técnico (`clicalo.log`, como máximo 5 archivos de 1 MB) que **nunca** contiene el texto que
   Clícalo escribe por ti, los títulos de tus ventanas, tus claves ni lo que se graba al capturar una
   combinación.
@@ -65,7 +72,13 @@ prepared and this policy will be reviewed before it is published.
   2. **AI, only if you enable it with your own provider key:** when you ask for a template, exactly four
      values are sent: the app name, the keyboard layout, the language of your programs and the interface
      language. Never your documents, window titles or shortcuts. You are asked for consent the first time
-     and can turn it off.
+     with each provider and can turn it off. The data go to the provider you choose, under its own terms:
+     - **Claude (Anthropic)**, with a paid key.
+     - **Gemini (Google)**, with a Google AI Studio key. **With a free key, Google may use what is sent and
+       its answers to improve its products, and human reviewers may read it**; with a paid key, it does not.
+       If you live in the European Economic Area, Switzerland or the United Kingdom, Google says it applies
+       its paid data terms to all its services, the free one included. Its terms require you to be 18 or
+       older.
   3. **Feedback, only if you send it:** Clícalo prepares an email or report with what you see in the
      preview, and you are the one who sends it.
 - Everything else stays on your computer.
@@ -74,7 +87,7 @@ prepared and this policy will be reviewed before it is published.
 
 - Your profiles, shortcuts, settings and backups, in `%AppData%\Clicalo`. Text shortcuts are stored
   **encrypted** and bound to your Windows account.
-- The AI key, if you use one, in Windows Credential Manager. Clícalo never shows it again.
+- The AI key, if you use one, in Windows Credential Manager, one per provider. Clícalo never shows it again.
 - A technical log (`clicalo.log`, at most 5 files of 1 MB) that **never** contains the text Clícalo types for
   you, your window titles, your keys or what is recorded while capturing a key combination.
 - A diagnostic package is created only on request, shown to you in full before it is saved, and kept on

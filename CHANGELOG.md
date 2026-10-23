@@ -15,6 +15,11 @@ behind each difference from the blueprint are in `docs/architecture/deviations.m
 
 ### Added
 
+- Gemini by Google as a second AI provider of «Crear con IA», still with the user's own key only (D5, ADR-0033,
+  R-38): `gemini-3.5-flash-lite` through a small `IChatClient` of its own over `generateContent` (no new package),
+  the key only in the `x-goog-api-key` header, one Credential Manager target per provider, the choice in
+  `settings.aiProvider` (document 1.2), a consent per provider that names the recipient, and a notice that on the
+  free tier Google may use and read what is sent.
 - Milestone M6, closing what the audit marked as partial or missing (catalog §6.1, R-30 and R-31; deviation D-30):
   - A pure notice queue in the interaction state (AVI-002): one notice at a time, safety and undo notices wait
     instead of being lost, fixed notices last as long as their state, and the durations follow the ×1, ×2 or ×3
