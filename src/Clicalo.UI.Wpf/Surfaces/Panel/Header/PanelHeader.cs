@@ -185,6 +185,10 @@ public sealed class PanelHeader : Grid
         Configure(_search, vm.HasSearch, vm.SearchName, vm.IsSearchOpen);
         Configure(_edit, vm.HasEdit, vm.EditName, vm.IsEditing);
         _edit.Symbol = vm.EditIcon;
+
+        // ACC-001: what is drawn «elegido» is said too: the search opens and closes its field, edit mode is on or off.
+        _search.IsExpanded = vm.IsSearchOpen;
+        _edit.IsOn = vm.IsEditing;
         Configure(_quick, vm.HasQuickSettings, vm.QuickSettingsName, vm.IsQuickSettingsOpen);
         // ACC-001: «Ajustes rápidos» opens and closes its sheet, and says which.
         _quick.IsExpanded = vm.IsQuickSettingsOpen;
