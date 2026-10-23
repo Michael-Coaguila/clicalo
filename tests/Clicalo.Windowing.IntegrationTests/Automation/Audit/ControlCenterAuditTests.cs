@@ -948,6 +948,64 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Theory]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 760, 520)]
+    [Trait("Req", "ATJ-004")]
+    [Trait("Req", "CCM-005")]
+    public void In_the_smallest_window_the_card_of_the_profile_ends_in_one_row_and_shows_its_name(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                States["shortcuts-profile-edit"](viewModel);
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                var edit = viewModel.Shortcuts.Screen.ProfileEdit.ShouldNotBeNull();
+                var buttons = new[]
+                {
+                    edit.ShareText,
+                    edit.DeleteText.ShouldNotBeNull(),
+                    edit.DoneText,
+                }
+                    .Select(name =>
+                        (System.Windows.FrameworkElement)
+                            (
+                                (UIElementAutomationPeer)
+                                    host.Peer(name, AutomationControlType.Button)
+                            ).Owner
+                    )
+                    .ToList();
+                buttons
+                    .Select(button => Math.Round(Bounds(button, host.Root).Top))
+                    .Distinct()
+                    .Count()
+                    .ShouldBe(1, "«Compartir», «Eliminar perfil» and «Listo» share a row");
+                foreach (var button in buttons)
+                {
+                    foreach (var text in InTree(button).OfType<System.Windows.Controls.TextBlock>())
+                    {
+                        Natural(text).ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, text.Text);
+                    }
+                }
+
+                var name = (System.Windows.FrameworkElement)
+                    (
+                        (UIElementAutomationPeer)
+                            host.Peer(edit.NameLabel, AutomationControlType.Edit)
+                    ).Owner;
+                AboveFade(name).ShouldBeGreaterThanOrEqualTo(-0.5, "the name of the profile");
+            }
+        );
+
     private static IExpandCollapseProvider Fold(AuditHost host, string name) =>
         host.Peer(name, AutomationControlType.Button)
             .GetPattern(PatternInterface.ExpandCollapse)
