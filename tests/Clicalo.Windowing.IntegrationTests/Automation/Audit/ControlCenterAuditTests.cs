@@ -3,7 +3,10 @@ using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using Clicalo.Application.Ports;
+using Clicalo.Application.Store;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Duplicates;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -82,6 +85,12 @@ public sealed class ControlCenterAuditTests
             cc.Shortcuts.ToggleProfileEdit();
             cc.Shortcuts.LinkAction();
         },
+        ["shortcuts-repeated-many"] = static cc =>
+        {
+            // REP-004: two repeated combinations, one of them in three places, so the card counts them.
+            SelectShortcut(cc, "ccopy");
+            cc.Shortcuts.Editor.ToggleDuplicates();
+        },
         ["shortcuts-always-visible"] = static cc =>
             cc.Shortcuts.SelectList(new ListRef.AlwaysVisible()),
         ["shortcuts-library"] = static cc => cc.Shortcuts.OpenLibrary(),
@@ -140,6 +149,25 @@ public sealed class ControlCenterAuditTests
     };
 
     /// <summary>
+    /// What the document of a state has besides the one of the tests: «Subrayar» takes Ctrl+C, which «Copiar» already
+    /// has in Always visible and in Navegador, and «Cursiva» takes Ctrl+N, the combination of «Negrita» in the same
+    /// list (REP-002: the same combination in two profiles with other names is no repetition).
+    /// </summary>
+    private static readonly Dictionary<string, Action<DocumentStore>> Documents = new(
+        StringComparer.Ordinal
+    )
+    {
+        ["shortcuts-repeated-many"] = static store =>
+        {
+            Rebind(store, "under", KeyIds.Ctrl, KeyIds.C);
+            Rebind(store, "italic", KeyIds.Ctrl, KeyIds.N);
+            DuplicateIndex
+                .Build(store.Current.Library, store.Current.Duplicates)
+                .RepeatedCombinationCount.ShouldBe(2);
+        },
+    };
+
+    /// <summary>
     /// The states of the editor: in the narrow window they are on the page of the editor, which a tap on a tile opens
     /// (CCM-005).
     /// </summary>
@@ -161,6 +189,7 @@ public sealed class ControlCenterAuditTests
         "shortcuts-app",
         "shortcuts-system",
         "shortcuts-repeated",
+        "shortcuts-repeated-many",
         "shortcuts-library",
     };
 
@@ -262,7 +291,8 @@ public sealed class ControlCenterAuditTests
                     TouchInput.Wpf,
                     "Centro de control"
                 );
-            }
+            },
+            Documents.GetValueOrDefault(state)
         );
 
     [Fact]
@@ -332,14 +362,15 @@ public sealed class ControlCenterAuditTests
 
     /// <summary>
     /// The Control Center with its six sections over fakes, its window arranged for <paramref name="width"/> and its
-    /// content hosted at that size.
+    /// content hosted at that size; <paramref name="document"/> changes the document of the tests first.
     /// </summary>
     private static void Run(
         string language,
         double width,
         double height,
         AuditLook look,
-        Action<ControlCenterViewModel, ControlCenterWindow, AuditHost> audit
+        Action<ControlCenterViewModel, ControlCenterWindow, AuditHost> audit,
+        Action<DocumentStore>? document = null
     )
     {
         var setup = new TemplatesSectionTests.Setup();
@@ -367,6 +398,7 @@ public sealed class ControlCenterAuditTests
                 .IsSuccess.ShouldBeTrue();
         }
 
+        document?.Invoke(setup.World.Store);
         var services = setup.Services with
         {
             System = system.Services.System,
@@ -412,5 +444,21 @@ public sealed class ControlCenterAuditTests
     {
         cc.Shortcuts.SelectTile(new ShortcutId(id));
         cc.Shortcuts.Refresh();
+    }
+
+    /// <summary>Gives the tap shortcut <paramref name="id"/> the combination of <paramref name="keys"/>.</summary>
+    private static void Rebind(DocumentStore store, string id, params KeyId[] keys)
+    {
+        store.Current.Library.TryGetShortcut(new ShortcutId(id), out var shortcut).ShouldBeTrue(id);
+        store
+            .Dispatch(
+                new EditShortcut(
+                    shortcut with
+                    {
+                        Action = new TapAction(KeyChord.FromKeys(keys), []),
+                    }
+                )
+            )
+            .IsSuccess.ShouldBeTrue(id);
     }
 }
