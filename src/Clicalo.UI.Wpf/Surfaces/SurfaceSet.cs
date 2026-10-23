@@ -228,6 +228,13 @@ public sealed class SurfaceSet : IDisposable
     /// <summary>The monitor the panel and the Tab view are on (PES-016).</summary>
     public string MonitorId => CurrentMonitor().Id;
 
+    /// <summary>
+    /// Whether a finger, a pen or the mouse rests on a surface in view (the bar, the handle, a window beside the bar):
+    /// nothing folds or moves under it (PAN-009).
+    /// </summary>
+    public bool IsTouched =>
+        _surfaces.Exists(static surface => surface.IsVisible && surface.IsTouching);
+
     /// <summary>The monitors as last read.</summary>
     public ImmutableArray<DisplayMonitor> Monitors => _monitors;
 

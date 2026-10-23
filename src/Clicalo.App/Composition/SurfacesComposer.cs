@@ -607,11 +607,14 @@ internal sealed class SurfacesComposer : IDockIntents
         {
             _collapseTimer?.Dispose();
             _collapseTimer = null;
+            // PAN-009: never under a finger. A hold started within the 900 ms would be cut and the bar would fold under
+            // it; when that hold ends, it schedules the fold again (PES-012).
             if (
                 CurrentForm() == PanelForm.DockOpen
                 && !_store.Current.Settings.Dock.PinOpen
                 && !_panel.QuickSettings.IsOpen
                 && !_panel.Menu.IsOpen
+                && _surfaces?.IsTouched != true
             )
             {
                 CloseBar();
