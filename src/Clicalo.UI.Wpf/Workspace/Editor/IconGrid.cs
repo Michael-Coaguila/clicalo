@@ -55,6 +55,9 @@ internal sealed class IconGrid : ItemsControl
     /// <summary>The number of columns that fit now (0 before the first layout).</summary>
     public int Columns => _columns;
 
+    /// <summary>The width of a cell now: <see cref="Cell"/>, or wider so the columns fill the width.</summary>
+    internal double CellWidth { get; private set; } = Cell;
+
     /// <summary>Shows <paramref name="icons"/>, with <paramref name="current"/> marked.</summary>
     /// <param name="icons">The icons, in order.</param>
     /// <param name="names">The name of each icon in the language of the interface, in the same order.</param>
@@ -132,8 +135,21 @@ internal sealed class IconGrid : ItemsControl
     {
         var width = ActualWidth - ComponentSize.ScrollBar;
         var columns = width <= 0 ? 0 : Math.Max(1, (int)Math.Floor((width + Gap) / (Cell + Gap)));
+        // The cells share what is left of the width, so the last column ends at the edge of the content and no dead
+        // strip is left before the scroll bar; a cell is never narrower than Cell.
+        var cellWidth = columns == 0 ? Cell : Math.Max(Cell, ((width + Gap) / columns) - Gap);
+        var resized = Math.Abs(cellWidth - CellWidth) > Stroke.Line / 2;
+        CellWidth = cellWidth;
         if (!force && columns == _columns)
         {
+            if (resized)
+            {
+                foreach (var row in Rows())
+                {
+                    row.Resize();
+                }
+            }
+
             return;
         }
 

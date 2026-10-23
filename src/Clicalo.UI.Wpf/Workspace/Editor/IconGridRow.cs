@@ -47,10 +47,20 @@ internal sealed class IconGridRow : StackPanel
 
             var icon = icons[i];
             cell.Visibility = Visibility.Visible;
+            cell.Width = _grid.CellWidth;
             cell.Tag = icon;
             ((SymbolIcon)cell.Content).Symbol = icon;
             AutomationProperties.SetName(cell, cells.Names[i]);
             Mark(cell, current);
+        }
+    }
+
+    /// <summary>Gives the cells the width the grid has for them now.</summary>
+    public void Resize()
+    {
+        foreach (OptionButton cell in Children)
+        {
+            cell.Width = _grid.CellWidth;
         }
     }
 
@@ -87,7 +97,7 @@ internal sealed class IconGridRow : StackPanel
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
-            Width = IconGrid.Cell,
+            Width = _grid.CellWidth,
             Height = IconGrid.Cell,
             Padding = new Thickness(0),
             Margin = new Thickness(0, 0, IconGrid.Gap, 0),
