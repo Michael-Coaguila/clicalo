@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
@@ -463,6 +464,81 @@ public sealed class DockSideSurfacesTests
             finally
             {
                 handle.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "REG-01")]
+    public void Every_window_beside_the_bar_has_an_id_of_its_own()
+    {
+        // D21: the arrows had the id of Quick settings (SideWindow#4). The one of the two that got its handle second
+        // never became a surface: it threw when it appeared, then showed without taking a tap and never hid again.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var world = new InteractionsWorld();
+            var panel = Panel(time, new RecordingBodyIntents());
+            var dock = new DockBarViewModel(
+                new PanelInteractionController(world.Engine, () => 1, time),
+                world.Localization,
+                new NoIntents()
+            );
+            List<NonActivatingWindow> windows =
+            [
+                .. Enum.GetValues<DockFlyout>()
+                    .Where(static flyout => flyout != DockFlyout.None)
+                    .Select(flyout => new DockFlyoutWindow(
+                        flyout,
+                        dock,
+                        panel,
+                        lab.Registry,
+                        time,
+                        theme,
+                        PanelDesktopFixture.Touch,
+                        static (_, _, _) => { }
+                    )),
+                new DockQuickWindow(
+                    world.QuickSettings,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
+                new DockCoachWindow(dock, lab.Registry, time, theme, PanelDesktopFixture.Touch),
+                new DockMenuWindow(
+                    world.Menu,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
+                new DockNoticeWindow(
+                    panel,
+                    testMode: null,
+                    dock.Labels,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
+            ];
+            try
+            {
+                windows.Select(static window => window.Id).ShouldBeUnique();
+            }
+            finally
+            {
+                foreach (var window in windows)
+                {
+                    window.Close();
+                }
+
                 theme.Dispose();
             }
         });

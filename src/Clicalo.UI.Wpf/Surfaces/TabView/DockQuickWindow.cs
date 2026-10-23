@@ -21,8 +21,12 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// </summary>
 public sealed class DockQuickWindow : TouchSurface
 {
-    /// <summary>The instance of the side window in the registry, after the three windows of the bar.</summary>
-    public const int Instance = 4;
+    /// <summary>
+    /// The instance of the side window in the registry: clear of the windows of the bar, whose instance is their
+    /// <see cref="DockFlyout"/> (1 to 4), and of the guide (10). At 4 it was the id of the arrows, and whichever of the
+    /// two got its handle second never became a surface: it showed, but could be neither used nor hidden (D21).
+    /// </summary>
+    public const int Instance = 11;
 
     /// <summary>
     /// The width of the panel M in its default layout, so the sheet beside the bar is the sheet of the panel (D19): at the
