@@ -8,8 +8,10 @@ namespace Clicalo.UI.Wpf.Workspace.Editor;
 
 /// <summary>
 /// A row of the <see cref="IconGrid"/>: its cells, reused for another row as the grid scrolls. A cell is an option of
-/// <see cref="IconGrid.Cell"/> with the icon centered in its box of <see cref="IconBox.Medium"/>, named in the language
-/// of the interface («negrita», REG-06); the icon in use is drawn «elegido» and filled.
+/// the width the grid gives it, <see cref="IconGrid.Cell"/> high, with the icon centered in its box of
+/// <see cref="IconBox.Medium"/>. It is named with the hand-written words of the icon in the language of the interface
+/// («copiar, duplicar»), or with its Material Symbols name with spaces when it has none (REG-06); a name another cell
+/// shares has that Material name as help. The icon in use is drawn «elegido» and filled.
 /// </summary>
 internal sealed class IconGridRow : StackPanel
 {
@@ -51,6 +53,7 @@ internal sealed class IconGridRow : StackPanel
             cell.Tag = icon;
             ((SymbolIcon)cell.Content).Symbol = icon;
             AutomationProperties.SetName(cell, cells.Names[i]);
+            AutomationProperties.SetHelpText(cell, cells.Helps[i]);
             Mark(cell, current);
         }
     }

@@ -74,6 +74,32 @@ public sealed class EditorCatalogFilesTests
     }
 
     [Fact]
+    [Trait("Req", "EDI-004")]
+    [Trait("Req", "EDI-005")]
+    [Trait("Req", "ACC-001")]
+    public void An_icon_is_named_with_all_its_words_and_suggested_only_from_them()
+    {
+        var catalogs = EditorCatalogFiles.Load(Catalogs, null, null, KeyLabelCatalog.Empty);
+        var icons = catalogs.Icons;
+
+        // Every hand-written word of the language names the cell: 115 icons shared their first Spanish word.
+        icons.NameOf("content_copy", LangCode.Es).ShouldBe("copiar, duplicar");
+        icons.NameOf("content_copy", LangCode.En).ShouldBe("copy, duplicate");
+        icons
+            .NameOf("pin_drop", LangCode.Es)
+            .ShouldBe("pin drop", "no hand-written word: its name");
+
+        // The keywords of Material find icons, but they do not suggest them: «Word» is not bold, «Zoom» no magnifier.
+        Suggest("Word").ShouldNotContain(new IconRef("format_bold"));
+        Suggest("Zoom").ShouldNotContain(new IconRef("search"));
+        Suggest("Zoom")[0].ShouldBe(new IconRef("zoom_in"));
+        icons.Search("zoom").ShouldContain(new IconRef("search"), "the search reads them");
+
+        ValueList<IconRef> Suggest(string name) =>
+            IconSuggestions.Suggest(name, null, LangCode.Es, icons, catalogs.Combos);
+    }
+
+    [Fact]
     [Trait("Req", "ATJ-010")]
     public void Missing_folders_give_the_empty_forms()
     {

@@ -45,6 +45,33 @@ public sealed class IconSuggestionsTests
 
     [Fact]
     [Trait("Req", "EDI-005")]
+    [Trait("Req", "EDI-004")]
+    public void The_keywords_of_Material_find_an_icon_but_never_suggest_it()
+    {
+        var catalog = new IconCatalog(
+            [
+                new IconEntry(
+                    new IconRef("search"),
+                    ["buscar", "find", "search"],
+                    "uiActions",
+                    null,
+                    ["magnify", "zoom"]
+                ),
+                new IconEntry(new IconRef("zoom_in"), ["ampliar", "zoom"], "uiActions"),
+            ],
+            [],
+            []
+        );
+
+        IconSuggestions
+            .Suggest("Zoom", null, LangCode.Es, catalog, ComboIconTable.Empty)
+            .Select(static icon => icon.Name)
+            .ShouldBe(["zoom_in"]);
+        Names(catalog.Search("magnify")).ShouldBe(["search"]);
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-005")]
     public void Words_of_two_letters_or_fewer_are_ignored() => Suggest("de la PC").ShouldBeEmpty();
 
     [Fact]

@@ -249,7 +249,8 @@ public sealed class ShortcutsProjectionTests
                 var names = picker
                     .Icons.Items.Zip(picker.IconNames.Items)
                     .ToDictionary(StringComparer.Ordinal);
-                names["content_copy"].ShouldBe("copiar", "voice access says «clic copiar»");
+                names["content_copy"]
+                    .ShouldBe("copiar, duplicar", "voice access says «clic copiar»");
                 names["save"].ShouldBe("guardar");
                 picker.Suggested.ShouldAllBe(option => option.Name.Length > 0);
             }

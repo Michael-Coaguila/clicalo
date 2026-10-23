@@ -558,6 +558,58 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "EDI-004")]
+    public void Two_icons_that_share_a_name_are_told_apart_by_their_help() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                viewModel.Shortcuts.Editor.TogglePicker();
+                viewModel.Shortcuts.Editor.SearchIcons("pausa");
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                // «pausa» is the hand-written word of two icons: their help is their own name.
+                var cells = Named(host, "pausa");
+                cells
+                    .Select(static cell => cell.GetHelpText())
+                    .ShouldBe(["pause", "pause circle"], ignoreOrder: true);
+                Named(host, "reproducir, pausa")
+                    .Single()
+                    .GetHelpText()
+                    .ShouldBeEmpty("a name of its own");
+            }
+        );
+
+    private static List<AutomationPeer> Named(AuditHost host, string name)
+    {
+        var found = new List<AutomationPeer>();
+        Collect(UIElementAutomationPeer.CreatePeerForElement(host.Root));
+        return found;
+
+        void Collect(AutomationPeer peer)
+        {
+            peer.ResetChildrenCache();
+            foreach (var child in peer.GetChildren() ?? [])
+            {
+                if (
+                    child.IsControlElement()
+                    && string.Equals(child.GetName(), name, StringComparison.Ordinal)
+                )
+                {
+                    found.Add(child);
+                }
+
+                Collect(child);
+            }
+        }
+    }
+
     private static ISelectionItemProvider Selection(AutomationPeer peer) =>
         peer.GetPattern(PatternInterface.SelectionItem)
             .ShouldBeAssignableTo<ISelectionItemProvider>()!;

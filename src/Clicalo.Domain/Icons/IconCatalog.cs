@@ -138,9 +138,9 @@ public sealed class IconCatalog
     }
 
     /// <summary>
-    /// The name of <paramref name="icon"/> for UI Automation and voice access (REG-06): its first hand-written word in
-    /// <paramref name="language"/> («negrita»), or in Spanish, or its Material Symbols name with spaces («format bold»)
-    /// when it has no hand-written words.
+    /// The name of <paramref name="icon"/> for UI Automation and voice access (REG-06): all its hand-written words in
+    /// <paramref name="language"/> («copiar, duplicar»), or in Spanish, or its Material Symbols name with spaces
+    /// («format bold») when it has no hand-written words.
     /// </summary>
     /// <param name="icon">The Material Symbols name.</param>
     /// <param name="language">The language of the interface.</param>
@@ -164,8 +164,12 @@ public sealed class IconCatalog
                 .Distinct(StringComparer.Ordinal),
         ];
 
+    // The search reads the hand-written words, the keywords of Material and the name; the suggestions only the
+    // hand-written words (FoldedWords).
     private static string Haystack(IconEntry entry) =>
-        IconText.Fold(string.Join(' ', entry.Tags.Items) + " " + entry.Icon.Name);
+        IconText.Fold(
+            string.Join(' ', entry.Tags.Items.Concat(entry.Keywords.Items)) + " " + entry.Icon.Name
+        );
 
     private static ValueList<IconRef> Distinct(IEnumerable<IconRef> icons) =>
         new([.. icons.Where(static icon => !string.IsNullOrEmpty(icon.Name)).Distinct()]);

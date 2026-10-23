@@ -271,12 +271,9 @@ internal sealed class ControlCenterTestWorld
                                     l.Value.EnumerateArray().Select(t => t.GetString()!)
                                 )
                             : [],
-                        .. icon.GetProperty("keywords")
-                            .EnumerateArray()
-                            .Select(t => t.GetString()!),
                     ],
                     icon.GetProperty("category").GetString()!,
-                    // As the reader of Infrastructure: the first hand-written word of each language names the icon.
+                    // As the reader of Infrastructure: every hand-written word of each language names the icon.
                     icon.TryGetProperty("tags", out var named)
                         ? new LocalizedText(
                             named
@@ -284,10 +281,15 @@ internal sealed class ControlCenterTestWorld
                                 .Where(l => l.Value.GetArrayLength() > 0)
                                 .Select(l => new KeyValuePair<LangCode, string>(
                                     new LangCode(l.Name),
-                                    l.Value[0].GetString()!
+                                    string.Join(
+                                        ", ",
+                                        l.Value.EnumerateArray().Select(t => t.GetString()!)
+                                    )
                                 ))
                         )
-                        : null
+                        : null,
+                    // The keywords of Material: the search reads them, the suggestions do not (EDI-005).
+                    [.. icon.GetProperty("keywords").EnumerateArray().Select(t => t.GetString()!)]
                 ))
                 .ToList(),
             root.GetProperty("featured")

@@ -355,11 +355,21 @@ public sealed class ShortcutsWorkspace
         });
     }
 
-    /// <summary>The icons suggested for the shortcut in the editor (EDI-004, EDI-005).</summary>
+    /// <summary>
+    /// The icons suggested for the shortcut in the editor (EDI-004, EDI-005), from its name in Spanish and in English, as
+    /// the prototype does: the same shortcut gets the same suggestions whatever the language of the interface.
+    /// </summary>
     public ValueList<IconRef> SuggestedIcons() =>
         Selected is { } shortcut
             ? IconSuggestions.Suggest(
-                Display(shortcut.Name),
+                string.Join(
+                    ' ',
+                    new[]
+                    {
+                        shortcut.Name.Get(LangCode.Es, LangCode.En),
+                        shortcut.Name.Get(LangCode.En, LangCode.Es),
+                    }.Distinct(StringComparer.Ordinal)
+                ),
                 ActionKinds.ChordOf(shortcut.Action),
                 AppsLanguage,
                 Catalogs.Icons,

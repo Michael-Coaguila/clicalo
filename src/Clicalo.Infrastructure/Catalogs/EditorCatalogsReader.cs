@@ -37,15 +37,17 @@ public static class EditorCatalogsReader
                             tags.AddRange(words);
                             if (words.Count > 0)
                             {
-                                label.Add(new(new LangCode(language.Name), words[0]));
+                                // Every word of the language names it: «copiar, duplicar», not only «copiar».
+                                label.Add(
+                                    new(new LangCode(language.Name), string.Join(", ", words))
+                                );
                             }
                         }
                     }
 
-                    if (icon.TryGetProperty("keywords", out var keywords))
-                    {
-                        tags.AddRange(Words(keywords));
-                    }
+                    List<string> keywords = icon.TryGetProperty("keywords", out var material)
+                        ? [.. Words(material)]
+                        : [];
 
                     var category = icon.TryGetProperty("category", out var id)
                         ? id.GetString() ?? string.Empty
@@ -55,7 +57,8 @@ public static class EditorCatalogsReader
                             new IconRef(ContentJson.String(icon, "id")),
                             [.. tags],
                             category,
-                            label.Count > 0 ? new LocalizedText(label) : null
+                            label.Count > 0 ? new LocalizedText(label) : null,
+                            [.. keywords]
                         )
                     );
                 }

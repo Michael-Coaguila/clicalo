@@ -23,6 +23,7 @@ internal sealed class IconGrid : ItemsControl
 
     private IReadOnlyList<string> _icons = [];
     private IReadOnlyList<string> _names = [];
+    private HashSet<string> _shared = new(StringComparer.Ordinal);
     private string _current = string.Empty;
     private int _columns;
 
@@ -78,6 +79,12 @@ internal sealed class IconGrid : ItemsControl
         _current = current ?? string.Empty;
         if (!same)
         {
+            // A name two cells share is told apart by the icon's own name, as help (ACC-001).
+            _shared = names
+                .GroupBy(static name => name, StringComparer.Ordinal)
+                .Where(static group => group.Skip(1).Any())
+                .Select(static group => group.Key)
+                .ToHashSet(StringComparer.Ordinal);
             Rebuild(force: true);
         }
         else if (!marked)
@@ -166,22 +173,27 @@ internal sealed class IconGrid : ItemsControl
             var count = Math.Min(columns, _icons.Count - start);
             var icons = new string[count];
             var names = new string[count];
+            var helps = new string[count];
             for (var i = 0; i < count; i++)
             {
                 icons[i] = _icons[start + i];
                 names[i] = start + i < _names.Count ? _names[start + i] : icons[i];
+                helps[i] = _shared.Contains(names[i]) ? icons[i].Replace('_', ' ') : string.Empty;
             }
 
-            rows.Add(new RowCells(icons, names));
+            rows.Add(new RowCells(icons, names, helps));
         }
 
         ItemsSource = rows;
     }
 
-    /// <summary>The cells of a row: its icons and their names, in the same order.</summary>
+    /// <summary>The cells of a row: its icons, their names and their help, in the same order.</summary>
     /// <param name="Icons">The Material Symbols names.</param>
     /// <param name="Names">What UI Automation and voice access call each cell.</param>
-    internal sealed record RowCells(string[] Icons, string[] Names);
+    /// <param name="Helps">
+    /// The Material Symbols name with spaces of a cell whose name another cell of the grid shares; empty otherwise.
+    /// </param>
+    internal sealed record RowCells(string[] Icons, string[] Names, string[] Helps);
 
     /// <summary>The grid is one group for UI Automation; its cells, the rows in view, are its options.</summary>
     private sealed class Peer(IconGrid owner) : FrameworkElementAutomationPeer(owner)

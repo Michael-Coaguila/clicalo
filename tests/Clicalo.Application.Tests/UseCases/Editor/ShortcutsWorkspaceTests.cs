@@ -31,6 +31,7 @@ public sealed class ShortcutsWorkspaceTests
             [
                 new IconEntry(new IconRef("save"), ["guardar", "save"]),
                 new IconEntry(new IconRef("picture_as_pdf"), ["pdf"]),
+                new IconEntry(new IconRef("content_copy"), ["copy"]),
             ],
             [],
             []
@@ -47,6 +48,17 @@ public sealed class ShortcutsWorkspaceTests
                             new IconRef("content_paste"),
                             new CategoryId("edit"),
                             new TapAction(KeyChord.FromKeys(KeyIds.Ctrl, KeyIds.V), []),
+                            false
+                        ),
+                        new TemplateShortcut(
+                            "copy",
+                            new LocalizedText([
+                                new(LangCode.Es, "Copiar"),
+                                new(LangCode.En, "Copy"),
+                            ]),
+                            new IconRef("bolt"),
+                            new CategoryId("edit"),
+                            new TapAction(KeyChord.FromKeys(KeyIds.Ctrl, KeyIds.K), []),
                             false
                         ),
                     ]
@@ -301,6 +313,27 @@ public sealed class ShortcutsWorkspaceTests
         _workspace
             .Shortcuts.Select(s => s.Id)
             .ShouldBe([paste, StoreSamples.Save, StoreSamples.Bold]);
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-005")]
+    [Trait("Req", "EDI-004")]
+    public void The_suggestions_read_the_name_in_Spanish_and_in_English()
+    {
+        _workspace.SelectList(Word);
+        _workspace.OpenLibrary();
+        var category = _workspace
+            .Categories()
+            .Single(c => string.Equals(c.Id, "edit", StringComparison.Ordinal));
+
+        _workspace.AddFromLibrary(
+            category,
+            category.Items.Single(i => string.Equals(i.ItemId, "copy", StringComparison.Ordinal))
+        );
+        _workspace.Select(_workspace.Shortcuts[^1].Id);
+
+        // «Copiar» alone finds nothing in this library; «Copy», its English name, does, whatever the interface says.
+        _workspace.SuggestedIcons().ShouldContain(new IconRef("content_copy"));
     }
 
     [Fact]

@@ -33,7 +33,7 @@ public sealed class IconCatalogTests
     [Fact]
     [Trait("Req", "REG-06")]
     [Trait("Req", "EDI-004")]
-    public void An_icon_is_named_with_its_first_hand_written_word_in_the_language_of_the_interface()
+    public void An_icon_is_named_with_its_hand_written_words_in_the_language_of_the_interface()
     {
         Catalog.NameOf("format_bold", LangCode.Es).ShouldBe("negrita");
         Catalog.NameOf("format_bold", LangCode.En).ShouldBe("bold");
