@@ -74,6 +74,9 @@ public sealed class TemplatesSectionView : Grid
     private bool _narrow;
     private int? _renaming;
     private int? _renamingShown;
+    private int? _keysOpen;
+    private int? _keysShown;
+    private bool _blankShown;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The section.</param>
@@ -755,8 +758,14 @@ public sealed class TemplatesSectionView : Grid
             var form = BlankForm(model);
             form.Margin = new Thickness(0, Space.S4, 0, 0);
             column.Children.Add(form);
+            if (!_blankShown)
+            {
+                // Only when it opens: the form comes into view under «Perfil vacío».
+                column.Loaded += (_, _) => column.BringIntoView();
+            }
         }
 
+        _blankShown = model.Open;
         return column;
     }
 
@@ -1050,6 +1059,7 @@ public sealed class TemplatesSectionView : Grid
         if (!model.HasContent)
         {
             _renaming = null;
+            _keysShown = null;
             return null;
         }
 
@@ -1110,12 +1120,14 @@ public sealed class TemplatesSectionView : Grid
         }
 
         _renaming = null;
+        _keysOpen = null;
         foreach (var row in model.Rows)
         {
             column.Children.Add(Spaced(Row(row), Space.S2));
         }
 
         _renamingShown = _renaming;
+        _keysShown = _keysOpen;
         return column;
     }
 
@@ -1221,6 +1233,8 @@ public sealed class TemplatesSectionView : Grid
             edit.IsExpanded = row.Editing;
             edit.IsActive = row.Editing;
             edit.VerticalAlignment = VerticalAlignment.Center;
+            // The tools of the row keep the gap between controls, so two rings of «elegido» never touch.
+            edit.Margin = new Thickness(Space.S2, 0, 0, 0);
             DockPanel.SetDock(edit, Dock.Right);
             line.Children.Add(edit);
             if (row.KeysName is { } keysName)
@@ -1236,6 +1250,7 @@ public sealed class TemplatesSectionView : Grid
                 keys.IsExpanded = row.Combo is not null;
                 keys.IsActive = row.Combo is not null;
                 keys.VerticalAlignment = VerticalAlignment.Center;
+                keys.Margin = new Thickness(Space.S2, 0, 0, 0);
                 DockPanel.SetDock(keys, Dock.Right);
                 line.Children.Add(keys);
             }
@@ -1267,7 +1282,13 @@ public sealed class TemplatesSectionView : Grid
 
         if (row.Combo is { } combo)
         {
+            _keysOpen = row.Index;
             column.Children.Add(Spaced(ComboView.Build(combo, _viewModel.RowKeys), Space.S3));
+            if (_keysShown != row.Index)
+            {
+                // Only when the keys open: the row and its keys come into view in the narrow preview column.
+                column.Loaded += (_, _) => column.BringIntoView();
+            }
         }
 
         return column;
