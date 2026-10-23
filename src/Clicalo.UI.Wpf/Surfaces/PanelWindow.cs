@@ -195,8 +195,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         viewModel.Picker.PropertyChanged += OnPickerChanged;
 
         // The notices that wait for an answer go at the foot of the body, one above the other, over the tiles; the layer
-        // starts in the gap above the first row it covers, never across a row, and the cards stay at its foot.
-        var notices = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom };
+        // starts in the gap above the first row it covers, never across a row, and the cards stand in the middle of the
+        // rows it covers, so what the whole rows leave is shared above and below them (D21 review: a hole above).
+        var notices = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         notices.Children.Add(_body.AdminNotice);
         if (suggestion is not null)
         {
@@ -679,34 +680,44 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
     private Rect BodyRegion() => Span(BodyTop(), FootTop());
 
     /// <summary>
-    /// The region of the layer at the foot of the body (the notices that wait for an answer, the tile menu): the body,
-    /// and in Compact the body above «Qué ver», so the cards of a notice never bury the row of the profiles and the
-    /// pages. A card taller than that covers the row too rather than being cut (CUA-011, D21 review: the administrator
-    /// notice in S Compact without the sticky keys row). The tile menu keeps the whole body: any tap outside it only
-    /// closes it (CUA-014).
+    /// The region of the layer at the foot of the body (the notices that wait for an answer, the tile menu). A card
+    /// starts no higher than the grid, so Always visible and the sticky keys stay in sight (REG-03, D21 review); in
+    /// Compact it stays above «Qué ver», so it never buries the row of the profiles and the pages. A card taller than
+    /// that covers «Qué ver» and the pager, and only a card taller still covers the whole body: it is never cut (CUA-011).
+    /// The tile menu keeps the whole body: any tap outside it only closes it (CUA-014).
     /// </summary>
     private Rect FootLayerRegion()
     {
         var body = BodyRegion();
-        if (
-            !_viewModel.Layout.Compact
-            || _body.Selector.Visibility == Visibility.Collapsed
-            || _body.TileMenu?.Visibility == Visibility.Visible
-        )
+        var compact = _viewModel.Layout.Compact;
+        if (_body.TileMenu?.Visibility == Visibility.Visible)
         {
-            _footTakesBody = false;
+            _footTakesBody = compact;
             return body;
         }
 
-        var above = Span(BodyTop(), TopOf(_body.Selector) - Space.S2);
-        _bottomLayer.Measure(new Size(above.Width, double.PositiveInfinity));
-        _footTakesBody = _bottomLayer.DesiredSize.Height > above.Height;
-        return _footTakesBody ? body : above;
+        var top = Math.Clamp(TopOf(_body.GridArea) - Space.S1, body.Top, body.Bottom);
+        var foot = Span(top, body.Bottom);
+        _bottomLayer.Measure(new Size(body.Width, double.PositiveInfinity));
+        var needed = _bottomLayer.DesiredSize.Height;
+        if (compact && _body.Selector.Visibility != Visibility.Collapsed)
+        {
+            var grid = Span(top, TopOf(_body.Selector) - Space.S2);
+            if (needed <= grid.Height)
+            {
+                _footTakesBody = false;
+                return grid;
+            }
+        }
+
+        _footTakesBody = compact;
+        return needed <= foot.Height ? foot : body;
     }
 
     /// <summary>
-    /// Whether the layer at the foot of the body shows over the whole Compact body (<see cref="FootLayerRegion"/>): the
-    /// rows under it are hidden then, as under any layer, so neither the finger nor UI Automation reaches them.
+    /// Whether the layer at the foot of the body shows over «Qué ver» and the pager of the Compact body
+    /// (<see cref="FootLayerRegion"/>): the rows under it are hidden then, as under any layer, so neither the finger nor
+    /// UI Automation reaches them.
     /// </summary>
     private bool FootCovers() =>
         _footTakesBody

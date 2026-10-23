@@ -373,6 +373,14 @@ public sealed class SurfacesAuditTests
                     window.Body.Selector.Visibility.ShouldBe(Visibility.Hidden, name);
                     window.Body.Pager.Visibility.ShouldNotBe(Visibility.Visible, name);
                 }
+
+                if (string.Equals(state, "notices", StringComparison.Ordinal) && allOn)
+                {
+                    // REG-03 (D21 review): a card at the foot never hides Always visible nor the sticky keys while it
+                    // fits under them; the latched modifiers stay in sight.
+                    window.Body.Strip.Visibility.ShouldBe(Visibility.Visible, name);
+                    window.Body.Sticky.Visibility.ShouldBe(Visibility.Visible, name);
+                }
                 if (PagedStates.Contains(state))
                 {
                     world.Panel.Pager.PageCount.ShouldBeGreaterThan(1, name);
