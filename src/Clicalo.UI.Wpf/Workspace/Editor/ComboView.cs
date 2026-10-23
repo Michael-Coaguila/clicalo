@@ -93,7 +93,12 @@ internal static class ComboView
 
         modifiers.Margin = new Thickness(0, Space.S3, 0, 0);
         column.Children.Add(modifiers);
-        var groups = new WrapPanel { Margin = new Thickness(0, Space.S3, -Space.S2, -Space.S2) };
+        // The groups wrap as the flex of the prototype: balanced rows that each reach the edge, never a chip alone.
+        var groups = new JustifiedWrap
+        {
+            Gap = Space.S2,
+            Margin = new Thickness(0, Space.S3, 0, 0),
+        };
         foreach (var group in model.Groups)
         {
             var chip = new OptionButton
@@ -101,7 +106,6 @@ internal static class ComboView
                 Kind = OptionKind.Chip,
                 Content = group.Label,
                 IsSelected = group.Selected,
-                Margin = new Thickness(0, 0, Space.S2, Space.S2),
             };
             AutomationProperties.SetName(chip, group.Label);
             chip.Click += (_, _) => editor.ChooseGroup(group.Group);

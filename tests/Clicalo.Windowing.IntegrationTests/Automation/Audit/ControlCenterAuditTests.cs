@@ -437,6 +437,63 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Theory]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1371, 859)]
+    [Trait("Req", "EDI-008")]
+    public void The_groups_of_keys_fill_their_rows_and_never_leave_a_chip_alone(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, window, host) =>
+            {
+                window.ShowShortcutPage();
+                host.LayOut();
+                var chips = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static chip =>
+                        chip.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Chip
+                        && System.Windows.Media.VisualTreeHelper.GetParent(chip)
+                            is System.Windows.Controls.Panel { } panel
+                        && string.Equals(
+                            panel.GetType().Name,
+                            "JustifiedWrap",
+                            StringComparison.Ordinal
+                        )
+                    )
+                    .ToList();
+                chips.Count.ShouldBeGreaterThan(3);
+                var wrap = (System.Windows.FrameworkElement)
+                    System.Windows.Media.VisualTreeHelper.GetParent(chips[0]);
+                var rows = chips
+                    .Select(chip =>
+                        (
+                            Box: chip.TransformToAncestor(wrap)
+                                .TransformBounds(new System.Windows.Rect(chip.RenderSize)),
+                            Chip: chip
+                        )
+                    )
+                    .GroupBy(static cell => Math.Round(cell.Box.Top))
+                    .ToList();
+                foreach (var row in rows)
+                {
+                    row.Min(static cell => cell.Box.Left).ShouldBe(0, 1);
+                    row.Max(static cell => cell.Box.Right).ShouldBe(wrap.ActualWidth, 1);
+                    if (rows.Count > 1)
+                    {
+                        row.Count().ShouldBeGreaterThan(1, "a chip alone under a full row");
+                    }
+                }
+            }
+        );
+
     private static ISelectionItemProvider Selection(AutomationPeer peer) =>
         peer.GetPattern(PatternInterface.SelectionItem)
             .ShouldBeAssignableTo<ISelectionItemProvider>()!;
