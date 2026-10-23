@@ -502,7 +502,7 @@
     "showTabsNote": {
       "notes": "Nota bajo el interruptor del selector de perfil: cómo llegar a Frecuentes sin la fila (GEN-007, SEL-006). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "showTabsD",
-      "text": { "es": "Sin esta fila, toca el nombre del perfil en la cabecera para ver ★ Frecuentes y tus perfiles.", "en": "Without this row, tap the profile name in the header to see ★ Frequent and your profiles." }
+      "text": { "es": "Sin esta fila, toca el nombre del perfil en la cabecera para ver ★ Frecuentes y tus perfiles.", "en": "Without this row, tap the profile name in the header to see ★ Frequents and your profiles." }
     },
     "textSmaller": {
       "notes": "Nombre accesible del botón − del tamaño de texto (GEN-004). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
@@ -615,9 +615,9 @@
       "text": { "es": "Se soltaron las teclas al bloquear o suspender el equipo", "en": "Keys were released when the computer was locked or suspended" }
     },
     "freqEmptyT": {
-      "notes": "Título de la tarjeta de Frecuentes vacío (CUA-010, catálogo §9). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
+      "notes": "Título de la tarjeta de Frecuentes vacío (CUA-010, catálogo §9). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo. Revisado en M7: en inglés, «Frequents» es el nombre de la lista. Pendiente de ratificar (D21).",
       "after": "emptyProfS",
-      "text": { "es": "Aún no hay frecuentes", "en": "No frequents yet" }
+      "text": { "es": "Aún no hay frecuentes", "en": "Nothing in Frequents yet" }
     },
     "freqEmptyS": {
       "notes": "Texto de la tarjeta de Frecuentes vacío (CUA-010, catálogo §9). Texto nuevo de M6, pendiente de ratificar en §6.1 del catálogo.",
@@ -883,7 +883,7 @@
       "after": "ctxHideT",
       "plural": {
         "es": { "one": "Fijado. Frecuentes solo muestra {count} fijado", "other": "Fijado. Frecuentes solo muestra los {count} primeros fijados" },
-        "en": { "one": "Pinned. Frequent only shows {count} pin", "other": "Pinned. Frequent only shows the first {count} pins" }
+        "en": { "one": "Pinned. Frequents only shows {count} pin", "other": "Pinned. Frequents only shows the first {count} pins" }
       }
     },
     "delA": {
@@ -894,7 +894,7 @@
     "hideA": {
       "notes": "Nombre accesible de la × de una ficha de Frecuentes en modo edición, que la quita de Frecuentes (CUA-013, REG-06). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
       "after": "delA",
-      "text": { "es": "Quitar {name} de Frecuentes", "en": "Remove {name} from Frequent" }
+      "text": { "es": "Quitar {name} de Frecuentes", "en": "Remove {name} from Frequents" }
     },
     "szS": {
       "notes": "Letra del tamaño S en Ajustes rápidos (AJR-001; el nombre accesible es [sizeS]). Texto nuevo de M3, pendiente de ratificar en §6.1 del catálogo.",
@@ -1788,6 +1788,58 @@
         "es": "Reabrir como administrador",
         "en": "Reopen as administrator"
       }
+    },
+    "freq": {
+      "notes": "Nombre de la lista Frecuentes (FRE-001). En inglés «Frequent» como nombre daba textos ambiguos («Frequent reset»); la lista se llama «Frequents» en todos los textos. El español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "Frecuentes", "en": "Frequents" }
+    },
+    "resetFreq": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Reiniciar Frecuentes", "en": "Reset Frequents" }
+    },
+    "resetFreqD": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Borra el historial de uso y los atajos fijados en Frecuentes.", "en": "Clears usage history and shortcuts pinned to Frequents." }
+    },
+    "resetFreqT": {
+      "notes": "Mismo motivo que [freq]: «Frequent reset» se leía como «un reinicio frecuente». Pendiente de ratificar (D21).",
+      "text": { "es": "Frecuentes reiniciado", "en": "Frequents reset" }
+    },
+    "ctxPin": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Fijar en Frecuentes", "en": "Pin to Frequents" }
+    },
+    "ctxPinT": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Fijado en Frecuentes", "en": "Pinned to Frequents" }
+    },
+    "ctxHide": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Quitar de Frecuentes", "en": "Remove from Frequents" }
+    },
+    "ctxHideT": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Quitado de Frecuentes", "en": "Removed from Frequents" }
+    },
+    "mFreq": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Siempre Frecuentes", "en": "Always Frequents" }
+    },
+    "modeFreqT": {
+      "notes": "Mismo motivo que [freq]. Pendiente de ratificar (D21).",
+      "text": { "es": "Mostrando siempre Frecuentes", "en": "Always showing Frequents" }
+    },
+    "showTabsD": {
+      "notes": "Mismo motivo que [freq]; el español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "La fila con ★ Frecuentes y tu perfil. Si la ocultas, el perfil cambia igual con la app activa.", "en": "The row with ★ Frequents and your profile. If hidden, the profile still follows the active app." }
+    },
+    "co2d": {
+      "notes": "Paso 2 de la guía de la Pestaña (PES-015). Mismo motivo que [freq]; el español no cambia. Pendiente de ratificar (D21).",
+      "text": { "es": "★ muestra tus Frecuentes; el otro botón, tu perfil. Auto/Fijo decide si cambia con la app.", "en": "★ shows Frequents; the other button, your profile. Auto/Fixed decides if it follows the app." }
+    },
+    "autoW": {
+      "notes": "Lo que muestra Frecuentes en la barra «Tu panel muestra» de Atajos (ATJ-001). En español «Frecuentes automático» no concordaba; en inglés «Frequents automatic» no se entendía. Pendiente de ratificar (D21).",
+      "text": { "es": "automáticos", "en": "auto-filled" }
     }
   }
 }

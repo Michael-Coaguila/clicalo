@@ -29,7 +29,7 @@ public sealed class ShortcutsProjectionTests
                     .ShouldBe([
                         ("push_pin", "Siempre visible", "1"),
                         ("description", "Word", "6 · app activa"),
-                        ("star", "Frecuentes", "automático"),
+                        ("star", "Frecuentes", "automáticos"),
                     ]);
                 bar.Duplicates.ShouldNotBeNull("the chip of repeated combinations (REP-003)");
             }

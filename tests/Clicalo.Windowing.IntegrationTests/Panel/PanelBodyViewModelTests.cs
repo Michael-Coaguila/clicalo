@@ -442,7 +442,7 @@ public sealed class PanelBodyViewModelTests
         panel.Relocalize();
 
         panel.Notices.Message.ShouldBe("Ready. Tap a button to use it.");
-        panel.Selector.FrequentsName.ShouldBe("Frequent");
+        panel.Selector.FrequentsName.ShouldBe("Frequents");
     }
 
     [Fact]
