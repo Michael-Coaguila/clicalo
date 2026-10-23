@@ -47,6 +47,7 @@ public sealed class TemplatesSectionView : Grid
     private readonly ContentControl _previewHead = new() { Focusable = false };
     private readonly ContentControl _previewBody = new() { Focusable = false };
     private readonly ContentControl _previewFoot = new() { Focusable = false };
+    private bool _keyFieldShown;
     private readonly ColumnDefinition _contentColumn = new()
     {
         Width = new GridLength(1, GridUnitType.Star),
@@ -434,11 +435,20 @@ public sealed class TemplatesSectionView : Grid
         if (model.KeyFieldOpen)
         {
             column.Children.Add(KeyField(model));
+
+            // The keyboard goes to the key only when its field opens: the card is built again on every letter of the
+            // app field, and taking the focus each time sent the rest of a dictated name into the key (D20 review).
+            if (!_keyFieldShown)
+            {
+                _ = Dispatcher.BeginInvoke(() => Keyboard.Focus(_key));
+            }
         }
         else
         {
             _key.Clear();
         }
+
+        _keyFieldShown = model.KeyFieldOpen;
 
         if (model.Consent is { } consent)
         {
@@ -481,6 +491,9 @@ public sealed class TemplatesSectionView : Grid
                 _viewModel.SaveKey(key);
             }
         );
+        // As tall as the field of the key beside them, as «Generar» beside the field of the app.
+        paste.Size = ControlSize.Medium;
+        done.Size = ControlSize.Medium;
         var row = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(done, Dock.Right);
         DockPanel.SetDock(paste, Dock.Right);
@@ -506,7 +519,6 @@ public sealed class TemplatesSectionView : Grid
             column.Children.Add(Spaced(remove, Space.S2));
         }
 
-        _ = Dispatcher.BeginInvoke(() => Keyboard.Focus(_key));
         return column;
     }
 
