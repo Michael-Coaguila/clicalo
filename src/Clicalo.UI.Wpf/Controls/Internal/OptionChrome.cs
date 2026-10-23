@@ -264,13 +264,20 @@ internal static class OptionChrome
                     .With(Counter.CountProperty, Templates.Bind(count))
                     .With(FrameworkElement.MarginProperty, new Thickness(Space.S1, 0, 0, 0))
                     .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
+                // A hidden twin of the counter on the other side keeps the icon on the axis of the label, as the
+                // icons of the items without a counter.
+                var balance = Templates
+                    .Element<Counter>()
+                    .With(Counter.CountProperty, Templates.Bind(count))
+                    .With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S1, 0))
+                    .With(UIElement.VisibilityProperty, Visibility.Hidden);
                 // The counter goes beside the icon, in a slot of its own: it never covers it.
                 var head = Templates
                     .Element<StackPanel>()
                     .With(StackPanel.OrientationProperty, Orientation.Horizontal)
                     .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center)
                     .With(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, Space.S1))
-                    .Add(icon, counter);
+                    .Add(balance, icon, counter);
                 text.With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
                 body = Templates
                     .Element<StackPanel>(ControlChrome.ContentPart)

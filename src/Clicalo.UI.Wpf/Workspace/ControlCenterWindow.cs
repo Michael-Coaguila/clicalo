@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shell;
+using System.Windows.Threading;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
 using Clicalo.Presentation.ControlCenter;
@@ -58,6 +59,7 @@ public sealed class ControlCenterWindow : Window
     private readonly ContentControl _crumb = new() { Focusable = false };
     private readonly ContentControl _languages = new() { Focusable = false };
     private readonly StackPanel _nav = new();
+    private readonly ThemedScrollViewer _railScroll = new();
     private readonly ContentControl _section = new() { Focusable = false };
     private readonly StatusBar _status = new();
     private readonly ShortcutsSectionView _shortcuts;
@@ -67,14 +69,7 @@ public sealed class ControlCenterWindow : Window
     private readonly TouchPrecisionView _touch;
     private readonly AboutSectionView? _about;
     private readonly TitleBar _titleBar = new();
-    private readonly SymbolIcon _grip = new()
-    {
-        Symbol = "south_east",
-        Size = IconBox.Badge,
-        Width = ControlHeight.Small,
-        Height = ControlHeight.Small,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
+    private readonly Grid _grip = Grip();
     private readonly LiveAnnouncer _statusAnnouncer;
     private string? _announced;
     private bool _closing;
@@ -113,7 +108,6 @@ public sealed class ControlCenterWindow : Window
         _titleBar.Trailing = _languages;
         _titleBar.ResizeGrip = _grip;
         _titleBar.Attach(this, viewModel.Close);
-        Ui.Ink(_grip, SymbolIcon.ForegroundProperty, ColorToken.Muted);
 
         var layout = new Grid();
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -128,14 +122,14 @@ public sealed class ControlCenterWindow : Window
             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
         );
         // The rail scrolls when the window is too short for its six sections; the channel of its bar is its right
-        // margin, so nothing moves when the bar appears.
+        // margin, so nothing moves when the bar appears, and the items keep Space.S1 from it and from the edge, so
+        // the ring of «elegido» never touches the bar.
+        _railScroll.Content = _nav;
+        _railScroll.Padding = new Thickness(Space.S1, Space.S3, Space.S1, Space.S3);
+        _railScroll.SizeChanged += (_, _) => RevealSelected();
         var rail = new Border
         {
-            Child = new ThemedScrollViewer
-            {
-                Content = _nav,
-                Padding = new Thickness(Space.S2, Space.S3, 0, Space.S3),
-            },
+            Child = _railScroll,
             BorderThickness = new Thickness(0, 0, Theming.Generated.Stroke.Line, 0),
         };
         Ui.Ink(rail, Border.BackgroundProperty, ColorToken.Side);
@@ -437,12 +431,14 @@ public sealed class ControlCenterWindow : Window
             row.Children.Add(button);
         }
 
+        // The segments of 44 sit inside their card, as in a track, so the ring of the chosen one never merges with
+        // its line, and the card of 48 keeps air above and below in the bar of 56.
         var group = Ui.Card(
             row,
             ColorToken.Card,
             ColorToken.Border,
             Radii.Medium,
-            new Thickness(0)
+            new Thickness(Space.S1 / 2)
         );
         AutomationProperties.SetName(group, _viewModel.LanguageName);
         return group;
@@ -482,6 +478,67 @@ public sealed class ControlCenterWindow : Window
             button.Click += (_, _) => _viewModel.Select(item.Section);
             _nav.Children.Add(button);
         }
+
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, RevealSelected);
+    }
+
+    /// <summary>
+    /// Keeps the section in view visible in the rail when the window is too short for the six (CCM-005): in the
+    /// smallest window «Clícalo y contacto» is under the fade otherwise.
+    /// </summary>
+    private void RevealSelected()
+    {
+        foreach (var child in _nav.Children)
+        {
+            if (child is OptionButton { IsSelected: true } selected && selected.IsLoaded)
+            {
+                selected.BringIntoView();
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The resize grip of the corner (D13): the dots of the Windows grip, three, two and one towards the corner, in
+    /// <c>muted</c>, in a target of 44 that resizes by dragging. An arrow read as a button that a tap would press.
+    /// </summary>
+    private static Grid Grip()
+    {
+        const int Rows = 3;
+        var dots = new GeometryGroup();
+        for (var row = 0; row < Rows; row++)
+        {
+            for (var column = Rows - 1 - row; column < Rows; column++)
+            {
+                dots.Children.Add(
+                    new RectangleGeometry(
+                        new Rect(
+                            column * Space.S1,
+                            row * Space.S1,
+                            Theming.Generated.Stroke.Selected,
+                            Theming.Generated.Stroke.Selected
+                        )
+                    )
+                );
+            }
+        }
+
+        var path = new System.Windows.Shapes.Path
+        {
+            Data = dots,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(Space.S2),
+        };
+        Ui.Ink(path, System.Windows.Shapes.Shape.FillProperty, ColorToken.Muted);
+        var grip = new Grid
+        {
+            Width = ControlHeight.Small,
+            Height = ControlHeight.Small,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        grip.Children.Add(path);
+        return grip;
     }
 
     private StackPanel Soon()
