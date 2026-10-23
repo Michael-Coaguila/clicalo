@@ -439,6 +439,13 @@ public sealed class SystemSectionViewModel : ObservableObject
             return;
         }
 
+        // T17: never from an elevated instance, which would start the uninstaller with the administrator token, as
+        // updates are never installed from one.
+        if (_sys.Elevation.IsElevated)
+        {
+            return;
+        }
+
         var deleteData = _deleteData;
         switch (
             _s.Confirm.Tap(
@@ -996,7 +1003,7 @@ public sealed class SystemSectionViewModel : ObservableObject
                 new SwitchModel("warning", T(L.UninstallWipe), T(L.UninstallWipeD), _deleteData),
                 uninstallArmed ? T(L.ConfirmB) : T(L.UninstallBtn),
                 uninstallArmed,
-                canUninstall && !_busy
+                canUninstall && !elevated && !_busy
             )
         );
     }
