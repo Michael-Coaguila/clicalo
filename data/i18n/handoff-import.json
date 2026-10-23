@@ -1746,10 +1746,10 @@
       }
     },
     "co3d": {
-      "notes": "Texto del paso 3 de la guía de la Pestaña (PES-015): desde D20 el candado ya no está entre las herramientas, y la fila se llama «Siempre visible», como su ventana. Pendiente de ratificar (D21).",
+      "notes": "Texto del paso 3 de la guía de la Pestaña (PES-015): desde D20 el candado ya no está entre las herramientas, y la fila se llama «Siempre visible», como su ventana; D21 suma Flechas, la herramienta de menos obvia por su icono. Pendiente de ratificar (D21).",
       "text": {
-        "es": "Buscar, repetir, Siempre visible, Teclas fijas y subir o bajar la página.",
-        "en": "Search, repeat, Always visible, sticky keys and scrolling the page up or down."
+        "es": "Buscar, repetir, Siempre visible, Teclas fijas, Flechas y subir o bajar la página.",
+        "en": "Search, repeat, Always visible, sticky keys, arrows and scrolling the page up or down."
       }
     },
     "dFullD": {
