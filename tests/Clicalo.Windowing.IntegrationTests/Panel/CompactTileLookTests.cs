@@ -218,7 +218,8 @@ public sealed class CompactTileLookTests
     [InlineData(PanelSize.Large)]
     [Trait("Req", "ACC-009")]
     [Trait("Req", "VCO-001")]
-    public void The_voice_number_and_the_icon_of_the_row_are_one_pair_centred_in_the_tile(
+    [Trait("Req", "CUA-007")]
+    public void The_voice_number_and_the_icon_of_the_row_are_one_pair_beside_the_type_mark_that_fits(
         PanelSize size
     ) =>
         WithBody(
@@ -233,26 +234,57 @@ public sealed class CompactTileLookTests
             {
                 var tiles = body.Strip.TileControls.Select(static t => t.Control).ToList();
                 tiles.ShouldNotBeEmpty();
+                tiles.ShouldContain(static t => t.TypeSymbol != null, "Hablar is a Mantener");
+                var marks = 0;
                 foreach (var tile in tiles)
                 {
                     foreach (var number in new[] { 1, 15, 99 })
                     {
                         tile.VoiceNumber = number;
                         tile.UpdateLayout();
+                        var what = Invariant($"{tile.AccessibleName} ({number})");
                         var badge = Bounds(Part(tile, ShortcutTileTemplate.VoiceNumberPart), tile);
                         var icon = Drawn(Part(tile, ShortcutTileTemplate.IconPart), tile);
+                        var type = Part(tile, ShortcutTileTemplate.TypePart);
 
-                        badge.Right.ShouldBeLessThanOrEqualTo(
-                            icon.Left,
-                            Invariant($"{number} covers the icon")
-                        );
-                        var left = badge.Left;
-                        var right = tile.ActualWidth - icon.Right;
-                        Math.Abs(left - right)
-                            .ShouldBeLessThanOrEqualTo(1, Invariant($"{number}: off centre"));
-                        Part(tile, ShortcutTileTemplate.TypePart)
-                            .Visibility.ShouldBe(Visibility.Collapsed);
+                        badge.Right.ShouldBeLessThanOrEqualTo(icon.Left, $"{what} covers the icon");
+                        badge.Left.ShouldBeGreaterThanOrEqualTo(Space.S1 - 0.5, what);
+
+                        // The corner of the type mark keeps it while the pair fits whole beside it, S1 from the edge.
+                        var corner = tile.ActualWidth - Space.S1 - IconBox.Badge;
+                        var fits =
+                            tile.TypeSymbol is not null
+                            && Space.S1 + badge.Width + Space.S1 + tile.IconSize <= corner + 0.5;
+                        if (fits)
+                        {
+                            marks++;
+                            type.Visibility.ShouldBe(Visibility.Visible, $"{what}: the mark fits");
+                            var mark = Bounds(type, tile);
+                            mark.Left.ShouldBe(corner, 0.5, what);
+                            icon.Right.ShouldBeLessThanOrEqualTo(
+                                mark.Left + 0.5,
+                                $"{what}: the icon reaches the mark"
+                            );
+                        }
+                        else
+                        {
+                            type.Visibility.ShouldBe(Visibility.Collapsed, $"{what}: no room");
+                            var left = badge.Left;
+                            var right = tile.ActualWidth - icon.Right;
+                            Math.Abs(left - right)
+                                .ShouldBeLessThanOrEqualTo(1, $"{what}: off centre");
+                        }
                     }
+                }
+
+                // S: 61 wide, the hand of Hablar does not fit beside 20 + 4 + 20 (one digit); M and L keep it.
+                if (size == PanelSize.Small)
+                {
+                    marks.ShouldBe(0);
+                }
+                else
+                {
+                    marks.ShouldBeGreaterThan(0);
                 }
             }
         );

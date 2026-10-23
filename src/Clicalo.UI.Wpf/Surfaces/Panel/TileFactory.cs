@@ -151,8 +151,8 @@ internal static class TileFactory
         );
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
-        // Beside the number the icon takes the middle of the tile, and without its icon the name rises to the height of
-        // the corner: the type mark there would sit on them, so it only stays in the help of the tile («Mantener»).
+        // Without its icon the name rises to the height of the corner: the type mark there would sit on it, so it only
+        // stays in the help of the tile («Mantener»). Beside a centred number it shows while the pair leaves it room.
         ShowPart(control, ShortcutTileTemplate.TypePart, look.ShowsIcon && !look.CentresNumber);
         var number = Part(control, ShortcutTileTemplate.VoiceNumberPart);
         if (number is not null)
@@ -257,7 +257,9 @@ internal static class TileFactory
     /// <summary>
     /// Puts the body of a tile beside its voice number, which is centred down the tile (<see cref="TileLook.CentresNumber"/>),
     /// whatever the digits of the number: the body starts <see cref="Space.S1"/> after it, so a number of two digits
-    /// never covers the icon or the name. An icon alone makes one pair with the number, centred across the tile.
+    /// never covers the icon or the name. An icon alone makes one pair with the number, centred across the tile; when
+    /// the tile has a type mark («Mantener» of Hablar) and the pair fits whole beside its corner, the mark stays and the
+    /// pair moves only as far as it must to keep clear of it.
     /// </summary>
     private static void PlaceBesideNumber(
         ShortcutTile control,
@@ -272,14 +274,20 @@ internal static class TileFactory
             return;
         }
 
-        var side = look.ShowsIcon
-            ? Math.Max(Space.S1, (width - (badge + Space.S1 + look.IconSize)) / 2)
-            : Space.S1;
+        var pair = badge + Space.S1 + look.IconSize;
+        var markLeft = width - Space.S1 - IconBox.Badge;
+        var mark = look.ShowsIcon && control.TypeSymbol is not null && Space.S1 + pair <= markLeft;
+        ShowPart(control, ShortcutTileTemplate.TypePart, mark);
+        var centred = (width - pair) / 2;
+        var side =
+            !look.ShowsIcon ? Space.S1
+            : mark ? Math.Max(Space.S1, Math.Min(centred, markLeft - Space.S1 - pair))
+            : Math.Max(Space.S1, centred);
         number.Margin = new Thickness(side, 0, 0, 0);
         control.Padding = new Thickness(
             side + badge + Space.S1,
             look.TopInset,
-            look.ShowsIcon ? side : look.SideInset,
+            look.ShowsIcon ? width - side - pair : look.SideInset,
             Bottom(look)
         );
     }

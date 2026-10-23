@@ -117,7 +117,8 @@ internal sealed record TileLook(
     /// <param name="showsNames">
     /// Whether the row shows names. A row of icons alone (S, Compact: one touch target high, D19) takes the small icon,
     /// centred and clear of the type mark at the top right; with the voice numbers on, the number and the icon go side by
-    /// side, both centred down the 44 of the tile (a number above would push the icon against the bottom edge).
+    /// side, both centred down the 44 of the tile (a number above would push the icon against the bottom edge), and the
+    /// type mark keeps its corner while the pair fits whole beside it.
     /// </param>
     public static TileLook Strip(bool cramped, bool showsNames = true) =>
         !showsNames
