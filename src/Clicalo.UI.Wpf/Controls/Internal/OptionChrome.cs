@@ -314,7 +314,7 @@ internal static class OptionChrome
                     .With(UIElement.VisibilityProperty, Visibility.Collapsed)
                     .Paint(SymbolIcon.ForegroundProperty, ColorToken.AccentInk);
                 icon.With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S2, 0));
-                var balance = Templates
+                var checkBalance = Templates
                     .Element<Border>(CheckBalancePart)
                     .With(FrameworkElement.WidthProperty, IconBox.Small + Space.S1)
                     .With(DockPanel.DockProperty, Dock.Right)
@@ -325,7 +325,7 @@ internal static class OptionChrome
                 body = Templates
                     .Element<DockPanel>(ControlChrome.ContentPart)
                     .With(DockPanel.LastChildFillProperty, true)
-                    .Add(check, icon, balance, text);
+                    .Add(check, icon, checkBalance, text);
                 triggers.Add(Collapse(symbol, null, IconPart));
                 var bare = new MultiTrigger();
                 bare.Conditions.Add(new Condition(symbol, null));
