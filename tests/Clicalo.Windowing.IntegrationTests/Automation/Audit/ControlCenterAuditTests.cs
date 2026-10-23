@@ -694,6 +694,75 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Theory]
+    [InlineData("shortcuts-macro-keys", "es", 1120, 680)]
+    [InlineData("shortcuts-hold", "es", 1371, 859)]
+    [InlineData("shortcuts-macro-keys", "en", 760, 520)]
+    [InlineData("templates-preview-keys", "es", 1371, 859)]
+    [Trait("Req", "EDI-008")]
+    [Trait("Req", "ACC-003")]
+    public void A_chosen_key_of_the_combination_box_keeps_its_whole_label_on_its_axis(
+        string state,
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+
+                host.LayOut();
+                var chosen = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static key =>
+                        key.IsVisible && key.IsMonospace && key.IsSelected && key.Content is string
+                    )
+                    .ToList();
+                chosen.Count.ShouldBeGreaterThanOrEqualTo(2, "a modifier and a key");
+                foreach (var key in chosen)
+                {
+                    var label = (string)key.Content;
+                    var text = InTree(key)
+                        .OfType<System.Windows.Controls.TextBlock>()
+                        .Single(block =>
+                            string.Equals(block.Text, label, StringComparison.Ordinal)
+                        );
+                    Natural(text)
+                        .ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, "«✓ C…»: " + label);
+                    text.TransformToAncestor(key)
+                        .Transform(new System.Windows.Point(text.ActualWidth / 2, 0))
+                        .X.ShouldBe(key.ActualWidth / 2, 1, label);
+                }
+            }
+        );
+
+    /// <summary>The width of the whole text of <paramref name="text"/> in one line.</summary>
+    private static double Natural(System.Windows.Controls.TextBlock text) =>
+        new System.Windows.Media.FormattedText(
+            text.Text,
+            CultureInfo.InvariantCulture,
+            System.Windows.FlowDirection.LeftToRight,
+            new System.Windows.Media.Typeface(
+                text.FontFamily,
+                text.FontStyle,
+                text.FontWeight,
+                text.FontStretch
+            ),
+            text.FontSize,
+            System.Windows.Media.Brushes.Black,
+            System.Windows.Media.VisualTreeHelper.GetDpi(text).PixelsPerDip
+        ).WidthIncludingTrailingWhitespace;
+
     private static List<AutomationPeer> Named(AuditHost host, string name)
     {
         var found = new List<AutomationPeer>();

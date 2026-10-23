@@ -317,14 +317,11 @@ internal static class OptionChrome
                 var checkBalance = Templates
                     .Element<Border>(CheckBalancePart)
                     .With(FrameworkElement.WidthProperty, IconBox.Small + Space.S1)
-                    .With(DockPanel.DockProperty, Dock.Right)
                     .With(UIElement.VisibilityProperty, Visibility.Collapsed);
-                // A dock, not a horizontal stack: the text gets the width that is left, so it can wrap or end in «…».
-                check.With(DockPanel.DockProperty, Dock.Left);
-                icon.With(DockPanel.DockProperty, Dock.Left);
+                // Not a horizontal stack: the text gets the width that is left, so it can wrap or end in «…»; and the
+                // ✓ never takes that width from it.
                 body = Templates
-                    .Element<DockPanel>(ControlChrome.ContentPart)
-                    .With(DockPanel.LastChildFillProperty, true)
+                    .Element<CheckRow>(ControlChrome.ContentPart)
                     .Add(check, icon, checkBalance, text);
                 triggers.Add(Collapse(symbol, null, IconPart));
                 var bare = new MultiTrigger();
@@ -382,4 +379,93 @@ internal static class OptionChrome
             value,
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, part)
         );
+
+    /// <summary>
+    /// The row of an option of the shapes without a column (tile, chip, segment): the ✓, the icon, the slot that
+    /// balances the ✓ on the other side of a centred text, and the text, laid out as a dock panel does (the text gets
+    /// the width that is left, so it can wrap or end in «…»). The ✓ and its balance never take that width from the text:
+    /// where the whole label does not fit beside them (a key of 44 in the combination box, Ctrl in its row of four),
+    /// both are left out and the wash, the ring and the state UI Automation reads say «elegido» alone (EDI-008), so a
+    /// chosen key never reads «✓ C…» (D21 review).
+    /// </summary>
+    /// <remarks>Its children are, in this order, the ✓, the icon, the balance and the text.</remarks>
+    private sealed class CheckRow : Panel
+    {
+        private double _natural;
+
+        /// <inheritdoc />
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            if (InternalChildren.Count != 4)
+            {
+                return default;
+            }
+
+            var unbounded = new Size(double.PositiveInfinity, availableSize.Height);
+            foreach (UIElement child in InternalChildren)
+            {
+                child.Measure(unbounded);
+            }
+
+            var (check, icon, balance, text) = Parts();
+            _natural = text.DesiredSize.Width;
+            var used = icon.DesiredSize.Width + (Fits(availableSize.Width) ? Marks() : 0);
+            text.Measure(new Size(Math.Max(0, availableSize.Width - used), availableSize.Height));
+            var height = Math.Max(
+                Math.Max(check.DesiredSize.Height, icon.DesiredSize.Height),
+                Math.Max(balance.DesiredSize.Height, text.DesiredSize.Height)
+            );
+            return new Size(used + text.DesiredSize.Width, height);
+        }
+
+        /// <inheritdoc />
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            if (InternalChildren.Count != 4)
+            {
+                return finalSize;
+            }
+
+            var (check, icon, balance, text) = Parts();
+            var marks = Fits(finalSize.Width);
+            var x = 0d;
+            if (marks)
+            {
+                check.Arrange(new Rect(0, 0, check.DesiredSize.Width, finalSize.Height));
+                x = check.DesiredSize.Width;
+            }
+            else
+            {
+                // Left out: a slot of nothing, so it is drawn nowhere.
+                check.Arrange(default);
+            }
+
+            icon.Arrange(new Rect(x, 0, icon.DesiredSize.Width, finalSize.Height));
+            x += icon.DesiredSize.Width;
+            var right = finalSize.Width;
+            if (marks)
+            {
+                right = Math.Max(x, right - balance.DesiredSize.Width);
+                balance.Arrange(new Rect(right, 0, balance.DesiredSize.Width, finalSize.Height));
+            }
+            else
+            {
+                balance.Arrange(default);
+            }
+
+            text.Arrange(new Rect(x, 0, Math.Max(0, right - x), finalSize.Height));
+            return finalSize;
+        }
+
+        private (UIElement Check, UIElement Icon, UIElement Balance, UIElement Text) Parts() =>
+            (InternalChildren[0], InternalChildren[1], InternalChildren[2], InternalChildren[3]);
+
+        private double Marks() =>
+            InternalChildren[0].DesiredSize.Width + InternalChildren[2].DesiredSize.Width;
+
+        // A pixel of slack: layout rounding can take a fraction from a text that then ends in «…».
+        private bool Fits(double width) =>
+            Marks() <= 0
+            || InternalChildren[1].DesiredSize.Width + Marks() + _natural <= width + Stroke.Line;
+    }
 }
