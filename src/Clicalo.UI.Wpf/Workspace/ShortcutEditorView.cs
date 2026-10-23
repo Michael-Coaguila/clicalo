@@ -563,6 +563,7 @@ public sealed class ShortcutEditorView : Grid
             Detach(_text);
             AutomationProperties.SetName(_text.Box, text.Label);
             _text.DictateName = text.DictateName;
+            _text.SetPlaceholder(text.Placeholder);
             _text.Show(_viewModel.RevealText(), force: keyChanged);
             return Parts.Section(
                 text.Label,
@@ -631,6 +632,7 @@ public sealed class ShortcutEditorView : Grid
         Detach(_target);
         AutomationProperties.SetName(_target.Box, target.Label);
         _target.DictateName = target.DictateName;
+        _target.SetPlaceholder(target.Placeholder);
         _target.Show(target.Value, force: keyChanged);
         _target.Warn(target.Invalid);
         var column = Parts.Section(
@@ -754,7 +756,7 @@ public sealed class ShortcutEditorView : Grid
 
     /// <summary>
     /// A step: its number, its icon and what it does in one line with «…» (the whole step is its accessible name), and
-    /// ↑ ↓ × in a row of their own under it, so the text keeps the width of the column.
+    /// ↑ ↓ × at the end of the same row, so a step takes one row and its editor, when it is open, goes under it.
     /// </summary>
     private Border Step(StepsModel model, StepRow step)
     {
@@ -814,26 +816,24 @@ public sealed class ShortcutEditorView : Grid
             () => _viewModel.DeleteStep(step.Index),
             model.DeleteName
         );
-        // The header, the editor and ↑ ↓ × share one inset from the edge of the card, so their edges line up.
-        var tools = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 0, Space.S2, Space.S1),
-        };
+        var tools = new StackPanel { Orientation = Orientation.Horizontal };
         tools.Children.Add(up);
         tools.Children.Add(down);
         tools.Children.Add(delete);
+        var head = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(tools, Dock.Right);
+        head.Children.Add(tools);
+        head.Children.Add(edit);
         var body = new StackPanel();
-        body.Children.Add(edit);
+        body.Children.Add(head);
         var editor = StepEditor(model, step);
         if (editor is not null)
         {
+            // The editor keeps the inset of the text of the header, so their edges line up.
             editor.Margin = new Thickness(Space.S2, Space.S1, Space.S2, Space.S2);
             body.Children.Add(editor);
         }
 
-        body.Children.Add(tools);
         var open = step.Editor != StepEditorKind.None;
         return Ui.Card(
             body,

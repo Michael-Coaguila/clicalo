@@ -22,6 +22,7 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="ProgramQuery">What the filter holds; the view shows the programs it matches (<see cref="ProgramFilter"/>).</param>
 /// <param name="ProgramsNoMatch">[noResults] when the filter matches no program; null otherwise.</param>
 /// <param name="ProgramsVersion">Changes when <paramref name="Programs"/> is another list: the view builds its buttons again only then.</param>
+/// <param name="Placeholder">[urlPh] or [appPh]: the example of the empty field, only a guide (EDI-006).</param>
 public sealed record TargetModel(
     string Label,
     string Value,
@@ -37,5 +38,6 @@ public sealed record TargetModel(
     string ProgramSearch = "",
     string ProgramQuery = "",
     string? ProgramsNoMatch = null,
-    int ProgramsVersion = 0
+    int ProgramsVersion = 0,
+    string Placeholder = ""
 );

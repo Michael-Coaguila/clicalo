@@ -134,6 +134,44 @@ public sealed class ShortcutsProjectionTests
     }
 
     [Fact]
+    [Trait("Req", "EDI-006")]
+    [Trait("Req", "EDI-013")]
+    public void Web_App_and_Text_start_empty_with_an_example_only_as_a_guide()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                section.Editor.SetKind(ActionKind.Url);
+                section.Refresh();
+                var url = section.Editor.Model.ShouldNotBeNull().Target.ShouldNotBeNull();
+                url.Value.ShouldBeEmpty("the kind starts empty");
+                url.Placeholder.ShouldBe("Ej.: ejemplo.com");
+
+                section.Editor.SetKind(ActionKind.App);
+                section.Refresh();
+                var app = section.Editor.Model.ShouldNotBeNull().Target.ShouldNotBeNull();
+                app.Value.ShouldBeEmpty();
+                app.Placeholder.ShouldBe("Ej.: notepad.exe");
+
+                section.Editor.SetKind(ActionKind.Text);
+                section.Refresh();
+                section
+                    .Editor.Model.ShouldNotBeNull()
+                    .Text.ShouldNotBeNull()
+                    .Placeholder.ShouldBe("Ej.: tu correo o tu firma");
+
+                section.SelectTile(new ShortcutId("macro"));
+                section.Editor.ToggleStep(1);
+                section.Refresh();
+                var wait = section.Editor.Model.ShouldNotBeNull().Steps.ShouldNotBeNull().Steps[1];
+                wait.Text.ShouldBe("Esperar 0,5 s");
+                wait.Wait.ShouldBe("0,5 s", "the − / + of the step says only the seconds");
+            }
+        );
+    }
+
+    [Fact]
     [Trait("Req", "EDI-004")]
     [Trait("Req", "REG-06")]
     public void The_icons_of_the_picker_are_named_in_the_language_of_the_interface()

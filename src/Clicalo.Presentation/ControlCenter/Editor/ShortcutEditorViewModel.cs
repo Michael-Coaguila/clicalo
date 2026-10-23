@@ -909,7 +909,8 @@ public sealed class ShortcutEditorViewModel
                     T(L.TextHint),
                     T(L.SearchDictate),
                     T(L.TextEnc),
-                    _textVersion
+                    _textVersion,
+                    T(L.TextPh)
                 )
                 : null,
             Mouse(shortcut),
@@ -1147,7 +1148,13 @@ public sealed class ShortcutEditorViewModel
                             i > 0,
                             i < count - 1,
                             IsArmed(nameof(DeleteMacroStep), id + ":" + Number(i)),
-                            step is WaitStep wait ? Seconds(wait.Duration) : string.Empty,
+                            step is WaitStep wait
+                                ? T(
+                                    L.WaitValue(
+                                        seconds: (decimal)wait.Duration.TotalMilliseconds / 1000m
+                                    )
+                                )
+                                : string.Empty,
                             step is MouseStep mouse && Workspace.EditingStep == i
                                 ? MouseOptions(mouse.Op)
                                 : [],
@@ -1207,7 +1214,8 @@ public sealed class ShortcutEditorViewModel
                 T(L.SearchDictate),
                 string.Empty,
                 string.Empty,
-                []
+                [],
+                Placeholder: T(L.UrlPh)
             ),
             AppAction app => new TargetModel(
                 T(L.AppPath),
@@ -1226,7 +1234,8 @@ public sealed class ShortcutEditorViewModel
                 !_programs.IsEmpty && ProgramFilter.Count(_programs, _programFilter) == 0
                     ? T(L.NoResults)
                     : null,
-                _programsVersion
+                _programsVersion,
+                T(L.AppPh)
             ),
             _ => null,
         };

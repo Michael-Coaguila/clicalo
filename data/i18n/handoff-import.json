@@ -1634,6 +1634,26 @@
       "notes": "Nombre de la ventana de la guía de primera vez de la Pestaña para UI Automation (REG-06, PES-015): antes tomaba el título del paso, que cambia en cada paso; el título sigue en la ventana como texto. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-37).",
       "after": "dockBarName",
       "text": { "es": "Guía de la pestaña", "en": "Edge tab guide" }
+    },
+    "waitValue": {
+      "notes": "Valor del selector − / + de un paso «Esperar» de una macro (EDI-013): solo los segundos, porque la cabecera del paso ya dice [stepWait] «Esperar 0,5 s» y repetirlo era ruido. {seconds} con coma en ES y punto en EN, como [stepWait]. Pendiente de ratificar (D21).",
+      "after": "stepWait",
+      "text": { "es": "{seconds} s", "en": "{seconds} s" }
+    },
+    "urlPh": {
+      "notes": "Texto guía del campo [url] de un atajo Web (EDI-006, EDI-014): el tipo empieza vacío y el ejemplo solo es guía, nunca un valor real (DIS-54). Pendiente de ratificar (D21).",
+      "after": "url",
+      "text": { "es": "Ej.: ejemplo.com", "en": "E.g.: example.com" }
+    },
+    "appPh": {
+      "notes": "Texto guía del campo [appPath] de un atajo App (EDI-006, EDI-014): el tipo empieza vacío y el ejemplo solo es guía, nunca un valor real (DIS-54). Pendiente de ratificar (D21).",
+      "after": "appPath",
+      "text": { "es": "Ej.: notepad.exe", "en": "E.g.: notepad.exe" }
+    },
+    "textPh": {
+      "notes": "Texto guía del área [textLabel] de un atajo Texto (EDI-006, EDI-011): el tipo empieza vacío y el ejemplo solo es guía (DIS-54). Pendiente de ratificar (D21).",
+      "after": "textLabel",
+      "text": { "es": "Ej.: tu correo o tu firma", "en": "E.g.: your email or your signature" }
     }
   },
   "retired": {
