@@ -68,9 +68,21 @@ public sealed partial class VisibleTextSnapshotTests
             .ShouldBe(["migD", "migT", "themeAutoS"]);
         // D12 (direction C, 2026-10-16): Fixed is no longer red nor Auto blue, so their texts name the states. D21: the
         // Tab guide describes the bar of D20 without «top» and «bottom».
+        // D12 (direction C, 2026-10-16): Fixed is no longer red nor Auto blue, so their texts name the states.
+        // The texts the review of M7 found false or unclear, pending ratification (D21).
         revised
             .Order(StringComparer.Ordinal)
-            .ShouldBe(["autoA", "co1d", "co1t", "co3d", "co3t", "followAppD", "lockA"]);
+            .ShouldBe([
+                "autoA",
+                "co1d",
+                "co1t",
+                "co3d",
+                "co3t",
+                "dCompactD",
+                "dFullD",
+                "followAppD",
+                "lockA",
+            ]);
         mismatches.ShouldBeEmpty();
     }
 

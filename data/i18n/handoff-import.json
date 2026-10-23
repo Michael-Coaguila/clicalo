@@ -1718,6 +1718,20 @@
         "es": "Buscar, repetir, Siempre visible, Teclas fijas y subir o bajar la página.",
         "en": "Search, repeat, Always visible, sticky keys and scrolling the page up or down."
       }
+    },
+    "dFullD": {
+      "notes": "Descripción de la vista Completa en la bienvenida y en General › Vista (BIE-007, GEN-005). Tras el rediseño C ya no hay «pestañas»: la fila se llama selector de perfil, y la fila fija es «Siempre visible». Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Todo a la vista: Siempre visible, selector de perfil, teclas y avisos.",
+        "en": "Everything visible: Always visible, profile selector, keys and notices."
+      }
+    },
+    "dCompactD": {
+      "notes": "Descripción de la vista Compacta (BIE-007, GEN-005). Prometía el perfil arriba y casi la mitad del tamaño: desde el rediseño C (R-33, VCO-001) el perfil se elige en la fila de abajo, las fichas no llevan teclas, la fila fija lleva solo iconos y la M mide 340 × 460 frente a 340 × 540 (D20). Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Más baja: fichas sin teclas, fila fija de solo iconos y el perfil se elige abajo.",
+        "en": "Shorter: tiles without keys, an icon-only fixed row and the profile picked at the foot."
+      }
     }
   }
 }

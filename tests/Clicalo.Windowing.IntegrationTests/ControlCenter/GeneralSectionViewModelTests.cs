@@ -124,7 +124,9 @@ public sealed class GeneralSectionViewModelTests
         look.TextSize.ShouldBe("100%");
         look.CanTextSmaller.ShouldBeFalse();
         look.Views.Select(static v => v.Label).ShouldBe(["Completa", "Compacta", "Pestaña"]);
-        look.ViewDescription.ShouldBe("Todo a la vista: fila fija, pestañas, teclas y avisos.");
+        look.ViewDescription.ShouldBe(
+            "Todo a la vista: Siempre visible, selector de perfil, teclas y avisos."
+        );
 
         _world.Localization.TrySetLanguage("en").ShouldBeTrue();
         section.Screen.Look.LanguageTitle.ShouldBe("Language · Idioma");
