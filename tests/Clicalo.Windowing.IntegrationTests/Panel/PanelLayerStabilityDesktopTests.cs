@@ -150,6 +150,66 @@ public sealed class PanelLayerStabilityDesktopTests
         }
     }
 
+    [DesktopFact]
+    [Trait("Req", "CUA-001")]
+    [Trait("Req", "PAN-009")]
+    public void With_one_page_opening_the_search_never_takes_a_row_of_the_grid_away()
+    {
+        // D21 review: with one page the pager row takes no room; the search keeps its place, and on a panel that just
+        // fits the screen the grid lost a row as the search opened. The rows are counted as if the pager row were there.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        var (window, world, theme) = WpfThread.Invoke(() =>
+        {
+            var theme = AuditLooks.Theme(AuditLook.Dark);
+            var world = new World(shortcuts: 6);
+            var window = new PanelWindow(
+                world.Panel,
+                lab.Registry,
+                time,
+                theme,
+                new DimSettings(AutoDim: false, Opacity: 1, DimTo: 1),
+                world.Header,
+                world.Search,
+                world.Suggestion,
+                world.Layers
+            );
+            window.Present();
+            return (window, world, theme);
+        });
+        try
+        {
+            Wait();
+            WpfThread.Invoke(() =>
+            {
+                world.Panel.Pager.PageCount.ShouldBe(1);
+
+                // The work area ends right under the panel.
+                window.WorkAreaBottom =
+                    window.Top + window.ActualHeight + PanelSizes.Layout.PanelBottomMarginPx;
+                window.InvalidateMeasure();
+            });
+            Wait();
+            var rows = WpfThread.Invoke(() => world.Panel.Shape.Rows);
+
+            _ = WpfThread.Invoke(() => world.Search.OpenAsync(SearchTrigger.Touch));
+            Wait();
+            WpfThread.Invoke(() => world.Panel.Shape.Rows).ShouldBe(rows, "the search opened");
+
+            _ = WpfThread.Invoke(() => world.Search.CloseAsync());
+            Wait();
+            WpfThread.Invoke(() => world.Panel.Shape.Rows).ShouldBe(rows, "the search closed");
+        }
+        finally
+        {
+            WpfThread.Invoke(() =>
+            {
+                window.Close();
+                theme.Dispose();
+            });
+        }
+    }
+
     private static void Wait()
     {
         var until = DateTime.UtcNow + Settle;
@@ -174,11 +234,11 @@ public sealed class PanelLayerStabilityDesktopTests
     /// <summary>The view models of a whole panel over one document, as the audit builds them.</summary>
     private sealed class World
     {
-        public World()
+        public World(int shortcuts = 14)
         {
             var interactions = new InteractionsWorld("es");
             Panel = PanelBodyTestData.Panel(
-                PanelBodyTestData.Library(14, 3),
+                PanelBodyTestData.Library(shortcuts, 3),
                 PanelBodyTestData.Word,
                 new RecordingBodyIntents(),
                 "es"

@@ -16,9 +16,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// The body of the panel in direction C (D12), the rows of PAN-007 <see cref="Space.S2"/> apart, the gap of the
 /// tiles, so the rows read as one grid and not as boxes apart (D19): the Always visible
 /// row, the sticky keys, the row «Qué ver», the grid of shortcuts (or the empty card, or [noResults]) and the pager; the
-/// Compact view puts «Qué ver» at its foot, under the pager (VCO-002). The body has the size of its design: a row that a
-/// temporary state hides (the search with text, PAN-008) keeps its place under the layer that covers it, the pager row is
-/// there with one page too, and the grid is as high as its rows whatever it shows. The status row, the administrator
+/// Compact view puts «Qué ver» right under the grid, above the pager (VCO-002, D21). The body has the size of its
+/// design: a row that a temporary state hides (the search with text, PAN-008) keeps its place under the layer that
+/// covers it; with one page the pager row takes no room, though the rows of the grid are counted as if it did (D21);
+/// and the grid is as high as its rows whatever it shows. The status row, the administrator
 /// notice, the profile grid, the tile menu and the test mode band are built here and placed by the surface: the status
 /// row at the foot of the panel and the others as layers over the body (<see cref="PanelLayerHost"/>). It only projects
 /// <see cref="PanelViewModel"/>; the surface feeds back the space it measured for the grid
@@ -175,6 +176,13 @@ public sealed class PanelBodyView : StackPanel
         var below =
             window.ActualHeight
             - GridArea.TranslatePoint(new Point(0, GridArea.ActualHeight), window).Y;
+
+        // CUA-001 (D21 review): the rows never depend on whether the pager row shows, so opening the search or the
+        // test mode, which keep its place, never takes a row away.
+        if (Pager.Visibility == Visibility.Collapsed)
+        {
+            below += ControlHeight.Small + Space.S2;
+        }
         // The grid area is as high as its rows and the gaps between them, which is what GridMetrics.RowsThatFit counts.
         var space =
             workAreaBottomDip - PanelSizes.Layout.PanelBottomMarginPx - top - below - shiftAbove;
