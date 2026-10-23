@@ -807,10 +807,11 @@ public sealed class SystemSectionViewModel : ObservableObject
                 false,
                 false
             ),
+            // The subtitle says what will happen to the profiles, as «Copia antes de actualizar» is now (REG-08).
             UpdatePhase.Found => new UpdateCardModel(
                 "new_releases",
-                T(L.Found) + " · " + next,
-                T(L.UpdBackupD),
+                T(L.FoundVersion(version: next)),
+                Settings.Updates.BackupBefore ? T(L.UpdBackupOn) : T(L.UpdBackupOff),
                 false,
                 0,
                 T(L.InstallNow),

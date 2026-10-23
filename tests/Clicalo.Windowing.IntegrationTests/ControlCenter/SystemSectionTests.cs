@@ -32,6 +32,7 @@ public sealed class SystemSectionTests
     [Fact]
     [Trait("Req", "SIS-001")]
     [Trait("Req", "ACT-001")]
+    [Trait("Req", "REG-08")]
     public void The_tabs_show_their_state_and_a_new_version_counts_in_the_menu()
     {
         var world = new SystemTestWorld();
@@ -59,9 +60,17 @@ public sealed class SystemSectionTests
             system.Screen.Tabs[0].Status.ShouldBe("Nueva versión");
             system.Screen.Updates.Card.Title.ShouldBe("Nueva versión disponible · v2.1.0");
             system.Screen.Updates.Card.Button.ShouldBe("Instalar ahora");
+            system.Screen.Updates.Card.Subtitle.ShouldBe(
+                "Antes de instalar se guarda una copia de tus perfiles."
+            );
             var nav = cc.Nav.Single(n => n.Section == ControlCenterSection.System);
             nav.Count.ShouldBe(1);
             nav.CountName.ShouldBe("Nueva versión");
+
+            // REG-08: with «Copia antes de actualizar» off, the card does not promise a backup.
+            system.ToggleUpdateSwitch(2);
+            WpfThread.DrainPendingWork();
+            system.Screen.Updates.Card.Subtitle.ShouldBe("Se instalará sin copia previa.");
         });
     }
 

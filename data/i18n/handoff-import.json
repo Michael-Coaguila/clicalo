@@ -1643,6 +1643,21 @@
         "en": { "one": "Combo repeated in {count} place", "other": "Combo repeated in {count} places" }
       }
     },
+    "foundVersion": {
+      "notes": "Título de la tarjeta de actualización con una versión nueva (ACT-001): «[found] · {versión}» en una sola frase, sin concatenar fragmentos (IDI-004). Pendiente de ratificar (D21).",
+      "after": "found",
+      "text": { "es": "Nueva versión disponible · {version}", "en": "New version available · {version}" }
+    },
+    "updBackupOn": {
+      "notes": "Subtítulo de la tarjeta de una versión nueva cuando «Copia antes de actualizar» está activo (ACT-001, ACT-002): antes decía siempre [updBackupD], que es la descripción del interruptor, también con el interruptor apagado. Pendiente de ratificar (D21).",
+      "after": "foundVersion",
+      "text": { "es": "Antes de instalar se guarda una copia de tus perfiles.", "en": "Your profiles are backed up before it installs." }
+    },
+    "updBackupOff": {
+      "notes": "Subtítulo de la tarjeta de una versión nueva cuando «Copia antes de actualizar» está apagado: no promete una copia que no se hará (REG-08). Pendiente de ratificar (D21).",
+      "after": "updBackupOn",
+      "text": { "es": "Se instalará sin copia previa.", "en": "It will install without a backup first." }
+    },
     "waitValue": {
       "notes": "Valor del selector − / + de un paso «Esperar» de una macro (EDI-013): solo los segundos, porque la cabecera del paso ya dice [stepWait] «Esperar 0,5 s» y repetirlo era ruido. {seconds} con coma en ES y punto en EN, como [stepWait]. Pendiente de ratificar (D21).",
       "after": "stepWait",
