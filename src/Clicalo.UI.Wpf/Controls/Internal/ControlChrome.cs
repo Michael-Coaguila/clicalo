@@ -113,6 +113,11 @@ internal static class ControlChrome
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, LinePart),
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, RingPart),
             Templates.Brush(TextElement.ForegroundProperty, ColorToken.Muted, ContentPart),
+            new Setter(
+                UIElement.OpacityProperty,
+                new DynamicResourceExtension(ThemeKeys.DisabledOpacity),
+                ContentPart
+            ),
         ];
 
     /// <summary>Converts a radius in device-independent pixels into a uniform <see cref="CornerRadius"/>.</summary>

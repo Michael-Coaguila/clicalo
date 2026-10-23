@@ -55,6 +55,9 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
     /// <summary>The shortcut id: the key of the tile.</summary>
     public ShortcutId Id => _model.Id;
 
+    /// <summary>Whether it is a result of the search, whose line under the name is its profile of origin (BUS-005).</summary>
+    public bool IsSearchResult => _result is not null;
+
     /// <summary>How the tile reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;
 

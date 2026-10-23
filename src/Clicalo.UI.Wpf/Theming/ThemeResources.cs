@@ -31,6 +31,9 @@ internal static class ThemeResources
 
         resources[ThemeScope.BorderThicknessKey] = new Thickness(palette.BorderThickness);
         resources[ThemeKeys.LineThickness] = Math.Max(Stroke.Line, palette.BorderThickness);
+
+        // High contrast draws its borders thicker; there muted is the text color, so disabled content fades instead.
+        resources[ThemeKeys.DisabledOpacity] = palette.BorderThickness > Stroke.Line ? 0.5 : 1d;
     }
 
     /// <summary>The font families and the type scale, the scaled sizes at <paramref name="textScalePercent"/>.</summary>

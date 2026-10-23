@@ -36,6 +36,12 @@ public static class ThemeKeys
     /// </summary>
     public static ResourceKey LineThickness { get; } = Key(nameof(LineThickness));
 
+    /// <summary>
+    /// A <see cref="double"/>: the opacity of the content of a disabled control. 1 where <c>muted</c> already tells it
+    /// apart; less in high contrast, where <c>muted</c> is the text color and a disabled ‹ looked like an enabled one.
+    /// </summary>
+    public static ResourceKey DisabledOpacity { get; } = Key(nameof(DisabledOpacity));
+
     /// <summary>The <see cref="System.Windows.Media.FontFamily"/> of the interface (Atkinson Hyperlegible).</summary>
     public static ResourceKey UiFont { get; } = Key(nameof(UiFont));
 
