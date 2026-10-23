@@ -6,13 +6,13 @@ using Clicalo.TestKit;
 namespace Clicalo.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Schema 1.2 (ADR-0033): the done flag of the guide of the Full and Compact views is an optional member of the
+/// Schema 1.2 (ADR-0034): the done flag of the guide of the Full and Compact views is an optional member of the
 /// settings, so the immutable 1.2 fixture reads with it, a 1.1 document reads with the guide still to show, the flag
 /// survives a round trip and a 1.1 version keeps it as an unknown member (REG-08).
 /// </summary>
 [Trait("Req", "DAT-001")]
 [Trait("Req", "PES-015")]
-public sealed class SchemaMinor2Tests
+public sealed class SchemaMinor2PanelCoachTests
 {
     [Fact]
     public void The_1_2_fixture_reads_with_a_matching_hash_and_no_unknown_members()

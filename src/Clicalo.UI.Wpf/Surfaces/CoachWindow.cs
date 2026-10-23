@@ -14,7 +14,7 @@ namespace Clicalo.UI.Wpf.Surfaces;
 
 /// <summary>
 /// A first-time guide in direction C (D12), the same beside the bar of the Tab view (PES-015) and beside the panel
-/// (R-38): a side window of 260 with «i / 3» as its <see cref="Overline"/>, the title (<see cref="TextStyleToken.Heading"/>)
+/// (R-39): a side window of 260 with «i / 3» as its <see cref="Overline"/>, the title (<see cref="TextStyleToken.Heading"/>)
 /// and the text of the step (<see cref="TextStyleToken.Body"/>), and two buttons of 44 one under the other, so neither
 /// label is cut: [next] ([understood] on the last step), the primary one, and [coachSkip], tertiary. The ★ of the texts
 /// is drawn as the star icon of the bar, and read as the text says it. The window keeps the size of its longest step, so

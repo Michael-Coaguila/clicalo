@@ -38,6 +38,6 @@ public sealed record SurfaceLayout(
     /// <summary>Quick settings show beside the open bar (PES-009).</summary>
     public bool ShowsQuick { get; init; }
 
-    /// <summary>The first-time guide shows beside the Full or Compact panel (R-38).</summary>
+    /// <summary>The first-time guide shows beside the Full or Compact panel (R-39).</summary>
     public bool ShowsPanelCoach { get; init; }
 }

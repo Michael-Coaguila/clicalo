@@ -1,6 +1,6 @@
 namespace Clicalo.UI.Wpf.Surfaces;
 
-/// <summary>What a first-time guide shows in one step (PES-015, R-38), in the current language.</summary>
+/// <summary>What a first-time guide shows in one step (PES-015, R-39), in the current language.</summary>
 /// <param name="Name">The window for UI Automation, the same in every step.</param>
 /// <param name="StepLabel">«i / 3».</param>
 /// <param name="Title">The title of the step.</param>

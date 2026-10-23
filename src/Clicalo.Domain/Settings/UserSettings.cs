@@ -119,7 +119,7 @@ public sealed record UserSettings
     public required int TimeMultiplier { get; init; }
 
     /// <summary>
-    /// Whether the guide of the Full and Compact views was finished or skipped (R-38, schema 1.2, ADR-0033); the guide
+    /// Whether the guide of the Full and Compact views was finished or skipped (R-39, schema 1.2, ADR-0034); the guide
     /// of the Tab view keeps its own, <see cref="DockSettings.CoachDone"/>.
     /// </summary>
     public required bool PanelCoachDone { get; init; }

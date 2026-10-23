@@ -9,7 +9,7 @@ public sealed class SchemaVersionTests
     [Fact]
     public void This_version_writes_document_schema_1_2_and_usage_schema_1_0()
     {
-        // ADR-0028 and ADR-0033: the M6 settings and welcome answers, then the done flag of the panel guide, are
+        // ADR-0028 and ADR-0034: the M6 settings and welcome answers, then the done flag of the panel guide, are
         // additive minors.
         DocumentFormats.DocumentSchema.ShouldBe(new SchemaVersion(1, 2));
         DocumentFormats.UsageSchema.ShouldBe(new SchemaVersion(1, 0));

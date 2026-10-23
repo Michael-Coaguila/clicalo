@@ -174,7 +174,7 @@ public sealed class GeneralSectionViewModelTests
         screen.Access.Caption.ShouldBe("Accesibilidad y datos");
         screen.Access.ResetTitle.ShouldBe("Reiniciar Frecuentes");
         screen.Start.WelcomeTitle.ShouldBe("Ver la bienvenida otra vez");
-        // R-38: a new document is in the Full view, so the guide offered is the panel's.
+        // R-39: a new document is in the Full view, so the guide offered is the panel's.
         screen.Start.CoachTitle.ShouldBe("Ver la guía del panel");
         screen.Start.CoachDescription.ShouldBe("Se mostrará junto al panel.");
         screen.Start.NoKeyboard.Title.ShouldBe("No puedo usar el teclado");
@@ -373,7 +373,7 @@ public sealed class GeneralSectionViewModelTests
         PanelDensity density
     )
     {
-        // R-38: «Ver la guía» did nothing for a person in the Full or Compact view.
+        // R-39: «Ver la guía» did nothing for a person in the Full or Compact view.
         _world
             .Store.Dispatch(new SetSetting(SettingPaths.DockCoachDone, true))
             .IsSuccess.ShouldBeTrue();

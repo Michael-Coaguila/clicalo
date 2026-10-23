@@ -46,7 +46,7 @@ public sealed record InteractionState(
     public bool SearchPeek { get; init; }
 
     /// <summary>
-    /// The step of the guide of the Full and Compact views on show, from 0 (R-38); apart from <see cref="CoachStep"/>, so
+    /// The step of the guide of the Full and Compact views on show, from 0 (R-39); apart from <see cref="CoachStep"/>, so
     /// the two guides never share where they are.
     /// </summary>
     public int PanelCoachStep { get; init; }

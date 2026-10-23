@@ -3,7 +3,7 @@ using Clicalo.Presentation.Panel;
 namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 
 /// <summary>
-/// The guide of the Full and Compact views (R-38), headless: its three steps from «Qué ver» to the header, the labels of
+/// The guide of the Full and Compact views (R-39), headless: its three steps from «Qué ver» to the header, the labels of
 /// its buttons, its name and its intents, in both languages. No window.
 /// </summary>
 [Trait("Req", "PES-015")]

@@ -13,7 +13,7 @@ public static class DocumentFormats
     public const string ProfileShare = "profile-share";
 
     /// <summary>
-    /// The document schema this version writes: 1.2, the done flag of the guide of the panel (ADR-0033) on top of the
+    /// The document schema this version writes: 1.2, the done flag of the guide of the panel (ADR-0034) on top of the
     /// additive settings and welcome answers of M6 (1.1, ADR-0028). It reads any 1.x: an older document takes the
     /// defaults of the new members, and a later minor keeps its unknown ones.
     /// </summary>

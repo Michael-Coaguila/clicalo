@@ -565,12 +565,12 @@
       "text": { "es": "Se mostrará la próxima vez que abras la barra de la pestaña.", "en": "It shows the next time you open the tab bar." }
     },
     "seePanelCoach": {
-      "notes": "Fila de General › Primeros pasos en las vistas Completa y Compacta (GEN-014, R-38): vuelve a mostrar la guía del panel. En la Pestaña la fila sigue siendo [seeCoach]. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Fila de General › Primeros pasos en las vistas Completa y Compacta (GEN-014, R-39): vuelve a mostrar la guía del panel. En la Pestaña la fila sigue siendo [seeCoach]. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "seeCoachD",
       "text": { "es": "Ver la guía del panel", "en": "See the panel guide" }
     },
     "seePanelCoachD": {
-      "notes": "Descripción de [seePanelCoach] y aviso al tocarla (R-38): la guía sale junto al panel en cuanto está a la vista, sin esperar a nada más. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Descripción de [seePanelCoach] y aviso al tocarla (R-39): la guía sale junto al panel en cuanto está a la vista, sin esperar a nada más. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "seePanelCoach",
       "text": { "es": "Se mostrará junto al panel.", "en": "It shows beside the panel." }
     },
@@ -1646,27 +1646,27 @@
       "text": { "es": "Guía de la pestaña", "en": "Edge tab guide" }
     },
     "panelCoachName": {
-      "notes": "Nombre de la ventana de la guía de primera vez del panel (vistas Completa y Compacta) para UI Automation (REG-06), el mismo en todos los pasos, como [dockCoachName] en la Pestaña. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Nombre de la ventana de la guía de primera vez del panel (vistas Completa y Compacta) para UI Automation (REG-06), el mismo en todos los pasos, como [dockCoachName] en la Pestaña. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "dockCoachName",
       "text": { "es": "Guía del panel", "en": "Panel guide" }
     },
     "pco2t": {
-      "notes": "Título del paso 2 de la guía del panel: la cuadrícula y sus páginas. El paso 1, «Qué ver», reutiliza [co2t] y [co2d], que dicen lo mismo de la fila «Qué ver» del panel. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Título del paso 2 de la guía del panel: la cuadrícula y sus páginas. El paso 1, «Qué ver», reutiliza [co2t] y [co2d], que dicen lo mismo de la fila «Qué ver» del panel. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "co3d",
       "text": { "es": "Tus atajos", "en": "Your shortcuts" }
     },
     "pco2d": {
-      "notes": "Texto del paso 2 de la guía del panel. No nombra el menú de una ficha: dejar el dedo quieto en una ficha Mantener la mantiene y no abre el menú (CUA-014). Cabe en tres líneas a 260, como los pasos de la guía de la Pestaña, para que la ventana no crezca por un paso. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Texto del paso 2 de la guía del panel. No nombra el menú de una ficha: dejar el dedo quieto en una ficha Mantener la mantiene y no abre el menú (CUA-014). Cabe en tres líneas a 260, como los pasos de la guía de la Pestaña, para que la ventana no crezca por un paso. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "pco2t",
       "text": { "es": "Toca una ficha para usarla en la app activa. Las flechas de abajo pasan de página.", "en": "Tap a tile to use it in the active app. The arrows at the bottom turn the page." }
     },
     "pco3t": {
-      "notes": "Título del paso 3 de la guía del panel: las herramientas de la cabecera, como [co3t] en la Pestaña. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Título del paso 3 de la guía del panel: las herramientas de la cabecera, como [co3t] en la Pestaña. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "pco2d",
       "text": { "es": "Arriba: herramientas", "en": "At the top: tools" }
     },
     "pco3d": {
-      "notes": "Texto del paso 3 de la guía del panel: los botones de la cabecera con los nombres de [searchA], [edit], [quick] y [min], y el asa que mueve el panel (CAB-001, PAN-004). Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-38).",
+      "notes": "Texto del paso 3 de la guía del panel: los botones de la cabecera con los nombres de [searchA], [edit], [quick] y [min], y el asa que mueve el panel (CAB-001, PAN-004). Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
       "after": "pco3t",
       "text": { "es": "Buscar, editar los atajos, Ajustes rápidos y minimizar. Arrastra el asa para mover el panel.", "en": "Search, edit the shortcuts, Quick settings and minimize. Drag the handle to move the panel." }
     },

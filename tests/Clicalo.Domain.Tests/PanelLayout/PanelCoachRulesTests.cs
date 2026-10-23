@@ -4,7 +4,7 @@ using Clicalo.Domain.Settings;
 namespace Clicalo.Domain.Tests.PanelLayout;
 
 /// <summary>
-/// The guide of the Full and Compact views (R-38, as PES-015 is for the Tab view): when it shows beside the panel and
+/// The guide of the Full and Compact views (R-39, as PES-015 is for the Tab view): when it shows beside the panel and
 /// its three steps, as tables.
 /// </summary>
 [Trait("Req", "PES-015")]

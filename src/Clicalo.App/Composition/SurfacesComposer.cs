@@ -27,7 +27,7 @@ namespace Clicalo.App.Composition;
 /// Wires the forms of the panel (docs/04 «Vista compacta», «Vista pestaña», «Burbuja minimizada», «Opacidad y
 /// atenuado», «Posición») on the UI thread of the Surfaces role: the bubble, the handle and the bar of the Tab view with
 /// the windows beside it (Quick settings, the menu of a shortcut and the notices among them: PES-009, PES-010,
-/// PES-014), the guide beside the Full and Compact panel (R-38), the floating «Release all», the dimming of every
+/// PES-014), the guide beside the Full and Compact panel (R-39), the floating «Release all», the dimming of every
 /// surface and the positions, the handle's per monitor (PES-016) and the panel's away from the touch keyboard (BUS-002).
 /// It owns no rule: the form is <see cref="PanelForms"/>', the collapse and the guide of the bar
 /// <see cref="DockRules"/>', the guide of the panel <see cref="PanelCoachRules"/>', the places
@@ -139,7 +139,7 @@ internal sealed class SurfacesComposer : IDockIntents
                 || before.CoachStep != after.CoachStep
                 || before.PanelCoachStep != after.PanelCoachStep
                 || before.SearchPeek != after.SearchPeek
-                // R-38: the guide of the panel waits for the welcome.
+                // R-39: the guide of the panel waits for the welcome.
                 || before.Open.HasFlag(DimExceptions.WelcomeOpen)
                     != after.Open.HasFlag(DimExceptions.WelcomeOpen)
             )
@@ -192,7 +192,7 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <summary>The bubble.</summary>
     public BubbleViewModel Bubble { get; }
 
-    /// <summary>The first-time guide of the Full and Compact views (R-38).</summary>
+    /// <summary>The first-time guide of the Full and Compact views (R-39).</summary>
     public PanelCoachViewModel PanelCoach { get; }
 
     /// <summary>The surfaces, once attached.</summary>
@@ -376,7 +376,7 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <inheritdoc />
     public void ReleaseAll() => _ = _controller.ReleaseAll();
 
-    /// <summary>[next] in the guide of the panel; [understood] on its last step ends it as [coachSkip] does (R-38).</summary>
+    /// <summary>[next] in the guide of the panel; [understood] on its last step ends it as [coachSkip] does (R-39).</summary>
     private void PanelCoachNext()
     {
         if (PanelCoachRules.NextStep(_interaction.Current.PanelCoachStep) is null)
@@ -388,7 +388,7 @@ internal sealed class SurfacesComposer : IDockIntents
         _ = _interaction.Dispatch(new InteractionAction.PanelCoachNext());
     }
 
-    /// <summary>[coachSkip] in the guide of the panel: it never shows again until General asks for it (R-38).</summary>
+    /// <summary>[coachSkip] in the guide of the panel: it never shows again until General asks for it (R-39).</summary>
     private void PanelCoachSkip()
     {
         _ = _interaction.Dispatch(new InteractionAction.PanelCoachReset());
@@ -788,7 +788,7 @@ internal sealed class SurfacesComposer : IDockIntents
         );
         var showsDockCoach = form == PanelForm.DockOpen && Dock.ShowsCoach;
 
-        // R-38: a guide is read without touching anything; nothing dims while one shows.
+        // R-39: a guide is read without touching anything; nothing dims while one shows.
         _ = _interaction.Dispatch(
             new InteractionAction.SetOpen(DimExceptions.Guide, showsDockCoach || PanelCoach.IsShown)
         );

@@ -1143,7 +1143,7 @@ public sealed class SurfacesAuditTests
             );
             try
             {
-                // R-38: «Qué ver», the grid with its pages and the header, as PES-015 draws the guide of the bar.
+                // R-39: «Qué ver», the grid with its pages and the header, as PES-015 draws the guide of the bar.
                 var heights = new List<double>();
                 for (var step = 0; step < PanelCoachRules.Steps; step++)
                 {

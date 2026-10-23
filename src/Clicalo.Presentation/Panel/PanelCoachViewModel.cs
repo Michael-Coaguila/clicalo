@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Clicalo.Presentation.Panel;
 
 /// <summary>
-/// The first-time guide of the Full and Compact views (R-38), as the Tab view has its own (PES-015): «i / 3», the title
+/// The first-time guide of the Full and Compact views (R-39), as the Tab view has its own (PES-015): «i / 3», the title
 /// and the text of the step on show, [next] or [understood] and [coachSkip]. The steps follow the panel from what to show
 /// to the tools: «Qué ver» ([co2t] and [co2d], the same row the bar's guide explains), the grid with its pages
 /// ([pco2t], [pco2d]) and the header ([pco3t], [pco3d]). When it shows, and what [next] and [coachSkip] change, is the

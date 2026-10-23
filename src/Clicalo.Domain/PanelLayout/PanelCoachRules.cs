@@ -3,7 +3,7 @@ using Clicalo.Domain.Settings;
 namespace Clicalo.Domain.PanelLayout;
 
 /// <summary>
-/// The first-time guide of the Full and Compact views (R-38, as PES-015 is for the Tab view): three steps beside the
+/// The first-time guide of the Full and Compact views (R-39, as PES-015 is for the Tab view): three steps beside the
 /// panel, «Qué ver», the grid with its pages and the tools of the header. Pure.
 /// </summary>
 public static class PanelCoachRules
@@ -18,7 +18,7 @@ public static class PanelCoachRules
     /// </summary>
     /// <param name="form">The form of the panel.</param>
     /// <param name="density">The saved view.</param>
-    /// <param name="done">The guide was finished or skipped (<c>panelCoachDone</c>, ADR-0033).</param>
+    /// <param name="done">The guide was finished or skipped (<c>panelCoachDone</c>, ADR-0034).</param>
     /// <param name="quickSettingsOpen">Quick settings are open beside the panel.</param>
     /// <param name="welcomeOpen">The welcome is open.</param>
     public static bool Shows(

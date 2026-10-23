@@ -38,7 +38,7 @@ public enum DimExceptions
     WelcomeOpen = 256,
 
     /// <summary>
-    /// A first-time guide is on show beside the bar or the panel (PES-015, R-38): it is read without touching anything,
+    /// A first-time guide is on show beside the bar or the panel (PES-015, R-39): it is read without touching anything,
     /// and what it explains must stay readable meanwhile.
     /// </summary>
     Guide = 512,

@@ -55,10 +55,10 @@ public abstract record InteractionAction
     /// <summary>The guide closes ([coachSkip] or [understood]): back to its first step (PES-015).</summary>
     public sealed record CoachReset : InteractionAction;
 
-    /// <summary>[next] in the guide of the panel: the next step (R-38); after the last one it is back at 0.</summary>
+    /// <summary>[next] in the guide of the panel: the next step (R-39); after the last one it is back at 0.</summary>
     public sealed record PanelCoachNext : InteractionAction;
 
-    /// <summary>The guide of the panel closes ([coachSkip] or [understood]): back to its first step (R-38).</summary>
+    /// <summary>The guide of the panel closes ([coachSkip] or [understood]): back to its first step (R-39).</summary>
     public sealed record PanelCoachReset : InteractionAction;
 
     /// <summary>

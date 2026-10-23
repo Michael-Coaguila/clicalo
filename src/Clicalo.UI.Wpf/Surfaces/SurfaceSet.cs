@@ -94,7 +94,7 @@ public sealed class SurfaceSet : IDisposable
     /// their own (PES-009, PES-010, PES-014). <see langword="null"/> for a set without them.
     /// </param>
     /// <param name="panelCoach">
-    /// The guide of the Full and Compact views, in a window beside the panel (R-38); <see langword="null"/> for a set
+    /// The guide of the Full and Compact views, in a window beside the panel (R-39); <see langword="null"/> for a set
     /// without it.
     /// </param>
     public SurfaceSet(
@@ -208,7 +208,7 @@ public sealed class SurfaceSet : IDisposable
 
         if (panelCoach is not null)
         {
-            // R-38: the guide follows the opacity of the panel it explains; nothing dims while it shows.
+            // R-39: the guide follows the opacity of the panel it explains; nothing dims while it shows.
             _panelCoach = Track(
                 new PanelCoachWindow(panelCoach, registry, time, theme, touch),
                 DimSurface.Panel
@@ -224,7 +224,7 @@ public sealed class SurfaceSet : IDisposable
             MoveDragged(_panel, drag.Offset);
 
             // Quick settings and the guide beside the panel, and the notice under a Compact one, go with it while it
-            // is dragged (AJR-001, D21, R-38).
+            // is dragged (AJR-001, D21, R-39).
             if (
                 _layout is { } dragged
                 && PanelForms.IsPanel(dragged.Form)
@@ -241,7 +241,7 @@ public sealed class SurfaceSet : IDisposable
         panel.DragEnded += (_, _) => SaveDragged(_panel.ScreenBounds);
         panel.SizeChanged += (_, _) => KeepPanelInside();
 
-        // Quick settings and the guide beside the panel follow it when it is moved (AJR-001, D21, R-38).
+        // Quick settings and the guide beside the panel follow it when it is moved (AJR-001, D21, R-39).
         panel.DragEnded += (_, _) => Reflow();
         panel.ContactsEnded += (_, _) => KeepPanelInside();
         panel.Closed += (_, _) => Dispose();
@@ -278,7 +278,7 @@ public sealed class SurfaceSet : IDisposable
     /// <summary>Quick settings beside the bar (PES-009); <see langword="null"/> without the layers.</summary>
     public DockQuickWindow? Quick => _quick;
 
-    /// <summary>The guide beside the panel (R-38); <see langword="null"/> for a set without it.</summary>
+    /// <summary>The guide beside the panel (R-39); <see langword="null"/> for a set without it.</summary>
     public PanelCoachWindow? PanelCoach => _panelCoach;
 
     /// <summary>The monitor the panel and the Tab view are on (PES-016).</summary>
@@ -866,7 +866,7 @@ public sealed class SurfaceSet : IDisposable
     }
 
     /// <summary>
-    /// R-38: the guide of the panel beside it, as Quick settings are (AJR-001): toward the side of the screen with room,
+    /// R-39: the guide of the panel beside it, as Quick settings are (AJR-001): toward the side of the screen with room,
     /// lined up with the top of the panel, and on the same side while the panel is dragged and it still fits there.
     /// </summary>
     private void PlaceCoachBesidePanel(

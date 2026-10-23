@@ -1,18 +1,18 @@
 ---
 status: Propuesto
 date: 2026-10-23
-decision-makers: Michael Coaguila (dueño del producto y mantenedor); la forma concreta, por delegación del usuario, pendiente de que ratifique R-38
-consulted: revisión pantalla por pantalla D21 (catálogo §6.2), su hallazgo de bienvenida más grave; requisito PES-015 y propuesta R-38 (§6.1); ADR-0007, ADR-0018 y ADR-0028 (formato del documento)
+decision-makers: Michael Coaguila (dueño del producto y mantenedor); la forma concreta, por delegación del usuario, pendiente de que ratifique R-39
+consulted: revisión pantalla por pantalla D21 (catálogo §6.2), su hallazgo de bienvenida más grave; requisito PES-015 y propuesta R-39 (§6.1); ADR-0007, ADR-0018 y ADR-0028 (formato del documento)
 informed: colaboradores y agentes de M7, mediante este ADR, `data/schemas/document.schema.json` y el catálogo
 ---
 
-# ADR-0033 · Guía de primera vez del panel: documento 1.2 con `settings.panelCoachDone`
+# ADR-0034 · Guía de primera vez del panel: documento 1.2 con `settings.panelCoachDone`
 
 ## Contexto y planteamiento del problema
 
 La revisión D21 encontró que la única guía de primera vez es la de la Pestaña (PES-015). Quien elige la
 vista Completa o la Compacta en la bienvenida, que es lo primero que ve casi todo el mundo, no recibe
-ninguna orientación, y «Ver la guía de la pestaña» de General no hace nada por él. La propuesta R-38 añade
+ninguna orientación, y «Ver la guía de la pestaña» de General no hace nada por él. La propuesta R-39 añade
 una guía de tres pasos junto al panel, con la misma forma que la de la Pestaña.
 
 Como la de la Pestaña, la guía sale una vez, se puede omitir y no vuelve a salir al terminarla. Eso exige
@@ -57,6 +57,10 @@ Detalles:
   no vuelve. Se acepta porque la 2.0 aún no se ha publicado.
 - **Versión anterior que lee un 1.2.** El miembro cuelga de `settings`, que tiene `[JsonExtensionData]`, así
   que una 1.1 lo conserva al reescribir. Por eso no va dentro de `dock`.
+- **Con ADR-0033.** La rama de ADR-0033 (Gemini como segundo proveedor de IA) también lleva el documento a 1.2,
+  con `settings.aiProvider`. Ninguna de las dos se ha publicado: si llegan juntas, 1.2 tiene los dos miembros
+  opcionales y un único *fixture* `1.2/document.json` con los dos (y su *hash* recalculado); si una se publica
+  antes, la otra pasa su miembro a 1.3.
 - **Escritura.** Siempre se escribe, como `dock.coachDone`.
 - **Quién lo escribe.** Terminar u omitir la guía lo pone en verdadero. «Ver la guía del panel» de General lo
   pone en falso, y la guía sale junto al panel en cuanto está a la vista. El estado del paso en pantalla no se
@@ -72,7 +76,7 @@ Detalles:
 
 ### Confirmación
 
-- `SchemaMinor2Tests`: el *fixture* inmutable `Fixtures/schema/1.2/document.json` se lee con su *hash* y sin
+- `SchemaMinor2PanelCoachTests`: el *fixture* inmutable `Fixtures/schema/1.2/document.json` se lee con su *hash* y sin
   miembros desconocidos; un documento 1.1 se lee con `panelCoachDone` en falso; el indicador sobrevive a la ida
   y vuelta; y una versión 1.1 lo conserva como miembro desconocido de `settings`.
 - `SchemaValidationTests`: los *fixtures* 1.0, 1.1 y 1.2 validan contra `document.schema.json`.
@@ -108,11 +112,11 @@ Detalles:
 
 - Que haya más guías de primera vez (por ejemplo, del centro de control) y convenga guardarlas juntas en un
   solo miembro.
-- Que el usuario no ratifique R-38: el miembro se queda sin uso y se retira en el siguiente *minor*.
+- Que el usuario no ratifique R-39: el miembro se queda sin uso y se retira en el siguiente *minor*.
 
 ## Más información
 
 - [ADR-0007](0007-documento-json-versionado.md), [ADR-0018](0018-contratos-de-sentinel-ledger-y-envoltorio.md) y
   [ADR-0028](0028-ajustes-persistidos-de-m6.md): envoltorio, *minor* aditivo y miembros desconocidos.
-- Catálogo: PES-015, D21 (§6.2) y la propuesta R-38 (§6.1).
+- Catálogo: PES-015, D21 (§6.2) y la propuesta R-39 (§6.1).
 - `data/schemas/document.schema.json`.

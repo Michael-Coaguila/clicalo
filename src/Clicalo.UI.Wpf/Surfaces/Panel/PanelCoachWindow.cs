@@ -8,7 +8,7 @@ using Clicalo.UI.Wpf.Windowing;
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The first-time guide of the Full and Compact views (R-38): a <see cref="CoachWindow"/> beside the panel, toward the
+/// The first-time guide of the Full and Compact views (R-39): a <see cref="CoachWindow"/> beside the panel, toward the
 /// side of the screen with room and lined up with its top, as Quick settings are (AJR-001), named [panelCoachName] in
 /// every step. A window of its own, never a popup, so it never takes the focus (REG-01).
 /// </summary>

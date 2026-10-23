@@ -313,7 +313,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
 
     /// <summary>
     /// «Ver la guía» (GEN-014) of the view in use: in the Tab view the guide of the bar shows again the next time the bar
-    /// opens (PES-015); in the Full and Compact views the guide of the panel shows beside it at once (R-38).
+    /// opens (PES-015); in the Full and Compact views the guide of the panel shows beside it at once (R-39).
     /// </summary>
     public void SeeGuide()
     {
