@@ -1732,6 +1732,20 @@
         "es": "Más baja: fichas sin teclas, fila fija de solo iconos y el perfil se elige abajo.",
         "en": "Shorter: tiles without keys, an icon-only fixed row and the profile picked at the foot."
       }
+    },
+    "aboutTitle": {
+      "notes": "Título de la sección y miga de pan (ACE-001). «Acerca de y contacto» no es español correcto: «acerca de» pide un complemento. El inglés no cambia. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Sobre Clícalo y contacto",
+        "en": "About & contact"
+      }
+    },
+    "navAbout2": {
+      "notes": "Etiqueta del riel del centro de control (CCM-002), que tiene dos líneas como máximo: «Clícalo / y contacto». «Sobre Clícalo» no cabe en una línea del riel de 88 y lo partiría en tres. Mismo motivo que [aboutTitle]. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Clícalo y contacto",
+        "en": "About & contact"
+      }
     }
   }
 }

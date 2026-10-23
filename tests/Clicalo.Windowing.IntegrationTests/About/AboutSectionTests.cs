@@ -33,7 +33,7 @@ public sealed class AboutSectionTests
         var world = new World();
         var screen = new AboutViewModel(world.Services).Screen;
 
-        screen.Title.ShouldBe("Acerca de y contacto");
+        screen.Title.ShouldBe("Sobre Clícalo y contacto");
         screen.CreatorName.ShouldBe("Michael Coaguila");
         screen.CreatorRole.ShouldBe("Creador de Clícalo");
         screen.VersionLine.ShouldBe("v2.0.0 · MIT · código abierto");

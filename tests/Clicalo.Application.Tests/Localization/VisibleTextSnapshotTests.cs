@@ -73,15 +73,25 @@ public sealed partial class VisibleTextSnapshotTests
         revised
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+        revised
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
+                "aboutTitle",
                 "autoA",
                 "co1d",
                 "co1t",
                 "co3d",
                 "co3t",
+            ]);
                 "dCompactD",
                 "dFullD",
                 "followAppD",
                 "lockA",
+        revised
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
+                "navAbout2",
+            ]);
             ]);
         mismatches.ShouldBeEmpty();
     }
