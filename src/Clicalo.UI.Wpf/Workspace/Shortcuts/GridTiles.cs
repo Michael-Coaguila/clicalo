@@ -1,8 +1,11 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Resources;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
 
@@ -24,6 +27,45 @@ internal static class GridTiles
 
     /// <summary>How far the corner slots sit from the edge: inside the ring of «elegido».</summary>
     private const double SlotInset = Space.S1 + Stroke.Selected;
+
+    /// <summary>
+    /// The least width of a tile of a grid that holds <paramref name="names"/>: <see cref="MinWidth"/>, or as much
+    /// wider as the longest name needs to fit whole in its line, so the grid gives up columns before it cuts a name
+    /// (as the panel does, D17). Up to twice <see cref="MinWidth"/>: a longer name ends in «…» and is whole for UI
+    /// Automation.
+    /// </summary>
+    /// <param name="names">The names of the tiles, «Biblioteca» included.</param>
+    /// <param name="view">The view that measures: the scale of its screen.</param>
+    public static double WidthFor(IEnumerable<string> names, FrameworkElement view)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        ArgumentNullException.ThrowIfNull(view);
+        var spec = TextStyles.Get(TextStyleToken.Label);
+        var typeface = new Typeface(
+            AppFonts.Ui,
+            FontStyles.Normal,
+            FontWeight.FromOpenTypeWeight(spec.Weight),
+            FontStretches.Normal
+        );
+        var dpi = VisualTreeHelper.GetDpi(view).PixelsPerDip;
+        var widest = 0d;
+        foreach (var name in names)
+        {
+            var text = new FormattedText(
+                name,
+                CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                spec.Size,
+                System.Windows.Documents.TextElement.GetForeground(view),
+                dpi
+            );
+            widest = Math.Max(widest, text.WidthIncludingTrailingWhitespace);
+        }
+
+        // The name keeps the inset of the content (Space.S2) on each side.
+        return Math.Clamp(Math.Ceiling(widest) + (2 * Space.S2), MinWidth, 2 * MinWidth);
+    }
 
     /// <summary>The tile of <paramref name="tile"/>; the view adds the tap and the drag.</summary>
     /// <param name="tile">The shortcut.</param>

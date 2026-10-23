@@ -947,9 +947,13 @@ public sealed class ShortcutsSectionView : Grid
 
     private StackPanel Grid(GridModel model)
     {
+        // The grid gives up a column before it cuts a name (ATJ-009: «Así se ven en el panel»).
         var grid = new AutoFillGrid
         {
-            MinItemWidth = GridTiles.MinWidth,
+            MinItemWidth = GridTiles.WidthFor(
+                [.. model.Tiles.Select(static tile => tile.Name), model.LibraryText],
+                this
+            ),
             ItemHeight = GridTiles.TileHeight,
             Gap = Space.S2,
         };
