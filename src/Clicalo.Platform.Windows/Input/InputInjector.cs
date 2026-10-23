@@ -6,6 +6,7 @@ using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
 using Clicalo.Platform.Core.Injection;
 using Windows.Win32;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Clicalo.Platform.Windows.Input;
 
@@ -16,9 +17,12 @@ namespace Clicalo.Platform.Windows.Input;
 /// <remarks>
 /// <list type="bullet">
 /// <item>Text goes as Unicode, a line break as Enter (EJE-008); the rented buffer is wiped after the send.</item>
-/// <item>A mouse action moves to the point first and acts there (EJE-009, §7.11); without a point it acts at the
-/// centre of the foreground window's client area. A drag only moves: its button goes through <see cref="Send"/>,
-/// held by the engine.</item>
+/// <item>A mouse action moves to the point first and acts there (EJE-009, §7.11); without a point, or when a window of
+/// Clícalo now covers it (the bar that opened over where the cursor crossed into the handle), it acts at the centre of
+/// the foreground window's client area, and never on Clícalo itself. A drag only moves: its button goes through
+/// <see cref="Send"/>, held by the engine. A wheel step taken while the cursor is on Clícalo (a mouse or a touchpad on
+/// a tile) moves back there in the same <c>SendInput</c>: the cursor never seems to jump into the app, and a pointer
+/// holding the tile ends its hold there.</item>
 /// <item>A batch that releases everything it presses (text, a click, an internal chord) and that <c>SendInput</c>
 /// takes only in part is balanced at once: what went down and not up goes up in a second batch, Alt and Win with the
 /// menu mask (an extra release is harmless).</item>
@@ -28,7 +32,14 @@ namespace Clicalo.Platform.Windows.Input;
 /// </remarks>
 /// <param name="sender">The real <see cref="LowLevelInjector"/>, or the tests' sender.</param>
 /// <param name="keys">What Windows reports down: the chords skip keys already down, and <see cref="ReleasePressed"/>.</param>
-public sealed class InputInjector(ILowLevelSender sender, IKeyStateReader keys) : IInputInjector
+/// <param name="cursorOnClicalo">Where the cursor is when it is over a window of Clícalo, or null; the tests give their own.</param>
+/// <param name="isOnClicalo">Whether a window of Clícalo is under a point of the screen; the tests give their own.</param>
+public sealed class InputInjector(
+    ILowLevelSender sender,
+    IKeyStateReader keys,
+    Func<PhysicalPoint?>? cursorOnClicalo = null,
+    Func<PhysicalPoint, bool>? isOnClicalo = null
+) : IInputInjector
 {
     private const int StackInputs = 32;
     private const int WheelStep = 120;
@@ -85,8 +96,9 @@ public sealed class InputInjector(ILowLevelSender sender, IKeyStateReader keys) 
     /// <inheritdoc />
     public InjectionResult Mouse(MouseOp operation, PhysicalPoint? target)
     {
-        var point = target ?? ForegroundClientCentre();
-        if (point is not { } at)
+        var onClicalo = isOnClicalo ?? IsOnClicalo;
+        var point = target is { } wanted && !onClicalo(wanted) ? wanted : ForegroundClientCentre();
+        if (point is not { } at || onClicalo(at))
         {
             return new InjectionResult(InjectionStatus.Failed, 0, 0);
         }
@@ -125,6 +137,22 @@ public sealed class InputInjector(ILowLevelSender sender, IKeyStateReader keys) 
             case MouseOp.Drag:
                 // Only the move: the left button is held by the engine through Send (EJE-007).
                 break;
+        }
+
+        // A wheel step goes to the app under its point, but with a mouse or a touchpad the cursor is the pointer on the
+        // tile: left there, it seemed to move by itself, and a hold left its tile and ended after one step. It goes back
+        // in the same batch, so the cursor stays on the tile and a release lands there and ends the hold (REG-03).
+        if (
+            operation
+                is MouseOp.ScrollUp
+                    or MouseOp.ScrollDown
+                    or MouseOp.ScrollLeft
+                    or MouseOp.ScrollRight
+            && (cursorOnClicalo ?? CursorOnClicalo)() is { } back
+            && back != at
+        )
+        {
+            inputs[count++] = LowLevelInput.MoveTo(back.X, back.Y);
         }
 
         return SendBalanced(inputs[..count]);
@@ -247,6 +275,27 @@ public sealed class InputInjector(ILowLevelSender sender, IKeyStateReader keys) 
         }
 
         return Result(result, inputs.Length);
+    }
+
+    /// <summary>The cursor, when it is over a window of this process.</summary>
+    private static PhysicalPoint? CursorOnClicalo() =>
+        PInvoke.GetCursorPos(out var point) && IsOnClicalo(new PhysicalPoint(point.X, point.Y))
+            ? new PhysicalPoint(point.X, point.Y)
+            : null;
+
+    /// <summary>Whether the window under <paramref name="point"/> belongs to this process.</summary>
+    private static unsafe bool IsOnClicalo(PhysicalPoint point)
+    {
+        var under = PInvoke.WindowFromPoint(new System.Drawing.Point(point.X, point.Y));
+        if (under.IsNull)
+        {
+            return false;
+        }
+
+        var root = PInvoke.GetAncestor(under, GET_ANCESTOR_FLAGS.GA_ROOT);
+        uint processId = 0;
+        _ = PInvoke.GetWindowThreadProcessId(root.IsNull ? under : root, &processId);
+        return processId == (uint)Environment.ProcessId;
     }
 
     private static unsafe PhysicalPoint? ForegroundClientCentre()

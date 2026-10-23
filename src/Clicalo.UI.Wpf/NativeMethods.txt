@@ -93,4 +93,5 @@ EnableMouseInPointer
 IsMouseInPointerEnabled
 GetWindowFeedbackSetting
 TOUCH_MASK_CONTACTAREA
+GetCursorPos
 // ---- end of Pointer ----

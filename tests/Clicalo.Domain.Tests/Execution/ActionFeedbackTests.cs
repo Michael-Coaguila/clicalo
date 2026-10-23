@@ -80,7 +80,11 @@ public sealed class ActionFeedbackTests
         engine.Lift(contact: 2);
         engine.Tap(Shortcuts.Mouse("drag", MouseOp.Drag), contact: 3);
 
-        engine.Effects.OfType<EngineEffect.CountUsage>().Count().ShouldBe(3);
+        // A held scroll (the ⏶ ⏷ of the Tab bar) is a Mantener too: it turned ↻ off (D21 review).
+        engine.Press(Shortcuts.Mouse("down", MouseOp.ScrollDown), contact: 4);
+        engine.Lift(contact: 4);
+
+        engine.Effects.OfType<EngineEffect.CountUsage>().Count().ShouldBe(4);
         engine.Effects.OfType<EngineEffect.SetLastAction>().ShouldBeEmpty();
     }
 

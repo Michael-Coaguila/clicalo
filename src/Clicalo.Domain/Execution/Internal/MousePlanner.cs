@@ -37,8 +37,10 @@ internal static class MousePlanner
             return;
         }
 
-        // FIJ-006 (b): the active sticky modifiers are held around the click (Ctrl+click), then used up.
-        var modifiers = StickyKeys(step, origin);
+        // FIJ-006 (b): the active sticky modifiers are held around the click (Ctrl+click), then used up. A scroll is not
+        // one of those actions: invoked or held, it scrolls and leaves them waiting for the next key (D21 review: an
+        // invoked scroll zoomed with Ctrl while the same scroll held did not).
+        var modifiers = IsScroll(mouse.Op) ? [] : StickyKeys(step, origin);
         HolderId? holder = null;
         if (!modifiers.IsEmpty)
         {
@@ -149,7 +151,10 @@ internal static class MousePlanner
             ),
         };
         step.Notice(L.MouseRan(name: step.NameOf(shortcut)));
-        step.CountUsage(origin);
+
+        // AVI-004: a held scroll is a Mantener, which never becomes the action ↻ repeats; the ⏶ ⏷ of the Tab bar, which
+        // are not in the library, turned ↻ off (D21 review).
+        step.CountUsage(origin, repeatable: false);
     }
 
     /// <summary>The scroll timer fired: one more step, or the end of the repeat.</summary>
