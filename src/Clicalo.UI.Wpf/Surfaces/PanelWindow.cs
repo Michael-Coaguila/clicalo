@@ -1093,6 +1093,20 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
             }
         }
 
+        // TAC-008: a tap on the band of test mode ends it, as the switch of Quick settings does (it had no target).
+        if (
+            _layers is { TestMode.IsOn: true } testing
+            && _body.TestModeIndicator is { IsVisible: true } band
+        )
+        {
+            Add(
+                band,
+                ElementIdOf(band),
+                TouchTargetKind.Tap,
+                new Target(null, testing.TestMode.Stop)
+            );
+        }
+
         if (_panicStrip.Visibility == Visibility.Visible)
         {
             Add(
@@ -1129,7 +1143,9 @@ public sealed class PanelWindow : NonActivatingWindow, IPointerFrameSink, IPoint
         {
             var drawn = TouchBounds.Of(element, inflate: false);
             return covers.Exists(cover =>
-                !cover.Layer.IsAncestorOf(element) && Overlap(cover.Bounds, drawn)
+                !ReferenceEquals(cover.Layer, element)
+                && !cover.Layer.IsAncestorOf(element)
+                && Overlap(cover.Bounds, drawn)
             );
         }
 
