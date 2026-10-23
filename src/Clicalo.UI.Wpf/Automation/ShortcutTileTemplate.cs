@@ -42,6 +42,9 @@ public static class ShortcutTileTemplate
     /// <summary>Name of the ring of «elegido», armed and expanded.</summary>
     public const string RingPart = "PART_Ring";
 
+    /// <summary>Name of the body: the icon, the name and the key line, one under the other.</summary>
+    public const string BodyPart = "PART_Body";
+
     /// <summary>Name of the icon.</summary>
     public const string IconPart = "PART_Icon";
 
@@ -123,7 +126,7 @@ public static class ShortcutTileTemplate
 
     private static FrameworkElementFactory Body()
     {
-        var body = new FrameworkElementFactory(typeof(ShortcutTileBody));
+        var body = new FrameworkElementFactory(typeof(ShortcutTileBody), BodyPart);
         body.SetValue(FrameworkElement.MarginProperty, Bind(Control.PaddingProperty));
         body.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
         body.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);

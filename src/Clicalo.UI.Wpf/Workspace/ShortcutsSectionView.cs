@@ -183,7 +183,8 @@ public sealed class ShortcutsSectionView : Grid
             new ThemedScrollViewer
             {
                 Content = _listLayerContent,
-                Padding = new Thickness(Space.S4, Space.S1, Space.S2, Space.S6),
+                // The line of its foot closes the area: no blank band of S6 under the fade above it.
+                Padding = new Thickness(Space.S4, Space.S1, Space.S2, Space.S2),
             }
         );
         _listFoot = ShortcutEditorView.Foot(_listLayerFoot);
@@ -471,9 +472,14 @@ public sealed class ShortcutsSectionView : Grid
             _header.Content = Header(screen.Header);
         }
 
-        if (before?.Link != screen.Link)
+        if (
+            before?.Link != screen.Link
+            || (before?.ProfileEdit is null) != (screen.ProfileEdit is null)
+        )
         {
-            _link.Content = screen.Link is { } link ? Link(link) : null;
+            _link.Content = screen.Link is { } link
+                ? Link(link, covered: screen.ProfileEdit is not null)
+                : null;
         }
 
         if (before?.Grid != screen.Grid)
@@ -745,7 +751,7 @@ public sealed class ShortcutsSectionView : Grid
                 Margin = new Thickness(Space.S2, 0, 0, 0),
             };
             AutomationProperties.SetName(edit, model.EditName);
-            edit.Click += (_, _) => _viewModel.ToggleProfileEdit();
+            edit.Click += (_, _) => ToggleProfileEdit();
             DockPanel.SetDock(edit, Dock.Right);
             title.Children.Add(edit);
         }
@@ -787,10 +793,46 @@ public sealed class ShortcutsSectionView : Grid
     }
 
     /// <summary>
+    /// ✏ of the header (ATJ-004): the card of the profile is a layer over the options of the binding, so they close as
+    /// it opens; «Cambiar» is never drawn open under the card and «Listo» of the card does not bring them back.
+    /// </summary>
+    private void ToggleProfileEdit()
+    {
+        if (_shown is { ProfileEdit: null, Link.Expanded: true })
+        {
+            _viewModel.CloseLinkOptions();
+        }
+
+        _viewModel.ToggleProfileEdit();
+    }
+
+    /// <summary>
+    /// The action of the binding row (ATJ-005, ATJ-006). Under the card of the profile its options are covered and it
+    /// is drawn folded, so a tap closes the card and shows them, as it does without the card.
+    /// </summary>
+    private void LinkAction()
+    {
+        if (_shown is { ProfileEdit: not null, Link: { State: not LinkState.Waiting } link })
+        {
+            _viewModel.ToggleProfileEdit();
+            if (!link.Expanded)
+            {
+                _viewModel.LinkAction();
+            }
+
+            return;
+        }
+
+        _viewModel.LinkAction();
+    }
+
+    /// <summary>
     /// The one row of the binding (ATJ-005): what the profile follows, in one line with «…», the process in the type
     /// of the text (never cut) and its action as a tertiary button; it warns in warn when the profile follows nothing.
+    /// <paramref name="covered"/> says the card of the profile covers the options of the binding: their action is drawn
+    /// folded then, as no option is in view (D21 review).
     /// </summary>
-    private Border Link(LinkModel model)
+    private Border Link(LinkModel model, bool covered)
     {
         var (fill, line, ink) = model.State switch
         {
@@ -811,8 +853,9 @@ public sealed class ShortcutsSectionView : Grid
         row.Children.Add(icon);
         if (model.Action is { } action)
         {
-            var button = Parts.Button(action, null, ButtonVariant.Tertiary, _viewModel.LinkAction);
-            button.IsExpanded = model.State == LinkState.Waiting ? null : model.Expanded;
+            var button = Parts.Button(action, null, ButtonVariant.Tertiary, LinkAction);
+            button.IsExpanded =
+                model.State == LinkState.Waiting ? null : model.Expanded && !covered;
             if (button.IsExpanded is { } open)
             {
                 // It opens the options of the binding: ▾ like every fold, and «elegido» while they are open, so it
@@ -960,7 +1003,7 @@ public sealed class ShortcutsSectionView : Grid
     /// <summary>
     /// «Editar perfil» as a layer over the grid: its name with 🎤, its icon (which opens the icon picker, D14) and «Modo
     /// compatible»; then, in the foot of the layer, «Compartir», «Eliminar perfil» (two taps, REG-04) and «Listo»
-    /// (primary).
+    /// (primary), in one row where the three fit whole.
     /// </summary>
     private (UIElement? Body, UIElement? Foot) ProfileEdit(ProfileEditModel model)
     {
@@ -1033,7 +1076,13 @@ public sealed class ShortcutsSectionView : Grid
                 )
                 : null
         );
-        var foot = Ui.Column(Space.S2, Ui.Columns(actions.Count, Space.S2, actions), done);
+        var foot = new FootRow { Gap = Space.S2 };
+        foreach (var action in actions)
+        {
+            foot.Children.Add(action);
+        }
+
+        foot.Children.Add(done);
         return (column, foot);
     }
 
@@ -1293,4 +1342,108 @@ public sealed class ShortcutsSectionView : Grid
         double MarkTop,
         double MarkHeight
     );
+
+    /// <summary>
+    /// The foot of the card of the profile (ATJ-004): its buttons in one row that shares its width when all of them fit
+    /// whole, so the name of the profile keeps the room above in the smallest window (D21 review); otherwise the
+    /// actions share a row of equal columns and the last child, «Listo», takes the row under them. No text is cut.
+    /// </summary>
+    private sealed class FootRow : Panel
+    {
+        private double[] _natural = [];
+
+        /// <summary>The space between two buttons, across and down.</summary>
+        public double Gap { get; init; }
+
+        /// <inheritdoc />
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            var count = InternalChildren.Count;
+            _natural = new double[count];
+            for (var i = 0; i < count; i++)
+            {
+                InternalChildren[i]
+                    .Measure(new Size(double.PositiveInfinity, availableSize.Height));
+                // A pixel of slack: layout rounding can take a fraction from a text that then ends in «…».
+                _natural[i] = InternalChildren[i].DesiredSize.Width + Theming.Generated.Stroke.Line;
+            }
+
+            var width = double.IsInfinity(availableSize.Width)
+                ? _natural.Sum() + (Gap * Math.Max(0, count - 1))
+                : availableSize.Width;
+            var height = 0d;
+            foreach (var (slot, row) in Slots(width))
+            {
+                var child = InternalChildren[slot.Index];
+                child.Measure(new Size(slot.Width, double.PositiveInfinity));
+                height = Math.Max(height, row == 0 ? child.DesiredSize.Height : 0);
+            }
+
+            if (!OneRow(width) && count > 1)
+            {
+                height += Gap + InternalChildren[count - 1].DesiredSize.Height;
+            }
+
+            return new Size(width, height);
+        }
+
+        /// <inheritdoc />
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            var first = 0d;
+            foreach (var (slot, row) in Slots(finalSize.Width))
+            {
+                if (row == 0)
+                {
+                    first = Math.Max(first, InternalChildren[slot.Index].DesiredSize.Height);
+                }
+            }
+
+            foreach (var (slot, row) in Slots(finalSize.Width))
+            {
+                var child = InternalChildren[slot.Index];
+                var top = row == 0 ? 0 : first + Gap;
+                var height = row == 0 ? first : child.DesiredSize.Height;
+                child.Arrange(new Rect(slot.X, top, slot.Width, height));
+            }
+
+            return finalSize;
+        }
+
+        private bool OneRow(double width) =>
+            _natural.Sum() + (Gap * Math.Max(0, _natural.Length - 1)) <= width;
+
+        /// <summary>Where each child goes for <paramref name="width"/>: its index, x and width, and its row.</summary>
+        private IEnumerable<((int Index, double X, double Width) Slot, int Row)> Slots(double width)
+        {
+            var count = Math.Min(InternalChildren.Count, _natural.Length);
+            if (count == 0)
+            {
+                yield break;
+            }
+
+            if (OneRow(width))
+            {
+                // The width left over is shared out equally, so no button has room to spare while another is tight.
+                var extra = Math.Max(0, width - _natural.Sum() - (Gap * (count - 1))) / count;
+                var x = 0d;
+                for (var i = 0; i < count; i++)
+                {
+                    yield return ((i, x, _natural[i] + extra), 0);
+                    x += _natural[i] + extra + Gap;
+                }
+
+                yield break;
+            }
+
+            var columns = Math.Max(1, count - 1);
+            var column = Math.Max(0, (width - (Gap * (columns - 1))) / columns);
+            for (var i = 0; i < count - 1; i++)
+            {
+                yield return ((i, i * (column + Gap), column), 0);
+            }
+
+            yield return ((count - 1, 0, width), count > 1 ? 1 : 0);
+        }
+    }
 }

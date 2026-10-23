@@ -47,7 +47,12 @@ public sealed class StepProgress : Grid
             ColumnDefinitions.Add(
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             );
-            var bar = new Border { Height = Space.S1, CornerRadius = new CornerRadius(Radii.Pill) };
+            // A radius of half its height: a larger one makes WPF draw a lens instead of a pill (D21 review).
+            var bar = new Border
+            {
+                Height = Space.S1,
+                CornerRadius = new CornerRadius(Space.S1 / 2),
+            };
             Ui.Ink(bar, Border.BackgroundProperty, i <= step ? ColorToken.Accent : ColorToken.Line);
             SetColumn(bar, ColumnDefinitions.Count - 1);
             Children.Add(bar);

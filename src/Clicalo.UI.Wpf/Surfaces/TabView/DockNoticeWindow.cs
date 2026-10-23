@@ -54,12 +54,13 @@ public sealed class DockNoticeWindow : TouchSurface
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    // The window grows with its text: the part of a notice that says why or what to do is never cut (D21 review).
+    // The window grows with its text: the part of a notice that says why or what to do is never cut, and three or four
+    // lines keep some room above and below them inside the box (D21 review).
     private readonly StyledText _text = new(string.Empty, TextStyleToken.BodySmall)
     {
         MaxLines = 4,
         VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(Space.S2, 0, Space.S2, 0),
+        Margin = new Thickness(Space.S2, Space.S1, Space.S2, Space.S1),
     };
     private readonly TouchButton _undo = NoticeButton(ButtonVariant.Tertiary, "undo");
     private readonly TouchButton _cancel = NoticeButton(ButtonVariant.Tertiary, null);

@@ -361,11 +361,12 @@ public sealed class DockFlyoutWindow : TouchSurface
         for (var i = 0; i < _viewModel.ArrowTiles.Count && i < places.Length; i++)
         {
             var tile = _viewModel.ArrowTiles[i];
+            // The arrow is the whole content of its key: drawn large, it reads at a glance (D21 review: thin at 24).
             var (control, handler) = DockTileFactory.Create(
                 tile,
                 ControlHeight.Large,
                 ControlHeight.Large,
-                IconBox.Medium,
+                IconBox.Large,
                 1,
                 Modes
             );

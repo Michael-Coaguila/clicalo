@@ -262,22 +262,13 @@ internal static class OptionChrome
                 var counter = Templates
                     .Element<Counter>(CountPart)
                     .With(Counter.CountProperty, Templates.Bind(count))
-                    .With(FrameworkElement.MarginProperty, new Thickness(Space.S1, 0, 0, 0))
                     .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
-                // A hidden twin of the counter on the other side keeps the icon on the axis of the label, as the
-                // icons of the items without a counter.
-                var balance = Templates
-                    .Element<Counter>()
-                    .With(Counter.CountProperty, Templates.Bind(count))
-                    .With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S1, 0))
-                    .With(UIElement.VisibilityProperty, Visibility.Hidden);
-                // The counter goes beside the icon, in a slot of its own: it never covers it.
+                // The icon on the axis of the label, as the icons of the items without a counter, and the counter
+                // beside it, out of the flow: it never covers the icon and is never cut.
                 var head = Templates
-                    .Element<StackPanel>()
-                    .With(StackPanel.OrientationProperty, Orientation.Horizontal)
-                    .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center)
+                    .Element<RailHead>()
                     .With(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, Space.S1))
-                    .Add(balance, icon, counter);
+                    .Add(icon, counter);
                 text.With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
                 body = Templates
                     .Element<StackPanel>(ControlChrome.ContentPart)
@@ -317,14 +308,11 @@ internal static class OptionChrome
                 var checkBalance = Templates
                     .Element<Border>(CheckBalancePart)
                     .With(FrameworkElement.WidthProperty, IconBox.Small + Space.S1)
-                    .With(DockPanel.DockProperty, Dock.Right)
                     .With(UIElement.VisibilityProperty, Visibility.Collapsed);
-                // A dock, not a horizontal stack: the text gets the width that is left, so it can wrap or end in «…».
-                check.With(DockPanel.DockProperty, Dock.Left);
-                icon.With(DockPanel.DockProperty, Dock.Left);
+                // Not a horizontal stack: the text gets the width that is left, so it can wrap or end in «…»; and the
+                // ✓ never takes that width from it.
                 body = Templates
-                    .Element<DockPanel>(ControlChrome.ContentPart)
-                    .With(DockPanel.LastChildFillProperty, true)
+                    .Element<CheckRow>(ControlChrome.ContentPart)
                     .Add(check, icon, checkBalance, text);
                 triggers.Add(Collapse(symbol, null, IconPart));
                 var bare = new MultiTrigger();
@@ -382,4 +370,151 @@ internal static class OptionChrome
             value,
             new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, part)
         );
+
+    /// <summary>
+    /// The row of an option of the shapes without a column (tile, chip, segment): the ✓, the icon, the slot that
+    /// balances the ✓ on the other side of a centred text, and the text, laid out as a dock panel does (the text gets
+    /// the width that is left, so it can wrap or end in «…»). The ✓ and its balance never take that width from the text:
+    /// where the whole label does not fit beside them (a key of 44 in the combination box, Ctrl in its row of four),
+    /// both are left out and the wash, the ring and the state UI Automation reads say «elegido» alone (EDI-008), so a
+    /// chosen key never reads «✓ C…» (D21 review).
+    /// </summary>
+    /// <remarks>Its children are, in this order, the ✓, the icon, the balance and the text.</remarks>
+    private sealed class CheckRow : Panel
+    {
+        private double _natural;
+
+        /// <inheritdoc />
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            if (InternalChildren.Count != 4)
+            {
+                return default;
+            }
+
+            var unbounded = new Size(double.PositiveInfinity, availableSize.Height);
+            foreach (UIElement child in InternalChildren)
+            {
+                child.Measure(unbounded);
+            }
+
+            var (check, icon, balance, text) = Parts();
+            _natural = text.DesiredSize.Width;
+            var used = icon.DesiredSize.Width + (Fits(availableSize.Width) ? Marks() : 0);
+            text.Measure(new Size(Math.Max(0, availableSize.Width - used), availableSize.Height));
+            var height = Math.Max(
+                Math.Max(check.DesiredSize.Height, icon.DesiredSize.Height),
+                Math.Max(balance.DesiredSize.Height, text.DesiredSize.Height)
+            );
+            return new Size(used + text.DesiredSize.Width, height);
+        }
+
+        /// <inheritdoc />
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            if (InternalChildren.Count != 4)
+            {
+                return finalSize;
+            }
+
+            var (check, icon, balance, text) = Parts();
+            var marks = Fits(finalSize.Width);
+            var x = 0d;
+            if (marks)
+            {
+                check.Arrange(new Rect(0, 0, check.DesiredSize.Width, finalSize.Height));
+                x = check.DesiredSize.Width;
+            }
+            else
+            {
+                // Left out: a slot of nothing, so it is drawn nowhere.
+                check.Arrange(default);
+            }
+
+            icon.Arrange(new Rect(x, 0, icon.DesiredSize.Width, finalSize.Height));
+            x += icon.DesiredSize.Width;
+            var right = finalSize.Width;
+            if (marks)
+            {
+                right = Math.Max(x, right - balance.DesiredSize.Width);
+                balance.Arrange(new Rect(right, 0, balance.DesiredSize.Width, finalSize.Height));
+            }
+            else
+            {
+                balance.Arrange(default);
+            }
+
+            text.Arrange(new Rect(x, 0, Math.Max(0, right - x), finalSize.Height));
+            return finalSize;
+        }
+
+        private (UIElement Check, UIElement Icon, UIElement Balance, UIElement Text) Parts() =>
+            (InternalChildren[0], InternalChildren[1], InternalChildren[2], InternalChildren[3]);
+
+        private double Marks() =>
+            InternalChildren[0].DesiredSize.Width + InternalChildren[2].DesiredSize.Width;
+
+        // A pixel of slack: layout rounding can take a fraction from a text that then ends in «…».
+        private bool Fits(double width) =>
+            Marks() <= 0
+            || InternalChildren[1].DesiredSize.Width + Marks() + _natural <= width + Stroke.Line;
+    }
+
+    /// <summary>
+    /// The head of a rail item: the icon on the axis of the label, as the icons of the items without a counter, and the
+    /// counter beside it, out of the flow. A hidden twin of the counter on the other side kept the icon on the axis but
+    /// made the head wider than the item of the rail, so the counter was cut flat on its right (D21 review): here the
+    /// counter starts <see cref="Space.S1"/> after the icon and, where that would take it past the padding of the
+    /// item, moves left just enough to stay whole inside the ring of «elegido».
+    /// </summary>
+    /// <remarks>Its children are, in this order, the icon and the counter. It takes the whole width it is given.</remarks>
+    private sealed class RailHead : Panel
+    {
+        /// <summary>How far past the head the counter may reach: the padding of the item, less its ring and a line.</summary>
+        private const double Reach = Space.S1 - Stroke.Selected - Stroke.Line;
+
+        /// <inheritdoc />
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            var height = 0d;
+            foreach (UIElement child in InternalChildren)
+            {
+                child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                height = Math.Max(height, child.DesiredSize.Height);
+            }
+
+            var icon = InternalChildren.Count > 0 ? InternalChildren[0].DesiredSize.Width : 0;
+            return new Size(
+                double.IsInfinity(availableSize.Width) ? icon : availableSize.Width,
+                height
+            );
+        }
+
+        /// <inheritdoc />
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            if (InternalChildren.Count != 2)
+            {
+                return finalSize;
+            }
+
+            var icon = InternalChildren[0];
+            var counter = InternalChildren[1];
+            var left = (finalSize.Width - icon.DesiredSize.Width) / 2;
+            icon.Arrange(new Rect(left, 0, icon.DesiredSize.Width, finalSize.Height));
+            var x = Math.Min(
+                left + icon.DesiredSize.Width + Space.S1,
+                finalSize.Width + Reach - counter.DesiredSize.Width
+            );
+            counter.Arrange(
+                new Rect(
+                    Math.Max(0, x),
+                    0,
+                    counter.DesiredSize.Width,
+                    Math.Max(finalSize.Height, counter.DesiredSize.Height)
+                )
+            );
+            return finalSize;
+        }
+    }
 }

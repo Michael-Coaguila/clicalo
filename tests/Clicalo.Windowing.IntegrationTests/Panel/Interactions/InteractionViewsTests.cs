@@ -165,7 +165,9 @@ public sealed class InteractionViewsTests
             add.Label.Text.ShouldBe("Añadir");
 
             cross.TapTarget.Tap();
-            cross.Content.ShouldBe("Confirmar");
+            cross
+                .Content.ShouldBeOfType<System.Windows.Controls.TextBlock>()
+                .Text.ShouldBe("Confirmar");
             AutomationProperties.GetItemStatus(cross).ShouldBe("Confirmar");
 
             cross.Detach();

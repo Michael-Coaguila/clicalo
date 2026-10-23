@@ -173,6 +173,63 @@ public sealed class BaseControlTests
             );
         });
 
+    [Theory]
+    [Trait("Req", "EDI-008")]
+    [Trait("Req", "ACC-003")]
+    [InlineData("B", 44d, false)]
+    [InlineData("Ctrl", 78d, false)]
+    [InlineData("Ctrl", 160d, true)]
+    public void A_chosen_key_shows_its_check_only_where_its_whole_label_fits_beside_it(
+        string label,
+        double width,
+        bool checks
+    ) =>
+        WpfThread.Invoke(() =>
+        {
+            // A key of the combination box: a cell of 44 or a modifier in its row of four (EDI-008).
+            var option = new OptionButton
+            {
+                Content = label,
+                IsMonospace = true,
+                IsSelected = true,
+                Role = OptionRole.Toggle,
+                Width = width,
+                Padding = new Thickness(Space.S1, 0, Space.S1, 0),
+            };
+            using var service = Host(option);
+            var check = (FrameworkElement)option.Template.FindName("PART_Check", option);
+            var text = Descendants(option)
+                .OfType<TextBlock>()
+                .Single(block => string.Equals(block.Text, label, StringComparison.Ordinal));
+            var face = new Typeface(
+                text.FontFamily,
+                text.FontStyle,
+                text.FontWeight,
+                text.FontStretch
+            );
+            var whole = new FormattedText(
+                label,
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                face,
+                text.FontSize,
+                Brushes.Black,
+                VisualTreeHelper.GetDpi(text).PixelsPerDip
+            ).WidthIncludingTrailingWhitespace;
+
+            whole.ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, "never «✓ C…»");
+            (
+                System.Windows.Controls.Primitives.LayoutInformation.GetLayoutSlot(check).Width > 0
+            ).ShouldBe(checks);
+            text.TransformToAncestor(option)
+                .Transform(new Point(text.ActualWidth / 2, 0))
+                .X.ShouldBe(width / 2, 1, "the label stays on the axis of the key");
+            (
+                (IToggleProvider)PeerOf(option).GetPattern(PatternInterface.Toggle)
+            ).ToggleState.ShouldBe(ToggleState.On, "UI Automation still says it is chosen");
+            Fill(option, OptionButton.FillPart).ShouldBe(ThemePalettes.Dark.AccentWash);
+        });
+
     [Fact]
     [Trait("Req", "ACC-001")]
     [Trait("Req", "ACC-005")]

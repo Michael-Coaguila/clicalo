@@ -694,6 +694,367 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Theory]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1371, 859)]
+    [Trait("Req", "CCM-002")]
+    public void The_counter_of_a_rail_item_is_whole_beside_its_icon_and_inside_the_ring(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                var items = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static item =>
+                        item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail && item.Count > 0
+                    )
+                    .ToList();
+                items.Count.ShouldBe(2, "Atajos and Sistema count something");
+                foreach (var item in items)
+                {
+                    var label = (string)item.Content;
+                    var counter = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Count", item);
+                    var icon = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Icon", item);
+                    var box = Bounds(counter, item);
+                    box.Width.ShouldBeGreaterThan(0, label);
+                    box.Left.ShouldBeGreaterThanOrEqualTo(
+                        Bounds(icon, item).Right - 0.5,
+                        "beside the icon, never over it: " + label
+                    );
+                    box.Right.ShouldBeLessThanOrEqualTo(
+                        item.ActualWidth - Clicalo.UI.Wpf.Theming.Generated.Stroke.Selected,
+                        "inside the ring of «elegido»: " + label
+                    );
+                    // Nothing between the counter and its item cuts it (it was cut flat on its right, D21 review).
+                    for (
+                        System.Windows.DependencyObject? node = counter;
+                        node is not null && !ReferenceEquals(node, item);
+                        node = System.Windows.Media.VisualTreeHelper.GetParent(node)
+                    )
+                    {
+                        if (
+                            node is System.Windows.FrameworkElement element
+                            && System.Windows.Controls.Primitives.LayoutInformation.GetLayoutClip(
+                                element
+                            )
+                                is { } clip
+                        )
+                        {
+                            var inside = Bounds(counter, element);
+                            inside.Inflate(-0.5, -0.5);
+                            clip.Bounds.Contains(inside).ShouldBeTrue(label);
+                        }
+                    }
+                }
+            }
+        );
+
+    [Theory]
+    [InlineData(AuditLook.Dark)]
+    [InlineData(AuditLook.ContrastLargeText)]
+    [Trait("Req", "CCM-005")]
+    [Trait("Req", "CCM-002")]
+    public void In_the_smallest_window_the_section_in_view_is_above_the_fade_of_the_rail(
+        AuditLook look
+    ) =>
+        Run(
+            "en",
+            760,
+            520,
+            look,
+            (viewModel, _, host) =>
+            {
+                States["about-open"](viewModel);
+                host.LayOut();
+                host.LayOut();
+                var selected = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Single(static item =>
+                        item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail && item.IsSelected
+                    );
+                ((string)selected.Content).ShouldBe("About & contact");
+                AboveFade(selected).ShouldBeGreaterThanOrEqualTo(-0.5, "its second line faded");
+            }
+        );
+
+    [Theory]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 760, 520)]
+    [InlineData("es", 1120, 680)]
+    [Trait("Req", "PRB-001")]
+    [Trait("Req", "PRB-003")]
+    [Trait("Req", "CCM-005")]
+    public void Probar_covers_the_foot_of_the_editor_and_shows_its_keys_above_its_own_foot(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States["shortcuts-test"](viewModel);
+                WpfThread.DrainPendingWork();
+                window.ShowShortcutPage();
+                host.LayOut();
+
+                var model = viewModel.Shortcuts.Editor.Model.ShouldNotBeNull();
+                var test = model.Test.ShouldNotBeNull();
+                // The foot of the editor is under the layer: neither the finger nor UI Automation reach it.
+                Named(host, model.Footer.DuplicateText).ShouldBeEmpty();
+                Named(host, model.Footer.DeleteText).ShouldBeEmpty();
+                // The way out and what tries are in view: ✕ of the title and «Probar ahora» in the foot of the layer.
+                var editor = InTree(host.Root).OfType<ShortcutEditorView>().Single();
+                var close = InTree(editor)
+                    .OfType<Clicalo.UI.Wpf.Controls.IconButton>()
+                    .Single(button =>
+                        button.IsVisible
+                        && string.Equals(
+                            AutomationProperties.GetName(button),
+                            test.CloseName,
+                            StringComparison.Ordinal
+                        )
+                    );
+                AboveFade(close).ShouldBeGreaterThanOrEqualTo(-0.5, "✕ of «Probar»");
+                var live = (System.Windows.FrameworkElement)
+                    (
+                        (UIElementAutomationPeer)
+                            host.Peer(test.LiveText, AutomationControlType.Button)
+                    ).Owner;
+                Bounds(live, editor).Bottom.ShouldBeLessThanOrEqualTo(editor.ActualHeight + 0.5);
+                // The keys it sends are above the fade, not squeezed between two feet (D21 review).
+                var key = InTree(host.Root)
+                    .OfType<System.Windows.Controls.TextBlock>()
+                    .Single(block =>
+                        block.IsVisible
+                        && string.Equals(
+                            block.Text,
+                            test.Sequence[^1].Label,
+                            StringComparison.Ordinal
+                        )
+                    );
+                AboveFade(key).ShouldBeGreaterThanOrEqualTo(-0.5, "the keys of «Probar»");
+            }
+        );
+
+    [Theory]
+    [InlineData("shortcuts-macro-keys", "es", 1120, 680)]
+    [InlineData("shortcuts-hold", "es", 1371, 859)]
+    [InlineData("shortcuts-macro-keys", "en", 760, 520)]
+    [InlineData("templates-preview-keys", "es", 1371, 859)]
+    [Trait("Req", "EDI-008")]
+    [Trait("Req", "ACC-003")]
+    public void A_chosen_key_of_the_combination_box_keeps_its_whole_label_on_its_axis(
+        string state,
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+
+                host.LayOut();
+                var chosen = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static key =>
+                        key.IsVisible && key.IsMonospace && key.IsSelected && key.Content is string
+                    )
+                    .ToList();
+                chosen.Count.ShouldBeGreaterThanOrEqualTo(2, "a modifier and a key");
+                foreach (var key in chosen)
+                {
+                    var label = (string)key.Content;
+                    var text = InTree(key)
+                        .OfType<System.Windows.Controls.TextBlock>()
+                        .Single(block =>
+                            string.Equals(block.Text, label, StringComparison.Ordinal)
+                        );
+                    Natural(text)
+                        .ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, "«✓ C…»: " + label);
+                    text.TransformToAncestor(key)
+                        .Transform(new System.Windows.Point(text.ActualWidth / 2, 0))
+                        .X.ShouldBe(key.ActualWidth / 2, 1, label);
+                }
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "ATJ-004")]
+    [Trait("Req", "ATJ-005")]
+    [Trait("Req", "ATJ-006")]
+    [Trait("Req", "ACC-001")]
+    public void Under_the_card_of_the_profile_the_action_of_the_binding_is_folded_and_opens_its_options() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                var section = viewModel.Shortcuts;
+                section.ToggleProfileEdit();
+                section.LinkAction();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                var link = section.Screen.Link.ShouldNotBeNull();
+                link.Expanded.ShouldBeTrue("the options are open under the card");
+                var action = link.Action.ShouldNotBeNull();
+                Fold(host, action)
+                    .ExpandCollapseState.ShouldBe(
+                        ExpandCollapseState.Collapsed,
+                        "no option of the binding is in view"
+                    );
+
+                // A tap shows them: the card closes.
+                Fold(host, action).Expand();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+                section.Screen.ProfileEdit.ShouldBeNull();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeTrue();
+                Fold(host, action).ExpandCollapseState.ShouldBe(ExpandCollapseState.Expanded);
+
+                // ✏ opens the card over them and closes them, so «Listo» of the card does not bring them back.
+                Fold(host, section.Screen.Header.EditName).Expand();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+                section.Screen.ProfileEdit.ShouldNotBeNull();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeFalse();
+                Fold(host, action).ExpandCollapseState.ShouldBe(ExpandCollapseState.Collapsed);
+            }
+        );
+
+    [Theory]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 760, 520)]
+    [Trait("Req", "ATJ-004")]
+    [Trait("Req", "CCM-005")]
+    public void In_the_smallest_window_the_card_of_the_profile_ends_in_one_row_and_shows_its_name(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                States["shortcuts-profile-edit"](viewModel);
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                var edit = viewModel.Shortcuts.Screen.ProfileEdit.ShouldNotBeNull();
+                var buttons = new[]
+                {
+                    edit.ShareText,
+                    edit.DeleteText.ShouldNotBeNull(),
+                    edit.DoneText,
+                }
+                    .Select(name =>
+                        (System.Windows.FrameworkElement)
+                            (
+                                (UIElementAutomationPeer)
+                                    host.Peer(name, AutomationControlType.Button)
+                            ).Owner
+                    )
+                    .ToList();
+                buttons
+                    .Select(button => Math.Round(Bounds(button, host.Root).Top))
+                    .Distinct()
+                    .Count()
+                    .ShouldBe(1, "«Compartir», «Eliminar perfil» and «Listo» share a row");
+                foreach (var button in buttons)
+                {
+                    foreach (var text in InTree(button).OfType<System.Windows.Controls.TextBlock>())
+                    {
+                        Natural(text).ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, text.Text);
+                    }
+                }
+
+                var name = (System.Windows.FrameworkElement)
+                    (
+                        (UIElementAutomationPeer)
+                            host.Peer(edit.NameLabel, AutomationControlType.Edit)
+                    ).Owner;
+                AboveFade(name).ShouldBeGreaterThanOrEqualTo(-0.5, "the name of the profile");
+            }
+        );
+
+    private static IExpandCollapseProvider Fold(AuditHost host, string name) =>
+        host.Peer(name, AutomationControlType.Button)
+            .GetPattern(PatternInterface.ExpandCollapse)
+            .ShouldBeAssignableTo<IExpandCollapseProvider>()!;
+
+    /// <summary>The box of <paramref name="element"/> in the coordinates of <paramref name="ancestor"/>.</summary>
+    private static System.Windows.Rect Bounds(
+        System.Windows.FrameworkElement element,
+        System.Windows.Media.Visual ancestor
+    ) =>
+        element
+            .TransformToAncestor(ancestor)
+            .TransformBounds(new System.Windows.Rect(element.RenderSize));
+
+    /// <summary>
+    /// How far the bottom of <paramref name="element"/> is above the fade of the scroll area it is in: 0 or more when it
+    /// is drawn whole and clear.
+    /// </summary>
+    private static double AboveFade(System.Windows.FrameworkElement element)
+    {
+        System.Windows.DependencyObject node = element;
+        while (node is not System.Windows.Controls.ScrollContentPresenter)
+        {
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        }
+
+        var presenter = (System.Windows.Controls.ScrollContentPresenter)node;
+        var scroll = (Clicalo.UI.Wpf.Controls.ThemedScrollViewer)presenter.TemplatedParent;
+        var fade = scroll.IsFading ? Clicalo.UI.Wpf.Theming.Generated.ComponentSize.ScrollFade : 0;
+        return presenter.ActualHeight - fade - Bounds(element, presenter).Bottom;
+    }
+
+    /// <summary>The width of the whole text of <paramref name="text"/> in one line.</summary>
+    private static double Natural(System.Windows.Controls.TextBlock text) =>
+        new System.Windows.Media.FormattedText(
+            text.Text,
+            CultureInfo.InvariantCulture,
+            System.Windows.FlowDirection.LeftToRight,
+            new System.Windows.Media.Typeface(
+                text.FontFamily,
+                text.FontStyle,
+                text.FontWeight,
+                text.FontStretch
+            ),
+            text.FontSize,
+            System.Windows.Media.Brushes.Black,
+            System.Windows.Media.VisualTreeHelper.GetDpi(text).PixelsPerDip
+        ).WidthIncludingTrailingWhitespace;
+
     private static List<AutomationPeer> Named(AuditHost host, string name)
     {
         var found = new List<AutomationPeer>();

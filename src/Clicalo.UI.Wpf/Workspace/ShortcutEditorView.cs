@@ -22,7 +22,7 @@ namespace Clicalo.UI.Wpf.Workspace;
 /// State B of the editor column of «Atajos» (docs/05 §1 B) in direction C (D12): the regions of the shortcut in an area
 /// that scrolls with its fade (the repeated combination, the preview and the name, «Qué hace», the combination or the
 /// fields of its kind, «Fijar en Siempre visible» and «Más opciones»), the fixed foot with Probar, Duplicar and
-/// Eliminar, and «Probar» as a layer over the regions, never under the foot. It draws
+/// Eliminar, and «Probar» as a layer over the regions and that foot, with a foot of its own. It draws
 /// <see cref="ShortcutEditorViewModel.Model"/> region by region, rebuilding only the regions whose model changed, and
 /// keeps its text fields alive so typing, dictation and the touch keyboard are never interrupted. The icon picker is a
 /// layer of the section, wider than this column.
@@ -106,8 +106,13 @@ public sealed class ShortcutEditorView : Grid
             Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
         };
         Children.Add(_scroll);
-        // «Probar» is a layer over the regions (D12): it never pushes them, and the foot stays where the finger is. What
-        // it tries in and «Probar ahora» are a foot of their own, so they are in view in the smallest window too.
+        var foot = Foot(_footer);
+        SetRow(foot, 1);
+        Children.Add(foot);
+        // «Probar» is a layer over the regions and the foot of the editor (D12): it never pushes them. What it tries in
+        // and «Probar ahora» are a foot of its own where the foot of the editor was, so they are in view in the
+        // smallest window too, and its title and its keys are not squeezed between two feet; ✕ of its title is its way
+        // out (PRB-001).
         var test = new Grid();
         test.RowDefinitions.Add(
             new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
@@ -117,7 +122,8 @@ public sealed class ShortcutEditorView : Grid
             new ThemedScrollViewer
             {
                 Content = _testContent,
-                Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S6),
+                // The line of its foot closes the area: no blank band of S6 under the fade above it.
+                Padding = new Thickness(Space.S4, Space.S4, Space.S2, Space.S2),
             }
         );
         var testFoot = Foot(_testFoot);
@@ -125,11 +131,9 @@ public sealed class ShortcutEditorView : Grid
         test.Children.Add(testFoot);
         _test = Parts.Layer(test);
         _test.Visibility = Visibility.Collapsed;
+        SetRowSpan(_test, 2);
         Children.Add(_test);
-        Parts.Cover(_test, _scroll);
-        var foot = Foot(_footer);
-        SetRow(foot, 1);
-        Children.Add(foot);
+        Parts.Cover(_test, _scroll, foot);
 
         viewModel.PropertyChanged += OnChanged;
         Render();
@@ -1433,9 +1437,9 @@ public sealed class ShortcutEditorView : Grid
     // ---- El pie fijo -------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// Probar (primary: it opens and closes the test layer), Duplicar (secondary) and Eliminar (danger, two taps,
-    /// REG-04): one row that shares its width, so no text is cut while another button has room to spare. While the
-    /// layer is open, Probar is what closes it: a secondary drawn «elegido», so «Probar ahora» is the one primary.
+    /// Probar (primary: it opens the test layer), Duplicar (secondary) and Eliminar (danger, two taps, REG-04): one row
+    /// that shares its width, so no text is cut while another button has room to spare. The open layer covers this
+    /// foot, so «Probar ahora» is the one primary in view and ✕ of the layer closes it.
     /// </summary>
     private ShareRow Footer(FooterModel model)
     {

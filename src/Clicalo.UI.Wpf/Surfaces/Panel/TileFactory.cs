@@ -1,7 +1,9 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Theming;
@@ -28,6 +30,22 @@ internal static class TileFactory
             typeof(TileFactory),
             new PropertyMetadata(false)
         );
+
+    /// <summary>The anatomy <see cref="Size"/> gave a tile, so it is placed again when what it shows changes.</summary>
+    private static readonly DependencyProperty LookProperty = DependencyProperty.RegisterAttached(
+        "Look",
+        typeof(TileLook),
+        typeof(TileFactory),
+        new PropertyMetadata(null)
+    );
+
+    /// <summary>Whether a tile already places its body when its voice number or its width change.</summary>
+    private static readonly DependencyProperty PlacesProperty = DependencyProperty.RegisterAttached(
+        "Places",
+        typeof(bool),
+        typeof(TileFactory),
+        new PropertyMetadata(false)
+    );
 
     /// <summary>A new tile for <paramref name="viewModel"/>, kept painted while it lives.</summary>
     /// <param name="viewModel">The tile's view model.</param>
@@ -133,19 +151,16 @@ internal static class TileFactory
         );
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
-        // Beside the number the icon takes the middle of the tile, and without its icon the name rises to the height of
-        // the corner: the type mark there would sit on them, so it only stays in the help of the tile («Mantener»).
+        // Without its icon the name rises to the height of the corner: the type mark there would sit on it, so it only
+        // stays in the help of the tile («Mantener»). Beside a centred number it shows while the pair leaves it room.
         ShowPart(control, ShortcutTileTemplate.TypePart, look.ShowsIcon && !look.CentresNumber);
-        if (Part(control, ShortcutTileTemplate.VoiceNumberPart) is { } number)
+        var number = Part(control, ShortcutTileTemplate.VoiceNumberPart);
+        if (number is not null)
         {
             if (look.CentresNumber)
             {
                 number.VerticalAlignment = VerticalAlignment.Center;
                 number.Margin = new Thickness(Space.S1, 0, 0, 0);
-                // The number is as wide as its digits: the body is placed once it is measured, and again when it grows.
-                SizeChangedEventHandler place = (_, _) => PlaceBesideNumber(control, number, look);
-                number.SizeChanged += place;
-                control.SizeChanged += place;
             }
             else
             {
@@ -154,18 +169,38 @@ internal static class TileFactory
             }
         }
 
+        // Around a number in its corner the name and the origin are placed across the whole tile, not in the box of
+        // the widest of them.
+        if (Part(control, ShortcutTileTemplate.BodyPart) is { } body)
+        {
+            if (look.ClearsCornerNumber)
+            {
+                body.HorizontalAlignment = HorizontalAlignment.Stretch;
+            }
+            else
+            {
+                body.ClearValue(FrameworkElement.HorizontalAlignmentProperty);
+            }
+        }
+
+        Part(control, ShortcutTileTemplate.LabelPart)?.ClearValue(FrameworkElement.MarginProperty);
         if (Part(control, ShortcutTileTemplate.KeysPart) is TextBlock keys)
         {
-            // A profile of origin is words, not keys: the interface font, as the state in words that may take its place.
+            keys.ClearValue(FrameworkElement.HorizontalAlignmentProperty);
+
+            // A profile of origin is words, not keys: the interface font, as the state in words that may take its place,
+            // across the whole inner width of the tile (BUS-005, FRE-003).
             if (look.KeysAreWords)
             {
                 keys.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.UiFont);
                 keys.FontWeight = FontWeights.Bold;
+                keys.Margin = WordsMargin(look, 0);
             }
             else
             {
                 keys.ClearValue(TextBlock.FontFamilyProperty);
                 keys.ClearValue(TextBlock.FontWeightProperty);
+                keys.ClearValue(FrameworkElement.MarginProperty);
             }
         }
 
@@ -179,12 +214,52 @@ internal static class TileFactory
             ShortcutTile.KeysFontSizeProperty,
             ThemeKeys.FontSize(look.Keys, scaled: true)
         );
+
+        control.SetValue(LookProperty, look);
+        if (
+            (look.CentresNumber || look.ClearsCornerNumber)
+            && number is not null
+            && !(bool)control.GetValue(PlacesProperty)
+        )
+        {
+            // The number is as wide as its digits: the body is placed once it is measured, and again when it grows.
+            control.SetValue(PlacesProperty, true);
+            SizeChangedEventHandler place = (_, _) => Place(control);
+            number.SizeChanged += place;
+            control.SizeChanged += place;
+        }
+    }
+
+    /// <summary>
+    /// Places the body of a tile around its voice number, when its look says so: beside a number centred down the tile
+    /// (<see cref="TileLook.CentresNumber"/>), or around a number in its corner (<see cref="TileLook.ClearsCornerNumber"/>).
+    /// </summary>
+    private static void Place(ShortcutTile control)
+    {
+        if (
+            control.GetValue(LookProperty) is not TileLook look
+            || Part(control, ShortcutTileTemplate.VoiceNumberPart) is not { } number
+        )
+        {
+            return;
+        }
+
+        if (look.CentresNumber)
+        {
+            PlaceBesideNumber(control, number, look);
+        }
+        else if (look.ClearsCornerNumber)
+        {
+            PlaceAroundCornerNumber(control, number, look);
+        }
     }
 
     /// <summary>
     /// Puts the body of a tile beside its voice number, which is centred down the tile (<see cref="TileLook.CentresNumber"/>),
     /// whatever the digits of the number: the body starts <see cref="Space.S1"/> after it, so a number of two digits
-    /// never covers the icon or the name. An icon alone makes one pair with the number, centred across the tile.
+    /// never covers the icon or the name. An icon alone makes one pair with the number, centred across the tile; when
+    /// the tile has a type mark («Mantener» of Hablar) and the pair fits whole beside its corner, the mark stays and the
+    /// pair moves only as far as it must to keep clear of it.
     /// </summary>
     private static void PlaceBesideNumber(
         ShortcutTile control,
@@ -199,17 +274,105 @@ internal static class TileFactory
             return;
         }
 
-        var side = look.ShowsIcon
-            ? Math.Max(Space.S1, (width - (badge + Space.S1 + look.IconSize)) / 2)
-            : Space.S1;
+        var pair = badge + Space.S1 + look.IconSize;
+        var markLeft = width - Space.S1 - IconBox.Badge;
+        var mark = look.ShowsIcon && control.TypeSymbol is not null && Space.S1 + pair <= markLeft;
+        ShowPart(control, ShortcutTileTemplate.TypePart, mark);
+        var centred = (width - pair) / 2;
+        var side =
+            !look.ShowsIcon ? Space.S1
+            : mark ? Math.Max(Space.S1, Math.Min(centred, markLeft - Space.S1 - pair))
+            : Math.Max(Space.S1, centred);
         number.Margin = new Thickness(side, 0, 0, 0);
         control.Padding = new Thickness(
             side + badge + Space.S1,
             look.TopInset,
-            look.ShowsIcon ? side : look.SideInset,
+            look.ShowsIcon ? width - side - pair : look.SideInset,
             Bottom(look)
         );
     }
+
+    /// <summary>
+    /// Places the name and the origin of a tile without an icon around its voice number, which keeps its corner at the
+    /// top left as on every tile (<see cref="TileLook.ClearsCornerNumber"/>): under it when the two lines fit there,
+    /// both centred in the tile; otherwise the name goes beside it, centred in the room it leaves and ending in «…» only
+    /// when it does not fit there, and the origin keeps the whole inner width under them, centred with the name while it
+    /// fits that room and reaching under the number when it is longer. Without a number both are centred in the tile.
+    /// </summary>
+    private static void PlaceAroundCornerNumber(
+        ShortcutTile control,
+        FrameworkElement number,
+        TileLook look
+    )
+    {
+        var width = control.ActualWidth;
+        var height = control.ActualHeight;
+        if (
+            width <= 0
+            || height <= 0
+            || Part(control, ShortcutTileTemplate.LabelPart) is not TextBlock label
+            || Part(control, ShortcutTileTemplate.KeysPart) is not TextBlock keys
+        )
+        {
+            return;
+        }
+
+        var shown = number.Visibility == Visibility.Visible && number.ActualWidth > 0;
+        var hasKeys = keys.Visibility == Visibility.Visible;
+        var corner = Space.S1 + number.ActualHeight;
+        var lines = LineOf(label) + (hasKeys ? Space.S1 + LineOf(keys) : 0);
+        var under = shown && corner + lines + Space.S1 <= height;
+        var lead = shown && !under ? Space.S1 + number.ActualWidth + Space.S1 : look.SideInset;
+        control.Padding = new Thickness(
+            look.SideInset,
+            under ? corner : look.TopInset,
+            look.SideInset,
+            Bottom(look)
+        );
+        label.Margin = new Thickness(lead - look.SideInset, 0, 0, 0);
+        if (!shown || !hasKeys)
+        {
+            keys.ClearValue(FrameworkElement.HorizontalAlignmentProperty);
+            keys.Margin = WordsMargin(look, 0);
+            return;
+        }
+
+        // The origin is centred under the name while it fits, and slides left, under the number, when it is longer.
+        var centre = (lead + width - look.SideInset) / 2;
+        var origin = Math.Min(width - (2 * Space.S1), Math.Ceiling(NaturalWidth(keys)));
+        var left = Math.Clamp(centre - (origin / 2), Space.S1, width - Space.S1 - origin);
+        keys.HorizontalAlignment = HorizontalAlignment.Left;
+        keys.Margin = WordsMargin(look, left - Space.S1);
+    }
+
+    /// <summary>
+    /// The margin of a line of words under the name: <see cref="Space.S1"/> under the name and the whole inner width of
+    /// the tile, <see cref="Space.S1"/> inside its edge as the slots of its corners, past the side inset of the body;
+    /// <paramref name="lead"/> moves its left edge further in.
+    /// </summary>
+    private static Thickness WordsMargin(TileLook look, double lead)
+    {
+        var reach = look.SideInset - Space.S1;
+        return new Thickness(lead - reach, Space.S1, -reach, 0);
+    }
+
+    /// <summary>The height of one line of <paramref name="text"/>.</summary>
+    private static double LineOf(TextBlock text) =>
+        double.IsNaN(text.LineHeight)
+            ? text.FontFamily.LineSpacing * text.FontSize
+            : text.LineHeight;
+
+    /// <summary>The width <paramref name="text"/> takes whole, in one line.</summary>
+    private static double NaturalWidth(TextBlock text) =>
+        new FormattedText(
+            text.Text,
+            CultureInfo.CurrentCulture,
+            text.FlowDirection,
+            new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
+            text.FontSize,
+            text.Foreground,
+            VisualTreeHelper.GetDpi(text).PixelsPerDip
+        ).WidthIncludingTrailingWhitespace;
 
     /// <summary>The space under the body: none when the body already starts under the slot of the voice number.</summary>
     private static double Bottom(TileLook look) => look.TopInset > Space.S1 ? 0 : Space.S1;
@@ -264,5 +427,9 @@ internal static class TileFactory
 
         // CUA-009: a Mantener tile held down shrinks with its ring; a latched toggle shows its state and its wash.
         control.IsHeld = viewModel.IsLatched && viewModel.Behavior == TileBehavior.Hold;
+
+        // A state in words in the place of the origin, or a type mark that comes or goes, moves what is placed around
+        // the voice number.
+        Place(control);
     }
 }
