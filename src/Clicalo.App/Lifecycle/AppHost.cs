@@ -571,6 +571,19 @@ internal sealed partial class AppHost : IAppLifetime, IDisposable
             }
 
             visibility.Show();
+
+            // Whoever chose the Pestaña view gets the bar open once, so its guide shows (PES-015) instead of waiting
+            // for a tap on a handle nobody has explained yet.
+            var settings = store.Current.Settings;
+            if (
+                settings.Density == Domain.Settings.PanelDensity.Dock
+                && !settings.Dock.CoachDone
+                && !interaction.Current.DockOpen
+            )
+            {
+                _ = interaction.Dispatch(new InteractionAction.OpenDock());
+            }
+
             if (e.End == WelcomeEnd.Finished)
             {
                 panel.Notify(L.Welcome, NoticeTone.Notice, "celebration");
