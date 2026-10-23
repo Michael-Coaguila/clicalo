@@ -1,7 +1,7 @@
 ---
-status: Propuesto
+status: Aceptado
 date: 2026-10-23
-decision-makers: Michael Coaguila (mantenedor); la forma concreta, por delegación del usuario, pendiente de ratificar
+decision-makers: Michael Coaguila (mantenedor), que ratificó los textos y las decisiones (D22, R-38); la forma concreta, por delegación del usuario
 consulted: decisión D5 del usuario (catálogo §6.2); ADR-0007, ADR-0008, ADR-0014 y ADR-0028; condiciones adicionales de la API de Gemini (efectivas desde el 2026-03-23), su página de modelos y su página de claves, consultadas el 2026-10-23
 informed: colaboradores y agentes, mediante este ADR, PRIVACY.md, docs/security/privacy.md y el modelo de amenazas (T8)
 ---
@@ -117,7 +117,12 @@ elección al volver a una versión 1.1.
   respuestas para mejorar sus productos, y personas revisoras pueden leerlo. Con una clave de pago, no.» Se
   muestra en la tarjeta de consentimiento, bajo la elección de General › IA y junto al campo de la clave. Es el
   caso peor: no distingue regiones, porque Clícalo no sabe ni pregunta dónde vive la persona.
-- **Textos** nuevos y revisados en la sección `added` de `handoff-import.json`, pendientes de ratificar (R-38).
+- **Textos** nuevos y revisados en la sección `added` de `handoff-import.json`, ratificados por el usuario
+  (D22, R-38).
+- **EEE, Suiza y Reino Unido** (decisión D22 del usuario): la capa gratuita se ofrece también allí, con el mismo
+  aviso. La condición de Google de usar solo servicios de pago al poner un «API Client» a disposición de usuarios de
+  esas regiones no cambia la oferta, porque cada persona usa su propia clave y Clícalo no tiene clave ni servidor
+  propios (D5).
 
 ### Consecuencias
 
@@ -189,15 +194,15 @@ elección al volver a una versión 1.1.
 ## Criterios de reapertura
 
 - Google cambia las condiciones de datos de la capa gratuita o deja de ofrecerla para `gemini-3.5-flash-lite`.
-- El usuario decide que la restricción del EEE, Suiza y el Reino Unido («solo servicios de pago al poner un API
-  Client a disposición de usuarios») se aplica a Clícalo, aunque cada persona use su propia clave: entonces el
-  aviso o la oferta de Gemini cambian con un ADR nuevo.
+- Google aplica expresamente la restricción del EEE, Suiza y el Reino Unido («solo servicios de pago al poner un
+  API Client a disposición de usuarios») a las apps en las que cada persona usa su propia clave: entonces el aviso
+  o la oferta de Gemini cambian con un ADR nuevo que sustituya a este y a D22.
 - Se quiere un tercer proveedor o elegir el modelo: se generaliza la elección con un ADR nuevo.
 
 ## Más información
 
 - Catálogo: PLA-002 a PLA-008 en [§2.22](../requirements/catalog.md#222-pla--plantillas-e-ia), GEN-015, LOG-002 y
-  LOG-006; D5 en [§6.2](../requirements/catalog.md#62-decisiones-del-usuario); R-26 y R-38 en
+  LOG-006; D5 y D22 en [§6.2](../requirements/catalog.md#62-decisiones-del-usuario); R-26 y R-38 en
   [§6.1](../requirements/catalog.md#61-propuestas-pendientes-de-ratificar).
 - Privacidad: [PRIVACY.md](../../PRIVACY.md), [docs/security/privacy.md](../security/privacy.md) y T8 del
   [modelo de amenazas](../security/threat-model.md).
