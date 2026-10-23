@@ -695,6 +695,71 @@ public sealed class ControlCenterAuditTests
         );
 
     [Theory]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1371, 859)]
+    [Trait("Req", "CCM-002")]
+    public void The_counter_of_a_rail_item_is_whole_beside_its_icon_and_inside_the_ring(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                var items = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static item =>
+                        item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail && item.Count > 0
+                    )
+                    .ToList();
+                items.Count.ShouldBe(2, "Atajos and Sistema count something");
+                foreach (var item in items)
+                {
+                    var label = (string)item.Content;
+                    var counter = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Count", item);
+                    var icon = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Icon", item);
+                    var box = Bounds(counter, item);
+                    box.Width.ShouldBeGreaterThan(0, label);
+                    box.Left.ShouldBeGreaterThanOrEqualTo(
+                        Bounds(icon, item).Right - 0.5,
+                        "beside the icon, never over it: " + label
+                    );
+                    box.Right.ShouldBeLessThanOrEqualTo(
+                        item.ActualWidth - Clicalo.UI.Wpf.Theming.Generated.Stroke.Selected,
+                        "inside the ring of «elegido»: " + label
+                    );
+                    // Nothing between the counter and its item cuts it (it was cut flat on its right, D21 review).
+                    for (
+                        System.Windows.DependencyObject? node = counter;
+                        node is not null && !ReferenceEquals(node, item);
+                        node = System.Windows.Media.VisualTreeHelper.GetParent(node)
+                    )
+                    {
+                        if (
+                            node is System.Windows.FrameworkElement element
+                            && System.Windows.Controls.Primitives.LayoutInformation.GetLayoutClip(
+                                element
+                            )
+                                is { } clip
+                        )
+                        {
+                            var inside = Bounds(counter, element);
+                            inside.Inflate(-0.5, -0.5);
+                            clip.Bounds.Contains(inside).ShouldBeTrue(label);
+                        }
+                    }
+                }
+            }
+        );
+
+    [Theory]
     [InlineData("shortcuts-macro-keys", "es", 1120, 680)]
     [InlineData("shortcuts-hold", "es", 1371, 859)]
     [InlineData("shortcuts-macro-keys", "en", 760, 520)]
@@ -745,6 +810,15 @@ public sealed class ControlCenterAuditTests
                 }
             }
         );
+
+    /// <summary>The box of <paramref name="element"/> in the coordinates of <paramref name="ancestor"/>.</summary>
+    private static System.Windows.Rect Bounds(
+        System.Windows.FrameworkElement element,
+        System.Windows.Media.Visual ancestor
+    ) =>
+        element
+            .TransformToAncestor(ancestor)
+            .TransformBounds(new System.Windows.Rect(element.RenderSize));
 
     /// <summary>The width of the whole text of <paramref name="text"/> in one line.</summary>
     private static double Natural(System.Windows.Controls.TextBlock text) =>

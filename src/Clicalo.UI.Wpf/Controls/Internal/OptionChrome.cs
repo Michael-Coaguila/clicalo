@@ -262,22 +262,13 @@ internal static class OptionChrome
                 var counter = Templates
                     .Element<Counter>(CountPart)
                     .With(Counter.CountProperty, Templates.Bind(count))
-                    .With(FrameworkElement.MarginProperty, new Thickness(Space.S1, 0, 0, 0))
                     .With(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
-                // A hidden twin of the counter on the other side keeps the icon on the axis of the label, as the
-                // icons of the items without a counter.
-                var balance = Templates
-                    .Element<Counter>()
-                    .With(Counter.CountProperty, Templates.Bind(count))
-                    .With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S1, 0))
-                    .With(UIElement.VisibilityProperty, Visibility.Hidden);
-                // The counter goes beside the icon, in a slot of its own: it never covers it.
+                // The icon on the axis of the label, as the icons of the items without a counter, and the counter
+                // beside it, out of the flow: it never covers the icon and is never cut.
                 var head = Templates
-                    .Element<StackPanel>()
-                    .With(StackPanel.OrientationProperty, Orientation.Horizontal)
-                    .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center)
+                    .Element<RailHead>()
                     .With(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, Space.S1))
-                    .Add(balance, icon, counter);
+                    .Add(icon, counter);
                 text.With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
                 body = Templates
                     .Element<StackPanel>(ControlChrome.ContentPart)
@@ -467,5 +458,63 @@ internal static class OptionChrome
         private bool Fits(double width) =>
             Marks() <= 0
             || InternalChildren[1].DesiredSize.Width + Marks() + _natural <= width + Stroke.Line;
+    }
+
+    /// <summary>
+    /// The head of a rail item: the icon on the axis of the label, as the icons of the items without a counter, and the
+    /// counter beside it, out of the flow. A hidden twin of the counter on the other side kept the icon on the axis but
+    /// made the head wider than the item of the rail, so the counter was cut flat on its right (D21 review): here the
+    /// counter starts <see cref="Space.S1"/> after the icon and, where that would take it past the padding of the
+    /// item, moves left just enough to stay whole inside the ring of «elegido».
+    /// </summary>
+    /// <remarks>Its children are, in this order, the icon and the counter. It takes the whole width it is given.</remarks>
+    private sealed class RailHead : Panel
+    {
+        /// <summary>How far past the head the counter may reach: the padding of the item, less its ring and a line.</summary>
+        private const double Reach = Space.S1 - Stroke.Selected - Stroke.Line;
+
+        /// <inheritdoc />
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            var height = 0d;
+            foreach (UIElement child in InternalChildren)
+            {
+                child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                height = Math.Max(height, child.DesiredSize.Height);
+            }
+
+            var icon = InternalChildren.Count > 0 ? InternalChildren[0].DesiredSize.Width : 0;
+            return new Size(
+                double.IsInfinity(availableSize.Width) ? icon : availableSize.Width,
+                height
+            );
+        }
+
+        /// <inheritdoc />
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            if (InternalChildren.Count != 2)
+            {
+                return finalSize;
+            }
+
+            var icon = InternalChildren[0];
+            var counter = InternalChildren[1];
+            var left = (finalSize.Width - icon.DesiredSize.Width) / 2;
+            icon.Arrange(new Rect(left, 0, icon.DesiredSize.Width, finalSize.Height));
+            var x = Math.Min(
+                left + icon.DesiredSize.Width + Space.S1,
+                finalSize.Width + Reach - counter.DesiredSize.Width
+            );
+            counter.Arrange(
+                new Rect(
+                    Math.Max(0, x),
+                    0,
+                    counter.DesiredSize.Width,
+                    Math.Max(finalSize.Height, counter.DesiredSize.Height)
+                )
+            );
+            return finalSize;
+        }
     }
 }
