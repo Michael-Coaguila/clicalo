@@ -351,6 +351,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
     - *Rediseño C (D12, R-34):* antes 50/58/70 de alto, 62×58, 72×66 y 88×78, icono de 20/22/26 y nombre de 10/11/12; al 150 % el nombre se cortaba («Manten…»).
     - *Decisión del usuario D20 (2026-10-22, delegada en el equipo):* la barra sigue la talla del panel. En S los atajos son iconos de 44, dos por fila en la barra lateral, con el nombre solo en UI Automation y en los números de voz; en M, fichas de 52 de alto en vertical y de 88 × 64 en horizontal, con icono de 20 y nombre de 12; en L, de 72 y de 104 × 80, con icono de 24 y nombre de 14. La barra lateral mide 108 en S y M y 124 en L; la horizontal, 44, 64 y 80 más su relleno de 8.
   - **Paginador:** «▲ i/N ▼» en vertical (las flechas de 44 lado a lado y «i/N» encima), o ◀ ▶ a los lados en horizontal (44).
+    - *Revisión final de D20 (2026-10-22, delegada en el equipo):* mientras hay páginas, la zona de atajos mide lo que una página llena, también en la última: una última página de tres tras una de cinco encogía la barra y la volvía a centrar, y el paginador y todo lo de debajo saltaban lejos del dedo. En S los dos iconos de «Qué ver» van sin el marco de la pista, como las demás parejas: con él no cabían en 92 y el elegido salía cortado.
   - La numeración de voz continúa entre páginas.
   ‹P4:297-314; script 1624-1626›
 - **PES-008 · MUST · Herramientas de la barra.** En este orden:
@@ -374,6 +375,7 @@ Cada regla tiene prioridad MUST y se verifica en cada versión.
 - **PES-013 · MUST · Pánico en la Pestaña.**
   - Barra abierta y algo pulsado: aparece un botón flotante rojo en forma de pastilla, de 44, con ⚠ y [releaseAll], a 110 px del borde (180 desde abajo en el lado inferior), centrado y siempre al 100 %. Suelta todo.
   - **Barra cerrada:** el mismo botón aparece junto al asa (un toque, REG-03).
+  - *Revisión final de D20 (2026-10-22, delegada en el equipo):* con la barra abierta, el botón sigue a 110 del borde cuando cabe, pero nunca encima de la barra (la de L mide 124) ni de una ventana abierta a su lado (Ajustes rápidos, Fijos, Teclas fijas): se aparta del borde hasta quedar libre, a 8 de lo que tiene al lado, para no tapar un control ni convertir en «Soltar todo» un toque que iba a otro.
   ‹P4:281,276; DIS-36›
 - **PES-014 · MUST · Avisos en la vista Pestaña.** Hace falta una superficie no activable junto a la barra, o junto al asa si está cerrada, para los avisos que en Completa van en la barra de avisos:
   - confirmación armada «Toca otra vez…»;
