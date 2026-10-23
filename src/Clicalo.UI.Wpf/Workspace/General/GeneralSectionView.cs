@@ -378,7 +378,7 @@ public sealed class GeneralSectionView : ContentControl
         {
             rows.Add(
                 Miniature(
-                    Miniatures.Rows(option.Cells, option.Selected),
+                    Miniatures.Rows(option.Cells, option.Selected, auto: option.Value == 0),
                     option,
                     () => _viewModel.SetRows(option.Value)
                 )

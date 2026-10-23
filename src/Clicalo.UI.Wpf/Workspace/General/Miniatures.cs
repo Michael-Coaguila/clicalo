@@ -15,8 +15,11 @@ namespace Clicalo.UI.Wpf.Workspace.General;
 /// </summary>
 internal static class Miniatures
 {
-    /// <summary>«Filas visibles»: <paramref name="rows"/> rows of tiles from the top.</summary>
-    public static Border Rows(int rows, bool selected)
+    /// <summary>
+    /// «Filas visibles»: <paramref name="rows"/> rows of tiles from the top. Auto draws its default rows with the sign
+    /// of what adapts by itself beside them, so it never draws the same picture as the option of its number.
+    /// </summary>
+    public static Border Rows(int rows, bool selected, bool auto = false)
     {
         var stack = new StackPanel();
         for (var i = 0; i < rows; i++)
@@ -27,7 +30,23 @@ internal static class Miniatures
             stack.Children.Add(bar);
         }
 
-        return Box(stack);
+        if (!auto)
+        {
+            return Box(stack);
+        }
+
+        var sign = Ui.Icon(
+            "autorenew",
+            IconBox.Badge,
+            selected ? ColorToken.AccentInk : ColorToken.Muted
+        );
+        sign.HorizontalAlignment = HorizontalAlignment.Right;
+        sign.VerticalAlignment = VerticalAlignment.Center;
+        stack.Margin = new Thickness(0, 0, IconBox.Badge + Space.S1, 0);
+        var layers = new Grid();
+        layers.Children.Add(stack);
+        layers.Children.Add(sign);
+        return Box(layers);
     }
 
     /// <summary>«Columnas»: two rows of <paramref name="columns"/> tiles.</summary>
