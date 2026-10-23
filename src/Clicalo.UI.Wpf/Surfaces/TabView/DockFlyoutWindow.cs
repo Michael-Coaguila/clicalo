@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
@@ -33,9 +34,11 @@ namespace Clicalo.UI.Wpf.Surfaces.TabView;
 /// <item>the profile grid (PES-011): 236 wide, the header [pickProfile] and the same grid as SEL-003, without a box of
 /// its own (two levels: the window and its tiles);</item>
 /// <item>sticky keys (PES-008, AUD-13): Ctrl, Alt, Shift and Win with their three states;</item>
-/// <item>the arrows (D21): ↑ above, ← and → beside it and ↓ below, as on a keyboard, each a key of
-/// <see cref="ControlHeight.Large"/>; it stays open while they are used, since moving through a document takes many
-/// taps, and the sticky keys go with them (Mayús fija + → selects).</item>
+/// <item>the arrows (D21): the cross of a pad, ↑ above, ← and → side by side under it and ↓ below, without the empty
+/// middle and corners of a cross of nine places: keys of <see cref="ControlHeight.Small"/>,
+/// <see cref="ControlHeight.Medium"/> and <see cref="ControlHeight.Large"/> in S, M and L with the gap of every grid
+/// (<see cref="Space.S2"/>), and no channel for a bar, since four keys never scroll. It stays open while they are used,
+/// since moving through a document takes many taps, and the sticky keys go with them (Mayús fija + → selects).</item>
 /// </list>
 /// Its size comes from what it shows when it opens, up to the work area less 140; taller content scrolls, with the
 /// finger: a contact that slides past the «cancel if you slide» distance scrolls and activates nothing (TAC-004), and
@@ -61,6 +64,7 @@ public sealed class DockFlyoutWindow : TouchSurface
         PropertyChangedEventHandler Handler
     )> _tiles = [];
     private readonly List<Clicalo.UI.Wpf.Surfaces.Panel.TestMode.TestMarkBadge> _badges = [];
+    private PanelSize? _arrowsSize;
 
     /// <summary>Creates the window of <paramref name="flyout"/> on the UI thread of <paramref name="registry"/>.</summary>
     /// <param name="flyout">Which window: Pinned, Profiles, Sticky or Arrows.</param>
@@ -130,17 +134,21 @@ public sealed class DockFlyoutWindow : TouchSurface
                 Width = ProfilesWidth;
                 break;
             case DockFlyout.Arrows:
-                _arrows = new Grid { HorizontalAlignment = HorizontalAlignment.Center };
-                for (var i = 0; i < 3; i++)
+                // Two columns, ← and →, and three rows; ↑ and ↓ span both, over the gap between ← and →. Each key keeps
+                // its half of the gap around it; this takes it back at the edges, so the keys line up with the header.
+                _arrows = new Grid { Margin = new Thickness(-Space.S1) };
+                for (var i = 0; i < 2; i++)
                 {
                     _arrows.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                }
+
+                for (var i = 0; i < 3; i++)
+                {
                     _arrows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 }
 
                 body = _arrows;
-
-                // Three keys of 64 with their gaps, the insets and the channel of the thin bar: the → was cut at 230.
-                Width = (3 * (ControlHeight.Large + (2 * Space.S1))) + (2 * Space.S3) + Space.S3;
+                viewModel.PropertyChanged += OnBarChanged;
                 break;
             default:
                 // Two columns and as many rows as the keys need: the row of the panel is a single row of four.
@@ -157,15 +165,22 @@ public sealed class DockFlyoutWindow : TouchSurface
                 break;
         }
 
-        SizeToContent = SizeToContent.Height;
-        FixedWidth = Width;
+        // The arrows are as wide as their pad, the border included (a width of their own cut the → by the border);
+        // the other windows keep their width and grow in height.
+        if (_arrows is null)
+        {
+            SizeToContent = SizeToContent.Height;
+            FixedWidth = Width;
+        }
 
-        // The channel of the thin bar sits in the right padding: the content is S3 from both edges.
+        // The channel of the thin bar sits in the right padding: the content is S3 from both edges. The four arrows never
+        // scroll: without the channel, the pad is S3 from both edges too.
         _scroller = new ThemedScrollViewer
         {
             PansWithMouse = false,
             Content = body,
-            Margin = new Thickness(Space.S3, 0, Space.S1, Space.S3),
+            CollapsesChannel = _arrows is not null,
+            Margin = new Thickness(Space.S3, 0, _arrows is null ? Space.S1 : Space.S3, Space.S3),
         };
         var root = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(headerRow, Dock.Top);
@@ -291,6 +306,7 @@ public sealed class DockFlyoutWindow : TouchSurface
     protected override void OnClosed(EventArgs e)
     {
         _viewModel.Labels.PropertyChanged -= OnLabelsChanged;
+        _viewModel.PropertyChanged -= OnBarChanged;
         _viewModel.PinnedTiles.CollectionChanged -= OnPinnedChanged;
         Theme.Changed -= OnThemeChanged;
         _picker?.Detach();
@@ -319,7 +335,36 @@ public sealed class DockFlyoutWindow : TouchSurface
             && view.Contains(bounds.Center)
         );
 
+    /// <summary>
+    /// The key of an arrow and its icon in each size: 44 with the icon of an icon button in S, 52 and 64 with the large
+    /// icon in M and L, so the arrow reads at a glance (D21 review: thin at 24 in a key of 64).
+    /// </summary>
+    private static (double Key, double Icon) ArrowKey(PanelSize size) =>
+        size switch
+        {
+            PanelSize.S => (ControlHeight.Small, IconBox.Medium),
+            PanelSize.L => (ControlHeight.Large, IconBox.Large),
+            _ => (ControlHeight.Medium, IconBox.Large),
+        };
+
     private void OnLabelsChanged(object? sender, PropertyChangedEventArgs e) => Relabel();
+
+    /// <summary>The size of the panel changed (S, M or L): the keys of the arrows follow it.</summary>
+    private void OnBarChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (
+            _arrows is not null
+            && string.Equals(
+                e.PropertyName,
+                nameof(DockBarViewModel.Metrics),
+                StringComparison.Ordinal
+            )
+            && _viewModel.Metrics.Size != _arrowsSize
+        )
+        {
+            RebuildArrows(_arrows);
+        }
+    }
 
     private void OnPinnedChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         RebuildPinned();
@@ -347,7 +392,9 @@ public sealed class DockFlyoutWindow : TouchSurface
         Title = _header.Text;
     }
 
-    /// <summary>The four arrows in their cross: ↑ in the middle of the top row, ← and → in the middle one, ↓ below.</summary>
+    /// <summary>
+    /// The four arrows in their pad: ↑ over the gap between ← and →, which share the middle row, and ↓ under it.
+    /// </summary>
     private void RebuildArrows(Grid cross)
     {
         foreach (var (viewModel, _, handler) in _tiles)
@@ -357,19 +404,15 @@ public sealed class DockFlyoutWindow : TouchSurface
 
         _tiles.Clear();
         cross.Children.Clear();
-        (int Row, int Column)[] places = [(0, 1), (1, 0), (1, 2), (2, 1)];
+        var size = _viewModel.Metrics.Size;
+        _arrowsSize = size;
+        var (key, icon) = ArrowKey(size);
+        (int Row, int Column, int Span)[] places = [(0, 0, 2), (1, 0, 1), (1, 1, 1), (2, 0, 2)];
         for (var i = 0; i < _viewModel.ArrowTiles.Count && i < places.Length; i++)
         {
             var tile = _viewModel.ArrowTiles[i];
-            // The arrow is the whole content of its key: drawn large, it reads at a glance (D21 review: thin at 24).
-            var (control, handler) = DockTileFactory.Create(
-                tile,
-                ControlHeight.Large,
-                ControlHeight.Large,
-                IconBox.Large,
-                1,
-                Modes
-            );
+            // The arrow is the whole content of its key: drawn large, it reads at a glance.
+            var (control, handler) = DockTileFactory.Create(tile, key, key, icon, 1, Modes);
             DockTileFactory.ShowIconOnly(control);
 
             // Keys, not shortcuts of a category: the arrow is drawn in the text color, as the keys of Sticky keys.
@@ -378,8 +421,10 @@ public sealed class DockFlyoutWindow : TouchSurface
                 ThemeBrushKey.For(ColorToken.Text)
             );
             control.Margin = new Thickness(Space.S1);
+            control.HorizontalAlignment = HorizontalAlignment.Center;
             Grid.SetRow(control, places[i].Row);
             Grid.SetColumn(control, places[i].Column);
+            Grid.SetColumnSpan(control, places[i].Span);
             _tiles.Add((tile, control, handler));
             _ = cross.Children.Add(control);
         }

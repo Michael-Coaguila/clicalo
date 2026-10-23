@@ -20,6 +20,7 @@ using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.Theming;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
 using Microsoft.Extensions.Time.Testing;
+using SizeId = Clicalo.Domain.Catalog.PanelSize;
 
 namespace Clicalo.Windowing.IntegrationTests.TabView;
 
@@ -543,6 +544,86 @@ public sealed class DockSideSurfacesTests
             }
         });
     }
+
+    [Fact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "REG-02")]
+    public void The_keys_of_the_arrows_follow_the_size_of_the_panel()
+    {
+        // D21 review: four keys of 64 in a cross of nine places took 252 × 266 beside the bar. Now a pad whose keys
+        // are 44, 52 or 64 with the size, never under 44, and they change in place when the size changes.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var world = new InteractionsWorld();
+            var dock = new DockBarViewModel(
+                new PanelInteractionController(world.Engine, () => 1, time),
+                world.Localization,
+                new NoIntents()
+            );
+            var arrows = new DockFlyoutWindow(
+                DockFlyout.Arrows,
+                dock,
+                Panel(time, new RecordingBodyIntents()),
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                foreach (
+                    var (size, key) in new[] { (SizeId.S, 44d), (SizeId.L, 64d), (SizeId.M, 52d) }
+                )
+                {
+                    dock.Apply(BarState(size, DockFlyout.Arrows));
+
+                    arrows
+                        .TileControls.Select(static tile => (tile.Width, tile.Height))
+                        .ShouldBe(
+                            [(key, key), (key, key), (key, key), (key, key)],
+                            size.ToString()
+                        );
+                }
+            }
+            finally
+            {
+                arrows.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    private static DockBarState BarState(SizeId size, DockFlyout flyout) =>
+        new(
+            new DockSettings
+            {
+                Side = DockSide.Right,
+                HandlePositions = new DockHandlePositions(50, 50, 50, 50),
+                HandleLocked = false,
+                PinOpen = false,
+                Gutter = false,
+                PerPage = 8,
+                CoachDone = true,
+            },
+            PanelSizes.Get(size),
+            ShowStripRow: false,
+            StickyRow: false,
+            VoiceNumbers: false,
+            Frequents: false,
+            ProfileName: "Word",
+            ProfileIcon: "description",
+            IsActiveApp: false,
+            IsFixed: false,
+            CanRepeat: false,
+            flyout,
+            CoachStep: 0,
+            BarOpen: true,
+            AnythingHeld: false
+        );
 
     private static ThemeService Theme() =>
         new(new FakeSystemTheme(), ThemeChoice.Dark, 100, reduceMotion: true);
