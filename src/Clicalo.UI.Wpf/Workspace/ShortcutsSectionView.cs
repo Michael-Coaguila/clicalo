@@ -471,9 +471,14 @@ public sealed class ShortcutsSectionView : Grid
             _header.Content = Header(screen.Header);
         }
 
-        if (before?.Link != screen.Link)
+        if (
+            before?.Link != screen.Link
+            || (before?.ProfileEdit is null) != (screen.ProfileEdit is null)
+        )
         {
-            _link.Content = screen.Link is { } link ? Link(link) : null;
+            _link.Content = screen.Link is { } link
+                ? Link(link, covered: screen.ProfileEdit is not null)
+                : null;
         }
 
         if (before?.Grid != screen.Grid)
@@ -745,7 +750,7 @@ public sealed class ShortcutsSectionView : Grid
                 Margin = new Thickness(Space.S2, 0, 0, 0),
             };
             AutomationProperties.SetName(edit, model.EditName);
-            edit.Click += (_, _) => _viewModel.ToggleProfileEdit();
+            edit.Click += (_, _) => ToggleProfileEdit();
             DockPanel.SetDock(edit, Dock.Right);
             title.Children.Add(edit);
         }
@@ -787,10 +792,46 @@ public sealed class ShortcutsSectionView : Grid
     }
 
     /// <summary>
+    /// ✏ of the header (ATJ-004): the card of the profile is a layer over the options of the binding, so they close as
+    /// it opens; «Cambiar» is never drawn open under the card and «Listo» of the card does not bring them back.
+    /// </summary>
+    private void ToggleProfileEdit()
+    {
+        if (_shown is { ProfileEdit: null, Link.Expanded: true })
+        {
+            _viewModel.CloseLinkOptions();
+        }
+
+        _viewModel.ToggleProfileEdit();
+    }
+
+    /// <summary>
+    /// The action of the binding row (ATJ-005, ATJ-006). Under the card of the profile its options are covered and it
+    /// is drawn folded, so a tap closes the card and shows them, as it does without the card.
+    /// </summary>
+    private void LinkAction()
+    {
+        if (_shown is { ProfileEdit: not null, Link: { State: not LinkState.Waiting } link })
+        {
+            _viewModel.ToggleProfileEdit();
+            if (!link.Expanded)
+            {
+                _viewModel.LinkAction();
+            }
+
+            return;
+        }
+
+        _viewModel.LinkAction();
+    }
+
+    /// <summary>
     /// The one row of the binding (ATJ-005): what the profile follows, in one line with «…», the process in the type
     /// of the text (never cut) and its action as a tertiary button; it warns in warn when the profile follows nothing.
+    /// <paramref name="covered"/> says the card of the profile covers the options of the binding: their action is drawn
+    /// folded then, as no option is in view (D21 review).
     /// </summary>
-    private Border Link(LinkModel model)
+    private Border Link(LinkModel model, bool covered)
     {
         var (fill, line, ink) = model.State switch
         {
@@ -811,8 +852,9 @@ public sealed class ShortcutsSectionView : Grid
         row.Children.Add(icon);
         if (model.Action is { } action)
         {
-            var button = Parts.Button(action, null, ButtonVariant.Tertiary, _viewModel.LinkAction);
-            button.IsExpanded = model.State == LinkState.Waiting ? null : model.Expanded;
+            var button = Parts.Button(action, null, ButtonVariant.Tertiary, LinkAction);
+            button.IsExpanded =
+                model.State == LinkState.Waiting ? null : model.Expanded && !covered;
             if (button.IsExpanded is { } open)
             {
                 // It opens the options of the binding: ▾ like every fold, and «elegido» while they are open, so it

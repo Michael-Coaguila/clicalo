@@ -902,6 +902,57 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Fact]
+    [Trait("Req", "ATJ-004")]
+    [Trait("Req", "ATJ-005")]
+    [Trait("Req", "ATJ-006")]
+    [Trait("Req", "ACC-001")]
+    public void Under_the_card_of_the_profile_the_action_of_the_binding_is_folded_and_opens_its_options() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                var section = viewModel.Shortcuts;
+                section.ToggleProfileEdit();
+                section.LinkAction();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                var link = section.Screen.Link.ShouldNotBeNull();
+                link.Expanded.ShouldBeTrue("the options are open under the card");
+                var action = link.Action.ShouldNotBeNull();
+                Fold(host, action)
+                    .ExpandCollapseState.ShouldBe(
+                        ExpandCollapseState.Collapsed,
+                        "no option of the binding is in view"
+                    );
+
+                // A tap shows them: the card closes.
+                Fold(host, action).Expand();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+                section.Screen.ProfileEdit.ShouldBeNull();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeTrue();
+                Fold(host, action).ExpandCollapseState.ShouldBe(ExpandCollapseState.Expanded);
+
+                // ✏ opens the card over them and closes them, so «Listo» of the card does not bring them back.
+                Fold(host, section.Screen.Header.EditName).Expand();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+                section.Screen.ProfileEdit.ShouldNotBeNull();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeFalse();
+                Fold(host, action).ExpandCollapseState.ShouldBe(ExpandCollapseState.Collapsed);
+            }
+        );
+
+    private static IExpandCollapseProvider Fold(AuditHost host, string name) =>
+        host.Peer(name, AutomationControlType.Button)
+            .GetPattern(PatternInterface.ExpandCollapse)
+            .ShouldBeAssignableTo<IExpandCollapseProvider>()!;
+
     /// <summary>The box of <paramref name="element"/> in the coordinates of <paramref name="ancestor"/>.</summary>
     private static System.Windows.Rect Bounds(
         System.Windows.FrameworkElement element,
