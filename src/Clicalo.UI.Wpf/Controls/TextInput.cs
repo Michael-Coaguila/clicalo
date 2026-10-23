@@ -121,6 +121,7 @@ public sealed class TextInput : Grid
             DictateRequested?.Invoke(this, EventArgs.Empty);
         };
 
+        SetPlaceholder(placeholder);
         Paint(focused: false);
         Box.TextChanged += (_, _) =>
         {
@@ -212,9 +213,23 @@ public sealed class TextInput : Grid
         }
     }
 
-    /// <summary>Changes the placeholder (the language changed).</summary>
+    /// <summary>
+    /// Changes the placeholder (the language changed). It is also the help of the field for UI Automation, so Narrator
+    /// reads the example a field gives («Ej.: ejemplo.com», EDI-006), unless the name already says it.
+    /// </summary>
     /// <param name="placeholder">The placeholder; empty for none.</param>
-    public void SetPlaceholder(string placeholder) => _placeholder.Text = placeholder;
+    public void SetPlaceholder(string placeholder)
+    {
+        _placeholder.Text = placeholder;
+        var name = AutomationProperties.GetName(Box) ?? string.Empty;
+        AutomationProperties.SetHelpText(
+            Box,
+            string.IsNullOrEmpty(placeholder)
+            || name.Contains(placeholder, StringComparison.CurrentCultureIgnoreCase)
+                ? string.Empty
+                : placeholder
+        );
+    }
 
     /// <summary>Draws the line in <c>warnText</c> (an invalid address, EDI-014) or as usual.</summary>
     /// <param name="warn">Whether to warn.</param>

@@ -410,6 +410,33 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Fact]
+    [Trait("Req", "EDI-006")]
+    [Trait("Req", "EDI-001")]
+    [Trait("Req", "ACC-001")]
+    public void The_fields_of_the_editor_tell_their_example_as_help() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                // Narrator reads the example a field shows while it is empty, not only its name.
+                var editor = viewModel.Shortcuts.Editor;
+                host.Peer(editor.Model!.Identity.NameLabel, AutomationControlType.Edit)
+                    .GetHelpText()
+                    .ShouldBe(editor.Model.Identity.Placeholder);
+                editor.SetKind(ActionKind.Url);
+                WpfThread.DrainPendingWork();
+                var target = editor.Model!.Target.ShouldNotBeNull();
+                target.Placeholder.ShouldBe("Ej.: ejemplo.com");
+                host.Peer(target.Label, AutomationControlType.Edit)
+                    .GetHelpText()
+                    .ShouldBe(target.Placeholder);
+            }
+        );
+
     private static ISelectionItemProvider Selection(AutomationPeer peer) =>
         peer.GetPattern(PatternInterface.SelectionItem)
             .ShouldBeAssignableTo<ISelectionItemProvider>()!;

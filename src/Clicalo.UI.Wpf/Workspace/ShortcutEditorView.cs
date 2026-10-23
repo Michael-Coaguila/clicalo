@@ -419,7 +419,7 @@ public sealed class ShortcutEditorView : Grid
                     model.MoveArmed ? ButtonVariant.Danger : ButtonVariant.Primary,
                     _viewModel.KeepOnlyInAlwaysVisible
                 );
-                keep.Margin = new Thickness(0, 0, 0, Space.S2);
+                keep.Margin = new Thickness(Space.S2, 0, Space.S2, Space.S2);
                 body.Children.Add(keep);
             }
 
@@ -429,16 +429,17 @@ public sealed class ShortcutEditorView : Grid
                 ButtonVariant.Secondary,
                 _viewModel.AcceptRepeated
             );
-            fine.Margin = new Thickness(0, 0, 0, Space.S2);
+            fine.Margin = new Thickness(Space.S2, 0, Space.S2, Space.S2);
             body.Children.Add(fine);
-            body.Children.Add(
-                Parts.Button(
-                    model.UseOtherText,
-                    "swap_horiz",
-                    ButtonVariant.Secondary,
-                    _viewModel.UseOtherCombination
-                )
+            var other = Parts.Button(
+                model.UseOtherText,
+                "swap_horiz",
+                ButtonVariant.Secondary,
+                _viewModel.UseOtherCombination
             );
+            // The actions keep the inset of the advice: everything in the card starts and ends 12 inside its line.
+            other.Margin = new Thickness(Space.S2, 0, Space.S2, 0);
+            body.Children.Add(other);
         }
 
         return new Card
@@ -497,6 +498,8 @@ public sealed class ShortcutEditorView : Grid
             () => _viewModel.DeleteAppearance(row.Id),
             row.DeleteName
         );
+        // 12 inside the line of the card, as the advice and the actions under it; the row itself keeps no margin.
+        delete.Margin = new Thickness(Space.S2, 0, Space.S2, 0);
         var line = new DockPanel
         {
             LastChildFill = true,
