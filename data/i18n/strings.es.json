@@ -595,6 +595,8 @@
   "closeEsc": "Cerrar (Esc)",
   "prevDup": "Repetida anterior",
   "nextDup": "Repetida siguiente",
+  "dupHeadOnly_one": "Combinación repetida en {count} sitio",
+  "dupHeadOnly_other": "Combinación repetida en {count} sitios",
   "dupStep": "Repetida {index} de {total}",
   "dupIn": "aparece en:",
   "editingNow": "EDITANDO",

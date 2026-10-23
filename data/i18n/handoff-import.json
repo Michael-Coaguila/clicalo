@@ -1635,6 +1635,14 @@
       "after": "dockBarName",
       "text": { "es": "Guía de la pestaña", "en": "Edge tab guide" }
     },
+    "dupHeadOnly": {
+      "notes": "Cabecera de la tarjeta de repetidos del editor cuando solo hay una combinación repetida (REP-004): sin «· 1 de 1», que no recorre nada y partía la línea. Con varias sigue [dupHead] con su contador. Pendiente de ratificar (D21).",
+      "after": "nextDup",
+      "plural": {
+        "es": { "one": "Combinación repetida en {count} sitio", "other": "Combinación repetida en {count} sitios" },
+        "en": { "one": "Combo repeated in {count} place", "other": "Combo repeated in {count} places" }
+      }
+    },
     "waitValue": {
       "notes": "Valor del selector − / + de un paso «Esperar» de una macro (EDI-013): solo los segundos, porque la cabecera del paso ya dice [stepWait] «Esperar 0,5 s» y repetirlo era ruido. {seconds} con coma en ES y punto en EN, como [stepWait]. Pendiente de ratificar (D21).",
       "after": "stepWait",

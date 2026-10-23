@@ -246,7 +246,10 @@ public sealed class ShortcutsProjectionTests
                 section.Refresh();
 
                 var card = section.Editor.Model.ShouldNotBeNull().Duplicate.ShouldNotBeNull();
-                card.Head.ShouldBe("Combinación repetida en 2 sitios · 1 de 1");
+                card.Head.ShouldBe(
+                    "Combinación repetida en 2 sitios",
+                    "with one repeated combination there is no «· 1 de 1»"
+                );
                 card.Expanded.ShouldBeFalse("the card starts folded");
                 card.PrevName.ShouldNotBeNullOrWhiteSpace();
                 card.NextName.ShouldNotBeNullOrWhiteSpace();
@@ -257,10 +260,9 @@ public sealed class ShortcutsProjectionTests
                 section
                     .Editor.Model.ShouldNotBeNull()
                     .Duplicate.ShouldNotBeNull()
-                    .Head.ShouldEndWith(
-                        "1 de 1",
-                        Case.Sensitive,
-                        "the only repeated one: it goes round"
+                    .Head.ShouldBe(
+                        "Combinación repetida en 2 sitios",
+                        "the only repeated one: it goes round to itself"
                     );
 
                 section.Editor.ToggleDuplicates();

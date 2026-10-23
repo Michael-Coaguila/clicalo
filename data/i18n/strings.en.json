@@ -595,6 +595,8 @@
   "closeEsc": "Close (Esc)",
   "prevDup": "Previous duplicate",
   "nextDup": "Next duplicate",
+  "dupHeadOnly_one": "Combo repeated in {count} place",
+  "dupHeadOnly_other": "Combo repeated in {count} places",
   "dupStep": "Duplicate {index} of {total}",
   "dupIn": "appears in:",
   "editingNow": "EDITING",

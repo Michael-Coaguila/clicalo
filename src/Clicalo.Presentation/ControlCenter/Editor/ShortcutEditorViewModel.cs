@@ -935,13 +935,16 @@ public sealed class ShortcutEditorViewModel
 
         var advice = index.AdviceFor(shortcut.Id);
         var moveArmed = IsArmed(nameof(Domain.Commands.KeepOnlyInAlwaysVisible), shortcut.Id.Value);
+        // With one repeated combination there is nothing to browse, so the head has no «· 1 de 1» (REP-004).
         return new DuplicateCardModel(
             T(
-                L.DupHead(
-                    appearances.Length,
-                    index.RepeatedCombinations.IndexOf(key) + 1,
-                    index.RepeatedCombinationCount
-                )
+                index.RepeatedCombinationCount > 1
+                    ? L.DupHead(
+                        appearances.Length,
+                        index.RepeatedCombinations.IndexOf(key) + 1,
+                        index.RepeatedCombinationCount
+                    )
+                    : L.DupHeadOnly(appearances.Length)
             ),
             T(L.PrevDup),
             T(L.NextDup),
