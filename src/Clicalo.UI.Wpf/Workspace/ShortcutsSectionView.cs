@@ -145,7 +145,8 @@ public sealed class ShortcutsSectionView : Grid
         _header.Margin = new Thickness(Space.S4, Space.S4, Space.S4, 0);
         _link.Margin = new Thickness(Space.S4, 0, Space.S4, Space.S3);
         _listScroll.Content = _grid;
-        _listScroll.Padding = new Thickness(Space.S4, Space.S1, Space.S1, Space.S6);
+        // S2 and the channel of the bar are the S4 of the header and the binding above: the grid lines up with them.
+        _listScroll.Padding = new Thickness(Space.S4, Space.S1, Space.S2, Space.S6);
         _listLayer = Parts.Layer(
             new ThemedScrollViewer
             {

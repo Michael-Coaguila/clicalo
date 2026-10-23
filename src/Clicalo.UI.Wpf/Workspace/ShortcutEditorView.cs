@@ -731,10 +731,12 @@ public sealed class ShortcutEditorView : Grid
             () => _viewModel.DeleteStep(step.Index),
             model.DeleteName
         );
+        // The header, the editor and ↑ ↓ × share one inset from the edge of the card, so their edges line up.
         var tools = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 0, Space.S2, Space.S1),
         };
         tools.Children.Add(up);
         tools.Children.Add(down);
@@ -744,7 +746,7 @@ public sealed class ShortcutEditorView : Grid
         var editor = StepEditor(model, step);
         if (editor is not null)
         {
-            editor.Margin = new Thickness(Space.S3, Space.S1, Space.S3, Space.S2);
+            editor.Margin = new Thickness(Space.S2, Space.S1, Space.S2, Space.S2);
             body.Children.Add(editor);
         }
 

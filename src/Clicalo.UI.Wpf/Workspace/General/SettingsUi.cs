@@ -364,15 +364,64 @@ internal static class SettingsUi
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         }
 
+        // A last row that is not full goes centred under the others, with their width, so the grid never shows an
+        // empty place (D20); a grid of one row keeps its options at the start, lined up with the groups around it.
+        var rest = options.Count % columns;
+        var lastRow = rows > 1 && rest > 0 ? CenteredRow(columns, rest) : null;
         for (var i = 0; i < options.Count; i++)
         {
             var option = options[i];
+            if (lastRow is not null && i >= options.Count - rest)
+            {
+                Grid.SetColumn(option, 1 + ((i - (options.Count - rest)) * 2));
+                lastRow.Children.Add(option);
+                continue;
+            }
+
             Grid.SetColumn(option, i % columns * 2);
             Grid.SetRow(option, i / columns * 2);
             grid.Children.Add(option);
         }
 
+        if (lastRow is not null)
+        {
+            Grid.SetRow(lastRow, (rows - 1) * 2);
+            Grid.SetColumnSpan(lastRow, (2 * columns) - 1);
+            grid.Children.Add(lastRow);
+        }
+
         return grid;
+    }
+
+    /// <summary>
+    /// The columns of a last row of <paramref name="count"/> options centred under <paramref name="columns"/>: a margin
+    /// at each side of half the missing columns and their gaps, then the options with the width and gaps of the others.
+    /// </summary>
+    private static Grid CenteredRow(int columns, int count)
+    {
+        var row = new Grid();
+        var side = (columns - count) / 2d;
+        var margin = new GridLength(side, GridUnitType.Star);
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = margin });
+        for (var c = 0; c < count; c++)
+        {
+            if (c > 0)
+            {
+                row.ColumnDefinitions.Add(
+                    new ColumnDefinition { Width = new GridLength(Space.S2) }
+                );
+            }
+
+            row.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+        }
+
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = margin });
+
+        // The missing gaps go half to each side, so each option is exactly as wide as one above it.
+        row.Margin = new Thickness(side * Space.S2, 0, side * Space.S2, 0);
+        return row;
     }
 
     /// <summary>
