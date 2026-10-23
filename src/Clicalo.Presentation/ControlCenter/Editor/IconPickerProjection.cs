@@ -12,6 +12,19 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// </summary>
 internal static class IconPickerProjection
 {
+    /// <summary>
+    /// The category of the picker after the search goes from <paramref name="before"/> to <paramref name="query"/>: a
+    /// new search looks in the whole collection («Todos»), because a category chosen before would answer «nothing
+    /// matches» for an icon that exists; a category chosen while searching narrows the search.
+    /// </summary>
+    /// <param name="before">The search until now.</param>
+    /// <param name="query">The search as typed now.</param>
+    /// <param name="category">The chosen category, or null for «Todos».</param>
+    public static string? CategoryAfterSearch(string before, string query, string? category) =>
+        (before ?? string.Empty).Trim().Length == 0 && (query ?? string.Empty).Trim().Length > 0
+            ? null
+            : category;
+
     /// <summary>The picker for <paramref name="current"/>.</summary>
     /// <param name="catalog">The icon library.</param>
     /// <param name="current">The icon in use.</param>
@@ -74,13 +87,21 @@ internal static class IconPickerProjection
             ]);
         }
 
+        // The suggestions help to choose without a search; while searching, or when all they offer is the icon in use,
+        // they only push the results down.
+        var offered = query.Trim().Length > 0 ? [] : suggested.ToList();
+        if (offered.TrueForAll(icon => string.Equals(icon.Name, current, StringComparison.Ordinal)))
+        {
+            offered = [];
+        }
+
         return new IconPickerModel(
             text(L.ChangeIcon),
             text(L.Close),
             current,
             text(L.IconSug),
             [
-                .. suggested.Select(icon => new IconOption(
+                .. offered.Select(icon => new IconOption(
                     icon.Name,
                     string.Equals(icon.Name, current, StringComparison.Ordinal),
                     catalog.NameOf(icon.Name, language)

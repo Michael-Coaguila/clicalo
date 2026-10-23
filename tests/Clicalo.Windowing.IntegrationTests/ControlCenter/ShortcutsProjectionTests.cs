@@ -173,6 +173,39 @@ public sealed class ShortcutsProjectionTests
 
     [Fact]
     [Trait("Req", "EDI-004")]
+    public void A_new_icon_search_looks_in_every_category_without_the_suggestions_above()
+    {
+        Run(
+            open: true,
+            (_, section) =>
+            {
+                section.Editor.TogglePicker();
+                section.Editor.ChooseIconCategory("text");
+                section.Editor.SearchIcons("guardar");
+                section.Refresh();
+
+                var picker = section.Editor.Model.ShouldNotBeNull().Picker.ShouldNotBeNull();
+                picker.Categories[0].Selected.ShouldBeTrue("a new search goes to «Todos»");
+                picker
+                    .Icons.Items.Contains("save", StringComparer.Ordinal)
+                    .ShouldBeTrue("«guardar» is not in «Texto»");
+                picker.Suggested.ShouldBeEmpty("the suggestions are hidden while searching");
+
+                section.Editor.ChooseIconCategory("hardware");
+                section.Editor.SearchIcons("guardar ");
+                section.Refresh();
+
+                section
+                    .Editor.Model.ShouldNotBeNull()
+                    .Picker.ShouldNotBeNull()
+                    .Categories.Items.Single(c => c.Selected)
+                    .Id.ShouldBe("hardware", "a category chosen while searching narrows it");
+            }
+        );
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-004")]
     [Trait("Req", "REG-06")]
     public void The_icons_of_the_picker_are_named_in_the_language_of_the_interface()
     {

@@ -208,6 +208,7 @@ public sealed class ShortcutEditorViewModel
     /// <param name="query">What the person typed.</param>
     public void SearchIcons(string query)
     {
+        _iconCategory = IconPickerProjection.CategoryAfterSearch(_iconQuery, query, _iconCategory);
         _iconQuery = query ?? string.Empty;
         _invalidate();
     }

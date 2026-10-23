@@ -325,6 +325,7 @@ public sealed class TemplatesSectionViewModel : ObservableObject, IIconPicker
     /// <inheritdoc />
     public void SearchIcons(string query)
     {
+        _iconCategory = IconPickerProjection.CategoryAfterSearch(_iconQuery, query, _iconCategory);
         _iconQuery = query ?? string.Empty;
         Invalidate();
     }
