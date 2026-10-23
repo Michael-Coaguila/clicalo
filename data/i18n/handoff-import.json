@@ -1746,6 +1746,34 @@
         "es": "Clícalo y contacto",
         "en": "About & contact"
       }
+    },
+    "secBar": {
+      "notes": "Título de la sección de la Pestaña en General (GEN-008): ofrece izquierda, arriba, abajo y derecha, así que «lateral» no es cierto; es la vista «Pestaña», la tercera de Vista. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Vista Pestaña",
+        "en": "Edge tab view"
+      }
+    },
+    "barExplain": {
+      "notes": "Explicación de la vista Pestaña en General (GEN-008). Afirmaba que la barra se recoge sola y nunca tapa la barra de desplazamiento, pero las dos cosas son interruptores de la misma sección y el candado la deja abierta. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "El panel se guarda en una pestaña fina en el borde. Tócala para abrir la barra. Puedes hacer que se pliegue sola y que deje libre la barra de desplazamiento.",
+        "en": "The panel tucks into a slim tab on the screen edge. Tap it to open the bar. You can make it fold by itself and keep clear of the scrollbar."
+      }
+    },
+    "manualSub": {
+      "notes": "Subtítulo de un perfil manual en la cabecera de Atajos (ATJ-003). Desde el rediseño C no hay «pestañas»: el perfil se elige con el selector de perfil. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Se elige a mano con el selector de perfil.",
+        "en": "Picked manually with the profile selector."
+      }
+    },
+    "showStripD": {
+      "notes": "Descripción del interruptor de la fila Siempre visible (GEN-007). «La pestaña» era ambiguo: los botones siguen en la vista Pestaña. Pendiente de ratificar (D21).",
+      "text": {
+        "es": "Ocúltala si quieres un panel más bajo; esos botones siguen en la vista Pestaña.",
+        "en": "Hide it for a shorter panel; those buttons stay in the Edge tab view."
+      }
     }
   }
 }

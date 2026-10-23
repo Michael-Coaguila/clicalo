@@ -59,7 +59,9 @@ public sealed class ShortcutsProjectionTests
 
                 section.SelectList(new ListRef.InProfile(ProfileId.General));
                 section.Refresh();
-                section.Screen.Header.Subtitle.ShouldBe("Se elige a mano desde las pestañas.");
+                section.Screen.Header.Subtitle.ShouldBe(
+                    "Se elige a mano con el selector de perfil."
+                );
 
                 section.SelectList(new ListRef.AlwaysVisible());
                 section.Refresh();

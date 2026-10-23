@@ -78,6 +78,10 @@ public sealed partial class VisibleTextSnapshotTests
             .ShouldBe([
                 "aboutTitle",
                 "autoA",
+        revised
+            .Order(StringComparer.Ordinal)
+            .ShouldBe([
+                "barExplain",
                 "co1d",
                 "co1t",
                 "co3d",
@@ -90,7 +94,11 @@ public sealed partial class VisibleTextSnapshotTests
         revised
             .Order(StringComparer.Ordinal)
             .ShouldBe([
+                "manualSub",
+            ]);
                 "navAbout2",
+                "secBar",
+                "showStripD",
             ]);
             ]);
         mismatches.ShouldBeEmpty();
