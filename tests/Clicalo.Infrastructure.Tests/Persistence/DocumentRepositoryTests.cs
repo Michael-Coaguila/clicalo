@@ -91,6 +91,37 @@ public sealed class DocumentRepositoryTests : IDisposable
     }
 
     [Fact]
+    [Trait("Req", "DAT-003")]
+    public async Task An_unreadable_document_that_cannot_go_to_quarantine_is_never_replaced_by_the_default()
+    {
+        Put(Data.Document, Encoding.UTF8.GetBytes("{ truncated"));
+        var before = File.ReadAllBytes(Data.Document);
+
+        // A file where the quarantine folder goes: the unreadable document cannot be moved out of the way.
+        Directory.CreateDirectory(Path.GetDirectoryName(Data.Quarantine)!);
+        File.WriteAllText(Data.Quarantine, "in the way");
+        var repository = Repository();
+
+        var load = await repository.LoadAsync(Token);
+        load.Outcome.ShouldBe(DocumentLoadOutcome.DefaultInMemory);
+        repository.AcceptDefaultDocument();
+
+        // Accepting the default must not let it overwrite the original (D20 review).
+        repository.IsReadOnly.ShouldBeTrue();
+        (await repository.SaveAsync(TestDocuments.Document(), Token)).Failure.Code.ShouldBe(
+            "persist.readonly"
+        );
+        File.ReadAllBytes(Data.Document).ShouldBe(before);
+
+        // Once the quarantine can be made, accepting moves the original there first.
+        File.Delete(Data.Quarantine);
+        repository.AcceptDefaultDocument();
+        repository.IsReadOnly.ShouldBeFalse();
+        File.Exists(Data.Document).ShouldBeFalse();
+        Directory.GetFiles(Data.Quarantine).Length.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task A_document_that_could_not_be_read_because_it_was_locked_is_never_overwritten()
     {
         Put(Data.Document, Encoding.UTF8.GetBytes("{}"));

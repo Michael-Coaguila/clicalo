@@ -31,6 +31,7 @@ namespace Clicalo.Infrastructure.Persistence;
 public sealed partial class DocumentRepository : IDocumentRepository
 {
     private readonly DataLocations _locations;
+    private readonly QuarantineStore _quarantine;
     private readonly IAtomicFileWriter _writer;
     private readonly IBackupService _backups;
     private readonly TimeProvider _time;
@@ -117,6 +118,7 @@ public sealed partial class DocumentRepository : IDocumentRepository
         _logger = logger;
         _codec = codec;
         _files = files;
+        _quarantine = quarantine;
         _chain = new DocumentLoadChain(quarantine, files, time, logger);
         _createDefault = createDefault ?? MinimalDefault;
     }
@@ -136,11 +138,24 @@ public sealed partial class DocumentRepository : IDocumentRepository
     /// </summary>
     public void AcceptDefaultDocument()
     {
-        if (_awaitingAcceptance)
+        if (!_awaitingAcceptance)
         {
-            _awaitingAcceptance = false;
-            _readOnly = false;
+            return;
         }
+
+        // REG-08: what could not be read goes out of the way before the default may take its place. When the load could
+        // not move it to quarantine (a process kept it open, the folder could not be made), it is tried again now; if
+        // it still cannot move, saving stays off, so the original is never replaced (D20 review).
+        if (
+            _files.Exists(_locations.Document)
+            && !_quarantine.Move(_locations.Document).TryGetValue(out _)
+        )
+        {
+            return;
+        }
+
+        _awaitingAcceptance = false;
+        _readOnly = false;
     }
 
     /// <inheritdoc />
