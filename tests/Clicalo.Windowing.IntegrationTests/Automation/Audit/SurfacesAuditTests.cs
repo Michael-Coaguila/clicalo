@@ -169,6 +169,18 @@ public sealed class SurfacesAuditTests
             );
             w.Panel.ApplyContext(PanelBodyContext.Idle with { PickerOpen = true });
         },
+        // BUS-005: two «Reemplazar», of Word and of «Bloc de notas», told apart by the profile under their names, in
+        // the Compact view too.
+        ["search-text"] = static w =>
+        {
+            w.Search.ApplyLibrary(PanelBodyTestData.GallerySearchLibrary());
+            _ = w.Search.OpenAsync(SearchTrigger.Touch);
+            w.Search.Query = "Reemplazar";
+            w.Panel.ApplySearch([.. w.Search.Results], w.Search.NoResultsText);
+            w.Panel.ApplyContext(PanelBodyContext.Idle with { SearchingWithText = true });
+            w.ShowHeader(new ViewTarget.Profile(PanelBodyTestData.Word), searchingWithText: true);
+            w.Header.ApplyLayers(searchOpen: true, editing: false, quickSettingsOpen: false);
+        },
         ["suggestion"] = static w =>
             w.Suggestion.Apply(new ProcessName("excel.exe"), searching: false),
         ["quick-settings"] = static w =>
@@ -343,7 +355,9 @@ public sealed class SurfacesAuditTests
                 var shape =
                     $"{size}, {(compact ? "compact" : "full")}, {language}{(allOn ? ", all on" : string.Empty)}, {look}";
                 var name = $"panel {state} ({shape})";
-                SurfaceAudit.ShouldPass(host, name, atLeast: 8, TouchInput.PointerLayer, "Panel");
+                // A search with text hides every row but its results: the header, two results and the 🎤 of the field.
+                var atLeast = string.Equals(state, "search-text", StringComparison.Ordinal) ? 7 : 8;
+                SurfaceAudit.ShouldPass(host, name, atLeast, TouchInput.PointerLayer, "Panel");
                 NoTileShowsInPartUnderALayer(host, window, name);
                 if (PagedStates.Contains(state))
                 {
@@ -1711,15 +1725,15 @@ public sealed class SurfacesAuditTests
 
         /// <summary>
         /// Gives the header the view the body shows: the profile, with the same icon as the row «Qué ver», or
-        /// Frequents (CAB-002).
+        /// Frequents (CAB-002); «Buscar» while the search has text (BUS-005).
         /// </summary>
-        public void ShowHeader(ViewTarget view) =>
+        public void ShowHeader(ViewTarget view, bool searchingWithText = false) =>
             Header.Apply(
                 PanelHeaderProjection.Project(
                     new ProfileState(view, false, null),
                     PanelBodyTestData.GalleryLibrary(),
                     PanelBodyTestData.Word,
-                    searchingWithText: false,
+                    searchingWithText,
                     _language,
                     LangCode.Es
                 )

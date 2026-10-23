@@ -18,6 +18,10 @@ namespace Clicalo.Presentation.Panel;
 /// <param name="SpokenKeys">
 /// The combination with full key names for screen readers (CUA-008), or the origin; empty when there is none.
 /// </param>
+/// <param name="KeyLineIsOrigin">
+/// Whether <paramref name="Keys"/> is the profile of origin of a Frequents tile or of a search result (FRE-003,
+/// BUS-005): the Compact view, which has no key line (VCO-001), still shows it.
+/// </param>
 public sealed record TileModel(
     ShortcutId Id,
     string Name,
@@ -26,5 +30,6 @@ public sealed record TileModel(
     IconRef Icon,
     CategoryId Category,
     string Keys = "",
-    string SpokenKeys = ""
+    string SpokenKeys = "",
+    bool KeyLineIsOrigin = false
 );

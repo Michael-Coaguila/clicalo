@@ -25,6 +25,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// Whether the voice number is centred down the tile, beside the body, not at its top: the body then starts
 /// <see cref="Space.S1"/> after the number whatever its digits.
 /// </param>
+/// <param name="KeysAreWords">
+/// Whether the line under the name holds words (the profile of origin), drawn in the interface font and not in the
+/// monospace of the keys.
+/// </param>
 internal sealed record TileLook(
     double IconSize,
     TextStyleToken Name,
@@ -34,9 +38,32 @@ internal sealed record TileLook(
     bool ShowsIcon = true,
     double SideInset = Space.S2,
     double? LeadInset = null,
-    bool CentresNumber = false
+    bool CentresNumber = false,
+    bool KeysAreWords = false
 )
 {
+    /// <summary>
+    /// A Frequents tile or a search result in the Compact view (FRE-003, BUS-005): its short tile has no room for the
+    /// icon, so it shows the name in one line with «…» and its profile of origin under it in <c>labelSmall</c>, in one
+    /// line, the two centred down the tile. With the voice numbers on (<paramref name="numbered"/>, ACC-009) the
+    /// number goes beside them, centred down the tile, so it never covers the name.
+    /// </summary>
+    /// <param name="grid">The look of the grid in the size of the panel (<see cref="Grid"/>).</param>
+    /// <param name="numbered">Whether the voice numbers are on.</param>
+    public static TileLook Origin(TileLook grid, bool numbered)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+        return grid with
+        {
+            Keys = TextStyleToken.LabelSmall,
+            NameLines = 1,
+            ShowsIcon = false,
+            LeadInset = numbered ? Space.S6 : null,
+            CentresNumber = numbered,
+            KeysAreWords = true,
+        };
+    }
+
     /// <summary>The tiles of the grid in <paramref name="size"/>.</summary>
     /// <param name="size">S, M or L.</param>
     public static TileLook Grid(PanelSize size) =>

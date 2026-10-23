@@ -58,6 +58,12 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
     /// <summary>Whether it is a result of the search, whose line under the name is its profile of origin (BUS-005).</summary>
     public bool IsSearchResult => _result is not null;
 
+    /// <summary>
+    /// Whether the line under the name is the profile of origin, of a Frequents tile or of a search result (FRE-003,
+    /// BUS-005): the Compact view, which has no key line (VCO-001), still shows it.
+    /// </summary>
+    public bool KeyLineIsOrigin => _model.KeyLineIsOrigin;
+
     /// <summary>How the tile reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;
 

@@ -144,14 +144,17 @@ public sealed class ShortcutGridView : Border
                 _layers is { } menu
                     ? tile => _ = menu.Modes.OpenMenu(tile, menu.InFrequents())
                     : null,
-                // VCO-001: the Compact view has no key line; a result keeps its profile of origin under its name
-                // (BUS-005), in the place of its icon, which the short tile has no room for.
-                showsKeys: !layout.Compact || viewModel.IsSearchResult
+                // VCO-001: the Compact view has no key line; a Frequents tile and a result keep their profile of
+                // origin under their name (FRE-003, BUS-005), in the place of their icon, which the short tile has no
+                // room for.
+                showsKeys: !layout.Compact || viewModel.KeyLineIsOrigin
             );
             TileFactory.Size(
                 control,
                 shape.TileHeightPx,
-                layout.Compact && viewModel.IsSearchResult ? look with { ShowsIcon = false } : look
+                layout.Compact && viewModel.KeyLineIsOrigin
+                    ? TileLook.Origin(look, layout.VoiceNumbers)
+                    : look
             );
             _tiles.Add((new PanelTileControl(viewModel, control), handler));
             var cell = TileCell.Create(control, viewModel, _layers, removable: true);

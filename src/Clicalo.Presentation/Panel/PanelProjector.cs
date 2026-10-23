@@ -170,7 +170,10 @@ public static class PanelProjector
                     language,
                     fallback,
                     new TileKeyLine(originName, originName)
-                )
+                ) with
+                {
+                    KeyLineIsOrigin = true,
+                }
             );
         }
 

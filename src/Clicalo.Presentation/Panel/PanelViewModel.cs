@@ -303,7 +303,8 @@ public sealed class PanelViewModel : ObservableObject
                     result.Binding.Shortcut.Icon,
                     result.Binding.Shortcut.Category,
                     result.Origin,
-                    result.Origin
+                    result.Origin,
+                    KeyLineIsOrigin: true
                 ),
                 _controller,
                 result
@@ -517,8 +518,9 @@ public sealed class PanelViewModel : ObservableObject
         };
 
     /// <summary>
-    /// Keeps the view model of every tile whose shortcut stays (a tile whose behavior changed counts as new: the
-    /// surface picks its UI Automation pattern and touch target kind when it builds the control).
+    /// Keeps the view model of every tile whose shortcut stays (a tile whose behavior changed, or whose line under the
+    /// name changed between keys and its origin, counts as new: the surface picks its UI Automation pattern, its touch
+    /// target kind and its look when it builds the control).
     /// </summary>
     private List<TileViewModel> SyncById(
         Dictionary<ShortcutId, TileViewModel> byId,
@@ -529,7 +531,11 @@ public sealed class PanelViewModel : ObservableObject
         var kept = new Dictionary<ShortcutId, TileViewModel>();
         foreach (var tile in tiles)
         {
-            if (byId.TryGetValue(tile.Id, out var existing) && existing.Behavior == tile.Behavior)
+            if (
+                byId.TryGetValue(tile.Id, out var existing)
+                && existing.Behavior == tile.Behavior
+                && existing.KeyLineIsOrigin == tile.KeyLineIsOrigin
+            )
             {
                 existing.Update(tile);
             }

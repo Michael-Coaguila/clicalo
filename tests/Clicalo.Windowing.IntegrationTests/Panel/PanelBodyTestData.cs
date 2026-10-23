@@ -122,6 +122,29 @@ internal static class PanelBodyTestData
         return ShortcutLibrary.CreateValidated(new ValueList<Shortcut>([.. row]), profiles).Value;
     }
 
+    /// <summary>
+    /// The library of the gallery with «Bloc de notas», which has a «Reemplazar» too: a search finds two results with the
+    /// same name, told apart by their profile of origin (BUS-005).
+    /// </summary>
+    public static ShortcutLibrary GallerySearchLibrary()
+    {
+        var library = GalleryLibrary();
+        var replace = Gallery(
+            "n0",
+            ("Reemplazar", "find_replace", "sel"),
+            new TapAction(KeyChord.Empty, [])
+        );
+        return ShortcutLibrary
+            .CreateValidated(
+                library.AlwaysVisible,
+                new ValueList<Profile>([
+                    .. library.Profiles,
+                    Profile(new ProfileId("p-notepad"), "Bloc de notas", "edit_note", [replace]),
+                ])
+            )
+            .Value;
+    }
+
     /// <summary>The key lines of the gallery: the combinations of the mockup of direction C, «Ctrl+Shift+L» style.</summary>
     public static TileKeyLine GalleryKeys(Shortcut shortcut)
     {

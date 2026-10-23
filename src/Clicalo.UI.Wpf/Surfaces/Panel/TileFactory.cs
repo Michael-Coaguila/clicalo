@@ -133,9 +133,9 @@ internal static class TileFactory
         );
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
-        // Beside the number the icon takes the middle of the tile: the type mark of its corner would sit on it, so it
-        // only stays in the help of the tile («Mantener»).
-        ShowPart(control, ShortcutTileTemplate.TypePart, !look.CentresNumber);
+        // Beside the number the icon takes the middle of the tile, and without its icon the name rises to the height of
+        // the corner: the type mark there would sit on them, so it only stays in the help of the tile («Mantener»).
+        ShowPart(control, ShortcutTileTemplate.TypePart, look.ShowsIcon && !look.CentresNumber);
         if (Part(control, ShortcutTileTemplate.VoiceNumberPart) is { } number)
         {
             if (look.CentresNumber)
@@ -151,6 +151,21 @@ internal static class TileFactory
             {
                 number.ClearValue(FrameworkElement.VerticalAlignmentProperty);
                 number.ClearValue(FrameworkElement.MarginProperty);
+            }
+        }
+
+        if (Part(control, ShortcutTileTemplate.KeysPart) is TextBlock keys)
+        {
+            // A profile of origin is words, not keys: the interface font, as the state in words that may take its place.
+            if (look.KeysAreWords)
+            {
+                keys.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.UiFont);
+                keys.FontWeight = FontWeights.Bold;
+            }
+            else
+            {
+                keys.ClearValue(TextBlock.FontFamilyProperty);
+                keys.ClearValue(TextBlock.FontWeightProperty);
             }
         }
 
