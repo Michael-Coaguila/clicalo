@@ -168,6 +168,16 @@ public sealed class ShortcutsProjectionTests
 
                 section.Editor.ToggleDuplicates();
                 section.Refresh();
+                var open = section.Editor.Model.ShouldNotBeNull().Duplicate.ShouldNotBeNull();
+                open.Expanded.ShouldBeTrue();
+
+                // With one repeated combination ‹ › have nowhere to go (D20 review).
+                open.CanBrowse.ShouldBeFalse();
+
+                // Opening the other appearance from the card keeps it open, as the person left it (REP-004).
+                var other = open.Rows.Items.First(row => !row.Editing);
+                section.Editor.OpenAppearance(other.Id);
+                section.Refresh();
                 section
                     .Editor.Model.ShouldNotBeNull()
                     .Duplicate.ShouldNotBeNull()

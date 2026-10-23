@@ -15,6 +15,7 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="MoveArmed">Whether [moveAlways] was tapped once.</param>
 /// <param name="FineText">[itsFine2].</param>
 /// <param name="UseOtherText">[useOther].</param>
+/// <param name="CanBrowse">Whether there is another repeated combination for ‹ › to go to.</param>
 public sealed record DuplicateCardModel(
     string Head,
     string PrevName,
@@ -27,5 +28,6 @@ public sealed record DuplicateCardModel(
     string? MoveText,
     bool MoveArmed,
     string FineText,
-    string UseOtherText
+    string UseOtherText,
+    bool CanBrowse
 );

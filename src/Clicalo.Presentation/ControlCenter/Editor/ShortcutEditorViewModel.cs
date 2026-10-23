@@ -48,6 +48,7 @@ public sealed class ShortcutEditorViewModel
     private bool _moreOpen;
     private bool _voiceHowOpen;
     private bool _duplicatesOpen;
+    private bool _keepDuplicatesOpen;
     private bool _testOpen;
     private PlaybackFrame? _frame;
     private ImmutableArray<OpenApp> _apps = [];
@@ -606,11 +607,19 @@ public sealed class ShortcutEditorViewModel
 
     /// <summary>‹ or › of the repeated card (REP-004).</summary>
     /// <param name="step">-1 or 1.</param>
-    public void ShowRepeated(int step) => Workspace.ShowRepeated(step);
+    public void ShowRepeated(int step)
+    {
+        _keepDuplicatesOpen = _duplicatesOpen;
+        Workspace.ShowRepeated(step);
+    }
 
     /// <summary>A row of the repeated card (REP-005): that appearance opens.</summary>
     /// <param name="id">The appearance.</param>
-    public void OpenAppearance(ShortcutId id) => Workspace.Select(id);
+    public void OpenAppearance(ShortcutId id)
+    {
+        _keepDuplicatesOpen = _duplicatesOpen;
+        Workspace.Select(id);
+    }
 
     /// <summary>🗑 of a row of the repeated card: two taps (REP-005, REG-04).</summary>
     /// <param name="id">The appearance.</param>
@@ -728,7 +737,10 @@ public sealed class ShortcutEditorViewModel
         _iconQuery = string.Empty;
         _iconCategory = null;
         _programFilter = string.Empty;
-        _duplicatesOpen = false;
+
+        // Going to another repeated combination or appearance from the card keeps it as the person left it (REP-004).
+        _duplicatesOpen = _keepDuplicatesOpen;
+        _keepDuplicatesOpen = false;
         _voiceHowOpen = false;
         _testOpen = false;
         _answer = TestAnswer.None;
@@ -963,7 +975,8 @@ public sealed class ShortcutEditorViewModel
                 : null,
             moveArmed,
             T(L.ItsFine2),
-            T(L.UseOther)
+            T(L.UseOther),
+            index.RepeatedCombinationCount > 1
         );
     }
 

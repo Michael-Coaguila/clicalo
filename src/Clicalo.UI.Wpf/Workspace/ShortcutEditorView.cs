@@ -291,6 +291,9 @@ public sealed class ShortcutEditorView : Grid
             () => _viewModel.ShowRepeated(1),
             model.NextName
         );
+        // With one repeated combination there is nowhere for ‹ › to go: they would look enabled and do nothing.
+        previous.Visibility = model.CanBrowse ? Visibility.Visible : Visibility.Collapsed;
+        next.Visibility = previous.Visibility;
         var bar = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(next, Dock.Right);
         DockPanel.SetDock(previous, Dock.Right);
