@@ -359,6 +359,27 @@ public sealed class ControlCenterAuditTests
             }
         );
 
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "CCM-001")]
+    public void The_languages_of_the_title_bar_are_named_as_they_read() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                // Voice access finds a control by what it shows: «ES» and «EN», with the language's name as help.
+                var spanish = host.Peer("ES", AutomationControlType.RadioButton);
+                spanish.GetHelpText().ShouldBe("Español");
+                Selection(spanish).IsSelected.ShouldBeTrue();
+                host.Peer("EN", AutomationControlType.RadioButton)
+                    .GetHelpText()
+                    .ShouldBe("English");
+            }
+        );
+
     private static ISelectionItemProvider Selection(AutomationPeer peer) =>
         peer.GetPattern(PatternInterface.SelectionItem)
             .ShouldBeAssignableTo<ISelectionItemProvider>()!;

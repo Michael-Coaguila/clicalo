@@ -442,7 +442,10 @@ public sealed class ControlCenterWindow : Window
                 IsSelected = option.Selected,
                 MinWidth = ControlHeight.Small + Space.S3,
             };
-            AutomationProperties.SetName(button, option.Name);
+            // Named as it reads («ES»), so voice access finds it by what is drawn (ACC-001); the language's own name
+            // («Español») is its help, as S, M and L of the quick settings.
+            AutomationProperties.SetName(button, option.Label);
+            AutomationProperties.SetHelpText(button, option.Name);
             button.Click += (_, _) => _viewModel.SetLanguage(option.Code);
             WindowChrome.SetIsHitTestVisibleInChrome(button, true);
             row.Children.Add(button);
