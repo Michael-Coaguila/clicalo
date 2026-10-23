@@ -54,6 +54,7 @@ public sealed class ShortcutEditorView : Grid
     private readonly Dictionary<int, TextInput> _stepTexts = [];
     private EditorModel? _shown;
     private string _shownKey = string.Empty;
+    private int? _openStep;
 
     /// <summary>Creates the view of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The editor.</param>
@@ -181,6 +182,7 @@ public sealed class ShortcutEditorView : Grid
         {
             before = null;
             _stepTexts.Clear();
+            _openStep = null;
             _scroll.ScrollToTop();
         }
 
@@ -199,9 +201,14 @@ public sealed class ShortcutEditorView : Grid
             Show(_kinds, Kinds(model.Kinds));
         }
 
-        if (before?.Combo != model.Combo)
+        // The keys of a step of a macro are edited under that step (EDI-013), not in the region above «Pasos».
+        var stepKeys = model.Steps is not null;
+        if (before?.Combo != model.Combo || (before?.Steps is not null) != stepKeys)
         {
-            Show(_combo, model.Combo is { } combo ? ComboView.Build(combo, _viewModel) : null);
+            Show(
+                _combo,
+                model.Combo is { } combo && !stepKeys ? ComboView.Build(combo, _viewModel) : null
+            );
         }
 
         if (
@@ -210,6 +217,7 @@ public sealed class ShortcutEditorView : Grid
             || before.Mouse != model.Mouse
             || before.Steps != model.Steps
             || before.Target != model.Target
+            || (stepKeys && before.Combo != model.Combo)
         )
         {
             Show(_fields, Fields(model, keyChanged));
@@ -606,7 +614,7 @@ public sealed class ShortcutEditorView : Grid
 
         if (model.Steps is { } steps)
         {
-            return Steps(steps);
+            return Steps(steps, model.Combo);
         }
 
         if (model.Target is { } target)
@@ -672,15 +680,44 @@ public sealed class ShortcutEditorView : Grid
 
     // ---- Macro (EDI-012) -----------------------------------------------------------------------------------------
 
-    private StackPanel Steps(StepsModel model)
+    /// <summary>
+    /// The steps, each a card; the one in edit holds its editor, and a step of keys has its combination box right
+    /// under its card, at the width of the column: inside the card the box and its keys would nest three borders
+    /// (sistema §1, rule 7). The step that was just opened is brought into view once, with what edits it.
+    /// </summary>
+    private StackPanel Steps(StepsModel model, ComboModel? combo)
     {
         var column = Parts.Section(model.Label);
+        int? open = null;
         foreach (var step in model.Steps)
         {
             var card = Step(model, step);
-            card.Margin = new Thickness(0, Space.S2, 0, 0);
-            column.Children.Add(card);
+            if (step.Editor == StepEditorKind.None)
+            {
+                card.Margin = new Thickness(0, Space.S2, 0, 0);
+                column.Children.Add(card);
+                continue;
+            }
+
+            open = step.Index;
+            var group = new StackPanel { Margin = new Thickness(0, Space.S2, 0, 0) };
+            group.Children.Add(card);
+            if (step.Editor == StepEditorKind.Keys && combo is not null)
+            {
+                var keys = ComboView.Build(combo, _viewModel);
+                keys.Margin = new Thickness(0, Space.S3, 0, Space.S2);
+                group.Children.Add(keys);
+            }
+
+            if (open != _openStep)
+            {
+                group.Loaded += (_, _) => group.BringIntoView();
+            }
+
+            column.Children.Add(group);
         }
+
+        _openStep = open;
 
         var adds = model
             .Add.Select(add =>
@@ -797,12 +834,6 @@ public sealed class ShortcutEditorView : Grid
 
         body.Children.Add(tools);
         var open = step.Editor != StepEditorKind.None;
-        if (open)
-        {
-            // The step that was just opened is brought into view with its editor.
-            body.Loaded += (_, _) => body.BringIntoView();
-        }
-
         return Ui.Card(
             body,
             ColorToken.Card,
