@@ -47,6 +47,13 @@ internal static class PersistedNames
             (Domain.Document.WelcomeAnswer.Mouse, "mouse")
         );
 
+    /// <summary>The AI provider (schema 1.2, ADR-0033).</summary>
+    public static NameMap<AiProvider> AiProvider { get; } =
+        new(
+            (Domain.Settings.AiProvider.Anthropic, "anthropic"),
+            (Domain.Settings.AiProvider.Gemini, "gemini")
+        );
+
     public static NameMap<UpdateChannel> Channel { get; } =
         new((UpdateChannel.Stable, "stable"), (UpdateChannel.Beta, "beta"));
 

@@ -53,6 +53,7 @@ public static class SettingPaths
     public const string AiFreeLeftToday = "ai.freeLeftToday";
     public const string AiFreeResetAt = "ai.freeResetAt";
     public const string AiApiKeyRef = "ai.apiKeyRef";
+    public const string AiProvider = "aiProvider";
     public const string StartWithWindows = "reliability.startWithWindows";
     public const string AutoBackup = "reliability.autoBackup";
     public const string CrashRecovery = "reliability.crashRecovery";

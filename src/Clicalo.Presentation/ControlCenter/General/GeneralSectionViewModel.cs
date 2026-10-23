@@ -41,6 +41,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
     private ITimer? _disarm;
     private ITimer? _keyDisarm;
     private bool _hasKey;
+    private AiProvider _keyProvider;
 
     /// <summary>Creates the section; it follows the document and the language by itself.</summary>
     /// <param name="services">What it works with.</param>
@@ -49,6 +50,7 @@ public sealed class GeneralSectionViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(services);
         _s = services;
         _hasKey = services.Ai?.HasKey ?? false;
+        _keyProvider = services.Store.Current.Settings.Ai.Provider;
         _screen = Project();
         services.Store.Changed += (_, _) => services.Post(Refresh);
         services.Localization.LanguageChanged += (_, _) => services.Post(Refresh);
@@ -253,6 +255,19 @@ public sealed class GeneralSectionViewModel : ObservableObject
     public void ToggleAi()
     {
         if (_s.Ai is { } ai && ai.SetEnabled(Settings.Ai.Disabled))
+        {
+            Saved();
+        }
+    }
+
+    /// <summary>
+    /// [aiProviderAnthropic] or [aiProviderGemini] (GEN-015, ADR-0033): from then on the key of that provider is used,
+    /// and the consent is asked again before the first attempt. It enters the undo history.
+    /// </summary>
+    /// <param name="provider">The provider.</param>
+    public void SetAiProvider(AiProvider provider)
+    {
+        if (_s.Ai is { } ai && ai.SetProvider(provider))
         {
             Saved();
         }
@@ -492,18 +507,31 @@ public sealed class GeneralSectionViewModel : ObservableObject
             return null;
         }
 
+        var provider = settings.Ai.Provider;
+        if (provider != _keyProvider)
+        {
+            // Another provider, or an undo that brought one back: its own key decides the state (ADR-0033).
+            _keyProvider = provider;
+            _hasKey = _s.Ai.HasKey;
+        }
+
         var armed =
             _s.Confirm.ArmedSubject is { } subject
             && string.Equals(subject.Operation, DeleteKeyOperation, StringComparison.Ordinal)
             && string.Equals(subject.Target, AiKeyTarget, StringComparison.Ordinal);
+        var name = AiProviderTexts.Name(provider);
         return new AiModel(
             T(L.SecAi),
             Switch("auto_awesome", L.AiUse, L.AiUseD, !settings.Ai.Disabled),
+            T(L.AiProvider),
+            [.. AiProviderTexts.All.Select(p => Option(p, T(AiProviderTexts.Name(p)), provider))],
+            T(AiProviderTexts.Detail(provider)),
+            AiProviderTexts.Notice(provider) is { } notice ? T(notice) : null,
             T(settings.Ai.Consent ? L.ConsentGiven : L.ConsentNotGiven),
             settings.Ai.Consent,
             T(settings.Ai.Consent ? L.ConsentRevoke : L.ConsentGive),
-            T(L.ConsentD4),
-            T(_hasKey ? L.QuotaKey : L.KeyNone),
+            T(L.ConsentD4(provider: name)),
+            T(_hasKey ? L.QuotaKey : L.KeyNone(provider: name)),
             _hasKey ? T(armed ? L.DelConfirm : L.KeyDelete) : null,
             armed,
             _hasKey || _s.OpenKey is null ? null : T(L.KeyUse)

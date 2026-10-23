@@ -772,10 +772,30 @@ public sealed class GeneralSectionView : ContentControl
             }
         }
 
+        // ADR-0033: the provider is a closed choice of two, as segments; its consent and key follow it.
+        var providers = new List<OptionButton>();
+        foreach (var option in ai.Providers)
+        {
+            providers.Add(
+                SettingsUi.Option(
+                    OptionKind.Segment,
+                    option.Label,
+                    option.Name,
+                    option.Selected,
+                    () => _viewModel.SetAiProvider(option.Value)
+                )
+            );
+        }
+
         return SettingsUi.Group(
             ai.Caption,
+            Switches(SwitchRow(ai.Use, _viewModel.ToggleAi)),
+            Item(ai.ProviderTitle, ai.ProviderDetail),
+            SettingsUi.Track(ai.ProviderTitle, providers),
+            ai.ProviderNotice is { } notice
+                ? SettingsUi.Styled(notice, TextStyleToken.Caption, ColorToken.Muted, lines: 0)
+                : null,
             Switches(
-                SwitchRow(ai.Use, _viewModel.ToggleAi),
                 SettingsUi.SettingBlock(
                     ai.Consent ? "verified_user" : "gpp_maybe",
                     ai.ConsentState,

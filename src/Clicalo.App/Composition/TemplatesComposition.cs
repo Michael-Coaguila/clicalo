@@ -10,6 +10,7 @@ using Clicalo.Application.UseCases.Editor;
 using Clicalo.Application.UseCases.Templates;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
 using Clicalo.Domain.Timing;
 using Clicalo.Infrastructure.Ai;
@@ -53,11 +54,23 @@ internal sealed class TemplatesComposition
         _store = store;
         _localization = localization;
         _writer = writer;
-        IAiKeyStore keys = isolatedData
-            ? new MemoryKeyStore(AiServices.CredentialTarget)
-            : new CredentialKeyStore(AiServices.CredentialTarget);
+        // One key per provider (ADR-0033); the section works with the one of the provider in the document.
+        var stores = Enum.GetValues<AiProvider>()
+            .ToDictionary(
+                static provider => provider,
+                IAiKeyStore (provider) =>
+                    isolatedData
+                        ? new MemoryKeyStore(AiServices.CredentialTarget(provider))
+                        : new CredentialKeyStore(AiServices.CredentialTarget(provider))
+            );
+        AiProvider Chosen() => store.Current.Settings.Ai.Provider;
         _preview = new TemplatePreviewSession(store);
-        _ai = new AiAssistant(store, AiServices.CreateGenerator(keys), keys, time);
+        _ai = new AiAssistant(
+            store,
+            AiServices.CreateGenerator(Chosen, provider => stores[provider]),
+            new ChosenProviderKeyStore(Chosen, provider => stores[provider]),
+            time
+        );
         _sharing = new ProfileSharing(time, ids);
     }
 

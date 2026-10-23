@@ -407,6 +407,26 @@ internal static class SettingsRegistry
                 s => s.Keyboard.Detected,
                 (s, v) => s with { Keyboard = s.Keyboard with { Detected = v } }
             ),
+            // ADR-0033: a consent given for one provider is not one for another, so writing another provider clears it
+            // in the same step. It goes before the consent: undo copies the leaves in this order, so the provider comes
+            // back first and the consent of that step after it.
+            Leaf(
+                SettingPaths.AiProvider,
+                Behavior,
+                L.AiProvider,
+                null,
+                s => s.Ai.Provider,
+                (s, v) =>
+                    s with
+                    {
+                        Ai = s.Ai with
+                        {
+                            Provider = v,
+                            Consent = s.Ai.Consent && s.Ai.Provider == v,
+                        },
+                    },
+                Defined
+            ),
             Leaf(
                 SettingPaths.AiConsent,
                 Behavior,

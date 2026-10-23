@@ -1040,14 +1040,14 @@
       "text": { "es": "Solo se envían el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. Nada de tus documentos.", "en": "Only the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent. Nothing from your documents." }
     },
     "consentD4": {
-      "notes": "Consentimiento de la IA corregido para listar los 4 datos y la clave propia (PLA-004, PLA-008, catálogo §9, decisión D5). Sustituye a [consentD] en Plantillas. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
+      "notes": "Consentimiento de la IA corregido para listar los 4 datos y la clave propia (PLA-004, PLA-008, catálogo §9, decisión D5). Sustituye a [consentD] en Plantillas. Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26). Revisado por ADR-0033: nombra al destinatario, {provider}, en lugar de «un servicio externo de IA», porque el consentimiento es de cada proveedor. Pendiente de ratificar (R-38).",
       "after": "aiPrivacy4",
-      "text": { "es": "Para crear atajos se envían a un servicio externo de IA, con tu propia clave, el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. No se envía nada más. Puedes desactivarlo cuando quieras.", "en": "To create shortcuts, the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent to an external AI service with your own key. Nothing else. You can turn it off anytime." }
+      "text": { "es": "Para crear atajos se envían a {provider}, con tu propia clave, el nombre del programa, la distribución del teclado, el idioma de tus programas y el de Clícalo. No se envía nada más. Puedes desactivarlo cuando quieras.", "en": "To create shortcuts, the program name, the keyboard layout, your programs’ language and Clícalo’s language are sent to {provider} with your own key. Nothing else. You can turn it off anytime." }
     },
     "keyNone": {
-      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26). Revisado en M7: «Sin clave: la IA usa tu propia clave» se leía como una contradicción y no decía que sin clave la IA no funciona. Pendiente de ratificar (D21).",
+      "notes": "Estado de la clave sin clave guardada, en lugar de la cuota gratuita «IA gratis: n de 5 hoy» (PLA-003, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26). Revisado en M7: «Sin clave: la IA usa tu propia clave» se leía como una contradicción y no decía que sin clave la IA no funciona. Pendiente de ratificar (D21). Revisado por ADR-0033: {provider} es el proveedor elegido ([aiProviderAnthropic] o [aiProviderGemini]) en lugar de «Anthropic». Pendiente de ratificar (R-38).",
       "after": "consentD4",
-      "text": { "es": "Sin clave: para generar con IA hace falta tu clave de API de Anthropic.", "en": "No key yet: AI needs your own Anthropic API key." }
+      "text": { "es": "Sin clave: para generar con IA hace falta tu clave de API de {provider}.", "en": "No key yet: AI needs your own {provider} API key." }
     },
     "keyPaste": {
       "notes": "Botón que pega la clave del portapapeles en el campo oculto (PLA-003). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
@@ -1080,9 +1080,9 @@
       "text": { "es": "Falta tu clave", "en": "Your key is missing" }
     },
     "errNoKeyD": {
-      "notes": "Descripción del error sin clave (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
+      "notes": "Descripción del error sin clave (PLA-006, decisión D5). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26). Revisado por ADR-0033: {provider} es el proveedor elegido en lugar de «Anthropic». Pendiente de ratificar (R-38).",
       "after": "errNoKeyT",
-      "text": { "es": "La IA de Clícalo usa tu propia clave de API de Anthropic. Pégala para generar, o sigue con plantillas y perfiles vacíos.", "en": "Clícalo’s AI uses your own Anthropic API key. Paste it to generate, or continue with templates and empty profiles." }
+      "text": { "es": "La IA de Clícalo usa tu propia clave de API de {provider}. Pégala para generar, o sigue con plantillas y perfiles vacíos.", "en": "Clícalo’s AI uses your own {provider} API key. Paste it to generate, or continue with templates and empty profiles." }
     },
     "errKeyT": {
       "notes": "Error «badkey»: clave rechazada o límite del proveedor (PLA-006, catálogo §9). Texto nuevo de Plantillas (M4), pendiente de ratificar en §6.1 del catálogo (R-26).",
@@ -1390,6 +1390,54 @@
       "text": {
         "es": "Dar consentimiento",
         "en": "Give consent"
+      }
+    },
+    "aiProvider": {
+      "notes": "Título de la elección del proveedor de IA en General › IA y junto al campo de la clave de Plantillas, y nombre del paso de deshacer (ADR-0033, decisión D5). Texto nuevo, pendiente de ratificar (R-38).",
+      "after": "consentGive",
+      "text": {
+        "es": "Proveedor de IA",
+        "en": "AI provider"
+      }
+    },
+    "aiProviderAnthropic": {
+      "notes": "Opción del proveedor Anthropic; también es {provider} de [keyNone], [errNoKeyD] y [consentD4] (ADR-0033). Nombre de producto, igual en los dos idiomas. Texto nuevo, pendiente de ratificar (R-38).",
+      "after": "aiProvider",
+      "text": {
+        "es": "Claude (Anthropic)",
+        "en": "Claude (Anthropic)"
+      }
+    },
+    "aiProviderAnthropicD": {
+      "notes": "Descripción de la opción Anthropic: de dónde sale la clave (ADR-0033). Texto nuevo, pendiente de ratificar (R-38).",
+      "after": "aiProviderAnthropic",
+      "text": {
+        "es": "Con una clave de pago de la consola de Anthropic.",
+        "en": "With a paid key from the Anthropic Console."
+      }
+    },
+    "aiProviderGemini": {
+      "notes": "Opción del proveedor Google; también es {provider} de [keyNone], [errNoKeyD] y [consentD4] (ADR-0033). Nombre de producto, igual en los dos idiomas. Texto nuevo, pendiente de ratificar (R-38).",
+      "after": "aiProviderAnthropicD",
+      "text": {
+        "es": "Gemini (Google)",
+        "en": "Gemini (Google)"
+      }
+    },
+    "aiProviderGeminiD": {
+      "notes": "Descripción de la opción Gemini: de dónde sale la clave y que puede ser gratuita con límites (ADR-0033). Texto nuevo, pendiente de ratificar (R-38).",
+      "after": "aiProviderGemini",
+      "text": {
+        "es": "Con una clave de Google AI Studio, que puede ser gratuita con límites de uso.",
+        "en": "With a Google AI Studio key, which can be free with usage limits."
+      }
+    },
+    "aiGeminiFree": {
+      "notes": "Aviso de privacidad de la capa gratuita de Gemini, en el consentimiento, bajo la elección de General › IA y junto al campo de la clave (PLA-004, ADR-0033): según las condiciones de la API de Gemini, con los servicios no de pago Google usa lo enviado y las respuestas para mejorar sus productos y personas revisoras pueden leerlos; con los de pago, no. Es el caso peor: no distingue regiones. Texto nuevo, pendiente de ratificar (R-38).",
+      "after": "aiProviderGeminiD",
+      "text": {
+        "es": "Con una clave gratuita, Google puede usar lo que se envía y sus respuestas para mejorar sus productos, y personas revisoras pueden leerlo. Con una clave de pago, no.",
+        "en": "With a free key, Google may use what is sent and its answers to improve its products, and human reviewers may read it. With a paid key, it does not."
       }
     },
     "timesN": {

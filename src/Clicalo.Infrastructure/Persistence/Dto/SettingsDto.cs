@@ -79,6 +79,9 @@ internal sealed record SettingsDto
     /// <summary>Multiplier of the confirmation window and of notices (ACC-006): 1, 2 or 3; since 1.1.</summary>
     public int? TimeMultiplier { get; init; }
 
+    /// <summary>The AI provider, <c>anthropic</c> or <c>gemini</c> (ADR-0033); since 1.2, at this level so a 1.1 version keeps it.</summary>
+    public string? AiProvider { get; init; }
+
     /// <summary>Settings of a later minor, kept when rewriting (§6.5).</summary>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
