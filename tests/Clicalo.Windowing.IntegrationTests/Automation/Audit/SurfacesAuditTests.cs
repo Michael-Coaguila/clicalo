@@ -300,7 +300,8 @@ public sealed class SurfacesAuditTests
                 world.Panel.Pager.PageCount.ShouldBeGreaterThan(1);
                 var paged = new Size(host.Root.ActualWidth, host.Root.ActualHeight);
 
-                // An empty profile: one page, so the pager row is empty, but it keeps its place (D16).
+                // An empty profile: one page. D21 (the maintainer found the empty band of D16 ugly): the pager row takes
+                // no room then, so the panel is its height less the row and its gap.
                 PanelStates["empty-profile"](world);
                 host.LayOut();
                 var single = new Size(host.Root.ActualWidth, host.Root.ActualHeight);
@@ -308,12 +309,12 @@ public sealed class SurfacesAuditTests
                 // D16 with the measures of D20: M in the Full view with 3 rows is 340 × 540; S (2 rows and the row of
                 // icons) and L follow the same rows.
                 paged.ShouldBe(new Size(width, height));
-                single.ShouldBe(paged);
+                single.ShouldBe(new Size(width, height - ControlHeight.Small - Space.S2));
 
                 // The lines go inside: the thicker ones of high contrast do not make the panel grow.
                 theme.Preference = ThemeChoice.HighContrast;
                 host.LayOut();
-                new Size(host.Root.ActualWidth, host.Root.ActualHeight).ShouldBe(paged);
+                new Size(host.Root.ActualWidth, host.Root.ActualHeight).ShouldBe(single);
             }
             finally
             {
@@ -404,11 +405,13 @@ public sealed class SurfacesAuditTests
                 host.LayOut();
                 window.IsPanicStripVisible.ShouldBeTrue();
 
-                // D19 made the status row 44 + 4: the strip over it cut the foot of «Release all» (D20 review).
+                // D19 made the status row 44 + 4: the strip over it cut the foot of «Release all» (D20 review). D21: the
+                // strip starts in the middle of the gap above the row, so «Release all» is centred in it, S1 from its
+                // top and its foot, and the red never touches the row above.
                 var button = window.ReleaseAllButton;
                 var bottom = button.TranslatePoint(new Point(0, button.ActualHeight), host.Root).Y;
                 button.ActualHeight.ShouldBe(ControlHeight.Small);
-                bottom.ShouldBeLessThanOrEqualTo(host.Root.ActualHeight - Space.S2 + 0.5);
+                (host.Root.ActualHeight - bottom).ShouldBeInRange(Space.S1 - 0.5, Space.S2);
             }
             finally
             {

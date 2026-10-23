@@ -46,7 +46,7 @@ public sealed class SearchSurfaceTests
                     new Size(bar.DictateButton.ActualWidth, bar.DictateButton.ActualHeight)
                 )
                 .ShouldBeTrue();
-            AutomationProperties.GetName(bar.Field).ShouldBe(search.Placeholder);
+            AutomationProperties.GetName(bar.Field).ShouldBe(search.FieldName);
             UIElementAutomationPeer
                 .CreatePeerForElement(bar.DictateButton)
                 .GetName()

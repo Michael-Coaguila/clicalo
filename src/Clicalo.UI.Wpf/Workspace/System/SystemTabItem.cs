@@ -30,6 +30,16 @@ internal sealed class SystemTabItem : ToggleButton
             typeof(SystemTabItem),
             new FrameworkPropertyMetadata(FocusRingStyle.Button)
         );
+
+        // The template places its content by these: Control leaves it at the top left (as OptionButton does).
+        HorizontalContentAlignmentProperty.OverrideMetadata(
+            typeof(SystemTabItem),
+            new FrameworkPropertyMetadata(HorizontalAlignment.Center)
+        );
+        VerticalContentAlignmentProperty.OverrideMetadata(
+            typeof(SystemTabItem),
+            new FrameworkPropertyMetadata(VerticalAlignment.Center)
+        );
         TouchTarget.Enforce(typeof(SystemTabItem));
     }
 

@@ -664,7 +664,8 @@ public sealed class PanelViewModel : ObservableObject
             l.Format(L.PrevPage),
             l.Format(L.NextPage),
             l.Format(L.PageN),
-            l.Format(L.On)
+            l.Format(L.On),
+            l.Format(L.DockPageOf(index: window.Page + 1, total: window.PageCount))
         );
         Strip.Apply(
             _strip.GetRange(_stripWindow.Start, _stripWindow.Count),

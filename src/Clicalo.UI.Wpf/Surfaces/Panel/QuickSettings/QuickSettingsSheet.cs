@@ -75,6 +75,7 @@ public sealed class QuickSettingsSheet : Border
     private double _screenLimit = double.PositiveInfinity;
     private uint? _contact;
     private bool _sliding;
+    private bool _onTrack;
     private bool _scrolling;
     private Point _origin;
     private double _startOffset;
@@ -135,8 +136,8 @@ public sealed class QuickSettingsSheet : Border
 
         _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionKind.Tile));
         // S3 at both sides: the options spread S1 past them, so they sit S2 from the edge and S2 from the scroll bar
-        // (with S1 they touched it, D20 review).
-        var layout = new StackPanel { Margin = new Thickness(Space.S3, 0, Space.S3, Space.S6) };
+        // (with S1 they touched it, D20 review); S3 at the foot too, so the top and the bottom look alike.
+        var layout = new StackPanel { Margin = new Thickness(Space.S3, 0, Space.S3, Space.S3) };
         layout.Children.Add(_controlCenter);
         layout.Children.Add(Section(_viewHeading, Group(viewModel.Views, 3, OptionKind.Card)));
         layout.Children.Add(Section(opacityTitle, _opacity));
@@ -147,7 +148,12 @@ public sealed class QuickSettingsSheet : Border
         layout.Children.Add(Section(_themeHeading, _themes));
         layout.Children.Add(Switches(viewModel.Switches));
 
-        _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = layout };
+        _scroller = new ThemedScrollViewer
+        {
+            PansWithMouse = false,
+            CollapsesChannel = true,
+            Content = layout,
+        };
         var rows = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_header, Dock.Top);
         rows.Children.Add(_header);
@@ -307,9 +313,12 @@ public sealed class QuickSettingsSheet : Border
                     && TouchBounds.Of(track, inflate: true).Contains(sample.Position)
                 )
                 {
+                    // The track sits in the middle of what scrolls: a vertical swipe that starts on it scrolls, a
+                    // horizontal one slides the value and a tap sets it where it lands (AJR-002, D21 review).
                     _contact = sample.PointerId;
-                    _sliding = true;
-                    Slide(at);
+                    _onTrack = true;
+                    _origin = at;
+                    _startOffset = _scroller.VerticalOffset;
                     return true;
                 }
 
@@ -329,7 +338,26 @@ public sealed class QuickSettingsSheet : Border
                     return true;
                 }
 
+                var dx = at.X - _origin.X;
                 var dy = at.Y - _origin.Y;
+                if (_onTrack && !_scrolling)
+                {
+                    // Which way the finger goes decides, past half the drag threshold.
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) <= thresholdPx / 2)
+                    {
+                        return true;
+                    }
+
+                    if (Math.Abs(dx) >= Math.Abs(dy))
+                    {
+                        _sliding = true;
+                        Slide(at);
+                        return true;
+                    }
+
+                    _scrolling = true;
+                }
+
                 _scrolling |= Math.Abs(dy) > thresholdPx;
                 if (_scrolling)
                 {
@@ -337,14 +365,20 @@ public sealed class QuickSettingsSheet : Border
                     _scroller.ScrollToVerticalOffset(_startOffset - (dy / scale));
                 }
 
-                return _scrolling;
+                return _scrolling || _onTrack;
 
             case PointerPhase.Up
             or PointerPhase.Cancel when _contact == sample.PointerId:
-                var used = _sliding || _scrolling;
+                if (_onTrack && !_sliding && !_scrolling && sample.Phase == PointerPhase.Up)
+                {
+                    Slide(_origin);
+                }
+
+                var used = _sliding || _scrolling || _onTrack;
                 _contact = null;
                 _sliding = false;
                 _scrolling = false;
+                _onTrack = false;
                 return used;
 
             default:
@@ -563,7 +597,23 @@ public sealed class QuickSettingsSheet : Border
                 }
 
                 item.IsSelected = option.IsSelected;
-                AutomationProperties.SetName(item, option.AccessibleName);
+
+                // The name starts with what the option reads («M», label in name for voice), the long one is its help.
+                var shortLabel =
+                    option.Label.Length > 0
+                    && !string.Equals(
+                        option.Label,
+                        option.AccessibleName,
+                        StringComparison.Ordinal
+                    );
+                AutomationProperties.SetName(
+                    item,
+                    shortLabel ? option.Label : option.AccessibleName
+                );
+                AutomationProperties.SetHelpText(
+                    item,
+                    shortLabel ? option.AccessibleName : string.Empty
+                );
             }
 
             foreach (var (row, item) in _switches)

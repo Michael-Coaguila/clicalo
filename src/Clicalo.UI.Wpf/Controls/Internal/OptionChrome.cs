@@ -20,6 +20,12 @@ internal static class OptionChrome
     /// <summary>Name of the ✓ shown by a chosen option without icon.</summary>
     public const string CheckPart = "PART_Check";
 
+    /// <summary>
+    /// The empty slot as wide as the ✓ on the other side of a centred text: the text stays on the option's axis whether
+    /// it is chosen or not («✓ M» was 12 off the centre of S and L, D21 review).
+    /// </summary>
+    public const string CheckBalancePart = "PART_CheckBalance";
+
     /// <summary>Name of the text presenter.</summary>
     public const string TextPart = "PART_Text";
 
@@ -213,6 +219,18 @@ internal static class OptionChrome
                 null,
                 new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, TextPart)
             ),
+            // An option of an icon alone keeps no room for a text beside or under it: its icon is centred (it was 4 DIP
+            // to the left in «Lado de la pestaña» and the icon grids, D21 review).
+            Templates.When(
+                ContentControl.ContentProperty,
+                null,
+                new Setter(FrameworkElement.MarginProperty, new Thickness(0), IconPart)
+            ),
+            Templates.When(
+                ContentControl.ContentProperty,
+                string.Empty,
+                new Setter(FrameworkElement.MarginProperty, new Thickness(0), IconPart)
+            ),
             Templates.When(
                 UIElement.IsMouseOverProperty,
                 true,
@@ -289,13 +307,18 @@ internal static class OptionChrome
                     .With(UIElement.VisibilityProperty, Visibility.Collapsed)
                     .Paint(SymbolIcon.ForegroundProperty, ColorToken.AccentInk);
                 icon.With(FrameworkElement.MarginProperty, new Thickness(0, 0, Space.S2, 0));
+                var balance = Templates
+                    .Element<Border>(CheckBalancePart)
+                    .With(FrameworkElement.WidthProperty, IconBox.Small + Space.S1)
+                    .With(DockPanel.DockProperty, Dock.Right)
+                    .With(UIElement.VisibilityProperty, Visibility.Collapsed);
                 // A dock, not a horizontal stack: the text gets the width that is left, so it can wrap or end in «…».
                 check.With(DockPanel.DockProperty, Dock.Left);
                 icon.With(DockPanel.DockProperty, Dock.Left);
                 body = Templates
                     .Element<DockPanel>(ControlChrome.ContentPart)
                     .With(DockPanel.LastChildFillProperty, true)
-                    .Add(check, icon, text);
+                    .Add(check, icon, balance, text);
                 triggers.Add(Collapse(symbol, null, IconPart));
                 var bare = new MultiTrigger();
                 bare.Conditions.Add(new Condition(symbol, null));
@@ -304,10 +327,24 @@ internal static class OptionChrome
                 bare.Setters.Add(
                     new Setter(UIElement.VisibilityProperty, Visibility.Visible, CheckPart)
                 );
+                var centred = new MultiTrigger();
+                centred.Conditions.Add(new Condition(symbol, null));
+                centred.Conditions.Add(new Condition(IsTextContentProperty, true));
+                centred.Conditions.Add(new Condition(selected, true));
+                centred.Conditions.Add(
+                    new Condition(
+                        Control.HorizontalContentAlignmentProperty,
+                        HorizontalAlignment.Center
+                    )
+                );
+                centred.Setters.Add(
+                    new Setter(UIElement.VisibilityProperty, Visibility.Hidden, CheckBalancePart)
+                );
                 triggers.Add(
                     Templates.When(selected, true, ControlChrome.Selected([.. selectedSetters]))
                 );
                 triggers.Add(bare);
+                triggers.Add(centred);
                 triggers.Add(
                     Templates.When(UIElement.IsEnabledProperty, false, ControlChrome.Disabled())
                 );

@@ -18,6 +18,10 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel;
 /// <param name="TopInset">The space above the body: under the slot of the voice number when the tile is too narrow.</param>
 /// <param name="ShowsIcon">Whether the icon shows; false only where it has no room (see <see cref="Strip"/>).</param>
 /// <param name="SideInset">The space at each side of the body.</param>
+/// <param name="LeadInset">
+/// The space before the body when it differs from <paramref name="SideInset"/>: the slot of the voice number beside it.
+/// </param>
+/// <param name="CentresNumber">Whether the voice number is centred down the tile, beside the body, not at its top.</param>
 internal sealed record TileLook(
     double IconSize,
     TextStyleToken Name,
@@ -25,7 +29,9 @@ internal sealed record TileLook(
     int NameLines,
     double TopInset = Space.S1,
     bool ShowsIcon = true,
-    double SideInset = Space.S2
+    double SideInset = Space.S2,
+    double? LeadInset = null,
+    bool CentresNumber = false
 )
 {
     /// <summary>The tiles of the grid in <paramref name="size"/>.</summary>
@@ -52,7 +58,8 @@ internal sealed record TileLook(
     /// <param name="cramped">Whether the voice number needs the top of the tile: numbers on in four narrow columns.</param>
     /// <param name="showsNames">
     /// Whether the row shows names. A row of icons alone (S, Compact: one touch target high, D19) takes the small icon,
-    /// clear of the type mark at the top right; with the voice numbers on, under the slot of the number.
+    /// centred and clear of the type mark at the top right; with the voice numbers on, the number and the icon go side by
+    /// side, both centred down the 44 of the tile (a number above would push the icon against the bottom edge).
     /// </param>
     public static TileLook Strip(bool cramped, bool showsNames = true) =>
         !showsNames
@@ -61,8 +68,9 @@ internal sealed record TileLook(
                 TextStyleToken.LabelSmall,
                 TextStyleToken.KeysTile,
                 1,
-                cramped ? Space.S6 : Space.S1,
-                SideInset: Space.S1
+                SideInset: Space.S1,
+                LeadInset: cramped ? Space.S6 : null,
+                CentresNumber: cramped
             )
             : new(
                 cramped ? IconBox.Small : IconBox.Medium,

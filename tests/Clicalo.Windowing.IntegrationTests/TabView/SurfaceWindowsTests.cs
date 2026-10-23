@@ -197,9 +197,12 @@ public sealed class SurfaceWindowsTests
             panel.ApplyLayout(PanelLayoutSettings.Default with { Compact = true });
             var body = new PanelBodyView(panel);
 
-            // Direction C (D12): the row «Qué ver» goes to the foot of the Compact view, under the pager.
+            // Direction C (D12): the row «Qué ver» goes to the foot of the Compact view, right under the grid; the pager is
+            // the last row, so it comes and goes with the pages moving only the bottom edge (D21).
             body.Children.IndexOf(body.Selector)
-                .ShouldBeGreaterThan(body.Children.IndexOf(body.Pager));
+                .ShouldBeGreaterThan(body.Children.IndexOf(body.GridArea));
+            body.Children.IndexOf(body.Pager)
+                .ShouldBeGreaterThan(body.Children.IndexOf(body.Selector));
             body.Selector.Visibility.ShouldBe(System.Windows.Visibility.Visible);
             body.Selector.FrequentsButton.AccessibleName.ShouldBe("Frecuentes");
             body.Selector.TapTargets.Count().ShouldBeGreaterThanOrEqualTo(2);

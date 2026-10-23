@@ -58,6 +58,13 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
     /// <summary>How the tile reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;
 
+    /// <summary>
+    /// Whether it scrolls while held (⏶ ⏷, a Mantener of a scroll): UI Automation invokes it, one step per invocation,
+    /// as a button and not as a toggle that never turns on (EJE-005).
+    /// </summary>
+    public bool ScrollsWhileHeld =>
+        _model.Binding.Shortcut.Action is MouseAction mouse && MouseOps.RepeatsWhileHeld(mouse.Op);
+
     /// <summary>What the tile runs.</summary>
     public TileBinding Binding => _model.Binding;
 

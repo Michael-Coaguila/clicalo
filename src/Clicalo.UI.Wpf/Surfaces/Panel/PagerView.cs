@@ -31,6 +31,19 @@ public sealed class PagerView : DockPanel
 
     private readonly List<(ShortcutTile Control, PageDotViewModel Dot)> _dotControls = [];
 
+    // «2/5» when the dots do not fit between the arrows: each dot answers on 44, and a target over ▶ would turn to the
+    // last page instead of the next one.
+    private readonly StyledText _counter = new(
+        string.Empty,
+        TextStyleToken.LabelSmall,
+        ColorToken.Muted
+    )
+    {
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        Visibility = Visibility.Collapsed,
+    };
+
     /// <summary>Creates the pager of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The pager.</param>
     public PagerView(PagerViewModel viewModel)
@@ -45,7 +58,11 @@ public sealed class PagerView : DockPanel
         SetDock(_next, Dock.Right);
         Children.Add(_previous);
         Children.Add(_next);
-        Children.Add(_dots);
+        var middle = new Grid();
+        middle.Children.Add(_dots);
+        middle.Children.Add(_counter);
+        Children.Add(middle);
+        middle.SizeChanged += (_, _) => Fit();
         viewModel.PropertyChanged += OnChanged;
         Refresh();
     }
@@ -65,6 +82,11 @@ public sealed class PagerView : DockPanel
 
             yield return new PanelTapTarget(_previous, _viewModel.Previous);
             yield return new PanelTapTarget(_next, _viewModel.Next);
+            if (_counter.Visibility == Visibility.Visible)
+            {
+                yield break;
+            }
+
             foreach (var (control, dot) in _dotControls)
             {
                 yield return new PanelTapTarget(control, dot.Select);
@@ -87,6 +109,7 @@ public sealed class PagerView : DockPanel
         _previous.Visibility = visibility;
         _next.Visibility = visibility;
         _dots.Visibility = visibility;
+        Fit();
     }
 
     /// <summary>Stops following the view model.</summary>
@@ -133,5 +156,24 @@ public sealed class PagerView : DockPanel
             _dots.Children.Add(control);
             _dotControls.Add((control, dot));
         }
+
+        _counter.Text = _viewModel.PageLabel;
+        Fit();
+    }
+
+    /// <summary>The dots while each has its 44 between the arrows, the counter otherwise.</summary>
+    private void Fit()
+    {
+        if (_dots.Parent is not FrameworkElement middle)
+        {
+            return;
+        }
+
+        var fits =
+            middle.ActualWidth <= 0
+            || _viewModel.Dots.Count * ControlHeight.Small <= middle.ActualWidth;
+        var shown = ShowsPages ? Visibility.Visible : Visibility.Hidden;
+        _dots.Visibility = fits ? shown : Visibility.Collapsed;
+        _counter.Visibility = fits ? Visibility.Collapsed : shown;
     }
 }

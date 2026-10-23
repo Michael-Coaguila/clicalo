@@ -82,6 +82,13 @@ public sealed class ThemedScrollViewer : ScrollViewer
     /// <summary>Whether the bottom of the content fades now (there is more below).</summary>
     public bool IsFading { get; private set; }
 
+    /// <summary>
+    /// Whether the channel of the bar takes its room only while there is something to scroll; false by default, so
+    /// nothing moves when the bar appears. A window sized to its content (Quick settings beside the bar or the panel)
+    /// sets it: its content is centred when it fits whole (D21 review).
+    /// </summary>
+    public bool CollapsesChannel { get; set; }
+
     /// <summary>A drag of a tile took the gesture (ATJ-009): the area does not scroll with it.</summary>
     public void CancelPan()
     {
@@ -103,6 +110,16 @@ public sealed class ThemedScrollViewer : ScrollViewer
         {
             Theme(bar);
             bar.SizeChanged += (_, _) => UpdateThumb();
+            if (CollapsesChannel && bar.Parent is FrameworkElement channel)
+            {
+                _ = channel.SetBinding(
+                    VisibilityProperty,
+                    new System.Windows.Data.Binding(nameof(ComputedVerticalScrollBarVisibility))
+                    {
+                        Source = this,
+                    }
+                );
+            }
         }
 
         Update();

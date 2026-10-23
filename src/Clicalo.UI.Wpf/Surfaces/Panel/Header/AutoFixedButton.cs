@@ -50,6 +50,16 @@ public sealed class AutoFixedButton : ToggleButton
             typeof(AutoFixedButton),
             new FrameworkPropertyMetadata(FocusRingStyle.Button)
         );
+
+        // The template places its content by these: Control leaves it at the top left (as OptionButton does).
+        HorizontalContentAlignmentProperty.OverrideMetadata(
+            typeof(AutoFixedButton),
+            new FrameworkPropertyMetadata(HorizontalAlignment.Center)
+        );
+        VerticalContentAlignmentProperty.OverrideMetadata(
+            typeof(AutoFixedButton),
+            new FrameworkPropertyMetadata(VerticalAlignment.Center)
+        );
         TouchTarget.Enforce(typeof(AutoFixedButton));
     }
 

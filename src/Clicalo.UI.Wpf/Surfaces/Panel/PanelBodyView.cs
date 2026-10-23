@@ -299,13 +299,20 @@ public sealed class PanelBodyView : StackPanel
             _coversChooser
         );
         GridArea.Visibility = Covered(Visibility.Visible, _coversGrid);
-        Pager.Visibility = Covered(Visibility.Visible, _coversGrid || _coversPager);
 
+        // D21: with one page the pager row takes no room, so a profile of nine shortcuts leaves no empty band at the
+        // foot. It is the last row of the body in both views, so only the bottom edge moves when it comes and goes and
+        // no control moves under the finger. From the moment the search opens it keeps its place (the results change
+        // with every letter, the panel must not jump), and under the test mode band, which is drawn over it. The
+        // results page like the grid in both views (BUS-005).
         var empty = _viewModel.Empty.IsVisible;
-        Pager.ShowPages(
-            compact
-                ? CompactRowRules.ShowsPager(_viewModel.Pager.PageCount, empty) && !searching
-                : _viewModel.Pager.IsVisible
+        var paged = compact
+            ? CompactRowRules.ShowsPager(_viewModel.Pager.PageCount, empty)
+            : _viewModel.Pager.IsVisible;
+        Pager.ShowPages(paged);
+        Pager.Visibility = Covered(
+            paged || _coversChooser || _coversPager ? Visibility.Visible : Visibility.Collapsed,
+            _coversGrid || _coversPager
         );
 
         var shape = _viewModel.Shape;
@@ -315,12 +322,12 @@ public sealed class PanelBodyView : StackPanel
         NoResults.Text = _viewModel.NoResultsText;
         NoResults.Visibility = noResults ? Visibility.Visible : Visibility.Collapsed;
 
-        // Full: «Qué ver» above the grid; Compact: at the foot, under the pager (VCO-002).
+        // Full: «Qué ver» above the grid; Compact: right under the grid, above the pager (VCO-002, D21).
         var below = Children.IndexOf(Selector) > Children.IndexOf(GridArea);
         if (below != compact)
         {
             Children.Remove(Selector);
-            Children.Insert(compact ? Children.Count : Children.IndexOf(GridArea), Selector);
+            Children.Insert(Children.IndexOf(compact ? Pager : GridArea), Selector);
         }
 
         // Every row Space.S2 under the one before it, as the tiles of the grid; the first one starts at the top.

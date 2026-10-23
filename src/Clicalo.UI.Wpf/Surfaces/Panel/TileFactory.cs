@@ -51,7 +51,7 @@ internal static class TileFactory
             Focusable = false,
             IsTabStop = false,
             Pattern =
-                viewModel.Behavior == TileBehavior.Tap
+                viewModel.Behavior == TileBehavior.Tap || viewModel.ScrollsWhileHeld
                     ? ShortcutTilePattern.Invoke
                     : ShortcutTilePattern.Toggle,
         };
@@ -73,8 +73,23 @@ internal static class TileFactory
     /// <summary>Shows or hides the name of a tile; its UI Automation name stays.</summary>
     /// <param name="control">The tile.</param>
     /// <param name="visible">Whether the name shows.</param>
-    public static void ShowName(ShortcutTile control, bool visible) =>
+    public static void ShowName(ShortcutTile control, bool visible)
+    {
         ShowPart(control, ShortcutTileTemplate.LabelPart, visible);
+
+        // Without a name under it, the icon keeps no gap for one: it sits in the middle of the tile.
+        if (Part(control, ShortcutTileTemplate.IconPart) is { } icon)
+        {
+            if (visible)
+            {
+                icon.ClearValue(FrameworkElement.MarginProperty);
+            }
+            else
+            {
+                icon.Margin = new Thickness(0);
+            }
+        }
+    }
 
     /// <summary>Hides or shows again the type icon of a tile (its slot holds the × of edit mode).</summary>
     /// <param name="control">The tile.</param>
@@ -111,13 +126,26 @@ internal static class TileFactory
         control.Height = height;
         control.Margin = new Thickness(Space.S1);
         control.Padding = new Thickness(
-            look.SideInset,
+            look.LeadInset ?? look.SideInset,
             look.TopInset,
             look.SideInset,
             look.TopInset > Space.S1 ? 0 : Space.S1
         );
         control.IconSize = look.IconSize;
         ShowPart(control, ShortcutTileTemplate.IconPart, look.ShowsIcon);
+        if (Part(control, ShortcutTileTemplate.VoiceNumberPart) is { } number)
+        {
+            if (look.CentresNumber)
+            {
+                number.VerticalAlignment = VerticalAlignment.Center;
+                number.Margin = new Thickness(Space.S1, 0, 0, 0);
+            }
+            else
+            {
+                number.ClearValue(FrameworkElement.VerticalAlignmentProperty);
+                number.ClearValue(FrameworkElement.MarginProperty);
+            }
+        }
         control.MaxNameLines = look.NameLines;
 
         control.SetResourceReference(
@@ -130,10 +158,15 @@ internal static class TileFactory
         );
     }
 
-    private static void ShowPart(ShortcutTile control, string part, bool visible)
+    private static FrameworkElement? Part(ShortcutTile control, string part)
     {
         control.ApplyTemplate();
-        if (control.Template?.FindName(part, control) is FrameworkElement element)
+        return control.Template?.FindName(part, control) as FrameworkElement;
+    }
+
+    private static void ShowPart(ShortcutTile control, string part, bool visible)
+    {
+        if (Part(control, part) is { } element)
         {
             // Shown again, the part follows its template (an icon without a symbol stays collapsed).
             if (visible)

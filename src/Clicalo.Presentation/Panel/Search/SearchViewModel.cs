@@ -37,6 +37,7 @@ public sealed class SearchViewModel : ObservableObject
     private bool _isOpen;
     private bool _showNoResults;
     private string _placeholder = string.Empty;
+    private string _fieldName = string.Empty;
     private string _searchName = string.Empty;
     private string _dictateName = string.Empty;
     private string _noResultsText = string.Empty;
@@ -129,11 +130,21 @@ public sealed class SearchViewModel : ObservableObject
         private set => SetProperty(ref _showNoResults, value);
     }
 
-    /// <summary>The placeholder of the field, also its accessible name ([search]).</summary>
+    /// <summary>
+    /// The placeholder of the field: «Buscar» ([searchA]), which reads whole beside the magnifier in S and M (D21 review:
+    /// [search] was cut to «Buscar acción en tod…»).
+    /// </summary>
     public string Placeholder
     {
         get => _placeholder;
         private set => SetProperty(ref _placeholder, value);
+    }
+
+    /// <summary>The accessible name of the field, which says the search covers every profile ([search]).</summary>
+    public string FieldName
+    {
+        get => _fieldName;
+        private set => SetProperty(ref _fieldName, value);
     }
 
     /// <summary>«Buscar» ([searchA]): the name of 🔍 and the header title while searching with text (CAB-002).</summary>
@@ -258,7 +269,8 @@ public sealed class SearchViewModel : ObservableObject
     public void Relocalize()
     {
         var localizer = _localization.Current;
-        Placeholder = localizer.Format(L.Search);
+        Placeholder = localizer.Format(L.SearchA);
+        FieldName = localizer.Format(L.Search);
         SearchName = localizer.Format(L.SearchA);
         DictateName = localizer.Format(L.SearchDictate);
         NoResultsText = localizer.Format(L.NoResults);

@@ -28,7 +28,12 @@ public sealed class NoticeBarView : Border
 
     private readonly NoticeBarViewModel _viewModel;
     private readonly SymbolIcon _icon = PanelChrome.Icon(null, IconBox.Small, ColorToken.Muted);
-    private readonly StyledText _text = PanelChrome.Text(TextStyleToken.BodySmall);
+
+    // Two lines of 20 fit the 44 of the row: «Abre la app que quieres vincular» and «Atajo eliminado» read whole in S.
+    private readonly StyledText _text = new(string.Empty, TextStyleToken.BodySmall)
+    {
+        MaxLines = 2,
+    };
 
     private readonly TouchButton _undo = new()
     {
@@ -173,7 +178,13 @@ public sealed class NoticeBarView : Border
         }
 
         _announced = message;
-        if (tone == NoticeTone.Rest || PresentationSource.FromVisual(_text) is null)
+
+        // In Compact the row is not shown (D21): the notice window beside the panel announces it, once.
+        if (
+            tone == NoticeTone.Rest
+            || PresentationSource.FromVisual(_text) is null
+            || Visibility != Visibility.Visible
+        )
         {
             _text.Text = message;
             return;

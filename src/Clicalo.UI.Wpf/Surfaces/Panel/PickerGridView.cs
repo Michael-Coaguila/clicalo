@@ -108,13 +108,17 @@ public sealed class PickerGridView : Border
         _legend.VerticalAlignment = VerticalAlignment.Center;
         legend.Children.Add(_legend);
 
-        _content = new StackPanel
-        {
-            Margin = new Thickness(Space.S3, Space.S3, Space.S1, Space.S6),
-        };
+        // As far from both sides and from the foot as from the top (D21 review): the scroll bar takes no room while
+        // everything fits, so four profiles never scroll for their own padding.
+        _content = new StackPanel { Margin = new Thickness(Space.S3) };
         _content.Children.Add(_grid);
         _content.Children.Add(legend);
-        _scroller = new ThemedScrollViewer { PansWithMouse = false, Content = _content };
+        _scroller = new ThemedScrollViewer
+        {
+            PansWithMouse = false,
+            CollapsesChannel = true,
+            Content = _content,
+        };
         Child = _scroller;
 
         viewModel.PropertyChanged += OnChanged;
@@ -174,15 +178,13 @@ public sealed class PickerGridView : Border
 
     /// <summary>
     /// Whether the content keeps its own inset inside the panel (true by default). The window beside the bar of the Tab
-    /// view turns it off: its padding is the inset, so the cards line up with its header (PES-010).
+    /// view turns it off: its padding is the inset and its scroll bar the only one, so the cards line up with its header
+    /// and sit as far from both sides and the foot (PES-011; a second channel and a band of 24 at the foot, D21 review).
     /// </summary>
     public bool IsInset
     {
         get => _content.Margin.Left > 0;
-        init =>
-            _content.Margin = value
-                ? new Thickness(Space.S3, Space.S3, Space.S1, Space.S6)
-                : new Thickness(0, 0, 0, Space.S6);
+        init { _content.Margin = value ? new Thickness(Space.S3) : new Thickness(0); }
     }
 
     /// <summary>The ★ Frequents card (SEL-006).</summary>

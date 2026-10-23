@@ -39,11 +39,20 @@ internal sealed class PanelLayerHost : System.Windows.Controls.Panel
     /// Whether it takes only the height it needs, at the bottom of the region (a notice, the tile menu); otherwise it
     /// fills the region.
     /// </param>
-    public void Add(FrameworkElement element, Func<Rect> region, bool bottom = false)
+    /// <param name="snapTop">
+    /// For a layer at the bottom: moves the top it would have up to where it may start (the gap above a row it would
+    /// cut), so it covers whole rows; the layer then takes the extra height.
+    /// </param>
+    public void Add(
+        FrameworkElement element,
+        Func<Rect> region,
+        bool bottom = false,
+        Func<double, double>? snapTop = null
+    )
     {
         ArgumentNullException.ThrowIfNull(element);
         ArgumentNullException.ThrowIfNull(region);
-        _layers.Add(new Layer(element, region, bottom));
+        _layers.Add(new Layer(element, region, bottom, snapTop));
         Children.Add(element);
     }
 
@@ -101,11 +110,22 @@ internal sealed class PanelLayerHost : System.Windows.Controls.Panel
             var height = layer.Bottom
                 ? Math.Min(region.Height, element.DesiredSize.Height)
                 : region.Height;
-            element.Arrange(new Rect(region.X, region.Bottom - height, region.Width, height));
+            var top = region.Bottom - height;
+            if (layer.Bottom && layer.SnapTop is { } snap)
+            {
+                top = Math.Clamp(snap(top), region.Top, top);
+            }
+
+            element.Arrange(new Rect(region.X, top, region.Width, region.Bottom - top));
         }
 
         return finalSize;
     }
 
-    private sealed record Layer(FrameworkElement Element, Func<Rect> Region, bool Bottom);
+    private sealed record Layer(
+        FrameworkElement Element,
+        Func<Rect> Region,
+        bool Bottom,
+        Func<double, double>? SnapTop
+    );
 }

@@ -43,7 +43,7 @@ public sealed class SearchBar : Border
         _viewModel = viewModel;
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
 
-        _input = new TextInput(viewModel.Placeholder, viewModel.Placeholder) { Symbol = "search" };
+        _input = new TextInput(viewModel.Placeholder, viewModel.FieldName) { Symbol = "search" };
         Field = _input.Box;
         Field.AcceptsTab = false;
         Field.IsUndoEnabled = true;
@@ -177,7 +177,7 @@ public sealed class SearchBar : Border
     private void ApplyTexts()
     {
         _input.SetPlaceholder(_viewModel.Placeholder);
-        AutomationProperties.SetName(Field, _viewModel.Placeholder);
+        AutomationProperties.SetName(Field, _viewModel.FieldName);
         AutomationProperties.SetName(DictateButton, _viewModel.DictateName);
     }
 }
