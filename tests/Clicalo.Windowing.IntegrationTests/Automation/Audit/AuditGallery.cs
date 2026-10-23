@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using Clicalo.Domain.Settings;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
 
 namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
@@ -27,6 +28,18 @@ internal static class AuditGallery
 
     /// <summary>The scale of the person's screen (2400 × 1600 at 175 %).</summary>
     public const double Scale = 1.75;
+
+    /// <summary>
+    /// The height of the work area of the person's screen, in DIPs: 1600 / 1.75, less the 48 of the taskbar.
+    /// </summary>
+    public const double WorkAreaHeight = 866;
+
+    /// <summary>
+    /// The tallest Quick settings may be on the person's screen (AJR-001, D21): the work area less
+    /// <see cref="Space.S2"/> above and below, the rule of the surface set (<c>SurfaceSet.QuickMaxHeight</c>), which the
+    /// audit, with no monitor, cannot ask.
+    /// </summary>
+    public const double QuickRoom = WorkAreaHeight - (2 * Space.S2);
 
     private const string Manifest = "gallery.tsv";
     private const string Index = "index.html";
@@ -136,60 +149,122 @@ internal static class AuditGallery
         }
     }
 
+    /// <summary>
+    /// The view as the window shows it: its border and background around the content, which goes inside the border and
+    /// is clipped to the inner rounded shape, as <c>SurfaceFrame</c> does on screen. A window that takes the size of its
+    /// content is the content and its border; one with a fixed size keeps it, its border inside. The hosted tree itself
+    /// is not touched: the audit measures it as it is.
+    /// </summary>
     private static byte[] Render(AuditHost host)
     {
         var root = host.Root;
+        var content = new Size(root.ActualWidth, root.ActualHeight);
+        var border = host.Window?.BorderThickness ?? default;
+        var offset = new Vector(
+            host.FixesWidth ? 0 : border.Left,
+            host.FixesHeight ? 0 : border.Top
+        );
+        var outer = new Rect(
+            0,
+            0,
+            content.Width + (host.FixesWidth ? 0 : border.Left + border.Right),
+            content.Height + (host.FixesHeight ? 0 : border.Top + border.Bottom)
+        );
         var dpi = 96 * Scale;
         var bitmap = new RenderTargetBitmap(
-            (int)Math.Ceiling(root.ActualWidth * Scale),
-            (int)Math.Ceiling(root.ActualHeight * Scale),
+            (int)Math.Ceiling(outer.Width * Scale),
+            (int)Math.Ceiling(outer.Height * Scale),
             dpi,
             dpi,
             PixelFormats.Pbgra32
         );
         if (host.Window is { } window)
         {
-            bitmap.Render(Frame(window, new Rect(0, 0, root.ActualWidth, root.ActualHeight)));
+            bitmap.Render(Framed(window, root, outer, border, offset, content));
+        }
+        else
+        {
+            bitmap.Render(root);
         }
 
-        bitmap.Render(root);
         bitmap.Freeze();
         return PngCodec.Encode(bitmap);
     }
 
     /// <summary>
-    /// What the window paints behind its content: its background and its border, with the rounded shape of a surface
-    /// (<see cref="NonActivatingWindow.Look"/>), as its frame does on screen.
+    /// The window drawn whole: its background inside the border, the content clipped to the inner rounded shape and
+    /// the border over its edge, so no layer of the content hides the outline.
     /// </summary>
-    private static DrawingVisual Frame(Window window, Rect bounds)
+    private static DrawingVisual Framed(
+        Window window,
+        Visual root,
+        Rect outer,
+        Thickness border,
+        Vector offset,
+        Size content
+    )
     {
-        var visual = new DrawingVisual();
         var corners = new CornerRadius(0);
         if (window is NonActivatingWindow { Look: { } look })
         {
-            var half = Math.Min(bounds.Width, bounds.Height) / 2;
-            corners = look.Round ? new CornerRadius(half) : look.Corners;
+            corners = look.Round
+                ? new CornerRadius(Math.Min(outer.Width, outer.Height) / 2)
+                : look.Corners;
         }
 
-        var thickness = window.BorderThickness.Left;
-        var pen =
-            window.BorderBrush is { } border && thickness > 0 ? new Pen(border, thickness) : null;
-        var inset = thickness / 2;
-        using var context = visual.RenderOpen();
-        context.DrawGeometry(
-            window.Background,
-            pen,
-            Rounded(
-                new Rect(
-                    bounds.X + inset,
-                    bounds.Y + inset,
-                    Math.Max(0, bounds.Width - thickness),
-                    Math.Max(0, bounds.Height - thickness)
-                ),
-                corners
+        var inner = new Rect(
+            outer.X + border.Left,
+            outer.Y + border.Top,
+            Math.Max(0, outer.Width - border.Left - border.Right),
+            Math.Max(0, outer.Height - border.Top - border.Bottom)
+        );
+        var max = Math.Min(inner.Width, inner.Height) / 2;
+        var innerShape = Rounded(
+            inner,
+            new CornerRadius(
+                Inset(corners.TopLeft, Math.Max(border.Left, border.Top), max),
+                Inset(corners.TopRight, Math.Max(border.Right, border.Top), max),
+                Inset(corners.BottomRight, Math.Max(border.Right, border.Bottom), max),
+                Inset(corners.BottomLeft, Math.Max(border.Left, border.Bottom), max)
             )
         );
+        var visual = new DrawingVisual();
+        using var context = visual.RenderOpen();
+        context.DrawGeometry(window.Background, null, innerShape);
+        context.PushClip(innerShape);
+        var at = new Rect(new Point(offset.X, offset.Y), content);
+        context.DrawRectangle(
+            new VisualBrush(root)
+            {
+                Stretch = Stretch.None,
+                AlignmentX = AlignmentX.Left,
+                AlignmentY = AlignmentY.Top,
+                ViewboxUnits = BrushMappingMode.Absolute,
+                Viewbox = new Rect(content),
+                ViewportUnits = BrushMappingMode.Absolute,
+                Viewport = at,
+            },
+            null,
+            at
+        );
+        context.Pop();
+        if (window.BorderBrush is { } brush && !inner.Equals(outer))
+        {
+            context.DrawGeometry(
+                brush,
+                null,
+                new CombinedGeometry(
+                    GeometryCombineMode.Exclude,
+                    Rounded(outer, corners),
+                    innerShape
+                )
+            );
+        }
+
         return visual;
+
+        static double Inset(double radius, double thickness, double limit) =>
+            Math.Clamp(radius - thickness, 0, limit);
     }
 
     private static StreamGeometry Rounded(Rect r, CornerRadius c)

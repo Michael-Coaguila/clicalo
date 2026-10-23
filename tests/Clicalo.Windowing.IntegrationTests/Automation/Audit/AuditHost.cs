@@ -28,6 +28,14 @@ internal sealed class AuditHost : IDisposable
     /// <param name="width">Width in device-independent pixels; <see langword="null"/> is the width the view asks for.</param>
     /// <param name="height">Height in device-independent pixels; <see langword="null"/> is the height it asks for.</param>
     public AuditHost(FrameworkElement view, double? width = null, double? height = null)
+        : this(view, theme: null, width, height) { }
+
+    /// <summary>
+    /// Hosts <paramref name="view"/> painted by <paramref name="theme"/>. The theme goes on the host, as it goes on the
+    /// window in the app, never on the view itself: on the view it would set the text color the view gives itself (the
+    /// bold <c>onDanger</c> of «Soltar todo» came out in the color of plain text).
+    /// </summary>
+    private AuditHost(FrameworkElement view, ThemeService? theme, double? width, double? height)
     {
         ArgumentNullException.ThrowIfNull(view);
         // A UserControl has an automation peer, so the snapshot has one root whatever the view is.
@@ -39,6 +47,14 @@ internal sealed class AuditHost : IDisposable
             Focusable = false,
             IsTabStop = false,
         };
+        FixesWidth = width is not null;
+        FixesHeight = height is not null;
+        if (theme is not null)
+        {
+            theme.Attach(_frame);
+            Theme = theme;
+        }
+
         _source = new HwndSource(
             new HwndSourceParameters("clicalo-audit")
             {
@@ -55,8 +71,8 @@ internal sealed class AuditHost : IDisposable
 
     /// <summary>
     /// Hosts the content of <paramref name="window"/>, which is never shown: a window that is not on screen is
-    /// collapsed for WPF, so its content is audited outside it, with the theme it had, and goes back when the host is
-    /// disposed.
+    /// collapsed for WPF, so its content is audited outside it, under the theme of the window, and goes back when the
+    /// host is disposed.
     /// </summary>
     /// <param name="window">A window of the product, built but not shown.</param>
     /// <param name="theme">The theme service of the window.</param>
@@ -73,16 +89,15 @@ internal sealed class AuditHost : IDisposable
         ArgumentNullException.ThrowIfNull(theme);
         var content = (FrameworkElement)window.Content;
         window.Content = null;
-        theme.Attach(content);
-        return new AuditHost(content, width ?? Own(window.Width), height ?? Own(window.Height))
+        return new AuditHost(
+            content,
+            theme,
+            width ?? Own(window.Width),
+            height ?? Own(window.Height)
+        )
         {
-            Theme = theme,
             Window = window,
-            _restore = () =>
-            {
-                theme.Detach(content);
-                window.Content = content;
-            },
+            _restore = () => window.Content = content,
         };
     }
 
@@ -94,10 +109,8 @@ internal sealed class AuditHost : IDisposable
     /// <param name="width">Width in device-independent pixels; <see langword="null"/> is the width the view asks for.</param>
     public static AuditHost OfView(FrameworkElement view, ThemeService theme, double? width = null)
     {
-        ArgumentNullException.ThrowIfNull(view);
         ArgumentNullException.ThrowIfNull(theme);
-        theme.Attach(view);
-        return new AuditHost(view, width) { Theme = theme, _restore = () => theme.Detach(view) };
+        return new AuditHost(view, theme, width, height: null);
     }
 
     /// <summary>The size a window fixes for itself; <see langword="null"/> when it takes the size of its content.</summary>
@@ -109,11 +122,20 @@ internal sealed class AuditHost : IDisposable
     /// <summary>The root of the hosted tree.</summary>
     public FrameworkElement Root => _frame;
 
-    /// <summary>The theme service of the hosted window, when it came from <see cref="OfWindow"/>.</summary>
+    /// <summary>The theme service that paints the host, when it came from <see cref="OfWindow"/> or <see cref="OfView"/>.</summary>
     public ThemeService? Theme { get; private init; }
 
     /// <summary>The window whose content is hosted, when it came from <see cref="OfWindow"/>: the gallery paints its frame.</summary>
     public Window? Window { get; private init; }
+
+    /// <summary>
+    /// Whether the width of the host is fixed (by the window or the test): the window is then that wide with its border
+    /// inside, while a window that takes the width of its content is its content and its border.
+    /// </summary>
+    public bool FixesWidth { get; }
+
+    /// <summary>Whether the height of the host is fixed, as <see cref="FixesWidth"/> for the width.</summary>
+    public bool FixesHeight { get; }
 
     /// <summary>Runs the pending layout and bindings, after the view model changed.</summary>
     public void LayOut()
@@ -178,6 +200,7 @@ internal sealed class AuditHost : IDisposable
         _source.RootVisual = null;
         _frame.Content = null;
         _source.Dispose();
+        Theme?.Detach(_frame);
         _restore?.Invoke();
     }
 }
