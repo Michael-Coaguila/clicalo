@@ -148,27 +148,35 @@ internal static class SettingsUi
 
     /// <summary>
     /// The label of an option with its own content: ✓ before the text while chosen, as a tile without icon shows it
-    /// (the same look of «elegido» everywhere), centered, in one line with «…».
+    /// (the same look of «elegido» everywhere), centered, in one line with «…». An empty slot as wide as the ✓ goes
+    /// on the other side, so the text stays on the option's axis whether it is chosen or not («✓ Auto» was 12 off
+    /// the centre, D21 review), and the text gets the width that is left, so a long one ends in «…».
     /// </summary>
-    public static StackPanel CheckLabel(
+    public static DockPanel CheckLabel(
         string text,
         bool selected,
         TextStyleToken style = TextStyleToken.Label
     )
     {
-        var row = new StackPanel
+        var row = new DockPanel
         {
-            Orientation = Orientation.Horizontal,
+            LastChildFill = true,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         if (selected)
         {
             var check = Ui.Icon("check", IconBox.Small, ColorToken.AccentInk);
             check.Margin = new Thickness(0, 0, Space.S1, 0);
+            DockPanel.SetDock(check, Dock.Left);
             row.Children.Add(check);
+            var balance = new Border { Width = IconBox.Small + Space.S1 };
+            DockPanel.SetDock(balance, Dock.Right);
+            row.Children.Add(balance);
         }
 
-        row.Children.Add(Styled(text, style));
+        var label = Styled(text, style);
+        label.TextAlignment = TextAlignment.Center;
+        row.Children.Add(label);
         return row;
     }
 

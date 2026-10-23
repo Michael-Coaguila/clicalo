@@ -381,10 +381,16 @@ public sealed class GeneralSectionView : ContentControl
             options.Add(card);
         }
 
+        // The description takes a row of 44, as «Tamaño de texto» does in the group beside it: the two groups end level
+        // and a description of one line leaves no empty band under it.
+        var description = new Grid { MinHeight = ControlHeight.Small };
+        description.Children.Add(
+            SettingsUi.Styled(look.ViewDescription, TextStyleToken.Caption, ColorToken.Muted, 2)
+        );
         return SettingsUi.Group(
             look.ViewTitle,
             SettingsUi.Options(options.Count, options),
-            SettingsUi.Styled(look.ViewDescription, TextStyleToken.Caption, ColorToken.Muted, 2)
+            description
         );
     }
 

@@ -65,6 +65,63 @@ public sealed class GeneralTouchViewTests
         );
     }
 
+    [Fact]
+    [Trait("Req", "GEN-006")]
+    [Trait("Req", "GEN-008")]
+    [Trait("Req", "GEN-010")]
+    public void A_chosen_option_with_a_miniature_keeps_its_label_on_its_axis() =>
+        WpfThread.Invoke(() =>
+        {
+            using var theme = new ThemeService(
+                new FakeSystemTheme(),
+                ThemeChoice.Dark,
+                100,
+                reduceMotion: true
+            );
+            var section = new GeneralSectionViewModel(
+                new GeneralServices(
+                    _world.Store,
+                    _world.Localization,
+                    new TwoStepConfirm(_world.Time),
+                    _world.Time,
+                    action => action(),
+                    () => { }
+                )
+            );
+            var view = new GeneralSectionView(section);
+            theme.Attach(view);
+            view.Width = 1300;
+            view.Measure(new Size(1300, 3000));
+            view.Arrange(new Rect(0, 0, 1300, 3000));
+            view.UpdateLayout();
+
+            // «Filas visibles», «Columnas» and «Mostrar teclas»: the ✓ of the chosen one is balanced on the other side.
+            var checks = Descendants(view)
+                .OfType<Clicalo.UI.Wpf.Controls.SymbolIcon>()
+                .Where(static icon =>
+                    string.Equals(icon.Symbol, "check", StringComparison.Ordinal)
+                    && VisualTreeHelper.GetParent(icon) is System.Windows.Controls.DockPanel row
+                    && row.Children.OfType<Clicalo.UI.Wpf.Controls.StyledText>().Any()
+                )
+                .ToList();
+            checks.Count.ShouldBeGreaterThanOrEqualTo(3);
+            foreach (var check in checks)
+            {
+                var row = (System.Windows.Controls.DockPanel)VisualTreeHelper.GetParent(check);
+                var label = row.Children.OfType<Clicalo.UI.Wpf.Controls.StyledText>().Single();
+                var option = Descendants(view)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Single(o => Descendants(o).Contains(label));
+                var centre = label
+                    .TransformToAncestor(option)
+                    .Transform(new Point(label.ActualWidth / 2, 0))
+                    .X;
+                centre.ShouldBe(option.ActualWidth / 2, 1, label.Text);
+            }
+
+            theme.Detach(view);
+        });
+
     [Theory]
     [MemberData(nameof(Layouts))]
     [Trait("Req", "TAC-005")]
