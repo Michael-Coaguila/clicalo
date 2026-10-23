@@ -119,13 +119,147 @@ public sealed class ArmedCrossTests
             }
         });
 
+    [Theory]
+    [InlineData(PanelSize.Small, false, "es")]
+    [InlineData(PanelSize.Small, true, "es")]
+    [InlineData(PanelSize.Medium, true, "en")]
+    [InlineData(PanelSize.Medium, false, "es")]
+    [InlineData(PanelSize.Large, false, "en")]
+    [Trait("Req", "CUA-012")]
+    [Trait("Req", "CUA-011")]
+    public void Armed_the_pill_grows_with_its_text_and_stays_inside_its_tile(
+        PanelSize size,
+        bool compact,
+        string language
+    )
+    {
+        foreach (var scale in new[] { TypeScale.MinScalePercent, TypeScale.MaxScalePercent })
+        {
+            WpfThread.Invoke(() =>
+            {
+                using var theme = new ThemeService(
+                    new FakeSystemTheme(),
+                    ThemeChoice.Dark,
+                    scale,
+                    reduceMotion: true
+                );
+                var world = new InteractionsWorld(language);
+                var panel = PanelBodyTestData.Panel(
+                    PanelBodyTestData.GalleryLibrary(),
+                    PanelBodyTestData.Word,
+                    new RecordingBodyIntents(),
+                    language,
+                    PanelBodyTestData.GalleryKeys
+                );
+                panel.ApplyLayout(
+                    PanelLayoutSettings.Default with
+                    {
+                        Size = size,
+                        Compact = compact,
+                        VoiceNumbers = true,
+                        TextScalePercent = scale,
+                    }
+                );
+                var body = new PanelBodyView(panel);
+                body.AttachLayers(
+                    new PanelLayerModels(
+                        world.QuickSettings,
+                        world.EditMode,
+                        world.Menu,
+                        world.TestMode,
+                        world.Modes,
+                        static () => false
+                    )
+                );
+                var root = new StackPanel();
+                root.Children.Add(body);
+                theme.Attach(root);
+                try
+                {
+                    world.EditMode.Enter();
+                    panel.ApplyContext(
+                        PanelBodyContext.Idle with
+                        {
+                            EditMode = true,
+                            AddTile = true,
+                        }
+                    );
+                    Layout(root);
+                    var tiles = body.ShortcutGrid.TileControls;
+                    tiles.ShouldNotBeEmpty();
+                    foreach (var tile in tiles)
+                    {
+                        var control = tile.Control;
+                        world.EditMode.Remove(tile.ViewModel.Id);
+                        Layout(root);
+
+                        var cross = Cross(control);
+                        var what = FormattableString.Invariant(
+                            $"{control.AccessibleName} at {scale} %"
+                        );
+                        var pill = PillOf(cross, control);
+                        var text = Descendants(cross).OfType<TextBlock>().Single();
+                        var line = Box(text, control);
+
+                        // Its line of text and Stroke.Selected above and below it; the 24 of the × at 100 %.
+                        pill.Height.ShouldBeGreaterThanOrEqualTo(
+                            text.ActualHeight + (2 * Stroke.Selected) - 0.5,
+                            what
+                        );
+                        if (scale == TypeScale.MinScalePercent)
+                        {
+                            pill.Height.ShouldBe(IconBox.Medium, 0.5, what);
+                        }
+
+                        line.Top.ShouldBeGreaterThanOrEqualTo(
+                            pill.Top + Stroke.Selected - 0.5,
+                            what
+                        );
+                        line.Bottom.ShouldBeLessThanOrEqualTo(
+                            pill.Bottom - Stroke.Selected + 0.5,
+                            what
+                        );
+                        line.Left.ShouldBeGreaterThanOrEqualTo(pill.Left + Space.S2 - 0.5, what);
+                        line.Right.ShouldBeLessThanOrEqualTo(pill.Right - Space.S2 + 0.5, what);
+                        text.ActualWidth.ShouldBeGreaterThanOrEqualTo(
+                            Natural(text) - 0.5,
+                            $"{what}: «{text.Text}» is cut"
+                        );
+
+                        // Its top keeps the corner of the ×, and it never leaves its tile.
+                        pill.Top.ShouldBe(Space.S1, 0.5, what);
+                        pill.Right.ShouldBe(control.ActualWidth - Space.S1, 0.5, what);
+                        pill.Left.ShouldBeGreaterThanOrEqualTo(Space.S1 - 0.5, what);
+                        pill.Bottom.ShouldBeLessThanOrEqualTo(
+                            control.ActualHeight - Space.S1 + 0.5,
+                            what
+                        );
+                    }
+                }
+                finally
+                {
+                    body.Detach();
+                    theme.Detach(root);
+                }
+            });
+        }
+    }
+
+    /// <summary>The drawing of the ×, centred in its 44 × 44 box (REG-02): what the eye sees of the pill.</summary>
+    private static Rect PillOf(FrameworkElement cross, Visual tile)
+    {
+        var box = (Decorator)VisualTreeHelper.GetChild(cross, 0);
+        var drawing = (FrameworkElement)box.Child;
+        return Box(drawing, tile);
+    }
+
     /// <summary>The × of <paramref name="tile"/>: it shares the cell of the tile.</summary>
     private static TileRemoveButton Cross(FrameworkElement tile) =>
         ((Panel)tile.Parent).Children.OfType<TileRemoveButton>().Single();
 
-    /// <summary>The drawing of the × on its tile: its own box, without the margin that reaches past it.</summary>
-    private static Rect Box(FrameworkElement cross, Visual tile) =>
-        cross.TransformToVisual(tile).TransformBounds(new Rect(cross.RenderSize));
+    /// <summary>The box of <paramref name="part"/> on its tile, without the margin that reaches past it.</summary>
+    private static Rect Box(FrameworkElement part, Visual tile) =>
+        part.TransformToVisual(tile).TransformBounds(new Rect(part.RenderSize));
 
     private static double Natural(TextBlock text)
     {
