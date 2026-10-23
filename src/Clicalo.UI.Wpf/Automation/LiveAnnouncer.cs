@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -57,6 +58,12 @@ public sealed class LiveAnnouncer
     {
         ArgumentNullException.ThrowIfNull(region);
         region.VerifyAccess();
+        Debug.Assert(
+            UIElementAutomationPeer.CreatePeerForElement(region) is not null,
+            "A live region needs a UI Automation peer, and a "
+                + region.GetType().Name
+                + " has none."
+        );
         Region = region;
         if (
             region is not Window

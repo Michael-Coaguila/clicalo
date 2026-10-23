@@ -1,8 +1,11 @@
 using System.Windows;
+using System.Windows.Controls;
 using Clicalo.TestKit.Windows;
 using Clicalo.TestKit.Windows.Probe;
+using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.Windowing.IntegrationTests.Automation.Rules;
 using FlaUI.Core.Definitions;
+using WpfAutomation = System.Windows.Automation;
 
 namespace Clicalo.Windowing.IntegrationTests.Automation;
 
@@ -273,6 +276,42 @@ public sealed class UiaRuleTests
             .ShouldHaveSingleItem()
             .Message.ShouldStartWith("InputProbe received WM_ACTIVATE");
     }
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "REG-06")]
+    public void The_peer_rule_rejects_a_name_or_a_live_setting_that_no_peer_carries() =>
+        WpfThread.Invoke(() =>
+        {
+            var named = new Border();
+            WpfAutomation.AutomationProperties.SetName(named, "Mover panel");
+            var live = new StackPanel();
+            WpfAutomation.AutomationProperties.SetLiveSetting(
+                live,
+                WpfAutomation.AutomationLiveSetting.Polite
+            );
+            var text = new TextBlock { Text = "Copiado" };
+            WpfAutomation.AutomationProperties.SetLiveSetting(
+                text,
+                WpfAutomation.AutomationLiveSetting.Polite
+            );
+            WpfAutomation.AutomationProperties.SetName(text, "Copiado");
+            var root = new StackPanel();
+            root.Children.Add(named);
+            root.Children.Add(live);
+            root.Children.Add(text);
+
+            PeerlessPropertyRule
+                .Check(root)
+                .Select(static violation => violation.Element)
+                .ShouldBe(["Mover panel", "StackPanel"]);
+            RuleIds(PeerlessPropertyRule.Check(root)).ShouldBe("ACC-001");
+            PeerlessPropertyRule
+                .Check(root, liveRegionsOnly: true)
+                .ShouldHaveSingleItem()
+                .Element.ShouldBe("StackPanel");
+            PeerlessPropertyRule.Check(text).ShouldBeEmpty("a text block has a peer of its own");
+        });
 
     private static UiaNode Root(params UiaNode[] children) =>
         new()

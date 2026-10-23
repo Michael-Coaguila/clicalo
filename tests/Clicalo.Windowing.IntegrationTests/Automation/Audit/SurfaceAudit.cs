@@ -13,7 +13,8 @@ namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
 /// <summary>
 /// The accessibility audit of one real view in one state (REG-02, REG-06): the UIA rules of
 /// <see cref="UiaVerifier"/> on its control view (name, role, patterns, states, 44 × 44 bounds, no glyph as a name, a
-/// dictation button next to every free text field), that no text is drawn cut (<see cref="CutTexts"/>) and that
+/// dictation button next to every free text field), that no name, help text or live setting sits on an element UI
+/// Automation never sees (<see cref="PeerlessPropertyRule"/>), that no text is drawn cut (<see cref="CutTexts"/>) and that
 /// every touch target really answers on 44 × 44, which UI Automation's rectangle alone does not tell
 /// (<see cref="TouchInput"/>):
 /// <list type="bullet">
@@ -60,8 +61,16 @@ internal static class SurfaceAudit
             ],
         };
 
-    /// <summary>Every broken rule of the view hosted in <paramref name="host"/>.</summary>
-    public static IReadOnlyList<UiaViolation> Verify(AuditHost host, string name, TouchInput input)
+    /// <summary>
+    /// Every broken rule of the view hosted in <paramref name="host"/>. With <paramref name="liveRegionsOnly"/>, an element
+    /// without a peer is held only to carry no live setting, not to carry no name or help text.
+    /// </summary>
+    public static IReadOnlyList<UiaViolation> Verify(
+        AuditHost host,
+        string name,
+        TouchInput input,
+        bool liveRegionsOnly = false
+    )
     {
         ArgumentNullException.ThrowIfNull(host);
         return
@@ -69,6 +78,7 @@ internal static class SurfaceAudit
             .. UiaVerifier.Verify(host.Snapshot(name), Expectations),
             .. SmallTargets(host.Root, Expectations.MinimumTargetSize, input),
             .. CutTexts(host.Root),
+            .. PeerlessPropertyRule.Check(host.Root, liveRegionsOnly),
         ];
     }
 
@@ -76,20 +86,22 @@ internal static class SurfaceAudit
     /// Fails with every broken rule, one per line, and the tree. <paramref name="atLeast"/> is the number of touch
     /// targets the state must show, so a view that did not build is not taken for a clean one. With the gallery on
     /// (<see cref="AuditGallery"/>), the state is saved first in <paramref name="group"/>, broken or not.
+    /// <paramref name="liveRegionsOnly"/> is that of <see cref="Verify"/>.
     /// </summary>
     public static void ShouldPass(
         AuditHost host,
         string name,
         int atLeast,
         TouchInput input,
-        string group
+        string group,
+        bool liveRegionsOnly = false
     )
     {
         ArgumentNullException.ThrowIfNull(host);
         AuditGallery.Save(host, group, name);
         var tree = host.Snapshot(name);
         var targets = tree.DescendantsAndSelf().Count(static node => node.IsActionable);
-        var violations = Verify(host, name, input);
+        var violations = Verify(host, name, input, liveRegionsOnly);
         if (violations.Count == 0 && targets >= atLeast)
         {
             return;
