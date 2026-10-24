@@ -564,16 +564,6 @@
       "after": "seeCoach",
       "text": { "es": "Se mostrará la próxima vez que abras la barra de la pestaña.", "en": "It shows the next time you open the tab bar." }
     },
-    "seePanelCoach": {
-      "notes": "Fila de General › Primeros pasos en las vistas Completa y Compacta (GEN-014, R-39): vuelve a mostrar la guía del panel. En la Pestaña la fila sigue siendo [seeCoach]. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
-      "after": "seeCoachD",
-      "text": { "es": "Ver la guía del panel", "en": "See the panel guide" }
-    },
-    "seePanelCoachD": {
-      "notes": "Descripción de [seePanelCoach] y aviso al tocarla (R-39): la guía sale junto al panel en cuanto está a la vista, sin esperar a nada más. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
-      "after": "seePanelCoach",
-      "text": { "es": "Se mostrará junto al panel.", "en": "It shows beside the panel." }
-    },
     "uNokbD": {
       "notes": "Descripción del ajuste «No puedo usar el teclado» en Primeros pasos (GEN-014, BIE-005). Texto nuevo de «General y panel» y «Precisión táctil» del centro de control (M4), R-27 en §6.1 del catálogo.",
       "after": "uNokb",
@@ -1698,25 +1688,230 @@
       "after": "dockCoachName",
       "text": { "es": "Guía del panel", "en": "Panel guide" }
     },
-    "pco2t": {
-      "notes": "Título del paso 2 de la guía del panel: la cuadrícula y sus páginas. El paso 1, «Qué ver», reutiliza [co2t] y [co2d], que dicen lo mismo de la fila «Qué ver» del panel. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
-      "after": "co3d",
+    "gGridT": {
+      "notes": "Título del paso que señala las fichas del panel y de la barra. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "panelCoachName",
       "text": { "es": "Tus atajos", "en": "Your shortcuts" }
     },
-    "pco2d": {
-      "notes": "Texto del paso 2 de la guía del panel. No nombra el menú de una ficha: dejar el dedo quieto en una ficha Mantener la mantiene y no abre el menú (CUA-014). Cabe en tres líneas a 260, como los pasos de la guía de la Pestaña, para que la ventana no crezca por un paso. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
-      "after": "pco2t",
-      "text": { "es": "Toca una ficha para usarla en la app activa. Las flechas de abajo pasan de página.", "en": "Tap a tile to use it in the active app. The arrows at the bottom turn the page." }
+    "gGridD": {
+      "notes": "Texto del paso que señala las fichas. No espera a un toque: una ficha actúa en la app de la persona. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gGridT",
+      "text": { "es": "Cada ficha es un atajo. Tócala para usarlo en la app activa.", "en": "Each tile is a shortcut. Tap it to use it in the active app." }
     },
-    "pco3t": {
-      "notes": "Título del paso 3 de la guía del panel: las herramientas de la cabecera, como [co3t] en la Pestaña. Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
-      "after": "pco2d",
-      "text": { "es": "Arriba: herramientas", "en": "At the top: tools" }
+    "gFreqD": {
+      "notes": "Texto del paso de ★ Frecuentes (título [freq]); espera a que se muestren los Frecuentes. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gGridD",
+      "text": { "es": "★ muestra los atajos que más usas. Tócala para verlos.", "en": "★ shows the shortcuts you use most. Tap it to see them." }
     },
-    "pco3d": {
-      "notes": "Texto del paso 3 de la guía del panel: los botones de la cabecera con los nombres de [searchA], [edit], [quick] y [min], y el asa que mueve el panel (CAB-001, PAN-004). Texto nuevo de M7, pendiente de ratificar en §6.1 del catálogo (R-39).",
-      "after": "pco3t",
-      "text": { "es": "Buscar, editar los atajos, Ajustes rápidos y minimizar. Arrastra el asa para mover el panel.", "en": "Search, edit the shortcuts, Quick settings and minimize. Drag the handle to move the panel." }
+    "gProfileT": {
+      "notes": "Título del paso del botón de perfil. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gFreqD",
+      "text": { "es": "Tu perfil", "en": "Your profile" }
+    },
+    "gProfileD": {
+      "notes": "Texto del paso del botón de perfil; espera a que vuelva al perfil o abra la lista (SEL-002). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gProfileT",
+      "text": { "es": "Este botón vuelve a tu perfil o abre la lista de perfiles. Tócalo.", "en": "This button goes back to your profile or opens the list of profiles. Tap it." }
+    },
+    "gAutoT": {
+      "notes": "Título del paso de Auto/Fijo. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gProfileD",
+      "text": { "es": "Auto o Fijo", "en": "Auto or Fixed" }
+    },
+    "gAutoD": {
+      "notes": "Texto del paso de Auto/Fijo (PER-006). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gAutoT",
+      "text": { "es": "Auto cambia de perfil con la app activa; Fijo lo deja quieto.", "en": "Auto changes the profile with the active app; Fixed keeps it still." }
+    },
+    "gPagesT": {
+      "notes": "Título del paso del paginador; solo sale con más de una página. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gAutoD",
+      "text": { "es": "Páginas", "en": "Pages" }
+    },
+    "gPagesD": {
+      "notes": "Texto del paso del paginador; espera a que se pase de página. Nombra la flecha en palabras: un ▶ escrito no es el icono del panel. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gPagesT",
+      "text": { "es": "Hay más atajos en otras páginas. Toca la flecha de la derecha para verlos.", "en": "There are more shortcuts on other pages. Tap the right arrow to see them." }
+    },
+    "gSearchD": {
+      "notes": "Texto del paso de Buscar (título [searchA], BUS-005, búsqueda por voz). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gPagesD",
+      "text": { "es": "Busca un atajo de cualquier perfil por su nombre. También puedes dictarlo.", "en": "Find a shortcut from any profile by its name. You can also dictate it." }
+    },
+    "gEditD": {
+      "notes": "Texto del paso de Editar (título [edit], CUA-012). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gSearchD",
+      "text": { "es": "Ordena, quita o añade fichas aquí mismo. El mismo botón termina.", "en": "Reorder, remove or add tiles right here. The same button finishes." }
+    },
+    "gQuickD": {
+      "notes": "Texto del paso de Ajustes rápidos (título [quick]), en el panel y en la barra (AJR-001). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gEditD",
+      "text": { "es": "La vista, el tamaño, la opacidad y el centro de control, a un toque.", "en": "The view, the size, the opacity and the control center, one tap away." }
+    },
+    "gMoveT": {
+      "notes": "Título del paso del asa del panel. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gQuickD",
+      "text": { "es": "Mover el panel", "en": "Move the panel" }
+    },
+    "gMoveD": {
+      "notes": "Texto del paso del asa (PAN-004): el asa y el nombre del perfil arrastran el panel. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gMoveT",
+      "text": { "es": "Arrastra el asa o el nombre del perfil para llevar el panel a otro sitio.", "en": "Drag the handle or the profile name to take the panel somewhere else." }
+    },
+    "gMinD": {
+      "notes": "Texto del último paso de la guía del panel (título [min]); espera a que el panel pase a burbuja, y entonces sale la guía de la burbuja. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gMoveD",
+      "text": { "es": "Deja el panel en una burbuja pequeña. Pruébalo: tócalo.", "en": "Shrinks the panel to a small bubble. Try it: tap it." }
+    },
+    "bubbleGuideName": {
+      "notes": "Nombre de la ventana de la guía de la burbuja para UI Automation (REG-06), como [panelCoachName]. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gMinD",
+      "text": { "es": "Guía de la burbuja", "en": "Bubble guide" }
+    },
+    "gBubbleT": {
+      "notes": "Título del paso de la burbuja. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "bubbleGuideName",
+      "text": { "es": "La burbuja", "en": "The bubble" }
+    },
+    "gBubbleD": {
+      "notes": "Texto del paso de la burbuja (BUR-001); espera a que vuelva el panel. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gBubbleT",
+      "text": { "es": "Tócala para volver al panel. Arrástrala para moverla.", "en": "Tap it to bring the panel back. Drag it to move it." }
+    },
+    "gFoldT": {
+      "notes": "Título del paso del botón que pliega la barra de la Pestaña. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gBubbleD",
+      "text": { "es": "Plegar", "en": "Fold" }
+    },
+    "gFoldD": {
+      "notes": "Texto del paso que pliega la barra (PES-005). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gFoldT",
+      "text": { "es": "Pliega la barra en su asa. Tocar el asa la vuelve a abrir.", "en": "Folds the bar into its handle. Tapping the handle opens it again." }
+    },
+    "gExpandT": {
+      "notes": "Título del paso del botón que pasa a la vista Completa. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gFoldD",
+      "text": { "es": "Panel completo", "en": "Full panel" }
+    },
+    "gExpandD": {
+      "notes": "Texto del paso de Expandir (PAN-001 d). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gExpandT",
+      "text": { "es": "Cambia a la vista Completa, con más atajos a la vista.", "en": "Switches to the Full view, with more shortcuts in sight." }
+    },
+    "gLockT": {
+      "notes": "Título del paso del candado de la barra. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gExpandD",
+      "text": { "es": "Candado", "en": "Lock" }
+    },
+    "gLockD": {
+      "notes": "Texto del paso del candado (PES-012, dock.pinOpen). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gLockT",
+      "text": { "es": "Cerrado, la barra sigue abierta después de usar un atajo.", "en": "When closed, the bar stays open after you use a shortcut." }
+    },
+    "guideOf": {
+      "notes": "Nombre de la guía de una sección del centro de control para UI Automation (REG-06); {name} es el nombre de la sección en el riel. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gLockD",
+      "text": { "es": "Guía: {name}", "en": "Guide: {name}" }
+    },
+    "gProfilesD": {
+      "notes": "Texto del paso de la lista de perfiles de Atajos (título [profiles]); espera a que se elija un perfil. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "guideOf",
+      "text": { "es": "Cada perfil reúne los atajos de una app. Toca uno para ver los suyos.", "en": "Each profile gathers the shortcuts of an app. Tap one to see them." }
+    },
+    "gListT": {
+      "notes": "Título del paso de la lista de atajos de un perfil. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gProfilesD",
+      "text": { "es": "Sus atajos", "en": "Its shortcuts" }
+    },
+    "gListD": {
+      "notes": "Texto del paso de la lista de atajos (arrastrar una ficha la cambia de sitio). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gListT",
+      "text": { "es": "Toca un atajo para editarlo. Arrástralo para cambiar su sitio.", "en": "Tap a shortcut to edit it. Drag it to change its place." }
+    },
+    "gEditorT": {
+      "notes": "Título del paso del editor de atajos. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gListD",
+      "text": { "es": "El editor", "en": "The editor" }
+    },
+    "gEditorD": {
+      "notes": "Texto del paso del editor (REG-07: autoguardado y deshacer). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gEditorT",
+      "text": { "es": "Cambia su nombre, su icono y lo que hace. Todo se guarda solo y se deshace.", "en": "Change its name, its icon and what it does. Everything saves itself and can be undone." }
+    },
+    "gTplD": {
+      "notes": "Texto del paso de la lista de plantillas (título [navTpl]); tocar una abre su vista previa. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gEditorD",
+      "text": { "es": "Atajos listos para tus apps. Toca una para ver qué trae antes de instalarla.", "en": "Ready-made shortcuts for your apps. Tap one to see what it brings before installing it." }
+    },
+    "gAiD": {
+      "notes": "Texto del paso de Crear con IA (título [aiTitle], PLA-003, clave propia). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gTplD",
+      "text": { "es": "Describe una app y la IA propone sus atajos, con tu propia clave.", "en": "Describe an app and the AI suggests its shortcuts, with your own key." }
+    },
+    "gViewT": {
+      "notes": "Título del paso del grupo de la vista en General. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gAiD",
+      "text": { "es": "La vista", "en": "The view" }
+    },
+    "gViewD": {
+      "notes": "Texto del paso de la vista (GEN-010). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gViewT",
+      "text": { "es": "Completa, Compacta o Pestaña: elige cómo se ve el panel.", "en": "Full, Compact or Tab: choose how the panel looks." }
+    },
+    "gSizeT": {
+      "notes": "Título del paso del grupo de tamaño en General. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gViewD",
+      "text": { "es": "El tamaño", "en": "The size" }
+    },
+    "gSizeD": {
+      "notes": "Texto del paso del tamaño (GEN-005, GEN-006). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gSizeT",
+      "text": { "es": "El tamaño de las fichas y del texto. Se aplica al tocar.", "en": "The size of the tiles and of the text. It applies as you tap." }
+    },
+    "gStartD": {
+      "notes": "Texto del paso de Primeros pasos (título [secStart], GEN-014). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gSizeD",
+      "text": { "es": "Aquí vuelves a ver la bienvenida y estas guías.", "en": "Here you can see the welcome and these guides again." }
+    },
+    "gPresetsT": {
+      "notes": "Título del paso de los ajustes del filtro táctil. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gStartD",
+      "text": { "es": "Cuánto perdona", "en": "How forgiving" }
+    },
+    "gPresetsD": {
+      "notes": "Texto del paso de los ajustes del filtro (TAC-001), con los nombres de [pStd], [pLeve] y [pFuerte]. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gPresetsT",
+      "text": { "es": "Estándar, Temblor leve o Temblor fuerte: cuánto se ignora un toque impreciso.", "en": "Standard, Mild tremor or Strong tremor: how much an imprecise touch is ignored." }
+    },
+    "gZoneD": {
+      "notes": "Texto del paso de la zona de prueba (título [testZone], TAC-006); espera a un toque en ella. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gPresetsD",
+      "text": { "es": "Toca aquí como tocarías el panel y mira si el toque cuenta.", "en": "Tap here as you would tap the panel and see whether the touch counts." }
+    },
+    "gTabsT": {
+      "notes": "Título del paso de las pestañas de Sistema. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gZoneD",
+      "text": { "es": "Tres pestañas", "en": "Three tabs" }
+    },
+    "gTabsD": {
+      "notes": "Texto del paso de las pestañas de Sistema (SIS-001); espera a que se elija otra pestaña. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gTabsT",
+      "text": { "es": "Actualizaciones, copias de seguridad e inicio. Toca una para verla.", "en": "Updates, backups and startup. Tap one to see it." }
+    },
+    "gFbD": {
+      "notes": "Texto del paso de Opinión y contacto (título [fbTitle], ACE-003). Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gTabsD",
+      "text": { "es": "Escribe o dicta qué mejorarías y envíalo por correo.", "en": "Write or dictate what you would improve and send it by email." }
+    },
+    "seeGuides": {
+      "notes": "Fila de General › Primeros pasos (GEN-014): vuelve a mostrar las guías de todas las pantallas. Sustituye a [seeCoach]. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "gFbD",
+      "text": { "es": "Ver las guías otra vez", "en": "See the guides again" }
+    },
+    "seeGuidesD": {
+      "notes": "Descripción de [seeGuides] y aviso al tocarla. Guías de primera vez de cada pantalla, pendiente de ratificar (D21, R-39).",
+      "after": "seeGuides",
+      "text": { "es": "Cada pantalla vuelve a mostrar su guía, una vez.", "en": "Each screen shows its guide again, once." }
     },
     "dupHeadOnly": {
       "notes": "Cabecera de la tarjeta de repetidos del editor cuando solo hay una combinación repetida (REP-004): sin «· 1 de 1», que no recorre nada y partía la línea. Con varias sigue [dupHead] con su contador. Pendiente de ratificar (D21).",

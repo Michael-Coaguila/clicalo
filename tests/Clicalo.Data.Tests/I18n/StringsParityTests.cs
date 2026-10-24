@@ -48,6 +48,15 @@ public sealed class StringsParityTests
             .ShouldBe([
                 // Key-group and category labels of data/catalogs (keys.json, categories.json).
                 // Texts of the M3 actions: what each action did and why a launch did not start (catalog §6.1, R-21).
+                // ADR-0033 (R-38): aiGeminiFree and the five aiProvider keys after aiPrivacy4, the AI provider of
+                // General › IA and of the key field, and the free tier notice.
+                // Texts of the M4 Templates section and of sharing a profile (catalog §6.1, R-26).
+                // The examples of the empty fields of the editor and the value of a wait step (D21, pending).
+                // Texts of the M2 integration: failures, undo labels and notices of the five packages (catalog §6.1).
+                // Texts of the M4 Control Center: «General y panel» and «Precisión táctil» (catalog §6.1, R-27).
+                // The first category of the icon picker (D14, catalog §6.1, R-35).
+                // Texts of the M5 Sistema section: updates, backups and startup (catalog §6.1, R-25).
+                // The title bar of the Control Center (D13, catalog §6.1, R-32).
                 "aboutVersion",
                 "actionFailed",
                 "actionUnavailable",
@@ -59,10 +68,7 @@ public sealed class StringsParityTests
                 "adminFailed",
                 "adminNotInstalled",
                 "adminRestarting",
-                // ADR-0033 (R-38): aiGeminiFree and the five aiProvider keys after aiPrivacy4, the AI provider of
-                // General › IA and of the key field, and the free tier notice.
                 "aiGeminiFree",
-                // Texts of the M4 Templates section and of sharing a profile (catalog §6.1, R-26).
                 "aiPrivacy4",
                 "aiProvider",
                 "aiProviderAnthropic",
@@ -75,10 +81,8 @@ public sealed class StringsParityTests
                 "alwaysOn",
                 "appGone",
                 "appName",
-                // The examples of the empty fields of the editor and the value of a wait step (D21, pending).
                 "appPh",
                 "autoBackupD",
-                // Texts of the M2 integration: failures, undo labels and notices of the five packages (catalog §6.1).
                 "autoReleaseNever",
                 "autoReleaseSwitchOff",
                 "autoReleaseSwitchOn",
@@ -94,6 +98,7 @@ public sealed class StringsParityTests
                 "bakPreMigrate",
                 "bakPreUpdate",
                 "blockedAltLock",
+                "bubbleGuideName",
                 "catEdit",
                 "catFile",
                 "catFmt",
@@ -162,13 +167,54 @@ public sealed class StringsParityTests
                 "foundVersion",
                 "freqEmptyS",
                 "freqEmptyT",
+                "gAiD",
+                "gAutoD",
+                "gAutoT",
+                "gBubbleD",
+                "gBubbleT",
+                "gEditD",
+                "gEditorD",
+                "gEditorT",
+                "gExpandD",
+                "gExpandT",
+                "gFbD",
+                "gFoldD",
+                "gFoldT",
+                "gFreqD",
+                "gGridD",
+                "gGridT",
+                "gListD",
+                "gListT",
+                "gLockD",
+                "gLockT",
+                "gMinD",
+                "gMoveD",
+                "gMoveT",
+                "gPagesD",
+                "gPagesT",
+                "gPresetsD",
+                "gPresetsT",
+                "gProfileD",
+                "gProfileT",
+                "gProfilesD",
+                "gQuickD",
+                "gSearchD",
+                "gSizeD",
+                "gSizeT",
+                "gStartD",
+                "gTabsD",
+                "gTabsT",
+                "gTplD",
+                "gViewD",
+                "gViewT",
+                "gZoneD",
                 "generalFixed",
                 "gitHub",
                 "globalHotkeyD",
                 "globalHotkeyT",
                 "globalHotkeyTaken",
                 "guardianUnstable",
-                // Texts of the M4 Control Center: «General y panel» and «Precisión táctil» (catalog §6.1, R-27).
+                "guideOf",
                 "handleDown",
                 "handleLeft",
                 "handleLock",
@@ -181,7 +227,6 @@ public sealed class StringsParityTests
                 "holdMinutes",
                 "holdSeconds",
                 "holdingKeys",
-                // The first category of the icon picker (D14, catalog §6.1, R-35).
                 "iconAll",
                 "impSummary",
                 "impTextsLost",
@@ -249,10 +294,6 @@ public sealed class StringsParityTests
                 "orderHintDrag",
                 "panelCoachName",
                 "pauseApp",
-                "pco2d",
-                "pco2t",
-                "pco3d",
-                "pco3t",
                 "pinFolds",
                 "pinLimit",
                 "positionOf",
@@ -292,8 +333,8 @@ public sealed class StringsParityTests
                 "secAi",
                 "seeCoach",
                 "seeCoachD",
-                "seePanelCoach",
-                "seePanelCoachD",
+                "seeGuides",
+                "seeGuidesD",
                 "settingInvalid",
                 "settingOption",
                 "shareWithTexts",
@@ -346,7 +387,6 @@ public sealed class StringsParityTests
                 "updErrOffline",
                 "updErrSpace",
                 "updErrStopped",
-                // Texts of the M5 Sistema section: updates, backups and startup (catalog §6.1, R-25).
                 "updErrT",
                 "updUnavailD",
                 "updUnavailT",
@@ -365,7 +405,6 @@ public sealed class StringsParityTests
                 "whenDate",
                 "whenToday",
                 "whenYesterday",
-                // The title bar of the Control Center (D13, catalog §6.1, R-32).
                 "winMaximize",
                 "winRestore",
             ]);
