@@ -57,7 +57,11 @@ public sealed class GuideRing : Adorner
         var bounds = new Rect(size);
         bounds.Inflate(Offset, Offset);
         var radius = Radii.Medium + Offset;
-        var pen = new Pen(brush, Stroke.FocusRing) { DashStyle = Dashes, DashCap = PenLineCap.Round };
+        var pen = new Pen(brush, Stroke.FocusRing)
+        {
+            DashStyle = Dashes,
+            DashCap = PenLineCap.Round,
+        };
         drawingContext.DrawRoundedRectangle(null, pen, bounds, radius, radius);
     }
 }
