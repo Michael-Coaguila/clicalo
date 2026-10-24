@@ -8,9 +8,11 @@ using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
+using Clicalo.Presentation.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
@@ -511,7 +513,13 @@ public sealed class DockSideSurfacesTests
                     theme,
                     PanelDesktopFixture.Touch
                 ),
-                new DockCoachWindow(dock, lab.Registry, time, theme, PanelDesktopFixture.Touch),
+                new GuideWindow(
+                    new GuideViewModel(world.Localization, static _ => { }),
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
                 new DockMenuWindow(
                     world.Menu,
                     lab.Registry,
@@ -620,7 +628,6 @@ public sealed class DockSideSurfacesTests
             IsFixed: false,
             CanRepeat: false,
             flyout,
-            CoachStep: 0,
             BarOpen: true,
             AnythingHeld: false
         );
