@@ -88,7 +88,7 @@ internal static class SettingsDefaults
             ControlCenter = null,
             GlobalHotkey = new GlobalHotkeySettings(Enabled: false, GlobalHotkeys.Default.Id),
             TimeMultiplier = 1,
-            // Schema 1.2 (ADR-0034): the guide of the panel shows once.
-            PanelCoachDone = false,
+            // Schema 1.3 (ADR-0034): every guide shows once.
+            GuidesDone = [],
         };
 }

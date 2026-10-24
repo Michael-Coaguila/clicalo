@@ -87,7 +87,7 @@ internal static class TestDocuments
             ),
             GlobalHotkey = new GlobalHotkeySettings(Enabled: true, "ctrl-alt-f10"),
             TimeMultiplier = 2,
-            PanelCoachDone = true,
+            GuidesDone = ["panel", "touch"],
         };
 
     /// <summary>A made-up stable monitor identifier (a DisplayConfig monitor device path).</summary>

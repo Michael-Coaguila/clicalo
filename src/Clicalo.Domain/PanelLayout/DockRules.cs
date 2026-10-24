@@ -5,9 +5,6 @@ namespace Clicalo.Domain.PanelLayout;
 /// </summary>
 public static class DockRules
 {
-    /// <summary>Steps of the first-time guide (PES-015).</summary>
-    public const int CoachSteps = 3;
-
     /// <summary>
     /// Whether the bar collapses <c>Timings.Dock.CollapseDelay</c> (900 ms) after <paramref name="use"/> (PES-012): with
     /// «Collapses» it does after an action that ran, a Mantener released included, but not after latching or releasing
@@ -112,8 +109,4 @@ public static class DockRules
     /// <param name="open">Quick settings are open.</param>
     public static bool ShowsQuickBesidePanel(PanelForm form, bool open) =>
         PanelForms.IsPanel(form) && open;
-
-    /// <summary>The step after <paramref name="step"/>, or <see langword="null"/> when the guide ends (PES-015).</summary>
-    /// <param name="step">The step on show, from 0.</param>
-    public static int? NextCoachStep(int step) => step + 1 < CoachSteps ? step + 1 : null;
 }

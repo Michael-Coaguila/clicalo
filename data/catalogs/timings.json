@@ -774,6 +774,13 @@
           "source": "blueprint §9.4"
         }
       }
+    },
+    "Guides": {
+      "description": "First-time guides of each screen (R-39, ADR-0034).",
+      "entries": {
+        "MaxDoneIds": { "count": 32, "description": "Most guide ids kept in settings.guidesDone; the rest are dropped when the document is read.", "req": ["PES-015"] },
+        "MaxIdLength": { "count": 32, "description": "Longest guide id kept in settings.guidesDone.", "req": ["PES-015"] }
+      }
     }
   }
 }

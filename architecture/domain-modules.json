@@ -150,6 +150,13 @@
       "dependsOn": ["Messages", "Primitives", "Library"]
     },
     {
+      "name": "Guides",
+      "group": "rules",
+      "description": "First-time guides of each screen: their steps, the controls they point at, what they wait for and which are done (R-39).",
+      "dependsOn": ["Messages", "Primitives", "Settings", "PanelLayout"],
+      "deviation": "Not in §4.3: the guides of every screen came with D21 (R-39, ADR-0034)."
+    },
+    {
       "name": "Execution",
       "group": "execution",
       "description": "ActivationPolicy, planners per ActionKind and EngineReducer.",

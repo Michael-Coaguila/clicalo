@@ -7,7 +7,7 @@
   "writtenBy": "2.0.0",
   "seq": 45,
   "writtenAtUtc": "2026-10-23T18:20:31.000Z",
-  "payloadSha256": "6899aa20d968d6e85f0d22396ffb46029902dd4a54a39f0065fb7b1a2b59e3dd",
+  "payloadSha256": "be69d80ab31004a58a3b3c20307cfb821ef5c13409a5ae614d2986c3ee6d6a04",
   "payload": {
     "settings": {
       "lang": "es",
@@ -121,7 +121,11 @@
       },
       "timeMultiplier": 2,
       "aiProvider": "gemini",
-      "panelCoachDone": true
+      "guidesDone": [
+        "panel",
+        "bubble",
+        "shortcuts"
+      ]
     },
     "always": {
       "shortcuts": [

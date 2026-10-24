@@ -119,8 +119,9 @@ public sealed record UserSettings
     public required int TimeMultiplier { get; init; }
 
     /// <summary>
-    /// Whether the guide of the Full and Compact views was finished or skipped (R-39, schema 1.2, ADR-0034); the guide
-    /// of the Tab view keeps its own, <see cref="DockSettings.CoachDone"/>.
+    /// The first-time guides finished or skipped (R-39, schema 1.3, ADR-0034), by the ids of
+    /// <c>Clicalo.Domain.Guides.GuideProgress</c>; the guide of the Tab view keeps its own,
+    /// <see cref="DockSettings.CoachDone"/>.
     /// </summary>
-    public required bool PanelCoachDone { get; init; }
+    public required ValueList<string> GuidesDone { get; init; }
 }

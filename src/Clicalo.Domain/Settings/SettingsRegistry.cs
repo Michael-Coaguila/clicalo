@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Settings;
 
@@ -603,12 +604,13 @@ internal static class SettingsRegistry
                 SettingsSchema.TimeMultiplier
             ),
             Leaf(
-                SettingPaths.PanelCoachDone,
+                SettingPaths.GuidesDone,
                 Presentation,
-                L.CoachSkip,
-                null,
-                s => s.PanelCoachDone,
-                (s, v) => s with { PanelCoachDone = v }
+                L.SeeGuides,
+                L.SeeGuidesD,
+                s => s.GuidesDone,
+                (s, v) => s with { GuidesDone = v },
+                GuideIds
             ),
         ];
 
@@ -716,6 +718,30 @@ internal static class SettingsRegistry
         }
 
         return best;
+    }
+
+    /// <summary>
+    /// The ids of the guides done (ADR-0034): each once and non-empty, at most <c>Timings.Guides.MaxDoneIds</c> of at most
+    /// <c>Timings.Guides.MaxIdLength</c> characters. An id this version does not know is kept: a later one may add guides.
+    /// </summary>
+    private static ValueList<string> GuideIds(ValueList<string> value, ValueList<string> fallback)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var kept = ImmutableArray.CreateBuilder<string>();
+        foreach (var id in value)
+        {
+            if (
+                id is { Length: > 0 }
+                && id.Length <= Timings.Guides.MaxIdLength
+                && kept.Count < Timings.Guides.MaxDoneIds
+                && seen.Add(id)
+            )
+            {
+                kept.Add(id);
+            }
+        }
+
+        return kept.Count == value.Count ? value : new ValueList<string>(kept.ToImmutable());
     }
 
     private static ValueList<MonitorPosition> PanelPositions(

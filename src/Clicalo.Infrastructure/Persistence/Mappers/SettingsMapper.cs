@@ -155,7 +155,9 @@ internal static class SettingsMapper
                 )
                 : defaults.GlobalHotkey,
             TimeMultiplier = dto.TimeMultiplier ?? defaults.TimeMultiplier,
-            PanelCoachDone = dto.PanelCoachDone ?? defaults.PanelCoachDone,
+            GuidesDone = dto.GuidesDone is { } guides
+                ? ValueListBuilder.From(guides)
+                : defaults.GuidesDone,
         };
     }
 
@@ -289,7 +291,7 @@ internal static class SettingsMapper
             },
             TimeMultiplier = settings.TimeMultiplier,
             AiProvider = PersistedNames.AiProvider.Name(settings.Ai.Provider),
-            PanelCoachDone = settings.PanelCoachDone,
+            GuidesDone = [.. settings.GuidesDone],
             Extra = extra is null
                 ? null
                 : new Dictionary<string, JsonElement>(extra, StringComparer.Ordinal),

@@ -196,15 +196,6 @@ public sealed class PanelFormsTests
         bool expected
     ) => DockRules.ShowsCoach(open, done, sideWindow).ShouldBe(expected);
 
-    [Fact]
-    [Trait("Req", "PES-015")]
-    public void The_guide_has_three_steps()
-    {
-        DockRules.NextCoachStep(0).ShouldBe(1);
-        DockRules.NextCoachStep(1).ShouldBe(2);
-        DockRules.NextCoachStep(2).ShouldBeNull();
-    }
-
     [Theory]
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]

@@ -74,7 +74,7 @@ internal static class PersistenceDocuments
             ControlCenter = null,
             GlobalHotkey = new GlobalHotkeySettings(Enabled: false, "ctrl-alt-space"),
             TimeMultiplier = 1,
-            PanelCoachDone = false,
+            GuidesDone = [],
         };
 
     /// <summary>A document whose version is <paramref name="marker"/> (in the General profile name).</summary>

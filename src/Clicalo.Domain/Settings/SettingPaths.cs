@@ -69,5 +69,5 @@ public static class SettingPaths
     public const string GlobalHotkeyEnabled = "globalHotkey.enabled";
     public const string GlobalHotkeyCombo = "globalHotkey.combo";
     public const string TimeMultiplier = "timeMultiplier";
-    public const string PanelCoachDone = "panelCoachDone";
+    public const string GuidesDone = "guidesDone";
 }

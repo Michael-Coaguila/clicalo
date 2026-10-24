@@ -82,8 +82,8 @@ internal sealed record SettingsDto
     /// <summary>The AI provider, <c>anthropic</c> or <c>gemini</c> (ADR-0033); since 1.2, at this level so a 1.1 version keeps it.</summary>
     public string? AiProvider { get; init; }
 
-    /// <summary>The guide of the Full and Compact views was finished or skipped (R-39); since 1.3 (ADR-0034).</summary>
-    public bool? PanelCoachDone { get; init; }
+    /// <summary>The ids of the first-time guides finished or skipped (R-39); since 1.3 (ADR-0034).</summary>
+    public List<string>? GuidesDone { get; init; }
 
     /// <summary>Settings of a later minor, kept when rewriting (§6.5).</summary>
     [JsonExtensionData]

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Clicalo.Infrastructure.Persistence;
 using Clicalo.Infrastructure.Persistence.Dto;
 using Clicalo.TestKit;
@@ -6,9 +7,9 @@ using Clicalo.TestKit;
 namespace Clicalo.Infrastructure.Tests.Persistence;
 
 /// <summary>
-/// Schema 1.3 (ADR-0034): the done flag of the guide of the Full and Compact views is an optional member of the
-/// settings, so the immutable 1.3 fixture reads with it, a 1.2 document reads with the guide still to show, the flag
-/// survives a round trip and a 1.2 version keeps it as an unknown member (REG-08).
+/// Schema 1.3 (ADR-0034): the first-time guides done are an optional list of the settings, so the immutable 1.3
+/// fixture reads with it, a 1.2 document reads with every guide still to show, the list survives a round trip and a
+/// 1.2 version keeps it as an unknown member (REG-08).
 /// </summary>
 [Trait("Req", "DAT-001")]
 [Trait("Req", "PES-015")]
@@ -27,51 +28,60 @@ public sealed class SchemaMinor3Tests
     }
 
     [Fact]
-    public void The_1_3_fixture_decodes_the_done_flag_of_the_panel_guide_apart_from_the_tab_one()
+    public void The_1_3_fixture_decodes_the_guides_done_apart_from_the_tab_one()
     {
         var decoded = new DocumentCodec().Decode(Read("1.3").Envelope.Payload, live: false).Value;
 
         decoded.Repairs.ShouldBeEmpty();
-        decoded.Document.Settings.PanelCoachDone.ShouldBeTrue();
+        decoded.Document.Settings.GuidesDone.ShouldBe(["panel", "bubble", "shortcuts"]);
         decoded.Document.Settings.Dock.CoachDone.ShouldBeFalse();
     }
 
     [Fact]
-    public void A_1_2_document_still_shows_the_panel_guide()
+    public void A_1_2_document_still_shows_every_guide()
     {
         var decoded = new DocumentCodec().Decode(Read("1.2").Envelope.Payload, live: false).Value;
 
         decoded.Repairs.ShouldBeEmpty();
-        decoded.Document.Settings.PanelCoachDone.ShouldBeFalse();
+        decoded.Document.Settings.GuidesDone.ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void The_done_flag_survives_a_round_trip(bool done)
+    [Fact]
+    public void The_guides_done_survive_a_round_trip()
     {
-        var document = TestDocuments.Document(1) with
-        {
-            Settings = TestDocuments.Settings with { PanelCoachDone = done },
-        };
+        var document = TestDocuments.Document(1);
         var codec = new DocumentCodec();
 
         var payload = codec.Encode(document, includeUsage: false);
         var decoded = codec.Decode(payload, live: false).Value;
 
-        payload["settings"]!["panelCoachDone"]!.GetValue<bool>().ShouldBe(done);
+        payload["settings"]!["guidesDone"]!
+            .AsArray()
+            .Select(static n => n!.GetValue<string>())
+            .ShouldBe(["panel", "touch"]);
         decoded.Document.Settings.ShouldBe(document.Settings);
     }
 
     [Fact]
-    public void A_1_2_version_keeps_the_flag_as_an_unknown_member_of_the_settings()
+    public void A_damaged_list_is_repaired_never_fatal()
+    {
+        var payload = Read("1.3").Envelope.Payload;
+        payload["settings"]!["guidesDone"] = new JsonArray("panel", "", "panel", "later");
+
+        var decoded = new DocumentCodec().Decode(payload, live: false).Value;
+
+        decoded.Document.Settings.GuidesDone.ShouldBe(["panel", "later"]);
+    }
+
+    [Fact]
+    public void A_1_2_version_keeps_the_list_as_an_unknown_member_of_the_settings()
     {
         // What a 1.2 version reads: the settings without the member it does not know.
         var payload = Read("1.3").Envelope.Payload;
         var settings = payload["settings"]!.AsObject();
-        var flag = settings["panelCoachDone"]!.DeepClone();
-        _ = settings.Remove("panelCoachDone");
-        settings["laterMember"] = flag;
+        var list = settings["guidesDone"]!.DeepClone();
+        _ = settings.Remove("guidesDone");
+        settings["laterMember"] = list;
 
         var dto = payload.Deserialize(DocumentJsonContext.Default.PayloadDto)!;
 
@@ -80,7 +90,7 @@ public sealed class SchemaMinor3Tests
         var codec = new DocumentCodec();
         var decoded = codec.Decode(payload, live: true).Value;
         var rewritten = codec.Encode(decoded.Document, includeUsage: false);
-        rewritten["settings"]!["laterMember"]!.GetValue<bool>().ShouldBeTrue();
+        rewritten["settings"]!["laterMember"]!.AsArray().Count.ShouldBe(3);
     }
 
     private static EnvelopeReadResult.Readable Read(string version) =>
