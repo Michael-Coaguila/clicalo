@@ -75,7 +75,7 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0030](0030-instancia-aislada-con-datos-propios.md) | Un arranque con `--data` es una instancia propia: el mutex y el *pipe* llevan un sufijo derivado de la ruta completa de la carpeta, sin verbos nuevos en la IPC | Aceptado | 2026-10-16 |
 | [0031](0031-rediseno-c-tokens-y-componentes-base.md) | El rediseño C (D12, D13): medidas, escala tipográfica y colores de C como datos de `data/tokens` generados como constantes, controles base nuevos construidos solo con ellos, barra de título con Snap y una prueba que impide medidas sueltas nuevas | Aceptado | 2026-10-16 |
 | [0033](0033-gemini-como-segundo-proveedor-de-ia.md) | Gemini de Google como segundo proveedor de IA con clave propia (D5): cliente REST propio detrás de `IChatClient`, sin paquetes nuevos; `settings.aiProvider` en el documento 1.2; una credencial por proveedor; el consentimiento es del proveedor y la capa gratuita lleva su aviso, también en el EEE (decisión D22 del usuario) | Aceptado | 2026-10-23 |
-| [0034](0034-guia-del-panel-documento-1-2.md) | Guía de primera vez del panel: documento 1.3 con el miembro opcional `settings.panelCoachDone` (propuesta R-39) | Propuesto | 2026-10-23 |
+| [0034](0034-guias-de-primera-vez-documento-1-3.md) | Guías de primera vez de cada pantalla: documento 1.3 con la lista opcional `settings.guidesDone` (propuesta R-39) | Propuesto | 2026-10-23 |
 
 El hito M0 exige expresamente los ADR 0001, 0002 y 0015
 ([§14 del plano](../architecture/blueprint.md#14-hoja-de-ruta-por-hitos)); el resto recoge las demás

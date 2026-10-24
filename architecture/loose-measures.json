@@ -5,7 +5,7 @@
   "baseline": {
     "src/Clicalo.UI.Wpf/Automation/ShortcutTileBody.cs": 1,
     "src/Clicalo.UI.Wpf/Automation/ShortcutTileTemplate.cs": 1,
-    "src/Clicalo.UI.Wpf/Surfaces/CoachWindow.cs": 1,
+    "src/Clicalo.UI.Wpf/Guides/GuideCard.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/Panel/IgnoredTouchOutline.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/Panel/QuickSettings/QuickSheetFit.cs": 1,
     "src/Clicalo.UI.Wpf/Surfaces/Panel/TestMode/TestMarkBadge.cs": 1,
