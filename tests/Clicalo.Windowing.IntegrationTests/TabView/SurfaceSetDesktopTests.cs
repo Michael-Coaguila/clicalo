@@ -283,6 +283,71 @@ public sealed class SurfaceSetDesktopTests
         ];
     }
 
+    [DesktopFact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-001")]
+    public void The_arrows_open_beside_the_bar_and_go_away_with_it_whatever_view_comes_next()
+    {
+        // D21 review: the window of the arrows stayed on screen after the view changed, and the bar did not fold.
+        using var lab = SurfaceLab.Create();
+        var (set, panel, theme, _, dock) = WpfThread.Invoke(() => Build(lab));
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                set.Apply(Layout(PanelForm.Full));
+                panel.Present();
+            });
+            WpfThread.Invoke(WpfThread.DrainPendingWork);
+            foreach (
+                var next in new[]
+                {
+                    PanelForm.Full,
+                    PanelForm.Compact,
+                    PanelForm.DockClosed,
+                    PanelForm.Bubble,
+                }
+            )
+            {
+                WpfThread.Invoke(() =>
+                {
+                    dock.Apply(BarState(DockSide.Right) with { Flyout = DockFlyout.Arrows });
+                    set.Apply(Layout(PanelForm.DockOpen) with { Flyout = DockFlyout.Arrows });
+                });
+                WpfThread.Invoke(WpfThread.DrainPendingWork);
+                WpfThread.Invoke(() =>
+                {
+                    var arrows = set.Flyout(DockFlyout.Arrows);
+                    arrows.IsVisible.ShouldBeTrue("the arrows open");
+                    arrows.TileControls.Count.ShouldBe(4);
+                    arrows
+                        .CurrentTargets()
+                        .Count.ShouldBeGreaterThanOrEqualTo(4, "every arrow takes a touch");
+                });
+
+                WpfThread.Invoke(() =>
+                {
+                    dock.Apply(BarState(DockSide.Right) with { Flyout = DockFlyout.None });
+                    set.Apply(Layout(next));
+                });
+                WpfThread.Invoke(WpfThread.DrainPendingWork);
+                WpfThread.Invoke(() =>
+                    set.Flyout(DockFlyout.Arrows).IsVisible.ShouldBeFalse(next.ToString())
+                );
+            }
+
+            lab.Guard.Violations.ShouldBe(0);
+        }
+        finally
+        {
+            WpfThread.Invoke(() =>
+            {
+                panel.Close();
+                theme.Dispose();
+            });
+        }
+    }
+
     private static DockBarState BarState(DockSide side) =>
         new(
             Layout(PanelForm.DockOpen, side, perPage: 8).Dock,
