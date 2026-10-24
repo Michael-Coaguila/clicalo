@@ -173,6 +173,21 @@ public sealed class DockBarViewModelTests
         }
     }
 
+    [Fact]
+    [Trait("Req", "EJE-012")]
+    [Trait("Req", "PES-008")]
+    public void An_arrow_that_ran_flashes_like_any_tile_of_the_bar()
+    {
+        var up = _dock.ArrowTiles[0];
+
+        _dock.Flash(up.Id, flashing: true);
+        up.IsFlashing.ShouldBeTrue();
+        _dock.ArrowTiles.Skip(1).ShouldAllBe(static a => !a.IsFlashing);
+
+        _dock.Flash(up.Id, flashing: false);
+        up.IsFlashing.ShouldBeFalse();
+    }
+
     private static DockSettings Dock() =>
         new()
         {

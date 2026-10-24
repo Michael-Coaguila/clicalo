@@ -22,6 +22,10 @@ namespace Clicalo.Presentation.Panel;
 /// Whether <paramref name="Keys"/> is the profile of origin of a Frequents tile or of a search result (FRE-003,
 /// BUS-005): the Compact view, which has no key line (VCO-001), still shows it.
 /// </param>
+/// <param name="OriginIcon">
+/// The icon of the profile of origin of a Frequents tile or of a search result, shown beside the icon of the shortcut
+/// (FRE-003, D21): it tells two of one name apart where the origin has no room in words; null for other tiles.
+/// </param>
 public sealed record TileModel(
     ShortcutId Id,
     string Name,
@@ -31,5 +35,6 @@ public sealed record TileModel(
     CategoryId Category,
     string Keys = "",
     string SpokenKeys = "",
-    bool KeyLineIsOrigin = false
+    bool KeyLineIsOrigin = false,
+    IconRef? OriginIcon = null
 );

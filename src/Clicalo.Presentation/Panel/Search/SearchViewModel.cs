@@ -396,7 +396,8 @@ public sealed class SearchViewModel : ObservableObject
                         PanelProjector.InheritedMode(library, profile, appMode)
                     ),
                     hit.Shortcut.Name.Get(language, LangCode.Es),
-                    profile?.Name.Get(language, LangCode.Es) ?? always
+                    profile?.Name.Get(language, LangCode.Es) ?? always,
+                    profile?.Icon ?? PanelProjector.AlwaysVisibleIcon
                 )
             );
         }

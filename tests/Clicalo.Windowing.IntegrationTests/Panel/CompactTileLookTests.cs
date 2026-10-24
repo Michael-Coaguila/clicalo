@@ -23,9 +23,10 @@ namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
 
 /// <summary>
 /// The tiles of Frequents and of the search and the short tiles of the Compact view, headless (built and laid out on
-/// the WPF thread; never shown): a Frequents tile keeps its profile of origin under its name, as a search result does,
-/// in every size and view (FRE-003, BUS-005), in words and across the inner width of the tile; the other tiles of the
-/// Compact view have no key line (VCO-001); and a voice number never covers the icon or the name (ACC-009).
+/// the WPF thread; never shown): a Frequents tile keeps its icon with the icon of its profile of origin beside it, as a
+/// search result does, in every size and view (FRE-003, BUS-005, D21), and its origin in words under its name where it
+/// has room, across the inner width of the tile; the other tiles of the Compact view have no key line (VCO-001); and a
+/// voice number never covers the icon, the badge or the name (ACC-009).
 /// </summary>
 public sealed class CompactTileLookTests
 {
@@ -88,26 +89,29 @@ public sealed class CompactTileLookTests
                     .ShouldBe(["Word", AlwaysVisible, AlwaysVisible, "Word"]);
                 tiles.Count(static t => t.Control.TypeSymbol is not null).ShouldBe(2);
 
-                // Its icon only where the tile has room for the icon, a line of name and the origin (D20).
-                var keepsIcon =
+                // D21 (the maintainer's decision): every tile keeps its icon, with the icon of its profile beside it; the
+                // origin in words too where the tile has room for the icon, a line of name and the origin (D20).
+                var inWords =
                     !compact
                     && (
                         size == PanelSize.Large
                         || (size == PanelSize.Medium && scale == TypeScale.MinScalePercent)
                     );
+                var word = tiles[0].Control.OriginSymbol;
+                word.ShouldNotBeNullOrEmpty();
+                tiles
+                    .Select(static t => t.Control.OriginSymbol)
+                    .ShouldBe([word, "push_pin", "push_pin", word]);
                 foreach (var tile in tiles.Select(static t => t.Control))
                 {
                     foreach (var number in numbers ? new int?[] { 1, 15, 99 } : [null])
                     {
                         tile.VoiceNumber = number;
                         tile.UpdateLayout();
-                        if (keepsIcon)
+                        ShowsOriginBadge(tile, number);
+                        if (inWords)
                         {
                             ShowsOriginUnderIcon(tile, number, scale);
-                        }
-                        else
-                        {
-                            ShowsOrigin(tile, number, scale);
                         }
                     }
                 }
@@ -154,16 +158,19 @@ public sealed class CompactTileLookTests
                         [("Reemplazar", "Word"), ("Reemplazar", "Bloc de notas")],
                         ignoreOrder: true
                     );
+                // Told apart by the icon of their profile beside their own, and in words where they have room (D21).
+                tiles
+                    .Select(static t => t.OriginSymbol)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count()
+                    .ShouldBe(2);
                 foreach (var tile in tiles)
                 {
                     tile.VoiceNumber.HasValue.ShouldBe(numbers);
+                    ShowsOriginBadge(tile, tile.VoiceNumber);
                     if (size == PanelSize.Medium && !compact)
                     {
                         ShowsOriginUnderIcon(tile, tile.VoiceNumber, TypeScale.MinScalePercent);
-                    }
-                    else
-                    {
-                        ShowsOrigin(tile, tile.VoiceNumber, TypeScale.MinScalePercent);
                     }
                 }
             }
@@ -290,66 +297,59 @@ public sealed class CompactTileLookTests
         );
 
     /// <summary>
-    /// A tile without room for its icon (Compact, S, M at a larger text): the name in one line and the origin under it
-    /// in words, the two centred down the tile, and a voice number in its corner, clear of both.
+    /// The icon of <paramref name="tile"/> with the icon of its profile of origin beside it, at its foot, both inside the
+    /// tile and clear of the voice number (FRE-003, ACC-009, D21).
     /// </summary>
-    private static void ShowsOrigin(ShortcutTile tile, int? number, int scale)
+    private static void ShowsOriginBadge(ShortcutTile tile, int? number)
     {
-        var label = (TextBlock)Part(tile, ShortcutTileTemplate.LabelPart);
         var what = Invariant($"{tile.AccessibleName} ({number})");
+        Part(tile, ShortcutTileTemplate.IconPart).Visibility.ShouldBe(Visibility.Visible, what);
+        var originPart = Part(tile, ShortcutTileTemplate.OriginPart);
+        originPart.Visibility.ShouldBe(Visibility.Visible, what);
+        Part(tile, ShortcutTileTemplate.OriginDiscPart)
+            .Visibility.ShouldBe(Visibility.Visible, what);
+        var icon = Drawn(Part(tile, ShortcutTileTemplate.IconPart), tile);
+        var origin = Drawn(originPart, tile);
+        // Over the lower right corner of the icon, half outside it, and ending where the name starts; the icon stays
+        // centred in the tile.
+        origin.Left.ShouldBe(
+            icon.Right - (IconBox.Badge / 2),
+            1,
+            $"{what}: the badge is on the corner"
+        );
+        origin.Bottom.ShouldBeGreaterThanOrEqualTo(icon.Bottom - 0.5, what);
+        var name = Bounds(Part(tile, ShortcutTileTemplate.LabelPart), tile);
+        origin.Bottom.ShouldBeLessThanOrEqualTo(
+            name.Top + 0.5,
+            $"{what}: the badge covers the name"
+        );
+        ((icon.Left + icon.Right) / 2).ShouldBe(
+            tile.ActualWidth / 2,
+            1,
+            $"{what}: the icon is centred"
+        );
+        new Rect(tile.RenderSize)
+            .Contains(origin)
+            .ShouldBeTrue($"{what}: the badge leaves the tile");
+        if (Part(tile, ShortcutTileTemplate.TypePart) is { Visibility: Visibility.Visible } type)
+        {
+            Overlap(Drawn(type, tile), origin).ShouldBeFalse($"{what}: the badge covers the type");
+        }
 
-        Part(tile, ShortcutTileTemplate.IconPart)
-            .Visibility.ShouldBe(Visibility.Collapsed, $"{what}: no room for the icon");
-        label.TextWrapping.ShouldBe(TextWrapping.NoWrap, what);
-        var (name, origin) = OriginInWords(tile, scale, what);
-        var tileBox = new Rect(tile.RenderSize);
-        tileBox.Contains(name).ShouldBeTrue(Invariant($"{what}: the name {name} leaves {tileBox}"));
-        name.Bottom.ShouldBeLessThanOrEqualTo(origin.Top + 0.5, what);
-
-        // The name has the width of the tile, or of what the number leaves beside it, and is whole when it fits it.
-        var start = Space.S1;
-        var top = 0.0;
-        var bottom = tileBox.Height;
         if (number is not null)
         {
             var badge = Bounds(Part(tile, ShortcutTileTemplate.VoiceNumberPart), tile);
-            badge.Left.ShouldBe(Space.S1, 0.5, $"{what}: the number leaves its corner");
-            badge.Top.ShouldBe(Space.S1, 0.5, $"{what}: the number leaves its corner");
-            badge.IntersectsWith(name).ShouldBeFalse($"{what}: the number covers the name");
-            badge.IntersectsWith(origin).ShouldBeFalse($"{what}: the number covers the origin");
-            if (name.Top >= badge.Bottom)
-            {
-                // Under the number: centred in the room under its corner.
-                top = badge.Bottom;
-                bottom -= Space.S1;
-            }
-            else
-            {
-                start = badge.Right + Space.S1;
-                name.Left.ShouldBeGreaterThanOrEqualTo(start - 0.5, what);
-                if (origin.Width <= 2 * (tileBox.Width - Space.S1 - Centre(name)))
-                {
-                    Centre(origin)
-                        .ShouldBe(Centre(name), 1, $"{what}: the origin is centred with the name");
-                }
-            }
+            Overlap(badge, origin).ShouldBeFalse($"{what}: the number covers the badge");
+            Overlap(badge, icon).ShouldBeFalse($"{what}: the number covers the icon");
         }
-
-        var room = tileBox.Width - Space.S1 - start;
-        name.Right.ShouldBeLessThanOrEqualTo(tileBox.Width - Space.S1 + 0.5, what);
-        label.ActualWidth.ShouldBeGreaterThanOrEqualTo(
-            Shown(label, room) - 0.5,
-            $"{what}: «{label.Text}» is cut before the end of its room"
-        );
-        Math.Abs((name.Top - top) - (bottom - origin.Bottom))
-            .ShouldBeLessThanOrEqualTo(1, $"{what}: the pair is centred down its room");
-
-        // The name rises to the height of the corner: the type mark goes to the help of the tile, never over the name.
-        Part(tile, ShortcutTileTemplate.TypePart)
-            .Visibility.ShouldBe(Visibility.Collapsed, $"{what}: the type mark sits on the name");
     }
 
-    /// <summary>A tile with room for its icon (Full, M and L): the anatomy of the grid, its origin in words under the name.</summary>
+    private static bool Overlap(Rect a, Rect b) =>
+        a.Left < b.Right - 0.5
+        && b.Left < a.Right - 0.5
+        && a.Top < b.Bottom - 0.5
+        && b.Top < a.Bottom - 0.5;
+
     private static void ShowsOriginUnderIcon(ShortcutTile tile, int? number, int scale)
     {
         var what = Invariant($"{tile.AccessibleName} ({number})");
@@ -401,8 +401,6 @@ public sealed class CompactTileLookTests
         );
         return (Bounds(label, tile), origin);
     }
-
-    private static double Centre(Rect box) => (box.Left + box.Right) / 2;
 
     /// <summary>
     /// The width <paramref name="text"/> takes in one line in <paramref name="room"/>: whole when it fits there, cut

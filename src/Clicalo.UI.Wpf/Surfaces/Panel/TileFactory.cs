@@ -416,6 +416,7 @@ internal static class TileFactory
         control.VoiceNumber = viewModel.VoiceNumber;
         control.ToggleState = viewModel.IsLatched ? ToggleState.On : ToggleState.Off;
         control.Symbol = viewModel.Icon.Length == 0 ? null : viewModel.Icon;
+        control.OriginSymbol = viewModel.KeyLineIsOrigin ? viewModel.OriginIcon : null;
         control.Category = CategoryOf(viewModel.Category);
         var hidesType = (bool)control.GetValue(HidesTypeProperty);
         control.Badge = hidesType ? string.Empty : viewModel.Badge;

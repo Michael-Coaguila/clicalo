@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Messages;
+using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
@@ -19,6 +20,7 @@ using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.Theming;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
 using Microsoft.Extensions.Time.Testing;
+using SizeId = Clicalo.Domain.Catalog.PanelSize;
 
 namespace Clicalo.Windowing.IntegrationTests.TabView;
 
@@ -467,6 +469,161 @@ public sealed class DockSideSurfacesTests
             }
         });
     }
+
+    [Fact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "REG-01")]
+    public void Every_window_beside_the_bar_has_an_id_of_its_own()
+    {
+        // D21: the arrows had the id of Quick settings (SideWindow#4). The one of the two that got its handle second
+        // never became a surface: it threw when it appeared, then showed without taking a tap and never hid again.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var world = new InteractionsWorld();
+            var panel = Panel(time, new RecordingBodyIntents());
+            var dock = new DockBarViewModel(
+                new PanelInteractionController(world.Engine, () => 1, time),
+                world.Localization,
+                new NoIntents()
+            );
+            List<NonActivatingWindow> windows =
+            [
+                .. Enum.GetValues<DockFlyout>()
+                    .Where(static flyout => flyout != DockFlyout.None)
+                    .Select(flyout => new DockFlyoutWindow(
+                        flyout,
+                        dock,
+                        panel,
+                        lab.Registry,
+                        time,
+                        theme,
+                        PanelDesktopFixture.Touch,
+                        static (_, _, _) => { }
+                    )),
+                new DockQuickWindow(
+                    world.QuickSettings,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
+                new DockCoachWindow(dock, lab.Registry, time, theme, PanelDesktopFixture.Touch),
+                new DockMenuWindow(
+                    world.Menu,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
+                new DockNoticeWindow(
+                    panel,
+                    testMode: null,
+                    dock.Labels,
+                    lab.Registry,
+                    time,
+                    theme,
+                    PanelDesktopFixture.Touch
+                ),
+            ];
+            try
+            {
+                windows.Select(static window => window.Id).ShouldBeUnique();
+            }
+            finally
+            {
+                foreach (var window in windows)
+                {
+                    window.Close();
+                }
+
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "REG-02")]
+    public void The_keys_of_the_arrows_follow_the_size_of_the_panel()
+    {
+        // D21 review: four keys of 64 in a cross of nine places took 252 × 266 beside the bar. Now a pad whose keys
+        // are 44, 52 or 64 with the size, never under 44, and they change in place when the size changes.
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var world = new InteractionsWorld();
+            var dock = new DockBarViewModel(
+                new PanelInteractionController(world.Engine, () => 1, time),
+                world.Localization,
+                new NoIntents()
+            );
+            var arrows = new DockFlyoutWindow(
+                DockFlyout.Arrows,
+                dock,
+                Panel(time, new RecordingBodyIntents()),
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                foreach (
+                    var (size, key) in new[] { (SizeId.S, 44d), (SizeId.L, 64d), (SizeId.M, 52d) }
+                )
+                {
+                    dock.Apply(BarState(size, DockFlyout.Arrows));
+
+                    arrows
+                        .TileControls.Select(static tile => (tile.Width, tile.Height))
+                        .ShouldBe(
+                            [(key, key), (key, key), (key, key), (key, key)],
+                            size.ToString()
+                        );
+                }
+            }
+            finally
+            {
+                arrows.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    private static DockBarState BarState(SizeId size, DockFlyout flyout) =>
+        new(
+            new DockSettings
+            {
+                Side = DockSide.Right,
+                HandlePositions = new DockHandlePositions(50, 50, 50, 50),
+                HandleLocked = false,
+                PinOpen = false,
+                Gutter = false,
+                PerPage = 8,
+                CoachDone = true,
+            },
+            PanelSizes.Get(size),
+            ShowStripRow: false,
+            StickyRow: false,
+            VoiceNumbers: false,
+            Frequents: false,
+            ProfileName: "Word",
+            ProfileIcon: "description",
+            IsActiveApp: false,
+            IsFixed: false,
+            CanRepeat: false,
+            flyout,
+            CoachStep: 0,
+            BarOpen: true,
+            AnythingHeld: false
+        );
 
     private static ThemeService Theme() =>
         new(new FakeSystemTheme(), ThemeChoice.Dark, 100, reduceMotion: true);

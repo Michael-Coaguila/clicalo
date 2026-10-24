@@ -1,11 +1,16 @@
+using System.Collections.Immutable;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Interaction;
 using Clicalo.Application.Session;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Dimming;
+using Clicalo.Domain.Execution;
+using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Guides;
@@ -14,9 +19,11 @@ using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.Windowing.IntegrationTests.Desktop;
+using Clicalo.Windowing.IntegrationTests.Interactions;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.Theming;
 using Clicalo.Windowing.IntegrationTests.Windowing.Support;
+using Microsoft.Extensions.Time.Testing;
 using SizeId = Clicalo.Domain.Catalog.PanelSize;
 
 namespace Clicalo.Windowing.IntegrationTests.TabView;
@@ -265,7 +272,141 @@ public sealed class SurfaceSetDesktopTests
         }
     }
 
-    private static System.Collections.Immutable.ImmutableArray<TileModel> ManyTiles()
+    [DesktopFact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "REG-01")]
+    public void The_arrows_after_Quick_settings_send_their_key_fold_and_leave_with_the_view()
+    {
+        // D21: the arrows had the id of Quick settings. Opened after it, as when the view was changed from Quick
+        // settings, they threw inside the layout, showed without being a surface, took no tap and stayed on screen
+        // in every other view.
+        using var lab = SurfaceLab.Create();
+        var world = new InteractionsWorld();
+        var (set, panel, theme, _, dock) = WpfThread.Invoke(() => Build(lab, world));
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                set.Apply(Layout(PanelForm.Full));
+                panel.Present();
+            });
+            Apply(
+                set,
+                Layout(PanelForm.DockOpen) with
+                {
+                    Flyout = DockFlyout.None,
+                    ShowsQuick = true,
+                }
+            );
+            var quick = WpfThread.Invoke(() => set.Quick.ShouldNotBeNull());
+            WpfThread.Invoke(() => quick.IsVisible.ShouldBeTrue());
+
+            Apply(set, Layout(PanelForm.DockOpen) with { Flyout = DockFlyout.Arrows });
+            var arrows = WpfThread.Invoke(() => set.Flyout(DockFlyout.Arrows));
+            WpfThread.Invoke(() =>
+            {
+                arrows.IsVisible.ShouldBeTrue();
+                quick.IsVisible.ShouldBeFalse();
+                lab.Registry.Surfaces.ShouldContain(arrows);
+                lab.Registry.Surfaces.ShouldContain(quick);
+            });
+
+            // A tap on ↑ reaches the engine with its key, as a tap on a shortcut does.
+            var up = WpfThread.Invoke(() =>
+            {
+                var key = arrows.TileControls[0];
+                var center = key.PointToScreen(
+                    new System.Windows.Point(key.ActualWidth / 2, key.ActualHeight / 2)
+                );
+                return new PhysicalPoint((int)center.X, (int)center.Y);
+            });
+            Tap(arrows, world.Time, up);
+            var activation = world
+                .Engine.Events.OfType<EngineEvent.Activation>()
+                .ShouldHaveSingleItem();
+            activation.Shortcut.Id.ShouldBe(dock.ArrowTiles[0].Id);
+            activation
+                .Shortcut.Action.ShouldBeOfType<TapAction>()
+                .Chord.Strokes.ShouldHaveSingleItem()
+                .Key.Value.ShouldBe("up");
+            WpfThread.Invoke(() => arrows.IsVisible.ShouldBeTrue("the arrows stay while used"));
+
+            // «Flechas» again folds them; open, any other view takes them away.
+            Apply(set, Layout(PanelForm.DockOpen) with { Flyout = DockFlyout.None });
+            WpfThread.Invoke(() => arrows.IsVisible.ShouldBeFalse("folded"));
+            foreach (
+                var form in new[]
+                {
+                    PanelForm.Full,
+                    PanelForm.Compact,
+                    PanelForm.DockClosed,
+                    PanelForm.Bubble,
+                }
+            )
+            {
+                Apply(set, Layout(PanelForm.DockOpen) with { Flyout = DockFlyout.Arrows });
+                WpfThread.Invoke(() => arrows.IsVisible.ShouldBeTrue(form.ToString()));
+                Apply(set, Layout(form));
+                WpfThread.Invoke(() => arrows.IsVisible.ShouldBeFalse(form.ToString()));
+            }
+
+            // And Quick settings still open beside the bar after them.
+            Apply(
+                set,
+                Layout(PanelForm.DockOpen) with
+                {
+                    Flyout = DockFlyout.None,
+                    ShowsQuick = true,
+                }
+            );
+            WpfThread.Invoke(() => quick.IsVisible.ShouldBeTrue());
+        }
+        finally
+        {
+            WpfThread.Invoke(() =>
+            {
+                panel.Close();
+                theme.Dispose();
+            });
+        }
+    }
+
+    /// <summary>Applies <paramref name="layout"/> and lets every pass it queued run.</summary>
+    private static void Apply(SurfaceSet set, SurfaceLayout layout)
+    {
+        WpfThread.Invoke(() => set.Apply(layout));
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+    }
+
+    /// <summary>A still finger down and up on <paramref name="at"/>, through the pointer layer of the surface.</summary>
+    private static void Tap(TouchSurface surface, FakeTimeProvider time, PhysicalPoint at)
+    {
+        foreach (var phase in new[] { PointerPhase.Down, PointerPhase.Up })
+        {
+            var now = time.GetUtcNow();
+            ImmutableArray<PointerSample> samples =
+            [
+                new PointerSample(
+                    1,
+                    PointerKind.Finger,
+                    phase,
+                    at,
+                    new PhysicalRect(at.X - 5, at.Y - 5, 10, 10),
+                    now,
+                    PointerInputOrigin.Injected
+                ),
+            ];
+            WpfThread.Invoke(() => surface.OnFrame(new PointerFrame(1, now, samples)));
+            time.Advance(TimeSpan.FromMilliseconds(120));
+        }
+
+        time.Advance(TimeSpan.FromMilliseconds(500));
+        WpfThread.Invoke(WpfThread.DrainPendingWork);
+    }
+
+    private static ImmutableArray<TileModel> ManyTiles()
     {
         var tile = PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es).Tiles[
             0
@@ -282,6 +423,71 @@ public sealed class SurfaceSetDesktopTests
                     }
                 ),
         ];
+    }
+
+    [DesktopFact]
+    [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-001")]
+    public void The_arrows_open_beside_the_bar_and_go_away_with_it_whatever_view_comes_next()
+    {
+        // D21 review: the window of the arrows stayed on screen after the view changed, and the bar did not fold.
+        using var lab = SurfaceLab.Create();
+        var (set, panel, theme, _, dock) = WpfThread.Invoke(() => Build(lab));
+        try
+        {
+            WpfThread.Invoke(() =>
+            {
+                set.Apply(Layout(PanelForm.Full));
+                panel.Present();
+            });
+            WpfThread.Invoke(WpfThread.DrainPendingWork);
+            foreach (
+                var next in new[]
+                {
+                    PanelForm.Full,
+                    PanelForm.Compact,
+                    PanelForm.DockClosed,
+                    PanelForm.Bubble,
+                }
+            )
+            {
+                WpfThread.Invoke(() =>
+                {
+                    dock.Apply(BarState(DockSide.Right) with { Flyout = DockFlyout.Arrows });
+                    set.Apply(Layout(PanelForm.DockOpen) with { Flyout = DockFlyout.Arrows });
+                });
+                WpfThread.Invoke(WpfThread.DrainPendingWork);
+                WpfThread.Invoke(() =>
+                {
+                    var arrows = set.Flyout(DockFlyout.Arrows);
+                    arrows.IsVisible.ShouldBeTrue("the arrows open");
+                    arrows.TileControls.Count.ShouldBe(4);
+                    arrows
+                        .CurrentTargets()
+                        .Count.ShouldBeGreaterThanOrEqualTo(4, "every arrow takes a touch");
+                });
+
+                WpfThread.Invoke(() =>
+                {
+                    dock.Apply(BarState(DockSide.Right) with { Flyout = DockFlyout.None });
+                    set.Apply(Layout(next));
+                });
+                WpfThread.Invoke(WpfThread.DrainPendingWork);
+                WpfThread.Invoke(() =>
+                    set.Flyout(DockFlyout.Arrows).IsVisible.ShouldBeFalse(next.ToString())
+                );
+            }
+
+            lab.Guard.Violations.ShouldBe(0);
+        }
+        finally
+        {
+            WpfThread.Invoke(() =>
+            {
+                panel.Close();
+                theme.Dispose();
+            });
+        }
     }
 
     private static DockBarState BarState(DockSide side) =>
@@ -332,9 +538,10 @@ public sealed class SurfaceSetDesktopTests
         ThemeService Theme,
         PanelViewModel Model,
         DockBarViewModel Dock
-    ) Build(SurfaceLab lab)
+    ) Build(SurfaceLab lab, InteractionsWorld? world = null)
     {
-        var time = TimeProvider.System;
+        // With a world: its clock and its engine, and the layers beside the bar (Quick settings, the menu, test mode).
+        TimeProvider time = world is null ? TimeProvider.System : world.Time;
         var theme = new ThemeService(
             new FakeSystemTheme(),
             ThemeChoice.Dark,
@@ -342,7 +549,11 @@ public sealed class SurfaceSetDesktopTests
             reduceMotion: true
         );
         var localization = PanelTestData.Localization("es");
-        var controller = new PanelInteractionController(new PanelEngineInbox(), () => 1, time);
+        var controller = new PanelInteractionController(
+            world?.Engine ?? new PanelEngineInbox(),
+            () => 1,
+            time
+        );
         var viewModel = new PanelViewModel(
             controller,
             localization,
@@ -362,7 +573,17 @@ public sealed class SurfaceSetDesktopTests
             new DimSettings(AutoDim: false, Opacity: 1, DimTo: 1)
         );
         var store = new InteractionStore(InteractionState.Initial, time);
-        var dock = new DockBarViewModel(controller, localization, new SilentIntents());
+        var layers = world is null
+            ? null
+            : new PanelLayerModels(
+                world.QuickSettings,
+                world.EditMode,
+                world.Menu,
+                world.TestMode,
+                world.Modes,
+                static () => false
+            );
+        var dock = new DockBarViewModel(controller, localization, new SilentIntents(), layers);
         dock.ApplyTiles(model.Tiles, [model.Tiles[0]]);
         var bubble = new BubbleViewModel(localization, () => { }, () => { });
         var set = new SurfaceSet(
@@ -383,7 +604,8 @@ public sealed class SurfaceSetDesktopTests
                 (_, _, _) => { },
                 (_, _) => { },
                 _ => { }
-            )
+            ),
+            layers
         );
         return (set, panel, theme, viewModel, dock);
     }

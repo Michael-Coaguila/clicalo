@@ -64,6 +64,9 @@ public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
     /// </summary>
     public bool KeyLineIsOrigin => _model.KeyLineIsOrigin;
 
+    /// <summary>The Material Symbols name of the icon of its profile of origin (FRE-003, D21), or null.</summary>
+    public string? OriginIcon => _model.OriginIcon is { Name.Length: > 0 } icon ? icon.Name : null;
+
     /// <summary>How the tile reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;
 
