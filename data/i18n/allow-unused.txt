@@ -23,7 +23,6 @@ fAvail
 tplAll
 asTitle
 asDesc
-aiTitle
 aiSub
 aiShort
 aiPh2
