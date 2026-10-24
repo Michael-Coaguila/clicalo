@@ -52,6 +52,8 @@ public sealed class AllowUnusedTests
         listed.Contains("autoReleaseD").ShouldBeTrue();
         // M7: the notice of repeated combinations of «Atajos» has its own button, [review] (R-35).
         listed.Contains("review").ShouldBeFalse();
-        listed.Count.ShouldBe(71);
+        // R-39: the step of «Crear con IA» in the guide of Plantillas is titled [aiTitle].
+        listed.Contains("aiTitle").ShouldBeFalse();
+        listed.Count.ShouldBe(70);
     }
 }
