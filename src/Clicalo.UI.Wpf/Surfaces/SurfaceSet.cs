@@ -4,14 +4,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 using Clicalo.Domain.Dimming;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
+using Clicalo.Presentation.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
-using Clicalo.UI.Wpf.Surfaces.Panel;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -23,8 +25,8 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// <summary>
 /// Every surface of the panel on the UI thread of the Surfaces role (blueprint §8.1): the panel, the bubble, the handle
 /// and the bar of the Tab view with the windows beside it (Pinned, the profile grid, sticky keys, Quick settings, the
-/// menu of a shortcut and the notice surface), the guide beside the panel, and the floating «Release all». It shows
-/// exactly the form the
+/// menu of a shortcut and the notice surface), the guide of the screen in view with the ring on its control, and the
+/// floating «Release all». It shows exactly the form the
 /// composition decides (PAN-001), places each surface in physical pixels inside the work area of its monitor (PAN-002,
 /// PAN-006, <see cref="PanelGeometry"/>, <see cref="DockGeometry"/>), moves the panel, the bubble and the handle when
 /// they are dragged and reports where they end, places everything again on any change of size, display, scale or work
@@ -53,11 +55,12 @@ public sealed class SurfaceSet : IDisposable
     private readonly BubbleWindow _bubble;
     private readonly PanicPillWindow _panicPill;
     private readonly Dictionary<DockFlyout, DockFlyoutWindow> _flyouts = [];
-    private readonly DockCoachWindow _coach;
+    private readonly GuideWindow _coach;
+    private readonly GuideHighlighter _panelRing;
+    private readonly Dictionary<DockSide, GuideHighlighter> _barRings = [];
     private readonly DockNoticeWindow _notice;
     private readonly DockMenuWindow? _menu;
     private readonly DockQuickWindow? _quick;
-    private readonly PanelCoachWindow? _panelCoach;
     private readonly Dictionary<DockSide, DockHandleWindow> _handles = [];
     private readonly Dictionary<DockSide, DockBarWindow> _bars = [];
     private readonly List<TouchSurface> _surfaces = [];
@@ -67,7 +70,7 @@ public sealed class SurfaceSet : IDisposable
     private string? _monitorId;
     private PhysicalPoint? _topLeft;
     private DockSide? _quickSide;
-    private DockSide? _panelCoachSide;
+    private DockSide? _guideSide;
     private PhysicalPoint? _beforeKeyboard;
     private PhysicalRect _occluded;
     private PhysicalRect _dragOrigin;
@@ -83,6 +86,9 @@ public sealed class SurfaceSet : IDisposable
     /// <param name="panelModel">The panel: its profile grid and sticky keys go in the windows beside the bar.</param>
     /// <param name="dock">The handle and the bar.</param>
     /// <param name="bubble">The bubble.</param>
+    /// <param name="guide">
+    /// The guide of the panel, the bar or the bubble (PES-015, R-39), in a window beside the window of its control.
+    /// </param>
     /// <param name="dimming">The opacity of every surface and the finger on them (GEN-009).</param>
     /// <param name="registry">The surfaces of the process.</param>
     /// <param name="theme">The theme service of the UI thread.</param>
@@ -93,29 +99,26 @@ public sealed class SurfaceSet : IDisposable
     /// Quick settings, the menu of a shortcut and test mode, shared with the panel: beside the bar they get windows of
     /// their own (PES-009, PES-010, PES-014). <see langword="null"/> for a set without them.
     /// </param>
-    /// <param name="panelCoach">
-    /// The guide of the Full and Compact views, in a window beside the panel (R-39); <see langword="null"/> for a set
-    /// without it.
-    /// </param>
     public SurfaceSet(
         PanelWindow panel,
         PanelViewModel panelModel,
         DockBarViewModel dock,
         BubbleViewModel bubble,
+        GuideViewModel guide,
         SurfaceDimming dimming,
         SurfaceRegistry registry,
         ThemeService theme,
         TimeProvider time,
         TouchSettings touch,
         SurfaceCallbacks callbacks,
-        PanelLayerModels? layers = null,
-        PanelCoachViewModel? panelCoach = null
+        PanelLayerModels? layers = null
     )
     {
         ArgumentNullException.ThrowIfNull(panel);
         ArgumentNullException.ThrowIfNull(panelModel);
         ArgumentNullException.ThrowIfNull(dock);
         ArgumentNullException.ThrowIfNull(bubble);
+        ArgumentNullException.ThrowIfNull(guide);
         ArgumentNullException.ThrowIfNull(dimming);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(theme);
@@ -173,8 +176,9 @@ public sealed class SurfaceSet : IDisposable
             _flyouts[flyout] = window;
         }
 
-        _coach = Track(new DockCoachWindow(dock, registry, time, theme, touch), DimSurface.Dock);
+        _coach = Track(new GuideWindow(guide, registry, time, theme, touch), DimSurface.Dock);
         _coach.SizeChanged += (_, _) => Reflow();
+        _panelRing = new GuideHighlighter(panel);
 
         // PES-014: the notices of the Tab view never dim, like the floating «Release all».
         _notice = Track(
@@ -206,16 +210,6 @@ public sealed class SurfaceSet : IDisposable
             _quick.SizeChanged += (_, _) => Reflow();
         }
 
-        if (panelCoach is not null)
-        {
-            // R-39: the guide follows the opacity of the panel it explains; nothing dims while it shows.
-            _panelCoach = Track(
-                new PanelCoachWindow(panelCoach, registry, time, theme, touch),
-                DimSurface.Panel
-            );
-            _panelCoach.SizeChanged += (_, _) => Reflow();
-        }
-
         panel.Placer = PlacePanel;
         _dimmer.Follow(panel);
         panel.DragStarted += (_, _) => _dragOrigin = _panel.ScreenBounds;
@@ -230,7 +224,7 @@ public sealed class SurfaceSet : IDisposable
                 && PanelForms.IsPanel(dragged.Form)
                 && (
                     dragged.ShowsQuick
-                    || dragged.ShowsPanelCoach
+                    || dragged.ShowsGuide
                     || (dragged.ShowsNotice && dragged.Form == PanelForm.Compact)
                 )
             )
@@ -266,8 +260,8 @@ public sealed class SurfaceSet : IDisposable
     /// <summary>The floating «Release all».</summary>
     public PanicPillWindow PanicButton => _panicPill;
 
-    /// <summary>The guide of the Tab view.</summary>
-    public DockCoachWindow Coach => _coach;
+    /// <summary>The guide of the panel, the bar or the bubble (PES-015, R-39).</summary>
+    public GuideWindow Coach => _coach;
 
     /// <summary>The notice surface of the Tab view (PES-014).</summary>
     public DockNoticeWindow Notice => _notice;
@@ -277,9 +271,6 @@ public sealed class SurfaceSet : IDisposable
 
     /// <summary>Quick settings beside the bar (PES-009); <see langword="null"/> without the layers.</summary>
     public DockQuickWindow? Quick => _quick;
-
-    /// <summary>The guide beside the panel (R-39); <see langword="null"/> for a set without it.</summary>
-    public PanelCoachWindow? PanelCoach => _panelCoach;
 
     /// <summary>The monitor the panel and the Tab view are on (PES-016).</summary>
     public string MonitorId => CurrentMonitor().Id;
@@ -337,6 +328,7 @@ public sealed class SurfaceSet : IDisposable
             bar.HoldReleased += (_, released) => _holdReleased(released.Tile.IsBarTool);
             bar.SizeChanged += (_, _) => Reflow();
             _bars[side] = bar;
+            _barRings[side] = new GuideHighlighter(bar);
         }
 
         return bar;
@@ -561,13 +553,13 @@ public sealed class SurfaceSet : IDisposable
             _quickSide = null;
         }
 
-        if (PanelForms.IsPanel(form) && layout.ShowsPanelCoach && _panelCoach is { } guide)
+        if (PanelForms.IsPanel(form) && layout.ShowsGuide)
         {
-            PlaceCoachBesidePanel(guide, monitor, shown);
+            PlaceGuideBesidePanel(monitor, shown);
         }
         else
         {
-            _panelCoachSide = null;
+            _guideSide = null;
         }
 
         if (layout.Panic && form is PanelForm.Bubble or PanelForm.DockClosed or PanelForm.DockOpen)
@@ -598,6 +590,24 @@ public sealed class SurfaceSet : IDisposable
                 : DockGeometry.Panic(side, pillWidth, pillHeight, monitor);
             Present(_panicPill, pillRect, shown);
             taken.Add(pillRect);
+        }
+
+        if (form == PanelForm.Bubble && layout.ShowsGuide && panicAnchor is { } bubble)
+        {
+            // R-39: the guide of the bubble beside it, toward the side with room, clear of «Release all».
+            var (guideWidth, guideHeight) = _coach.MeasurePhysical(monitor.Scale);
+            var guideRect = DockGeometry.BesideClear(
+                side,
+                bubble,
+                guideWidth,
+                guideHeight,
+                monitor.ToPhysical(DockGeometry.BarWindowGapPx),
+                DockAlign.Center,
+                monitor,
+                taken
+            );
+            Present(_coach, guideRect, shown);
+            taken.Add(guideRect);
         }
 
         // PES-014 (D21): the Tab view says a plain confirmation from the bar or the handle without showing it; the
@@ -653,6 +663,7 @@ public sealed class SurfaceSet : IDisposable
             }
         }
 
+        Point(layout);
         _dimmer.UpdatePresence();
         _dimmer.Apply();
     }
@@ -679,6 +690,30 @@ public sealed class SurfaceSet : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// R-39: the ring of the step on show around its control, in the window that holds it: the panel or the open bar.
+    /// The bubble has none: the guide beside it points at the only thing there is.
+    /// </summary>
+    private void Point(SurfaceLayout layout)
+    {
+        var target = layout.GuideTarget;
+        _panelRing.Show(PanelForms.IsPanel(layout.Form) && IsPanelTarget(target) ? target : null);
+        foreach (var (edge, ring) in _barRings)
+        {
+            ring.Show(
+                layout.Form == PanelForm.DockOpen && edge == layout.Dock.Side && IsBarTarget(target)
+                    ? target
+                    : null
+            );
+        }
+    }
+
+    private static bool IsPanelTarget(GuideTarget? target) =>
+        target is >= GuideTarget.PanelGrid and <= GuideTarget.PanelMinimize;
+
+    private static bool IsBarTarget(GuideTarget? target) =>
+        target is >= GuideTarget.TabFold and <= GuideTarget.TabTools;
 
     private void PlaceFlyouts(
         SurfaceLayout layout,
@@ -869,12 +904,9 @@ public sealed class SurfaceSet : IDisposable
     /// R-39: the guide of the panel beside it, as Quick settings are (AJR-001): toward the side of the screen with room,
     /// lined up with the top of the panel, and on the same side while the panel is dragged and it still fits there.
     /// </summary>
-    private void PlaceCoachBesidePanel(
-        PanelCoachWindow guide,
-        DisplayMonitor monitor,
-        HashSet<TouchSurface> shown
-    )
+    private void PlaceGuideBesidePanel(DisplayMonitor monitor, HashSet<TouchSurface> shown)
     {
+        var guide = _coach;
         var panel = _panel.ScreenBounds;
         if (panel.IsEmpty)
         {
@@ -883,11 +915,11 @@ public sealed class SurfaceSet : IDisposable
 
         var (width, height) = guide.MeasurePhysical(monitor.Scale);
         var gap = monitor.ToPhysical(DockGeometry.BarWindowGapPx);
-        _panelCoachSide = DockGeometry.SideBesidePanel(panel, width, gap, monitor, _panelCoachSide);
+        _guideSide = DockGeometry.SideBesidePanel(panel, width, gap, monitor, _guideSide);
         Present(
             guide,
             DockGeometry.Beside(
-                _panelCoachSide.Value,
+                _guideSide.Value,
                 panel,
                 width,
                 height,

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Clicalo.UI.Wpf.Theming;
@@ -38,10 +39,11 @@ internal sealed class AuditHost : IDisposable
     private AuditHost(FrameworkElement view, ThemeService? theme, double? width, double? height)
     {
         ArgumentNullException.ThrowIfNull(view);
-        // A UserControl has an automation peer, so the snapshot has one root whatever the view is.
+        // A UserControl has an automation peer, so the snapshot has one root whatever the view is. The adorner layer is
+        // the one every window of the product has in its template: the ring of a guide is drawn on it (R-39).
         _frame = new UserControl
         {
-            Content = view,
+            Content = new AdornerDecorator { Child = view },
             Width = width ?? double.NaN,
             Height = height ?? double.NaN,
             Focusable = false,
@@ -198,6 +200,11 @@ internal sealed class AuditHost : IDisposable
     public void Dispose()
     {
         _source.RootVisual = null;
+        if (_frame.Content is AdornerDecorator adorners)
+        {
+            adorners.Child = null;
+        }
+
         _frame.Content = null;
         _source.Dispose();
         Theme?.Detach(_frame);

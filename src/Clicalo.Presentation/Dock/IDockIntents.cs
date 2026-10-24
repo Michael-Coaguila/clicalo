@@ -52,12 +52,6 @@ public interface IDockIntents
     /// <summary>The <c>tune</c> button: Quick settings beside the bar, with the side of the Tab view (PES-009).</summary>
     void QuickSettings();
 
-    /// <summary>[next] or [understood] in the guide (PES-015).</summary>
-    void CoachNext();
-
-    /// <summary>[coachSkip] in the guide (PES-015).</summary>
-    void CoachSkip();
-
     /// <summary>The floating «Release all» (PES-013, REG-03).</summary>
     void ReleaseAll();
 }

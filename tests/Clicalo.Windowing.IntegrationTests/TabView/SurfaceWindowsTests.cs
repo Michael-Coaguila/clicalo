@@ -291,7 +291,6 @@ public sealed class SurfaceWindowsTests
                 IsFixed: false,
                 CanRepeat: false,
                 DockFlyout.None,
-                CoachStep: 0,
                 BarOpen: true,
                 AnythingHeld: false
             )
@@ -346,10 +345,6 @@ public sealed class SurfaceWindowsTests
         public void TogglePinOpen() { }
 
         public void QuickSettings() { }
-
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
 
         public void ReleaseAll() { }
     }

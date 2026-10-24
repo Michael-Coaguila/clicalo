@@ -521,10 +521,6 @@ public sealed class DockSideSurfacesTests
 
         public void QuickSettings() { }
 
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
-
         public void ReleaseAll() { }
     }
 }

@@ -49,18 +49,6 @@ public abstract record InteractionAction
     /// <summary>The search opened from the bar closed, or one of its results ran: back to the Tab view (BUS-006).</summary>
     public sealed record EndSearchPeek : InteractionAction;
 
-    /// <summary>[next] in the guide: the next step (PES-015); after the last one it is back at 0 for another time.</summary>
-    public sealed record CoachNext : InteractionAction;
-
-    /// <summary>The guide closes ([coachSkip] or [understood]): back to its first step (PES-015).</summary>
-    public sealed record CoachReset : InteractionAction;
-
-    /// <summary>[next] in the guide of the panel: the next step (R-39); after the last one it is back at 0.</summary>
-    public sealed record PanelCoachNext : InteractionAction;
-
-    /// <summary>The guide of the panel closes ([coachSkip] or [understood]): back to its first step (R-39).</summary>
-    public sealed record PanelCoachReset : InteractionAction;
-
     /// <summary>
     /// Something that keeps the surfaces awake opened or closed elsewhere (docs/04): Quick settings, a context menu,
     /// edit mode, the Control Center, the welcome, the search, the profile grid or the panic.

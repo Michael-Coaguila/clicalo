@@ -2,11 +2,13 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.Header;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Surfaces.Panel.Header;
 using Clicalo.UI.Wpf.Theming.Generated;
 
@@ -70,8 +72,10 @@ public sealed class SelectorRowView : Grid
         _frequents.Tag = star;
         _frequents.HorizontalContentAlignment = HorizontalAlignment.Center;
         _frequents.Invoked += (_, _) => _viewModel.Frequents();
+        GuideTargets.SetTarget(_frequents, GuideTarget.PanelFrequents);
 
         _profile = Segment(ShortcutTilePattern.ExpandCollapse);
+        GuideTargets.SetTarget(_profile, GuideTarget.PanelProfile);
         _profileIcon.Margin = new Thickness(0, 0, Space.S2, 0);
         _profileName.VerticalAlignment = VerticalAlignment.Center;
         _dot.Margin = new Thickness(Space.S1, 0, 0, 0);
@@ -129,6 +133,7 @@ public sealed class SelectorRowView : Grid
             Visibility = header is null ? Visibility.Collapsed : Visibility.Visible,
         };
         _autoFixed.ToggleRequested += (_, _) => _header?.ToggleLock();
+        GuideTargets.SetTarget(_autoFixed, GuideTarget.PanelAutoFixed);
 
         ColumnDefinitions.Add(Star());
         ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

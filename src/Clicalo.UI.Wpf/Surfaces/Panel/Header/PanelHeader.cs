@@ -4,9 +4,11 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.Panel.Header;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel.Header;
@@ -88,6 +90,11 @@ public sealed class PanelHeader : Grid
         _edit = Tool("edit", () => _viewModel.Edit());
         _quick = Tool("tune", () => _viewModel.QuickSettings());
         _minimize = Tool("remove", () => _viewModel.Minimize());
+        GuideTargets.SetTarget(_grip, GuideTarget.PanelHandle);
+        GuideTargets.SetTarget(_search, GuideTarget.PanelSearch);
+        GuideTargets.SetTarget(_edit, GuideTarget.PanelEdit);
+        GuideTargets.SetTarget(_quick, GuideTarget.PanelQuick);
+        GuideTargets.SetTarget(_minimize, GuideTarget.PanelMinimize);
 
         // REG-06: one column each, from left to right, so UI Automation reads the header as it is seen.
         ColumnDefinitions.Add(

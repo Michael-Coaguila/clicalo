@@ -2,9 +2,11 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
@@ -54,6 +56,7 @@ public sealed class PagerView : DockPanel
         LastChildFill = true;
         _previous = Arrow("chevron_left", viewModel.Previous);
         _next = Arrow("chevron_right", viewModel.Next);
+        GuideTargets.SetTarget(_next, GuideTarget.PanelPager);
         SetDock(_previous, Dock.Left);
         SetDock(_next, Dock.Right);
         Children.Add(_previous);

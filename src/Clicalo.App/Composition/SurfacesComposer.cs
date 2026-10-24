@@ -10,11 +10,13 @@ using Clicalo.Application.Session;
 using Clicalo.Application.Store;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Dimming;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Timing;
 using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
+using Clicalo.Presentation.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.Search;
 using Clicalo.UI.Wpf.Surfaces;
@@ -27,10 +29,10 @@ namespace Clicalo.App.Composition;
 /// Wires the forms of the panel (docs/04 «Vista compacta», «Vista pestaña», «Burbuja minimizada», «Opacidad y
 /// atenuado», «Posición») on the UI thread of the Surfaces role: the bubble, the handle and the bar of the Tab view with
 /// the windows beside it (Quick settings, the menu of a shortcut and the notices among them: PES-009, PES-010,
-/// PES-014), the guide beside the Full and Compact panel (R-39), the floating «Release all», the dimming of every
-/// surface and the positions, the handle's per monitor (PES-016) and the panel's away from the touch keyboard (BUS-002).
-/// It owns no rule: the form is <see cref="PanelForms"/>', the collapse and the guide of the bar
-/// <see cref="DockRules"/>', the guide of the panel <see cref="PanelCoachRules"/>', the places
+/// PES-014), the guide of the panel, the bar or the bubble (PES-015, R-39), the floating «Release all», the dimming of
+/// every surface and the positions, the handle's per monitor (PES-016) and the panel's away from the touch keyboard
+/// (BUS-002). It owns no rule: the form is <see cref="PanelForms"/>', the collapse <see cref="DockRules"/>', the
+/// guides <see cref="GuideRules"/>', the places
 /// <see cref="PanelGeometry"/>' and <see cref="DockGeometry"/>', the opacity <see cref="DimPolicy"/>'s through the
 /// <see cref="InteractionStore"/>. It implements what the handle and the bar ask for (<see cref="IDockIntents"/>) by
 /// sending it to the interaction store, the session, the document or the panel's own intentions.
@@ -57,6 +59,7 @@ internal sealed class SurfacesComposer : IDockIntents
     private ITimer? _collapseTimer;
     private bool _foldAfterMacro;
     private bool _refreshQueued;
+    private GuideWatch? _watched;
 
     /// <summary>Creates the view models of the bubble and the Tab view on the UI thread.</summary>
     /// <param name="store">The document: the view, the Tab settings, the positions.</param>
@@ -123,7 +126,19 @@ internal sealed class SurfacesComposer : IDockIntents
             () => _ = _interaction.Dispatch(new InteractionAction.Restore()),
             ReleaseAll
         );
-        PanelCoach = new PanelCoachViewModel(localization, PanelCoachNext, PanelCoachSkip);
+        Guide = new GuideViewModel(localization, GuideDone);
+        Guide.PropertyChanged += (_, change) =>
+        {
+            // R-39: the window of the guide and its ring follow the step.
+            if (
+                change.PropertyName
+                is nameof(GuideViewModel.Target)
+                    or nameof(GuideViewModel.IsShown)
+            )
+            {
+                Invalidate();
+            }
+        };
 
         _store.Changed += (_, change) => _ = _ui.BeginInvoke(() => OnDocumentChanged(change));
         _session.Changed += OnSessionChanged;
@@ -136,12 +151,12 @@ internal sealed class SurfacesComposer : IDockIntents
                 before.Minimized != after.Minimized
                 || before.DockOpen != after.DockOpen
                 || before.Flyout != after.Flyout
-                || before.CoachStep != after.CoachStep
-                || before.PanelCoachStep != after.PanelCoachStep
                 || before.SearchPeek != after.SearchPeek
-                // R-39: the guide of the panel waits for the welcome.
+                // R-39: the guides of the surfaces wait for the welcome and the Control Center.
                 || before.Open.HasFlag(DimExceptions.WelcomeOpen)
                     != after.Open.HasFlag(DimExceptions.WelcomeOpen)
+                || before.Open.HasFlag(DimExceptions.ControlCenterOpen)
+                    != after.Open.HasFlag(DimExceptions.ControlCenterOpen)
             )
             {
                 Invalidate();
@@ -182,7 +197,7 @@ internal sealed class SurfacesComposer : IDockIntents
             {
                 Dock.Relocalize();
                 Bubble.Relocalize();
-                PanelCoach.Relocalize();
+                Guide.Relocalize();
             });
     }
 
@@ -192,8 +207,8 @@ internal sealed class SurfacesComposer : IDockIntents
     /// <summary>The bubble.</summary>
     public BubbleViewModel Bubble { get; }
 
-    /// <summary>The first-time guide of the Full and Compact views (R-39).</summary>
-    public PanelCoachViewModel PanelCoach { get; }
+    /// <summary>The guide of the panel, the bar or the bubble (PES-015, R-39).</summary>
+    public GuideViewModel Guide { get; }
 
     /// <summary>The surfaces, once attached.</summary>
     public SurfaceSet? Surfaces => _surfaces;
@@ -211,6 +226,7 @@ internal sealed class SurfacesComposer : IDockIntents
             _panel.Panel,
             Dock,
             Bubble,
+            Guide,
             new SurfaceDimming(_interaction, SettingsProjection.Dim(settings)),
             registry,
             theme,
@@ -224,8 +240,7 @@ internal sealed class SurfacesComposer : IDockIntents
                 OnTileUsed,
                 OnHoldReleased
             ),
-            _panel.Layers,
-            PanelCoach
+            _panel.Layers
         );
         if (_keyboard is { } keyboard)
         {
@@ -355,44 +370,52 @@ internal sealed class SurfacesComposer : IDockIntents
     }
 
     /// <inheritdoc />
-    public void CoachNext()
-    {
-        if (DockRules.NextCoachStep(_interaction.Current.CoachStep) is null)
-        {
-            CoachSkip();
-            return;
-        }
-
-        _ = _interaction.Dispatch(new InteractionAction.CoachNext());
-    }
-
-    /// <inheritdoc />
-    public void CoachSkip()
-    {
-        _ = _interaction.Dispatch(new InteractionAction.CoachReset());
-        _ = _store.Dispatch(new SetSetting(SettingPaths.DockCoachDone, true));
-    }
-
-    /// <inheritdoc />
     public void ReleaseAll() => _ = _controller.ReleaseAll();
 
-    /// <summary>[next] in the guide of the panel; [understood] on its last step ends it as [coachSkip] does (R-39).</summary>
-    private void PanelCoachNext()
+    /// <summary>
+    /// R-39: a guide was finished or skipped, and does not show again until General asks for it; the Tab view keeps
+    /// <c>dock.coachDone</c>.
+    /// </summary>
+    private void GuideDone(GuideId guide) =>
+        _ = _store.Dispatch(
+            guide == GuideId.Tab
+                ? new SetSetting(SettingPaths.DockCoachDone, true)
+                : new SetSetting(
+                    SettingPaths.GuidesDone,
+                    GuideProgress.WithDone(_store.Current.Settings.GuidesDone, guide)
+                )
+        );
+
+    /// <summary>
+    /// R-39: what the person did since the last pass that a step may wait for, said to the guide still on show, before
+    /// it is asked which guide is due now.
+    /// </summary>
+    private void SignalGuide(GuideWatch now)
     {
-        if (PanelCoachRules.NextStep(_interaction.Current.PanelCoachStep) is null)
+        if (_watched is { } before)
         {
-            PanelCoachSkip();
-            return;
+            if (!before.Frequents && now.Frequents)
+            {
+                Guide.Signal(GuideSignal.FrequentsShown);
+            }
+
+            if ((before.Frequents && !now.Frequents) || (!before.PickerOpen && now.PickerOpen))
+            {
+                Guide.Signal(GuideSignal.ProfileButtonUsed);
+            }
+
+            if (before.Page != now.Page)
+            {
+                Guide.Signal(GuideSignal.PageTurned);
+            }
+
+            if (before.Minimized != now.Minimized)
+            {
+                Guide.Signal(now.Minimized ? GuideSignal.Minimized : GuideSignal.Restored);
+            }
         }
 
-        _ = _interaction.Dispatch(new InteractionAction.PanelCoachNext());
-    }
-
-    /// <summary>[coachSkip] in the guide of the panel: it never shows again until General asks for it (R-39).</summary>
-    private void PanelCoachSkip()
-    {
-        _ = _interaction.Dispatch(new InteractionAction.PanelCoachReset());
-        _ = _store.Dispatch(new SetSetting(SettingPaths.PanelCoachDone, true));
+        _watched = now;
     }
 
     private void ChangeView(PanelDensity density)
@@ -765,7 +788,6 @@ internal sealed class SurfacesComposer : IDockIntents
                 _panel.Header.IsFixed,
                 _panel.CanRepeat,
                 interaction.Flyout,
-                interaction.CoachStep,
                 form == PanelForm.DockOpen,
                 held
             )
@@ -776,21 +798,30 @@ internal sealed class SurfacesComposer : IDockIntents
         );
         var showsMenu = DockRules.ShowsBesideBar(form, _panel.Menu.IsOpen);
         _menuCancel?.Apply(showsMenu, Dock.Modes?.MenuOpenedByFinger == true);
-        PanelCoach.Apply(
-            interaction.PanelCoachStep,
-            PanelCoachRules.Shows(
-                form,
-                settings.Density,
-                settings.PanelCoachDone,
-                _panel.QuickSettings.IsOpen,
-                interaction.Open.HasFlag(DimExceptions.WelcomeOpen)
+        SignalGuide(
+            new GuideWatch(
+                selector.IsFrequentsActive,
+                _session.Current.PickerOpen,
+                panel.Pager.Page,
+                interaction.Minimized
             )
         );
-        var showsDockCoach = form == PanelForm.DockOpen && Dock.ShowsCoach;
+        var quickOpen = _panel.QuickSettings.IsOpen;
+        Guide.Show(
+            GuideRules.OnSurfaces(
+                form,
+                settings,
+                interaction.Flyout != DockFlyout.None || quickOpen || _panel.Menu.IsOpen,
+                quickOpen,
+                interaction.Open.HasFlag(DimExceptions.WelcomeOpen),
+                interaction.Open.HasFlag(DimExceptions.ControlCenterOpen)
+            ),
+            target => target != GuideTarget.PanelPager || panel.Pager.PageCount > 1
+        );
 
         // R-39: a guide is read without touching anything; nothing dims while one shows.
         _ = _interaction.Dispatch(
-            new InteractionAction.SetOpen(DimExceptions.Guide, showsDockCoach || PanelCoach.IsShown)
+            new InteractionAction.SetOpen(DimExceptions.Guide, Guide.IsShown)
         );
         _surfaces?.Apply(
             new SurfaceLayout(
@@ -800,7 +831,7 @@ internal sealed class SurfacesComposer : IDockIntents
                 SettingsProjection.Size(settings),
                 latched,
                 form == PanelForm.DockOpen ? interaction.Flyout : DockFlyout.None,
-                showsDockCoach
+                form == PanelForm.DockOpen && Guide.Guide == GuideId.Tab
             )
             {
                 Settings = settings,
@@ -817,7 +848,8 @@ internal sealed class SurfacesComposer : IDockIntents
                 ShowsQuick =
                     (!showsMenu && DockRules.ShowsBesideBar(form, _panel.QuickSettings.IsOpen))
                     || DockRules.ShowsQuickBesidePanel(form, _panel.QuickSettings.IsOpen),
-                ShowsPanelCoach = PanelCoach.IsShown,
+                ShowsGuide = Guide.Guide is GuideId.Panel or GuideId.Bubble,
+                GuideTarget = Guide.Target,
             }
         );
     }

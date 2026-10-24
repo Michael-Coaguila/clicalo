@@ -2,9 +2,11 @@ using System.ComponentModel;
 using System.Windows;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Bubble;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
@@ -64,6 +66,7 @@ public sealed class BubbleWindow : TouchSurface
             IsTabStop = false,
         };
         _button.Click += (_, _) => _viewModel.Restore();
+        GuideTargets.SetTarget(_button, GuideTarget.Bubble);
         Content = _button;
         _viewModel.PropertyChanged += OnViewModelChanged;
         Refresh();

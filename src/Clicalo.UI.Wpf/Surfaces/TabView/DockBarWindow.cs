@@ -8,6 +8,7 @@ using System.Windows.Shapes;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -15,6 +16,7 @@ using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Surfaces.Panel.TestMode;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -135,6 +137,9 @@ public sealed class DockBarWindow : TouchSurface
 
         // PES-009: Quick settings beside the bar, the side of the Tab view included; an icon, as in the panel header.
         _tune = IconTool("tune", viewModel.QuickSettings);
+        GuideTargets.SetTarget(_close, GuideTarget.TabFold);
+        GuideTargets.SetTarget(_expand, GuideTarget.TabExpand);
+        GuideTargets.SetTarget(_tune, GuideTarget.TabQuick);
         _search = IconTool("search", viewModel.Search);
         _repeat = IconTool("replay", viewModel.Repeat);
 
@@ -180,6 +185,8 @@ public sealed class DockBarWindow : TouchSurface
         {
             Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
         };
+        GuideTargets.SetTarget(_tiles, GuideTarget.TabTiles);
+        GuideTargets.SetTarget(_tools, GuideTarget.TabTools);
         _root = new StackPanel
         {
             Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
@@ -491,6 +498,8 @@ public sealed class DockBarWindow : TouchSurface
         var choice = _shape.IconChoices ? DockToolShape.Icon : DockToolShape.Stacked;
         _frequents = Tool("star", choice, _viewModel.ShowFrequents);
         _profile = Tool(_viewModel.HandleIcon, choice, _viewModel.ProfileButton);
+        GuideTargets.SetTarget(_frequents.Button, GuideTarget.TabFrequents);
+        GuideTargets.SetTarget(_profile.Button, GuideTarget.TabProfile);
         Release(_profileCaret);
         Release(_activeDot);
         if (!_shape.IconChoices)
@@ -519,6 +528,7 @@ public sealed class DockBarWindow : TouchSurface
         // pad, not the four arrows of «move» that the position of the tab already draws.
         _arrows = Tool("gamepad", DockToolShape.Icon, _viewModel.ToggleArrows);
         _lock = Tool("lock_open", DockToolShape.Icon, _viewModel.TogglePinOpen);
+        GuideTargets.SetTarget(_lock.Button, GuideTarget.TabLock);
 
         // 5. Scroll up and down: Mantener tiles that look like the tools at rest (PES-008).
         // With the icon of the tool buttons beside them, 24 (D21 review: they were 20 and tinted, another family).

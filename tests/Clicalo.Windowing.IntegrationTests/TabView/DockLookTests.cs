@@ -3,14 +3,17 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Dock;
+using Clicalo.Presentation.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Automation;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -79,7 +82,7 @@ public sealed class DockLookTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, side, language, coachStep: 0);
+            var dock = Dock(time, side, language);
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -129,9 +132,10 @@ public sealed class DockLookTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, DockSide.Right, language, coachStep: 0);
-            var coach = new DockCoachWindow(
-                dock,
+            var guide = new GuideViewModel(PanelTestData.Localization(language), static _ => { });
+            guide.Show(GuideId.Tab);
+            var coach = new GuideWindow(
+                guide,
                 lab.Registry,
                 time,
                 theme,
@@ -141,16 +145,17 @@ public sealed class DockLookTests
             {
                 using var host = AuditHost.OfWindow(coach, theme);
                 var heights = new List<double>();
-                for (var step = 0; step < DockRules.CoachSteps; step++)
+                for (var step = 0; step < GuideCatalog.Steps(GuideId.Tab).Length; step++)
                 {
-                    dock.Apply(State(DockSide.Right, step));
+                    guide.Step.ShouldBe(step);
                     host.LayOut();
                     heights.Add(host.Root.ActualHeight);
+                    guide.Next();
                 }
 
                 heights.Distinct().Count().ShouldBe(1, string.Join(", ", heights));
-                coach.NextButton.ActualHeight.ShouldBe(ControlHeight.Small);
-                coach.SkipButton.ActualHeight.ShouldBe(ControlHeight.Small);
+                coach.Card.NextButton.ActualHeight.ShouldBe(ControlHeight.Small);
+                coach.Card.SkipButton.ActualHeight.ShouldBe(ControlHeight.Small);
             }
             finally
             {
@@ -176,7 +181,7 @@ public sealed class DockLookTests
             using var theme = Theme();
 
             // In M a long name beside «Copiar»: names of two lines and of one (S shows icons alone, D20).
-            var dock = Dock(time, side, language, coachStep: 0, SizeId.M, "Mantener Control");
+            var dock = Dock(time, side, language, SizeId.M, "Mantener Control");
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -227,7 +232,7 @@ public sealed class DockLookTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, side, language, coachStep: 0, size);
+            var dock = Dock(time, side, language, size);
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -317,7 +322,7 @@ public sealed class DockLookTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, side, "es", coachStep: 0, size);
+            var dock = Dock(time, side, "es", size);
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -361,7 +366,7 @@ public sealed class DockLookTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, DockSide.Right, "es", coachStep: 0, SizeId.S);
+            var dock = Dock(time, DockSide.Right, "es", SizeId.S);
             var right = new DockBarWindow(
                 DockSide.Right,
                 dock,
@@ -415,7 +420,7 @@ public sealed class DockLookTests
                 scale,
                 reduceMotion: true
             );
-            var dock = Dock(time, DockSide.Right, "es", coachStep: 0);
+            var dock = Dock(time, DockSide.Right, "es");
             var panel = PanelBodyTestData.Panel(
                 PanelBodyTestData.Library(14, 3),
                 PanelBodyTestData.Word,
@@ -487,7 +492,7 @@ public sealed class DockLookTests
                 scale,
                 reduceMotion: true
             );
-            var dock = Dock(time, side, "es", coachStep: 0, size);
+            var dock = Dock(time, side, "es", size);
             var bar = new DockBarWindow(
                 side,
                 dock,
@@ -604,7 +609,6 @@ public sealed class DockLookTests
         TimeProvider time,
         DockSide side,
         string language,
-        int coachStep,
         SizeId size = SizeId.M,
         string? holdName = null
     )
@@ -631,11 +635,11 @@ public sealed class DockLookTests
         );
         var model = PanelProjector.Project(profile, new LangCode(language), LangCode.Es);
         dock.ApplyTiles(model.Tiles, model.Tiles);
-        dock.Apply(State(side, coachStep, size));
+        dock.Apply(State(side, size));
         return dock;
     }
 
-    private static DockBarState State(DockSide side, int coachStep, SizeId size = SizeId.M) =>
+    private static DockBarState State(DockSide side, SizeId size = SizeId.M) =>
         new(
             new DockSettings
             {
@@ -658,7 +662,6 @@ public sealed class DockLookTests
             IsFixed: false,
             CanRepeat: true,
             DockFlyout.None,
-            coachStep,
             BarOpen: true,
             AnythingHeld: false
         );
@@ -692,10 +695,6 @@ public sealed class DockLookTests
         public void TogglePinOpen() { }
 
         public void QuickSettings() { }
-
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
 
         public void ReleaseAll() { }
     }

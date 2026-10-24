@@ -8,6 +8,7 @@ using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
+using Clicalo.Presentation.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Surfaces;
@@ -297,7 +298,6 @@ public sealed class SurfaceSetDesktopTests
             IsFixed: false,
             CanRepeat: false,
             DockFlyout.None,
-            CoachStep: 0,
             BarOpen: true,
             AnythingHeld: false
         );
@@ -370,6 +370,7 @@ public sealed class SurfaceSetDesktopTests
             viewModel,
             dock,
             bubble,
+            new GuideViewModel(PanelTestData.Localization(), static _ => { }),
             new SurfaceDimming(store, panel.DimSettings),
             lab.Registry,
             theme,
@@ -416,10 +417,6 @@ public sealed class SurfaceSetDesktopTests
         public void TogglePinOpen() { }
 
         public void QuickSettings() { }
-
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
 
         public void ReleaseAll() { }
     }

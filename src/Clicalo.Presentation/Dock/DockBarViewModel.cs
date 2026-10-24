@@ -69,11 +69,6 @@ public sealed class DockBarViewModel : ObservableObject
     private string _autoFixedName = string.Empty;
     private string _pinLabel = string.Empty;
     private string _pinName = string.Empty;
-    private string _coachStepLabel = string.Empty;
-    private string _coachTitle = string.Empty;
-    private string _coachText = string.Empty;
-    private string _coachNextLabel = string.Empty;
-    private bool _showsCoach;
 
     /// <summary>Creates the bar.</summary>
     /// <param name="controller">Where the gestures of its shortcuts go.</param>
@@ -263,59 +258,6 @@ public sealed class DockBarViewModel : ObservableObject
         private set => SetProperty(ref _pinName, value);
     }
 
-    /// <summary>Whether the first-time guide shows (PES-015).</summary>
-    public bool ShowsCoach
-    {
-        get => _showsCoach;
-        private set => SetProperty(ref _showsCoach, value);
-    }
-
-    /// <summary>«i / 3» of the guide.</summary>
-    public string CoachStepLabel
-    {
-        get => _coachStepLabel;
-        private set => SetProperty(ref _coachStepLabel, value);
-    }
-
-    /// <summary>The title of the step: [co1t], [co2t] or [co3t].</summary>
-    public string CoachTitle
-    {
-        get => _coachTitle;
-        private set => SetProperty(ref _coachTitle, value);
-    }
-
-    /// <summary>The text of the step: [co1d], [co2d] or [co3d].</summary>
-    public string CoachText
-    {
-        get => _coachText;
-        private set => SetProperty(ref _coachText, value);
-    }
-
-    /// <summary>
-    /// The title and the text of every step, in order, in the current language: the guide keeps the size of the
-    /// longest, so it never changes size from one step to the next (D12, PES-015).
-    /// </summary>
-    public IReadOnlyList<(string Title, string Text)> CoachSteps
-    {
-        get
-        {
-            var l = _localization.Current;
-            return
-            [
-                (l.Format(L.Co1t), l.Format(L.Co1d)),
-                (l.Format(L.Co2t), l.Format(L.Co2d)),
-                (l.Format(L.Co3t), l.Format(L.Co3d)),
-            ];
-        }
-    }
-
-    /// <summary>[next], or [understood] on the last step.</summary>
-    public string CoachNextLabel
-    {
-        get => _coachNextLabel;
-        private set => SetProperty(ref _coachNextLabel, value);
-    }
-
     /// <summary>Whether 📌 «Pinned» shows (PES-008).</summary>
     public bool ShowsPinned =>
         _state is { } state && DockRules.ShowsPinned(state.ShowStripRow, _pinned.Count);
@@ -341,12 +283,6 @@ public sealed class DockBarViewModel : ObservableObject
         AutoFixedIcon = state.IsFixed
             ? PanelHeaderModel.FixedIcon.Name
             : PanelHeaderModel.AutoIcon.Name;
-        // PES-015: no other window beside the bar, Quick settings and the menu of a shortcut included (D21 review).
-        ShowsCoach = DockRules.ShowsCoach(
-            state.BarOpen,
-            state.Dock.CoachDone,
-            state.Flyout != DockFlyout.None || state.QuickOpen || state.MenuOpen
-        );
         Format();
         Repage();
         OnPropertyChanged(nameof(State));
@@ -580,12 +516,6 @@ public sealed class DockBarViewModel : ObservableObject
     /// <summary>The <c>tune</c> button: Quick settings beside the bar (PES-009).</summary>
     public void QuickSettings() => _intents.QuickSettings();
 
-    /// <summary>[next] or [understood].</summary>
-    public void CoachNext() => _intents.CoachNext();
-
-    /// <summary>[coachSkip].</summary>
-    public void CoachSkip() => _intents.CoachSkip();
-
     /// <summary>The floating «Release all».</summary>
     public void ReleaseAll() => _intents.ReleaseAll();
 
@@ -654,25 +584,6 @@ public sealed class DockBarViewModel : ObservableObject
         var pinOpen = state?.Dock.PinOpen == true;
         PinLabel = l.Format(pinOpen ? L.PinOn : L.PinFolds);
         PinName = l.Format(pinOpen ? L.PinOnA : L.PinOffA);
-        var step = Math.Clamp(state?.CoachStep ?? 0, 0, DockRules.CoachSteps - 1);
-        CoachStepLabel = l.Format(L.CoachStep(index: step + 1, total: DockRules.CoachSteps));
-        CoachTitle = l.Format(
-            step switch
-            {
-                0 => L.Co1t,
-                1 => L.Co2t,
-                _ => L.Co3t,
-            }
-        );
-        CoachText = l.Format(
-            step switch
-            {
-                0 => L.Co1d,
-                1 => L.Co2d,
-                _ => L.Co3d,
-            }
-        );
-        CoachNextLabel = l.Format(DockRules.NextCoachStep(step) is null ? L.Understood : L.Next);
     }
 
     private void Repage()

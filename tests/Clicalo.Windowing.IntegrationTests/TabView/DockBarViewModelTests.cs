@@ -87,26 +87,6 @@ public sealed class DockBarViewModelTests
     }
 
     [Fact]
-    [Trait("Req", "PES-015")]
-    public void The_guide_shows_its_step_and_ends_with_understood()
-    {
-        _dock.Apply(State());
-        _dock.ShowsCoach.ShouldBeTrue();
-        _dock.CoachStepLabel.ShouldBe("1 / 3");
-        _dock.CoachTitle.ShouldBe("Al principio: la barra");
-        _dock.CoachNextLabel.ShouldBe("Siguiente");
-
-        _dock.Apply(State() with { CoachStep = 2 });
-        _dock.CoachStepLabel.ShouldBe("3 / 3");
-        _dock.CoachNextLabel.ShouldBe("Entendido");
-
-        _dock.Apply(State() with { Flyout = DockFlyout.Pinned });
-        _dock.ShowsCoach.ShouldBeFalse();
-        _dock.Apply(State() with { Dock = Dock() with { CoachDone = true } });
-        _dock.ShowsCoach.ShouldBeFalse();
-    }
-
-    [Fact]
     [Trait("Req", "PES-001")]
     [Trait("Req", "PES-006")]
     public void The_handle_and_the_profile_button_follow_the_view()
@@ -152,8 +132,6 @@ public sealed class DockBarViewModelTests
         _dock.ToggleArrows();
         _dock.TogglePinOpen();
         _dock.QuickSettings();
-        _dock.CoachNext();
-        _dock.CoachSkip();
         _dock.ReleaseAll();
         _dock.MoveHandle(30);
 
@@ -171,8 +149,6 @@ public sealed class DockBarViewModelTests
             "ToggleArrows",
             "TogglePinOpen",
             "QuickSettings",
-            "CoachNext",
-            "CoachSkip",
             "ReleaseAll",
             "MoveHandle 30",
         ]);
@@ -223,7 +199,6 @@ public sealed class DockBarViewModelTests
             IsFixed: false,
             CanRepeat: false,
             DockFlyout.None,
-            CoachStep: 0,
             BarOpen: true,
             AnythingHeld: false
         );
@@ -259,10 +234,6 @@ public sealed class DockBarViewModelTests
         public void TogglePinOpen() => Calls.Add(nameof(TogglePinOpen));
 
         public void QuickSettings() => Calls.Add(nameof(QuickSettings));
-
-        public void CoachNext() => Calls.Add(nameof(CoachNext));
-
-        public void CoachSkip() => Calls.Add(nameof(CoachSkip));
 
         public void ReleaseAll() => Calls.Add(nameof(ReleaseAll));
     }

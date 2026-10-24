@@ -62,16 +62,6 @@ public static class InteractionReducer
                 DockOpen = false,
                 Flyout = DockFlyout.None,
             },
-            InteractionAction.CoachNext => state with
-            {
-                CoachStep = DockRules.NextCoachStep(state.CoachStep) ?? 0,
-            },
-            InteractionAction.CoachReset => state with { CoachStep = 0 },
-            InteractionAction.PanelCoachNext => state with
-            {
-                PanelCoachStep = PanelCoachRules.NextStep(state.PanelCoachStep) ?? 0,
-            },
-            InteractionAction.PanelCoachReset => state with { PanelCoachStep = 0 },
             InteractionAction.SetOpen open => state with
             {
                 Open = open.IsOpen ? state.Open | open.What : state.Open & ~open.What,

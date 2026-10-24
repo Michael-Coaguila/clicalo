@@ -10,6 +10,7 @@ using Clicalo.Application.Profiles;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Dimming;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
@@ -17,12 +18,14 @@ using Clicalo.Domain.ProfileResolution;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
+using Clicalo.Presentation.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.Presentation.Panel.Header;
 using Clicalo.Presentation.Panel.Search;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
@@ -709,6 +712,109 @@ public sealed class SurfacesAuditTests
         );
 
     [Theory]
+    [InlineData(SizeSetting.Medium, false, "es")]
+    [InlineData(SizeSetting.Small, true, "es")]
+    [InlineData(SizeSetting.Large, true, "en")]
+    [Trait("Req", "PES-015")]
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "REG-06")]
+    public void The_ring_of_the_guide_surrounds_every_control_of_the_panel_it_points_at(
+        SizeSetting size,
+        bool compact,
+        string language
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(AuditLook.Dark);
+            var world = new PanelWorld(language, time);
+            world.ApplySettings(size, compact, allOn: false, 100);
+            var window = NewPanelWindow(world, lab, time, theme);
+            try
+            {
+                using var host = AuditHost.OfWindow(window, theme);
+                PanelStates["idle"](world);
+                host.LayOut();
+                var ring = new GuideHighlighter(host.Root);
+                foreach (var step in GuideCatalog.Steps(GuideId.Panel))
+                {
+                    // R-39: the ring is around the control, a little outside it, never over it.
+                    ring.Show(step.Target);
+                    host.LayOut();
+                    var pointed = ring.Highlighted.ShouldNotBeNull($"{step.Target}");
+                    GuideTargets.GetTarget(pointed).ShouldBe(step.Target);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"panel guide ring {step.Target} ({size}, {(compact ? "compact" : "full")}, {language})",
+                        atLeast: 8,
+                        TouchInput.PointerLayer,
+                        "Panel"
+                    );
+                }
+
+                ring.Show(null);
+                ring.Highlighted.ShouldBeNull();
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(DockSide.Right, "es")]
+    [InlineData(DockSide.Bottom, "en")]
+    [Trait("Req", "PES-015")]
+    [Trait("Req", "REG-02")]
+    public void The_ring_of_the_guide_surrounds_every_control_of_the_bar_it_points_at(
+        DockSide side,
+        string language
+    )
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(AuditLook.Dark);
+            var dock = Dock(time, side, SizeId.M, DockFlyout.None, language);
+            var bar = new DockBarWindow(
+                side,
+                dock,
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                using var host = AuditHost.OfWindow(bar, theme);
+                var ring = new GuideHighlighter(host.Root);
+                foreach (var step in GuideCatalog.Steps(GuideId.Tab))
+                {
+                    ring.Show(step.Target);
+                    host.LayOut();
+                    ring.Highlighted.ShouldNotBeNull($"{step.Target}");
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        $"tab guide ring {step.Target} ({side}, {language})",
+                        atLeast: 10,
+                        TouchInput.PointerLayer,
+                        "Pestaña"
+                    );
+                }
+            }
+            finally
+            {
+                bar.Close();
+            }
+        });
+    }
+
+    [Theory]
     [Trait("Req", "REG-02")]
     [Trait("Req", "REG-06")]
     [Trait("Req", "ACC-002")]
@@ -725,7 +831,7 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = AuditLooks.Theme(look);
-            var dock = Dock(time, side, size, DockFlyout.None, coachStep: 0, language);
+            var dock = Dock(time, side, size, DockFlyout.None, language);
             var handle = new DockHandleWindow(
                 side,
                 dock,
@@ -756,7 +862,7 @@ public sealed class SurfacesAuditTests
                     );
 
                     // At rest, as it usually is: nothing held, no dot.
-                    var held = State(side, size, DockFlyout.None, coachStep: 0);
+                    var held = State(side, size, DockFlyout.None);
                     dock.Apply(held with { AnythingHeld = false });
                     host.LayOut();
                     SurfaceAudit.ShouldPass(
@@ -780,7 +886,7 @@ public sealed class SurfacesAuditTests
                     );
 
                     // The other texts of the pill and of the lock: «Fijo» and «Abierta».
-                    var state = State(side, size, DockFlyout.None, coachStep: 0);
+                    var state = State(side, size, DockFlyout.None);
                     dock.Apply(
                         state with
                         {
@@ -866,7 +972,7 @@ public sealed class SurfacesAuditTests
                     ActiveAppProfile = PanelBodyTestData.Word,
                 }
             );
-            var dock = Dock(time, DockSide.Right, size, flyout, coachStep: 0, language);
+            var dock = Dock(time, DockSide.Right, size, flyout, language);
             var window = new DockFlyoutWindow(
                 flyout,
                 dock,
@@ -911,16 +1017,10 @@ public sealed class SurfacesAuditTests
         {
             using var theme = AuditLooks.Theme(look);
             var world = new PanelWorld(language, time);
-            var dock = Dock(
-                time,
-                DockSide.Right,
-                SizeId.M,
-                DockFlyout.None,
-                coachStep: 1,
-                language
-            );
-            var coach = new DockCoachWindow(
-                dock,
+            var dock = Dock(time, DockSide.Right, SizeId.M, DockFlyout.None, language);
+            var guide = new GuideViewModel(PanelTestData.Localization(language), static _ => { });
+            var coach = new GuideWindow(
+                guide,
                 lab.Registry,
                 time,
                 theme,
@@ -951,22 +1051,23 @@ public sealed class SurfacesAuditTests
             );
             try
             {
-                // PES-015: the three steps of the guide, each with its own title and text.
-                for (var step = 0; step < DockRules.CoachSteps; step++)
+                // PES-015, R-39: every step of the guide of the bar, each with its own title and text.
+                guide.Show(GuideId.Tab);
+                for (var step = 0; step < GuideCatalog.Steps(GuideId.Tab).Length; step++)
                 {
-                    var state = State(DockSide.Right, SizeId.M, DockFlyout.None, coachStep: step);
-                    dock.Apply(state with { Dock = state.Dock with { CoachDone = false } });
+                    guide.Step.ShouldBe(step);
                     using var host = AuditHost.OfWindow(coach, theme);
                     SurfaceAudit.ShouldPass(
                         host,
                         string.Create(
                             CultureInfo.InvariantCulture,
-                            $"coach step {step + 1} ({language}, {look})"
+                            $"tab guide step {step + 1} ({language}, {look})"
                         ),
                         atLeast: 2,
                         TouchInput.PointerLayer,
                         "Pestaña"
                     );
+                    guide.Next();
                 }
 
                 world.Panel.ApplyContext(
@@ -1140,7 +1241,7 @@ public sealed class SurfacesAuditTests
     [Trait("Req", "ACC-002")]
     [Trait("Req", "PES-015")]
     [MemberData(nameof(TabWindowCases))]
-    public void The_guide_of_the_panel_keeps_44_and_its_size_in_its_three_steps(
+    public void The_guides_of_the_panel_and_the_bubble_keep_44_and_their_size_in_every_step(
         string language,
         AuditLook look
     )
@@ -1150,12 +1251,9 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = AuditLooks.Theme(look);
-            var model = new PanelCoachViewModel(
-                PanelTestData.Localization(language),
-                static () => { },
-                static () => { }
-            );
-            var guide = new Clicalo.UI.Wpf.Surfaces.Panel.PanelCoachWindow(
+            var done = new List<GuideId>();
+            var model = new GuideViewModel(PanelTestData.Localization(language), done.Add);
+            var window = new GuideWindow(
                 model,
                 lab.Registry,
                 time,
@@ -1164,36 +1262,49 @@ public sealed class SurfacesAuditTests
             );
             try
             {
-                // R-39: «Qué ver», the grid with its pages and the header, as PES-015 draws the guide of the bar.
-                var heights = new List<double>();
-                for (var step = 0; step < PanelCoachRules.Steps; step++)
+                // R-39: from the tiles to «−» beside the panel, then the bubble beside it.
+                foreach (var guide in new[] { GuideId.Panel, GuideId.Bubble })
                 {
-                    model.Apply(step, shown: true);
-                    using var host = AuditHost.OfWindow(guide, theme);
-                    SurfaceAudit.ShouldPass(
-                        host,
-                        string.Create(
-                            CultureInfo.InvariantCulture,
-                            $"panel guide step {step + 1} ({language}, {look})"
-                        ),
-                        atLeast: 2,
-                        TouchInput.PointerLayer,
-                        "Panel"
-                    );
-                    heights.Add(host.Root.ActualHeight);
+                    model.Show(guide);
+                    var heights = new List<double>();
+                    var steps = GuideCatalog.Steps(guide);
+                    for (var step = 0; step < steps.Length; step++)
+                    {
+                        model.Step.ShouldBe(step);
+                        model.Target.ShouldBe(steps[step].Target);
+                        using var host = AuditHost.OfWindow(window, theme);
+                        SurfaceAudit.ShouldPass(
+                            host,
+                            string.Create(
+                                CultureInfo.InvariantCulture,
+                                $"{guide.ToString().ToLowerInvariant()} guide step {step + 1} ({language}, {look})"
+                            ),
+                            atLeast: 2,
+                            TouchInput.PointerLayer,
+                            "Panel"
+                        );
+                        heights.Add(host.Root.ActualHeight);
 
-                    // REG-06: the window keeps its name in every step; the step is its text.
-                    guide.Title.ShouldBe(model.Name);
-                    AutomationProperties.GetName(guide.NextButton).ShouldBe(model.NextLabel);
-                    AutomationProperties.GetName(guide.SkipButton).ShouldBe(model.SkipLabel);
+                        // REG-06: the window keeps its name in every step; the step is its text.
+                        window.Title.ShouldBe(model.Name);
+                        AutomationProperties
+                            .GetName(window.Card.NextButton)
+                            .ShouldBe(model.NextLabel);
+                        AutomationProperties
+                            .GetName(window.Card.SkipButton)
+                            .ShouldBe(model.SkipLabel);
+                        model.Next();
+                    }
+
+                    // D12: the window never changes size from one step to the next.
+                    heights.ShouldAllBe(height => Math.Abs(height - heights[0]) <= Rounding);
                 }
 
-                // D12: the window never changes size from one step to the next.
-                heights.ShouldAllBe(height => Math.Abs(height - heights[0]) <= Rounding);
+                done.ShouldBe([GuideId.Panel, GuideId.Bubble]);
             }
             finally
             {
-                guide.Close();
+                window.Close();
             }
         });
     }
@@ -1464,7 +1575,7 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(time, DockSide.Right, SizeId.M, DockFlyout.Pinned, coachStep: 0);
+            var dock = Dock(time, DockSide.Right, SizeId.M, DockFlyout.Pinned);
             var bar = new DockBarWindow(
                 DockSide.Right,
                 dock,
@@ -1492,7 +1603,7 @@ public sealed class SurfacesAuditTests
                         .ShouldBeNull("one pattern per button");
                 }
 
-                var state = State(DockSide.Right, SizeId.M, DockFlyout.Profiles, coachStep: 0);
+                var state = State(DockSide.Right, SizeId.M, DockFlyout.Profiles);
                 dock.Apply(
                     state with
                     {
@@ -1533,14 +1644,7 @@ public sealed class SurfacesAuditTests
         WpfThread.Invoke(() =>
         {
             using var theme = Theme();
-            var dock = Dock(
-                time,
-                DockSide.Right,
-                SizeId.M,
-                DockFlyout.None,
-                coachStep: 1,
-                language
-            );
+            var dock = Dock(time, DockSide.Right, SizeId.M, DockFlyout.None, language);
             var handle = new DockHandleWindow(
                 DockSide.Right,
                 dock,
@@ -1558,8 +1662,10 @@ public sealed class SurfacesAuditTests
                 PanelDesktopFixture.Touch,
                 static (_, _, _) => { }
             );
-            var coach = new DockCoachWindow(
-                dock,
+            var guide = new GuideViewModel(PanelTestData.Localization(language), static _ => { });
+            guide.Show(GuideId.Tab);
+            var coach = new GuideWindow(
+                guide,
                 lab.Registry,
                 time,
                 theme,
@@ -1573,7 +1679,8 @@ public sealed class SurfacesAuditTests
                 coach.Title.ShouldBe(coachName);
 
                 // The guide keeps its name in every step; the title of the step is its text.
-                dock.Apply(State(DockSide.Right, SizeId.M, DockFlyout.None, coachStep: 2));
+                guide.Next();
+                guide.Next();
                 coach.Title.ShouldBe(coachName, "the name does not follow the step");
             }
             finally
@@ -1665,7 +1772,6 @@ public sealed class SurfacesAuditTests
         DockSide side,
         SizeId size,
         DockFlyout flyout,
-        int coachStep,
         string language = "es"
     )
     {
@@ -1681,16 +1787,11 @@ public sealed class SurfacesAuditTests
             LangCode.Es
         );
         dock.ApplyTiles(model.Tiles, model.Tiles);
-        dock.Apply(State(side, size, flyout, coachStep));
+        dock.Apply(State(side, size, flyout));
         return dock;
     }
 
-    private static DockBarState State(
-        DockSide side,
-        SizeId size,
-        DockFlyout flyout,
-        int coachStep
-    ) =>
+    private static DockBarState State(DockSide side, SizeId size, DockFlyout flyout) =>
         new(
             new DockSettings
             {
@@ -1700,7 +1801,7 @@ public sealed class SurfacesAuditTests
                 PinOpen = false,
                 Gutter = false,
                 PerPage = 8,
-                CoachDone = coachStep == 0,
+                CoachDone = true,
             },
             PanelSizes.Get(size),
             ShowStripRow: true,
@@ -1713,7 +1814,6 @@ public sealed class SurfacesAuditTests
             IsFixed: false,
             CanRepeat: true,
             flyout,
-            coachStep,
             BarOpen: true,
             AnythingHeld: true
         );
@@ -1869,10 +1969,6 @@ public sealed class SurfacesAuditTests
         public void TogglePinOpen() { }
 
         public void QuickSettings() { }
-
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
 
         public void ReleaseAll() { }
     }

@@ -309,7 +309,6 @@ public sealed class DockTileOutlinesTests
                 IsFixed: false,
                 CanRepeat: false,
                 flyout,
-                CoachStep: 0,
                 BarOpen: true,
                 AnythingHeld: false
             )
@@ -346,10 +345,6 @@ public sealed class DockTileOutlinesTests
         public void TogglePinOpen() { }
 
         public void QuickSettings() { }
-
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
 
         public void ReleaseAll() { }
     }

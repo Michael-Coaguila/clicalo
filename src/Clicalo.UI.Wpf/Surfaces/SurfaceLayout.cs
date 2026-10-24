@@ -1,4 +1,5 @@
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -12,7 +13,7 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// <param name="Metrics">The measures of the panel size (the thickness of the bar).</param>
 /// <param name="Panic">Something is held: the floating «Release all» shows beside the Tab view or the bubble.</param>
 /// <param name="Flyout">The window beside the open bar.</param>
-/// <param name="ShowsCoach">The first-time guide shows beside the open bar.</param>
+/// <param name="ShowsCoach">The first-time guide shows beside the open bar (PES-015).</param>
 public sealed record SurfaceLayout(
     PanelForm Form,
     DockSettings Dock,
@@ -38,6 +39,12 @@ public sealed record SurfaceLayout(
     /// <summary>Quick settings show beside the open bar (PES-009).</summary>
     public bool ShowsQuick { get; init; }
 
-    /// <summary>The first-time guide shows beside the Full or Compact panel (R-39).</summary>
-    public bool ShowsPanelCoach { get; init; }
+    /// <summary>
+    /// The guide shows beside the Full or Compact panel or beside the bubble (R-39); beside the open bar it is
+    /// <see cref="ShowsCoach"/>.
+    /// </summary>
+    public bool ShowsGuide { get; init; }
+
+    /// <summary>The control the step of the guide on show points at (R-39).</summary>
+    public GuideTarget? GuideTarget { get; init; }
 }

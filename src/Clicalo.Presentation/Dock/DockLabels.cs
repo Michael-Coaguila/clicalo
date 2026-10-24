@@ -13,7 +13,6 @@ public sealed class DockLabels : ObservableObject
     private readonly ILocalizationContext _localization;
     private string _openBar = string.Empty;
     private string _barName = string.Empty;
-    private string _coachName = string.Empty;
     private string _hideBar = string.Empty;
     private string _expand = string.Empty;
     private string _frequents = string.Empty;
@@ -27,7 +26,6 @@ public sealed class DockLabels : ObservableObject
     private string _nextPage = string.Empty;
     private string _pickProfile = string.Empty;
     private string _releaseAll = string.Empty;
-    private string _coachSkip = string.Empty;
     private string _activeApp = string.Empty;
     private string _quickSettings = string.Empty;
     private string _notices = string.Empty;
@@ -71,13 +69,6 @@ public sealed class DockLabels : ObservableObject
     {
         get => _barName;
         private set => SetProperty(ref _barName, value);
-    }
-
-    /// <summary>[dockCoachName]: the window of the first-time guide (PES-015), the same in every step.</summary>
-    public string CoachName
-    {
-        get => _coachName;
-        private set => SetProperty(ref _coachName, value);
     }
 
     /// <summary>[hideBar]: the chevron of the bar.</summary>
@@ -171,13 +162,6 @@ public sealed class DockLabels : ObservableObject
         private set => SetProperty(ref _releaseAll, value);
     }
 
-    /// <summary>[coachSkip].</summary>
-    public string CoachSkip
-    {
-        get => _coachSkip;
-        private set => SetProperty(ref _coachSkip, value);
-    }
-
     /// <summary>[activeApp]: the dot of the profile of the active app.</summary>
     public string ActiveApp
     {
@@ -219,7 +203,6 @@ public sealed class DockLabels : ObservableObject
         var l = _localization.Current;
         OpenBar = l.Format(L.OpenBar);
         BarName = l.Format(L.DockBarName);
-        CoachName = l.Format(L.DockCoachName);
         HideBar = l.Format(L.HideBar);
         Expand = l.Format(L.Expand);
         Frequents = l.Format(L.Freq);
@@ -233,7 +216,6 @@ public sealed class DockLabels : ObservableObject
         NextPage = l.Format(L.NextPage);
         PickProfile = l.Format(L.PickProfile);
         ReleaseAll = l.Format(L.ReleaseAll);
-        CoachSkip = l.Format(L.CoachSkip);
         ActiveApp = l.Format(L.ActiveApp);
         QuickSettings = l.Format(L.Quick);
         Notices = l.Format(L.DockNotices);
