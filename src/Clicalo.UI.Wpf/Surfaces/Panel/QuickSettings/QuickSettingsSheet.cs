@@ -59,6 +59,9 @@ public sealed class QuickSettingsSheet : Border
     private readonly Overline _sideHeading = new();
     private readonly Overline _themeHeading = new();
     private readonly StackPanel _sideSection;
+    private readonly FrameworkElement[] _first;
+    private readonly FrameworkElement[] _second;
+    private int _columns = 1;
     private readonly StepSlider _opacity;
     private readonly List<(
         SegmentedControl Group,
@@ -133,22 +136,26 @@ public sealed class QuickSettingsSheet : Border
         _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionKind.Tile));
         // S3 at both sides: the options spread S1 past them, so they sit S2 from the edge and S2 from the scroll bar
         // (with S1 they touched it, D20 review); S3 at the foot too, so the top and the bottom look alike.
-        var layout = new StackPanel { Margin = new Thickness(Space.S3, 0, Space.S3, Space.S3) };
-        layout.Children.Add(_controlCenter);
-        layout.Children.Add(Section(_viewHeading, Group(viewModel.Views, 3, OptionKind.Card)));
-        layout.Children.Add(Section(opacityTitle, _opacity));
-        layout.Children.Add(Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionKind.Tile)));
-        layout.Children.Add(_sideSection);
         _themes = Group(viewModel.Themes, 2, OptionKind.Tile);
         _themes.SizeChanged += (_, _) => FitThemes();
-        layout.Children.Add(Section(_themeHeading, _themes));
-        layout.Children.Add(Switches(viewModel.Switches));
+
+        // The order of AJR-001: what changes the panel first, then its look. In two columns (beside the panel, D21) the
+        // first ones go on the left and the theme and the switches on the right.
+        _first =
+        [
+            _controlCenter,
+            Section(_viewHeading, Group(viewModel.Views, 3, OptionKind.Card)),
+            Section(opacityTitle, _opacity),
+            Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionKind.Tile)),
+            _sideSection,
+        ];
+        _second = [Section(_themeHeading, _themes), Switches(viewModel.Switches)];
 
         _scroller = new ThemedScrollViewer
         {
             PansWithMouse = false,
             CollapsesChannel = true,
-            Content = layout,
+            Content = Arrange(1),
         };
         var rows = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_header, Dock.Top);
@@ -234,6 +241,28 @@ public sealed class QuickSettingsSheet : Border
 
     /// <summary>The scroll of the sheet.</summary>
     public ThemedScrollViewer Scroller => _scroller;
+
+    /// <summary>
+    /// The columns of the sheet: one, beside the bar of the Tab view, which it grows along; or two, beside the panel,
+    /// so the sheet is about half as high and stands at the height of the panel instead of reaching the foot of the
+    /// screen (AJR-001, D21: the maintainer found it odd that it came up from the bottom).
+    /// </summary>
+    public int Columns
+    {
+        get => _columns;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 2);
+            if (_columns == value)
+            {
+                return;
+            }
+
+            _columns = value;
+            _scroller.Content = Arrange(value);
+        }
+    }
 
     /// <summary>
     /// Whether the sheet shows whatever the view model says: in the window beside the bar of the Tab view (PES-009) the
@@ -406,6 +435,49 @@ public sealed class QuickSettingsSheet : Border
         {
             _viewModel.SetOpacityPercent(value);
         }
+    }
+
+    /// <summary>The sections in <paramref name="columns"/> columns, each S3 from the edges and S4 from the other.</summary>
+    private Grid Arrange(int columns)
+    {
+        foreach (var section in _first.Concat(_second))
+        {
+            if (section.Parent is System.Windows.Controls.Panel parent)
+            {
+                parent.Children.Remove(section);
+            }
+        }
+
+        var grid = new Grid { Margin = new Thickness(Space.S3, 0, Space.S3, Space.S3) };
+        var left = new StackPanel();
+        foreach (var section in columns == 1 ? _first.Concat(_second) : _first)
+        {
+            _ = left.Children.Add(section);
+        }
+
+        grid.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
+        _ = grid.Children.Add(left);
+        // The first heading of the right column starts at the top, with the first row of the left one.
+        _second[0].Margin = new Thickness(0, columns == 2 ? 0 : Space.S4, 0, 0);
+        if (columns == 2)
+        {
+            var right = new StackPanel();
+            foreach (var section in _second)
+            {
+                _ = right.Children.Add(section);
+            }
+
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Space.S4) });
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            Grid.SetColumn(right, 2);
+            _ = grid.Children.Add(right);
+        }
+
+        return grid;
     }
 
     private static StackPanel Section(FrameworkElement heading, FrameworkElement content)

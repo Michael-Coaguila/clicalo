@@ -62,6 +62,26 @@ public sealed class InteractionViewsTests
 
     [Fact]
     [Trait("Req", "AJR-001")]
+    public void In_two_columns_the_sheet_keeps_every_control_and_its_order() =>
+        WpfThread.Invoke(() =>
+        {
+            // D21: beside the panel the sheet takes two columns, the first sections on the left and the theme and the
+            // switches on the right; back in one column it is the same sheet. Its height is audited in the gallery.
+            var world = new InteractionsWorld();
+            var sheet = new QuickSettingsSheet(world.QuickSettings);
+            var targets = sheet.TapTargets.Select(static t => t.Element).ToList();
+
+            sheet.Columns = 2;
+            sheet.Columns.ShouldBe(2);
+            sheet.TapTargets.Select(static t => t.Element).ShouldBe(targets);
+
+            sheet.Columns = 1;
+            sheet.TapTargets.Select(static t => t.Element).ShouldBe(targets);
+            Should.Throw<ArgumentOutOfRangeException>(() => sheet.Columns = 3);
+        });
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
     public void The_sheet_fits_the_free_space_and_never_gets_below_its_minimum() =>
         WpfThread.Invoke(() =>
         {

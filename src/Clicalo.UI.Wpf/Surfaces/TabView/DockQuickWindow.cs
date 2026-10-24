@@ -82,6 +82,26 @@ public sealed class DockQuickWindow : TouchSurface
     /// <summary>The sheet.</summary>
     public QuickSettingsSheet Sheet => _sheet;
 
+    /// <summary>
+    /// The columns of the sheet (<see cref="QuickSettingsSheet.Columns"/>): one beside the bar, two beside the panel
+    /// where they fit; the window is as wide as they are.
+    /// </summary>
+    public int Columns
+    {
+        get => _sheet.Columns;
+        set
+        {
+            _sheet.Columns = value;
+            Width = WidthFor(value);
+            FixedWidth = Width;
+        }
+    }
+
+    /// <summary>The width of the window with <paramref name="columns"/> columns, in logical pixels.</summary>
+    /// <param name="columns">One or two.</param>
+    public static double WidthFor(int columns) =>
+        columns == 2 ? (2 * SheetWidth) + Space.S4 - (2 * Space.S3) : SheetWidth;
+
     /// <summary>The tallest it may be, in logical pixels; what does not fit scrolls inside the sheet.</summary>
     /// <param name="height">The height.</param>
     public void FitHeight(double height) => _sheet.FitHeight(height);

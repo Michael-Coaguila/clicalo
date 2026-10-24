@@ -756,7 +756,8 @@ public sealed class SurfaceSet : IDisposable
 
         if (layout.ShowsQuick && _quick is { } quick)
         {
-            // PES-009: Quick settings beside the tune button, as «Pinned» is beside its button.
+            // PES-009: Quick settings beside the tune button, as «Pinned» is beside its button, in one column.
+            quick.Columns = 1;
             var quickHeight = QuickMaxHeight(monitor);
             quick.FitHeight(quickHeight);
             var (width, height) = quick.MeasurePhysical(monitor.Scale);
@@ -815,19 +816,30 @@ public sealed class SurfaceSet : IDisposable
             return;
         }
 
+        // D21: two columns where one side of the panel has room for them, so the sheet is about half as high and stands
+        // in the middle of the height of the panel; the edges of the work area keep Space.S2 clear.
+        var gap = monitor.ToPhysical(DockGeometry.BarWindowGapPx);
+        var room = Math.Max(
+            panel.Left - gap - monitor.WorkArea.Left,
+            monitor.WorkArea.Right - panel.Right - gap
+        );
+        quick.Columns = room >= monitor.ToPhysical(DockQuickWindow.WidthFor(2)) ? 2 : 1;
         var maxHeight = QuickMaxHeight(monitor);
         quick.FitHeight(maxHeight);
         var (width, height) = quick.MeasurePhysical(monitor.Scale);
-        var gap = monitor.ToPhysical(DockGeometry.BarWindowGapPx);
         _quickSide = DockGeometry.SideBesidePanel(panel, width, gap, monitor, _quickSide);
-        var rect = DockGeometry.Beside(
-            _quickSide.Value,
-            panel,
-            width,
-            Math.Min(height, monitor.ToPhysical(maxHeight)),
-            gap,
-            DockAlign.Start,
-            monitor
+        var rect = PanelGeometry.ClampInto(
+            DockGeometry.Beside(
+                _quickSide.Value,
+                panel,
+                width,
+                Math.Min(height, monitor.ToPhysical(maxHeight)),
+                gap,
+                DockAlign.Center,
+                monitor
+            ),
+            monitor.WorkArea,
+            monitor.ToPhysical(Space.S2)
         );
         Present(quick, rect, shown);
     }

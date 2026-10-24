@@ -394,7 +394,9 @@ public sealed class SurfacesAuditTests
                 if (string.Equals(state, "quick-settings", StringComparison.Ordinal))
                 {
                     // AJR-001 (D21): beside the panel, in the window of the Tab view, showing the size and the view of
-                    // this panel, as tall as its content up to the work area of the person's screen.
+                    // this panel, in the two columns it takes where one side of the panel has room for them, so it is
+                    // about half the height of the screen and never reaches its foot.
+                    quick.Columns = 2;
                     quick.FitHeight(AuditGallery.QuickRoom);
                     using var beside = AuditHost.OfWindow(quick, theme);
                     SurfaceAudit.ShouldPass(
@@ -426,6 +428,14 @@ public sealed class SurfacesAuditTests
     )
     {
         host.Root.ActualHeight.ShouldBeLessThanOrEqualTo(AuditGallery.QuickRoom + 0.5);
+        if (quick.Columns == 2)
+        {
+            host.Root.ActualHeight.ShouldBeLessThanOrEqualTo(
+                AuditGallery.QuickRoom * 3 / 4,
+                "two columns stand at the height of the panel"
+            );
+        }
+
         if (look == AuditLook.Dark)
         {
             quick.Sheet.Scroller.ScrollableHeight.ShouldBe(0, 0.5, "every row shows at 100 %");
@@ -1077,6 +1087,7 @@ public sealed class SurfacesAuditTests
                 world.Layers.TestMode.Stop();
                 world.Layers.QuickSettings.Views[2].Select();
                 world.Layers.QuickSettings.Open();
+                quick.Columns = 1;
                 quick.FitHeight(AuditGallery.QuickRoom);
                 using (var host = AuditHost.OfWindow(quick, theme))
                 {
