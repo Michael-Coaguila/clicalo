@@ -174,9 +174,8 @@ public sealed class GeneralSectionViewModelTests
         screen.Access.Caption.ShouldBe("Accesibilidad y datos");
         screen.Access.ResetTitle.ShouldBe("Reiniciar Frecuentes");
         screen.Start.WelcomeTitle.ShouldBe("Ver la bienvenida otra vez");
-        // R-39: a new document is in the Full view, so the guide offered is the panel's.
-        screen.Start.CoachTitle.ShouldBe("Ver la guía del panel");
-        screen.Start.CoachDescription.ShouldBe("Se mostrará junto al panel.");
+        screen.Start.CoachTitle.ShouldBe("Ver las guías otra vez");
+        screen.Start.CoachDescription.ShouldBe("Cada pantalla vuelve a mostrar su guía, una vez.");
         screen.Start.NoKeyboard.Title.ShouldBe("No puedo usar el teclado");
     }
 
@@ -341,56 +340,26 @@ public sealed class GeneralSectionViewModelTests
     [Fact]
     [Trait("Req", "GEN-014")]
     [Trait("Req", "PES-015")]
-    public void First_steps_open_the_welcome_and_show_the_tab_guide_again()
+    public void First_steps_open_the_welcome_and_show_every_guide_again()
     {
+        // R-39: «Ver la guía de la pestaña» did nothing for a person in the Full or Compact view; now every screen
+        // shows its guide again, the Tab view's included.
         _world
             .Store.Dispatch(new SetSetting(SettingPaths.DockCoachDone, true))
             .IsSuccess.ShouldBeTrue();
+        ValueList<string> done = ["panel", "bubble", "general"];
         _world
-            .Store.Dispatch(new SetSetting(SettingPaths.PanelCoachDone, true))
-            .IsSuccess.ShouldBeTrue();
-        _world
-            .Store.Dispatch(new SetSetting(SettingPaths.Density, PanelDensity.Dock))
+            .Store.Dispatch(new SetSetting(SettingPaths.GuidesDone, done))
             .IsSuccess.ShouldBeTrue();
         var section = Create();
 
         section.SeeWelcome();
         _welcomes.ShouldBe(1);
 
-        section.Screen.Start.CoachTitle.ShouldBe("Ver la guía de la pestaña");
-        section.SeeGuide();
+        section.SeeGuides();
         Settings.Dock.CoachDone.ShouldBeFalse();
-        Settings.PanelCoachDone.ShouldBeTrue();
-        _notices[^1].Text.ShouldBe(Domain.Messages.L.SeeCoachD);
-    }
-
-    [Theory]
-    [InlineData(PanelDensity.Full)]
-    [InlineData(PanelDensity.Compact)]
-    [Trait("Req", "GEN-014")]
-    [Trait("Req", "PES-015")]
-    public void In_the_Full_and_Compact_views_first_steps_show_the_panel_guide_again(
-        PanelDensity density
-    )
-    {
-        // R-39: «Ver la guía» did nothing for a person in the Full or Compact view.
-        _world
-            .Store.Dispatch(new SetSetting(SettingPaths.DockCoachDone, true))
-            .IsSuccess.ShouldBeTrue();
-        _world
-            .Store.Dispatch(new SetSetting(SettingPaths.PanelCoachDone, true))
-            .IsSuccess.ShouldBeTrue();
-        _world
-            .Store.Dispatch(new SetSetting(SettingPaths.Density, density))
-            .IsSuccess.ShouldBeTrue();
-        var section = Create();
-
-        section.Screen.Start.CoachTitle.ShouldBe("Ver la guía del panel");
-        section.SeeGuide();
-
-        Settings.PanelCoachDone.ShouldBeFalse();
-        Settings.Dock.CoachDone.ShouldBeTrue();
-        _notices[^1].Text.ShouldBe(Domain.Messages.L.SeePanelCoachD);
+        Settings.GuidesDone.ShouldBeEmpty();
+        _notices[^1].Text.ShouldBe(Domain.Messages.L.SeeGuidesD);
     }
 
     [Fact]

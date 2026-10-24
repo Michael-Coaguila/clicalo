@@ -8,10 +8,12 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.ControlCenter.TouchPrecision;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.General;
@@ -129,6 +131,8 @@ public sealed class TouchPrecisionView : ContentControl
         _zone.MouseMove += OnMove;
         _zone.MouseLeftButtonUp += OnUp;
         _zone.LostMouseCapture += OnLostCapture;
+        GuideTargets.SetTarget(_presets, GuideTarget.ControlCenterPresets);
+        GuideTargets.SetTarget(_zone, GuideTarget.ControlCenterTestArea);
         _messageAnnouncer = new LiveAnnouncer(_message);
         // Two lines are kept for the message: the counters and the button never move under the finger.
         _message.MinHeight = TextStyles.Get(TextStyleToken.BodySmall).LineHeight * 2;

@@ -2,9 +2,11 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -94,6 +96,7 @@ public sealed class SystemSectionView : Border
         var strip = new SystemTabStrip();
         AutomationProperties.SetName(strip, screen.Title);
         AutomationProperties.SetAutomationId(strip, "system.tabs");
+        GuideTargets.SetTarget(strip, GuideTarget.ControlCenterSystemTabs);
         foreach (var tab in screen.Tabs)
         {
             var texts = Ui.Column(

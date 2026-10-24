@@ -4,10 +4,12 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter.General;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -78,6 +80,9 @@ public sealed class GeneralSectionView : ContentControl
         _viewModel = viewModel;
         _lines = new SpokenLines(say);
         Focusable = false;
+        GuideTargets.SetTarget(_view, GuideTarget.ControlCenterView);
+        GuideTargets.SetTarget(_size, GuideTarget.ControlCenterSize);
+        GuideTargets.SetTarget(_start, GuideTarget.ControlCenterStart);
         (_title, _subtitle) = SettingsUi.NewHeader();
         _opacity = new SettingSlider(viewModel.SetOpacityPercent, withDescription: false);
         _dim = new SettingSlider(viewModel.SetDimPercent, withDescription: false);
@@ -826,7 +831,7 @@ public sealed class GeneralSectionView : ContentControl
         };
         AutomationProperties.SetName(coach, start.CoachTitle);
         AutomationProperties.SetHelpText(coach, start.CoachDescription);
-        coach.Click += (_, _) => _viewModel.SeeGuide();
+        coach.Click += (_, _) => _viewModel.SeeGuides();
         return SettingsUi.Group(
             start.Caption,
             welcome,

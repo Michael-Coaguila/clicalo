@@ -150,8 +150,15 @@ public sealed class TouchPrecisionViewModel : ObservableObject
         if (_zone.Feed(pointerId, phase, at, _s.Time.GetUtcNow(), kind))
         {
             Screen = Project();
+            if (phase == PointerPhase.Up)
+            {
+                Tested?.Invoke(this, EventArgs.Empty);
+            }
         }
     }
+
+    /// <summary>A touch ended on the test area (a step of the guide of Precisión táctil waits for it, R-39).</summary>
+    public event EventHandler? Tested;
 
     /// <summary>[testReset]: the counters start again.</summary>
     public void ResetCounters()

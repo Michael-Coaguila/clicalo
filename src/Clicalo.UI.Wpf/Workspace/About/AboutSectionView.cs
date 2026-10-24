@@ -4,8 +4,10 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.ControlCenter.About;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.General;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -104,7 +106,12 @@ public sealed class AboutSectionView : Border
             Space.S6,
             SettingsUi.PageHeader(title, subtitle),
             Split(Story(screen), AppCard(screen), 1.4, 1),
-            Split(Feedback(screen), Direct(screen), 1.4, 1)
+            Split(
+                GuideTargets.Mark(Feedback(screen), GuideTarget.ControlCenterFeedback),
+                Direct(screen),
+                1.4,
+                1
+            )
         );
         content.Margin = new Thickness(Space.S6);
         _scroll.Content = content;

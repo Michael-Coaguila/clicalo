@@ -116,10 +116,18 @@ public sealed class SystemSectionViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>The person chose another tab (a step of the guide of Sistema waits for it, R-39).</summary>
+    public event EventHandler? TabChosen;
+
     /// <summary>A tab (SIS-001).</summary>
     /// <param name="tab">The tab.</param>
     public void SelectTab(SystemTab tab)
     {
+        if (tab != _tab)
+        {
+            TabChosen?.Invoke(this, EventArgs.Empty);
+        }
+
         _tab = tab;
         ClearReview();
         _s.Confirm.Disarm();

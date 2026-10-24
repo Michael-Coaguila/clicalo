@@ -327,27 +327,18 @@ public sealed class GeneralSectionViewModel : ObservableObject
     public void SeeWelcome() => _s.OpenWelcome();
 
     /// <summary>
-    /// «Ver la guía» (GEN-014) of the view in use: in the Tab view the guide of the bar shows again the next time the bar
-    /// opens (PES-015); in the Full and Compact views the guide of the panel shows beside it at once (R-39).
+    /// [seeGuides] (GEN-014, R-39): every guide shows again, once, on its own screen; the one of this section of the
+    /// Control Center at once.
     /// </summary>
-    public void SeeGuide()
+    public void SeeGuides()
     {
-        var tab = Settings.Density == PanelDensity.Dock;
-        if (
-            _s
-                .Store.Dispatch(
-                    new SetSetting(
-                        tab ? SettingPaths.DockCoachDone : SettingPaths.PanelCoachDone,
-                        false
-                    )
-                )
-                .IsSuccess
-        )
+        ValueList<string> none = [];
+        var cleared = _s.Store.Dispatch(new SetSetting(SettingPaths.GuidesDone, none));
+        var tab = _s.Store.Dispatch(new SetSetting(SettingPaths.DockCoachDone, false));
+        if (cleared.IsSuccess || tab.IsSuccess)
         {
             Refresh();
-            Notify(
-                new WorkspaceNotice(tab ? L.SeeCoachD : L.SeePanelCoachD, CoachIcon, false, false)
-            );
+            Notify(new WorkspaceNotice(L.SeeGuidesD, CoachIcon, false, false));
         }
     }
 
@@ -455,8 +446,8 @@ public sealed class GeneralSectionViewModel : ObservableObject
                 T(L.SecStart),
                 T(L.SeeWelcome),
                 T(L.SeeWelcomeD),
-                T(settings.Density == PanelDensity.Dock ? L.SeeCoach : L.SeePanelCoach),
-                T(settings.Density == PanelDensity.Dock ? L.SeeCoachD : L.SeePanelCoachD),
+                T(L.SeeGuides),
+                T(L.SeeGuidesD),
                 Switch("keyboard_off", L.UNokb, L.UNokbD, settings.NoKeyboardUser)
             ),
             Ai(settings)

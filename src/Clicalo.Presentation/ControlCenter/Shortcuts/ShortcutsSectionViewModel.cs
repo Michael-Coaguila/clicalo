@@ -135,7 +135,11 @@ public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
         _iconsOpen = false;
         _linkOpen = false;
         Workspace.SelectList(list);
+        ListChosen?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>The person chose a row of the profiles column (a step of the guide of Atajos waits for it, R-39).</summary>
+    public event EventHandler? ListChosen;
 
     /// <summary>«+ Nuevo perfil» (ATJ-002): the Plantillas section.</summary>
     public void NewProfile() => _s.OpenTemplates();

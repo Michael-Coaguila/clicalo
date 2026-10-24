@@ -4,11 +4,8 @@ namespace Clicalo.Presentation.ControlCenter.General;
 /// <param name="Caption">[secStart].</param>
 /// <param name="WelcomeTitle">[seeWelcome].</param>
 /// <param name="WelcomeDescription">[seeWelcomeD].</param>
-/// <param name="CoachTitle">
-/// The guide of the view in use: «Ver la guía de la pestaña» in the Tab view (PES-015), [seePanelCoach] in the Full and
-/// Compact views (R-39).
-/// </param>
-/// <param name="CoachDescription">When the guide shows again.</param>
+/// <param name="CoachTitle">[seeGuides]: every guide shows again (R-39).</param>
+/// <param name="CoachDescription">[seeGuidesD].</param>
 /// <param name="NoKeyboard">[uNokb] (BIE-005).</param>
 public sealed record StartModel(
     string Caption,

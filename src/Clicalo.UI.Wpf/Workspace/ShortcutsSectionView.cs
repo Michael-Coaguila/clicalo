@@ -6,11 +6,13 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Editor;
 using Clicalo.UI.Wpf.Workspace.Internal;
@@ -217,6 +219,9 @@ public sealed class ShortcutsSectionView : Grid
         SetRowSpan(_profilesLayer, 2);
         list.Children.Add(_profilesLayer);
         _listPane = Bordered(list);
+        GuideTargets.SetTarget(_profilesPane, GuideTarget.ControlCenterProfiles);
+        GuideTargets.SetTarget(_listPane, GuideTarget.ControlCenterShortcuts);
+        GuideTargets.SetTarget(_editorPane, GuideTarget.ControlCenterEditor);
         SetColumn(_listPane, 1);
         body.Children.Add(_listPane);
 

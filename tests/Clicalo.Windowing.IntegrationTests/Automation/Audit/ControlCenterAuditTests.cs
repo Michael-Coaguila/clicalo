@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
@@ -6,6 +7,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Application.Store;
 using Clicalo.Domain.Commands;
 using Clicalo.Domain.Duplicates;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
@@ -13,6 +15,8 @@ using Clicalo.Domain.Settings;
 using Clicalo.Presentation.ControlCenter;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Guides;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace;
 using Clicalo.Windowing.IntegrationTests.About;
 using Clicalo.Windowing.IntegrationTests.ControlCenter;
@@ -304,6 +308,99 @@ public sealed class ControlCenterAuditTests
             },
             Documents.GetValueOrDefault(state)
         );
+
+    /// <summary>The guide of each section (R-39), in both languages, as drawn and with the largest text in the light theme.</summary>
+    public static TheoryData<string, GuideId, string, AuditLook> GuideCases()
+    {
+        var cases = new TheoryData<string, GuideId, string, AuditLook>();
+        (string State, GuideId Guide)[] sections =
+        [
+            ("shortcuts", GuideId.Shortcuts),
+            ("templates", GuideId.Templates),
+            ("general", GuideId.General),
+            ("touch", GuideId.Touch),
+            ("system-updates", GuideId.System),
+            ("about", GuideId.About),
+        ];
+        foreach (var (state, guide) in sections)
+        {
+            cases.Add(state, guide, "es", AuditLook.Dark);
+            cases.Add(state, guide, "en", AuditLook.Dark);
+            cases.Add(state, guide, "es", AuditLook.LightLargeText);
+        }
+
+        return cases;
+    }
+
+    [Theory]
+    [MemberData(nameof(GuideCases))]
+    [Trait("Req", "PES-015")]
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-001")]
+    public void Every_section_shows_its_guide_without_covering_what_it_points_at(
+        string state,
+        GuideId guide,
+        string language,
+        AuditLook look
+    ) =>
+        Run(
+            language,
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            look,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                var steps = GuideCatalog.Steps(guide);
+                for (var step = 0; step < steps.Length; step++)
+                {
+                    host.LayOut();
+                    WpfThread.DrainPendingWork();
+                    host.LayOut();
+                    var name = string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{state} guide step {step + 1} ({language}, {look})"
+                    );
+                    viewModel.Guide.Guide.ShouldBe(guide, name);
+                    viewModel.Guide.Step.ShouldBe(step, name);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        name,
+                        atLeast: 12,
+                        TouchInput.Wpf,
+                        "Centro de control",
+                        liveRegionsOnly: true
+                    );
+
+                    // R-39: the ring is on the control of the step and the card never covers it.
+                    var pointed = window.GuidePointsAt.ShouldNotBeNull(name);
+                    GuideTargets.GetTarget(pointed).ShouldBe(steps[step].Target, name);
+                    var card = Bounds(window.GuideCard, host.Root);
+                    Bounds(pointed, host.Root).IntersectsWith(card).ShouldBeFalse(name);
+                    window.GuideCard.Card.NextButton.ActualHeight.ShouldBe(
+                        ControlHeight.Small,
+                        name
+                    );
+                    viewModel.Guide.Next();
+                }
+
+                host.LayOut();
+                viewModel.Guide.IsShown.ShouldBeFalse();
+                window.GuideCard.Visibility.ShouldBe(Visibility.Collapsed);
+            },
+            static store =>
+            {
+                ValueList<string> none = [];
+                store
+                    .Dispatch(new SetSetting(SettingPaths.GuidesDone, none))
+                    .IsSuccess.ShouldBeTrue();
+            }
+        );
+
+    private static Rect Bounds(FrameworkElement element, FrameworkElement root) =>
+        element.TransformToAncestor(root).TransformBounds(new Rect(element.RenderSize));
 
     /// <summary>The states with a layer over the content, at the default size and in the smallest window.</summary>
     public static TheoryData<string, string, double, double> LayerCases()

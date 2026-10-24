@@ -5,9 +5,11 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.ControlCenter.Templates;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Workspace.Editor;
@@ -90,9 +92,11 @@ public sealed class TemplatesSectionView : Grid
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
+        GuideTargets.SetTarget(_available, GuideTarget.ControlCenterTemplates);
         AutomationProperties.SetLiveSetting(_errorText, AutomationLiveSetting.Assertive);
         _errorAnnouncer = new LiveAnnouncer(_errorText);
         _query = new TextInput(string.Empty, string.Empty);
+        GuideTargets.SetTarget(_query, GuideTarget.ControlCenterAi);
         _query.Changed += (_, _) => _viewModel.SetQuery(_query.Text);
         _query.DictateRequested += (_, _) => _viewModel.Dictate();
         _query.Box.KeyDown += (_, e) =>

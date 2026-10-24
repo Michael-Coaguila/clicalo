@@ -1,5 +1,6 @@
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
@@ -10,6 +11,7 @@ using Clicalo.Presentation.ControlCenter.Shortcuts;
 using Clicalo.Presentation.ControlCenter.SystemSection;
 using Clicalo.Presentation.ControlCenter.Templates;
 using Clicalo.Presentation.ControlCenter.TouchPrecision;
+using Clicalo.Presentation.Guides;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter;
@@ -55,7 +57,9 @@ public sealed class ControlCenterViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(close);
         _s = services;
         _close = close;
+        Guide = new GuideViewModel(services.Localization, GuideDone);
         Shortcuts = new ShortcutsSectionViewModel(services);
+        Shortcuts.ListChosen += (_, _) => Guide.Signal(GuideSignal.ProfileChosen);
         Shortcuts.PropertyChanged += (_, e) =>
         {
             if (
@@ -72,6 +76,7 @@ public sealed class ControlCenterViewModel : ObservableObject
         if (services.System is { } system)
         {
             System = new SystemSectionViewModel(services, system);
+            System.TabChosen += (_, _) => Guide.Signal(GuideSignal.SystemTabChanged);
             System.PropertyChanged += (_, e) =>
             {
                 if (
@@ -111,6 +116,7 @@ public sealed class ControlCenterViewModel : ObservableObject
                 services.Post
             )
         );
+        TouchPrecision.Tested += (_, _) => Guide.Signal(GuideSignal.TestTapped);
         if (services.About is { } about)
         {
             var aboutSection = new AboutViewModel(about);
@@ -123,6 +129,9 @@ public sealed class ControlCenterViewModel : ObservableObject
 
     /// <summary>The «General y panel» section (docs/05 §3).</summary>
     public GeneralSectionViewModel General { get; }
+
+    /// <summary>The guide of the section in view (R-39), until it is finished or skipped.</summary>
+    public GuideViewModel Guide { get; }
 
     /// <summary>The «Precisión táctil» section (docs/05 §4).</summary>
     public TouchPrecisionViewModel TouchPrecision { get; }
@@ -360,6 +369,7 @@ public sealed class ControlCenterViewModel : ObservableObject
             Item(ControlCenterSection.About, "favorite", L.NavAbout2, 0, false),
         ];
         SectionTitle = Nav.Items.First(n => n.Section == Section).Label;
+        Guide.Show(GuideRules.InControlCenter(GuideOf(Section), _s.Store.Current.Settings));
         Languages =
         [
             .. _s.Localization.Languages.Select(locale => new LanguageOption(
@@ -384,6 +394,27 @@ public sealed class ControlCenterViewModel : ObservableObject
     }
 
     private string T(Message message) => _s.Localization.Current.Format(message);
+
+    /// <summary>The guide of <paramref name="section"/> (R-39).</summary>
+    private static GuideId GuideOf(ControlCenterSection section) =>
+        section switch
+        {
+            ControlCenterSection.Templates => GuideId.Templates,
+            ControlCenterSection.Panel => GuideId.General,
+            ControlCenterSection.Touch => GuideId.Touch,
+            ControlCenterSection.System => GuideId.System,
+            ControlCenterSection.About => GuideId.About,
+            _ => GuideId.Shortcuts,
+        };
+
+    /// <summary>R-39: the guide of a section was finished or skipped; it does not show again until General asks for it.</summary>
+    private void GuideDone(GuideId guide) =>
+        _ = _s.Store.Dispatch(
+            new SetSetting(
+                SettingPaths.GuidesDone,
+                GuideProgress.WithDone(_s.Store.Current.Settings.GuidesDone, guide)
+            )
+        );
 
     // A profile created or chosen in Plantillas: «Atajos» on it, with the library when it is new (PLA-010, PLA-014).
     private void OpenProfile(ProfileId profile, bool library)

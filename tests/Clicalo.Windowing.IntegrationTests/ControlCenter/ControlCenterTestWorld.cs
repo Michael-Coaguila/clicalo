@@ -8,6 +8,7 @@ using Clicalo.Application.UseCases.Editor;
 using Clicalo.Application.UseCases.Library;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Document;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Icons;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
@@ -170,7 +171,17 @@ internal sealed class ControlCenterTestWorld
                     ]
                 )
                 .Value,
-            SettingsSchema.Defaults
+            // The guides of the sections are done (R-39): the audits of the sections see them as a person who knows
+            // them; the guides have tests of their own.
+            SettingsSchema.Defaults with
+            {
+                GuidesDone =
+                [
+                    .. Enum.GetValues<GuideId>()
+                        .Where(static guide => guide != GuideId.Tab)
+                        .Select(GuideProgress.Id),
+                ],
+            }
         );
 
     private static Shortcut Tap(

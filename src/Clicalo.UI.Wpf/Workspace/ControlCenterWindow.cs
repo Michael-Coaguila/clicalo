@@ -9,9 +9,12 @@ using System.Windows.Shell;
 using System.Windows.Threading;
 using Clicalo.Application.Ports;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.ControlCenter;
+using Clicalo.Presentation.Guides;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
@@ -72,6 +75,10 @@ public sealed class ControlCenterWindow : Window
     private readonly Grid _grip = Grip();
     private readonly LiveAnnouncer _statusAnnouncer;
     private readonly LiveAnnouncer _announcer;
+    private readonly Grid _body = new();
+    private readonly GuideCardFrame _guide;
+    private readonly GuideHighlighter _guideRing;
+    private GuideTarget? _guideShownFor;
     private string? _announced;
     private bool _closing;
 
@@ -127,7 +134,7 @@ public sealed class ControlCenterWindow : Window
         );
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.Children.Add(_titleBar);
-        var body = new Grid();
+        var body = _body;
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(RailWidth) });
         body.ColumnDefinitions.Add(
             new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
@@ -148,6 +155,15 @@ public sealed class ControlCenterWindow : Window
         body.Children.Add(rail);
         Grid.SetColumn(_section, 1);
         body.Children.Add(_section);
+
+        // R-39: the guide of the section on a layer of its own over the rail and the section, in the corner away from
+        // the control it points at, which gets the ring.
+        _guide = new GuideCardFrame(viewModel.Guide) { Margin = new Thickness(Space.S4) };
+        Grid.SetColumnSpan(_guide, 2);
+        body.Children.Add(_guide);
+        _guideRing = new GuideHighlighter(_root);
+        viewModel.Guide.PropertyChanged += OnGuideChanged;
+        LayoutUpdated += (_, _) => PlaceGuide();
         Grid.SetRow(body, 1);
         layout.Children.Add(body);
         Grid.SetRow(_status, 2);
@@ -179,11 +195,19 @@ public sealed class ControlCenterWindow : Window
     /// </summary>
     public LiveAnnouncer Announcer => _announcer;
 
+    /// <summary>The card of the guide of the section in view (R-39).</summary>
+    public GuideCardFrame GuideCard => _guide;
+
+    /// <summary>The control the ring of the guide is on now, if any (R-39).</summary>
+    public FrameworkElement? GuidePointsAt => _guideRing.Highlighted;
+
     /// <summary>Closes it for good (the app is exiting).</summary>
     public void Destroy()
     {
         _closing = true;
         _viewModel.PropertyChanged -= OnChanged;
+        _viewModel.Guide.PropertyChanged -= OnGuideChanged;
+        _guide.Detach();
         _shortcuts.Detach();
         _system?.Detach();
         _general.Detach();
@@ -355,6 +379,84 @@ public sealed class ControlCenterWindow : Window
     }
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e) => Render();
+
+    private void OnGuideChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(GuideViewModel.Target) or nameof(GuideViewModel.IsShown))
+        {
+            PlaceGuide();
+        }
+    }
+
+    /// <summary>
+    /// R-39: the ring on the control of the step, brought into view once per step, and the card in the corner of the
+    /// body that does not cover it: below on the right, then on the left, then above; the one that covers least when
+    /// none is free.
+    /// </summary>
+    private void PlaceGuide()
+    {
+        var guide = _viewModel.Guide;
+        var target = guide.IsShown ? guide.Target : null;
+        _guideRing.Show(target);
+        if (target is null || _guide.ActualWidth <= 0 || _body.ActualWidth <= 0)
+        {
+            _guideShownFor = null;
+            return;
+        }
+
+        var element = _guideRing.Highlighted;
+        if (_guideShownFor != target)
+        {
+            _guideShownFor = target;
+            element?.BringIntoView();
+        }
+
+        var pointed =
+            element is not null && _body.IsAncestorOf(element)
+                ? element.TransformToAncestor(_body).TransformBounds(new Rect(element.RenderSize))
+                : Rect.Empty;
+        if (!pointed.IsEmpty)
+        {
+            pointed.Inflate(
+                GuideRing.Offset + Stroke.FocusRing,
+                GuideRing.Offset + Stroke.FocusRing
+            );
+        }
+
+        var size = new Size(_guide.ActualWidth + Space.S4 * 2, _guide.ActualHeight + Space.S4 * 2);
+        (HorizontalAlignment Across, VerticalAlignment Along)[] corners =
+        [
+            (HorizontalAlignment.Right, VerticalAlignment.Bottom),
+            (HorizontalAlignment.Left, VerticalAlignment.Bottom),
+            (HorizontalAlignment.Right, VerticalAlignment.Top),
+            (HorizontalAlignment.Left, VerticalAlignment.Top),
+        ];
+        var best = corners[0];
+        var least = double.MaxValue;
+        foreach (var corner in corners)
+        {
+            var x = corner.Across == HorizontalAlignment.Right ? _body.ActualWidth - size.Width : 0;
+            var y = corner.Along == VerticalAlignment.Bottom ? _body.ActualHeight - size.Height : 0;
+            var card = new Rect(new Point(x, y), size);
+            var covered = pointed.IsEmpty ? Rect.Empty : Rect.Intersect(card, pointed);
+            var area = covered.IsEmpty ? 0 : covered.Width * covered.Height;
+            if (area < least)
+            {
+                least = area;
+                best = corner;
+            }
+        }
+
+        if (_guide.HorizontalAlignment != best.Across)
+        {
+            _guide.HorizontalAlignment = best.Across;
+        }
+
+        if (_guide.VerticalAlignment != best.Along)
+        {
+            _guide.VerticalAlignment = best.Along;
+        }
+    }
 
     private StackPanel TitleLeading()
     {
