@@ -193,7 +193,8 @@ public sealed class DockBarViewModel : ObservableObject
     /// <param name="flashing">Whether the flash starts or ends.</param>
     public void Flash(ShortcutId shortcut, bool flashing)
     {
-        foreach (var tile in PageTiles.Concat(PinnedTiles))
+        // The keys of Arrows flash as well when they run (D21 review: only the bar and Pinned did).
+        foreach (var tile in PageTiles.Concat(PinnedTiles).Concat(ArrowTiles))
         {
             if (tile.Id == shortcut)
             {
