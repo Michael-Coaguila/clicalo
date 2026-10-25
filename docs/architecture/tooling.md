@@ -134,7 +134,7 @@ escala 1,75 (la pantalla del usuario: 2400 × 1600 al 175 %), en tema oscuro, en
 y el borde de su ventana, y `index.html` las muestra agrupadas y con nombre:
 
 ```powershell
-$env:CLICALO_GALLERY = 'C:\dev\clicalo-qa\before'
+$env:CLICALO_GALLERY = "$PWD\artifacts\gallery"
 dotnet test tests/Clicalo.Windowing.IntegrationTests -c Debug -- --filter-namespace "Clicalo.Windowing.IntegrationTests.Automation.Audit"
 Remove-Item Env:CLICALO_GALLERY
 ```
@@ -145,6 +145,22 @@ prueba (`*.light-150.png` y `*.contrast-150.png`, fuera del índice), en todas l
 de teclas, un Mantener y una macro) para que se vean los nombres largos y los tipos. Un estado roto se guarda igual, antes de comprobar sus reglas. La carpeta acumula: `gallery.tsv`
 lista los casos y una ejecución nueva sobrescribe las imágenes con el mismo nombre. Sin la variable no se escribe
 nada, así que la galería no forma parte de `cl check`.
+
+### Escritorio oculto
+
+Las pruebas de escritorio, la galería y la propia app abren ventanas. Para no ocupar la pantalla de quien trabaja,
+`tools/qa/hidden-desktop.ps1` ejecuta una orden en un escritorio propio de la sesión al que nunca se cambia: nada se
+dibuja en pantalla ni toma el primer plano, y todos los procesos de la ejecución mueren con ella. `SendInput` no
+llega a ese escritorio, así que lo que necesita entrada inyectada (el trackpad, toques reales) se comprueba en el
+equipo con el [guion de aceptación manual](../guides/aceptacion-manual.md).
+
+```powershell
+powershell -File tools\qa\hidden-desktop.ps1 -Command 'cl.cmd check' -TimeoutSeconds 1800
+powershell -File tools\qa\hidden-desktop.ps1 -Command 'cmd /c "set CLICALO_DESKTOP_TESTS=1&& dotnet test --project tests\Clicalo.Windowing.IntegrationTests -c Debug --no-build"'
+```
+
+La salida se guarda en `-Output` (por defecto `%TEMP%\clicalo-hidden-out.txt`) y la orden muestra sus últimas
+líneas. Para la galería, `CLICALO_GALLERY` puede apuntar a una carpeta dentro de `artifacts`, que git ignora.
 
 ### Compilar mientras se itera
 
