@@ -155,12 +155,13 @@ llega a ese escritorio, así que lo que necesita entrada inyectada (el trackpad,
 equipo con el [guion de aceptación manual](../guides/aceptacion-manual.md).
 
 ```powershell
-powershell -File tools\qa\hidden-desktop.ps1 -Command 'cl.cmd check' -TimeoutSeconds 1800
+powershell -File tools\qa\hidden-desktop.ps1 -Command '.\cl.cmd check' -TimeoutSeconds 1800
 powershell -File tools\qa\hidden-desktop.ps1 -Command 'cmd /c "set CLICALO_DESKTOP_TESTS=1&& dotnet test --project tests\Clicalo.Windowing.IntegrationTests -c Debug --no-build"'
 ```
 
 La salida se guarda en `-Output` (por defecto `%TEMP%\clicalo-hidden-out.txt`) y la orden muestra sus últimas
-líneas. Para la galería, `CLICALO_GALLERY` puede apuntar a una carpeta dentro de `artifacts`, que git ignora.
+líneas. La orden se ejecuta en la raíz del repositorio; `.\cl.cmd` lleva su `.\` porque algunos entornos no buscan
+programas en la carpeta actual. Para la galería, `CLICALO_GALLERY` puede apuntar a una carpeta dentro de `artifacts`, que git ignora.
 
 ### Compilar mientras se itera
 

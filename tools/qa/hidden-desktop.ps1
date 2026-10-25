@@ -9,7 +9,7 @@ foreground. Every process of the run is in one job, killed with it. SendInput do
 desktop, so what needs injected input (the trackpad, real taps) cannot be checked here.
 
 .EXAMPLE
-powershell -File tools\qa\hidden-desktop.ps1 -Command 'cl.cmd check' -TimeoutSeconds 1800
+powershell -File tools\qa\hidden-desktop.ps1 -Command '.\cl.cmd check' -TimeoutSeconds 1800
 
 .EXAMPLE
 powershell -File tools\qa\hidden-desktop.ps1 -Command 'cmd /c "set CLICALO_DESKTOP_TESTS=1&& dotnet test --project tests\Clicalo.Windowing.IntegrationTests -c Debug --no-build --filter-namespace Clicalo.Windowing.IntegrationTests.TabView"'
