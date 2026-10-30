@@ -51,11 +51,11 @@ El trabajo `adr` de la CI exige un ADR nuevo o cambiado en esta carpeta cuando u
 | [0006](0006-capa-de-punteros-propia.md) | Capa de punteros propia y seguimiento del puntero externo | Aceptado | 2026-09-25 |
 | [0007](0007-documento-json-versionado.md) | Documento JSON versionado, escritura atómica y uso aparte | Aceptado | 2026-09-25 |
 | [0008](0008-secretos-dpapi-y-administrador-de-credenciales.md) | Secretos con DPAPI y el Administrador de credenciales | Aceptado | 2026-09-25 |
-| [0009](0009-elevacion-y-componente-de-sistema.md) | Elevación como proceso completo y componente de sistema opcional | Aceptado | 2026-09-25 |
+| [0009](0009-elevacion-y-componente-de-sistema.md) | Elevación como proceso completo y componente de sistema opcional | Sustituido por [ADR-0027](0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md) | 2026-09-25 |
 | [0010](0010-ipc-minima.md) | IPC mínima: solo `Show`, `OpenUri` e `ImportFile` | Aceptado | 2026-09-25 |
 | [0011](0011-formato-i18n.md) | JSON plano con marcadores con nombre, plurales CLDR y claves tipadas | Aceptado | 2026-09-25 |
 | [0012](0012-velopack-canales-y-datos.md) | Velopack, canales, `packId Clicalo.App` y datos en `%AppData%\Clicalo` | Aceptado | 2026-09-25 |
-| [0013](0013-firma-de-codigo-y-manifiesto-firmado.md) | Authenticode y manifiesto firmado con llave de hardware fuera de GitHub | Aceptado | 2026-09-25 |
+| [0013](0013-firma-de-codigo-y-manifiesto-firmado.md) | Authenticode y manifiesto firmado con llave de hardware fuera de GitHub | Sustituido por [ADR-0027](0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md) | 2026-09-25 |
 | [0014](0014-ia-con-clave-propia.md) | IA solo con clave propia; proxy de cuota diferido | Aceptado | 2026-09-25 |
 | [0015](0015-licencia-mit-y-dco.md) | Licencia MIT y DCO | Aceptado | 2026-09-25 |
 | [0016](0016-soporte-de-windows-10.md) | Soporte completo de Windows 10 22H2 en la 2.x con revisión en 2027 | Aceptado | 2026-09-25 |

@@ -1,5 +1,5 @@
 ---
-status: Aceptado
+status: Sustituido por ADR-0027
 date: 2026-09-25
 decision-makers: Michael Coaguila (mantenedor)
 consulted: verificación adversarial «Sostenibilidad»; crítica del plano 1.0 (hueco «Seguridad / firma del manifiesto»)
