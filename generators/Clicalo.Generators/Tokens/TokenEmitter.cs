@@ -27,6 +27,7 @@ internal static class TokenEmitter
             new("ThemePalettes.g.cs", EmitThemePalettes(model)),
             new("SystemHighContrastPalette.g.cs", EmitSystemPalette(model)),
             new("DesignShapes.g.cs", EmitShapes(model)),
+            new("DesignSystem.g.cs", EmitDesignSystem(model)),
             new("Motion.g.cs", EmitMotion(model)),
         ];
 
@@ -420,39 +421,6 @@ internal static class TokenEmitter
     private static string EmitShapes(TokenModel model)
     {
         var w = new CodeWriter();
-        w.Summary("Corner radii in device-independent pixels (docs/07 «Formas»).");
-        w.Line("public static class Radii");
-        w.Open();
-        for (var i = 0; i < model.Radii.Count; i++)
-        {
-            w.Summary("<c>" + model.Radii[i].Key + "</c>.");
-            w.Line(
-                "public const double "
-                    + JsonShape.ToPascalCase(model.Radii[i].Key)
-                    + " = "
-                    + Dbl(model.Radii[i].Value)
-                    + ";"
-            );
-            if (i < model.Radii.Count - 1)
-            {
-                w.Blank();
-            }
-        }
-
-        w.Close();
-        w.Blank();
-        w.Summary(
-            "The focus ring of every control (TEM-009): drawn in the <c>focusRing</c> color, outside the control."
-        );
-        w.Line("public static class FocusRing");
-        w.Open();
-        w.Summary("Stroke thickness in device-independent pixels.");
-        w.Line("public const double Thickness = " + Dbl(model.FocusRingThickness) + ";");
-        w.Blank();
-        w.Summary("Gap between the control and the ring, in device-independent pixels.");
-        w.Line("public const double Offset = " + Dbl(model.FocusRingOffset) + ";");
-        w.Close();
-        w.Blank();
         w.Summary("A precomputed drop shadow (never <c>DropShadowEffect</c>, blueprint §8.1).");
         w.Line(
             "/// <param name=\"OffsetX\">Horizontal offset in device-independent pixels.</param>"
@@ -520,6 +488,204 @@ internal static class TokenEmitter
         w.Close();
         return w.ToString();
     }
+
+    private static string EmitDesignSystem(TokenModel model)
+    {
+        var w = new CodeWriter();
+        Lengths(
+            w,
+            "Space",
+            "The spacing scale of direction C (D12), in device-independent pixels: the only margins, paddings and gaps.",
+            model.Space
+        );
+        w.Blank();
+        Lengths(
+            w,
+            "ControlHeight",
+            "The three control heights of direction C (D12), in device-independent pixels.",
+            model.ControlHeights
+        );
+        w.Blank();
+        Lengths(
+            w,
+            "Radii",
+            "The corner radii of direction C (D12), in device-independent pixels: three and the pill.",
+            model.Radii
+        );
+        w.Blank();
+        Lengths(
+            w,
+            "IconBox",
+            "The fixed icon boxes of direction C (D12), in device-independent pixels; the glyph is centered in them.",
+            model.IconBoxes
+        );
+        w.Blank();
+        Lengths(
+            w,
+            "Stroke",
+            "The strokes of direction C (D12), in device-independent pixels: rest line, selected ring and focus ring.",
+            model.Strokes
+        );
+        w.Blank();
+        Lengths(
+            w,
+            "ComponentSize",
+            "Metrics of single components that direction C (D12) fixes outside the scales, in device-independent pixels.",
+            model.Components
+        );
+        w.Blank();
+        w.Summary(
+            "The focus ring of every control (TEM-009): drawn in the <c>focusRing</c> color, outside the control."
+        );
+        w.Line("public static class FocusRing");
+        w.Open();
+        w.Summary("Stroke thickness in device-independent pixels.");
+        w.Line("public const double Thickness = " + Dbl(model.FocusRingThickness) + ";");
+        w.Blank();
+        w.Summary("Gap between the control and the ring, in device-independent pixels.");
+        w.Line("public const double Offset = " + Dbl(model.FocusRingOffset) + ";");
+        w.Close();
+        w.Blank();
+        w.Summary("The font family of a text style.");
+        w.Line("public enum TextFamily");
+        w.Open();
+        w.Summary("Atkinson Hyperlegible: every interface text.");
+        w.Line("Ui = 0,");
+        w.Blank();
+        w.Summary("JetBrains Mono: only key combinations, written «Ctrl+Shift+L».");
+        w.Line("Keys = 1,");
+        w.Close();
+        w.Blank();
+        w.Summary("A named text style of the closed type scale (D12).");
+        w.Line("public enum TextStyleToken");
+        w.Open();
+        for (var i = 0; i < model.TextStyles.Count; i++)
+        {
+            var style = model.TextStyles[i];
+            w.Summary("<c>" + style.Key + "</c> · " + Describe(style) + ".");
+            w.Line(JsonShape.ToPascalCase(style.Key) + " = " + Int(i) + ",");
+            if (i < model.TextStyles.Count - 1)
+            {
+                w.Blank();
+            }
+        }
+
+        w.Close();
+        w.Blank();
+        w.Summary("The metrics of one text style, in device-independent pixels.");
+        w.Line("/// <param name=\"Family\">Its font family.</param>");
+        w.Line("/// <param name=\"Weight\">Its OpenType weight: 400, 500 or 700.</param>");
+        w.Line("/// <param name=\"Size\">Its font size.</param>");
+        w.Line("/// <param name=\"LineHeight\">The height of each of its lines.</param>");
+        w.Line("/// <param name=\"LetterSpacing\">Extra space between letters, in em.</param>");
+        w.Line("/// <param name=\"Uppercase\">Whether it is written in capitals.</param>");
+        w.Line(
+            "public readonly record struct TextStyleSpec(TextFamily Family, int Weight, double Size, double LineHeight, double LetterSpacing, bool Uppercase);"
+        );
+        w.Blank();
+        w.Summary("The closed type scale of direction C (D12).");
+        w.Line("public static class TextStyles");
+        w.Open();
+        foreach (var style in model.TextStyles)
+        {
+            w.Summary("<c>" + style.Key + "</c> · " + Describe(style) + ".");
+            w.Line(
+                "public static TextStyleSpec "
+                    + JsonShape.ToPascalCase(style.Key)
+                    + " { get; } = new(TextFamily."
+                    + (IsKeys(style) ? "Keys" : "Ui")
+                    + ", "
+                    + Int(style.Weight)
+                    + ", "
+                    + Dbl(style.Size)
+                    + ", "
+                    + Dbl(style.LineHeight)
+                    + ", "
+                    + Dbl(style.LetterSpacing)
+                    + ", "
+                    + (style.Uppercase ? "true" : "false")
+                    + ");"
+            );
+            w.Blank();
+        }
+
+        w.Summary("Every style, in the order of <see cref=\"TextStyleToken\"/>.");
+        w.Line(
+            "public static global::System.Collections.Generic.IReadOnlyList<TextStyleToken> All { get; } ="
+        );
+        w.Line("[");
+        w.Indent();
+        foreach (var style in model.TextStyles)
+        {
+            w.Line("TextStyleToken." + JsonShape.ToPascalCase(style.Key) + ",");
+        }
+
+        w.Outdent();
+        w.Line("];");
+        w.Blank();
+        w.Summary("The metrics of <paramref name=\"style\"/>.");
+        w.Line("public static TextStyleSpec Get(TextStyleToken style) =>");
+        w.Indent();
+        w.Line("style switch");
+        w.Line("{");
+        w.Indent();
+        foreach (var style in model.TextStyles)
+        {
+            var name = JsonShape.ToPascalCase(style.Key);
+            w.Line("TextStyleToken." + name + " => " + name + ",");
+        }
+
+        w.Line("_ => throw new " + OutOfRange + "(nameof(style), style, null),");
+        w.Outdent();
+        w.Line("};");
+        w.Outdent();
+        w.Close();
+        return w.ToString();
+    }
+
+    private static void Lengths(
+        CodeWriter w,
+        string type,
+        string summary,
+        List<KeyValuePair<string, double>> values
+    )
+    {
+        w.Summary(summary);
+        w.Line("public static class " + type);
+        w.Open();
+        for (var i = 0; i < values.Count; i++)
+        {
+            w.Summary("<c>" + values[i].Key + "</c>: " + Num(values[i].Value) + ".");
+            w.Line(
+                "public const double "
+                    + JsonShape.ToPascalCase(values[i].Key)
+                    + " = "
+                    + Dbl(values[i].Value)
+                    + ";"
+            );
+            if (i < values.Count - 1)
+            {
+                w.Blank();
+            }
+        }
+
+        w.Close();
+    }
+
+    private static bool IsKeys(TextStyleModel style) =>
+        string.Equals(style.Family, "keys", System.StringComparison.Ordinal);
+
+    private static string Describe(TextStyleModel style) =>
+        (IsKeys(style) ? "JetBrains Mono " : "Atkinson Hyperlegible ")
+        + Int(style.Weight)
+        + " "
+        + Num(style.Size)
+        + "/"
+        + Num(style.LineHeight)
+        + (style.LetterSpacing > 0 ? ", spacing " + Num(style.LetterSpacing) + " em" : string.Empty)
+        + (style.Uppercase ? ", capitals" : string.Empty);
+
+    private static string Num(double value) => value.ToString("R", CultureInfo.InvariantCulture);
 
     private static string EmitMotion(TokenModel model)
     {

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Clicalo.Application.Persistence;
 using Clicalo.Application.Ports;
@@ -18,14 +19,17 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 /// monitor holds it) keeps locked. A short lock is absorbed silently; a lock longer than 3 s is visible by then; nothing
 /// is lost and the save completes once the lock is gone (docs/testing/spikes/S11.md).
 /// </summary>
+/// <remarks>
+/// The clock is fake and the file operations are real. The clock moves only while the scheduler has nothing in flight
+/// or the writer is waiting on the clock between two attempts (<see cref="ClockWaiters"/>), never while a file
+/// operation is running: the fake time a save takes is then exactly the writer's backoff, whatever the load of the
+/// machine. Before, the clock ran ahead of a slow disk and the notice of a long lock looked late (issue 4: 5,24 s of
+/// fake time on a shared runner for a notice that is due 3 s after the first attempt).
+/// </remarks>
 [Trait("Req", "DAT-002")]
 [Trait("Req", "NFR-006")]
-[Trait("Category", "Quarantine")]
-[Trait("Issue", "4")]
 public sealed class S11LockTests : IDisposable
 {
-    private static readonly TimeSpan Slack = TimeSpan.FromMilliseconds(300);
-
     private readonly TempFolder _folder = new();
     private readonly FakeTimeProvider _time = TestTime.CreateProvider();
     private readonly BoundedTestToken _bounded = new();
@@ -92,10 +96,9 @@ public sealed class S11LockTests : IDisposable
         );
 
         holder.Dispose();
-        visibleAt.ShouldNotBeNull();
-        visibleAt.Value.ShouldBeGreaterThan(TimeSpan.FromSeconds(2));
-        visibleAt.Value.ShouldBeLessThanOrEqualTo(
-            Timings().DocumentSaveDebounce + Timings().UnsavedNoticeAfter + Slack
+        visibleAt.ShouldBe(
+            Timings().DocumentSaveDebounce + Timings().UnsavedNoticeAfter,
+            "3 s after the first attempt, which starts when the debounce ends"
         );
         run.Scheduler.Status.ShouldBe(SaveStatus.Saved);
         File.ReadAllText(_folder.Locations.Document).ShouldBe("2");
@@ -110,32 +113,43 @@ public sealed class S11LockTests : IDisposable
 
     private async Task<Run> StartAsync()
     {
-        var writer = new AtomicFile(_time, NullLogger<AtomicFile>.Instance);
+        var clock = new ClockWaiters(_time);
+        var writer = new AtomicFile(clock, NullLogger<AtomicFile>.Instance);
         (
             await writer.WriteAsync(_folder.Locations.Document, "0"u8.ToArray(), _bounded.Token)
         ).IsSuccess.ShouldBeTrue();
-        return new Run(_time, _folder.Locations.Document, writer);
+        return new Run(_time, clock, _folder.Locations.Document, writer, _bounded.Token);
     }
 
     /// <summary>The scheduler loop over a repository that writes the document version as its bytes.</summary>
     private sealed class Run : IAsyncDisposable
     {
         private readonly FakeTimeProvider _time;
+        private readonly ClockWaiters _clock;
+        private readonly CancellationToken _limit;
         private readonly string _path;
         private readonly CancellationTokenSource _stop = new();
         private readonly Task _loop;
         private readonly List<SaveStatus> _statuses = [];
         private UserDocument _current = TestDocuments.Document(0) with { Revision = 0 };
 
-        public Run(FakeTimeProvider time, string path, IAtomicFileWriter writer)
+        public Run(
+            FakeTimeProvider time,
+            ClockWaiters clock,
+            string path,
+            IAtomicFileWriter writer,
+            CancellationToken limit
+        )
         {
             _time = time;
+            _clock = clock;
+            _limit = limit;
             _path = path;
             Scheduler = new PersistenceScheduler(
                 new BytesRepository(path, writer),
                 new NoUsage(),
                 new NoBackups(),
-                time,
+                clock,
                 NullLogger<PersistenceScheduler>.Instance
             );
             Scheduler.StatusChanged += (_, _) =>
@@ -145,7 +159,8 @@ public sealed class S11LockTests : IDisposable
                     _statuses.Add(Scheduler.Status);
                 }
             };
-            _loop = Task.Run(() => Scheduler.RunAsync(_stop.Token));
+            // The loop ends with _stop, not with the limit of the test: DisposeAsync awaits its final flush.
+            _loop = Task.Run(() => Scheduler.RunAsync(_stop.Token), CancellationToken.None);
         }
 
         public PersistenceScheduler Scheduler { get; }
@@ -180,7 +195,7 @@ public sealed class S11LockTests : IDisposable
         }
 
         /// <summary>
-        /// Moves the clock in 10 ms steps, giving the real file operations time in between, until
+        /// Moves the clock in 10 ms steps, each one only once the file operations in flight are done, until
         /// <paramref name="total"/> or until the document is saved after <paramref name="onStep"/> released the lock.
         /// </summary>
         public async Task AdvanceAsync(TimeSpan total, Func<TimeSpan, bool> onStep)
@@ -189,28 +204,48 @@ public sealed class S11LockTests : IDisposable
             var released = false;
             for (var elapsed = step; elapsed <= total; elapsed += step)
             {
-                for (var i = 0; i < 4; i++)
+                await SettleAsync();
+                if (released && IsSaved())
                 {
-                    await Task.Yield();
-                }
-
-                if (elapsed.Ticks % TimeSpan.FromMilliseconds(100).Ticks == 0)
-                {
-                    await Task.Delay(1, TestContext.Current.CancellationToken);
+                    return;
                 }
 
                 _time.Advance(step);
                 released |= onStep(elapsed);
-                if (
-                    released
-                    && Scheduler.Status == SaveStatus.Saved
-                    && File.Exists(_path + ".prev")
-                )
+            }
+
+            await SettleAsync();
+        }
+
+        private bool IsSaved() =>
+            Scheduler.Status == SaveStatus.Saved && File.Exists(_path + ".prev");
+
+        /// <summary>
+        /// Waits, in real time, until nothing is left to do before the clock moves: the scheduler has no signal queued
+        /// or in process, or its writer is waiting on the clock between two attempts.
+        /// </summary>
+        private async Task SettleAsync()
+        {
+            for (var spin = 0; !(IsIdle(Scheduler) || _clock.Any); spin++)
+            {
+                if (spin < 1000)
                 {
-                    return;
+                    await Task.Yield();
+                }
+                else
+                {
+                    // A file operation that takes long: the limit of the test (real time) ends a wait that never does.
+                    await Task.Delay(1, _limit);
                 }
             }
         }
+
+        /// <summary>
+        /// <c>PersistenceScheduler.IsIdle</c>, which the scheduler keeps internal for the tests that drive a fake clock
+        /// (Application.Tests reads it directly; this project sees only its public API).
+        /// </summary>
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_IsIdle")]
+        private static extern bool IsIdle(PersistenceScheduler scheduler);
 
         public async ValueTask DisposeAsync()
         {

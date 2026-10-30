@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
-using System.Text;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Threading;
@@ -11,7 +10,8 @@ namespace Clicalo.Platform.Core.Guardian;
 /// A process of the guardian pair (blueprint §3.1): the main process starts Sentinel with an explicit
 /// <c>PROC_THREAD_ATTRIBUTE_HANDLE_LIST</c>, so Sentinel inherits exactly the handles of <see cref="SentinelStartInfo"/>
 /// and nothing else; Sentinel starts the main process again with no handle at all. Never through a command interpreter:
-/// the executable is a full path and the arguments are simple tokens.
+/// the executable is a full path and each argument is quoted by <see cref="CommandLineArguments"/>, so a data folder
+/// with spaces stays one argument and nothing in it can add another.
 /// </summary>
 public sealed unsafe class GuardianProcess : IDisposable
 {
@@ -53,7 +53,7 @@ public sealed unsafe class GuardianProcess : IDisposable
     /// inheritable). With no handle, nothing is inherited.
     /// </summary>
     /// <param name="executable">Full path of the executable.</param>
-    /// <param name="arguments">Arguments without spaces or quotes.</param>
+    /// <param name="arguments">Arguments without quotes or control characters (<see cref="CommandLineArguments"/>).</param>
     /// <param name="inheritedHandles">The handles the child inherits.</param>
     public static GuardianProcess Start(
         string executable,
@@ -68,21 +68,13 @@ public sealed unsafe class GuardianProcess : IDisposable
             throw new ArgumentException("The executable must be a full path.", nameof(executable));
         }
 
-        var commandLine = new StringBuilder().Append('"').Append(executable).Append('"');
-        foreach (var argument in arguments)
+        var commandLine = '"' + executable + '"';
+        if (arguments.Count > 0)
         {
-            if (argument.AsSpan().IndexOfAny(" \t\"") >= 0)
-            {
-                throw new ArgumentException(
-                    "Arguments are simple tokens: " + argument,
-                    nameof(arguments)
-                );
-            }
-
-            commandLine.Append(' ').Append(argument);
+            commandLine += ' ' + CommandLineArguments.Join(arguments);
         }
 
-        var command = (commandLine.ToString() + '\0').ToCharArray();
+        var command = (commandLine + '\0').ToCharArray();
         var startup = new STARTUPINFOEXW();
         startup.StartupInfo.cb = (uint)sizeof(STARTUPINFOEXW);
         var handles = inheritedHandles.ToArray();

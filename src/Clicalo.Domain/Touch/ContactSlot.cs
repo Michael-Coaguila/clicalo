@@ -49,6 +49,12 @@ internal struct ContactSlot
     /// <summary>True once the contact area was palm-sized.</summary>
     public bool PalmLike;
 
+    /// <summary>
+    /// A mouse or a touchpad (not a finger nor a pen): the minimum contact does not apply to it, since a click is a down
+    /// and an up at once and says nothing about a tremor (TAC-002, D21 review).
+    /// </summary>
+    public bool IsMouse;
+
     /// <summary>True once the contact left the extra hit area of its target.</summary>
     public bool LeftTarget;
 

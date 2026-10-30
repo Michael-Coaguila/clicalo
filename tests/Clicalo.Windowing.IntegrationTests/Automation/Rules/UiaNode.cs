@@ -23,6 +23,12 @@ public sealed record UiaNode
     /// <summary>Supported patterns among <see cref="UiaPatterns"/>.</summary>
     public UiaPatterns Patterns { get; init; }
 
+    /// <summary>
+    /// Whether its RangeValue is read-only: a progress bar shows a value that nothing changes, so it is not a target of
+    /// voice or of the finger.
+    /// </summary>
+    public bool IsReadOnlyRange { get; init; }
+
     /// <summary>ToggleState, when the Toggle pattern is supported.</summary>
     public ToggleState? ToggleState { get; init; }
 
@@ -60,7 +66,9 @@ public sealed record UiaNode
     public ImmutableArray<UiaNode> Children { get; init; } = [];
 
     /// <summary>True when the element supports a pattern that voice or a switch can act on.</summary>
-    public bool IsActionable => (Patterns & UiaPatterns.Actionable) != UiaPatterns.None;
+    public bool IsActionable =>
+        (Patterns & UiaPatterns.Actionable & ~UiaPatterns.RangeValue) != UiaPatterns.None
+        || (Patterns.HasFlag(UiaPatterns.RangeValue) && !IsReadOnlyRange);
 
     /// <summary>The AutomationId, or the name when there is none, for messages.</summary>
     public string Label => AutomationId.Length > 0 ? AutomationId : Name;

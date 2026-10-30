@@ -6,8 +6,8 @@ namespace Clicalo.Sentinel;
 
 /// <summary>
 /// The machine as Sentinel sees it: the inherited parent handle, the crash journal under <c>%LocalAppData%\Clicalo</c>
-/// (read only: the relaunched main process records the crash it was started after) and <c>Clicalo.exe</c> next to
-/// Sentinel (they are published together and never mixed).
+/// or inside the data folder of the contract (read only: the relaunched main process records the crash it was started
+/// after) and <c>Clicalo.exe</c> next to Sentinel (they are published together and never mixed).
 /// </summary>
 /// <param name="startInfo">The start-up contract.</param>
 /// <param name="time">Schedules the pause between two attempts of a refused release.</param>
@@ -47,16 +47,27 @@ internal sealed class SystemGuardianEnvironment(SentinelStartInfo startInfo, Tim
         }
     }
 
+    /// <summary>
+    /// Where the main process keeps its crash journal: inside the folder of <c>--data</c> for an isolated copy, as
+    /// <c>AppDataLocations.CrashJournal</c> writes it, or under <c>%LocalAppData%\Clicalo</c>.
+    /// </summary>
+    /// <param name="dataFolder">The data folder of the contract, or null.</param>
+    internal static string JournalPath(string? dataFolder) =>
+        Path.Combine(
+            dataFolder
+                ?? Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Clicalo"
+                ),
+            CrashJournal.FileName
+        );
+
     /// <inheritdoc />
     public ImmutableArray<DateTimeOffset> RecentCrashes()
     {
         try
         {
-            var path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Clicalo",
-                CrashJournal.FileName
-            );
+            var path = JournalPath(startInfo.DataFolder);
             return File.Exists(path) ? CrashJournal.Parse(File.ReadAllBytes(path)) : [];
         }
         catch (IOException)

@@ -89,7 +89,12 @@ public sealed partial class HandoffTextGoldenTests
             "No encontré atajos fiables para «Word». Te muestro atajos comunes que suelen funcionar, pero revísalos.",
             "I couldn’t find reliable shortcuts for “Word”. Here are common shortcuts that usually work, but check them."
         ),
-        new("unknownBlank", [App()], "Mejor, crear «Word» vacío", "Rather, create “Word” empty"),
+        new(
+            "unknownBlank",
+            [App()],
+            "Mejor, crear «Word» vacío",
+            "Create an empty “Word” profile instead"
+        ),
         new(
             "replaceMsg",
             [Keys()],

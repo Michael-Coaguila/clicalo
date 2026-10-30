@@ -93,6 +93,22 @@ internal static class I18nRepository
             : new HashSet<string>(StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// The handoff keys whose visible text a user decision changed (<c>revised</c> of the recipe, D12): they keep their
+    /// name, with the text of the recipe.
+    /// </summary>
+    public static HashSet<string> Revised()
+    {
+        using var recipe = Recipe();
+        return recipe.RootElement.TryGetProperty("revised", out var revised)
+            ? revised
+                .EnumerateObject()
+                .Select(static p => p.Name)
+                .Where(static name => !string.Equals(name, "notes", StringComparison.Ordinal))
+                .ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+    }
+
     /// <summary>The original strings of the design handoff that the product shows (without the retired keys).</summary>
     public static List<KeyValuePair<string, string>> HandoffInProduct(string language)
     {

@@ -20,6 +20,7 @@ namespace Clicalo.Platform.Windows.SentinelHost;
 public sealed partial class SentinelSupervisor : IDisposable
 {
     private readonly Func<SentinelStartInfo, ISentinelChild> _launch;
+    private readonly string? _dataFolder;
     private readonly TimeProvider _time;
     private readonly ILogger<SentinelSupervisor> _logger;
     private readonly Lock _sync = new();
@@ -32,14 +33,18 @@ public sealed partial class SentinelSupervisor : IDisposable
 
     /// <summary>Creates the supervisor.</summary>
     /// <param name="sentinelPath">Full path of <c>Clicalo.Sentinel.exe</c>, next to <c>Clicalo.exe</c>.</param>
+    /// <param name="dataFolder">
+    /// The folder of <c>--data</c> (ADR-0030), or null for the user's folder: Sentinel relaunches with it (ADR-0032).
+    /// </param>
     /// <param name="time">Clock and timers.</param>
     /// <param name="logger">Logs codes only.</param>
     public SentinelSupervisor(
         string sentinelPath,
+        string? dataFolder,
         TimeProvider time,
         ILogger<SentinelSupervisor> logger
     )
-        : this(info => SentinelProcess.Start(sentinelPath, info), time, logger)
+        : this(info => SentinelProcess.Start(sentinelPath, info), dataFolder, time, logger)
     {
         ArgumentException.ThrowIfNullOrEmpty(sentinelPath);
     }
@@ -47,6 +52,7 @@ public sealed partial class SentinelSupervisor : IDisposable
     /// <summary>Creates the supervisor over another launcher (tests).</summary>
     internal SentinelSupervisor(
         Func<SentinelStartInfo, ISentinelChild> launch,
+        string? dataFolder,
         TimeProvider time,
         ILogger<SentinelSupervisor> logger
     )
@@ -54,7 +60,16 @@ public sealed partial class SentinelSupervisor : IDisposable
         ArgumentNullException.ThrowIfNull(launch);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(logger);
+        if (dataFolder is not null && !CrashJournal.IsDataFolder(dataFolder))
+        {
+            throw new ArgumentException(
+                "The data folder is a full path without quotes.",
+                nameof(dataFolder)
+            );
+        }
+
         _launch = launch;
+        _dataFolder = dataFolder;
         _time = time;
         _logger = logger;
     }
@@ -144,7 +159,10 @@ public sealed partial class SentinelSupervisor : IDisposable
                 Timings.Guardian.ReleaseRetryInterval,
                 crashLoop.Count,
                 crashLoop.Window
-            );
+            )
+            {
+                DataFolder = _dataFolder,
+            };
             _child = _launch(info);
             LastStartInfo = info;
             Launches++;

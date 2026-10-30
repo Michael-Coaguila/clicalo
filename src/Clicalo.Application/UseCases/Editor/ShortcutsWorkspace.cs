@@ -135,7 +135,7 @@ public sealed class ShortcutsWorkspace
             return;
         }
 
-        SetPane(FirstOf(List));
+        ShowFirstOf(List);
     }
 
     /// <summary>A row of the profiles column: the list and its first shortcut (ATJ-002).</summary>
@@ -150,7 +150,7 @@ public sealed class ShortcutsWorkspace
 
         Leave();
         List = list;
-        SetPane(FirstOf(list));
+        ShowFirstOf(list);
     }
 
     /// <summary>A tile of the grid, a row of a repeated card or a search: the shortcut in the editor.</summary>
@@ -355,11 +355,21 @@ public sealed class ShortcutsWorkspace
         });
     }
 
-    /// <summary>The icons suggested for the shortcut in the editor (EDI-004, EDI-005).</summary>
+    /// <summary>
+    /// The icons suggested for the shortcut in the editor (EDI-004, EDI-005), from its name in Spanish and in English, as
+    /// the prototype does: the same shortcut gets the same suggestions whatever the language of the interface.
+    /// </summary>
     public ValueList<IconRef> SuggestedIcons() =>
         Selected is { } shortcut
             ? IconSuggestions.Suggest(
-                Display(shortcut.Name),
+                string.Join(
+                    ' ',
+                    new[]
+                    {
+                        shortcut.Name.Get(LangCode.Es, LangCode.En),
+                        shortcut.Name.Get(LangCode.En, LangCode.Es),
+                    }.Distinct(StringComparer.Ordinal)
+                ),
                 ActionKinds.ChordOf(shortcut.Action),
                 AppsLanguage,
                 Catalogs.Icons,
@@ -414,6 +424,37 @@ public sealed class ShortcutsWorkspace
         EditChord(static _ => KeyChord.Empty);
         _store.SealCoalescing();
         Notify(L.ComboCleared, "restart_alt", undo: true);
+    }
+
+    /// <summary>
+    /// «Grabar con teclado» closed (EDI-010): the recorded combination replaces the one of the box, as its own undo
+    /// step, with the notice «[recorded]: {teclas}».
+    /// </summary>
+    /// <param name="chord">The modifiers in the order they were pressed, with their side, and the key.</param>
+    public void RecordChord(KeyChord chord)
+    {
+        ArgumentNullException.ThrowIfNull(chord);
+        if (chord.IsEmpty || ChordInBox() is not { } current || current.Equals(chord))
+        {
+            return;
+        }
+
+        _store.SealCoalescing();
+        EditChord(_ => chord);
+        _store.SealCoalescing();
+        Notify(
+            L.RecordedKeys(
+                keys: KeyChordFormatter.Format(
+                    chord,
+                    Catalogs.KeyLabels,
+                    KeyLabelStyle.Full,
+                    UiLanguage(),
+                    LangCode.Es
+                )
+            ),
+            "keyboard",
+            undo: true
+        );
     }
 
     /// <summary>The combination of the box: the macro step being edited, or the shortcut's.</summary>
@@ -664,17 +705,25 @@ public sealed class ShortcutsWorkspace
 
     /// <summary>
     /// A tile dropped in the grid (ATJ-009): <paramref name="moved"/> goes before <paramref name="before"/>, or to the
-    /// end when it is null. One undo step.
+    /// end when it is null. One undo step; a drop where the tile already is changes nothing and leaves no undo step.
     /// </summary>
     /// <param name="moved">The dragged shortcut.</param>
-    /// <param name="before">The tile it was dropped on, or null for the end.</param>
+    /// <param name="before">The tile it goes in front of, or null for the end.</param>
     public void Reorder(ShortcutId moved, ShortcutId? before)
     {
-        var others = Shortcuts.Items.Where(s => s.Id != moved).ToList();
-        var position =
+        var all = Shortcuts.Items.ToList();
+        var from = all.FindIndex(s => s.Id == moved);
+        var others = all.Where(s => s.Id != moved).ToList();
+        var to =
             before is { } target && others.FindIndex(s => s.Id == target) is var index and >= 0
-                ? ListPosition.At(index)
-                : ListPosition.End;
+                ? index
+                : others.Count;
+        if (from == to)
+        {
+            return;
+        }
+
+        var position = to == others.Count ? ListPosition.End : ListPosition.At(to);
         _store.SealCoalescing();
         if (Dispatch(new MoveShortcut(moved, List, position)))
         {
@@ -927,6 +976,23 @@ public sealed class ShortcutsWorkspace
     private string Display(LocalizedText name) => name.Get(UiLanguage(), LangCode.Es);
 
     private LangCode UiLanguage() => new(_localization.Current.Locale.Code);
+
+    /// <summary>
+    /// The first shortcut of the list. For whoever said «No puedo usar el teclado», an empty list opens «Añadir atajo»
+    /// in the place of the empty editor, so creating starts from the library and not from typing (BIE-005).
+    /// </summary>
+    private void ShowFirstOf(ListRef list)
+    {
+        var first = FirstOf(list);
+        if (first is EditorPane.Empty && _store.Current.Settings.NoKeyboardUser)
+        {
+            _beforeLibrary = first;
+            SetPane(new EditorPane.Library());
+            return;
+        }
+
+        SetPane(first);
+    }
 
     private EditorPane FirstOf(ListRef list) =>
         _store.Current.Library.TryGetList(list, out var shortcuts) && !shortcuts.IsEmpty

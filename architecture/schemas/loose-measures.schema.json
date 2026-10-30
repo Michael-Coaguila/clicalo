@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Michael-Coaguila/clicalo/architecture/schemas/loose-measures.schema.json",
+  "title": "Clícalo loose measures baseline",
+  "description": "Numeric literals that remain where a measure goes in Clicalo.UI.Wpf, per file (D12, direction C). The count of a file can only go down; LooseMeasureTests fails when a file has more literals than its baseline or fewer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "decision", "baseline"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "description": { "type": "string", "minLength": 10 },
+    "decision": { "type": "string", "pattern": "^D[0-9]+$" },
+    "baseline": {
+      "type": "object",
+      "propertyNames": { "pattern": "^src/Clicalo[.]UI[.]Wpf/.+[.]cs$" },
+      "additionalProperties": { "type": "integer", "minimum": 1 }
+    }
+  }
+}

@@ -2,8 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Shapes;
 using Clicalo.Presentation.Panel.EditMode;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -11,9 +9,9 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
 
 /// <summary>
-/// The dashed «+ [add]» tile that ends the grid in edit mode (CUA-012, prototype line 218): the tile's height and
-/// radius 12, a 2 px dashed outline in <c>line</c>, the <c>add</c> icon over [add] in bold <c>muted</c>. Not in
-/// Frequents nor in the search. A tap opens the library for the profile in view. It only projects
+/// The dashed «+ [add]» tile that ends the grid in edit mode (CUA-012) in direction C (D12): the size and radius of a
+/// tile with no fill and the <see cref="DashedLine"/>, and the <c>add</c> icon in <c>accentInk</c>, the color of an
+/// action, over [add] in <c>text</c>, as «Biblioteca» in the Control Center. Not in Frequents nor in the search. A tap opens the library for the profile in view. It only projects
 /// <see cref="EditModeViewModel"/>.
 /// </summary>
 /// <remarks>
@@ -21,61 +19,39 @@ namespace Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
 /// </remarks>
 public sealed class AddTileView : Grid
 {
-    private const double DashedBorder = 2;
-
     private readonly EditModeViewModel _editMode;
     private readonly TouchButton _button;
 
     /// <summary>Creates the tile.</summary>
     /// <param name="editMode">Edit mode.</param>
-    /// <param name="iconPx">The icon size of the panel's size (20, 28 or 34, docs/04 «Medidas»).</param>
-    /// <param name="labelPx">The label size of the panel's size (12, 14 or 16).</param>
-    public AddTileView(EditModeViewModel editMode, double iconPx, double labelPx)
+    /// <param name="iconSize">The icon box of the tiles of the grid (<see cref="IconBox"/>).</param>
+    /// <param name="name">The style of the names of the tiles of the grid.</param>
+    public AddTileView(
+        EditModeViewModel editMode,
+        double iconSize = IconBox.Medium,
+        TextStyleToken name = TextStyleToken.Label
+    )
     {
         ArgumentNullException.ThrowIfNull(editMode);
         _editMode = editMode;
-        var outline = new Rectangle
+        var outline = DashedLine.Outline();
+        Label = new StyledText(string.Empty, name)
         {
-            RadiusX = Radii.Tile,
-            RadiusY = Radii.Tile,
-            StrokeThickness = DashedBorder,
-            StrokeDashArray = new DoubleCollection([3, 2]),
-            IsHitTestVisible = false,
-        };
-        outline.SetResourceReference(Shape.StrokeProperty, ThemeBrushKey.For(ColorToken.Line));
-
-        var icon = new SymbolIcon
-        {
-            Symbol = "add",
-            Size = iconPx,
+            MaxLines = 1,
             HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, Space.S1, 0, 0),
         };
-        icon.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
-        Label = new TextBlock
-        {
-            FontWeight = FontWeights.Bold,
-            FontSize = labelPx,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 4, 0, 0),
-        };
-        Label.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
         var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        stack.Children.Add(icon);
+        stack.Children.Add(PanelChrome.Icon("add", iconSize, ColorToken.AccentInk));
         stack.Children.Add(Label);
 
         _button = new TouchButton
         {
-            Appearance = ButtonAppearance.Ghost,
+            Variant = ButtonVariant.Tertiary,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
-            Padding = new Thickness(0),
+            Padding = new Thickness(Space.S2, 0, Space.S2, 0),
             Focusable = false,
             IsTabStop = false,
             Content = stack,
@@ -89,7 +65,7 @@ public sealed class AddTileView : Grid
     }
 
     /// <summary>[add] under the icon.</summary>
-    public TextBlock Label { get; }
+    public StyledText Label { get; }
 
     /// <summary>The tile as a tap target of the panel while it shows.</summary>
     public PanelTapTarget TapTarget => new(_button, _editMode.Add);

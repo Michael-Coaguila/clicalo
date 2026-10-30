@@ -150,6 +150,47 @@ public sealed class ForegroundChangeCoordinatorTests : IDisposable
         _monitor.Subscribers.ShouldBe(0);
     }
 
+    [Fact]
+    [Trait("Req", "EJE-003")]
+    public async Task The_name_of_the_app_in_front_reaches_the_engine_with_the_epoch_it_was_read_for()
+    {
+        var named = new TaskCompletionSource<AppNamedEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        using var coordinator = new ForegroundChangeCoordinator(
+            _monitor,
+            _engine,
+            foreground => new ForegroundDetails(
+                new ProcessName("app" + foreground.AppProcessId + ".exe"),
+                Spanish
+            ),
+            selfElevated: false
+        )
+        {
+            Names = static (foreground, _, _) =>
+                Task.FromResult<string?>(foreground.AppProcessId == 100 ? "Microsoft Word" : null),
+        };
+        coordinator.AppNamed += (_, change) => named.TrySetResult(change);
+        _monitor.Seed(Window(0x10, process: 100));
+
+        coordinator.Start();
+
+        var change = await named.Task.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken
+        );
+        change.Process.ShouldBe(new ProcessName("app100.exe"));
+        change.Name.ShouldBe("Microsoft Word");
+        _engine
+            .Events.OfType<EngineEvent.ForegroundNamed>()
+            .ShouldHaveSingleItem()
+            .ShouldBe(new EngineEvent.ForegroundNamed(1, "Microsoft Word"));
+
+        // An app without a description is never named: the notices say its executable.
+        _monitor.SwitchTo(Window(0x20, process: 200));
+        _engine.Events.OfType<EngineEvent.ForegroundNamed>().Count().ShouldBe(1);
+    }
+
     private List<EngineEvent.ForegroundChanged> Changes() =>
         [.. _engine.Events.OfType<EngineEvent.ForegroundChanged>()];
 

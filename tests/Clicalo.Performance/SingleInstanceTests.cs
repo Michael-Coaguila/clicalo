@@ -1,8 +1,5 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.IO.Pipes;
-using System.Security.Cryptography;
-using System.Security.Principal;
 
 namespace Clicalo.Performance;
 
@@ -26,7 +23,7 @@ public sealed class SingleInstanceTests
         var variant = PerfEnvironment.Variants[0];
         using var first = AppLaunch.Start(variant, sendInput: false);
 
-        var code = RunSecondStart(variant);
+        var code = RunSecondStart(variant, first.DataDirectory);
 
         code.ShouldBe(0, "the running instance answered «show»");
         first.Process.HasExited.ShouldBeFalse("the first instance keeps running");
@@ -38,20 +35,21 @@ public sealed class SingleInstanceTests
     public async Task A_second_start_sends_nothing_to_a_pipe_that_is_not_Clicalo()
     {
         var variant = PerfEnvironment.Variants[0];
+        var data = AppLaunch.NewDataDirectory();
 
         // The name taken before Clícalo starts: its server then finds the name held (FILE_FLAG_FIRST_PIPE_INSTANCE)
         // and runs without its pipe, and a second start must detect that the server is not Clícalo.
         using var squatter = new NamedPipeServerStream(
-            PipeName(),
+            RunningInstance.PipeName(data),
             PipeDirection.InOut,
             NamedPipeServerStream.MaxAllowedServerInstances,
             PipeTransmissionMode.Message,
             PipeOptions.Asynchronous
         );
         var connected = squatter.WaitForConnectionAsync(TestContext.Current.CancellationToken);
-        using var first = AppLaunch.Start(variant, sendInput: false);
+        using var first = AppLaunch.Start(variant, data, sendInput: false);
 
-        var code = RunSecondStart(variant);
+        var code = RunSecondStart(variant, data);
 
         code.ShouldBe(
             3,
@@ -68,26 +66,9 @@ public sealed class SingleInstanceTests
         }
     }
 
-    /// <summary>
-    /// The pipe name of this user and session (App/SingleInstance/InstanceIdentity): the first 16 hexadecimal
-    /// characters of SHA-256 over the binary SID, then the session id.
-    /// </summary>
-    private static string PipeName()
+    /// <summary>A second start with the data folder of the first: the same instance (ADR-0030).</summary>
+    private static int RunSecondStart(AppVariant variant, string data)
     {
-        using var identity = WindowsIdentity.GetCurrent();
-        var sid = identity.User.ShouldNotBeNull();
-        var binary = new byte[sid.BinaryLength];
-        sid.GetBinaryForm(binary, 0);
-        using var process = Process.GetCurrentProcess();
-        return "Clicalo."
-            + Convert.ToHexStringLower(SHA256.HashData(binary))[..16]
-            + "."
-            + process.SessionId.ToString(CultureInfo.InvariantCulture);
-    }
-
-    private static int RunSecondStart(AppVariant variant)
-    {
-        var data = Path.Combine(Path.GetTempPath(), "clicalo-perf-data", "second-start");
         var start = new ProcessStartInfo(variant.Executable) { UseShellExecute = false };
         start.ArgumentList.Add("--no-input");
         start.ArgumentList.Add("--data");

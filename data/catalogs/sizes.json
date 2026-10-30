@@ -15,21 +15,21 @@
       "maxGridRows": 3,
       "compactTileReductionPx": 16,
       "compactStripCapacity": 4,
-      "dragHandleWidthPx": 26,
-      "autoFixedButtonPx": 36,
+      "dragHandleWidthPx": 20,
+      "autoFixedButtonPx": 52,
       "noticeBarHeightPx": 40,
       "pageDotActiveWidthPx": 24,
-      "pageDotSizePx": 10,
-      "profileTileHeightPx": 76,
+      "pageDotSizePx": 8,
+      "profileTileHeightPx": 64,
       "contextMenuRowHeightPx": 44,
-      "editDeleteButtonPx": 32
+      "editDeleteButtonPx": 24
     },
     "bubble": {
       "diameterPx": 64,
       "iconPx": 30
     },
     "dock": {
-      "handleThicknessPx": 32,
+      "handleThicknessPx": 44,
       "handleVerticalLengthPx": 116,
       "handleHorizontalLengthPx": 128,
       "scrollbarGutterPx": 18,
@@ -41,55 +41,55 @@
     {
       "id": "S",
       "labelKey": "sizeS",
-      "tile": { "widthPx": 72, "heightPx": 66, "iconPx": 20, "labelPx": 12, "keysPx": 9 },
-      "gapPx": 6,
-      "headerButton": { "widthPx": 32, "heightPx": 36 },
-      "strip": { "heightPx": 44, "iconPx": 18, "labelPx": 10, "capacity": 4 },
+      "tile": { "widthPx": 84, "heightPx": 64, "iconPx": 20, "labelPx": 12, "keysPx": 11 },
+      "gapPx": 8,
+      "headerButton": { "widthPx": 44, "heightPx": 44 },
+      "strip": { "heightPx": 44, "iconPx": 20, "labelPx": 12, "capacity": 4 },
       "autoRows": 2,
       "dock": {
-        "barWidthPx": 76,
-        "barHeightPx": 58,
-        "verticalTileHeightPx": 50,
-        "horizontalTileWidthPx": 62,
-        "horizontalTileHeightPx": 58,
+        "barWidthPx": 108,
+        "barHeightPx": 44,
+        "verticalTileHeightPx": 44,
+        "horizontalTileWidthPx": 44,
+        "horizontalTileHeightPx": 44,
         "tileIconPx": 20,
-        "tileLabelPx": 10
+        "tileLabelPx": 12
       }
     },
     {
       "id": "M",
       "labelKey": "sizeM",
-      "tile": { "widthPx": 92, "heightPx": 78, "iconPx": 28, "labelPx": 14, "keysPx": 10 },
+      "tile": { "widthPx": 100, "heightPx": 68, "iconPx": 20, "labelPx": 14, "keysPx": 11 },
       "gapPx": 8,
-      "headerButton": { "widthPx": 32, "heightPx": 40 },
-      "strip": { "heightPx": 60, "iconPx": 22, "labelPx": 11, "capacity": 8 },
+      "headerButton": { "widthPx": 44, "heightPx": 44 },
+      "strip": { "heightPx": 56, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
-        "barWidthPx": 88,
-        "barHeightPx": 66,
-        "verticalTileHeightPx": 58,
-        "horizontalTileWidthPx": 72,
-        "horizontalTileHeightPx": 66,
-        "tileIconPx": 22,
-        "tileLabelPx": 11
+        "barWidthPx": 108,
+        "barHeightPx": 64,
+        "verticalTileHeightPx": 52,
+        "horizontalTileWidthPx": 88,
+        "horizontalTileHeightPx": 64,
+        "tileIconPx": 20,
+        "tileLabelPx": 12
       }
     },
     {
       "id": "L",
       "labelKey": "sizeL",
-      "tile": { "widthPx": 116, "heightPx": 98, "iconPx": 34, "labelPx": 16, "keysPx": 11 },
-      "gapPx": 10,
-      "headerButton": { "widthPx": 40, "heightPx": 46 },
-      "strip": { "heightPx": 72, "iconPx": 26, "labelPx": 13, "capacity": 8 },
+      "tile": { "widthPx": 124, "heightPx": 80, "iconPx": 24, "labelPx": 16, "keysPx": 12 },
+      "gapPx": 8,
+      "headerButton": { "widthPx": 44, "heightPx": 44 },
+      "strip": { "heightPx": 56, "iconPx": 24, "labelPx": 12, "capacity": 8 },
       "autoRows": 3,
       "dock": {
-        "barWidthPx": 108,
-        "barHeightPx": 78,
-        "verticalTileHeightPx": 70,
-        "horizontalTileWidthPx": 88,
-        "horizontalTileHeightPx": 78,
-        "tileIconPx": 26,
-        "tileLabelPx": 12
+        "barWidthPx": 124,
+        "barHeightPx": 80,
+        "verticalTileHeightPx": 72,
+        "horizontalTileWidthPx": 104,
+        "horizontalTileHeightPx": 80,
+        "tileIconPx": 24,
+        "tileLabelPx": 14
       }
     }
   ]

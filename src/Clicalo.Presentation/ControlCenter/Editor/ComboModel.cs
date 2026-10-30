@@ -21,6 +21,12 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="Cells">The keys of the chosen group.</param>
 /// <param name="Columns">7, 6, or 0 for cells of at least 92.</param>
 /// <param name="OrderHint">[orderHint2].</param>
+/// <param name="Recording">[recording] while «Grabar con teclado» waits for the keys (EDI-010).</param>
+/// <param name="RecordText">
+/// [recPhys], or [cancel] while it records; null hides the row («No puedo usar el teclado», or a box that does not
+/// record).
+/// </param>
+/// <param name="RecordHint">[recHint].</param>
 public sealed record ComboModel(
     string Title,
     string? Replacing,
@@ -39,5 +45,8 @@ public sealed record ComboModel(
     ValueList<KeyGroupTab> Groups,
     ValueList<KeyCell> Cells,
     int Columns,
-    string OrderHint
+    string OrderHint,
+    string? Recording,
+    string? RecordText,
+    string RecordHint
 );

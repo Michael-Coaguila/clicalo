@@ -1,0 +1,1291 @@
+using System.Globalization;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
+using Clicalo.Application.Ports;
+using Clicalo.Application.Store;
+using Clicalo.Domain.Commands;
+using Clicalo.Domain.Duplicates;
+using Clicalo.Domain.Guides;
+using Clicalo.Domain.Keys;
+using Clicalo.Domain.Library;
+using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Settings;
+using Clicalo.Presentation.ControlCenter;
+using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Guides;
+using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Workspace;
+using Clicalo.Windowing.IntegrationTests.About;
+using Clicalo.Windowing.IntegrationTests.ControlCenter;
+
+namespace Clicalo.Windowing.IntegrationTests.Automation.Audit;
+
+/// <summary>
+/// REG-02 and REG-06 on the real Control Center (docs/05): its window with each of the six sections and their open
+/// states (the editor of each kind of shortcut, the library, the review of repeated combinations, the preview of a
+/// template, the three tabs of «Sistema»…), at its default size and at its smallest, in Spanish and in English. The
+/// content of the window is hosted on a hidden presentation source (<see cref="AuditHost"/>); nothing is shown. Also
+/// with the largest text in the light theme and in high contrast (<see cref="AuditLook"/>), and with no text drawn
+/// cut (CCM-005).
+/// </summary>
+public sealed class ControlCenterAuditTests
+{
+    /// <summary>The states audited: a name and what the person did to get there.</summary>
+    private static readonly Dictionary<string, Action<ControlCenterViewModel>> States = new(
+        StringComparer.Ordinal
+    )
+    {
+        ["shortcuts"] = static _ => { },
+        ["shortcuts-editor-open"] = static cc =>
+        {
+            cc.Shortcuts.Editor.ToggleMore();
+            cc.Shortcuts.Editor.ToggleVoiceHow();
+        },
+        ["shortcuts-test"] = static cc => cc.Shortcuts.Editor.ToggleTest(),
+        ["shortcuts-icons"] = static cc => cc.Shortcuts.Editor.TogglePicker(),
+        ["shortcuts-icons-search"] = static cc =>
+        {
+            cc.Shortcuts.Editor.TogglePicker();
+            cc.Shortcuts.Editor.SearchIcons("guardar");
+        },
+        ["shortcuts-icons-category"] = static cc =>
+        {
+            cc.Shortcuts.Editor.TogglePicker();
+            cc.Shortcuts.Editor.ChooseIconCategory("text");
+        },
+        ["shortcuts-profile-edit"] = static cc => cc.Shortcuts.ToggleProfileEdit(),
+        ["shortcuts-profile-icons"] = static cc =>
+        {
+            cc.Shortcuts.ToggleProfileEdit();
+            cc.Shortcuts.ToggleProfileIcons();
+        },
+        ["shortcuts-link"] = static cc => cc.Shortcuts.LinkAction(),
+        ["shortcuts-profiles"] = static _ => { },
+        ["shortcuts-hold"] = static cc => SelectShortcut(cc, "talk"),
+        ["shortcuts-macro"] = static cc =>
+        {
+            SelectShortcut(cc, "macro");
+            cc.Shortcuts.Editor.ToggleStep(1);
+        },
+        ["shortcuts-macro-keys"] = static cc =>
+        {
+            SelectShortcut(cc, "macro");
+            cc.Shortcuts.Editor.ToggleStep(0);
+        },
+        ["shortcuts-incomplete"] = static cc => SelectShortcut(cc, "empty"),
+        ["shortcuts-text"] = static cc => cc.Shortcuts.Editor.SetKind(ActionKind.Text),
+        ["shortcuts-mouse"] = static cc => cc.Shortcuts.Editor.SetKind(ActionKind.Mouse),
+        ["shortcuts-toggle"] = static cc => cc.Shortcuts.Editor.SetKind(ActionKind.Toggle),
+        ["shortcuts-url"] = static cc => cc.Shortcuts.Editor.SetKind(ActionKind.Url),
+        ["shortcuts-app"] = static cc => cc.Shortcuts.Editor.SetKind(ActionKind.App),
+        ["shortcuts-system"] = static cc => cc.Shortcuts.Editor.SetKind(ActionKind.System),
+        ["shortcuts-repeated"] = static cc =>
+        {
+            SelectShortcut(cc, "ccopy");
+            cc.Shortcuts.Editor.ToggleDuplicates();
+            cc.Shortcuts.ToggleProfileEdit();
+            cc.Shortcuts.LinkAction();
+        },
+        ["shortcuts-repeated-many"] = static cc =>
+        {
+            // REP-004: two repeated combinations, one of them in three places, so the card counts them.
+            SelectShortcut(cc, "ccopy");
+            cc.Shortcuts.Editor.ToggleDuplicates();
+        },
+        ["shortcuts-always-visible"] = static cc =>
+            cc.Shortcuts.SelectList(new ListRef.AlwaysVisible()),
+        ["shortcuts-library"] = static cc => cc.Shortcuts.OpenLibrary(),
+        ["templates"] = static cc => cc.Select(ControlCenterSection.Templates),
+        ["templates-open"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.Templates);
+            var templates = cc.Templates!;
+            templates.ToggleKey();
+            templates.ToggleKeyboard();
+            templates.ToggleBlank();
+        },
+        ["templates-gemini"] = static cc =>
+        {
+            // ADR-0033: the key field with Gemini chosen shows where its key comes from and the free tier notice.
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.ToggleKey();
+            cc.Templates.SetProvider(AiProvider.Gemini);
+        },
+        ["templates-icons"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.ToggleBlank();
+            cc.Templates.ToggleBlankIcons();
+        },
+        ["templates-preview"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.PreviewTemplate("notes");
+            WpfThread.DrainPendingWork();
+            cc.Templates.EditRow(0);
+        },
+        ["templates-preview-keys"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.Templates);
+            cc.Templates!.PreviewTemplate("notes");
+            WpfThread.DrainPendingWork();
+            cc.Templates.EditRowKeys(1);
+        },
+        ["general"] = static cc => cc.Select(ControlCenterSection.Panel),
+        ["touch"] = static cc => cc.Select(ControlCenterSection.Touch),
+        ["system-updates"] = static cc => cc.Select(ControlCenterSection.System),
+        ["system-backups"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.System);
+            cc.System!.SelectTab(SystemTab.Backups);
+            cc.System.BackupNow();
+        },
+        ["system-start"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.System);
+            cc.System!.SelectTab(SystemTab.Start);
+        },
+        ["about"] = static cc => cc.Select(ControlCenterSection.About),
+        ["about-open"] = static cc =>
+        {
+            cc.Select(ControlCenterSection.About);
+            cc.About!.SetMessage("No abre el panel");
+            cc.About.ToggleLog();
+            cc.About.ToggleSystem();
+            _ = cc.About.TogglePreviewAsync();
+        },
+    };
+
+    /// <summary>
+    /// What the document of a state has besides the one of the tests: «Subrayar» takes Ctrl+C, which «Copiar» already
+    /// has in Always visible and in Navegador, and «Cursiva» takes Ctrl+N, the combination of «Negrita» in the same
+    /// list (REP-002: the same combination in two profiles with other names is no repetition).
+    /// </summary>
+    private static readonly Dictionary<string, Action<DocumentStore>> Documents = new(
+        StringComparer.Ordinal
+    )
+    {
+        ["shortcuts-repeated-many"] = static store =>
+        {
+            Rebind(store, "under", KeyIds.Ctrl, KeyIds.C);
+            Rebind(store, "italic", KeyIds.Ctrl, KeyIds.N);
+            DuplicateIndex
+                .Build(store.Current.Library, store.Current.Duplicates)
+                .RepeatedCombinationCount.ShouldBe(2);
+        },
+    };
+
+    /// <summary>
+    /// The states of the editor: in the narrow window they are on the page of the editor, which a tap on a tile opens
+    /// (CCM-005).
+    /// </summary>
+    private static readonly HashSet<string> EditorPages = new(StringComparer.Ordinal)
+    {
+        "shortcuts-editor-open",
+        "shortcuts-test",
+        "shortcuts-icons",
+        "shortcuts-icons-search",
+        "shortcuts-icons-category",
+        "shortcuts-hold",
+        "shortcuts-macro",
+        "shortcuts-macro-keys",
+        "shortcuts-incomplete",
+        "shortcuts-text",
+        "shortcuts-mouse",
+        "shortcuts-toggle",
+        "shortcuts-url",
+        "shortcuts-app",
+        "shortcuts-system",
+        "shortcuts-repeated",
+        "shortcuts-repeated-many",
+        "shortcuts-library",
+    };
+
+    /// <summary>The size of the maximized window on the person's screen: 2400 × 1600 at 175 %, without the taskbar.</summary>
+    private const double MaximizedWidth = 1371;
+
+    private const double MaximizedHeight = 859;
+
+    /// <summary>The first state of each section: where the light theme, which only changes colors, is audited.</summary>
+    private static readonly string[] Sections =
+    [
+        "shortcuts",
+        "templates",
+        "general",
+        "touch",
+        "system-updates",
+        "about",
+    ];
+
+    /// <summary>
+    /// Wide (the menu with its names), the default size and the smallest window (CCM-005), as drawn (dark, text at
+    /// 100 %). The text size of the person does not reach the Control Center (CUA-011: it is the tiles of the panel
+    /// that grow), so the other looks are not repeated on every width: high contrast, whose thicker borders leave the
+    /// least room, on every state in the smallest window, and the light theme on the first state of each section.
+    /// </summary>
+    public static TheoryData<string, string, double, double, AuditLook> Cases()
+    {
+        var cases = new TheoryData<string, string, double, double, AuditLook>();
+        foreach (var state in States.Keys)
+        {
+            cases.Add(state, "es", MaximizedWidth, MaximizedHeight, AuditLook.Dark);
+            cases.Add(state, "es", 1300, 760, AuditLook.Dark);
+            cases.Add(
+                state,
+                "es",
+                ControlCenterWindow.DefaultWidth,
+                ControlCenterWindow.DefaultHeight,
+                AuditLook.Dark
+            );
+            cases.Add(state, "en", 760, 520, AuditLook.Dark);
+            cases.Add(state, "en", 760, 520, AuditLook.ContrastLargeText);
+        }
+
+        foreach (var section in Sections)
+        {
+            cases.Add(
+                section,
+                "es",
+                ControlCenterWindow.DefaultWidth,
+                ControlCenterWindow.DefaultHeight,
+                AuditLook.LightLargeText
+            );
+        }
+
+        return cases;
+    }
+
+    [Theory]
+    [MemberData(nameof(Cases))]
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "ACC-002")]
+    [Trait("Req", "ACC-011")]
+    public void Every_state_of_the_control_center_follows_the_UIA_rules_and_keeps_44(
+        string state,
+        string language,
+        double width,
+        double height,
+        AuditLook look
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            look,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+                else if (string.Equals(state, "shortcuts-profiles", StringComparison.Ordinal))
+                {
+                    window.ShowShortcutProfiles();
+                }
+
+                host.LayOut();
+
+                SurfaceAudit.ShouldPass(
+                    host,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{state} ({language}, {width:0} × {height:0}, {look})"
+                    ),
+                    atLeast: 12,
+                    TouchInput.Wpf,
+                    "Centro de control",
+                    // ACC-001: the names on the frames of the groups and a few plain panels of the Control Center
+                    // still never reach UI Automation (D21 review); its live regions are held to a peer already.
+                    liveRegionsOnly: true
+                );
+            },
+            Documents.GetValueOrDefault(state)
+        );
+
+    /// <summary>The guide of each section (R-39), in both languages, as drawn and with the largest text in the light theme.</summary>
+    public static TheoryData<string, GuideId, string, AuditLook> GuideCases()
+    {
+        var cases = new TheoryData<string, GuideId, string, AuditLook>();
+        (string State, GuideId Guide)[] sections =
+        [
+            ("shortcuts", GuideId.Shortcuts),
+            ("templates", GuideId.Templates),
+            ("general", GuideId.General),
+            ("touch", GuideId.Touch),
+            ("system-updates", GuideId.System),
+            ("about", GuideId.About),
+        ];
+        foreach (var (state, guide) in sections)
+        {
+            cases.Add(state, guide, "es", AuditLook.Dark);
+            cases.Add(state, guide, "en", AuditLook.Dark);
+            cases.Add(state, guide, "es", AuditLook.LightLargeText);
+        }
+
+        return cases;
+    }
+
+    [Theory]
+    [MemberData(nameof(GuideCases))]
+    [Trait("Req", "PES-015")]
+    [Trait("Req", "REG-02")]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-001")]
+    public void Every_section_shows_its_guide_without_covering_what_it_points_at(
+        string state,
+        GuideId guide,
+        string language,
+        AuditLook look
+    ) =>
+        Run(
+            language,
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            look,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                var steps = GuideCatalog.Steps(guide);
+                for (var step = 0; step < steps.Length; step++)
+                {
+                    host.LayOut();
+                    WpfThread.DrainPendingWork();
+                    host.LayOut();
+                    var name = string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{state} guide step {step + 1} ({language}, {look})"
+                    );
+                    viewModel.Guide.Guide.ShouldBe(guide, name);
+                    viewModel.Guide.Step.ShouldBe(step, name);
+                    SurfaceAudit.ShouldPass(
+                        host,
+                        name,
+                        atLeast: 12,
+                        TouchInput.Wpf,
+                        "Centro de control",
+                        liveRegionsOnly: true
+                    );
+
+                    // R-39: the ring is on the control of the step and the card never covers it.
+                    var pointed = window.GuidePointsAt.ShouldNotBeNull(name);
+                    GuideTargets.GetTarget(pointed).ShouldBe(steps[step].Target, name);
+                    var card = Bounds(window.GuideCard, host.Root);
+                    Bounds(pointed, host.Root).IntersectsWith(card).ShouldBeFalse(name);
+                    window.GuideCard.Card.NextButton.ActualHeight.ShouldBe(
+                        ControlHeight.Small,
+                        name
+                    );
+                    viewModel.Guide.Next();
+                }
+
+                host.LayOut();
+                viewModel.Guide.IsShown.ShouldBeFalse();
+                window.GuideCard.Visibility.ShouldBe(Visibility.Collapsed);
+            },
+            static store =>
+            {
+                ValueList<string> none = [];
+                store
+                    .Dispatch(new SetSetting(SettingPaths.GuidesDone, none))
+                    .IsSuccess.ShouldBeTrue();
+            }
+        );
+
+    private static Rect Bounds(FrameworkElement element, FrameworkElement root) =>
+        element.TransformToAncestor(root).TransformBounds(new Rect(element.RenderSize));
+
+    /// <summary>The states with a layer over the content, at the default size and in the smallest window.</summary>
+    public static TheoryData<string, string, double, double> LayerCases()
+    {
+        var cases = new TheoryData<string, string, double, double>();
+        foreach (
+            var state in new[]
+            {
+                "shortcuts-profile-edit",
+                "shortcuts-link",
+                "shortcuts-icons",
+                "shortcuts-profile-icons",
+                "shortcuts-test",
+                "templates-icons",
+            }
+        )
+        {
+            cases.Add(
+                state,
+                "es",
+                ControlCenterWindow.DefaultWidth,
+                ControlCenterWindow.DefaultHeight
+            );
+            cases.Add(state, "en", 760, 520);
+        }
+
+        cases.Add("shortcuts-profiles", "en", 760, 520);
+        return cases;
+    }
+
+    [Theory]
+    [MemberData(nameof(LayerCases))]
+    [Trait("Req", "REG-06")]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "CCM-005")]
+    public void What_a_layer_covers_answers_neither_the_finger_nor_UI_Automation(
+        string state,
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+                else if (string.Equals(state, "shortcuts-profiles", StringComparison.Ordinal))
+                {
+                    window.ShowShortcutProfiles();
+                }
+
+                host.LayOut();
+                var violations = Rules.Uia011CoveredTargetRule.Verify(host.Root);
+                violations.ShouldBeEmpty(string.Join(Environment.NewLine, violations));
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "CCM-002")]
+    [Trait("Req", "PLA-010")]
+    [Trait("Req", "PLA-011")]
+    public void Choices_are_selection_items_collapsibles_expand_and_a_switch_row_is_one_switch() =>
+        Run(
+            "es",
+            1300,
+            760,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                // The sections of the menu are one group of choices: radio buttons with SelectionItem, not toggles.
+                var templates = host.Peer("Plantillas", AutomationControlType.RadioButton);
+                templates.GetPattern(PatternInterface.Toggle).ShouldBeNull();
+                templates.GetPattern(PatternInterface.Invoke).ShouldBeNull();
+                var choice = templates
+                    .GetPattern(PatternInterface.SelectionItem)
+                    .ShouldBeAssignableTo<ISelectionItemProvider>()!;
+                choice.IsSelected.ShouldBeFalse();
+                Selection(host.Peer("Atajos", AutomationControlType.RadioButton))
+                    .IsSelected.ShouldBeTrue();
+
+                choice.Select();
+                host.LayOut();
+
+                viewModel.Section.ShouldBe(ControlCenterSection.Templates, "selecting is the tap");
+                var chosen = Selection(host.Peer("Plantillas", AutomationControlType.RadioButton));
+                chosen.IsSelected.ShouldBeTrue();
+                Should.Throw<InvalidOperationException>(chosen.RemoveFromSelection);
+
+                // PLA-010: «Perfil vacío» is a collapsible with ExpandCollapse.
+                var blank = host.Peer("Perfil vacío", AutomationControlType.Button);
+                blank.GetPattern(PatternInterface.Toggle).ShouldBeNull();
+                var section = blank
+                    .GetPattern(PatternInterface.ExpandCollapse)
+                    .ShouldBeAssignableTo<IExpandCollapseProvider>()!;
+                section.ExpandCollapseState.ShouldBe(ExpandCollapseState.Collapsed);
+                section.Expand();
+                host.LayOut();
+                viewModel.Templates!.Screen.Blank.Open.ShouldBeTrue();
+                host.Peer("Perfil vacío", AutomationControlType.Button)
+                    .GetPattern(PatternInterface.ExpandCollapse)
+                    .ShouldBeAssignableTo<IExpandCollapseProvider>()!
+                    .ExpandCollapseState.ShouldBe(ExpandCollapseState.Expanded);
+
+                // A row with a switch is the switch (PLA-011, DIS-30): the whole header is one Toggle with the state,
+                // named with what it does and what it detects, and nothing nameless inside.
+                var detect = host.Peer(
+                    "Detectar Apps abiertas sin perfil",
+                    AutomationControlType.Button
+                );
+                detect
+                    .GetPattern(PatternInterface.Toggle)
+                    .ShouldBeAssignableTo<IToggleProvider>()!
+                    .ToggleState.ShouldBe(ToggleState.On);
+                (detect.GetChildren() ?? [])
+                    .Where(static child => child.IsControlElement())
+                    .ShouldAllBe(static child =>
+                        child.GetAutomationControlType() == AutomationControlType.Text
+                    );
+                // The title is inside the switch, so a tap on it toggles too.
+                var row = (System.Windows.FrameworkElement)((UIElementAutomationPeer)detect).Owner;
+                InTree(row)
+                    .OfType<Clicalo.UI.Wpf.Controls.Overline>()
+                    .ShouldContain(static title =>
+                        string.Equals(
+                            title.Text,
+                            "Apps abiertas sin perfil",
+                            StringComparison.Ordinal
+                        )
+                    );
+            }
+        );
+
+    private static IEnumerable<System.Windows.DependencyObject> InTree(
+        System.Windows.DependencyObject root
+    )
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in InTree(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "CCM-001")]
+    public void The_languages_of_the_title_bar_are_named_as_they_read() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                // Voice access finds a control by what it shows: «ES» and «EN», with the language's name as help.
+                var spanish = host.Peer("ES", AutomationControlType.RadioButton);
+                spanish.GetHelpText().ShouldBe("Español");
+                Selection(spanish).IsSelected.ShouldBeTrue();
+                host.Peer("EN", AutomationControlType.RadioButton)
+                    .GetHelpText()
+                    .ShouldBe("English");
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "EDI-006")]
+    [Trait("Req", "EDI-001")]
+    [Trait("Req", "ACC-001")]
+    public void The_fields_of_the_editor_tell_their_example_as_help() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                // Narrator reads the example a field shows while it is empty, not only its name.
+                var editor = viewModel.Shortcuts.Editor;
+                host.Peer(editor.Model!.Identity.NameLabel, AutomationControlType.Edit)
+                    .GetHelpText()
+                    .ShouldBe(editor.Model.Identity.Placeholder);
+                editor.SetKind(ActionKind.Url);
+                WpfThread.DrainPendingWork();
+                var target = editor.Model!.Target.ShouldNotBeNull();
+                target.Placeholder.ShouldBe("Ej.: ejemplo.com");
+                host.Peer(target.Label, AutomationControlType.Edit)
+                    .GetHelpText()
+                    .ShouldBe(target.Placeholder);
+            }
+        );
+
+    [Theory]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1371, 859)]
+    [Trait("Req", "EDI-008")]
+    public void The_groups_of_keys_fill_their_rows_and_never_leave_a_chip_alone(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, window, host) =>
+            {
+                window.ShowShortcutPage();
+                host.LayOut();
+                var chips = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static chip =>
+                        chip.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Chip
+                        && System.Windows.Media.VisualTreeHelper.GetParent(chip)
+                            is System.Windows.Controls.Panel { } panel
+                        && string.Equals(
+                            panel.GetType().Name,
+                            "JustifiedWrap",
+                            StringComparison.Ordinal
+                        )
+                    )
+                    .ToList();
+                chips.Count.ShouldBeGreaterThan(3);
+                var wrap = (System.Windows.FrameworkElement)
+                    System.Windows.Media.VisualTreeHelper.GetParent(chips[0]);
+                var rows = chips
+                    .Select(chip =>
+                        (
+                            Box: chip.TransformToAncestor(wrap)
+                                .TransformBounds(new System.Windows.Rect(chip.RenderSize)),
+                            Chip: chip
+                        )
+                    )
+                    .GroupBy(static cell => Math.Round(cell.Box.Top))
+                    .ToList();
+                foreach (var row in rows)
+                {
+                    row.Min(static cell => cell.Box.Left).ShouldBe(0, 1);
+                    row.Max(static cell => cell.Box.Right).ShouldBe(wrap.ActualWidth, 1);
+                    if (rows.Count > 1)
+                    {
+                        row.Count().ShouldBeGreaterThan(1, "a chip alone under a full row");
+                    }
+                }
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    [Trait("Req", "EDI-004")]
+    public void Two_icons_that_share_a_name_are_told_apart_by_their_help() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                viewModel.Shortcuts.Editor.TogglePicker();
+                viewModel.Shortcuts.Editor.SearchIcons("pausa");
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                // «pausa» is the hand-written word of two icons: their help is their own name.
+                var cells = Named(host, "pausa");
+                cells
+                    .Select(static cell => cell.GetHelpText())
+                    .ShouldBe(["pause", "pause circle"], ignoreOrder: true);
+                Named(host, "reproducir, pausa")
+                    .Single()
+                    .GetHelpText()
+                    .ShouldBeEmpty("a name of its own");
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "EDI-004")]
+    [Trait("Req", "CCM-005")]
+    public void In_the_narrow_window_the_categories_of_the_picker_are_a_selector_with_its_list_as_a_layer() =>
+        Run(
+            "es",
+            760,
+            520,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                viewModel.Shortcuts.Editor.TogglePicker();
+                WpfThread.DrainPendingWork();
+                window.ShowShortcutPage();
+                host.LayOut();
+
+                var selector = host.Peer("Todos", AutomationControlType.Button);
+                var fold = selector
+                    .GetPattern(PatternInterface.ExpandCollapse)
+                    .ShouldBeAssignableTo<IExpandCollapseProvider>()!;
+                fold.ExpandCollapseState.ShouldBe(ExpandCollapseState.Collapsed);
+                Named(host, "Interfaz").ShouldBeEmpty("the list opens from the selector");
+
+                fold.Expand();
+                host.LayOut();
+                Named(host, "Todos")
+                    .Count(static peer =>
+                        peer.GetAutomationControlType() == AutomationControlType.RadioButton
+                    )
+                    .ShouldBe(1, "«Todos» in the list over the icons");
+                Selection(host.Peer("Interfaz", AutomationControlType.RadioButton)).Select();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                viewModel
+                    .Shortcuts.Editor.Model!.Picker!.Categories.Single(static c => c.Selected)
+                    .Id.ShouldBe("uiActions");
+                host.Peer("Interfaz", AutomationControlType.Button)
+                    .GetPattern(PatternInterface.ExpandCollapse)
+                    .ShouldBeAssignableTo<IExpandCollapseProvider>()!
+                    .ExpandCollapseState.ShouldBe(
+                        ExpandCollapseState.Collapsed,
+                        "choosing closes the list"
+                    );
+            }
+        );
+
+    [Theory]
+    [InlineData("es", 760, 520)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 1120, 680)]
+    [Trait("Req", "CCM-002")]
+    public void The_labels_of_the_rail_take_two_lines_at_most_never_break_a_word_and_keep_the_icon_on_their_axis(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                var items = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static item => item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail)
+                    .ToList();
+                items.Count.ShouldBe(6);
+                foreach (var item in items)
+                {
+                    var label = (string)item.Content;
+                    var text = InTree(item)
+                        .OfType<System.Windows.Controls.TextBlock>()
+                        .Single(block =>
+                            string.Equals(block.Text, label, StringComparison.Ordinal)
+                        );
+                    text.ActualHeight.ShouldBeLessThanOrEqualTo((2 * text.LineHeight) + 0.5, label);
+                    var face = new System.Windows.Media.Typeface(
+                        text.FontFamily,
+                        text.FontStyle,
+                        text.FontWeight,
+                        text.FontStretch
+                    );
+                    foreach (var word in label.Split(' '))
+                    {
+                        // A word wider than the label would be broken in two («Plantilla/s»).
+                        new System.Windows.Media.FormattedText(
+                            word,
+                            CultureInfo.InvariantCulture,
+                            System.Windows.FlowDirection.LeftToRight,
+                            face,
+                            text.FontSize,
+                            System.Windows.Media.Brushes.Black,
+                            System.Windows.Media.VisualTreeHelper.GetDpi(text).PixelsPerDip
+                        ).Width.ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, word);
+                    }
+
+                    var icon = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Icon", item);
+                    icon.TransformToAncestor(item)
+                        .Transform(new System.Windows.Point(icon.ActualWidth / 2, 0))
+                        .X.ShouldBe(item.ActualWidth / 2, 1, label);
+                }
+            }
+        );
+
+    [Theory]
+    [InlineData("es", 1120, 680)]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 1371, 859)]
+    [Trait("Req", "CCM-002")]
+    public void The_counter_of_a_rail_item_is_whole_beside_its_icon_and_inside_the_ring(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (_, _, host) =>
+            {
+                var items = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static item =>
+                        item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail && item.Count > 0
+                    )
+                    .ToList();
+                items.Count.ShouldBe(2, "Atajos and Sistema count something");
+                foreach (var item in items)
+                {
+                    var label = (string)item.Content;
+                    var counter = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Count", item);
+                    var icon = (System.Windows.FrameworkElement)
+                        item.Template.FindName("PART_Icon", item);
+                    var box = Bounds(counter, item);
+                    box.Width.ShouldBeGreaterThan(0, label);
+                    box.Left.ShouldBeGreaterThanOrEqualTo(
+                        Bounds(icon, item).Right - 0.5,
+                        "beside the icon, never over it: " + label
+                    );
+                    box.Right.ShouldBeLessThanOrEqualTo(
+                        item.ActualWidth - Clicalo.UI.Wpf.Theming.Generated.Stroke.Selected,
+                        "inside the ring of «elegido»: " + label
+                    );
+                    // Nothing between the counter and its item cuts it (it was cut flat on its right, D21 review).
+                    for (
+                        System.Windows.DependencyObject? node = counter;
+                        node is not null && !ReferenceEquals(node, item);
+                        node = System.Windows.Media.VisualTreeHelper.GetParent(node)
+                    )
+                    {
+                        if (
+                            node is System.Windows.FrameworkElement element
+                            && System.Windows.Controls.Primitives.LayoutInformation.GetLayoutClip(
+                                element
+                            )
+                                is { } clip
+                        )
+                        {
+                            var inside = Bounds(counter, element);
+                            inside.Inflate(-0.5, -0.5);
+                            clip.Bounds.Contains(inside).ShouldBeTrue(label);
+                        }
+                    }
+                }
+            }
+        );
+
+    [Theory]
+    [InlineData(AuditLook.Dark)]
+    [InlineData(AuditLook.ContrastLargeText)]
+    [Trait("Req", "CCM-005")]
+    [Trait("Req", "CCM-002")]
+    public void In_the_smallest_window_the_section_in_view_is_above_the_fade_of_the_rail(
+        AuditLook look
+    ) =>
+        Run(
+            "en",
+            760,
+            520,
+            look,
+            (viewModel, _, host) =>
+            {
+                States["about-open"](viewModel);
+                host.LayOut();
+                host.LayOut();
+                var selected = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Single(static item =>
+                        item.Kind == Clicalo.UI.Wpf.Controls.OptionKind.Rail && item.IsSelected
+                    );
+                ((string)selected.Content).ShouldBe("About & contact");
+                AboveFade(selected).ShouldBeGreaterThanOrEqualTo(-0.5, "its second line faded");
+            }
+        );
+
+    [Theory]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 760, 520)]
+    [InlineData("es", 1120, 680)]
+    [Trait("Req", "PRB-001")]
+    [Trait("Req", "PRB-003")]
+    [Trait("Req", "CCM-005")]
+    public void Probar_covers_the_foot_of_the_editor_and_shows_its_keys_above_its_own_foot(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States["shortcuts-test"](viewModel);
+                WpfThread.DrainPendingWork();
+                window.ShowShortcutPage();
+                host.LayOut();
+
+                var model = viewModel.Shortcuts.Editor.Model.ShouldNotBeNull();
+                var test = model.Test.ShouldNotBeNull();
+                // The foot of the editor is under the layer: neither the finger nor UI Automation reach it.
+                Named(host, model.Footer.DuplicateText).ShouldBeEmpty();
+                Named(host, model.Footer.DeleteText).ShouldBeEmpty();
+                // The way out and what tries are in view: ✕ of the title and «Probar ahora» in the foot of the layer.
+                var editor = InTree(host.Root).OfType<ShortcutEditorView>().Single();
+                var close = InTree(editor)
+                    .OfType<Clicalo.UI.Wpf.Controls.IconButton>()
+                    .Single(button =>
+                        button.IsVisible
+                        && string.Equals(
+                            AutomationProperties.GetName(button),
+                            test.CloseName,
+                            StringComparison.Ordinal
+                        )
+                    );
+                AboveFade(close).ShouldBeGreaterThanOrEqualTo(-0.5, "✕ of «Probar»");
+                var live = (System.Windows.FrameworkElement)
+                    (
+                        (UIElementAutomationPeer)
+                            host.Peer(test.LiveText, AutomationControlType.Button)
+                    ).Owner;
+                Bounds(live, editor).Bottom.ShouldBeLessThanOrEqualTo(editor.ActualHeight + 0.5);
+                // The keys it sends are above the fade, not squeezed between two feet (D21 review).
+                var key = InTree(host.Root)
+                    .OfType<System.Windows.Controls.TextBlock>()
+                    .Single(block =>
+                        block.IsVisible
+                        && string.Equals(
+                            block.Text,
+                            test.Sequence[^1].Label,
+                            StringComparison.Ordinal
+                        )
+                    );
+                AboveFade(key).ShouldBeGreaterThanOrEqualTo(-0.5, "the keys of «Probar»");
+            }
+        );
+
+    [Theory]
+    [InlineData("shortcuts-macro-keys", "es", 1120, 680)]
+    [InlineData("shortcuts-hold", "es", 1371, 859)]
+    [InlineData("shortcuts-macro-keys", "en", 760, 520)]
+    [InlineData("templates-preview-keys", "es", 1371, 859)]
+    [Trait("Req", "EDI-008")]
+    [Trait("Req", "ACC-003")]
+    public void A_chosen_key_of_the_combination_box_keeps_its_whole_label_on_its_axis(
+        string state,
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, window, host) =>
+            {
+                States[state](viewModel);
+                WpfThread.DrainPendingWork();
+                if (EditorPages.Contains(state))
+                {
+                    window.ShowShortcutPage();
+                }
+
+                host.LayOut();
+                var chosen = InTree(host.Root)
+                    .OfType<Clicalo.UI.Wpf.Controls.OptionButton>()
+                    .Where(static key =>
+                        key.IsVisible && key.IsMonospace && key.IsSelected && key.Content is string
+                    )
+                    .ToList();
+                chosen.Count.ShouldBeGreaterThanOrEqualTo(2, "a modifier and a key");
+                foreach (var key in chosen)
+                {
+                    var label = (string)key.Content;
+                    var text = InTree(key)
+                        .OfType<System.Windows.Controls.TextBlock>()
+                        .Single(block =>
+                            string.Equals(block.Text, label, StringComparison.Ordinal)
+                        );
+                    Natural(text)
+                        .ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, "«✓ C…»: " + label);
+                    text.TransformToAncestor(key)
+                        .Transform(new System.Windows.Point(text.ActualWidth / 2, 0))
+                        .X.ShouldBe(key.ActualWidth / 2, 1, label);
+                }
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "ATJ-004")]
+    [Trait("Req", "ATJ-005")]
+    [Trait("Req", "ATJ-006")]
+    [Trait("Req", "ACC-001")]
+    public void Under_the_card_of_the_profile_the_action_of_the_binding_is_folded_and_opens_its_options() =>
+        Run(
+            "es",
+            ControlCenterWindow.DefaultWidth,
+            ControlCenterWindow.DefaultHeight,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                var section = viewModel.Shortcuts;
+                section.ToggleProfileEdit();
+                section.LinkAction();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                var link = section.Screen.Link.ShouldNotBeNull();
+                link.Expanded.ShouldBeTrue("the options are open under the card");
+                var action = link.Action.ShouldNotBeNull();
+                Fold(host, action)
+                    .ExpandCollapseState.ShouldBe(
+                        ExpandCollapseState.Collapsed,
+                        "no option of the binding is in view"
+                    );
+
+                // A tap shows them: the card closes.
+                Fold(host, action).Expand();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+                section.Screen.ProfileEdit.ShouldBeNull();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeTrue();
+                Fold(host, action).ExpandCollapseState.ShouldBe(ExpandCollapseState.Expanded);
+
+                // ✏ opens the card over them and closes them, so «Listo» of the card does not bring them back.
+                Fold(host, section.Screen.Header.EditName).Expand();
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+                section.Screen.ProfileEdit.ShouldNotBeNull();
+                section.Screen.Link.ShouldNotBeNull().Expanded.ShouldBeFalse();
+                Fold(host, action).ExpandCollapseState.ShouldBe(ExpandCollapseState.Collapsed);
+            }
+        );
+
+    [Theory]
+    [InlineData("en", 760, 520)]
+    [InlineData("es", 760, 520)]
+    [Trait("Req", "ATJ-004")]
+    [Trait("Req", "CCM-005")]
+    public void In_the_smallest_window_the_card_of_the_profile_ends_in_one_row_and_shows_its_name(
+        string language,
+        double width,
+        double height
+    ) =>
+        Run(
+            language,
+            width,
+            height,
+            AuditLook.Dark,
+            (viewModel, _, host) =>
+            {
+                States["shortcuts-profile-edit"](viewModel);
+                WpfThread.DrainPendingWork();
+                host.LayOut();
+
+                var edit = viewModel.Shortcuts.Screen.ProfileEdit.ShouldNotBeNull();
+                var buttons = new[]
+                {
+                    edit.ShareText,
+                    edit.DeleteText.ShouldNotBeNull(),
+                    edit.DoneText,
+                }
+                    .Select(name =>
+                        (System.Windows.FrameworkElement)
+                            (
+                                (UIElementAutomationPeer)
+                                    host.Peer(name, AutomationControlType.Button)
+                            ).Owner
+                    )
+                    .ToList();
+                buttons
+                    .Select(button => Math.Round(Bounds(button, host.Root).Top))
+                    .Distinct()
+                    .Count()
+                    .ShouldBe(1, "«Compartir», «Eliminar perfil» and «Listo» share a row");
+                foreach (var button in buttons)
+                {
+                    foreach (var text in InTree(button).OfType<System.Windows.Controls.TextBlock>())
+                    {
+                        Natural(text).ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, text.Text);
+                    }
+                }
+
+                var name = (System.Windows.FrameworkElement)
+                    (
+                        (UIElementAutomationPeer)
+                            host.Peer(edit.NameLabel, AutomationControlType.Edit)
+                    ).Owner;
+                AboveFade(name).ShouldBeGreaterThanOrEqualTo(-0.5, "the name of the profile");
+            }
+        );
+
+    private static IExpandCollapseProvider Fold(AuditHost host, string name) =>
+        host.Peer(name, AutomationControlType.Button)
+            .GetPattern(PatternInterface.ExpandCollapse)
+            .ShouldBeAssignableTo<IExpandCollapseProvider>()!;
+
+    /// <summary>The box of <paramref name="element"/> in the coordinates of <paramref name="ancestor"/>.</summary>
+    private static System.Windows.Rect Bounds(
+        System.Windows.FrameworkElement element,
+        System.Windows.Media.Visual ancestor
+    ) =>
+        element
+            .TransformToAncestor(ancestor)
+            .TransformBounds(new System.Windows.Rect(element.RenderSize));
+
+    /// <summary>
+    /// How far the bottom of <paramref name="element"/> is above the fade of the scroll area it is in: 0 or more when it
+    /// is drawn whole and clear.
+    /// </summary>
+    private static double AboveFade(System.Windows.FrameworkElement element)
+    {
+        System.Windows.DependencyObject node = element;
+        while (node is not System.Windows.Controls.ScrollContentPresenter)
+        {
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        }
+
+        var presenter = (System.Windows.Controls.ScrollContentPresenter)node;
+        var scroll = (Clicalo.UI.Wpf.Controls.ThemedScrollViewer)presenter.TemplatedParent;
+        var fade = scroll.IsFading ? Clicalo.UI.Wpf.Theming.Generated.ComponentSize.ScrollFade : 0;
+        return presenter.ActualHeight - fade - Bounds(element, presenter).Bottom;
+    }
+
+    /// <summary>The width of the whole text of <paramref name="text"/> in one line.</summary>
+    private static double Natural(System.Windows.Controls.TextBlock text) =>
+        new System.Windows.Media.FormattedText(
+            text.Text,
+            CultureInfo.InvariantCulture,
+            System.Windows.FlowDirection.LeftToRight,
+            new System.Windows.Media.Typeface(
+                text.FontFamily,
+                text.FontStyle,
+                text.FontWeight,
+                text.FontStretch
+            ),
+            text.FontSize,
+            System.Windows.Media.Brushes.Black,
+            System.Windows.Media.VisualTreeHelper.GetDpi(text).PixelsPerDip
+        ).WidthIncludingTrailingWhitespace;
+
+    private static List<AutomationPeer> Named(AuditHost host, string name)
+    {
+        var found = new List<AutomationPeer>();
+        Collect(UIElementAutomationPeer.CreatePeerForElement(host.Root));
+        return found;
+
+        void Collect(AutomationPeer peer)
+        {
+            peer.ResetChildrenCache();
+            foreach (var child in peer.GetChildren() ?? [])
+            {
+                if (
+                    child.IsControlElement()
+                    && string.Equals(child.GetName(), name, StringComparison.Ordinal)
+                )
+                {
+                    found.Add(child);
+                }
+
+                Collect(child);
+            }
+        }
+    }
+
+    private static ISelectionItemProvider Selection(AutomationPeer peer) =>
+        peer.GetPattern(PatternInterface.SelectionItem)
+            .ShouldBeAssignableTo<ISelectionItemProvider>()!;
+
+    /// <summary>
+    /// The Control Center with its six sections over fakes, its window arranged for <paramref name="width"/> and its
+    /// content hosted at that size; <paramref name="document"/> changes the document of the tests first.
+    /// </summary>
+    private static void Run(
+        string language,
+        double width,
+        double height,
+        AuditLook look,
+        Action<ControlCenterViewModel, ControlCenterWindow, AuditHost> audit,
+        Action<DocumentStore>? document = null
+    )
+    {
+        var setup = new TemplatesSectionTests.Setup();
+        var system = new SystemTestWorld();
+        system.Updates.Status = system.Updates.Status with
+        {
+            Phase = UpdatePhase.Found,
+            NewVersion = "2.1.0",
+            RollbackVersion = "1.9.3",
+        };
+        setup.World.Localization.TrySetLanguage(language).ShouldBeTrue();
+
+        // In the app the interface follows the language of the document (LanguageFollower): both say the same here too,
+        // so «Idioma · Language» marks the language the window is drawn in.
+        if (
+            !string.Equals(
+                language,
+                setup.World.Store.Current.Settings.Language.Value,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            setup
+                .World.Store.Dispatch(new SetSetting(SettingPaths.Language, new LangCode(language)))
+                .IsSuccess.ShouldBeTrue();
+        }
+
+        document?.Invoke(setup.World.Store);
+        var services = setup.Services with
+        {
+            System = system.Services.System,
+            About = new AboutSectionTests.World().Services with
+            {
+                Localization = setup.World.Localization,
+            },
+            OpenWelcome = static () => { },
+        };
+
+        WpfThread.Invoke(() =>
+        {
+            using var theme = AuditLooks.Theme(look);
+            setup.World.Shortcuts.Open(
+                new ListRef.InProfile(ControlCenterTestWorld.Word),
+                null,
+                false
+            );
+            var viewModel = new ControlCenterViewModel(services, static () => { });
+            setup.World.Shortcuts.Changed += (_, _) => viewModel.Shortcuts.Invalidate();
+            setup.World.Profiles.Changed += (_, _) => viewModel.Shortcuts.Invalidate();
+            setup.World.Store.Changed += (_, _) =>
+            {
+                setup.World.Shortcuts.OnDocumentChanged();
+                viewModel.Shortcuts.Invalidate();
+                viewModel.Refresh();
+            };
+            var window = new ControlCenterWindow(viewModel, theme);
+            try
+            {
+                window.ApplyWidth(width);
+                using var host = AuditHost.OfWindow(window, theme, width, height);
+                audit(viewModel, window, host);
+            }
+            finally
+            {
+                window.Destroy();
+            }
+        });
+    }
+
+    private static void SelectShortcut(ControlCenterViewModel cc, string id)
+    {
+        cc.Shortcuts.SelectTile(new ShortcutId(id));
+        cc.Shortcuts.Refresh();
+    }
+
+    /// <summary>Gives the tap shortcut <paramref name="id"/> the combination of <paramref name="keys"/>.</summary>
+    private static void Rebind(DocumentStore store, string id, params KeyId[] keys)
+    {
+        store.Current.Library.TryGetShortcut(new ShortcutId(id), out var shortcut).ShouldBeTrue(id);
+        store
+            .Dispatch(
+                new EditShortcut(
+                    shortcut with
+                    {
+                        Action = new TapAction(KeyChord.FromKeys(keys), []),
+                    }
+                )
+            )
+            .IsSuccess.ShouldBeTrue(id);
+    }
+}

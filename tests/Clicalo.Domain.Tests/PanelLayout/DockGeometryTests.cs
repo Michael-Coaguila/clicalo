@@ -104,13 +104,20 @@ public sealed class DockGeometryTests
     }
 
     [Theory]
-    [InlineData(SizeId.S, 76, 58)]
-    [InlineData(SizeId.M, 88, 66)]
-    [InlineData(SizeId.L, 108, 78)]
+    [InlineData(SizeId.S, 108, 44)]
+    [InlineData(SizeId.M, 108, 64)]
+    [InlineData(SizeId.L, 124, 80)]
     [Trait("Req", "PES-005")]
-    public void The_bar_is_as_thick_as_its_size_says(SizeId size, int width, int height)
+    [Trait("Req", "PES-007")]
+    public void The_bar_is_as_thick_as_its_size_says(SizeId size, int width, int inside)
     {
         var metrics = PanelSizes.Get(size);
+
+        // Direction C (D12): a side bar shows two targets of 44 side by side (92) inside its padding of 8, and a top or
+        // bottom bar a row as high as its shortcuts, inside the same padding. D20: the bar follows the size, so S is a
+        // row of icons of 44 and L is wider and taller (two targets of 52, tiles of 80).
+        var height = inside + (2 * DockGeometry.BarPaddingPx);
+        metrics.DockHorizontalTileHeightPx.ShouldBe(inside);
 
         DockGeometry
             .Bar(DockSide.Right, 400, metrics, Monitor, gutter: false)
@@ -127,12 +134,31 @@ public sealed class DockGeometryTests
         var metrics = PanelSizes.Get(SizeId.M);
 
         var vertical = DockGeometry.Bar(DockSide.Right, 5000, metrics, Monitor, gutter: false);
-        vertical.ShouldBe(new PhysicalRect(1920 - 88, 12, 88, 1040 - 24));
+        vertical.ShouldBe(new PhysicalRect(1920 - 108, 12, 108, 1040 - 24));
 
         var horizontal = DockGeometry.Bar(DockSide.Bottom, 600, metrics, Monitor, gutter: false);
-        horizontal.ShouldBe(new PhysicalRect(660, 1040 - 12 - 66, 600, 66));
+        horizontal.ShouldBe(new PhysicalRect(660, 1040 - 12 - 80, 600, 80));
         DockGeometry.Bar(DockSide.Top, 600, metrics, Monitor, gutter: false).Top.ShouldBe(12);
         DockGeometry.MaxBarLength(DockSide.Top, Monitor).ShouldBe(1920 - 40);
+    }
+
+    [Fact]
+    [Trait("Req", "PES-005")]
+    [Trait("Req", "CUA-011")]
+    public void A_horizontal_bar_grows_across_with_its_shortcuts_but_is_never_thinner_than_its_size()
+    {
+        var metrics = PanelSizes.Get(SizeId.M);
+
+        // At 150 % its shortcuts are 80 high: with its padding of 8 the bar is 96, still 12 from the edge.
+        DockGeometry
+            .Bar(DockSide.Bottom, 600, metrics, Monitor, gutter: false, thickness: 96)
+            .ShouldBe(new PhysicalRect(660, 1040 - 12 - 96, 600, 96));
+        DockGeometry
+            .Bar(DockSide.Top, 600, metrics, Monitor, gutter: false, thickness: 40)
+            .Height.ShouldBe(80);
+        DockGeometry
+            .Bar(DockSide.Right, 600, metrics, Monitor, gutter: false, thickness: 300)
+            .Width.ShouldBe(108);
     }
 
     [Fact]
@@ -187,6 +213,114 @@ public sealed class DockGeometryTests
     }
 
     [Fact]
+    [Trait("Req", "PES-014")]
+    public void The_notice_surface_goes_beside_the_bar_at_its_end_when_nothing_is_there()
+    {
+        var bar = new PhysicalRect(1832, 100, 88, 840);
+
+        DockGeometry
+            .BesideClear(DockSide.Right, bar, 300, 60, 8, DockAlign.End, Monitor, [])
+            .ShouldBe(new PhysicalRect(1832 - 8 - 300, 940 - 60, 300, 60));
+
+        // A window that is elsewhere beside the bar does not move it.
+        DockGeometry
+            .BesideClear(
+                DockSide.Right,
+                bar,
+                300,
+                60,
+                8,
+                DockAlign.End,
+                Monitor,
+                [new PhysicalRect(1588, 100, 236, 400)]
+            )
+            .ShouldBe(new PhysicalRect(1832 - 8 - 300, 940 - 60, 300, 60));
+    }
+
+    [Fact]
+    [Trait("Req", "PES-014")]
+    public void The_notice_surface_goes_further_in_when_a_window_or_Release_all_is_in_its_place()
+    {
+        var bar = new PhysicalRect(1832, 100, 88, 840);
+        var pinned = new PhysicalRect(1832 - 16 - 230, 500, 230, 300);
+        var pill = new PhysicalRect(1832 - 8 - 140 - 250, 800, 140, 44);
+
+        var beyondPinned = DockGeometry.BesideClear(
+            DockSide.Right,
+            bar,
+            300,
+            400,
+            8,
+            DockAlign.End,
+            Monitor,
+            [pinned]
+        );
+        beyondPinned.Right.ShouldBe(pinned.Left - 8);
+        beyondPinned.Bottom.ShouldBe(bar.Bottom);
+
+        // Two in the way: beyond both.
+        var beyondBoth = DockGeometry.BesideClear(
+            DockSide.Right,
+            bar,
+            300,
+            400,
+            8,
+            DockAlign.End,
+            Monitor,
+            [pinned, pill]
+        );
+        beyondBoth.Right.ShouldBe(Math.Min(pinned.Left, pill.Left) - 8);
+
+        // Beside the closed handle with «Release all» centered beside it: the notice goes beyond the pill.
+        var handle = new PhysicalRect(1920 - 44, 462, 44, 116);
+        var besideHandle = DockGeometry.Beside(
+            DockSide.Right,
+            handle,
+            140,
+            44,
+            8,
+            DockAlign.Center,
+            Monitor
+        );
+        var notice = DockGeometry.BesideClear(
+            DockSide.Right,
+            handle,
+            300,
+            60,
+            8,
+            DockAlign.End,
+            Monitor,
+            [besideHandle]
+        );
+        notice.Right.ShouldBe(besideHandle.Left - 8);
+    }
+
+    [Fact]
+    [Trait("Req", "CUA-014")]
+    [Trait("Req", "PES-010")]
+    public void A_menu_centered_on_a_tile_stays_on_it_when_it_goes_beyond_a_window()
+    {
+        // The menu of a shortcut of «Pinned»: beside the window, centered on the tile, never pulled along the edge.
+        var bar = new PhysicalRect(1832, 100, 88, 840);
+        var pinned = new PhysicalRect(1832 - 8 - 230, 300, 230, 500);
+        var tile = new PhysicalRect(pinned.Left + 8, 600, 100, 80);
+
+        var menu = DockGeometry.BesideClear(
+            DockSide.Right,
+            DockGeometry.AtButton(DockSide.Right, bar, tile),
+            260,
+            200,
+            8,
+            DockAlign.Center,
+            Monitor,
+            [pinned]
+        );
+
+        menu.Right.ShouldBe(pinned.Left - 8);
+        (menu.Top + (menu.Height / 2)).ShouldBe(tile.Top + (tile.Height / 2));
+    }
+
+    [Fact]
     [Trait("Req", "PES-013")]
     public void Release_all_floats_110_from_the_edge_or_180_from_the_bottom()
     {
@@ -212,4 +346,119 @@ public sealed class DockGeometryTests
         double gap,
         int expected
     ) => DockGeometry.TilesPerPage(preference, space, tile, gap).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(DockSide.Right)]
+    [InlineData(DockSide.Left)]
+    [InlineData(DockSide.Top)]
+    [InlineData(DockSide.Bottom)]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "PES-010")]
+    public void A_window_opened_by_a_button_goes_beside_the_bar_and_never_over_it(DockSide side)
+    {
+        // The second button of a pair sits 48 further into the bar than the first one (D19, D20).
+        var vertical = DockGeometry.IsVertical(side);
+        var bar = vertical
+            ? new PhysicalRect(side == DockSide.Right ? 1812 : 0, 200, 108, 600)
+            : new PhysicalRect(400, side == DockSide.Top ? 12 : 948, 900, 80);
+        var button = vertical
+            ? new PhysicalRect(bar.Left + 8 + 48, 600, 44, 44)
+            : new PhysicalRect(900, bar.Top + 8 + 18, 44, 44);
+
+        var anchor = DockGeometry.AtButton(side, bar, button);
+        var window = DockGeometry.Beside(side, anchor, 340, 300, 8, DockAlign.End, Monitor);
+
+        var apart =
+            window.Right <= bar.Left
+            || bar.Right <= window.Left
+            || window.Bottom <= bar.Top
+            || bar.Bottom <= window.Top;
+        apart.ShouldBeTrue($"{window} covers the bar {bar}");
+        if (vertical)
+        {
+            window.Bottom.ShouldBe(button.Bottom);
+        }
+        else
+        {
+            window.Right.ShouldBe(button.Right);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "PES-013")]
+    [Trait("Req", "REG-03")]
+    public void The_floating_release_never_covers_the_open_bar_nor_a_window_beside_it()
+    {
+        // A bar narrower than the inset: the floating «Release all» stays 110 from the edge, as PES-013 says.
+        var narrow = new PhysicalRect(1920 - 92, 12, 92, 1016);
+        DockGeometry
+            .PanicClear(DockSide.Right, 140, 44, Monitor, narrow, 8, [])
+            .ShouldBe(DockGeometry.Panic(DockSide.Right, 140, 44, Monitor));
+
+        // The bar of L is 124: the button goes 8 clear of it instead of over its edge (D20).
+        var large = new PhysicalRect(1920 - 124, 12, 124, 1016);
+        DockGeometry
+            .PanicClear(DockSide.Right, 140, 44, Monitor, large, 8, [])
+            .Right.ShouldBe(large.Left - 8);
+
+        // Quick settings beside the bar, across the middle of the edge: the button goes beyond it, never on it.
+        var bar = new PhysicalRect(1920 - 108, 12, 108, 1016);
+        var quick = new PhysicalRect(bar.Left - 8 - 340, 300, 340, 500);
+        var pill = DockGeometry.PanicClear(DockSide.Right, 140, 44, Monitor, bar, 8, [quick]);
+        pill.Right.ShouldBe(quick.Left - 8);
+
+        // The same at the bottom edge, with a window above the bar.
+        var bottom = new PhysicalRect(400, 1040 - 80, 900, 80);
+        var above = new PhysicalRect(700, bottom.Top - 8 - 300, 340, 300);
+        DockGeometry
+            .PanicClear(DockSide.Bottom, 140, 44, Monitor, bottom, 8, [above])
+            .Bottom.ShouldBeLessThanOrEqualTo(above.Top - 8);
+    }
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
+    public void Quick_settings_keep_their_side_of_the_panel_while_they_fit_there_whole()
+    {
+        // A panel 340 wide: in the left half they open on its right; dragged past the middle they stay there.
+        const int width = 340;
+        const int gap = 8;
+        var left = new PhysicalRect(300, 100, 340, 612);
+        DockGeometry.SideBesidePanel(left, width, gap, Monitor, kept: null).ShouldBe(DockSide.Left);
+
+        var pastMiddle = new PhysicalRect(1100, 100, 340, 612);
+        DockGeometry
+            .SideBesidePanel(pastMiddle, width, gap, Monitor, kept: DockSide.Left)
+            .ShouldBe(DockSide.Left, "1440 + 8 + 340 still fits in 1920");
+        DockGeometry
+            .SideBesidePanel(pastMiddle, width, gap, Monitor, kept: null)
+            .ShouldBe(DockSide.Right, "opened there, the side with room is the left one");
+
+        // Near the right edge they no longer fit on the right: they go to the left, never over the panel.
+        var nearRight = new PhysicalRect(1500, 100, 340, 612);
+        DockGeometry
+            .SideBesidePanel(nearRight, width, gap, Monitor, kept: DockSide.Left)
+            .ShouldBe(DockSide.Right);
+        DockGeometry
+            .Beside(DockSide.Right, nearRight, width, 600, gap, DockAlign.Start, Monitor)
+            .Right.ShouldBeLessThanOrEqualTo(nearRight.Left - gap);
+    }
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
+    public void With_no_room_on_either_side_quick_settings_take_the_side_with_more_room()
+    {
+        var narrow = new DisplayMonitor(
+            "DISPLAY2",
+            new PhysicalRect(0, 0, 1000, 800),
+            new PhysicalRect(0, 0, 1000, 760),
+            IsPrimary: false,
+            Scale: 1
+        );
+        var panel = new PhysicalRect(300, 50, 500, 612);
+
+        // 292 free on the left and 192 on the right: neither holds 340, the left has more.
+        DockGeometry
+            .SideBesidePanel(panel, 340, 8, narrow, kept: DockSide.Left)
+            .ShouldBe(DockSide.Right);
+    }
 }

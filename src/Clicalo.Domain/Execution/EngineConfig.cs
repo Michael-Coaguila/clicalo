@@ -46,4 +46,10 @@ public sealed record EngineConfig(
 
     /// <summary>Play the soft sound after an action runs (EJE-012, GEN-011).</summary>
     public bool FeedbackSound { get; init; }
+
+    /// <summary>
+    /// How much longer the confirmation window of EJE-002 lasts: ×1, ×2 or ×3 (ACC-006,
+    /// <see cref="InteractionTime"/>).
+    /// </summary>
+    public int TimeMultiplier { get; init; } = 1;
 }

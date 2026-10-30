@@ -46,6 +46,25 @@ internal static class SurfaceStyles
     }
 
     /// <summary>
+    /// Lets touches and clicks go through <paramref name="window"/> to what is under it (<c>WS_EX_TRANSPARENT</c> on its
+    /// layered window), or takes them again; true when the style changed.
+    /// </summary>
+    public static bool SetClickThrough(HWND window, bool clickThrough)
+    {
+        var current = Get(window);
+        var wanted = clickThrough
+            ? current | WINDOW_EX_STYLE.WS_EX_TRANSPARENT
+            : current & ~WINDOW_EX_STYLE.WS_EX_TRANSPARENT;
+        if (wanted == current)
+        {
+            return false;
+        }
+
+        Set(window, wanted);
+        return true;
+    }
+
+    /// <summary>
     /// Adds (<paramref name="noActivate"/> true) or removes <c>WS_EX_NOACTIVATE</c>. Returns true when the style
     /// changed. Works from any thread of the process.
     /// </summary>

@@ -66,7 +66,15 @@ public static class StarterContentReader
                         new IconRef(ContentJson.String(root, "icon")),
                         processes,
                         shortcuts
-                    );
+                    )
+                    {
+                        AppsLanguages =
+                        [
+                            .. root.GetProperty("appsLanguages")
+                                .EnumerateArray()
+                                .Select(static l => new LangCode(l.GetString() ?? string.Empty)),
+                        ],
+                    };
             }
         );
 

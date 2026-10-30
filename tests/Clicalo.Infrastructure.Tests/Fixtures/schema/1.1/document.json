@@ -1,0 +1,403 @@
+{
+  "format": "clicalo.document",
+  "schema": {
+    "major": 1,
+    "minor": 1
+  },
+  "writtenBy": "2.0.0",
+  "seq": 43,
+  "writtenAtUtc": "2026-10-09T09:12:44.000Z",
+  "payloadSha256": "603b2e3255f32317770ef1e255b220ed7db2c988a7b3eb37d1e8fa9c4c9126fc",
+  "payload": {
+    "settings": {
+      "lang": "es",
+      "theme": "auto",
+      "density": "full",
+      "size": "M",
+      "cols": 3,
+      "rowsPref": 0,
+      "textScale": 100,
+      "opacity": 0.92,
+      "autoDim": true,
+      "dimTo": 0.35,
+      "showKeys": true,
+      "voiceNumbers": false,
+      "stickyModsRow": false,
+      "showStripRow": true,
+      "showTabsRow": true,
+      "reduceMotion": false,
+      "feedback": {
+        "sound": true,
+        "flash": true
+      },
+      "lockProfile": false,
+      "lastProfile": "word",
+      "dock": {
+        "side": "right",
+        "handlePosBySide": {
+          "right": 50,
+          "left": 50,
+          "top": 50,
+          "bottom": 50
+        },
+        "handleLocked": false,
+        "pinOpen": false,
+        "gutter": false,
+        "perPage": 5,
+        "coachDone": false
+      },
+      "panelPositions": [
+        {
+          "monitor": "\\\\.\\DISPLAY1",
+          "x": 1480,
+          "y": 40
+        }
+      ],
+      "touch": {
+        "preset": "leve",
+        "debounceMs": 300,
+        "hitSlopPx": 14,
+        "cancelMovePx": 35,
+        "minContactMs": 0
+      },
+      "keySafety": {
+        "maxHoldMs": 60000,
+        "releaseOnAppSwitch": true
+      },
+      "autoSuggestProfiles": true,
+      "keyboard": {
+        "layout": "es-LA",
+        "appsLang": "es",
+        "detected": true
+      },
+      "ai": {
+        "consent": false,
+        "disabled": false,
+        "freeLeftToday": 5
+      },
+      "reliability": {
+        "startWithWindows": true,
+        "autoBackup": true,
+        "crashRecovery": true,
+        "singleInstance": true,
+        "runAsAdmin": false
+      },
+      "updates": {
+        "auto": true,
+        "askBefore": true,
+        "backupBefore": true,
+        "channel": "stable"
+      },
+      "noKeyboardUser": true,
+      "handlePosByMonitor": [
+        {
+          "monitor": "\\\\?\\DISPLAY#GSM5B7F#5&2c8a1e3f&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}",
+          "side": "right",
+          "pos": 30
+        },
+        {
+          "monitor": "\\\\?\\DISPLAY#GSM5B7F#5&2c8a1e3f&0&UID4352#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}",
+          "side": "bottom",
+          "pos": 72
+        },
+        {
+          "monitor": "\\\\?\\DISPLAY#BOE0A1C#4&1d2e3f40&0&UID8388688#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}",
+          "side": "right",
+          "pos": 64
+        }
+      ],
+      "controlCenter": {
+        "monitor": "\\\\?\\DISPLAY#BOE0A1C#4&1d2e3f40&0&UID8388688#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}",
+        "x": -1240,
+        "y": 80.5,
+        "width": 1180,
+        "height": 720,
+        "maximized": false
+      },
+      "globalHotkey": {
+        "enabled": true,
+        "combo": "ctrl-alt-f10"
+      },
+      "timeMultiplier": 2
+    },
+    "always": {
+      "shortcuts": [
+        {
+          "id": "dict",
+          "name": {
+            "en": "Dictate",
+            "es": "Dictar"
+          },
+          "icon": "mic",
+          "autoIcon": false,
+          "category": "voice",
+          "action": {
+            "type": "tap",
+            "keys": [
+              "win",
+              "h"
+            ]
+          },
+          "confirm": false,
+          "private": false,
+          "origin": {
+            "source": "seed",
+            "version": "1",
+            "item": "dict"
+          }
+        },
+        {
+          "id": "ptt",
+          "name": {
+            "en": "Talk",
+            "es": "Hablar"
+          },
+          "icon": "record_voice_over",
+          "autoIcon": false,
+          "category": "voice",
+          "action": {
+            "type": "hold",
+            "keys": [
+              "ctrl",
+              "space"
+            ]
+          },
+          "confirm": false,
+          "maxHold": "after",
+          "maxHoldMs": 30000,
+          "private": false
+        }
+      ]
+    },
+    "profiles": [
+      {
+        "id": "general",
+        "name": {
+          "en": "General",
+          "es": "General"
+        },
+        "icon": "apps",
+        "autoIcon": false,
+        "compat": false,
+        "shortcuts": [
+          {
+            "id": "copy",
+            "name": {
+              "en": "Copy",
+              "es": "Copiar"
+            },
+            "icon": "content_copy",
+            "autoIcon": true,
+            "category": "edit",
+            "action": {
+              "type": "tap",
+              "keys": [
+                "ctrl",
+                "c"
+              ],
+              "variants": [
+                {
+                  "lang": "en",
+                  "keys": [
+                    "ctrl",
+                    "c"
+                  ]
+                }
+              ]
+            },
+            "confirm": false,
+            "private": false
+          },
+          {
+            "id": "sig",
+            "name": {
+              "en": "Signature",
+              "es": "Firma"
+            },
+            "icon": "signature",
+            "autoIcon": true,
+            "category": "text",
+            "action": {
+              "type": "text",
+              "text": {
+                "enc": "dpapi.v1",
+                "blob": "AQIDBAUGBwgJCgsMDQ4PEA==",
+                "len": 12,
+                "private": true
+              },
+              "method": "paste"
+            },
+            "confirm": false,
+            "private": true
+          },
+          {
+            "id": "caps",
+            "name": {
+              "en": "Caps",
+              "es": "Mayus"
+            },
+            "icon": "keyboard_capslock",
+            "autoIcon": false,
+            "category": "edit",
+            "action": {
+              "type": "toggle",
+              "keys": [
+                "shift@left"
+              ]
+            },
+            "confirm": false,
+            "maxHold": "never",
+            "private": false
+          },
+          {
+            "id": "rclick",
+            "name": {
+              "en": "Right click",
+              "es": "Clic derecho"
+            },
+            "icon": "right_click",
+            "autoIcon": false,
+            "category": "sel",
+            "action": {
+              "type": "mouse",
+              "mouse": "rclick",
+              "speed": "normal"
+            },
+            "confirm": false,
+            "private": false
+          },
+          {
+            "id": "web",
+            "name": {
+              "en": "Mail",
+              "es": "Correo"
+            },
+            "icon": "mail",
+            "autoIcon": false,
+            "category": "web",
+            "action": {
+              "type": "url",
+              "url": "https://mail.example.org/inbox"
+            },
+            "confirm": false,
+            "private": false
+          },
+          {
+            "id": "calc",
+            "name": {
+              "en": "Calculator",
+              "es": "Calculadora"
+            },
+            "icon": "calculate",
+            "autoIcon": false,
+            "category": "win",
+            "action": {
+              "type": "app",
+              "app": {
+                "kind": "exe",
+                "path": "C:\\Windows\\System32\\calc.exe"
+              }
+            },
+            "confirm": true,
+            "private": false
+          },
+          {
+            "id": "lock",
+            "name": {
+              "en": "Lock",
+              "es": "Bloquear"
+            },
+            "icon": "lock",
+            "autoIcon": false,
+            "category": "win",
+            "action": {
+              "type": "system",
+              "command": "lock"
+            },
+            "confirm": true,
+            "private": false
+          }
+        ]
+      },
+      {
+        "id": "word",
+        "name": {
+          "en": "Word",
+          "es": "Word"
+        },
+        "icon": "description",
+        "autoIcon": false,
+        "processes": [
+          "winword.exe"
+        ],
+        "compat": true,
+        "shortcuts": [
+          {
+            "id": "pdf",
+            "name": {
+              "en": "Save as PDF",
+              "es": "Guardar como PDF"
+            },
+            "icon": "picture_as_pdf",
+            "autoIcon": false,
+            "category": "file",
+            "action": {
+              "type": "macro",
+              "steps": [
+                {
+                  "kind": "keys",
+                  "keys": [
+                    "f12"
+                  ]
+                },
+                {
+                  "kind": "wait",
+                  "ms": 500
+                },
+                {
+                  "kind": "text",
+                  "text": "PDF"
+                },
+                {
+                  "kind": "mouse",
+                  "mouse": "dbl"
+                }
+              ]
+            },
+            "confirm": false,
+            "private": false,
+            "pinnedFrom": "general"
+          }
+        ]
+      }
+    ],
+    "frequents": {
+      "pins": [
+        "copy",
+        "deleted-long-ago"
+      ],
+      "hidden": [
+        "dict"
+      ],
+      "usageEpoch": 3
+    },
+    "dupIgnored": [],
+    "onboarding": {
+      "completed": true,
+      "uses": [
+        "touch",
+        "voice"
+      ],
+      "kit": [
+        "basics",
+        "word"
+      ],
+      "baseline": {
+        "touchPreset": "leve",
+        "size": "M",
+        "voiceNumbers": true,
+        "noKeyboardUser": false
+      }
+    }
+  }
+}

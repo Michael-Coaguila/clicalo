@@ -12,6 +12,7 @@ using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.Windowing.IntegrationTests.Controls;
 using Clicalo.Windowing.IntegrationTests.Theming;
 
 namespace Clicalo.Windowing.IntegrationTests.MinimalPanel;
@@ -35,15 +36,19 @@ public sealed class PanelBodyViewTests
             {
                 body.ActualWidth.ShouldBe(316);
                 body.ShortcutGrid.TileControls.Count.ShouldBe(9);
-                body.ShortcutGrid.ActualHeight.ShouldBe(3 * (78 + 8));
+                // Tiles of 80 with the gap of 8 of direction C (D12); each one keeps half the gap around it.
+                body.ShortcutGrid.ActualHeight.ShouldBe(3 * (68 + 8));
                 body.ShortcutGrid.TileControls[0].Control.AccessibleName.ShouldBe("Atajo 0");
                 body.Strip.TileControls.Count.ShouldBe(5);
                 body.Children.IndexOf(body.Strip)
                     .ShouldBeLessThan(body.Children.IndexOf(body.Selector));
                 body.Children.IndexOf(body.Selector)
                     .ShouldBeLessThan(body.Children.IndexOf(body.GridArea));
-                body.Children.IndexOf(body.Pager)
-                    .ShouldBeLessThan(body.Children.IndexOf(body.Notices));
+                body.Children.IndexOf(body.GridArea)
+                    .ShouldBeLessThan(body.Children.IndexOf(body.Pager));
+
+                // The status row goes at the foot of the panel, out of the body (the surface places it).
+                body.Children.Contains(body.Notices).ShouldBeFalse();
                 body.Pager.Visibility.ShouldBe(Visibility.Visible);
                 panel.Pager.PageCount.ShouldBe(3);
             }
@@ -117,6 +122,42 @@ public sealed class PanelBodyViewTests
                     ]);
                 body.ShortcutGrid.TileControls[0].Control.AutomationName.ShouldBe("1 Atajo 0");
                 body.Strip.TileControls[0].Control.VoiceNumber.ShouldBe(21);
+            }
+        );
+
+    [Fact]
+    [Trait("Req", "CUA-009")]
+    [Trait("Req", "FIJ-005")]
+    public void Under_the_pointer_a_sticky_key_and_a_segment_take_card_hi_below_their_states() =>
+        WithBody(
+            PanelLayoutSettings.Default with
+            {
+                StickyRow = true,
+            },
+            PanelBodyContext.Idle,
+            (body, _) =>
+            {
+                foreach (
+                    var control in new[]
+                    {
+                        body.Sticky.KeyControls[0],
+                        body.Selector.FrequentsButton,
+                        body.ShortcutGrid.TileControls[0].Control,
+                    }
+                )
+                {
+                    var hover = PointerHover.Of(control.Template);
+                    hover.ShouldNotBeEmpty(control.AccessibleName);
+                    PointerHover
+                        .Paints(hover[0])
+                        .ShouldAllBe(static paint =>
+                            paint.Property == Border.BackgroundProperty
+                            && paint.Token == ColorToken.CardHi
+                        );
+                    PointerHover
+                        .StateWins(control.Template, ShortcutTile.ToggleStateProperty)
+                        .ShouldBeTrue(control.AccessibleName);
+                }
             }
         );
 

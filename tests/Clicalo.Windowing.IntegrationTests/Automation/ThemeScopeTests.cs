@@ -78,10 +78,11 @@ public sealed class ThemeScopeTests
             ((SolidColorBrush)chrome.Background).Color.ShouldBe(
                 ThemeCatalog.GetPalette(Effective(ThemeId.HighContrast)).Card
             );
-            chrome.BorderThickness.ShouldBe(
-                new Thickness(
-                    ThemeCatalog.GetPalette(Effective(ThemeId.HighContrast)).BorderThickness
-                )
+            (
+                (System.Windows.Shapes.Rectangle)
+                    tile.Template.FindName(ShortcutTileTemplate.LinePart, tile)
+            ).StrokeThickness.ShouldBe(
+                ThemeCatalog.GetPalette(Effective(ThemeId.HighContrast)).BorderThickness
             );
             UiaTreeText.Format(Snapshot(lab)).ShouldBe(before);
         });

@@ -3,18 +3,18 @@ using Clicalo.Domain.Execution;
 using Clicalo.Domain.Touch;
 using Clicalo.Platform.Windows.Input;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Clicalo.Platform.IntegrationTests.Engine;
 
 /// <summary>
 /// Clícalo's own chords (the rights chord of the foreground ladder, Win+H; blueprint §3.6, D-14, D-22) are sent by the
 /// running engine, never by a thread beside it, and balanced. The real host and injector; nothing is injected
-/// (<see cref="PhysicalStateInjector"/>).
+/// (<see cref="PhysicalStateInjector"/>). The wait for the engine's answer runs on a fake clock nobody moves: a loaded
+/// machine can make the engine thread slow, never «not sent» (the limit itself is tested in Application.Tests).
 /// </summary>
 [Trait("Req", "REG-03")]
 [Trait("Req", "BUS-003")]
-[Trait("Category", "Quarantine")]
-[Trait("Issue", "4")]
 public sealed class EngineKeyEffectsTests
 {
     private static readonly EngineConfig Config = new(
@@ -47,7 +47,7 @@ public sealed class EngineKeyEffectsTests
         using var stop = new CancellationTokenSource();
         var engine = host.StartOnDedicatedThread(stop.Token);
         var hotkey = new FakeRightsHotkey();
-        var effects = new EngineKeyEffects(host, replies, hotkey, TimeProvider.System);
+        var effects = new EngineKeyEffects(host, replies, hotkey, new FakeTimeProvider());
         var token = TestContext.Current.CancellationToken;
         try
         {

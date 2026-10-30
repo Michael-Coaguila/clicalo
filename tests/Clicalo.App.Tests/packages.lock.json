@@ -454,13 +454,14 @@
       "clicalo.infrastructure": {
         "type": "Project",
         "dependencies": {
+          "Anthropic": "[12.50.0, )",
           "Clicalo.Application": "[2.0.0-dev, )",
           "Clicalo.Domain": "[2.0.0-dev, )",
           "Clicalo.Platform.Core": "[2.0.0-dev, )",
           "Microsoft.Extensions.AI": "[10.10.0, )",
           "Microsoft.Extensions.Http.Resilience": "[10.10.0, )",
           "Serilog": "[4.4.0, )",
-          "Velopack": "[1.2.158, )"
+          "Velopack": "[1.2.161, )"
         }
       },
       "clicalo.platform.core": {
@@ -494,6 +495,15 @@
           "Clicalo.Application": "[2.0.0-dev, )",
           "Clicalo.Domain": "[2.0.0-dev, )",
           "Clicalo.Presentation": "[2.0.0-dev, )"
+        }
+      },
+      "Anthropic": {
+        "type": "CentralTransitive",
+        "requested": "[12.50.0, )",
+        "resolved": "12.50.0",
+        "contentHash": "BBtKetn0gsVeaFfRHcqW5hhUwWdNuIp4lTCvrd4roN6HivnJqrKBbEhPWjA/a5eypg2rvGdUr/Z5qzV6Fr7+Bg==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.5.1"
         }
       },
       "CommunityToolkit.Mvvm": {
@@ -579,9 +589,9 @@
       },
       "Velopack": {
         "type": "CentralTransitive",
-        "requested": "[1.2.158, )",
-        "resolved": "1.2.158",
-        "contentHash": "wQN38beVrAf0WzFMnZtl7UmwxqwaJ7xVYypqITdOI4YUTYch2UvE+xAjg9msfaitVDtgfWeIcGsjRNQ65C03ZQ=="
+        "requested": "[1.2.161, )",
+        "resolved": "1.2.161",
+        "contentHash": "OpHNacIumnkhaaX3ZlQ/TCR4YPOJvud2/PAOoWb6o+mIrLwIVA275I5wAgt4q/1O2VrJeDwR1qFQyqzG4lUArg=="
       }
     }
   }

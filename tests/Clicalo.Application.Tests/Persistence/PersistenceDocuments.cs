@@ -65,10 +65,16 @@ internal static class PersistenceDocuments
                 FreeLeftToday = 5,
                 FreeResetAt = null,
                 ApiKeyRef = null,
+                Provider = AiProvider.Anthropic,
             },
             Reliability = new ReliabilitySettings(true, autoBackup, true, true, false),
             Updates = new UpdateSettings(true, true, true, UpdateChannel.Stable),
             NoKeyboardUser = true,
+            HandlePositionsByMonitor = [],
+            ControlCenter = null,
+            GlobalHotkey = new GlobalHotkeySettings(Enabled: false, "ctrl-alt-space"),
+            TimeMultiplier = 1,
+            GuidesDone = [],
         };
 
     /// <summary>A document whose version is <paramref name="marker"/> (in the General profile name).</summary>

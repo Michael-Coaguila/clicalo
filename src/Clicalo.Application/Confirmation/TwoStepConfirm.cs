@@ -1,3 +1,4 @@
+using Clicalo.Domain.Execution;
 using Clicalo.Domain.Timing;
 
 namespace Clicalo.Application.Confirmation;
@@ -16,6 +17,7 @@ public sealed class TwoStepConfirm
 {
     private readonly Lock _gate = new();
     private readonly TimeProvider _time;
+    private readonly Func<int>? _multiplier;
     private ConfirmationSubject? _armed;
     private DateTimeOffset _until;
 
@@ -25,6 +27,19 @@ public sealed class TwoStepConfirm
     {
         ArgumentNullException.ThrowIfNull(time);
         _time = time;
+    }
+
+    /// <summary>Creates a confirmation whose window follows the adjustable times (ACC-006).</summary>
+    /// <param name="time">Clock of the confirmation window.</param>
+    /// <param name="multiplier">
+    /// The time multiplier of the settings (×1, ×2 or ×3), read when a first tap arms: the window lasts that many times
+    /// <c>Timings.Confirmation.DestructiveConfirmWindow</c> (<see cref="InteractionTime"/>).
+    /// </param>
+    public TwoStepConfirm(TimeProvider time, Func<int> multiplier)
+        : this(time)
+    {
+        ArgumentNullException.ThrowIfNull(multiplier);
+        _multiplier = multiplier;
     }
 
     /// <summary>The armed subject, or <see langword="null"/> when nothing is armed or the window passed.</summary>
@@ -53,7 +68,12 @@ public sealed class TwoStepConfirm
             }
 
             _armed = subject;
-            _until = now + Timings.Confirmation.DestructiveConfirmWindow;
+            _until =
+                now
+                + InteractionTime.Scale(
+                    Timings.Confirmation.DestructiveConfirmWindow,
+                    _multiplier?.Invoke() ?? 1
+                );
             return new TwoStepResult.Armed(subject, _until);
         }
     }

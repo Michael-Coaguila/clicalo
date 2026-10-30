@@ -301,6 +301,22 @@ public sealed class EngineHostTests
 
     [Fact]
     [Trait("Req", "NFR-005")]
+    [Trait("Req", "BUR-004")]
+    public void An_exception_while_paused_leaves_the_engine_paused()
+    {
+        using var world = new HostWorld(HostWorld.HoldingShift() with { Paused = true })
+        {
+            ThrowOn = typeof(EngineEvent.SessionResumed),
+        };
+
+        world.Handle(new EngineEvent.SessionResumed());
+
+        world.Host.State.Paused.ShouldBeTrue();
+        world.Host.State.IsQuiet.ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Req", "NFR-005")]
     [Trait("Req", "SEG-006")]
     public void An_exception_whose_release_the_secure_desktop_refuses_keeps_what_was_held_to_send_again()
     {

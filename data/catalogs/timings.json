@@ -37,6 +37,11 @@
           "description": "Length of the discreet outline or vibration that signals an ignored touch.",
           "req": ["TAC-003"]
         },
+        "HoldInScrollDelay": {
+          "duration": "150ms",
+          "description": "Time a finger must rest on a Hold shortcut that lies in a zone that scrolls before it starts holding: a finger that scrolls moves past the drag threshold sooner, and then nothing is pressed. A safety limit: the time multiplier does not scale it.",
+          "req": ["TAC-004", "EJE-004"]
+        },
         "PalmContactMinPx": {
           "px": 120,
           "description": "A contact whose area (rcContact) reaches this width or height, in logical pixels (about 32 mm), is a palm and never counts. Provisional until spike S2 records real traces on the maintainer's touch screen.",
@@ -179,6 +184,11 @@
     "Mouse": {
       "description": "Mouse actions.",
       "entries": {
+        "PointerRest": {
+          "duration": "300ms",
+          "description": "How long the cursor rests outside Clícalo for that place to count as where the person works: a touchpad or a mouse slides into the panel, so the last point before it is the border it crossed (D21).",
+          "req": ["EJE-009"]
+        },
         "ScrollRepeatSlow": {
           "duration": "60ms",
           "description": "Wheel repeat interval while a slow scroll is held.",
@@ -220,6 +230,11 @@
     "Engine": {
       "description": "Engine actor.",
       "entries": {
+        "DragButtonCheck": {
+          "duration": "250ms",
+          "description": "While a latched drag holds the primary button, how often the engine asks Windows whether it is still down: the person may let go of it by hand (a touchpad click, a touch on the app), and the drag and its sticky keys must not stay latched (D21).",
+          "req": ["EJE-007", "REG-03"]
+        },
         "InternalChordWait": {
           "duration": "1s",
           "description": "Longest wait for the engine to send one of Clícalo's own chords (the rights chord of the foreground ladder, Win+H); a hung engine answers «not sent».",
@@ -395,6 +410,12 @@
           "description": "While Clícalo has shown the touch keyboard, its covered area is sampled this often so the panel can move above it. Provisional until spike S4 measures it.",
           "req": ["BUS-002"],
           "source": "blueprint §3.6"
+        },
+        "HostedAppRecheck": {
+          "durations": ["100ms", "250ms", "500ms", "1s", "2s"],
+          "description": "When a Store app frame (ApplicationFrameHost.exe) comes to the front before its app has a window in it, the app is looked for again after each of these waits while the frame stays in front; the first time it is there, the foreground is published again with the real process. After the last wait the monitor waits for the next foreground change.",
+          "req": ["PER-002"],
+          "source": "blueprint §7.9"
         }
       }
     },
@@ -626,6 +647,26 @@
           "description": "Longest shortcut name accepted from an AI proposal.",
           "req": ["PLA-008"],
           "source": "blueprint §9.2"
+        },
+        "AiAppNameMaxLength": {
+          "count": 60,
+          "description": "Longest program name the AI field sends (PLA-008); longer text is cut.",
+          "req": ["PLA-008", "LOG-006"]
+        },
+        "AiMaxShortcuts": {
+          "count": 24,
+          "description": "Most shortcuts accepted from an AI proposal; more makes the answer invalid.",
+          "req": ["PLA-008", "LOG-006"]
+        },
+        "AiResponseMaxBytes": {
+          "bytes": "64KiB",
+          "description": "Largest AI answer read; a larger one is invalid.",
+          "req": ["LOG-006"]
+        },
+        "AiMaxOutputTokens": {
+          "count": 4000,
+          "description": "Output token ceiling of a template generation; a proposal of 24 shortcuts fits well below it.",
+          "req": ["PLA-008"]
         }
       }
     },
@@ -640,7 +681,7 @@
       }
     },
     "Icons": {
-      "description": "Icon suggestions (suggestIcons).",
+      "description": "Icon suggestions (suggestIcons) and the icon picker.",
       "entries": {
         "IconSuggestionsMax": { "count": 6, "description": "Most icons suggested for a name.", "req": ["EDI-005"] },
         "IconWordMinLength": { "count": 3, "description": "Name words shorter than this are ignored.", "req": ["EDI-005"] },
@@ -732,6 +773,13 @@
           "req": ["ACE-003"],
           "source": "blueprint §9.4"
         }
+      }
+    },
+    "Guides": {
+      "description": "First-time guides of each screen (R-39, ADR-0034).",
+      "entries": {
+        "MaxDoneIds": { "count": 32, "description": "Most guide ids kept in settings.guidesDone; the rest are dropped when the document is read.", "req": ["PES-015"] },
+        "MaxIdLength": { "count": 32, "description": "Longest guide id kept in settings.guidesDone.", "req": ["PES-015"] }
       }
     }
   }

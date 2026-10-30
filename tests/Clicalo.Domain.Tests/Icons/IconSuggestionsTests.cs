@@ -45,6 +45,33 @@ public sealed class IconSuggestionsTests
 
     [Fact]
     [Trait("Req", "EDI-005")]
+    [Trait("Req", "EDI-004")]
+    public void The_keywords_of_Material_find_an_icon_but_never_suggest_it()
+    {
+        var catalog = new IconCatalog(
+            [
+                new IconEntry(
+                    new IconRef("search"),
+                    ["buscar", "find", "search"],
+                    "uiActions",
+                    null,
+                    ["magnify", "zoom"]
+                ),
+                new IconEntry(new IconRef("zoom_in"), ["ampliar", "zoom"], "uiActions"),
+            ],
+            [],
+            []
+        );
+
+        IconSuggestions
+            .Suggest("Zoom", null, LangCode.Es, catalog, ComboIconTable.Empty)
+            .Select(static icon => icon.Name)
+            .ShouldBe(["zoom_in"]);
+        Names(catalog.Search("magnify")).ShouldBe(["search"]);
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-005")]
     public void Words_of_two_letters_or_fewer_are_ignored() => Suggest("de la PC").ShouldBeEmpty();
 
     [Fact]
@@ -104,6 +131,28 @@ public sealed class IconSuggestionsTests
         all.Take(2).ShouldBe(["bolt", "save"]);
         all.Count.ShouldBe(10);
         all.Distinct(StringComparer.Ordinal).Count().ShouldBe(10);
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-004")]
+    public void Each_category_lists_its_icons_in_library_order_and_only_known_categories_are_kept()
+    {
+        var text = new IconCategory("text", LocalizedText.Same("Texto", LangCode.Es));
+        var catalog = new IconCatalog(
+            [
+                new IconEntry(new IconRef("format_bold"), ["negrita"], "text"),
+                new IconEntry(new IconRef("mic"), ["voz"], "audioVideo"),
+                new IconEntry(new IconRef("title"), ["título"], "text"),
+            ],
+            [],
+            [],
+            [text, text with { Label = LocalizedText.Same("Otra", LangCode.Es) }, null!]
+        );
+
+        catalog.Categories.Items.ShouldBe([text], "a repeated or empty category is left out");
+        Names(catalog.InCategory("text")).ShouldBe(["format_bold", "title"]);
+        catalog.InCategory("travel").ShouldBeEmpty();
+        catalog.InCategory(null).ShouldBeEmpty();
     }
 
     private static IconEntry Entry(string icon, params string[] tags) =>

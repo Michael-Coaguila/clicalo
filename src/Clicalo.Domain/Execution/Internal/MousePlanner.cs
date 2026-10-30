@@ -37,8 +37,10 @@ internal static class MousePlanner
             return;
         }
 
-        // FIJ-006 (b): the active sticky modifiers are held around the click (Ctrl+click), then used up.
-        var modifiers = StickyKeys(step, origin);
+        // FIJ-006 (b): the active sticky modifiers are held around the click (Ctrl+click), then used up. A scroll is not
+        // one of those actions: invoked or held, it scrolls and leaves them waiting for the next key (D21 review: an
+        // invoked scroll zoomed with Ctrl while the same scroll held did not).
+        var modifiers = IsScroll(mouse.Op) ? [] : StickyKeys(step, origin);
         HolderId? holder = null;
         if (!modifiers.IsEmpty)
         {
@@ -105,6 +107,14 @@ internal static class MousePlanner
             return;
         }
 
+        // One repeating scroll at a time, and one item per contact: the finger that holds keeps what it holds until it
+        // lifts (INV-9), so a second scroll waits for the first to end.
+        var holder = HolderId.ForContact(contactId);
+        if (step.State.Scroll is not null || KeyPlanner.IsHeld(step, holder))
+        {
+            return;
+        }
+
         step.Emit(
             new EngineEffect.MouseAction(
                 mouse.Op,
@@ -113,9 +123,22 @@ internal static class MousePlanner
                 origin.Epoch
             )
         );
-        var (deadline, _) = step.GlobalDeadline();
+        var (deadline, inherits) = step.GlobalDeadline();
+
+        // SEG-001: the held scroll is in the ledger like any Hold, with no key and no button, so the panic strip shows
+        // it and «Release all», the limit and every terminal event end it.
+        var item = KeyPlanner.Template(
+            step,
+            holder,
+            HoldOrigin.Dock,
+            origin,
+            contactId,
+            deadline,
+            inherits
+        );
         step.State = step.State with
         {
+            Keys = step.State.Keys.Acquire(item).Ledger,
             Scroll = new ScrollRepeat(
                 contactId,
                 mouse.Op,
@@ -128,7 +151,10 @@ internal static class MousePlanner
             ),
         };
         step.Notice(L.MouseRan(name: step.NameOf(shortcut)));
-        step.CountUsage(origin);
+
+        // AVI-004: a held scroll is a Mantener, which never becomes the action ↻ repeats; the ⏶ ⏷ of the Tab bar, which
+        // are not in the library, turned ↻ off (D21 review).
+        step.CountUsage(origin, repeatable: false);
     }
 
     /// <summary>The scroll timer fired: one more step, or the end of the repeat.</summary>
@@ -139,12 +165,19 @@ internal static class MousePlanner
             return;
         }
 
-        if (
-            (scroll.DeadlineTicks is { } deadline && deadline <= step.Now)
-            || !step.CanPress(scroll.Origin)
-        )
+        if (scroll.DeadlineTicks is { } deadline && deadline <= step.Now)
         {
-            step.State = step.State with { Scroll = null };
+            // SEG-004: the global limit ends it and says so, like any other held item.
+            var seconds =
+                (deadline - scroll.SinceTicks) / Math.Max(1, step.Config.TimestampFrequency);
+            StopScroll(step);
+            step.Notice(EngineNotices.ReleasedAutomatically(seconds), NoticeUrgency.Assertive);
+            return;
+        }
+
+        if (!step.CanPress(scroll.Origin))
+        {
+            StopScroll(step);
             return;
         }
 
@@ -165,6 +198,45 @@ internal static class MousePlanner
                 NextTicks = step.Now + step.Ticks(Interval(scroll.Speed, steps)),
             },
         };
+    }
+
+    /// <summary>Ends the repeating scroll and takes its item out of the ledger (SEG-001); it sends nothing.</summary>
+    public static void StopScroll(EngineStep step)
+    {
+        if (step.State.Scroll is not { } scroll)
+        {
+            return;
+        }
+
+        step.State = step.State with { Scroll = null };
+        var holder = HolderId.ForContact(scroll.ContactId);
+        if (
+            step.State.Keys.Items.TryGetValue(holder, out var item)
+            && item.Origin == HoldOrigin.Dock
+        )
+        {
+            step.Release(step.State.Keys.Release(holder), holder);
+        }
+    }
+
+    /// <summary>
+    /// The scroll ends with its ledger item: its deadline or a cancelled holder took the item away (SEG-001, SEG-004).
+    /// </summary>
+    public static void SyncScroll(EngineStep step)
+    {
+        if (
+            step.State.Scroll is { } scroll
+            && !(
+                step.State.Keys.Items.TryGetValue(
+                    HolderId.ForContact(scroll.ContactId),
+                    out var item
+                )
+                && item.Origin == HoldOrigin.Dock
+            )
+        )
+        {
+            step.State = step.State with { Scroll = null };
+        }
     }
 
     /// <summary>
@@ -190,11 +262,37 @@ internal static class MousePlanner
             : interval;
     }
 
+    /// <summary>
+    /// EJE-009: the drop of a latched drag goes where the person points now. A finger on the tile took the cursor to the
+    /// panel, so a bare button up dropped the item on Clícalo (D21 review); the move comes before the release, and only
+    /// where a press could go (INV-6: the current epoch, never an elevated target). The release itself is never held
+    /// back (INV-8).
+    /// </summary>
+    /// <param name="step">The step being planned.</param>
+    /// <param name="origin">The activation that drops it.</param>
+    public static void MoveForDrop(EngineStep step, ExecutionOrigin origin)
+    {
+        if (!step.CanPress(origin))
+        {
+            return;
+        }
+
+        step.Emit(
+            new EngineEffect.MouseAction(
+                MouseOp.Drag,
+                ScrollSpeed.Normal,
+                origin.ExternalPointer,
+                origin.Epoch
+            )
+        );
+    }
+
     private static void Drag(EngineStep step, ExecutionOrigin origin, Shortcut shortcut)
     {
         var holder = HolderId.ForToggle(shortcut.Id);
         if (step.State.Keys.Items.ContainsKey(holder))
         {
+            MoveForDrop(step, origin);
             KeyPlanner.Unlatch(step, holder);
             return;
         }

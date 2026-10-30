@@ -10,7 +10,8 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="Positions">The four position buttons.</param>
 /// <param name="HoldLabel">[autoRelease], only for Hold and Toggle.</param>
 /// <param name="Holds">Como en General, 30 s, 1 min, 2 min, Nunca.</param>
-/// <param name="HoldText">[autoReleaseD].</param>
+/// <param name="HoldText">[autoReleaseTimed] or [autoReleaseNever]: what the chosen time really does.</param>
+/// <param name="HoldSwitchText">[autoReleaseSwitchOn] or [autoReleaseSwitchOff], as General has it.</param>
 /// <param name="MethodLabel">[textMethod], only for Text.</param>
 /// <param name="Methods">[tmType] and [tmPaste].</param>
 /// <param name="EncryptedText">[textEnc].</param>
@@ -33,6 +34,7 @@ public sealed record MoreModel(
     string? HoldLabel,
     ValueList<ChoiceOption> Holds,
     string HoldText,
+    string HoldSwitchText,
     string? MethodLabel,
     ValueList<ChoiceOption> Methods,
     string EncryptedText,

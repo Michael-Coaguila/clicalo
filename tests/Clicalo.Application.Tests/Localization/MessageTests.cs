@@ -64,13 +64,16 @@ public sealed class MessageTests
     [Trait("Req", "IDI-001")]
     public void The_catalog_lists_every_key_with_its_expected_arguments()
     {
-        MessageCatalog.All.Length.ShouldBe(766);
+        MessageCatalog.All.Length.ShouldBe(1016);
         MessageCatalog.TryGet("migT", out _).ShouldBeFalse("retired by the user (ADR-0020)");
         MessageCatalog.TryGet("processTaken", out var processTaken).ShouldBeTrue();
         processTaken.Parameters.ShouldBe([
             new MessageParameter("profile", MessageArgumentType.Text),
             new MessageParameter("process", MessageArgumentType.Text),
         ]);
+        // ADR-0033: the texts of the key and of the consent name the chosen provider.
+        MessageCatalog.TryGet("keyNone", out var keyNone).ShouldBeTrue();
+        keyNone.Parameters.ShouldBe([new MessageParameter("provider", MessageArgumentType.Text)]);
         MessageCatalog.TryGet("comboN", out var comboN).ShouldBeTrue();
         comboN.IsPlural.ShouldBeTrue();
         MessageCatalog.TryGet("comboN_one", out _).ShouldBeFalse();

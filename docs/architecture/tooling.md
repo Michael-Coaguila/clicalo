@@ -9,8 +9,12 @@ que actualiza esta página. El marco está en [§5](blueprint.md#5-estructura-de
 
 ## Kit de desarrollo
 
-- **SDK de .NET 10.0.401**, fijado en `global.json` con `rollForward: latestPatch` y sin versiones
+- **SDK de .NET 10.0.402**, fijado en `global.json` con la versión exacta (`rollForward: disable`) y sin versiones
   preliminares. El mismo archivo selecciona Microsoft Testing Platform como ejecutor de `dotnet test`.
+  La versión exacta evita que una actualización mensual del SDK rompa la CI: `setup-dotnet` instala la más nueva
+  si se permite avanzar, y sus paquetes implícitos (`ILCompiler`, `ILLink.Tasks`) dejan de coincidir con los
+  `packages.lock.json`. Para actualizar, cambia `global.json` y regenera los lock files
+  (`dotnet restore Clicalo.slnx --force-evaluate`) en el mismo commit.
 - **C# 14.** Los proyectos puros usan `$(ClicaloPortableTfm)` (`net10.0`); los de Windows,
   `$(ClicaloWindowsTfm)` (`net10.0-windows10.0.19041.0`), por las proyecciones WinRT.
 - La salida va a `artifacts/` (`UseArtifactsOutput`), nunca junto al código.
@@ -35,16 +39,12 @@ programas de la carpeta actual sin `.\`; `cl.cmd` funciona aunque la directiva d
 | `cl i18n-check [--strict-unused]` | Ejecuta `i18n-check` de `tools/Clicalo.DevCli` (ver abajo) | M0 |
 | `cl i18n-import [--check]` | Ejecuta `i18n-import` de `tools/Clicalo.DevCli`: reconstruye `data/i18n` o, con `--check`, solo compara | M0 |
 | `cl adr-check --base <ref>` | Ejecuta `adr-check` de `tools/Clicalo.DevCli`, lo mismo que el trabajo `adr` de la CI (`cl adr-check --base main` en local) | M0 |
-| `cl pr` | Abre el PR de la rama actual | M1 |
 | `cl run` | Arranca la compilación Debug de `Clicalo.exe` con datos aislados en `%TEMP%\clicalo-dev` y **sin envío de teclas** (`--no-input`) | M2 |
 | `cl note` | Crea un fragmento de novedades para usuarios, en ES y EN, en `changes/unreleased/` | M2 |
-| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`, cada una con Sentinel) y ejecuta las mediciones `Category=Perf`; fuera de la CI, sin envío de teclas. Necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio (el enlazador de Native AOT de Sentinel) | M2 |
+| `cl perf` | Publica las variantes de S5 (`sc-r2r`, `sc-r2r-composite`, `fdd`) y ejecuta las mediciones `Category=Perf`, una cada vez (hay un solo Clícalo por sesión). Fuera de la CI, sin envío de teclas (`--no-input`) y con datos temporales, y sin Sentinel, que solo se lanza cuando se envían teclas: así no hace falta el enlazador de C++. En la CI publica además Sentinel (Native AOT), que sí necesita la carga de trabajo «Desarrollo para el escritorio con C++» de Visual Studio. Si hay otro Clícalo abierto en la sesión, la medición lo dice y no arranca | M2 |
 | `cl quarantine` | Solo las pruebas en cuarentena (`Category=Quarantine`, cada una con su *issue*), sin escritorio o de escritorio, con `CLICALO_DESKTOP_TESTS=1` y un módulo cada vez; nunca las mediciones. Fuera de la CI deja fuera las de teclas reservadas y las de caos, como `cl desk`. Lo ejecuta `nightly.yml` | M2 |
-| `cl states` | Genera las instantáneas de todos los estados y abre la carpeta (sustituye a una galería de controles) | M3 |
-| `cl accept` | Acompaña la aceptación en hardware táctil real (docs/09) | M3 |
-| `cl trace` | Genera `docs/requirements/traceability.md` a partir del catálogo y de los resultados | M3 |
-| `cl beta` | Lanza la publicación beta (`beta.yml`) | M5 |
-| `cl sign-manifest` | Firma el manifiesto con la llave de hardware del mantenedor ([ADR-0013](../adr/0013-firma-de-codigo-y-manifiesto-firmado.md)) | M5 |
+| `cl trace` | Ejecuta `trace` de `tools/Clicalo.DevCli`: escribe `artifacts/cl/trace.md` con cada requisito del catálogo y las pruebas que lo nombran en `[Trait("Req", …)]`, y arriba los MUST sin prueba. La línea final dice cuántos MUST no tienen ni prueba ni entrada en el [guion manual](../guides/aceptacion-manual.md). Falla solo si un rasgo nombra un identificador que no está en el catálogo | M6 |
+| `cl package` | Publica Clícalo autocontenido y lo empaqueta con Velopack en `artifacts/package/<canal>` (`--channel stable|beta`, `--version`); no publica nada. La 2.0 sale sin firma, así que `cl beta` y `cl sign-manifest` esperan a la firma con SignPath ([ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md), [guía de publicación](../guides/release.md)) | M5 |
 
 ### Qué hace `cl check`
 
@@ -97,9 +97,12 @@ y el informe de errores de `cl`:
 | `i18n-check` | Valida `data/i18n` igual que el generador (errores `CLCI`), las reglas CLDR y `allow-unused.txt` |
 | `i18n-import` | Reconstruye `data/i18n/strings.*.json` desde el paquete de diseño con la receta revisada ([ADR-0011](../adr/0011-formato-i18n.md)); con `--check` no escribe y falla si no coincide |
 | `adr-check --base <ref>` | Falla si los archivos cambiados desde la base de fusión con `<ref>` tocan una ruta de `architecture/sensitive-paths.json` sin un ADR nuevo o cambiado en `docs/adr/` (error `CLCA010`, [§13](blueprint.md#13-convenciones-de-ingeniería)) |
+| `trace` | Escribe `artifacts/cl/trace.md`: lee las declaraciones de `docs/requirements/catalog.md` (requisitos, reglas y casos límite), busca los rasgos `[Trait("Req", …)]` en el código de `tests/`, `build/`, `tools/` y `generators/` y los identificadores que nombra `docs/guides/aceptacion-manual.md`. El informe es Markdown con encabezados y listas, sin fechas: el mismo commit da los mismos bytes. Un rasgo con un identificador que no está en el catálogo es el error `CLCT010` |
+| `app-icon [--check]` | Dibuja el icono de Clícalo (BUR-003) a partir del logotipo de «Acerca de» y de los colores de `data/tokens` (acento del tema claro), sin herramientas externas, y escribe `assets/icons/clicalo.ico` (16 a 256 px: el ejecutable, el instalador y la bandeja) y `assets/icons/clicalo-dim.ico` (el de la bandeja al 55 %, con el panel oculto o en pausa). Con `--check` no escribe y falla si los archivos no son lo que dibuja; una prueba de `Clicalo.DevCli.Tests` lo ejecuta en `cl check`. No tiene verbo de `cl`: se lanza con `dotnet run --project tools/Clicalo.DevCli -- app-icon` |
 
 Salida en formato MSBuild, última línea legible por Narrador y códigos de salida 0 (sin problemas), 1
-(problemas) y 2 (uso incorrecto, con la ayuda). Más adelante llegarán `trace` y `states`.
+(problemas) y 2 (uso incorrecto, con la ayuda). `states` no se construye
+([D-29](deviations.md#d-29--sin-cl-states-ni-cl-accept)).
 
 ### Opciones de `Clicalo.exe` para desarrollo
 
@@ -107,13 +110,58 @@ Salida en formato MSBuild, última línea legible por Narrador y códigos de sal
 
 - `--no-input`: ningún envío (inyector en seco, *ledger* desconectado, sin Sentinel ni soltado preventivo). Es lo que
   usan `cl run` y, fuera de la CI, `cl perf`.
-- `--data <carpeta>`: todos los datos, el diario de fallos incluido, dentro de esa carpeta.
+- `--data <carpeta>`: todos los datos, el diario de fallos incluido, dentro de esa carpeta. Es además una instancia
+  propia ([ADR-0030](../adr/0030-instancia-aislada-con-datos-propios.md)): su mutex y su *pipe* llevan un sufijo
+  derivado de la ruta completa, así que convive con el Clícalo de la persona y nunca le envía «Show». Sentinel, al
+  relanzar tras un fallo, conserva la carpeta ([ADR-0032](../adr/0032-relanzamiento-con-la-carpeta-de-datos.md)).
 - `--exit-after <segundos>`: tras el primer frame, recorre la salida completa sin intervención (diagnóstico).
 - `--guardian after-first-frame`: la variante de S5 que lanza Sentinel después del primer frame.
 - `--after-crash=<ms Unix>` y `--safe-mode` los pone Sentinel al relanzar ([ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)).
 
 Clícalo no lee archivos de Macro Quick Access ([ADR-0020](../adr/0020-sin-migracion-desde-macro-quick-access.md)):
 no hay opción `--migrate-v1` ni orden `anonymize-v1`.
+
+### Galería de superficies
+
+La auditoría sin pantalla (`tests/Clicalo.Windowing.IntegrationTests/Automation/Audit`) recorre las superficies
+reales en sus estados: el panel (Completa y Compacta, S, M y L, Ajustes rápidos, búsqueda, sugerencia, menú de
+toque largo, avisos, pánico, edición, modo prueba, Frecuentes), la burbuja y «Soltar todo», la Pestaña en los cuatro
+lados con su barra y sus ventanas laterales, el centro de control en sus seis secciones y estados (a 1300 × 760, a
+su tamaño por defecto y a 760 × 520), los cinco pasos de la bienvenida y la hoja «Sistema de diseño» con todos los
+componentes base de la dirección C ([sistema de diseño](../design/sistema.md)). Con la variable `CLICALO_GALLERY`
+apuntando a una carpeta, cada estado dibujado como en el diseño (tema oscuro, texto al 100 %) se guarda además en PNG a
+escala 1,75 (la pantalla del usuario: 2400 × 1600 al 175 %), en tema oscuro, en claro y en alto contraste, con el fondo
+y el borde de su ventana, y `index.html` las muestra agrupadas y con nombre:
+
+```powershell
+$env:CLICALO_GALLERY = "$PWD\artifacts\gallery"
+dotnet test tests/Clicalo.Windowing.IntegrationTests -c Debug -- --filter-namespace "Clicalo.Windowing.IntegrationTests.Automation.Audit"
+Remove-Item Env:CLICALO_GALLERY
+```
+
+Tarda unos tres minutos. Nada se muestra ni se captura de la pantalla: se renderiza la fuente de presentación oculta
+de cada vista. Los estados que la auditoría recorre con el texto al 150 % se guardan también tal como los audita la
+prueba (`*.light-150.png` y `*.contrast-150.png`, fuera del índice), en todas las superficies. Los casos del panel usan los atajos de la maqueta C (nombres reales, línea
+de teclas, un Mantener y una macro) para que se vean los nombres largos y los tipos. Un estado roto se guarda igual, antes de comprobar sus reglas. La carpeta acumula: `gallery.tsv`
+lista los casos y una ejecución nueva sobrescribe las imágenes con el mismo nombre. Sin la variable no se escribe
+nada, así que la galería no forma parte de `cl check`.
+
+### Escritorio oculto
+
+Las pruebas de escritorio, la galería y la propia app abren ventanas. Para no ocupar la pantalla de quien trabaja,
+`tools/qa/hidden-desktop.ps1` ejecuta una orden en un escritorio propio de la sesión al que nunca se cambia: nada se
+dibuja en pantalla ni toma el primer plano, y todos los procesos de la ejecución mueren con ella. `SendInput` no
+llega a ese escritorio, así que lo que necesita entrada inyectada (el trackpad, toques reales) se comprueba en el
+equipo con el [guion de aceptación manual](../guides/aceptacion-manual.md).
+
+```powershell
+powershell -File tools\qa\hidden-desktop.ps1 -Command '.\cl.cmd check' -TimeoutSeconds 1800
+powershell -File tools\qa\hidden-desktop.ps1 -Command 'cmd /c "set CLICALO_DESKTOP_TESTS=1&& dotnet test --project tests\Clicalo.Windowing.IntegrationTests -c Debug --no-build"'
+```
+
+La salida se guarda en `-Output` (por defecto `%TEMP%\clicalo-hidden-out.txt`) y la orden muestra sus últimas
+líneas. La orden se ejecuta en la raíz del repositorio; `.\cl.cmd` lleva su `.\` porque algunos entornos no buscan
+programas en la carpeta actual. Para la galería, `CLICALO_GALLERY` puede apuntar a una carpeta dentro de `artifacts`, que git ignora.
 
 ### Compilar mientras se itera
 

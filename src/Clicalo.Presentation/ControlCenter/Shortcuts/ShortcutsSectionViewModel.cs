@@ -5,6 +5,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Application.UseCases.Library;
 using Clicalo.Domain.Duplicates;
+using Clicalo.Domain.Icons;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
@@ -21,13 +22,16 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <see cref="Screen"/> and <see cref="Editor"/>. It forwards every intention; the rules are the Application's.
 /// Projections are coalesced to one per dispatcher turn.
 /// </summary>
-public sealed class ShortcutsSectionViewModel : ObservableObject
+public sealed class ShortcutsSectionViewModel : ObservableObject, IIconPicker
 {
     private readonly ControlCenterServices _s;
     private ShortcutsScreen _screen;
     private bool _queued;
     private bool _profileEditOpen;
     private bool _linkOpen;
+    private bool _iconsOpen;
+    private string _iconQuery = string.Empty;
+    private string? _iconCategory;
     private ImmutableArray<OpenApp> _apps = [];
 
     /// <summary>Creates the section and projects it.</summary>
@@ -95,6 +99,12 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             return true;
         }
 
+        if (_iconsOpen)
+        {
+            ToggleProfileIcons();
+            return true;
+        }
+
         if (_linkOpen)
         {
             _linkOpen = false;
@@ -122,17 +132,26 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     public void SelectList(ListRef list)
     {
         _profileEditOpen = false;
+        _iconsOpen = false;
         _linkOpen = false;
         Workspace.SelectList(list);
+        ListChosen?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>The person chose a row of the profiles column (a step of the guide of Atajos waits for it, R-39).</summary>
+    public event EventHandler? ListChosen;
 
     /// <summary>«+ Nuevo perfil» (ATJ-002): the Plantillas section.</summary>
     public void NewProfile() => _s.OpenTemplates();
+
+    /// <summary>[seeTpl] of an empty list: Plantillas, which adds the shortcuts of a whole app.</summary>
+    public void SeeTemplates() => _s.OpenTemplates();
 
     /// <summary>✏ of the header, or [done] of the card (ATJ-004).</summary>
     public void ToggleProfileEdit()
     {
         _profileEditOpen = !_profileEditOpen;
+        _iconsOpen = false;
         _s.Confirm.Disarm();
         Invalidate();
     }
@@ -150,6 +169,45 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     /// <summary>An icon of the profile card (ATJ-004).</summary>
     /// <param name="icon">The icon.</param>
     public void SetProfileIcon(string icon) => Profiles.SetIcon(new(icon));
+
+    /// <summary>The icon of the profile card: opens or closes the icon picker (ATJ-004, D14).</summary>
+    public void ToggleProfileIcons()
+    {
+        _iconsOpen = !_iconsOpen;
+        _iconQuery = string.Empty;
+        _iconCategory = null;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void PickIcon(string icon) => SetProfileIcon(icon);
+
+    /// <inheritdoc />
+    public void SearchIcons(string query)
+    {
+        _iconCategory = IconPickerProjection.CategoryAfterSearch(_iconQuery, query, _iconCategory);
+        _iconQuery = query ?? string.Empty;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void ChooseIconCategory(string? category)
+    {
+        _iconCategory = category;
+        Invalidate();
+    }
+
+    /// <inheritdoc />
+    public void CloseIconPicker()
+    {
+        if (_iconsOpen)
+        {
+            ToggleProfileIcons();
+        }
+    }
+
+    /// <inheritdoc />
+    public void DictateIconSearch() => Dictate();
 
     /// <summary>The «Modo compatible» row (ATJ-004).</summary>
     public void ToggleCompatible() =>
@@ -182,6 +240,41 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
         Invalidate();
     }
 
+    /// <summary>
+    /// [Compartir] of the profile card (DAT-007): saves <c>clicalo-perfil-&lt;id&gt;.json</c> where the person chooses.
+    /// The texts are left out, with a notice, unless the person chose [shareWithTexts] (PQ-37).
+    /// </summary>
+    /// <param name="withTexts">Whether to include the texts in clear.</param>
+    public async Task ShareAsync(bool withTexts)
+    {
+        if (_s.Templates is not { } templates || Profiles.Current is not { } profile)
+        {
+            return;
+        }
+
+        var file = templates.Sharing.Export(profile, withTexts);
+        var saved = await templates
+            .SaveShare(file.FileName, file.Content, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (saved is null)
+        {
+            return;
+        }
+
+        templates.Notify(
+            saved.Value
+                ? new WorkspaceNotice(
+                    file.ExcludedTexts > 0
+                        ? L.SharedTextsExcluded(file.ExcludedTexts)
+                        : L.ProfShared(name: file.FileName),
+                    "share",
+                    false,
+                    file.ExcludedTexts > 0
+                )
+                : new WorkspaceNotice(L.SaveFailT, "warning", false, true)
+        );
+    }
+
     /// <summary>🎤 of a field of the section (ACC-011).</summary>
     public void Dictate() => Editor.Dictate();
 
@@ -201,6 +294,16 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
         }
 
         Invalidate();
+    }
+
+    /// <summary>[done] at the end of the options of the binding (ATJ-006): closes them, as the action above does.</summary>
+    public void CloseLinkOptions()
+    {
+        if (_linkOpen)
+        {
+            _linkOpen = false;
+            Invalidate();
+        }
     }
 
     /// <summary>A chip of [linkOpenApps] (ATJ-006).</summary>
@@ -264,6 +367,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
     public void OnOpened()
     {
         _profileEditOpen = false;
+        _iconsOpen = false;
         _linkOpen = false;
         Invalidate();
     }
@@ -277,6 +381,12 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             : process.Value;
 
     private string T(Message message) => _s.Localization.Current.Format(message);
+
+    private static bool HasTexts(Profile profile) =>
+        profile.Shortcuts.Items.Any(s =>
+            s.Action is TextAction
+            || (s.Action is MacroAction macro && macro.Steps.Items.Any(step => step is TextStep))
+        );
 
     private async Task LoadAppsAsync()
     {
@@ -330,7 +440,7 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                         Workspace.List is ListRef.InProfile shown && shown.Id == p.Id
                     )),
                 ],
-                "+ " + T(L.NewProfile)
+                T(L.NewProfile)
             ),
             Header(profile),
             _profileEditOpen && profile is not null ? ProfileEdit(profile) : null,
@@ -343,7 +453,19 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 _ => EditorColumn.Empty,
             },
             T(L.PickOne),
-            Workspace.Pane is EditorPane.Library ? Library() : null
+            Workspace.Pane is EditorPane.Library ? Library() : null,
+            Workspace.Pane is EditorPane.Empty && Workspace.Shortcuts.Count == 0
+                ? new EmptyListModel(
+                    T(L.EmptyProfT),
+                    T(
+                        L.EmptyProfS(
+                            profile: profile?.Name.Get(Language, LangCode.Es) ?? T(L.Always)
+                        )
+                    ),
+                    T(L.AddShortcut),
+                    T(L.SeeTpl)
+                )
+                : null
         );
     }
 
@@ -362,19 +484,13 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 new LayerChip(
                     active?.Icon.Name ?? "apps",
                     active?.Name.Get(Language, LangCode.Es) ?? T(L.NoProf),
-                    (active?.Shortcuts.Count ?? 0).ToString(CultureInfo.InvariantCulture)
-                        + " · "
-                        + T(L.ActiveApp)
+                    T(L.ActiveCount(active?.Shortcuts.Count ?? 0))
                 ),
                 new LayerChip("star", T(L.Freq), T(L.AutoW)),
             ],
-            count > 0
-                ? count.ToString(CultureInfo.InvariantCulture)
-                    + " "
-                    + T(L.DupSummary)
-                    + " · "
-                    + T(L.Review)
-                : null
+            count > 0 ? T(L.DupSummaryN(count)) : null,
+            T(L.Review),
+            count > 0 ? T(L.DupReviewN(count)) : string.Empty
         );
     }
 
@@ -389,7 +505,8 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
                 false,
                 false,
                 T(L.EditProf),
-                T(L.Add)
+                T(L.Add),
+                T(L.BackToProfile(profile: L.Always))
             );
         }
 
@@ -398,12 +515,13 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             profile.Icon.Name,
             profile.Name.Get(Language, LangCode.Es),
             processes.Count > 0
-                ? T(L.OpensWith) + " " + string.Join(", ", processes.Select(p => p.Value))
+                ? T(L.OpensWithApps(process: string.Join(", ", processes.Select(p => p.Value))))
                 : T(L.ManualSub),
             true,
             _profileEditOpen,
             T(L.EditProf),
-            T(L.Add)
+            T(L.Add),
+            T(L.BackToProfile(profile: profile.Name.Get(Language, LangCode.Es)))
         );
     }
 
@@ -413,30 +531,43 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             _s.Confirm.ArmedSubject is { } subject
             && string.Equals(subject.Operation, nameof(DeleteProfile), StringComparison.Ordinal)
             && string.Equals(subject.Target, profile.Id.Value, StringComparison.Ordinal);
-        var icons = new List<string> { profile.Icon.Name };
-        icons.AddRange(
-            _s.Catalogs()
-                .Icons.ProfileFeatured.Select(i => i.Name)
-                .Where(i => !string.Equals(i, profile.Icon.Name, StringComparison.Ordinal))
-        );
+        var catalog = _s.Catalogs().Icons;
         return new ProfileEditModel(
             T(L.ProfName),
             profile.Name.Get(Language, LangCode.Es),
             T(L.SearchDictate),
             T(L.Icon),
-            [
-                .. icons.Select(i => new IconOption(
-                    i,
-                    string.Equals(i, profile.Icon.Name, StringComparison.Ordinal)
-                )),
-            ],
+            profile.Icon.Name,
+            T(L.ChangeIcon),
+            _iconsOpen
+                ? IconPickerProjection.Build(
+                    catalog,
+                    profile.Icon.Name,
+                    IconSuggestions
+                        .Suggest(
+                            profile.Name.Get(Language, LangCode.Es),
+                            null,
+                            Language,
+                            catalog,
+                            ComboIconTable.Empty
+                        )
+                        .Items,
+                    _iconQuery,
+                    _iconCategory,
+                    Language,
+                    T,
+                    [profile.Icon, .. catalog.ProfileFeatured.Items]
+                )
+                : null,
             T(L.CompatT),
             T(L.CompatD),
             profile.Injection == InjectionMode.ScanCode,
             T(L.ShareProf),
             T(L.Done),
             profile.Id == ProfileId.General ? null : T(armed ? L.DelConfirm : L.DelProf),
-            armed
+            armed,
+            _s.Templates is not null,
+            _s.Templates is not null && HasTexts(profile) ? T(L.ShareWithTexts) : null
         );
     }
 
@@ -491,17 +622,22 @@ public sealed class ShortcutsSectionViewModel : ObservableObject
             _linkOpen && state != LinkState.General && state != LinkState.Waiting,
             T(L.LinkOpenApps),
             [
-                .. _apps.Select(a => new AppChip(
-                    a.Process.Value,
-                    a.Name,
-                    processes.Contains(a.Process)
-                )),
+                // ATJ-008: the app that is in front behind the Control Center goes first, marked «activa».
+                .. _apps
+                    .OrderByDescending(a => a.Process == _s.LastApp())
+                    .Select(a => new AppChip(
+                        a.Process.Value,
+                        a.Name,
+                        processes.Contains(a.Process),
+                        a.Process == _s.LastApp() ? T(L.ActiveShort) : null
+                    )),
             ],
             T(L.LinkDetect),
             T(L.LinkNone),
             question,
             T(L.TakeOverYes),
-            T(L.Cancel)
+            T(L.Cancel),
+            T(L.Done)
         );
 
         // «Se activa solo con Word»: the open app's name, or the profile's when it follows a single app.

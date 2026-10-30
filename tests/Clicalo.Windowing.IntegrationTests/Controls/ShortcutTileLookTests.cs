@@ -11,9 +11,10 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.Windowing.IntegrationTests.Controls;
 
 /// <summary>
-/// The tile with the prototype's look (CUA-007, CUA-009, TEM-003): icon in the category tint, bold name, key line in
-/// JetBrains Mono, badge with the type or the state (ACC-003) and the visual states. The accessibility contract of
-/// the tile is <c>ShortcutTilePeerTests</c>.
+/// The tile of direction C (D12; CUA-007, CUA-009, TEM-003): icon in the category tint in its fixed box, bold name,
+/// key line in JetBrains Mono, reserved slots for the voice number and for the type or the state (ACC-003), and the
+/// visual states, with «elegido» drawn as everywhere else. The accessibility contract of the tile is
+/// <c>ShortcutTilePeerTests</c>.
 /// </summary>
 public sealed class ShortcutTileLookTests
 {
@@ -28,7 +29,7 @@ public sealed class ShortcutTileLookTests
             var icon = Part<SymbolIcon>(tile, ShortcutTileTemplate.IconPart);
 
             icon.Symbol.ShouldBe("content_copy");
-            icon.Size.ShouldBe(28);
+            icon.Size.ShouldBe(IconBox.Medium);
             Color(icon.Foreground).ShouldBe(ThemePalettes.Dark.GetCategoryTint(CategoryToken.Edit));
 
             tile.Category = CategoryToken.Voice;
@@ -62,35 +63,85 @@ public sealed class ShortcutTileLookTests
     [Fact]
     [Trait("Req", "CUA-007")]
     [Trait("Req", "ACC-003")]
-    public void The_badge_shows_the_type_and_the_state_wins_over_it() =>
+    [Trait("Req", "EJE-010")]
+    public void The_slot_shows_the_type_and_the_state_takes_the_key_line() =>
         WpfThread.Invoke(() =>
         {
             var tile = Tile();
             using var service = BaseControlTests.Host(tile);
-            var badge = Part<Border>(tile, ShortcutTileTemplate.BadgePart);
-            var text = Part<TextBlock>(tile, ShortcutTileTemplate.StatePart);
+            var type = Part<SymbolIcon>(tile, ShortcutTileTemplate.TypePart);
+            var word = Part<TextBlock>(tile, ShortcutTileTemplate.StatePart);
+            var keys = Part<TextBlock>(tile, ShortcutTileTemplate.KeysPart);
 
-            badge.Visibility.ShouldBe(Visibility.Collapsed);
+            word.Visibility.ShouldBe(Visibility.Collapsed);
+            type.Visibility.ShouldBe(Visibility.Collapsed);
 
-            tile.Badge = "ALTERNAR";
+            tile.Badge = "WEB";
             tile.UpdateLayout();
-            badge.Visibility.ShouldBe(Visibility.Visible);
-            text.Text.ShouldBe("ALTERNAR");
-            text.FontSize.ShouldBeGreaterThanOrEqualTo(11, "TEM-007: no text below 11");
+            word.Visibility.ShouldBe(
+                Visibility.Visible,
+                "a tile without a type icon writes its badge"
+            );
+            word.Text.ShouldBe("WEB");
+            word.FontSize.ShouldBeGreaterThanOrEqualTo(11, "TEM-007: no text below 11");
+
+            tile.TypeSymbol = "toggle_on";
+            tile.UpdateLayout();
+            type.Visibility.ShouldBe(Visibility.Visible, "the type icon takes the slot");
+            word.Visibility.ShouldBe(Visibility.Collapsed);
 
             tile.AccessibleState = "ACTIVO";
             tile.UpdateLayout();
-            text.Text.ShouldBe("ACTIVO");
+            type.Visibility.ShouldBe(Visibility.Visible, "the state never covers the slot");
+            word.Visibility.ShouldBe(Visibility.Collapsed);
+            keys.Text.ShouldBe("ACTIVO", "the state takes the key line");
+            keys.FontFamily.ShouldBeSameAs(AppFonts.Ui, "a state is words, not keys");
+            Color(keys.Foreground).ShouldBe(ThemePalettes.Dark.AccentInk);
             AutomationProperties.GetItemStatus(tile).ShouldBeEmpty("the peer reads the state");
 
             tile.AccessibleState = string.Empty;
             tile.UpdateLayout();
-            text.Text.ShouldBe("ALTERNAR");
+            keys.Text.ShouldBe("Ctrl + C");
+            keys.FontFamily.ShouldBeSameAs(AppFonts.Mono);
+        });
+
+    [Fact]
+    [Trait("Req", "ACC-003")]
+    [Trait("Req", "EJE-010")]
+    public void The_state_shows_without_keys_and_never_overlaps_the_icon_or_the_voice_number() =>
+        WpfThread.Invoke(() =>
+        {
+            var tile = Tile();
+            tile.Keys = string.Empty;
+            tile.VoiceNumber = 1;
+            tile.TypeSymbol = "pan_tool";
+            using var service = BaseControlTests.Host(tile);
+            tile.AccessibleState = "Manteniendo";
+            tile.IsHeld = true;
+            tile.UpdateLayout();
+            var keys = Part<TextBlock>(tile, ShortcutTileTemplate.KeysPart);
+            var icon = Part<SymbolIcon>(tile, ShortcutTileTemplate.IconPart);
+            var number = Part<Border>(tile, ShortcutTileTemplate.VoiceNumberPart);
+            var type = Part<SymbolIcon>(tile, ShortcutTileTemplate.TypePart);
+
+            keys.Visibility.ShouldBe(Visibility.Visible);
+            keys.Text.ShouldBe("Manteniendo");
+            type.IsFilled.ShouldBeTrue("held is the single look of «elegido»");
+            Color(type.Foreground).ShouldBe(ThemePalettes.Dark.AccentInk);
+            var state = Bounds(keys, tile);
+            state.IntersectsWith(Bounds(icon, tile)).ShouldBeFalse();
+            state.IntersectsWith(Bounds(number, tile)).ShouldBeFalse();
+            state.IntersectsWith(Bounds(type, tile)).ShouldBeFalse();
+
+            tile.IsHeld = false;
+            tile.IsArmed = true;
+            Color(keys.Foreground).ShouldBe(ThemePalettes.Dark.WarnText);
+            Color(type.Foreground).ShouldBe(ThemePalettes.Dark.WarnText);
         });
 
     [Fact]
     [Trait("Req", "CUA-009")]
-    public void An_active_tile_has_the_category_wash_and_a_2_px_tint_outline() =>
+    public void An_active_tile_is_chosen_as_every_option_without_changing_size() =>
         WpfThread.Invoke(() =>
         {
             var tile = Tile();
@@ -98,17 +149,21 @@ public sealed class ShortcutTileLookTests
             using var service = BaseControlTests.Host(tile);
             var chrome = Part<Border>(tile, ShortcutTileTemplate.ChromePart);
 
+            var ring = Part<System.Windows.Shapes.Rectangle>(tile, ShortcutTileTemplate.RingPart);
+            var size = chrome.RenderSize;
+
             Color(chrome.Background).ShouldBe(ThemePalettes.Dark.Card);
+            ring.Visibility.ShouldBe(Visibility.Collapsed);
 
             tile.ToggleState = ToggleState.On;
+            tile.UpdateLayout();
 
-            Color(chrome.Background)
-                .ShouldBe(ThemePalettes.Dark.GetCategoryWash(CategoryToken.Edit));
-            Color(chrome.BorderBrush)
-                .ShouldBe(ThemePalettes.Dark.GetCategoryTint(CategoryToken.Edit));
-            chrome.BorderThickness.ShouldBe(
-                new Thickness(ShortcutTileTemplate.ActiveBorderThickness)
-            );
+            Color(chrome.Background).ShouldBe(ThemePalettes.Dark.AccentWash);
+            ring.Visibility.ShouldBe(Visibility.Visible);
+            Color(ring.Stroke).ShouldBe(ThemePalettes.Dark.Accent);
+            ring.StrokeThickness.ShouldBe(ShortcutTileTemplate.ActiveBorderThickness);
+            Part<SymbolIcon>(tile, ShortcutTileTemplate.IconPart).IsFilled.ShouldBeTrue();
+            chrome.RenderSize.ShouldBe(size);
         });
 
     [Fact]
@@ -119,22 +174,77 @@ public sealed class ShortcutTileLookTests
             var tile = Tile();
             using var service = BaseControlTests.Host(tile);
             var chrome = Part<Border>(tile, ShortcutTileTemplate.ChromePart);
-            var wash = ThemePalettes.Dark.GetCategoryWash(CategoryToken.Edit);
+            var layers = Part<Grid>(tile, ShortcutTileTemplate.LayersPart);
+            var ring = Part<System.Windows.Shapes.Rectangle>(tile, ShortcutTileTemplate.RingPart);
+            var wash = ThemePalettes.Dark.AccentWash;
 
             tile.IsHeld = true;
-            var scale = chrome.RenderTransform.ShouldBeOfType<ScaleTransform>();
+            var scale = layers.RenderTransform.ShouldBeOfType<ScaleTransform>();
             scale.ScaleX.ShouldBe(ShortcutTileTemplate.HeldScale);
             Color(chrome.Background).ShouldBe(wash);
 
             tile.IsHeld = false;
             tile.IsArmed = true;
-            Color(chrome.BorderBrush).ShouldBe(ThemePalettes.Dark.Warn);
-            Color(chrome.Background).ShouldBe(wash);
+            Color(ring.Stroke).ShouldBe(ThemePalettes.Dark.WarnText);
+            Color(chrome.Background).ShouldBe(ThemePalettes.Dark.WarnWash);
 
             tile.IsArmed = false;
             tile.IsFlashing = true;
             Color(chrome.Background).ShouldBe(wash);
-            chrome.RenderTransform.ShouldNotBeOfType<ScaleTransform>();
+            layers.RenderTransform.ShouldNotBeOfType<ScaleTransform>();
+        });
+
+    [Fact]
+    [Trait("Req", "CUA-009")]
+    public void Under_the_pointer_a_card_takes_card_hi_and_a_tool_the_wash_below_every_state() =>
+        WpfThread.Invoke(() =>
+        {
+            var template = ShortcutTileTemplate.Default;
+            var hover = PointerHover.Of(template);
+            var chrome = ShortcutTileTemplate.ChromePart;
+
+            hover.Count.ShouldBe(2);
+            PointerHover
+                .Paints(hover.OfType<Trigger>().Single())
+                .ShouldBe(
+                    [(chrome, Border.BackgroundProperty, ColorToken.CardHi)],
+                    "a card takes a step of fill: never another line, size or shape"
+                );
+            var tool = hover.OfType<MultiTrigger>().Single();
+            tool.Conditions.ShouldContain(static condition =>
+                condition.Property == ShortcutTile.ShowsCardProperty
+                && Equals(condition.Value, false)
+            );
+            PointerHover
+                .Paints(tool)
+                .ShouldBe(
+                    [(chrome, Border.BackgroundProperty, ColorToken.AccentWash)],
+                    "⏶ ⏷ answer as a tertiary button; a card never takes the wash of the flash"
+                );
+            template
+                .Triggers.IndexOf(tool)
+                .ShouldBeGreaterThan(template.Triggers.IndexOf(hover.OfType<Trigger>().Single()));
+            var withoutCard = template
+                .Triggers.OfType<Trigger>()
+                .First(static trigger => trigger.Property == ShortcutTile.ShowsCardProperty);
+            template
+                .Triggers.IndexOf(hover[0])
+                .ShouldBeGreaterThan(
+                    template.Triggers.IndexOf(withoutCard),
+                    "a tile without its card is transparent at rest, not under the pointer"
+                );
+            foreach (
+                var state in new[]
+                {
+                    ShortcutTile.IsFlashingProperty,
+                    ShortcutTile.ToggleStateProperty,
+                    ShortcutTile.IsArmedProperty,
+                    ShortcutTile.IsHeldProperty,
+                }
+            )
+            {
+                PointerHover.StateWins(template, state).ShouldBeTrue(state.Name);
+            }
         });
 
     [Fact]
@@ -167,4 +277,7 @@ public sealed class ShortcutTileLookTests
         where T : FrameworkElement => (T)tile.Template.FindName(name, tile);
 
     private static Color Color(Brush? brush) => ((SolidColorBrush)brush!).Color;
+
+    private static Rect Bounds(FrameworkElement part, Visual tile) =>
+        part.TransformToAncestor(tile).TransformBounds(new Rect(part.RenderSize));
 }

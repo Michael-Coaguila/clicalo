@@ -54,6 +54,7 @@ public sealed class PanelViewModel : ObservableObject
     private PanelBodyContext _context = PanelBodyContext.Idle;
     private TouchSettings _touch;
     private double? _gridSpace;
+    private Func<PanelLayoutSettings, int, string, bool>? _wordsFit;
     private int _page;
     private PageContext? _pageContext;
     private StripWindow _stripWindow;
@@ -76,6 +77,8 @@ public sealed class PanelViewModel : ObservableObject
     );
     private string _accessibleName = string.Empty;
     private bool _isVisible;
+    private bool _isPaused;
+    private bool _titleOpensPicker;
 
     /// <summary>Creates the panel with no destination for the intentions of its body (M2 composition).</summary>
     /// <param name="controller">Where the intentions of the tiles go.</param>
@@ -183,6 +186,12 @@ public sealed class PanelViewModel : ObservableObject
         private set => SetProperty(ref _layers, value);
     }
 
+    /// <summary>
+    /// Whether the search has text: the rows it hides (PAN-008) keep their place under the search layer, so the grid
+    /// does not move and the panel keeps its size (direction C, D12: temporary states are layers).
+    /// </summary>
+    public bool IsSearchingWithText => _context.SearchingWithText;
+
     /// <summary>[noResults], shown in place of the grid while a search with text finds nothing (BUS-005).</summary>
     public string NoResultsText
     {
@@ -225,6 +234,26 @@ public sealed class PanelViewModel : ObservableObject
     {
         get => _isVisible;
         private set => SetProperty(ref _isVisible, value);
+    }
+
+    /// <summary>
+    /// Whether Clícalo is paused from the tray (BUR-004): the engine sends nothing, and the composition hides the
+    /// panel and stops following the app in front until «Reanudar».
+    /// </summary>
+    public bool IsPaused
+    {
+        get => _isPaused;
+        private set => SetProperty(ref _isPaused, value);
+    }
+
+    /// <summary>
+    /// Whether a tap on the title of the header opens the profile grid (SEL-006): the Full view without its selector
+    /// row. The grid then starts with ★ Frequents.
+    /// </summary>
+    public bool TitleOpensPicker
+    {
+        get => _titleOpensPicker;
+        private set => SetProperty(ref _titleOpensPicker, value);
     }
 
     /// <summary>The touch filter the surface's gesture recognizer uses.</summary>
@@ -274,7 +303,9 @@ public sealed class PanelViewModel : ObservableObject
                     result.Binding.Shortcut.Icon,
                     result.Binding.Shortcut.Category,
                     result.Origin,
-                    result.Origin
+                    result.Origin,
+                    KeyLineIsOrigin: true,
+                    OriginIcon: result.OriginIcon
                 ),
                 _controller,
                 result
@@ -319,6 +350,18 @@ public sealed class PanelViewModel : ObservableObject
         }
 
         _gridSpace = gridSpacePx;
+        Recompose();
+    }
+
+    /// <summary>
+    /// How the surface tells whether every word of a name fits a tile of the grid in a number of columns, with the
+    /// layout given: it measures the text. With it, a larger text that would end a name in «…» gives the grid its fewest
+    /// columns instead (D17, <see cref="GridMetrics.Columns"/>); <see langword="null"/> keeps the chosen columns.
+    /// </summary>
+    /// <param name="wordsFit">The measure: layout, columns and name; or <see langword="null"/>.</param>
+    public void ApplyWordsFit(Func<PanelLayoutSettings, int, string, bool>? wordsFit)
+    {
+        _wordsFit = wordsFit;
         Recompose();
     }
 
@@ -370,9 +413,18 @@ public sealed class PanelViewModel : ObservableObject
             var isHeld = held.TryGetValue(tile.Id, out var item);
             var step = running.Text is { } text && running.Shortcut == tile.Id ? text : null;
             var inStrip = ReferenceEquals(_stripById.GetValueOrDefault(tile.Id), tile);
+
+            // EJE-002: the armed tile shows a warn outline and says «Toca otra vez para confirmar» as its state.
+            var armed = snapshot.Armed?.Shortcut == tile.Id;
+            tile.ApplyArmed(armed);
             tile.ApplyState(
                 isHeld,
-                step ?? (isHeld ? localizer.Format(StateOf(item!)) : string.Empty),
+                step
+                    ?? (
+                        isHeld ? localizer.Format(StateOf(item!))
+                        : armed ? localizer.Format(L.ConfirmClose)
+                        : string.Empty
+                    ),
                 tile.SpokenKeys.Length > 0
                     ? tile.SpokenKeys
                     : localizer.Format(HelpOf(tile.Behavior)),
@@ -399,6 +451,7 @@ public sealed class PanelViewModel : ObservableObject
             ),
             localizer.Format(L.ReleaseAll)
         );
+        IsPaused = snapshot.Paused;
         Recompose();
     }
 
@@ -466,8 +519,9 @@ public sealed class PanelViewModel : ObservableObject
         };
 
     /// <summary>
-    /// Keeps the view model of every tile whose shortcut stays (a tile whose behavior changed counts as new: the
-    /// surface picks its UI Automation pattern and touch target kind when it builds the control).
+    /// Keeps the view model of every tile whose shortcut stays (a tile whose behavior changed, or whose line under the
+    /// name changed between keys and its origin, counts as new: the surface picks its UI Automation pattern, its touch
+    /// target kind and its look when it builds the control).
     /// </summary>
     private List<TileViewModel> SyncById(
         Dictionary<ShortcutId, TileViewModel> byId,
@@ -478,7 +532,11 @@ public sealed class PanelViewModel : ObservableObject
         var kept = new Dictionary<ShortcutId, TileViewModel>();
         foreach (var tile in tiles)
         {
-            if (byId.TryGetValue(tile.Id, out var existing) && existing.Behavior == tile.Behavior)
+            if (
+                byId.TryGetValue(tile.Id, out var existing)
+                && existing.Behavior == tile.Behavior
+                && existing.KeyLineIsOrigin == tile.KeyLineIsOrigin
+            )
             {
                 existing.Update(tile);
             }
@@ -530,11 +588,11 @@ public sealed class PanelViewModel : ObservableObject
     /// <summary>Composes the body from the latest inputs; every decision is a call to the domain rules.</summary>
     private void Recompose()
     {
-        var shape = GridMetrics.Shape(_layout, _gridSpace);
+        var list = _context.SearchingWithText ? _results : _list;
+        var shape = GridMetrics.Shape(_layout, _gridSpace, WordsFit(list));
         var alert = Panic.IsVisible || _context.ElevatedApp is not null;
         _cramped = CrampedRule.Evaluate(_cramped, alert, _gridSpace, shape.TileHeightPx);
 
-        var list = _context.SearchingWithText ? _results : _list;
         ShowsNoResults = _context.SearchingWithText && _results.Count == 0;
         var count = list.Count;
 
@@ -573,6 +631,9 @@ public sealed class PanelViewModel : ObservableObject
         Layers = layers;
         Shape = shape;
 
+        // SEL-006: without the selector row in the Full view, the title of the header is the way to the profile grid.
+        TitleOpensPicker = !_layout.Compact && !layers.Selector && !_context.SearchingWithText;
+
         for (var i = 0; i < list.Count; i++)
         {
             list[i].ApplyVoiceNumber(_layout.VoiceNumbers ? VoiceNumbers.ForList(i) : null);
@@ -589,6 +650,18 @@ public sealed class PanelViewModel : ObservableObject
         ApplyParts(window, layers);
     }
 
+    /// <summary>Whether every word of every name of <paramref name="list"/> fits a tile of the chosen columns (D17).</summary>
+    private bool WordsFit(List<TileViewModel> list)
+    {
+        if (_wordsFit is not { } fits || !GridMetrics.NarrowsForWords(_layout))
+        {
+            return true;
+        }
+
+        var columns = GridMetrics.Columns(_layout, wordsFit: true);
+        return list.TrueForAll(tile => fits(_layout, columns, tile.AccessibleName));
+    }
+
     private void ApplyParts(PageWindow window, BodyLayers layers)
     {
         var l = _localization.Current;
@@ -598,7 +671,8 @@ public sealed class PanelViewModel : ObservableObject
             l.Format(L.PrevPage),
             l.Format(L.NextPage),
             l.Format(L.PageN),
-            l.Format(L.On)
+            l.Format(L.On),
+            l.Format(L.DockPageOf(index: window.Page + 1, total: window.PageCount))
         );
         Strip.Apply(
             _strip.GetRange(_stripWindow.Start, _stripWindow.Count),
@@ -627,7 +701,12 @@ public sealed class PanelViewModel : ObservableObject
             l.Format(L.Freq),
             l.Format(L.ActiveApp),
             l.Format(L.SwitchProf),
-            l.Format(L.On)
+            l.Format(L.On),
+            // SEL-005: a pending suggestion for the active app puts a yellow dot on the profile button.
+            _context.SuggestionApp
+                is { } suggested
+                ? l.Format(L.SuggestionDot(suggested))
+                : null
         );
         Picker.Apply(
             _model.PickerEntries,
@@ -638,7 +717,10 @@ public sealed class PanelViewModel : ObservableObject
             l.Format(L.MorePf),
             l.Format(L.ActiveLegend),
             l.Format(L.On),
-            l.Format(L.ActiveApp)
+            l.Format(L.ActiveApp),
+            // SEL-006: opened from the title, the grid is also the way to ★ Frequents.
+            TitleOpensPicker ? l.Format(L.Freq) : null,
+            _context.Frequents
         );
         var notice = _context.Notice;
         Notices.Apply(
@@ -651,20 +733,37 @@ public sealed class PanelViewModel : ObservableObject
             l.Format(L.Undo),
             l.Format(L.Repeat),
             notice?.CanCancel ?? false,
-            l.Format(L.Cancel)
+            l.Format(L.Cancel),
+            notice?.IsConfirmation ?? false
         );
         Admin.Apply(
             layers.AdminNotice,
             _context.ElevatedApp is { } elevated ? l.Format(L.AdminMsg(elevated)) : string.Empty,
             l.Format(L.AdminBtn)
         );
-        Empty.Apply(
-            layers.EmptyProfile,
-            _model.Profile,
-            l.Format(L.EmptyProfT),
-            l.Format(L.EmptyProfS(_model.ProfileName)),
-            l.Format(L.AddShortcut)
-        );
+        // CUA-010: Frequents with nothing used yet has its own card, with the way back to the profile.
+        var emptyFrequents = _context.Frequents && !_context.SearchingWithText && _list.Count == 0;
+        if (emptyFrequents)
+        {
+            Empty.Apply(
+                visible: true,
+                _model.Profile,
+                l.Format(L.FreqEmptyT),
+                l.Format(L.FreqEmptyS),
+                l.Format(L.BackToProfile(_model.ProfileName)),
+                frequents: true
+            );
+        }
+        else
+        {
+            Empty.Apply(
+                layers.EmptyProfile,
+                _model.Profile,
+                l.Format(L.EmptyProfT),
+                l.Format(L.EmptyProfS(_model.ProfileName)),
+                l.Format(L.AddShortcut)
+            );
+        }
     }
 
     /// <summary>The intentions of a panel composed without them (M2): nothing happens.</summary>

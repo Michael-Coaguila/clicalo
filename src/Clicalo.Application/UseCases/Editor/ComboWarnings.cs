@@ -11,6 +11,9 @@ namespace Clicalo.Application.UseCases.Editor;
 /// </summary>
 public static class ComboWarnings
 {
+    /// <summary>The system command «Bloquear equipo» of <c>data/catalogs/system-commands.json</c>.</summary>
+    public const string LockCommand = "lock";
+
     /// <summary>The blocked combinations, as key ids in the order of the JSON.</summary>
     public static IReadOnlyList<IReadOnlyList<string>> BlockedKeys { get; } =
     [
@@ -26,6 +29,32 @@ public static class ComboWarnings
         ["win", "tab"],
         ["ctrl", "shift", "esc"],
     ];
+
+    /// <summary>
+    /// The blocked combinations that have a system alternative, with the system command that replaces them when the
+    /// shortcut is a Tap (the <c>alternative</c> of the JSON, EJE-014).
+    /// </summary>
+    public static IReadOnlyList<(
+        IReadOnlyList<string> Keys,
+        string SystemCommand
+    )> Alternatives { get; } = [(["win", "l"], LockCommand)];
+
+    private static FrozenDictionary<string, string> Alternative { get; } =
+        Alternatives
+            .Select(static a =>
+                (
+                    Key: KeyOf(
+                        KeyChord.Create(a.Keys.Select(static id => new KeyStroke(new KeyId(id))))
+                    ),
+                    a.SystemCommand
+                )
+            )
+            .Where(static a => a.Key is not null)
+            .ToFrozenDictionary(
+                static a => a.Key!,
+                static a => a.SystemCommand,
+                StringComparer.Ordinal
+            );
 
     private static FrozenSet<string> Blocked { get; } = Keys(BlockedKeys);
 
@@ -44,6 +73,18 @@ public static class ComboWarnings
             : Special.Contains(key) ? ComboWarning.Special
             : ComboWarning.None;
     }
+
+    /// <summary>
+    /// The system command the engine runs instead of <paramref name="chord"/> when a Tap has it (EDI-007: the warning
+    /// offers the alternative), or null when the blocked combination has none.
+    /// </summary>
+    /// <param name="chord">The combination of the box.</param>
+    public static string? AlternativeOf(KeyChord? chord) =>
+        chord is not null
+        && KeyOf(chord) is { } key
+        && Alternative.TryGetValue(key, out var command)
+            ? command
+            : null;
 
     private static string? KeyOf(KeyChord chord) =>
         CanonicalChord.TryFrom(chord, out var canonical)

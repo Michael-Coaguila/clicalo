@@ -6,7 +6,8 @@ decisión de cada uno está en su ADR; aquí está el detalle exacto que fijan l
 
 Por ahora solo existen los contratos entre `Clicalo.exe` y `Clicalo.Sentinel.exe`
 ([ADR-0023](../adr/0023-guardian-simple.md), que sustituye al protocolo 2 de
-[ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md)). La línea de órdenes de `Clicalo.exe`, los
+[ADR-0018](../adr/0018-contratos-de-sentinel-ledger-y-envoltorio.md), con el protocolo 4 de
+[ADR-0032](../adr/0032-relanzamiento-con-la-carpeta-de-datos.md)). La línea de órdenes de `Clicalo.exe`, los
 enlaces `clicalo://` y la IPC entre instancias ([ADR-0010](../adr/0010-ipc-minima.md)) se documentarán aquí cuando su
 código exista.
 
@@ -16,16 +17,21 @@ Lo escribe `SentinelSupervisor` (`Platform.Windows/SentinelHost`) y lo lee Senti
 `Clicalo.Platform.Core.Guardian.SentinelStartInfo`, compatible con Native AOT. Sentinel se publica junto a
 `Clicalo.exe` y nunca se mezcla con otra versión.
 
-**Protocolo 3** (desde [ADR-0023](../adr/0023-guardian-simple.md), 2026-10-05). Cuatro argumentos, en este orden, con
-cultura invariable y sin espacios:
+**Protocolo 4** (desde [ADR-0032](../adr/0032-relanzamiento-con-la-carpeta-de-datos.md), 2026-10-22; el 3 de
+[ADR-0023](../adr/0023-guardian-simple.md) no llevaba el argumento 5). Cuatro argumentos, en este orden y con cultura
+invariable, y un quinto solo si el principal arrancó con `--data`:
 
 | # | Argumento | Valor | Origen |
 |---|---|---|---|
-| 1 | `--protocol=3` | Versión del contrato. Sentinel rechaza cualquier otra, también la 1 y la 2 | `SentinelStartInfo.ProtocolVersion` |
+| 1 | `--protocol=4` | Versión del contrato. Sentinel rechaza cualquier otra, también la 1, la 2 y la 3 | `SentinelStartInfo.ProtocolVersion` |
 | 2 | `--parent=0x<hex>` | *Handle* heredado del principal (`SYNCHRONIZE \| PROCESS_QUERY_LIMITED_INFORMATION`) | `GuardianHandles.DuplicateCurrentProcessForChild` |
 | 3 | `--retry-ms=<n>` | Cada cuánto se reintenta un soltado que Windows rechaza, en ms (> 0) | `Timings.Guardian.ReleaseRetryInterval` |
 | 4 | `--crash-loop=<n>/<ms>` | Fallos dentro de la ventana que llevan al modo seguro | `Timings.App.CrashLoop` |
+| 5 | `--data=<carpeta>` | Solo con `--data` ([ADR-0030](../adr/0030-instancia-aislada-con-datos-propios.md)): ruta completa, sin comillas ni caracteres de control. Sentinel lee en ella el diario de fallos y relanza con ella | `SentinelStartInfo.DataFolder` |
 
+- Los argumentos 1 a 4 no llevan espacios. La carpeta puede llevarlos: `GuardianProcess.Start` escribe cada argumento
+  con `CommandLineArguments`, que pone entre comillas el que tiene un espacio, duplica las barras invertidas de su final
+  y rechaza las comillas y los caracteres de control, así que nada de una ruta puede añadir otro argumento.
 - Se hereda **exactamente un** *handle*, el del argumento 2, con `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`.
 - Un argumento que falte, sobre, esté fuera de su sitio o no tenga el formato hace que Sentinel salga con
   `InvalidArguments` (3) sin tocar nada; el principal lo relanza con `Timings.Guardian.RestartBackoff`.
@@ -44,17 +50,19 @@ cultura invariable y sin espacios:
    leyendo cada vez el estado de nuevo. Si la sesión termina mientras tanto, Windows termina Sentinel con ella y no se
    relanza nada.
 4. Solo después del soltado decide el relanzamiento con `RelaunchPolicy` (código de salida y diario de fallos), de modo
-   que el proceso nuevo nunca pulsa una tecla que Sentinel vaya a soltar después.
+   que el proceso nuevo nunca pulsa una tecla que Sentinel vaya a soltar después. El diario es
+   `%LocalAppData%\Clicalo\crash-journal.json`, o `<carpeta>\crash-journal.json` con el argumento 5.
 
 ## Relanzamiento de `Clicalo.exe` por Sentinel
 
 Sentinel lanza el `Clicalo.exe` de su carpeta sin *handles* heredados (`GuardianProcess.Start`) y con estos
-argumentos (`CrashJournal.RelaunchArguments`):
+argumentos (`CrashJournal.RelaunchArguments`), entrecomillados con `CommandLineArguments`:
 
 | Argumento | Cuándo | Significado |
 |---|---|---|
-| `--after-crash=<ms Unix>` | Siempre | Instante UTC de la muerte del principal (no el del soltado). El proceso relanzado lo añade a `%LocalAppData%\Clicalo\crash-journal.json` con `CrashJournal.Append` |
+| `--after-crash=<ms Unix>` | Siempre | Instante UTC de la muerte del principal (no el del soltado). El proceso relanzado lo añade a su diario de fallos con `CrashJournal.Append` |
 | `--safe-mode` | Si este fallo alcanza `Timings.App.CrashLoop` | El proceso relanzado arranca en modo seguro |
+| `--data <carpeta>` | Si el contrato llevaba `--data=<carpeta>` | El proceso relanzado vuelve a la misma carpeta y a la misma instancia ([ADR-0032](../adr/0032-relanzamiento-con-la-carpeta-de-datos.md)) |
 
 No relanza si el principal salió con código 0 (salida limpia, fin de la sesión, actualización o traspaso elevado), ni
 si el fallo supera `Timings.App.CrashLoop` (también falló el relanzamiento en modo seguro dentro de la ventana): suelta
@@ -69,4 +77,4 @@ y sale con `ReleasedWithoutRelaunch`.
 | 0 | `CleanExit` | El principal salió con código 0: soltó lo que quedara y no relanzó |
 | 1 | `ReleasedAndRelaunched` | Salida anómala: soltó y relanzó el principal |
 | 2 | `ReleasedWithoutRelaunch` | Salida anómala: soltó, pero no relanzó (el relanzamiento falló o se superó el bucle de fallos) |
-| 3 | `InvalidArguments` | Los argumentos no siguen el protocolo 3, o no puede esperar sobre el *handle* del principal |
+| 3 | `InvalidArguments` | Los argumentos no siguen el protocolo 4, o no puede esperar sobre el *handle* del principal |

@@ -57,7 +57,7 @@ public sealed class GuardianLoopTests
         _log.ShouldBe(["send", "relaunch"]);
         _environment
             .Relaunches.ShouldHaveSingleItem()
-            .ShouldBe(CrashJournal.RelaunchArguments(Now, safeMode: false));
+            .ShouldBe(CrashJournal.RelaunchArguments(Now, safeMode: false, dataFolder: null));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class GuardianLoopTests
 
         _environment
             .Relaunches.ShouldHaveSingleItem()
-            .ShouldBe(CrashJournal.RelaunchArguments(Now, safeMode: true));
+            .ShouldBe(CrashJournal.RelaunchArguments(Now, safeMode: true, dataFolder: null));
     }
 
     [Fact]
@@ -183,6 +183,43 @@ public sealed class GuardianLoopTests
         _log.ShouldBeEmpty();
     }
 
-    private GuardianLoop Loop() =>
-        new(Info, _state, _sender, new FakeTimeProvider(Now), _environment);
+    [Theory]
+    [Trait("Req", "SIS-004")]
+    [Trait("Req", "REG-08")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void An_isolated_copy_is_relaunched_with_its_data_folder(bool loop)
+    {
+        const string Folder = @"C:\Users\Ana\Mis datos\Clícalo";
+        if (loop)
+        {
+            _environment.Crashes = [Now.AddMinutes(-9), Now.AddMinutes(-1)];
+        }
+
+        Loop(Info with { DataFolder = Folder }).Run();
+
+        _environment
+            .Relaunches.ShouldHaveSingleItem()
+            .ShouldBe(CrashJournal.RelaunchArguments(Now, safeMode: loop, Folder));
+    }
+
+    [Fact]
+    [Trait("Req", "SIS-004")]
+    public void The_crash_journal_is_read_where_the_main_process_writes_it()
+    {
+        const string Folder = @"C:\Users\Ana\Mis datos\Clícalo";
+        var user = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Clicalo",
+            "crash-journal.json"
+        );
+
+        SystemGuardianEnvironment.JournalPath(null).ShouldBe(user);
+        SystemGuardianEnvironment
+            .JournalPath(Folder)
+            .ShouldBe(@"C:\Users\Ana\Mis datos\Clícalo\crash-journal.json");
+    }
+
+    private GuardianLoop Loop(SentinelStartInfo? info = null) =>
+        new(info ?? Info, _state, _sender, new FakeTimeProvider(Now), _environment);
 }

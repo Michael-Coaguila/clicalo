@@ -4,6 +4,7 @@ using Clicalo.Application.Foreground;
 using Clicalo.Application.Localization;
 using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases;
+using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
@@ -36,9 +37,11 @@ public sealed class SearchViewModel : ObservableObject
     private bool _isOpen;
     private bool _showNoResults;
     private string _placeholder = string.Empty;
+    private string _fieldName = string.Empty;
     private string _searchName = string.Empty;
     private string _dictateName = string.Empty;
     private string _noResultsText = string.Empty;
+    private readonly Func<InjectionMode?>? _appMode;
     private int _generation;
 
     /// <summary>Creates the search.</summary>
@@ -50,14 +53,20 @@ public sealed class SearchViewModel : ObservableObject
     /// search finds what the user sees (BUS-004).
     /// </param>
     /// <param name="notify">Shows a notice in the notice bar (assertive: the search only reports failures).</param>
+    /// <param name="appMode">
+    /// The mode of the profile of the app in front, which the results of General and Always visible inherit (D24);
+    /// <see langword="null"/> uses the mode of General.
+    /// </param>
     public SearchViewModel(
         PanelSearch search,
         ILocalizationContext localization,
         Func<WindowToken> panel,
         Func<Shortcut, string?> combination,
-        Action<Message> notify
+        Action<Message> notify,
+        Func<InjectionMode?>? appMode = null
     )
     {
+        _appMode = appMode;
         ArgumentNullException.ThrowIfNull(search);
         ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(panel);
@@ -121,11 +130,21 @@ public sealed class SearchViewModel : ObservableObject
         private set => SetProperty(ref _showNoResults, value);
     }
 
-    /// <summary>The placeholder of the field, also its accessible name ([search]).</summary>
+    /// <summary>
+    /// The placeholder of the field: «Buscar» ([searchA]), which reads whole beside the magnifier in S and M (D21 review:
+    /// [search] was cut to «Buscar acción en tod…»).
+    /// </summary>
     public string Placeholder
     {
         get => _placeholder;
         private set => SetProperty(ref _placeholder, value);
+    }
+
+    /// <summary>The accessible name of the field, which says the search covers every profile ([search]).</summary>
+    public string FieldName
+    {
+        get => _fieldName;
+        private set => SetProperty(ref _fieldName, value);
     }
 
     /// <summary>«Buscar» ([searchA]): the name of 🔍 and the header title while searching with text (CAB-002).</summary>
@@ -250,7 +269,8 @@ public sealed class SearchViewModel : ObservableObject
     public void Relocalize()
     {
         var localizer = _localization.Current;
-        Placeholder = localizer.Format(L.Search);
+        Placeholder = localizer.Format(L.SearchA);
+        FieldName = localizer.Format(L.Search);
         SearchName = localizer.Format(L.SearchA);
         DictateName = localizer.Format(L.SearchDictate);
         NoResultsText = localizer.Format(L.NoResults);
@@ -362,7 +382,7 @@ public sealed class SearchViewModel : ObservableObject
         var localizer = _localization.Current;
         var language = new LangCode(localizer.Locale.Code);
         var always = localizer.Format(L.Always);
-        var general = library.General;
+        var appMode = _appMode?.Invoke();
         foreach (var hit in ShortcutSearch.Find(library, _query, _combination))
         {
             var profile =
@@ -370,9 +390,14 @@ public sealed class SearchViewModel : ObservableObject
             Results.Add(
                 new SearchResultViewModel(
                     this,
-                    new TileBinding(hit.Shortcut, hit.Profile, (profile ?? general).Injection),
+                    new TileBinding(
+                        hit.Shortcut,
+                        hit.Profile,
+                        PanelProjector.InheritedMode(library, profile, appMode)
+                    ),
                     hit.Shortcut.Name.Get(language, LangCode.Es),
-                    profile?.Name.Get(language, LangCode.Es) ?? always
+                    profile?.Name.Get(language, LangCode.Es) ?? always,
+                    profile?.Icon ?? PanelProjector.AlwaysVisibleIcon
                 )
             );
         }

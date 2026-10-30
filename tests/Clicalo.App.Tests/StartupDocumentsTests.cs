@@ -2,8 +2,6 @@ using System.IO;
 using Clicalo.App.Composition;
 using Clicalo.App.Lifecycle;
 using Clicalo.Application.Ports;
-using Clicalo.Domain.Keys;
-using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Infrastructure.Backup;
 using Clicalo.Infrastructure.Persistence;
@@ -14,7 +12,7 @@ namespace Clicalo.App.Tests;
 
 /// <summary>
 /// The document a start hands to the store, against a real temporary data folder (blueprint §6.5): a new installation
-/// gets the starter kit marked by default («Basics», user decision D2) in the language of Windows, written at once;
+/// starts empty in the language of Windows, written at once, and the welcome installs the starter kit (user decision D2);
 /// files of Macro Quick Access are never read (ADR-0020).
 /// </summary>
 public sealed class StartupDocumentsTests : IDisposable
@@ -53,26 +51,19 @@ public sealed class StartupDocumentsTests : IDisposable
     [Fact]
     [Trait("Req", "CAT-003")]
     [Trait("Req", "BIE-003")]
-    public async Task A_new_installation_gets_the_default_starter_kit_in_the_language_of_windows_and_keeps_it()
+    public async Task A_new_installation_starts_empty_in_the_language_of_windows_for_the_welcome_and_keeps_it()
     {
         var load = await LoadAsync(ContentFolder, LangCode.En, Token);
 
         load.Outcome.ShouldBe(DocumentLoadOutcome.FirstRun);
         load.Document.Settings.Language.ShouldBe(LangCode.En);
         var library = load.Document.Library;
-        library.AlwaysVisible.Count.ShouldBe(4, "«Basics» is marked by default (user decision D2)");
-        library
-            .Profiles.ShouldHaveSingleItem("no template is marked by default")
-            .Id.ShouldBe(ProfileId.General);
-        var copy = library.General.Shortcuts[0];
-        copy.Origin.ShouldBe(new CatalogRef("seed", "1", "copy"));
-        copy.Id.ShouldNotBe(new ShortcutId("copy"), "installed content gets new ids (DAT-004)");
-        copy.Action.ShouldBe(
-            new TapAction(
-                KeyChord.Create([new KeyStroke(KeyIds.Ctrl), new KeyStroke(KeyIds.C)]),
-                []
-            )
+        library.AlwaysVisible.ShouldBeEmpty(
+            "the welcome installs what the person marks (user decision D2)"
         );
+        library.General.Shortcuts.ShouldBeEmpty();
+        library.Profiles.ShouldHaveSingleItem().Id.ShouldBe(ProfileId.General);
+        load.Document.Onboarding.Completed.ShouldBeFalse("the welcome opens on this start");
 
         var again = await LoadAsync(ContentFolder, LangCode.Es, Token);
 
@@ -96,7 +87,7 @@ public sealed class StartupDocumentsTests : IDisposable
 
         load.Outcome.ShouldBe(DocumentLoadOutcome.FirstRun);
         load.Document.Library.Profiles.ShouldHaveSingleItem().Id.ShouldBe(ProfileId.General);
-        load.Document.Library.AlwaysVisible.Count.ShouldBe(4, "the seed, nothing converted");
+        load.Document.Library.AlwaysVisible.ShouldBeEmpty("nothing converted");
         (await File.ReadAllBytesAsync(previous, Token)).ShouldBe(bytes);
     }
 
@@ -119,7 +110,7 @@ public sealed class StartupDocumentsTests : IDisposable
 
         load.Load.Outcome.ShouldBe(DocumentLoadOutcome.FirstRun);
         load.SavePending.ShouldBeTrue();
-        load.Load.Document.Library.AlwaysVisible.Count.ShouldBe(4);
+        load.Load.Document.Library.General.Shortcuts.ShouldBeEmpty();
     }
 
     [Fact]

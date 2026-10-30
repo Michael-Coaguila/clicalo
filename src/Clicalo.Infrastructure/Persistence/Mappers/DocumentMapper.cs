@@ -75,7 +75,7 @@ internal static class DocumentMapper
             frequents,
             new DuplicatePolicy(ValueListBuilder.From(ignored)),
             settings,
-            new OnboardingState(payload.Onboarding?.Completed ?? false)
+            OnboardingMapper.Decode(payload.Onboarding)
         );
         var violations = document.Validate();
         if (!violations.IsDefaultOrEmpty)
@@ -120,11 +120,10 @@ internal static class DocumentMapper
                 Extra = LibraryMapper.Copy(keep.Frequents),
             },
             DupIgnored = [.. document.Duplicates.Ignored.Select(c => c.ToStableString())],
-            Onboarding = new OnboardingDto
-            {
-                Completed = document.Onboarding.Completed,
-                Extra = LibraryMapper.Copy(keep.Onboarding),
-            },
+            Onboarding = OnboardingMapper.Encode(
+                document.Onboarding,
+                LibraryMapper.Copy(keep.Onboarding)
+            ),
             Usage = includeUsage ? UsageMapper.Encode(document.Frequents.Usage) : null,
             Extra = LibraryMapper.Copy(keep.Root),
         };

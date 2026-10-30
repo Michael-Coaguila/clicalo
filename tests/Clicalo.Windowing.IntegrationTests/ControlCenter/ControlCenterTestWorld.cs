@@ -8,6 +8,7 @@ using Clicalo.Application.UseCases.Editor;
 using Clicalo.Application.UseCases.Library;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Document;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.Icons;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.Library;
@@ -170,7 +171,17 @@ internal sealed class ControlCenterTestWorld
                     ]
                 )
                 .Value,
-            SettingsSchema.Defaults
+            // The guides of the sections are done (R-39): the audits of the sections see them as a person who knows
+            // them; the guides have tests of their own.
+            SettingsSchema.Defaults with
+            {
+                GuidesDone =
+                [
+                    .. Enum.GetValues<GuideId>()
+                        .Where(static guide => guide != GuideId.Tab)
+                        .Select(GuideProgress.Id),
+                ],
+            }
         );
 
     private static Shortcut Tap(
@@ -265,10 +276,31 @@ internal sealed class ControlCenterTestWorld
                 .Select(icon => new IconEntry(
                     new IconRef(icon.GetProperty("id").GetString()!),
                     [
-                        .. icon.GetProperty("tags")
-                            .EnumerateObject()
-                            .SelectMany(l => l.Value.EnumerateArray().Select(t => t.GetString()!)),
-                    ]
+                        .. icon.TryGetProperty("tags", out var tags)
+                            ? tags.EnumerateObject()
+                                .SelectMany(l =>
+                                    l.Value.EnumerateArray().Select(t => t.GetString()!)
+                                )
+                            : [],
+                    ],
+                    icon.GetProperty("category").GetString()!,
+                    // As the reader of Infrastructure: every hand-written word of each language names the icon.
+                    icon.TryGetProperty("tags", out var named)
+                        ? new LocalizedText(
+                            named
+                                .EnumerateObject()
+                                .Where(l => l.Value.GetArrayLength() > 0)
+                                .Select(l => new KeyValuePair<LangCode, string>(
+                                    new LangCode(l.Name),
+                                    string.Join(
+                                        ", ",
+                                        l.Value.EnumerateArray().Select(t => t.GetString()!)
+                                    )
+                                ))
+                        )
+                        : null,
+                    // The keywords of Material: the search reads them, the suggestions do not (EDI-005).
+                    [.. icon.GetProperty("keywords").EnumerateArray().Select(t => t.GetString()!)]
                 ))
                 .ToList(),
             root.GetProperty("featured")
@@ -278,6 +310,20 @@ internal sealed class ControlCenterTestWorld
             root.GetProperty("profileFeatured")
                 .EnumerateArray()
                 .Select(i => new IconRef(i.GetString()!))
+                .ToList(),
+            root.GetProperty("categories")
+                .EnumerateArray()
+                .Select(c => new IconCategory(
+                    c.GetProperty("id").GetString()!,
+                    new LocalizedText(
+                        c.GetProperty("label")
+                            .EnumerateObject()
+                            .Select(l => new KeyValuePair<LangCode, string>(
+                                new LangCode(l.Name),
+                                l.Value.GetString()!
+                            ))
+                    )
+                ))
                 .ToList()
         );
     }

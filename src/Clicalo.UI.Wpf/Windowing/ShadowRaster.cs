@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -9,6 +10,12 @@ namespace Clicalo.UI.Wpf.Windowing;
 /// <c>DropShadowEffect</c>): the rounded shape moved by the offset, blurred with a gaussian of σ = blur / 2 (three box
 /// blurs) and cut out where the surface is, so a translucent surface never shows its own shadow through it.
 /// </summary>
+/// <remarks>
+/// It runs on the UI thread each time a surface changes size, so it only computes what differs: along a straight side,
+/// once the corners and the reach of the blur are behind, every column (or row) of the shadow is the same. A long
+/// surface gets the shadow of a short one with the same corners, widened by repeating its middle column and row, and
+/// the columns are blurred a row at a time, in the order the pixels are in memory.
+/// </remarks>
 public static class ShadowRaster
 {
     private const int BoxPasses = 3;
@@ -44,25 +51,36 @@ public static class ShadowRaster
         var w = width + left + right;
         var h = height + top + bottom;
         var corners = Corners(look, width, height, scale);
+        var boxes = blur / 2.0 < 0.5 ? [] : BoxSizes(blur / 2.0);
 
-        var alpha = new float[w * h];
-        Fill(alpha, w, h, new Int32Rect(left + dx, top + dy, width, height), corners);
-        Blur(alpha, w, h, blur / 2.0);
-
-        var strength = color.A / 255.0;
-        var pixels = new byte[w * h * 4];
-        for (var y = 0; y < h; y++)
+        // Past this many pixels from both ends of a side, nothing of either end reaches: the corner, the blur, the
+        // offset and the pixel of antialiasing on each side.
+        var reach =
+            (int)
+                Math.Ceiling(
+                    Math.Max(
+                        Math.Max(corners.TopLeft, corners.TopRight),
+                        Math.Max(corners.BottomLeft, corners.BottomRight)
+                    )
+                )
+            + boxes.Sum(static size => (size - 1) / 2)
+            + Math.Max(Math.Abs(dx), Math.Abs(dy))
+            + 2;
+        var shortWidth = Math.Min(width, (2 * reach) + 1);
+        var shortHeight = Math.Min(height, (2 * reach) + 1);
+        var shape = new ShadowShape(shortWidth, shortHeight, left, top, dx, dy, corners);
+        var pixels = Pixels(shape, right, bottom, boxes, color);
+        if (shortWidth != width || shortHeight != height)
         {
-            for (var x = 0; x < w; x++)
-            {
-                var i = (y * w) + x;
-                var inside = Coverage(x + 0.5 - left, y + 0.5 - top, width, height, corners);
-                var a = Math.Clamp(alpha[i] * strength * (1 - inside), 0, 1);
-                pixels[(i * 4) + 0] = ToByte(color.B * a);
-                pixels[(i * 4) + 1] = ToByte(color.G * a);
-                pixels[(i * 4) + 2] = ToByte(color.R * a);
-                pixels[(i * 4) + 3] = ToByte(255 * a);
-            }
+            pixels = Widen(
+                pixels,
+                shortWidth + left + right,
+                shortHeight + top + bottom,
+                w,
+                h,
+                left + (shortWidth / 2),
+                top + (shortHeight / 2)
+            );
         }
 
         var bitmap = BitmapSource.Create(w, h, 96, 96, PixelFormats.Pbgra32, null, pixels, w * 4);
@@ -95,6 +113,89 @@ public static class ShadowRaster
 
     private static byte ToByte(double value) =>
         (byte)Math.Round(value, MidpointRounding.AwayFromZero);
+
+    /// <summary>The premultiplied pixels of the shadow of <paramref name="shape"/>, with its margins.</summary>
+    private static byte[] Pixels(ShadowShape shape, int right, int bottom, int[] boxes, Color color)
+    {
+        var w = shape.Width + shape.Left + right;
+        var h = shape.Height + shape.Top + bottom;
+        var alpha = new float[w * h];
+        Fill(
+            alpha,
+            w,
+            h,
+            new Int32Rect(shape.Left + shape.Dx, shape.Top + shape.Dy, shape.Width, shape.Height),
+            shape.Corners
+        );
+        Blur(alpha, w, h, boxes);
+
+        var strength = color.A / 255.0;
+        var pixels = new byte[w * h * 4];
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var i = (y * w) + x;
+                var inside = Coverage(
+                    x + 0.5 - shape.Left,
+                    y + 0.5 - shape.Top,
+                    shape.Width,
+                    shape.Height,
+                    shape.Corners
+                );
+                var a = Math.Clamp(alpha[i] * strength * (1 - inside), 0, 1);
+                pixels[(i * 4) + 0] = ToByte(color.B * a);
+                pixels[(i * 4) + 1] = ToByte(color.G * a);
+                pixels[(i * 4) + 2] = ToByte(color.R * a);
+                pixels[(i * 4) + 3] = ToByte(255 * a);
+            }
+        }
+
+        return pixels;
+    }
+
+    /// <summary>
+    /// The shadow of the short shape (<paramref name="width"/> × <paramref name="height"/>) widened to
+    /// <paramref name="targetWidth"/> × <paramref name="targetHeight"/>: everything up to its middle column
+    /// <paramref name="midX"/> and row <paramref name="midY"/> stays, the far end moves out, and the middle repeats.
+    /// </summary>
+    private static byte[] Widen(
+        byte[] pixels,
+        int width,
+        int height,
+        int targetWidth,
+        int targetHeight,
+        int midX,
+        int midY
+    )
+    {
+        ReadOnlySpan<uint> source = MemoryMarshal.Cast<byte, uint>(pixels.AsSpan());
+        var widened = new byte[targetWidth * targetHeight * 4];
+        var target = MemoryMarshal.Cast<byte, uint>(widened.AsSpan());
+        var columns = new int[targetWidth];
+        for (var x = 0; x < targetWidth; x++)
+        {
+            columns[x] = Stretch(x, targetWidth, width, midX);
+        }
+
+        for (var y = 0; y < targetHeight; y++)
+        {
+            var from = Stretch(y, targetHeight, height, midY) * width;
+            var to = y * targetWidth;
+            for (var x = 0; x < targetWidth; x++)
+            {
+                target[to + x] = source[from + columns[x]];
+            }
+        }
+
+        return widened;
+    }
+
+    /// <summary>Where pixel <paramref name="at"/> of a line <paramref name="length"/> long comes from in one <paramref name="shortLength"/> long.</summary>
+    private static int Stretch(int at, int length, int shortLength, int middle) =>
+        at <= middle ? at
+        : at >= length - (shortLength - middle) ? at - (length - shortLength)
+        : middle;
 
     /// <summary>
     /// How much of the pixel centered at (<paramref name="x"/>, <paramref name="y"/>) the rounded rectangle at the
@@ -142,20 +243,70 @@ public static class ShadowRaster
         }
     }
 
-    /// <summary>A gaussian blur of σ <paramref name="sigma"/> as three box blurs, rows then columns.</summary>
-    private static void Blur(float[] alpha, int w, int h, double sigma)
+    /// <summary>A gaussian blur as the three box blurs of <see cref="BoxSizes"/>, rows then columns.</summary>
+    private static void Blur(float[] alpha, int w, int h, int[] boxes)
     {
-        if (sigma < 0.5)
+        if (boxes.Length == 0)
         {
             return;
         }
 
         var scratch = new float[alpha.Length];
-        foreach (var size in BoxSizes(sigma))
+        var sums = new float[w];
+        foreach (var size in boxes)
         {
             var radius = (size - 1) / 2;
             BoxBlur(alpha, scratch, new BoxLine(w, h, radius, Horizontal: true));
-            BoxBlur(scratch, alpha, new BoxLine(w, h, radius, Horizontal: false));
+            BoxBlurColumns(scratch, alpha, new BoxLine(w, h, radius, Horizontal: false), sums);
+        }
+    }
+
+    /// <summary>
+    /// The box blur of every column at once, a row at a time: the running sum of each column, in the order the pixels
+    /// are in memory, with the same additions as <see cref="BoxBlur"/> makes down one column.
+    /// </summary>
+    private static void BoxBlurColumns(float[] source, float[] target, BoxLine box, float[] sums)
+    {
+        var w = box.Width;
+        var h = box.Height;
+        var scale = 1f / ((2 * box.Radius) + 1);
+        Array.Clear(sums);
+        for (var y = 0; y <= Math.Min(box.Radius, h - 1); y++)
+        {
+            var row = y * w;
+            for (var x = 0; x < w; x++)
+            {
+                sums[x] += source[row + x];
+            }
+        }
+
+        for (var y = 0; y < h; y++)
+        {
+            var row = y * w;
+            for (var x = 0; x < w; x++)
+            {
+                target[row + x] = sums[x] * scale;
+            }
+
+            var add = y + box.Radius + 1;
+            if (add < h)
+            {
+                var added = add * w;
+                for (var x = 0; x < w; x++)
+                {
+                    sums[x] += source[added + x];
+                }
+            }
+
+            var remove = y - box.Radius;
+            if (remove >= 0)
+            {
+                var removed = remove * w;
+                for (var x = 0; x < w; x++)
+                {
+                    sums[x] -= source[removed + x];
+                }
+            }
         }
     }
 
@@ -189,6 +340,7 @@ public static class ShadowRaster
         return sizes;
     }
 
+    /// <summary>The box blur of every row.</summary>
     private static void BoxBlur(float[] source, float[] target, BoxLine box)
     {
         var lines = box.Horizontal ? box.Height : box.Width;
@@ -223,4 +375,16 @@ public static class ShadowRaster
     }
 
     private readonly record struct BoxLine(int Width, int Height, int Radius, bool Horizontal);
+
+    /// <summary>The surface whose shadow is drawn, at (<see cref="Left"/>, <see cref="Top"/>) in the image.</summary>
+    [StructLayout(LayoutKind.Auto)]
+    private readonly record struct ShadowShape(
+        int Width,
+        int Height,
+        int Left,
+        int Top,
+        int Dx,
+        int Dy,
+        CornerRadius Corners
+    );
 }

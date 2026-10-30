@@ -132,12 +132,13 @@ internal static class MacroPlanner
                 keys.Chord.Strokes,
                 origin.Injection,
                 step.Layout,
-                out var resolved
+                out var resolved,
+                out var missing
             )
         )
         {
             Cancel(step, run);
-            step.Notice(EngineNotices.NotInLayout, NoticeUrgency.Assertive);
+            step.Notice(EngineNotices.NotInLayout(step, missing), NoticeUrgency.Assertive);
             return;
         }
 

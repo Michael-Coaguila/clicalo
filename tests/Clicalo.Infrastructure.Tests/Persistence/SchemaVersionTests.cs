@@ -7,11 +7,13 @@ namespace Clicalo.Infrastructure.Tests.Persistence;
 public sealed class SchemaVersionTests
 {
     [Fact]
-    public void This_version_writes_document_and_usage_schema_1_0()
+    public void This_version_writes_document_schema_1_3_and_usage_schema_1_0()
     {
-        DocumentFormats.DocumentSchema.ShouldBe(new SchemaVersion(1, 0));
+        // ADR-0028, ADR-0033 and ADR-0034: the M6 settings and welcome answers, the AI provider and the done flags of
+        // the first-use guides are additive minors.
+        DocumentFormats.DocumentSchema.ShouldBe(new SchemaVersion(1, 3));
         DocumentFormats.UsageSchema.ShouldBe(new SchemaVersion(1, 0));
-        DocumentFormats.DocumentSchema.ToString().ShouldBe("1.0");
+        DocumentFormats.DocumentSchema.ToString().ShouldBe("1.3");
     }
 
     [Fact]

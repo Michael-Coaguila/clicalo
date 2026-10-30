@@ -1,17 +1,23 @@
-using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using System.Windows.Shapes;
 using Clicalo.Application.Ports;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Guides;
 using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Dock;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
+using Clicalo.UI.Wpf.Surfaces.Panel.TestMode;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
@@ -19,65 +25,73 @@ using Clicalo.UI.Wpf.Windowing;
 namespace Clicalo.UI.Wpf.Surfaces.TabView;
 
 /// <summary>
-/// The open bar of the Tab view (docs/04 «Vista pestaña», PES-005 to PES-008): radius 18, padding 8 and gap 6, with four
-/// zones separated by dividers: (1) close and expand; (2) «What to see», the segmented ★ Frequents / profile and the
-/// Auto/Fixed pill; (3) the shortcuts that fit whole, with «▲ i/N ▼» on a side edge or ◀ ▶ on the top and bottom ones;
-/// (4) the tools: Search, Repeat, 📌 Pinned, Sticky keys, the lock of the bar and the Mantener scroll up and down. One
-/// window per edge: its shape and its direction are fixed when it is created. It measures what is left for the
-/// shortcuts along the edge and hands it to the view model (PES-007: they are counted, not estimated).
+/// The open bar of the Tab view (docs/04 «Vista pestaña», PES-005 to PES-009) in direction C (D12). Padding
+/// <see cref="Space.S2"/>, radius <see cref="Radii.Large"/> and five zones, the shortcuts between two lines:
+/// <list type="number">
+/// <item>the bar itself: fold (the chevron toward the edge), expand, keep it open (the lock) and <c>tune</c> for Quick
+/// settings (PES-009);</item>
+/// <item>«What to see»: the track of ★ Frequents and the profile (one of the two is «elegido») and, under it, Auto/Fixed
+/// with its word, which belongs to the profile;</item>
+/// <item>the shortcuts that fit whole, with «▲ i/N ▼» under them on a side edge or ‹ › around them on the top and
+/// bottom ones;</item>
+/// <item>the tools: Search and Repeat, 📌 Pinned and Sticky keys when they apply;</item>
+/// <item>the Mantener scroll up and down.</item>
+/// </list>
+/// <para>
+/// The size of the panel is the size of the bar (D20, <c>sizes.json</c>): in S a side bar shows its shortcuts as icons,
+/// two across, and «What to see» as icons; in M one shortcut across with its name; in L the targets are 52 and the
+/// names two lines of 14, so the bar is wider. Across a side bar the controls go in rows of two, and a row with one
+/// left is centered, so no row has an empty place. Every control is drawn at least 44 × 44 and never changes size:
+/// what is open or on shows the one look of «elegido». The tools are icons with their label as their accessible name
+/// (D19); Auto/Fixed keeps its word, so it is never taken for the lock of the bar.
+/// </para>
+/// Its shortcuts open their menu with a long press and show the marks of test mode (PES-010, PES-014). One window per
+/// edge: its direction is fixed when it is created, and it composes its zones again when the size changes. It measures
+/// what is left for the shortcuts along the edge and hands it to the view model (PES-007: they are counted, not
+/// estimated).
 /// </summary>
 public sealed class DockBarWindow : TouchSurface
 {
-    private const double Gap = 6;
-    private const double Pad = 8;
-    private const double ControlsLength = 30;
-    private const double FrequentsLength = 42;
-    private const double ProfileLength = 54;
-    private const double PillLength = 28;
-    private const double ToolLength = 40;
-    private const double PinnedLength = 38;
-    private const double LockLength = 34;
-    private const double PagerLength = 30;
-    private const double HorizontalArrowWidth = 26;
-    private const double HorizontalPairWidth = 40;
-    private const double SmallLabelPx = 11;
-    private const double ProfileIconPx = 22;
-    private const double ActiveDotPx = 8;
+    private const double Pad = DockGeometry.BarPaddingPx;
 
     private readonly DockBarViewModel _viewModel;
+    private readonly ThemeService _theme;
     private readonly bool _vertical;
     private readonly StackPanel _root;
     private readonly StackPanel _tiles;
+    private readonly StackPanel _tools;
     private readonly List<(
         DockTileViewModel ViewModel,
         ShortcutTile Control,
         PropertyChangedEventHandler Handler
     )> _tileControls = [];
-    private readonly ShortcutTile _close;
-    private readonly ShortcutTile _expand;
-    private readonly TouchButton _frequents;
-    private readonly TextBlock _frequentsLabel;
-    private readonly TextBlock _stickyLabel;
-    private readonly TouchButton _profile;
-    private readonly TextBlock _profileName;
-    private readonly SymbolIcon _profileIcon;
+    private readonly List<TestMarkBadge> _badges = [];
+    private readonly IconButton _close;
+    private readonly IconButton _expand;
+    private readonly IconButton _previous;
+    private readonly IconButton _next;
+    private readonly IconButton _search;
+    private readonly IconButton _repeat;
+    private readonly IconButton _tune;
+    private readonly StyledText _pageLabel;
     private readonly SymbolIcon _profileCaret;
     private readonly Ellipse _activeDot;
-    private readonly TouchButton _pill;
-    private readonly ShortcutTile _previous;
-    private readonly ShortcutTile _next;
-    private readonly TextBlock _pageLabel;
-    private readonly FrameworkElement _verticalPager;
-    private readonly ShortcutTile _search;
-    private readonly ShortcutTile _repeat;
-    private readonly TouchButton _pinned;
-    private readonly TouchButton _sticky;
-    private readonly TouchButton _lock;
-    private readonly ShortcutTile _scrollUp;
-    private readonly ShortcutTile _scrollDown;
-    private readonly PropertyChangedEventHandler _scrollUpHandler;
-    private readonly PropertyChangedEventHandler _scrollDownHandler;
-    private readonly double _inner;
+    private BarShape _shape;
+    private DockTool _frequents = null!;
+    private DockTool _profile = null!;
+    private DockTool _pill = null!;
+    private DockTool _pinned = null!;
+    private DockTool _sticky = null!;
+    private DockTool _arrows = null!;
+    private DockTool _lock = null!;
+    private ShortcutTile _scrollUp = null!;
+    private ShortcutTile _scrollDown = null!;
+    private PropertyChangedEventHandler? _scrollUpHandler;
+    private PropertyChangedEventHandler? _scrollDownHandler;
+    private FrameworkElement _verticalPager = null!;
+    private Border _toolsDivider = null!;
+    private (bool Pinned, bool Sticky)? _toolsShown;
+    private bool _voiceNumbers;
     private bool _measuring;
 
     /// <summary>Creates the bar of <paramref name="side"/> on the UI thread of <paramref name="registry"/>.</summary>
@@ -110,282 +124,222 @@ public sealed class DockBarWindow : TouchSurface
         ArgumentNullException.ThrowIfNull(viewModel);
         Side = side;
         _viewModel = viewModel;
+        _theme = theme;
+        Modes = viewModel.Modes;
         _vertical = DockGeometry.IsVertical(side);
         SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
         SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
-        var metrics = viewModel.Metrics;
-        var thickness = (_vertical ? metrics.DockBarWidthPx : metrics.DockBarHeightPx) - (2 * Pad);
-        _inner = thickness;
-        var crossTile = _vertical ? double.NaN : metrics.DockHorizontalTileHeightPx;
 
-        // 1. Controls: close (chevron toward the edge) and expand.
-        _close = SurfaceParts.SmallButton(CloseIcon(side), 20, viewModel.CloseBar);
-        _expand = SurfaceParts.SmallButton("open_in_full", 18, viewModel.Expand);
-        var controls = Pair(_close, _expand, ControlsLength, crossTile);
+        // The controls every size has; their size and the zones around them come with the size (Compose).
+        _close = IconTool(CloseIcon(side), viewModel.CloseBar);
+        _expand = IconTool("open_in_full", viewModel.Expand);
 
-        // 2. What to see: ★ Frequents / profile, and the Auto/Fixed pill under it.
-        _frequents = SurfaceParts.Button(
-            "star",
-            20,
-            ButtonAppearance.Ghost,
-            viewModel.ShowFrequents
+        // PES-009: Quick settings beside the bar, the side of the Tab view included; an icon, as in the panel header.
+        _tune = IconTool("tune", viewModel.QuickSettings);
+        GuideTargets.SetTarget(_close, GuideTarget.TabFold);
+        GuideTargets.SetTarget(_expand, GuideTarget.TabExpand);
+        GuideTargets.SetTarget(_tune, GuideTarget.TabQuick);
+        _search = IconTool("search", viewModel.Search);
+        _repeat = IconTool("replay", viewModel.Repeat);
+
+        // The arrows of a pager are secondary, as in the panel (PagerView): one button for one role (D12), and a
+        // disabled arrow (no line, muted) never looks more present than the enabled one beside it.
+        _previous = IconTool(_vertical ? "keyboard_arrow_up" : "chevron_left", viewModel.Previous);
+        _next = IconTool(_vertical ? "keyboard_arrow_down" : "chevron_right", viewModel.Next);
+        _previous.Variant = ButtonVariant.Secondary;
+        _next.Variant = ButtonVariant.Secondary;
+        _pageLabel = new StyledText(string.Empty, TextStyleToken.LabelSmall, ColorToken.Muted)
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        _profileCaret = new SymbolIcon
+        {
+            Size = IconBox.Badge,
+            Margin = new Thickness(Space.S1, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        _profileCaret.SetResourceReference(
+            SymbolIcon.ForegroundProperty,
+            ThemeBrushKey.For(ColorToken.Muted)
         );
-        _frequents.FontSize = SmallLabelPx;
-        _frequentsLabel = SurfaceParts.Stack(_frequents, "star", 20);
-        _profileIcon = SurfaceParts.Icon(viewModel.HandleIcon, ProfileIconPx, ColorToken.Text);
-        _profileName = SurfaceParts.Text(SmallLabelPx, ColorToken.Text, bold: true);
-        _profileCaret = SurfaceParts.Icon("expand_more", 14, ColorToken.Text);
+
+        // The dot of the active app goes in a slot of its own beside the icon, never over it (D12).
         _activeDot = new Ellipse
         {
-            Width = ActiveDotPx,
-            Height = ActiveDotPx,
+            Width = Space.S2,
+            Height = Space.S2,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 0, -Space.S3, 0),
         };
         _activeDot.SetResourceReference(Shape.FillProperty, ThemeBrushKey.For(ColorToken.Accent));
-        var nameRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        _ = nameRow.Children.Add(_profileName);
-        _ = nameRow.Children.Add(_profileCaret);
-        var profileContent = new Grid();
-        var profileStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        _ = profileStack.Children.Add(_profileIcon);
-        _ = profileStack.Children.Add(nameRow);
-        profileContent.Children.Add(profileStack);
-        profileContent.Children.Add(_activeDot);
-        _profile = new TouchButton
-        {
-            Appearance = ButtonAppearance.Ghost,
-            Content = profileContent,
-            Padding = new Thickness(2, 2, 6, 2),
-            MinWidth = 0,
-            MinHeight = 0,
-            Focusable = false,
-            IsTabStop = false,
-        };
-        _profile.Click += (_, _) => viewModel.ProfileButton();
-        var segmented = new StackPanel
-        {
-            Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
-        };
-        Size(_frequents, FrequentsLength, crossTile, horizontalWidth: 60);
-        Size(_profile, ProfileLength, crossTile, horizontalWidth: 84);
-        _ = segmented.Children.Add(_frequents);
-        _ = segmented.Children.Add(SurfaceParts.Divider(_vertical));
-        _ = segmented.Children.Add(_profile);
-        var segmentBox = new Border
-        {
-            Child = segmented,
-            CornerRadius = new CornerRadius(12),
-            ClipToBounds = true,
-        };
-        segmentBox.SetResourceReference(
-            Border.BackgroundProperty,
-            ThemeBrushKey.For(ColorToken.Card)
-        );
-        segmentBox.SetResourceReference(
-            Border.BorderBrushProperty,
-            ThemeBrushKey.For(ColorToken.Line)
-        );
-        segmentBox.SetResourceReference(
-            Border.BorderThicknessProperty,
-            ThemeScope.BorderThicknessKey
-        );
-        _pill = SurfaceParts.Button(
-            "autorenew",
-            16,
-            ButtonAppearance.Outline,
-            viewModel.ToggleLock
-        );
-        _pill.FontSize = SmallLabelPx;
-        Size(_pill, PillLength, crossTile, horizontalWidth: 46);
 
-        // 3. The shortcuts, with their pager.
         _tiles = new StackPanel
         {
             Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
         };
-        _previous = SurfaceParts.SmallButton(
-            _vertical ? "keyboard_arrow_up" : "chevron_left",
-            22,
-            viewModel.Previous,
-            ghost: true
-        );
-        _next = SurfaceParts.SmallButton(
-            _vertical ? "keyboard_arrow_down" : "chevron_right",
-            22,
-            viewModel.Next,
-            ghost: true
-        );
-        _pageLabel = SurfaceParts.Text(SmallLabelPx, ColorToken.Muted);
-        _pageLabel.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.MonoFont);
-        var pagerGrid = new Grid { Height = PagerLength };
-        pagerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
-        pagerGrid.ColumnDefinitions.Add(new ColumnDefinition());
-        pagerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
-        if (_vertical)
-        {
-            Overlap(_previous, 24, PagerLength);
-            Overlap(_next, 24, PagerLength);
-            Grid.SetColumn(_pageLabel, 1);
-            Grid.SetColumn(_next, 2);
-            pagerGrid.Children.Add(_previous);
-            pagerGrid.Children.Add(_pageLabel);
-            pagerGrid.Children.Add(_next);
-        }
-        else
-        {
-            _previous.Width = HorizontalArrowWidth;
-            _next.Width = HorizontalArrowWidth;
-            _previous.Height = crossTile;
-            _next.Height = crossTile;
-        }
-
-        _verticalPager = pagerGrid;
-
-        // 4. The tools.
-        _search = SurfaceParts.SmallButton("search", 20, viewModel.Search);
-        _repeat = SurfaceParts.SmallButton("replay", 20, viewModel.Repeat);
-        _pinned = SurfaceParts.Button(
-            "push_pin",
-            18,
-            ButtonAppearance.Neutral,
-            viewModel.TogglePinned
-        );
-        _pinned.FontSize = SmallLabelPx;
-        _sticky = SurfaceParts.Button(
-            "keyboard_command_key",
-            18,
-            ButtonAppearance.Neutral,
-            viewModel.ToggleSticky
-        );
-        _sticky.FontSize = SmallLabelPx;
-        _stickyLabel = SurfaceParts.Stack(_sticky, "keyboard_command_key", 18);
-        _lock = SurfaceParts.Button(
-            "lock_open",
-            18,
-            ButtonAppearance.Neutral,
-            viewModel.TogglePinOpen
-        );
-        _lock.FontSize = SmallLabelPx;
-        Size(_pinned, PinnedLength, crossTile, horizontalWidth: 56);
-        Size(_sticky, PinnedLength, crossTile, horizontalWidth: 56);
-        Size(_lock, LockLength, crossTile, horizontalWidth: 56);
-        (_scrollUp, _scrollUpHandler) = DockTileFactory.Create(
-            viewModel.ScrollUp,
-            double.NaN,
-            double.NaN,
-            22,
-            SmallLabelPx
-        );
-        (_scrollDown, _scrollDownHandler) = DockTileFactory.Create(
-            viewModel.ScrollDown,
-            double.NaN,
-            double.NaN,
-            22,
-            SmallLabelPx
-        );
-        HideLabel(_scrollUp);
-        HideLabel(_scrollDown);
-        var tools = new StackPanel
+        _tools = new StackPanel
         {
             Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
         };
-        _ = tools.Children.Add(Pair(_search, _repeat, ToolLength, crossTile));
-        _ = tools.Children.Add(_pinned);
-        _ = tools.Children.Add(_sticky);
-        _ = tools.Children.Add(_lock);
-        _ = tools.Children.Add(Pair(_scrollUp, _scrollDown, ToolLength, crossTile));
-        foreach (FrameworkElement tool in tools.Children)
-        {
-            tool.Margin = _vertical ? new Thickness(0, 0, 0, 4) : new Thickness(0, 0, 4, 0);
-        }
-
+        GuideTargets.SetTarget(_tiles, GuideTarget.TabTiles);
+        GuideTargets.SetTarget(_tools, GuideTarget.TabTools);
         _root = new StackPanel
         {
             Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
             Margin = new Thickness(Pad),
         };
-        if (_vertical)
-        {
-            _root.Width = thickness;
-        }
-        else
-        {
-            _root.Height = thickness;
-        }
-
-        foreach (
-            var zone in new FrameworkElement[]
-            {
-                controls,
-                segmentBox,
-                _pill,
-                SurfaceParts.Divider(_vertical),
-                _vertical ? _tiles : HorizontalTiles(),
-                _vertical ? _verticalPager : new Border(),
-                SurfaceParts.Divider(_vertical),
-                tools,
-            }
-        )
-        {
-            zone.Margin = _vertical ? new Thickness(0, 0, 0, Gap) : new Thickness(0, 0, Gap, 0);
-            _ = _root.Children.Add(zone);
-        }
-
         Content = _root;
+        // ACC-001: the bar says it through its window; the row of its tiles has no UI Automation peer, so nothing
+        // said through it was ever heard.
+        Announcer = new LiveAnnouncer(this);
+        Compose();
+
         _viewModel.PropertyChanged += OnViewModelChanged;
         _viewModel.Labels.PropertyChanged += OnViewModelChanged;
-        _viewModel.PageTiles.CollectionChanged += OnPageChanged;
+        _viewModel.PageChanged += OnPageChanged;
+        _theme.Changed += OnThemeChanged;
         LayoutUpdated += (_, _) => MeasureTileSpace();
-        RebuildTiles();
-        Refresh();
     }
 
     /// <summary>The edge of this bar.</summary>
     public DockSide Side { get; }
 
+    /// <summary>
+    /// Says what the Tab view keeps off the screen while the bar is open (a plain confirmation, D21), as a notification
+    /// of the bar's window.
+    /// </summary>
+    public LiveAnnouncer Announcer { get; }
+
     /// <summary>The monitor it is on: the longest it may be comes from its work area (PES-005).</summary>
     public DisplayMonitor? Monitor { get; set; }
 
+    /// <summary>
+    /// What a side bar shows across its edge, its width less its padding (<c>sizes.json</c> dock.barWidthPx): two
+    /// targets side by side, <see cref="Space.S1"/> apart.
+    /// </summary>
+    public double PairWidth => _shape.Across;
+
+    /// <summary>The side of a control of the bar: 44, or 52 in L (D20).</summary>
+    public double ToolSize => _shape.Tool;
+
     /// <summary>📌 Pinned, where its window goes beside (PES-010).</summary>
-    public PhysicalRect PinnedButtonBounds => PhysicalBounds(_pinned, inflate: false);
+    public PhysicalRect PinnedButtonBounds => PhysicalBounds(_pinned.Button, inflate: false);
 
     /// <summary>Sticky keys, where its window goes beside.</summary>
-    public PhysicalRect StickyButtonBounds => PhysicalBounds(_sticky, inflate: false);
+    public PhysicalRect StickyButtonBounds => PhysicalBounds(_sticky.Button, inflate: false);
+
+    /// <summary>The arrows, where their window goes beside (D21).</summary>
+    public PhysicalRect ArrowsButtonBounds => PhysicalBounds(_arrows.Button, inflate: false);
+
+    /// <summary>The profile segment, where the profile grid goes beside on a top or bottom bar (PES-011, D21).</summary>
+    public PhysicalRect ProfileButtonBounds => PhysicalBounds(_profile.Button, inflate: false);
+
+    /// <summary>The <c>tune</c> button, where Quick settings go beside (PES-009).</summary>
+    public PhysicalRect TuneButtonBounds => PhysicalBounds(_tune, inflate: false);
+
+    /// <summary>The <c>tune</c> button (PES-009).</summary>
+    public TouchButton TuneButton => _tune;
+
+    /// <summary>Where the tile of <paramref name="shortcut"/> is on screen, or empty when it is not on this page.</summary>
+    /// <param name="shortcut">The shortcut.</param>
+    public PhysicalRect TileBounds(ShortcutId shortcut)
+    {
+        foreach (var (viewModel, control, _) in _tileControls)
+        {
+            if (viewModel.Id == shortcut)
+            {
+                return PhysicalBounds(control, inflate: false);
+            }
+        }
+
+        return PhysicalRect.Empty;
+    }
 
     /// <summary>The shortcut tiles of the page, in order.</summary>
     public IReadOnlyList<ShortcutTile> TileControls =>
         [.. _tileControls.Select(static t => t.Control)];
 
-    /// <summary>The buttons of the bar, in order: close, expand, Frequents, profile, Auto/Fixed, search, repeat, pinned, sticky, lock.</summary>
+    /// <summary>
+    /// The buttons of the bar, in order: close, expand, Frequents, profile, Auto/Fixed, search, repeat, pinned, sticky,
+    /// lock, tune.
+    /// </summary>
     public IReadOnlyList<Control> Buttons =>
-        [_close, _expand, _frequents, _profile, _pill, _search, _repeat, _pinned, _sticky, _lock];
+        [
+            _close,
+            _expand,
+            _frequents.Button,
+            _profile.Button,
+            _pill.Button,
+            _search,
+            _repeat,
+            _pinned.Button,
+            _sticky.Button,
+            _lock.Button,
+            _tune,
+            _arrows.Button,
+        ];
+
+    /// <summary>
+    /// PES-005, PES-007: takes <paramref name="monitor"/> and fits the page to its edge before the bar is measured and
+    /// placed, so it appears at its size instead of showing shortcuts that do not fit and shrinking under the finger.
+    /// The second pass takes the pager the first one may have brought.
+    /// </summary>
+    /// <param name="monitor">The monitor the bar goes to.</param>
+    public void FitToEdge(DisplayMonitor monitor)
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+        Monitor = monitor;
+
+        // PES-005: never longer than its edge allows, whatever its content asks for.
+        var longest = DockGeometry.MaxBarLength(Side, monitor) / monitor.Scale;
+        if (_vertical)
+        {
+            MaxHeight = longest;
+        }
+        else
+        {
+            MaxWidth = longest;
+        }
+
+        if (_viewModel.Side != Side)
+        {
+            return;
+        }
+
+        ApplyTileShape();
+        for (var pass = 0; pass < 2; pass++)
+        {
+            _root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            ApplyTileSpace(monitor, monitor.Scale);
+        }
+    }
 
     /// <inheritdoc />
     protected override IEnumerable<SurfaceTarget> CollectTargets()
     {
         yield return SurfaceTarget.Button(_close, _viewModel.CloseBar);
         yield return SurfaceTarget.Button(_expand, _viewModel.Expand);
-        yield return SurfaceTarget.Button(_frequents, _viewModel.ShowFrequents);
-        yield return SurfaceTarget.Button(_profile, _viewModel.ProfileButton);
-        yield return SurfaceTarget.Button(_pill, _viewModel.ToggleLock);
+        yield return SurfaceTarget.Button(_lock.Button, _viewModel.TogglePinOpen);
+        yield return SurfaceTarget.Button(_tune, _viewModel.QuickSettings);
+        yield return SurfaceTarget.Button(_frequents.Button, _viewModel.ShowFrequents);
+        yield return SurfaceTarget.Button(_profile.Button, _viewModel.ProfileButton);
+        yield return SurfaceTarget.Button(_pill.Button, _viewModel.ToggleLock);
         foreach (var (viewModel, control, _) in _tileControls)
         {
-            yield return SurfaceTarget.For(control, viewModel);
+            yield return SurfaceTarget.For(control, viewModel, longPress: Modes is not null);
         }
 
         yield return SurfaceTarget.Button(_previous, _viewModel.Previous);
         yield return SurfaceTarget.Button(_next, _viewModel.Next);
         yield return SurfaceTarget.Button(_search, _viewModel.Search);
         yield return SurfaceTarget.Button(_repeat, _viewModel.Repeat);
-        yield return SurfaceTarget.Button(_pinned, _viewModel.TogglePinned);
-        yield return SurfaceTarget.Button(_sticky, _viewModel.ToggleSticky);
-        yield return SurfaceTarget.Button(_lock, _viewModel.TogglePinOpen);
+        yield return SurfaceTarget.Button(_pinned.Button, _viewModel.TogglePinned);
+        yield return SurfaceTarget.Button(_sticky.Button, _viewModel.ToggleSticky);
+        yield return SurfaceTarget.Button(_arrows.Button, _viewModel.ToggleArrows);
         yield return SurfaceTarget.For(_scrollUp, _viewModel.ScrollUp);
         yield return SurfaceTarget.For(_scrollDown, _viewModel.ScrollDown);
     }
@@ -395,22 +349,24 @@ public sealed class DockBarWindow : TouchSurface
     {
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _viewModel.Labels.PropertyChanged -= OnViewModelChanged;
-        _viewModel.PageTiles.CollectionChanged -= OnPageChanged;
-        DockTileFactory.Detach(_viewModel.ScrollUp, _scrollUpHandler);
-        DockTileFactory.Detach(_viewModel.ScrollDown, _scrollDownHandler);
-        foreach (var (viewModel, _, handler) in _tileControls)
-        {
-            DockTileFactory.Detach(viewModel, handler);
-        }
-
+        _viewModel.PageChanged -= OnPageChanged;
+        _theme.Changed -= OnThemeChanged;
+        DetachScroll();
+        DetachTiles();
         base.OnClosed(e);
     }
 
-    private static void Dimmed(Control control, bool enabled) =>
-        control.SetResourceReference(
-            ForegroundProperty,
-            ThemeBrushKey.For(enabled ? ColorToken.Text : ColorToken.Line)
-        );
+    private static IconButton IconTool(string symbol, Action tap)
+    {
+        var button = new IconButton
+        {
+            Symbol = symbol,
+            Focusable = false,
+            IsTabStop = false,
+        };
+        button.Click += (_, _) => tap();
+        return button;
+    }
 
     private static string CloseIcon(DockSide side) =>
         side switch
@@ -421,111 +377,671 @@ public sealed class DockBarWindow : TouchSurface
             _ => "chevron_right",
         };
 
-    private static void HideLabel(ShortcutTile tile)
+    // An icon alone keeps no room under it for the name: it is centred in its tile (D21 review).
+    private static void HideLabel(ShortcutTile tile) => DockTileFactory.ShowIconOnly(tile);
+
+    /// <summary>Takes <paramref name="element"/> out of whatever holds it, so a zone composed again can hold it.</summary>
+    private static void Release(FrameworkElement element)
     {
-        tile.ApplyTemplate();
-        if (tile.Template?.FindName(ShortcutTileTemplate.LabelPart, tile) is FrameworkElement label)
+        switch (element.Parent)
         {
-            label.Visibility = Visibility.Collapsed;
+            case System.Windows.Controls.Panel panel:
+                panel.Children.Remove(element);
+                break;
+            case Decorator decorator:
+                decorator.Child = null;
+                break;
+            case ContentControl content:
+                content.Content = null;
+                break;
         }
     }
 
-    private void Size(FrameworkElement element, double length, double cross, double horizontalWidth)
+    /// <summary>
+    /// The name of the profile with its ▾, ✕ or ↶ after it (PES-006), in place of the plain label of the tool: the name
+    /// ends in «…» and the mark keeps its place.
+    /// </summary>
+    private static void ProfileNameRow(DockTool tool, SymbolIcon caret)
     {
+        var parts = (DockPanel)tool.Button.Content;
+        parts.Children.Remove(tool.Label);
+        var row = new DockPanel
+        {
+            LastChildFill = true,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        DockPanel.SetDock(caret, Dock.Right);
+        _ = row.Children.Add(caret);
+        _ = row.Children.Add(tool.Label);
+        _ = parts.Children.Add(row);
+    }
+
+    /// <summary>
+    /// Puts <paramref name="items"/> into <paramref name="zone"/>: along a top or bottom bar one row, across a side bar
+    /// rows of two, <see cref="Space.S1"/> apart, the last one centered when one is left, so no row has an empty place.
+    /// </summary>
+    private void Flow(System.Windows.Controls.Panel zone, IReadOnlyList<FrameworkElement> items)
+    {
+        foreach (var item in items)
+        {
+            Release(item);
+        }
+
+        zone.Children.Clear();
+        if (!_vertical)
+        {
+            for (var i = 0; i < items.Count; i++)
+            {
+                items[i].Margin = new Thickness(i == 0 ? 0 : Space.S1, 0, 0, 0);
+                items[i].VerticalAlignment = VerticalAlignment.Center;
+                _ = zone.Children.Add(items[i]);
+            }
+
+            return;
+        }
+
+        for (var i = 0; i < items.Count; i += _shape.Columns)
+        {
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, i == 0 ? 0 : Space.S1, 0, 0),
+            };
+            for (var j = i; j < Math.Min(i + _shape.Columns, items.Count); j++)
+            {
+                items[j].Margin = new Thickness(j == i ? 0 : Space.S1, 0, 0, 0);
+                _ = row.Children.Add(items[j]);
+            }
+
+            _ = zone.Children.Add(row);
+        }
+    }
+
+    private StackPanel Zone(params FrameworkElement[] items)
+    {
+        var zone = new StackPanel
+        {
+            Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal,
+        };
+        Flow(zone, items);
+        return zone;
+    }
+
+    /// <summary>
+    /// Builds the zones of the bar for the size of the panel (D20): the controls of its size, the shortcuts across or
+    /// along it, and the tools in rows of two. Called when the bar is created and when the size changes.
+    /// </summary>
+    private void Compose()
+    {
+        _shape = BarShape.Of(_viewModel.Metrics, _vertical);
+        DetachScroll();
+        _root.Children.Clear();
         if (_vertical)
         {
-            element.Height = length;
+            _root.ClearValue(HeightProperty);
+            _root.Width = _shape.Across;
         }
         else
         {
-            element.Width = horizontalWidth;
-            element.Height = cross;
+            _root.ClearValue(WidthProperty);
+            _root.Height = TileHeight(vertical: false);
         }
-    }
 
-    /// <summary>
-    /// Two buttons side by side on a side edge and one above the other on the top and bottom ones, as in the prototype;
-    /// each answers on 44 × 44 around its center (REG-02: the targets overlap and the nearest center wins).
-    /// </summary>
-    private UniformGrid Pair(
-        FrameworkElement first,
-        FrameworkElement second,
-        double length,
-        double cross
-    )
-    {
-        var height = _vertical ? length : cross;
-        var width = _vertical ? _inner : HorizontalPairWidth;
-        var grid = new UniformGrid
+        foreach (var button in new[] { _close, _expand, _tune, _search, _repeat, _previous, _next })
         {
-            Rows = _vertical ? 1 : 2,
-            Columns = _vertical ? 2 : 1,
-            Height = height,
-            Width = width,
-        };
-        var cellWidth = _vertical ? width / 2 : width;
-        var cellHeight = _vertical ? height : height / 2;
-        Overlap(first, cellWidth, cellHeight);
-        Overlap(second, cellWidth, cellHeight);
-        _ = grid.Children.Add(first);
-        _ = grid.Children.Add(second);
-        return grid;
+            button.Width = _shape.Tool;
+            button.Height = _shape.Tool;
+        }
+
+        // 2. What to see: ★ Frequents and the profile in their track, with their names from M; Auto/Fixed after them.
+        var choice = _shape.IconChoices ? DockToolShape.Icon : DockToolShape.Stacked;
+        _frequents = Tool("star", choice, _viewModel.ShowFrequents);
+        _profile = Tool(_viewModel.HandleIcon, choice, _viewModel.ProfileButton);
+        GuideTargets.SetTarget(_frequents.Button, GuideTarget.TabFrequents);
+        GuideTargets.SetTarget(_profile.Button, GuideTarget.TabProfile);
+        Release(_profileCaret);
+        Release(_activeDot);
+        if (!_shape.IconChoices)
+        {
+            ProfileNameRow(_profile, _profileCaret);
+        }
+
+        // Beside the icon, inside the segment: a segment of an icon alone has no room past the icon (D12, D20), and the
+        // dot stays inside its ring, never on it (D21 review).
+        _activeDot.Margin = _shape.IconChoices
+            ? new Thickness(0, 0, -Space.S1, 0)
+            : new Thickness(0, 0, -Space.S3, 0);
+        _profile.Lead.Children.Add(_activeDot);
+        _pill = Tool(
+            "autorenew",
+            _shape.IconChoices ? DockToolShape.Icon : DockToolShape.Row,
+            _viewModel.ToggleLock
+        );
+
+        // 4. The tools that switch a state are icons, as the icon buttons beside them (D19).
+        _pinned = Tool("push_pin", DockToolShape.Icon, _viewModel.TogglePinned);
+        // The same glyph as the row «Teclas fijas» of Quick settings: a keyboard with a lock, not the ⌘ of a Mac.
+        _sticky = Tool("keyboard_lock", DockToolShape.Icon, _viewModel.ToggleSticky);
+
+        // D21 (asked by the maintainer): ↑ ↓ ← → at hand, in a window that this button opens and closes; the cross of a
+        // pad, not the four arrows of «move» that the position of the tab already draws.
+        _arrows = Tool("gamepad", DockToolShape.Icon, _viewModel.ToggleArrows);
+        _lock = Tool("lock_open", DockToolShape.Icon, _viewModel.TogglePinOpen);
+        GuideTargets.SetTarget(_lock.Button, GuideTarget.TabLock);
+
+        // 5. Scroll up and down: Mantener tiles that look like the tools at rest (PES-008).
+        // With the icon of the tool buttons beside them, 24 (D21 review: they were 20 and tinted, another family).
+        (_scrollUp, _scrollUpHandler) = DockTileFactory.Create(
+            _viewModel.ScrollUp,
+            _shape.Tool,
+            _shape.Tool,
+            IconBox.Medium,
+            1
+        );
+        (_scrollDown, _scrollDownHandler) = DockTileFactory.Create(
+            _viewModel.ScrollDown,
+            _shape.Tool,
+            _shape.Tool,
+            IconBox.Medium,
+            1
+        );
+        _scrollUp.ShowsCard = false;
+        _scrollDown.ShowsCard = false;
+        HideLabel(_scrollUp);
+        HideLabel(_scrollDown);
+
+        // 1. The bar itself: fold, expand, keep open and Quick settings, the four that act on the bar or the panel.
+        Add(Zone(_close, _expand, _lock.Button, _tune), Space.S2);
+        Add(Track(_frequents.Button, _profile.Button), Space.S1);
+        Add(_pill.Button, 0);
+        Add(Divider(), 0, stretch: true);
+
+        // 3. The shortcuts, with their pager: «i/N» above the arrows across a side bar, ‹ › around them along the others.
+        Release(_tiles);
+        Release(_pageLabel);
+        if (_vertical)
+        {
+            Add(_tiles, 0);
+            var pager = new StackPanel { Margin = new Thickness(0, Space.S2, 0, 0) };
+            _pageLabel.Margin = new Thickness(0, 0, 0, Space.S1);
+            _ = pager.Children.Add(_pageLabel);
+            _ = pager.Children.Add(Zone(_previous, _next));
+            _verticalPager = pager;
+            Add(_verticalPager, 0);
+        }
+        else
+        {
+            Add(HorizontalTiles(), 0);
+            _verticalPager = new StackPanel();
+        }
+
+        _toolsDivider = Divider();
+        Add(_toolsDivider, 0, stretch: true);
+        _toolsShown = null;
+        Add(_tools, Space.S1);
+        Add(Zone(_scrollUp, _scrollDown), 0);
+
+        ApplyTileShape();
+        ApplyTextScale();
+        RebuildTiles();
+        Refresh();
     }
 
     /// <summary>
-    /// Draws <paramref name="element"/> in its cell less a gap of 2 while its 44 × 44 target overflows the cell around
-    /// its center (REG-02), as the header of the panel does: the negative margins keep the cell's measure.
+    /// Gives the view model the gap and the columns of this bar's shortcuts. The four bars share it, so only the bar of
+    /// the edge in view says them: a top bar composed later must not leave a side bar of S one icon across.
     /// </summary>
-    private static void Overlap(FrameworkElement element, double cellWidth, double cellHeight)
+    private void ApplyTileShape()
     {
-        var minimum = Clicalo.UI.Wpf.Controls.TouchTarget.MinimumSize;
-        element.Width = Math.Max(1, cellWidth - 2);
-        element.Height = Math.Max(1, cellHeight - 2);
-        var x = Math.Max(0, (minimum - cellWidth) / 2);
-        var y = Math.Max(0, (minimum - cellHeight) / 2);
-        element.Margin = new Thickness(-x, -y, -x, -y);
+        if (_viewModel.Side != Side)
+        {
+            return;
+        }
+
+        _viewModel.ApplyTileGap(TileGap);
+        _viewModel.ApplyTileColumns(_shape.IconTiles && _vertical ? _shape.Columns : 1);
+    }
+
+    /// <summary>A tool of the bar, as high as the controls of its size; an icon tool is as wide too.</summary>
+    private DockTool Tool(string symbol, DockToolShape shape, Action tap)
+    {
+        var tool = new DockTool(symbol, ButtonVariant.Tertiary, shape, tap);
+        if (shape == DockToolShape.Icon)
+        {
+            tool.Button.Width = _shape.Tool;
+            tool.Button.Height = _shape.Tool;
+        }
+        else if (shape == DockToolShape.Row)
+        {
+            tool.Button.Height = _shape.Tool;
+        }
+        else
+        {
+            tool.Button.Height =
+                _shape.Tool > ControlHeight.Small ? ControlHeight.Large : ControlHeight.Medium;
+        }
+
+        return tool;
+    }
+
+    /// <summary>
+    /// Adds a zone to the bar, <paramref name="after"/> away from the next one along the bar: across a side bar it
+    /// takes the whole width; along a top or bottom bar it is centered in the row, or takes its whole height when
+    /// <paramref name="stretch"/>.
+    /// </summary>
+    private void Add(FrameworkElement zone, double after, bool stretch = false)
+    {
+        Release(zone);
+        zone.Margin = _vertical ? new Thickness(0, 0, 0, after) : new Thickness(0, 0, after, 0);
+        if (_vertical)
+        {
+            zone.HorizontalAlignment = HorizontalAlignment.Stretch;
+        }
+        else
+        {
+            zone.VerticalAlignment = stretch ? VerticalAlignment.Stretch : VerticalAlignment.Center;
+        }
+
+        _ = _root.Children.Add(zone);
+    }
+
+    /// <summary>
+    /// The track of «What to see» (PES-006): <c>side</c> with its line, radius <see cref="Radii.Large"/> around the two
+    /// segments of radius <see cref="Radii.Medium"/>, <see cref="Space.S1"/> inside. Only the segment in view is drawn
+    /// «elegido». Across a side bar the segments with names go one under the other. The icons of S go side by side as the
+    /// other pairs of the bar, without the frame: two targets of 44 and their gap fill the 92 of the bar, and the frame
+    /// around them cut the chosen one (D20 review).
+    /// </summary>
+    private Border Track(FrameworkElement frequents, FrameworkElement profile)
+    {
+        var stacked = _vertical && !_shape.IconChoices;
+        var segments = new StackPanel
+        {
+            Orientation = stacked ? Orientation.Vertical : Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        frequents.Margin = stacked
+            ? new Thickness(0, 0, 0, Space.S1)
+            : new Thickness(0, 0, Space.S1, 0);
+        if (!_vertical && !_shape.IconChoices)
+        {
+            // As wide as its name, up to the width of a shortcut: a fixed width cost an L bar one shortcut per page on
+            // the maintainer's screen (D21 review), more than the few DIP the bar moves when the profile changes.
+            profile.MaxWidth = _shape.Across;
+        }
+
+        _ = segments.Children.Add(frequents);
+        _ = segments.Children.Add(profile);
+        if (_shape.IconChoices)
+        {
+            return new Border { Child = segments };
+        }
+
+        var track = new Border
+        {
+            Child = segments,
+            CornerRadius = new CornerRadius(Radii.Large),
+            Padding = new Thickness(Space.S1),
+        };
+        track.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Side));
+        track.SetResourceReference(
+            Border.BorderBrushProperty,
+            ThemeBrushKey.For(ColorToken.Border)
+        );
+        track.SetResourceReference(Border.BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        return track;
+    }
+
+    /// <summary>
+    /// The line between two zones (<c>border</c>, the decorative line), <see cref="Space.S2"/> away from both and from
+    /// the edges of the bar.
+    /// </summary>
+    private Border Divider()
+    {
+        var line = new Border();
+        line.SetResourceReference(Border.BackgroundProperty, ThemeBrushKey.For(ColorToken.Border));
+        line.SetResourceReference(
+            _vertical ? HeightProperty : WidthProperty,
+            ThemeKeys.LineThickness
+        );
+        return new Border { Padding = new Thickness(Space.S2), Child = line };
     }
 
     private StackPanel HorizontalTiles()
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal };
+        Release(_previous);
+        Release(_next);
+        _previous.Margin = new Thickness(0, 0, Space.S2, 0);
+        _next.Margin = new Thickness(Space.S2, 0, 0, 0);
+        _previous.VerticalAlignment = VerticalAlignment.Center;
+        _next.VerticalAlignment = VerticalAlignment.Center;
         _ = row.Children.Add(_previous);
         _ = row.Children.Add(_tiles);
         _ = row.Children.Add(_next);
         return row;
     }
 
-    private void OnPageChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        RebuildTiles();
+    /// <summary>
+    /// The tools of zone 4 in rows of two: Search and Repeat, Pinned and Sticky keys when they apply (PES-008), and the
+    /// arrows (D21), so a tool that is not there never leaves its place empty.
+    /// </summary>
+    private void FlowTools()
+    {
+        var shown = (_viewModel.ShowsPinned, _viewModel.ShowsSticky);
+        if (_toolsShown == shown)
+        {
+            return;
+        }
 
-    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
+        _toolsShown = shown;
+        var items = new List<FrameworkElement> { _search, _repeat };
+        if (shown.ShowsPinned)
+        {
+            items.Add(_pinned.Button);
+        }
 
-    private void RebuildTiles()
+        if (shown.ShowsSticky)
+        {
+            items.Add(_sticky.Button);
+        }
+
+        items.Add(_arrows.Button);
+        Flow(_tools, items);
+    }
+
+    private void OnPageChanged(object? sender, EventArgs e) => RebuildTiles();
+
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (
+            string.Equals(
+                e.PropertyName,
+                nameof(DockBarViewModel.TileLength),
+                StringComparison.Ordinal
+            )
+        )
+        {
+            RebuildTiles();
+        }
+        else if (
+            string.Equals(
+                e.PropertyName,
+                nameof(DockBarViewModel.Metrics),
+                StringComparison.Ordinal
+            )
+            && BarShape.Of(_viewModel.Metrics, _vertical) != _shape
+        )
+        {
+            // Another size: another bar (D20).
+            Compose();
+        }
+        else
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>
+    /// CUA-011: the shortcuts grow with the text scale by what the lines of their name grow, so a name is never cut
+    /// where it would fit on two lines; a top or bottom bar grows across with them.
+    /// </summary>
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        ApplyTextScale();
+        if (!_vertical)
+        {
+            _root.Height = TileHeight(vertical: false);
+            RebuildTiles();
+        }
+    }
+
+    /// <summary>Gives the view model the length of a shortcut along the bar, which its pages follow.</summary>
+    private void ApplyTextScale() =>
+        _viewModel.ApplyTileLengths(TileHeight(vertical: true), HorizontalTileWidth());
+
+    /// <summary>
+    /// The height of a shortcut (PES-007, D12, D20): an icon alone where the size draws icons (S, one touch target);
+    /// otherwise its icon and two lines of the scaled name with <see cref="Space.S1"/> around and between them, never
+    /// less than the size says. Along a side bar of size M, at 100 %, it is the 52 of the size with one line: the length
+    /// of a side bar is what is scarce, and at 100 % the usual names fit on it.
+    /// </summary>
+    private double TileHeight(bool vertical)
+    {
+        var metrics = _viewModel.Metrics;
+        var size = vertical ? metrics.DockVerticalTileHeightPx : metrics.DockHorizontalTileHeightPx;
+        if (size <= ControlHeight.Small)
+        {
+            return size;
+        }
+
+        var twoLines = (3 * Space.S1) + metrics.DockTileIconPx + (2 * ScaledLine());
+        return vertical && _theme.TextScalePercent <= TypeScale.MinScalePercent
+            ? size
+            : Math.Max(size, twoLines);
+    }
+
+    /// <summary>
+    /// The width of a shortcut of a top or bottom bar: 44 for the icons of S, and 88/104 in M and L as much wider as its
+    /// name grows with the text scale (CUA-011), so a word that fits on a line at 100 % still fits on it.
+    /// </summary>
+    private double HorizontalTileWidth()
+    {
+        var width = _viewModel.Metrics.DockHorizontalTileWidthPx;
+        return width <= ControlHeight.Small ? width : width * _theme.TextScalePercent / 100d;
+    }
+
+    /// <summary>The lines the name of a shortcut gets: none for an icon, two while they fit under the icon, else one.</summary>
+    private int NameLines(double tileHeight) =>
+        tileHeight <= ControlHeight.Small ? 0
+        : tileHeight - (3 * Space.S1) - _viewModel.Metrics.DockTileIconPx >= 2 * ScaledLine() ? 2
+        : 1;
+
+    private double ScaledLine() =>
+        TextStyles.Get(_shape.Label).LineHeight * _theme.TextScalePercent / 100d;
+
+    private void DetachScroll()
+    {
+        if (_scrollUpHandler is { } up)
+        {
+            DockTileFactory.Detach(_viewModel.ScrollUp, up);
+            _scrollUpHandler = null;
+        }
+
+        if (_scrollDownHandler is { } down)
+        {
+            DockTileFactory.Detach(_viewModel.ScrollDown, down);
+            _scrollDownHandler = null;
+        }
+    }
+
+    private void DetachTiles()
     {
         foreach (var (viewModel, _, handler) in _tileControls)
         {
             DockTileFactory.Detach(viewModel, handler);
         }
 
+        foreach (var badge in _badges)
+        {
+            badge.Detach();
+        }
+
+        _badges.Clear();
         _tileControls.Clear();
+    }
+
+    /// <summary>
+    /// While the shortcuts have pages, their zone keeps the length of a full page (PES-007, D20 review): a last page of
+    /// three after a page of five would shrink the bar and centre it again, so the pager and every control under it
+    /// would jump away from the finger. With one page the bar is as long as its shortcuts.
+    /// </summary>
+    /// <param name="height">The height of one shortcut.</param>
+    /// <param name="width">The width of one shortcut along a top or bottom bar.</param>
+    private void ReservePage(double height, double width)
+    {
+        var count = _viewModel.HasPages ? _viewModel.PerPage : 0;
+        _tiles.ClearValue(MinHeightProperty);
+        _tiles.ClearValue(MinWidthProperty);
+        if (count <= 0)
+        {
+            return;
+        }
+
+        if (!_vertical)
+        {
+            _tiles.MinWidth = (count * width) + ((count - 1) * TileGap);
+            return;
+        }
+
+        var rows = _shape.IconTiles ? (count + _shape.Columns - 1) / _shape.Columns : count;
+        _tiles.MinHeight = (rows * height) + ((rows - 1) * TileGap);
+    }
+
+    /// <summary>How wide <paramref name="text"/> is drawn in the font of <paramref name="like"/>, rounded up.</summary>
+    private static double TextWidth(TextBlock like, string text) =>
+        Math.Ceiling(
+            new FormattedText(
+                text,
+                System.Globalization.CultureInfo.CurrentUICulture,
+                like.FlowDirection,
+                new Typeface(like.FontFamily, like.FontStyle, like.FontWeight, like.FontStretch),
+                like.FontSize,
+                like.Foreground,
+                VisualTreeHelper.GetDpi(like).PixelsPerDip
+            ).WidthIncludingTrailingWhitespace
+        );
+
+    /// <summary>
+    /// The dashed card of an empty view (CUA-010): its icon and its text in two lines at most, as wide as two icons and
+    /// two high on a side bar of S, beside the icon on a top or bottom bar of S, and one shortcut high elsewhere.
+    /// </summary>
+    private Grid EmptyCard(string icon, string text, double height, double width)
+    {
+        var across = _shape.IconTiles && !_vertical;
+        var card = new Grid
+        {
+            Height = _shape.IconTiles && _vertical ? (2 * ControlHeight.Small) + Space.S1 : height,
+        };
+        if (across)
+        {
+            card.Width = (3 * ControlHeight.Small) + (2 * Space.S1);
+        }
+        else if (!double.IsNaN(width) && !_vertical)
+        {
+            card.Width = (2 * width) + TileGap;
+        }
+
+        card.Children.Add(DashedLine.Outline());
+        var body = new StackPanel
+        {
+            Orientation = across ? Orientation.Horizontal : Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(Space.S1),
+        };
+        var symbol = SurfaceParts.Icon(icon, IconBox.Small, ColorToken.Muted);
+        symbol.VerticalAlignment = VerticalAlignment.Center;
+        _ = body.Children.Add(symbol);
+        _ = body.Children.Add(
+            new StyledText(text, TextStyleToken.LabelSmall, ColorToken.Muted)
+            {
+                MaxLines = 2,
+                TextAlignment = across ? TextAlignment.Left : TextAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = across
+                    ? new Thickness(Space.S1, 0, 0, 0)
+                    : new Thickness(0, Space.S1, 0, 0),
+            }
+        );
+        card.Children.Add(body);
+        return card;
+    }
+
+    /// <summary>
+    /// The gap between two shortcuts, the same the paging counts with: icons alone sit <see cref="Space.S1"/> apart on
+    /// every edge (S counted 4 but laid a top bar out 8 apart, and its last tool ran off the bar), named tiles
+    /// <see cref="Space.S2"/>.
+    /// </summary>
+    private double TileGap => _shape.IconTiles ? Space.S1 : Space.S2;
+
+    private void RebuildTiles()
+    {
+        DetachTiles();
         _tiles.Children.Clear();
         var metrics = _viewModel.Metrics;
+        var height = _vertical
+            ? _shape.IconTiles
+                ? ControlHeight.Small
+                : _viewModel.TileLengthAlong(vertical: true)
+            : TileHeight(vertical: false);
+        var width = _vertical
+            ? _shape.IconTiles
+                ? ControlHeight.Small
+                : double.NaN
+            : _viewModel.TileLengthAlong(vertical: false);
+        var lines = NameLines(height);
+        var cells = new List<FrameworkElement>();
         foreach (var tile in _viewModel.PageTiles)
         {
             var (control, handler) = DockTileFactory.Create(
                 tile,
-                _vertical ? double.NaN : metrics.DockHorizontalTileWidthPx,
-                _vertical ? metrics.DockVerticalTileHeightPx : metrics.DockHorizontalTileHeightPx,
+                width,
+                height,
                 metrics.DockTileIconPx,
-                Math.Max(TypeScale.Minimum, metrics.DockTileLabelPx)
+                Math.Max(1, lines),
+                Modes,
+                _shape.Label,
+                reservesLines: !_vertical
             );
-            control.Margin =
-                _tiles.Children.Count == 0 ? new Thickness(0)
-                : _vertical ? new Thickness(0, Gap, 0, 0)
-                : new Thickness(Gap, 0, 0, 0);
+            if (lines == 0)
+            {
+                // An icon alone shares the tile with the voice number: the number takes the top left and the icon the
+                // bottom right, clear of both edges (ACC-009; it was pressed against the bottom edge, D21 review).
+                HideLabel(control);
+                if (_voiceNumbers)
+                {
+                    control.Padding = new Thickness(Space.S4, Space.S3, Space.S1, Space.S1);
+                }
+            }
+
+            var (cell, badge) = DockTileFactory.Cell(control, tile, Modes);
+            if (badge is not null)
+            {
+                _badges.Add(badge);
+            }
+
             _tileControls.Add((tile, control, handler));
-            _ = _tiles.Children.Add(control);
+            cells.Add(cell);
         }
+
+        if (cells.Count == 0 && _viewModel.EmptyView is { Text.Length: > 0 } empty)
+        {
+            // CUA-010: an empty Frequents or profile says so, as the card of the panel, instead of leaving no zone.
+            _ = _tiles.Children.Add(EmptyCard(empty.Icon, empty.Text, height, width));
+        }
+        else if (_vertical && _shape.IconTiles)
+        {
+            // Two icons across, in rows that never leave a place empty.
+            Flow(_tiles, cells);
+        }
+        else
+        {
+            for (var i = 0; i < cells.Count; i++)
+            {
+                cells[i].Margin =
+                    i == 0 ? new Thickness(0)
+                    : _vertical ? new Thickness(0, TileGap, 0, 0)
+                    : new Thickness(TileGap, 0, 0, 0);
+                _ = _tiles.Children.Add(cells[i]);
+            }
+        }
+
+        ReservePage(height, width);
+
+        // Without shortcuts (Frequents still empty) one line separates «What to see» from the tools, not two.
+        _toolsDivider.Visibility = SurfaceParts.Shown(_tileControls.Count > 0);
 
         RefreshTargets();
     }
@@ -535,67 +1051,111 @@ public sealed class DockBarWindow : TouchSurface
         var vm = _viewModel;
         var labels = vm.Labels;
         var state = vm.State;
-        Title = labels.OpenBar;
-        _close.AccessibleName = labels.HideBar;
-        _expand.AccessibleName = labels.Expand;
-        _frequentsLabel.Text = labels.Frequents;
-        SurfaceParts.Name(_frequents, labels.Frequents);
-        _frequents.Appearance =
-            state?.Frequents == true ? ButtonAppearance.Accent : ButtonAppearance.Ghost;
-        _profileIcon.Symbol = state is { ProfileIcon.Length: > 0 } ? state.ProfileIcon : "apps";
-        _profileName.Text = state?.ProfileName ?? string.Empty;
+        var voiceNumbers = state?.VoiceNumbers == true;
+        if (voiceNumbers != _voiceNumbers)
+        {
+            _voiceNumbers = voiceNumbers;
+            if (_shape.IconTiles)
+            {
+                RebuildTiles();
+            }
+        }
+
+        Title = labels.BarName;
+        AutomationProperties.SetName(_close, labels.HideBar);
+        AutomationProperties.SetName(_expand, labels.Expand);
+
+        var frequents = state?.Frequents == true;
+        _frequents.Say(labels.Frequents, labels.Frequents);
+        _frequents.Button.IsActive = frequents;
+        _frequents.Paint(frequents);
+
+        // What is drawn «elegido» is said too (ACC-001): the view in front, and the profile of the active app.
+        AutomationProperties.SetItemStatus(_frequents.Button, frequents ? labels.On : string.Empty);
+        AutomationProperties.SetItemStatus(
+            _profile.Button,
+            state?.IsActiveApp == true ? labels.ActiveApp
+                : frequents ? string.Empty
+                : labels.On
+        );
+
+        var pickerOpen = state?.Flyout == DockFlyout.Profiles;
+        _profile.Icon.Symbol = state is { ProfileIcon.Length: > 0 } ? state.ProfileIcon : "apps";
+        // Named by the profile it shows, as it reads (voice: «clic Word»), also in S where the label is hidden; what a
+        // tap does goes in its help.
+        _profile.Say(
+            state?.ProfileName ?? string.Empty,
+            state?.ProfileName ?? labels.SwitchProfile
+        );
+        AutomationProperties.SetHelpText(_profile.Button, labels.SwitchProfile);
         _profileCaret.Symbol = vm.ProfileCaret;
         _activeDot.Visibility = SurfaceParts.Shown(state?.IsActiveApp == true);
-        var pickerOpen = state?.Flyout == DockFlyout.Profiles;
-        _profile.Appearance =
-            pickerOpen ? ButtonAppearance.Neutral
-            : state?.Frequents == true ? ButtonAppearance.Ghost
-            : ButtonAppearance.Accent;
-        SurfaceParts.Name(_profile, labels.SwitchProfile);
-        _pill.Symbol = vm.AutoFixedIcon;
-        _pill.Content = vm.AutoFixedLabel;
-        _pill.Appearance =
-            state?.IsFixed == true ? ButtonAppearance.Danger : ButtonAppearance.Outline;
-        SurfaceParts.Name(_pill, vm.AutoFixedName);
-        _pill.ToolTip = vm.AutoFixedName;
+        _profile.Button.IsActive = !frequents;
+        _profile.Paint(!frequents);
+
+        // ACC-001: what opens a window beside the bar is an ExpandCollapse with its state, and what switches a state
+        // (Auto/Fixed, the lock) a Toggle, so UI Automation hears it and not only the look tells it.
+        _profile.Button.IsExpanded = pickerOpen;
+        _pinned.Button.IsExpanded = state?.Flyout == DockFlyout.Pinned;
+        _sticky.Button.IsExpanded = state?.Flyout == DockFlyout.Sticky;
+        _tune.IsExpanded = state?.QuickOpen == true;
+
+        var isFixed = state?.IsFixed == true;
+        _pill.Button.IsOn = isFixed;
+        _pill.Icon.Symbol = vm.AutoFixedIcon;
+        _pill.Say(vm.AutoFixedLabel, vm.AutoFixedName);
+        _pill.Paint(isFixed);
+        if (!_vertical && !_shape.IconChoices)
+        {
+            // A top or bottom bar is centred on its edge: a pill as wide as the longer of its two words keeps the fold,
+            // the shortcuts and the tools in place when Auto and Fixed swap (D21 review).
+            _pill.Label.MinWidth = vm
+                .AutoFixedLabels.Select(label => TextWidth(_pill.Label, label))
+                .DefaultIfEmpty(0)
+                .Max();
+        }
 
         _previous.IsEnabled = vm.CanGoPrevious;
         _next.IsEnabled = vm.CanGoNext;
-        _previous.AccessibleName = labels.PreviousPage;
-        _next.AccessibleName = labels.NextPage;
+        AutomationProperties.SetName(_previous, labels.PreviousPage);
+        AutomationProperties.SetName(_next, labels.NextPage);
         _pageLabel.Text = vm.PageLabel;
         _verticalPager.Visibility = SurfaceParts.Shown(_vertical && vm.HasPages);
         _previous.Visibility = SurfaceParts.Shown(vm.HasPages);
         _next.Visibility = SurfaceParts.Shown(vm.HasPages);
 
-        _search.AccessibleName = labels.Search;
-        _repeat.AccessibleName = labels.Repeat;
+        // CUA-004, AVI-004: what leads nowhere is disabled, and UI Automation hears it, not by color alone.
+        AutomationProperties.SetName(_search, labels.Search);
+        AutomationProperties.SetName(_repeat, labels.Repeat);
         _repeat.IsEnabled = state?.CanRepeat == true;
 
-        // CUA-004, AVI-004: what leads nowhere dims, and UI Automation hears it as not enabled, not by color alone.
-        Dimmed(_repeat, _repeat.IsEnabled);
-        Dimmed(_previous, vm.CanGoPrevious);
-        Dimmed(_next, vm.CanGoNext);
-        _pinned.Content = labels.PinnedShort;
-        SurfaceParts.Name(_pinned, labels.Pinned);
-        _pinned.Visibility = SurfaceParts.Shown(vm.ShowsPinned);
-        _pinned.Appearance =
-            state?.Flyout == DockFlyout.Pinned
-                ? ButtonAppearance.Outline
-                : ButtonAppearance.Neutral;
-        _stickyLabel.Text = labels.Sticky;
-        SurfaceParts.Name(_sticky, labels.Sticky);
-        _sticky.Visibility = SurfaceParts.Shown(vm.ShowsSticky);
-        _sticky.Appearance =
-            state?.Flyout == DockFlyout.Sticky
-                ? ButtonAppearance.Outline
-                : ButtonAppearance.Neutral;
+        var pinnedOpen = state?.Flyout == DockFlyout.Pinned;
+        _pinned.Say(labels.PinnedShort, labels.Pinned);
+        _pinned.Button.Visibility = SurfaceParts.Shown(vm.ShowsPinned);
+        _pinned.Button.IsActive = pinnedOpen;
+        _pinned.Paint(pinnedOpen);
+
+        var stickyOpen = state?.Flyout == DockFlyout.Sticky;
+        _sticky.Say(labels.Sticky, labels.Sticky);
+        _sticky.Button.Visibility = SurfaceParts.Shown(vm.ShowsSticky);
+        _sticky.Button.IsActive = stickyOpen;
+        _sticky.Paint(stickyOpen);
+
+        var arrowsOpen = state?.Flyout == DockFlyout.Arrows;
+        _arrows.Say(labels.Arrows, labels.Arrows);
+        _arrows.Button.IsActive = arrowsOpen;
+        _arrows.Button.IsExpanded = arrowsOpen;
+        _arrows.Paint(arrowsOpen);
+        FlowTools();
+
         var pinOpen = state?.Dock.PinOpen == true;
-        _lock.Symbol = pinOpen ? "lock" : "lock_open";
-        _lock.Content = vm.PinLabel;
-        _lock.Appearance = pinOpen ? ButtonAppearance.Accent : ButtonAppearance.Neutral;
-        SurfaceParts.Name(_lock, vm.PinName);
-        _lock.ToolTip = vm.PinName;
+        _lock.Button.IsOn = pinOpen;
+        _lock.Icon.Symbol = pinOpen ? "lock" : "lock_open";
+        _lock.Say(vm.PinLabel, vm.PinName);
+        _lock.Paint(pinOpen);
+
+        AutomationProperties.SetName(_tune, labels.QuickSettings);
+        _tune.IsActive = state?.QuickOpen == true;
         RefreshTargets();
     }
 
@@ -603,37 +1163,93 @@ public sealed class DockBarWindow : TouchSurface
     /// PES-007: what is left for the shortcuts along the edge, measured: the longest the bar may be, less everything
     /// else it shows. The view model counts the shortcuts that fit whole in it.
     /// </summary>
+    /// <remarks>
+    /// Only the bar of the edge in view measures: the bars of every edge share the view model, and the bar of the edge
+    /// being left is still on screen while the new one is laid out, so two measures along two edges would page the
+    /// shortcuts back and forth inside one layout pass and never let it end. The lengths are what each zone asks for
+    /// (a stack measures its children without a limit along its direction), never what the window was given: a window
+    /// cut to the longest the edge allows would otherwise count the cut part as room for the shortcuts.
+    /// </remarks>
     private void MeasureTileSpace()
     {
-        if (_measuring || Monitor is not { } monitor || !IsVisible || _root.ActualWidth <= 0)
+        if (
+            _measuring
+            || Monitor is not { } monitor
+            || !IsVisible
+            || _viewModel.Side != Side
+            || !_root.IsMeasureValid
+        )
         {
             return;
         }
 
+        ApplyTileSpace(monitor, DpiScale > 0 ? DpiScale : 1);
+    }
+
+    /// <summary>Hands the view model the longest the bar may be at <paramref name="scale"/>, less what it asks for besides its shortcuts.</summary>
+    private void ApplyTileSpace(DisplayMonitor monitor, double scale)
+    {
         _measuring = true;
         try
         {
-            var scale = DpiScale > 0 ? DpiScale : 1;
             var maxLength = DockGeometry.MaxBarLength(Side, monitor) / scale;
             var border = BorderThickness;
             var rootLength = _vertical
-                ? _root.ActualHeight
-                    + _root.Margin.Top
-                    + _root.Margin.Bottom
-                    + border.Top
-                    + border.Bottom
-                : _root.ActualWidth
-                    + _root.Margin.Left
-                    + _root.Margin.Right
-                    + border.Left
-                    + border.Right;
-            var tilesLength = _vertical ? _tiles.ActualHeight : _tiles.ActualWidth;
+                ? _root.Margin.Top + _root.Margin.Bottom + border.Top + border.Bottom
+                : _root.Margin.Left + _root.Margin.Right + border.Left + border.Right;
+            foreach (UIElement zone in _root.Children)
+            {
+                rootLength += _vertical ? zone.DesiredSize.Height : zone.DesiredSize.Width;
+            }
+
+            var tilesLength = _vertical ? _tiles.DesiredSize.Height : _tiles.DesiredSize.Width;
             var chrome = rootLength - tilesLength;
             _viewModel.ApplyTileSpace(Math.Max(0, maxLength - chrome));
         }
         finally
         {
             _measuring = false;
+        }
+    }
+
+    /// <summary>
+    /// What the size of the panel makes of the bar (<c>sizes.json</c> dock, D20): the width across a side bar (two
+    /// controls and their gap), the side of a control, whether the shortcuts and the choices of «What to see» are icons
+    /// alone (S) and the style of the names.
+    /// </summary>
+    /// <param name="Across">What a side bar shows across, its width less its padding.</param>
+    /// <param name="Tool">The side of a control: half of <paramref name="Across"/> less the gap.</param>
+    /// <param name="Columns">Controls in a row across a side bar.</param>
+    /// <param name="IconTiles">Whether the shortcuts are icons alone, one touch target each.</param>
+    /// <param name="IconChoices">Whether Frequents, the profile and Auto/Fixed are icons alone.</param>
+    /// <param name="Label">The style of the names of the shortcuts.</param>
+    [StructLayout(LayoutKind.Auto)]
+    private readonly record struct BarShape(
+        double Across,
+        double Tool,
+        int Columns,
+        bool IconTiles,
+        bool IconChoices,
+        TextStyleToken Label
+    )
+    {
+        public static BarShape Of(SizeMetrics metrics, bool vertical)
+        {
+            var across = metrics.DockBarWidthPx - (2 * Pad);
+            var tile = vertical
+                ? metrics.DockVerticalTileHeightPx
+                : metrics.DockHorizontalTileHeightPx;
+            var icons = tile <= ControlHeight.Small;
+            return new BarShape(
+                across,
+                (across - Space.S1) / 2,
+                2,
+                icons,
+                icons,
+                metrics.DockTileLabelPx > TextStyles.LabelSmall.Size
+                    ? TextStyleToken.Label
+                    : TextStyleToken.LabelSmall
+            );
         }
     }
 }

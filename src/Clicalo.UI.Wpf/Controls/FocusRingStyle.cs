@@ -15,10 +15,10 @@ namespace Clicalo.UI.Wpf.Controls;
 public static class FocusRingStyle
 {
     /// <summary>The ring of a shortcut tile (tile corner radius).</summary>
-    public static Style Tile { get; } = Create(Radii.Tile);
+    public static Style Tile { get; } = Create(Radii.Medium);
 
     /// <summary>The ring of a button (button corner radius).</summary>
-    public static Style Button { get; } = Create(Radii.Button);
+    public static Style Button { get; } = Create(Radii.Medium);
 
     /// <summary>A sealed focus visual style that follows a control whose corners have <paramref name="cornerRadius"/>.</summary>
     /// <param name="cornerRadius">Corner radius of the control, in device-independent pixels.</param>

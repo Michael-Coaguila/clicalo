@@ -1,6 +1,6 @@
 namespace Clicalo.Platform.Windows.Tray;
 
-/// <summary>The entries of the M2 tray menu (BUR-003); the value is the menu item id.</summary>
+/// <summary>The entries of the tray menu (BUR-003, BUR-004); the value is the menu item id.</summary>
 public enum TrayCommand
 {
     /// <summary>«Mostrar panel» or «Ocultar panel», as the panel is hidden or visible.</summary>
@@ -14,4 +14,10 @@ public enum TrayCommand
 
     /// <summary>«Centro de control»: opens the Control Center (blueprint §8.1, CCM-004).</summary>
     ControlCenter = 4,
+
+    /// <summary>
+    /// «Pausar» or «Reanudar» (BUR-004): paused, the panel hides, the profile stops following the app and nothing is
+    /// sent; pausing releases everything.
+    /// </summary>
+    Pause = 5,
 }

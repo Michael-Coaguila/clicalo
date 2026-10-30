@@ -57,9 +57,14 @@ public sealed class PanelWindowLookTests
                 tiles[1].Badge.ShouldBe("MANTENER");
                 tiles[2].Badge.ShouldBe("ALTERNAR");
 
-                // CUA-011: names at 14 px × 150 % and the key line at 10 px × 150 %.
+                // Direction C (D12): the type is an icon in the slot at the top right; Pulsar needs none.
+                tiles[0].TypeSymbol.ShouldBeNull();
+                tiles[1].TypeSymbol.ShouldBe("pan_tool");
+                tiles[2].TypeSymbol.ShouldBe("toggle_on");
+
+                // CUA-011: names in the label style (14) × 150 % and the key line in keysTile (11) × 150 %.
                 tiles[0].FontSize.ShouldBe(21);
-                tiles[0].KeysFontSize.ShouldBe(15);
+                tiles[0].KeysFontSize.ShouldBe(TypeScale.Scale(TextStyles.KeysTile.Size, 150));
             });
         }
         finally

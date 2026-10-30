@@ -1,17 +1,25 @@
-using System.Globalization;
 using Clicalo.Application.UseCases.Editor;
 using Clicalo.Domain.Commands;
+using Clicalo.Domain.Guides;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
+using Clicalo.Presentation.ControlCenter.About;
+using Clicalo.Presentation.ControlCenter.General;
 using Clicalo.Presentation.ControlCenter.Shortcuts;
+using Clicalo.Presentation.ControlCenter.SystemSection;
+using Clicalo.Presentation.ControlCenter.Templates;
+using Clicalo.Presentation.ControlCenter.TouchPrecision;
+using Clicalo.Presentation.Guides;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Clicalo.Presentation.ControlCenter;
 
 /// <summary>
 /// The frame of the Control Center (CCM-001 to CCM-003): the title bar with the path and the ES/EN selector, the side
-/// menu with its six sections and the status bar with [undo]. Sections 2 to 6 show a marker until their part arrives.
+/// menu with its six sections and the status bar with [undo]. A section whose services are not composed (tests) shows a
+/// marker.
 /// </summary>
 public sealed class ControlCenterViewModel : ObservableObject
 {
@@ -33,6 +41,9 @@ public sealed class ControlCenterViewModel : ObservableObject
     private string _title = string.Empty;
     private string _closeName = string.Empty;
     private string _closeHelp = string.Empty;
+    private string _minimizeName = string.Empty;
+    private string _maximizeName = string.Empty;
+    private string _restoreName = string.Empty;
     private string _soon = string.Empty;
     private string _languageName = string.Empty;
     private string _appName = string.Empty;
@@ -46,7 +57,9 @@ public sealed class ControlCenterViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(close);
         _s = services;
         _close = close;
+        Guide = new GuideViewModel(services.Localization, GuideDone);
         Shortcuts = new ShortcutsSectionViewModel(services);
+        Shortcuts.ListChosen += (_, _) => Guide.Signal(GuideSignal.ProfileChosen);
         Shortcuts.PropertyChanged += (_, e) =>
         {
             if (
@@ -60,11 +73,80 @@ public sealed class ControlCenterViewModel : ObservableObject
                 Refresh();
             }
         };
+        if (services.System is { } system)
+        {
+            System = new SystemSectionViewModel(services, system);
+            System.TabChosen += (_, _) => Guide.Signal(GuideSignal.SystemTabChanged);
+            System.PropertyChanged += (_, e) =>
+            {
+                if (
+                    string.Equals(
+                        e.PropertyName,
+                        nameof(SystemSectionViewModel.UpdateCount),
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    Refresh();
+                }
+            };
+        }
+
+        Templates = services.Templates is { } templates
+            ? new TemplatesSectionViewModel(services, templates, OpenProfile)
+            : null;
+        General = new GeneralSectionViewModel(
+            new GeneralServices(
+                services.Store,
+                services.Localization,
+                services.Confirm,
+                services.Time,
+                services.Post,
+                services.OpenWelcome ?? (static () => { }),
+                services.Templates?.Ai,
+                () => services.Catalogs().KeyLabels,
+                Templates is null ? null : OpenKey
+            )
+        );
+        TouchPrecision = new TouchPrecisionViewModel(
+            new TouchPrecisionServices(
+                services.Store,
+                services.Localization,
+                services.Time,
+                services.Post
+            )
+        );
+        TouchPrecision.Tested += (_, _) => Guide.Signal(GuideSignal.TestTapped);
+        if (services.About is { } about)
+        {
+            var aboutSection = new AboutViewModel(about);
+            About = aboutSection;
+            services.Localization.LanguageChanged += (_, _) => services.Post(aboutSection.Refresh);
+        }
+
         Refresh();
     }
 
+    /// <summary>The «General y panel» section (docs/05 §3).</summary>
+    public GeneralSectionViewModel General { get; }
+
+    /// <summary>The guide of the section in view (R-39), until it is finished or skipped.</summary>
+    public GuideViewModel Guide { get; }
+
+    /// <summary>The «Precisión táctil» section (docs/05 §4).</summary>
+    public TouchPrecisionViewModel TouchPrecision { get; }
+
+    /// <summary>The «Acerca de y contacto» section (docs/05 §6); null while its services are not composed.</summary>
+    public AboutViewModel? About { get; }
+
+    /// <summary>The «Plantillas» section; null without its services.</summary>
+    public TemplatesSectionViewModel? Templates { get; }
+
     /// <summary>The «Atajos» section.</summary>
     public ShortcutsSectionViewModel Shortcuts { get; }
+
+    /// <summary>The «Sistema» section (docs/05 §5); null while its services are not composed.</summary>
+    public SystemSectionViewModel? System { get; }
 
     /// <summary>The section in view.</summary>
     public ControlCenterSection Section
@@ -129,6 +211,27 @@ public sealed class ControlCenterViewModel : ObservableObject
         private set => SetProperty(ref _closeHelp, value);
     }
 
+    /// <summary>[min], the name of the minimize button of the title bar (D13).</summary>
+    public string MinimizeName
+    {
+        get => _minimizeName;
+        private set => SetProperty(ref _minimizeName, value);
+    }
+
+    /// <summary>[winMaximize], the name of the maximize button while the window is not maximized (D13).</summary>
+    public string MaximizeName
+    {
+        get => _maximizeName;
+        private set => SetProperty(ref _maximizeName, value);
+    }
+
+    /// <summary>[winRestore], the name of the same button while the window is maximized (D13).</summary>
+    public string RestoreName
+    {
+        get => _restoreName;
+        private set => SetProperty(ref _restoreName, value);
+    }
+
     /// <summary>The marker of the sections that arrive in the next part.</summary>
     public string Soon
     {
@@ -148,6 +251,28 @@ public sealed class ControlCenterViewModel : ObservableObject
     public void Select(ControlCenterSection section)
     {
         Section = section;
+        if (section != ControlCenterSection.Shortcuts)
+        {
+            // EDI-010: «Grabar con teclado» belongs to the editor; in another section the keyboard is free again.
+            Shortcuts.Editor.StopRecording();
+        }
+
+        if (section == ControlCenterSection.System)
+        {
+            System?.OnShown();
+        }
+
+        if (section == ControlCenterSection.Panel)
+        {
+            General.OnShown();
+        }
+
+        if (section == ControlCenterSection.Templates)
+        {
+            // The open apps and the key are read again each time the section shows (PLA-011, PLA-003).
+            Templates?.OnOpened();
+        }
+
         Refresh();
     }
 
@@ -181,6 +306,16 @@ public sealed class ControlCenterViewModel : ObservableObject
             return;
         }
 
+        if (Section == ControlCenterSection.System && (System?.CloseMenu() ?? false))
+        {
+            return;
+        }
+
+        if (Section == ControlCenterSection.Templates && Templates?.CloseMenu() == true)
+        {
+            return;
+        }
+
         _close();
     }
 
@@ -205,11 +340,15 @@ public sealed class ControlCenterViewModel : ObservableObject
     /// <summary>Projects the frame again (language, counts, undo).</summary>
     public void Refresh()
     {
+        Templates?.Invalidate();
         var localizer = _s.Localization.Current;
         AppName = T(L.AppName);
         Title = T(L.Cc);
         CloseName = T(L.Close);
         CloseHelp = T(L.CloseEsc);
+        MinimizeName = T(L.Min);
+        MaximizeName = T(L.WinMaximize);
+        RestoreName = T(L.WinRestore);
         Soon = T(L.CcSoon);
         LanguageName = T(L.Lang);
         var repeated = Shortcuts.RepeatedCount;
@@ -219,10 +358,18 @@ public sealed class ControlCenterViewModel : ObservableObject
             Item(ControlCenterSection.Templates, "auto_awesome", L.NavTpl, 0, false),
             Item(ControlCenterSection.Panel, "display_settings", L.NavPanel, 0, false),
             Item(ControlCenterSection.Touch, "touch_app", L.NavTouch, 0, false),
-            Item(ControlCenterSection.System, "verified_user", L.NavSys, 0, true),
+            Item(
+                ControlCenterSection.System,
+                "verified_user",
+                L.NavSys,
+                System?.UpdateCount ?? 0,
+                true,
+                L.UpdAvail
+            ),
             Item(ControlCenterSection.About, "favorite", L.NavAbout2, 0, false),
         ];
         SectionTitle = Nav.Items.First(n => n.Section == Section).Label;
+        Guide.Show(GuideRules.InControlCenter(GuideOf(Section), _s.Store.Current.Settings));
         Languages =
         [
             .. _s.Localization.Languages.Select(locale => new LanguageOption(
@@ -240,19 +387,57 @@ public sealed class ControlCenterViewModel : ObservableObject
                 notice.IsWarning,
                 canUndo,
                 T(L.Undo),
-                T(notice.UndoName ?? L.Undo)
+                T(notice.UndoName ?? L.Undo),
+                IsNotice: true
             )
             : new StatusModel("info", T(L.Saved), false, false, T(L.Undo), T(L.Undo));
     }
 
     private string T(Message message) => _s.Localization.Current.Format(message);
 
+    /// <summary>The guide of <paramref name="section"/> (R-39).</summary>
+    private static GuideId GuideOf(ControlCenterSection section) =>
+        section switch
+        {
+            ControlCenterSection.Templates => GuideId.Templates,
+            ControlCenterSection.Panel => GuideId.General,
+            ControlCenterSection.Touch => GuideId.Touch,
+            ControlCenterSection.System => GuideId.System,
+            ControlCenterSection.About => GuideId.About,
+            _ => GuideId.Shortcuts,
+        };
+
+    /// <summary>R-39: the guide of a section was finished or skipped; it does not show again until General asks for it.</summary>
+    private void GuideDone(GuideId guide) =>
+        _ = _s.Store.Dispatch(
+            new SetSetting(
+                SettingPaths.GuidesDone,
+                GuideProgress.WithDone(_s.Store.Current.Settings.GuidesDone, guide)
+            )
+        );
+
+    // A profile created or chosen in Plantillas: «Atajos» on it, with the library when it is new (PLA-010, PLA-014).
+    private void OpenProfile(ProfileId profile, bool library)
+    {
+        _s.Shortcuts.Open(new ListRef.InProfile(profile), null, library);
+        Shortcuts.OnOpened();
+        Select(ControlCenterSection.Shortcuts);
+    }
+
+    // «Usar mi clave» of General › IA: the key is pasted in Plantillas, next to «Crear con IA» (GEN-015, PLA-003).
+    private void OpenKey()
+    {
+        Templates?.OpenKey();
+        Select(ControlCenterSection.Templates);
+    }
+
     private NavItem Item(
         ControlCenterSection section,
         string icon,
         Message label,
         int count,
-        bool separator
+        bool separator,
+        Message? countName = null
     ) =>
         new(
             section,
@@ -260,7 +445,9 @@ public sealed class ControlCenterViewModel : ObservableObject
             T(label),
             count,
             count > 0
-                ? count.ToString(CultureInfo.InvariantCulture) + " " + T(L.DupSummary)
+                ? countName is { } name
+                    ? T(name)
+                    : T(L.DupSummaryN(count))
                 : string.Empty,
             section == Section,
             separator

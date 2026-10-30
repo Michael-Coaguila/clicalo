@@ -22,16 +22,34 @@ internal static class Ui
         ColorToken ink = ColorToken.Text,
         bool mono = false,
         bool wrap = false
+    ) => Fill(new TextBlock(), text, px, bold, ink, mono, wrap);
+
+    /// <summary>
+    /// A separator drawn as text (the «+» between two keys), on the type scale: UI Automation does not see it
+    /// (<see cref="DecorativeText"/>, UIA008).
+    /// </summary>
+    public static TextBlock Separator(
+        string text,
+        double px,
+        bool bold = false,
+        ColorToken ink = ColorToken.Muted
+    ) => Fill(new DecorativeText(), text, px, bold, ink, mono: false, wrap: false);
+
+    private static TextBlock Fill(
+        TextBlock block,
+        string text,
+        double px,
+        bool bold,
+        ColorToken ink,
+        bool mono,
+        bool wrap
     )
     {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontWeight = bold ? FontWeights.Bold : FontWeights.Normal,
-            TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
-            TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        block.Text = text;
+        block.FontWeight = bold ? FontWeights.Bold : FontWeights.Normal;
+        block.TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
+        block.TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis;
+        block.VerticalAlignment = VerticalAlignment.Center;
         block.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(px));
         Ink(block, TextBlock.ForegroundProperty, ink);
         if (mono)
@@ -146,7 +164,7 @@ internal static class Ui
         }
         else
         {
-            Ink(icon, SymbolIcon.ForegroundProperty, ColorToken.Accent);
+            Ink(icon, SymbolIcon.ForegroundProperty, ColorToken.AccentInk);
         }
 
         return icon;
@@ -173,40 +191,47 @@ internal static class Ui
         return panel;
     }
 
-    /// <summary>A grid of <paramref name="columns"/> equal columns, <paramref name="gap"/> apart.</summary>
+    /// <summary>
+    /// A grid of <paramref name="columns"/> equal columns, <paramref name="gap"/> apart. The gaps are columns and rows of
+    /// their own, so every column has the same width (a margin split between neighbours made the middle ones narrower).
+    /// </summary>
     public static Grid Columns(int columns, double gap, IReadOnlyList<UIElement> children)
     {
+        columns = Math.Max(1, columns);
         var grid = new Grid();
         for (var c = 0; c < columns; c++)
         {
+            if (c > 0)
+            {
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(gap) });
+            }
+
             grid.ColumnDefinitions.Add(
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             );
         }
 
-        var rows = (children.Count + columns - 1) / Math.Max(1, columns);
+        var rows = (children.Count + columns - 1) / columns;
         for (var r = 0; r < rows; r++)
         {
+            if (r > 0)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(gap) });
+            }
+
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         }
 
         for (var i = 0; i < children.Count; i++)
         {
             var child = children[i];
-            var column = i % columns;
-            var row = i / columns;
             if (child is FrameworkElement element)
             {
-                element.Margin = new Thickness(
-                    column == 0 ? 0 : gap / 2,
-                    row == 0 ? 0 : gap / 2,
-                    column == columns - 1 ? 0 : gap / 2,
-                    row == rows - 1 ? 0 : gap / 2
-                );
+                element.Margin = default;
             }
 
-            Grid.SetColumn(child, column);
-            Grid.SetRow(child, row);
+            Grid.SetColumn(child, 2 * (i % columns));
+            Grid.SetRow(child, 2 * (i / columns));
             grid.Children.Add(child);
         }
 
@@ -244,122 +269,176 @@ internal static class Ui
         return row;
     }
 
-    /// <summary>A button with <paramref name="content"/>, named <paramref name="name"/> for UI Automation.</summary>
-    public static CcButton Button(
+    /// <summary>
+    /// A button of direction C with <paramref name="content"/>, named <paramref name="name"/> for UI Automation: the
+    /// variant follows from the old fill, text and outline (<see cref="VariantOf"/>) until each view names its
+    /// variant. With <paramref name="expanded"/> it is the header of a collapsible: ExpandCollapse with that state
+    /// instead of Invoke (ACC-001).
+    /// </summary>
+    public static TouchButton Button(
         object content,
         string name,
         Action click,
         ColorToken? fill = null,
         ColorToken ink = ColorToken.Text,
         ColorToken? stroke = null,
-        double height = 44,
-        double radius = 10
+        double height = ControlHeight.Small,
+        double radius = Radii.Medium,
+        bool? expanded = null
     )
     {
         ArgumentNullException.ThrowIfNull(click);
-        var button = new CcButton { Content = content, Height = height };
-        CcChrome.Paint(button, fill, ink, stroke);
-        button.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
+        _ = radius;
+        var button = new TouchButton { Content = content, IsExpanded = expanded };
+        Paint(button, fill, ink, stroke);
+        button.Height = height;
         AutomationProperties.SetName(button, name);
         button.Click += (_, _) => click();
         return button;
     }
 
     /// <summary>
-    /// A button that shows a choice: accentWash with a 2 px accent outline when <paramref name="on"/>, card with a
-    /// border otherwise, and the Toggle state for UI Automation.
+    /// The variant of direction C that takes the place of an old fill, text and outline: accent fill → primary;
+    /// danger → danger; no fill and no outline → tertiary; anything else → secondary. An armed fill (warn) or a
+    /// highlighted one (accent wash with an accent outline) is drawn pressed.
     /// </summary>
-    public static CcToggle Choice(
+    public static (ButtonVariant Variant, bool Pressed) VariantOf(
+        ColorToken? fill,
+        ColorToken ink,
+        ColorToken? stroke
+    ) =>
+        (fill, ink, stroke) switch
+        {
+            (ColorToken.Accent, _, _) or (_, ColorToken.OnAccent, _) => (
+                ButtonVariant.Primary,
+                false
+            ),
+            (ColorToken.Danger or ColorToken.DangerWash, _, _)
+            or (_, ColorToken.DangerText or ColorToken.OnDanger, _) => (
+                ButtonVariant.Danger,
+                false
+            ),
+            (ColorToken.Warn, _, _) => (ButtonVariant.Secondary, true),
+            (ColorToken.AccentWash, _, ColorToken.Accent) => (ButtonVariant.Secondary, true),
+            (null, _, null) => (ButtonVariant.Tertiary, false),
+            _ => (ButtonVariant.Secondary, false),
+        };
+
+    /// <summary>
+    /// Gives <paramref name="control"/> the look of direction C that takes the place of an old fill, text and outline:
+    /// a button gets its variant (<see cref="VariantOf"/>); an option keeps the look of its kind and state; any other
+    /// control is painted with the tokens.
+    /// </summary>
+    public static void Paint(Control control, ColorToken? fill, ColorToken ink, ColorToken? stroke)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        switch (control)
+        {
+            case TouchButton button:
+                var (variant, pressed) = VariantOf(fill, ink, stroke);
+                button.Variant = variant;
+                button.IsActive = pressed;
+                break;
+            case OptionButton or SystemSection.SystemTabItem:
+                // «Elegido» has one look, drawn by the option itself from its state.
+                break;
+            default:
+                if (fill is { } background)
+                {
+                    Ink(control, Control.BackgroundProperty, background);
+                }
+
+                Ink(control, Control.ForegroundProperty, ink);
+                if (stroke is { } line)
+                {
+                    Ink(control, Control.BorderBrushProperty, line);
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>
+    /// An option of direction C: chosen or not (the single look of «elegido»: wash, the ring of 2 inside and a filled
+    /// icon or ✓). With an <paramref name="offFill"/> it is a tile with its card and line; without, it has no fill of
+    /// its own. For UI Automation it is what <paramref name="role"/> says (ACC-001): a choice of a group with
+    /// SelectionItem, a switch with Toggle, or the header of a collapsible with ExpandCollapse.
+    /// </summary>
+    public static OptionButton Choice(
         object content,
         string name,
         bool on,
         Action click,
-        double height = 44,
-        double radius = 10,
-        ColorToken? offFill = ColorToken.Card
+        double height = ControlHeight.Small,
+        double radius = Radii.Medium,
+        ColorToken? offFill = ColorToken.Card,
+        OptionRole role = OptionRole.Toggle
     )
     {
         ArgumentNullException.ThrowIfNull(click);
-        var toggle = new CcToggle
+        _ = radius;
+        var option = new OptionButton
         {
             Content = content,
-            Height = height,
-            IsChecked = on,
+            Kind = offFill is null ? OptionKind.Segment : OptionKind.Tile,
+            Role = role,
+            IsSelected = on,
         };
-        if (on)
-        {
-            CcChrome.Paint(toggle, ColorToken.AccentWash, ColorToken.Text, ColorToken.Accent);
-            toggle.BorderThickness = new Thickness(2);
-        }
-        else
-        {
-            CcChrome.Paint(toggle, offFill, ColorToken.Text, ColorToken.Border);
-        }
+        option.Height = height;
+        AutomationProperties.SetName(option, name);
+        option.Click += (_, _) => click();
+        return option;
+    }
 
-        toggle.SetValue(CcChrome.RadiusProperty, new CornerRadius(radius));
-        AutomationProperties.SetName(toggle, name);
-        toggle.Click += (_, _) => click();
-        return toggle;
+    /// <summary>
+    /// Marks a <see cref="Choice"/> as chosen or not, in place: a long list changes its mark without building its
+    /// buttons again (EDI-014).
+    /// </summary>
+    /// <param name="option">The choice.</param>
+    /// <param name="on">Whether it is the chosen one.</param>
+    public static void PaintChoice(OptionButton option, bool on)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        option.IsSelected = on;
     }
 
     /// <summary>
     /// A row that is a switch as a whole (docs/07: «toda la fila es tocable»): icon, title and description, and the
-    /// 48 × 28 switch drawn at the end; the Toggle pattern for UI Automation.
+    /// 48 × 28 switch at the end; the Toggle pattern for UI Automation. Its state is the view model's. With
+    /// <paramref name="wholeDescription"/>, in a zone that scrolls, the description is never cut: it says what the
+    /// switch does.
     /// </summary>
-    public static CcToggle SwitchRow(
+    public static ToggleSwitch SwitchRow(
         string? icon,
         string title,
         string description,
         bool on,
-        Action click
+        Action click,
+        bool wholeDescription = false
     )
     {
-        var text = Column(
-            2,
-            Text(title, 14, bold: true, wrap: true),
-            description.Length == 0
-                ? null
-                : Text(description, 12, ink: ColorToken.Muted, wrap: true)
-        );
-        var knob = new ToggleSwitch
+        ArgumentNullException.ThrowIfNull(click);
+        var row = new ToggleSwitch
         {
+            Content = title,
+            Symbol = icon,
+            Description = description.Length == 0 ? null : description,
             IsChecked = on,
-            IsHitTestVisible = false,
-            Focusable = false,
-            VerticalAlignment = VerticalAlignment.Center,
+            FollowsViewModel = true,
         };
-        var layout = new DockPanel { LastChildFill = true };
-        if (icon is not null)
+        if (wholeDescription)
         {
-            var symbol = Icon(icon, 22, ColorToken.Accent);
-            symbol.Margin = new Thickness(0, 0, 12, 0);
-            DockPanel.SetDock(symbol, Dock.Left);
-            layout.Children.Add(symbol);
+            row.DescriptionLines = 0;
         }
 
-        knob.Margin = new Thickness(12, 0, 0, 0);
-        DockPanel.SetDock(knob, Dock.Right);
-        layout.Children.Add(knob);
-        layout.Children.Add(text);
-        var row = new CcToggle
-        {
-            Content = layout,
-            IsChecked = on,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(14, 10, 14, 10),
-            MinHeight = 56,
-        };
-        CcChrome.Paint(row, ColorToken.Card, ColorToken.Text, null);
-        row.SetValue(CcChrome.RadiusProperty, new CornerRadius(12));
         AutomationProperties.SetName(row, title);
         AutomationProperties.SetHelpText(row, description);
         row.Click += (_, _) => click();
         return row;
     }
 
-    /// <summary>A small caption above a group of controls (12 px, bold, muted).</summary>
-    public static TextBlock Caption(string text) =>
-        Text(text, 12, bold: true, ink: ColorToken.Muted);
+    /// <summary>The section label: the single <see cref="Overline"/> of direction C.</summary>
+    public static Overline Caption(string text) => new(text);
 
     /// <summary>A thin line of the theme.</summary>
     public static Border Line(double margin = 0)

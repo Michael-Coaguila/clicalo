@@ -55,9 +55,9 @@
       "items": { "$ref": "#/$defs/keyId" }
     },
     "iconId": {
-      "description": "Material Symbols Rounded icon name listed in data/catalogs/icons.json.",
+      "description": "Material Symbols Rounded icon name listed in data/catalogs/icons.json; some start with a digit (123, 3d_rotation).",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*$"
+      "pattern": "^[a-z0-9][a-z0-9_]*$"
     },
     "categoryId": {
       "description": "Colour category listed in data/catalogs/categories.json.",

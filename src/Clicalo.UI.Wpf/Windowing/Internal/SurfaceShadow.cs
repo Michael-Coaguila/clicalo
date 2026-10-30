@@ -10,7 +10,9 @@ namespace Clicalo.UI.Wpf.Windowing.Internal;
 
 /// <summary>
 /// The shadow of a surface with a <see cref="SurfaceLook"/> (spike S6): a window of its own, right below the surface in
-/// the z-order, that draws the <see cref="ShadowRaster"/> bitmap and lets every click and touch through.
+/// the z-order, that draws the <see cref="ShadowRaster"/> bitmap and lets every click and touch through. With an
+/// inset it surrounds what the surface draws inside its window instead of the whole window (the handle of the Tab view,
+/// whose window is deeper than its drawing to take the touch on 44 px: PES-001, REG-02).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -33,15 +35,22 @@ internal sealed class SurfaceShadow : IDisposable
 
     private readonly NonActivatingWindow _surface;
     private readonly SurfaceLook _look;
+    private readonly Thickness _inset;
     private readonly HwndSource _source;
     private readonly ShadowElement _element = new();
     private (int Width, int Height, uint Dpi, Color Color) _rendered;
     private ShadowImage? _image;
 
-    public SurfaceShadow(NonActivatingWindow surface, SurfaceLook look, nint owner)
+    public SurfaceShadow(
+        NonActivatingWindow surface,
+        SurfaceLook look,
+        nint owner,
+        Thickness inset = default
+    )
     {
         _surface = surface;
         _look = look;
+        _inset = inset;
         var parameters = new HwndSourceParameters(WindowName)
         {
             WindowStyle = unchecked((int)WINDOW_STYLE.WS_POPUP),
@@ -85,9 +94,10 @@ internal sealed class SurfaceShadow : IDisposable
         }
 
         var shown = visible ?? PInvoke.IsWindowVisible(surface);
+        var dpi = PInvoke.GetDpiForWindow(surface);
+        bounds = Inset(bounds, _inset, dpi / 96.0);
         var width = bounds.right - bounds.left;
         var height = bounds.bottom - bounds.top;
-        var dpi = PInvoke.GetDpiForWindow(surface);
         var color = _surface.ShadowColor;
         if (width < 1 || height < 1 || color.A == 0 || dpi == 0)
         {
@@ -117,12 +127,28 @@ internal sealed class SurfaceShadow : IDisposable
         );
     }
 
+    /// <summary>
+    /// <paramref name="bounds"/> less <paramref name="inset"/> (device-independent pixels) at <paramref name="scale"/>:
+    /// the rectangle the surface draws inside its window.
+    /// </summary>
+    internal static RECT Inset(RECT bounds, Thickness inset, double scale) =>
+        new()
+        {
+            left = bounds.left + Pixels(inset.Left, scale),
+            top = bounds.top + Pixels(inset.Top, scale),
+            right = bounds.right - Pixels(inset.Right, scale),
+            bottom = bounds.bottom - Pixels(inset.Bottom, scale),
+        };
+
     /// <summary>Destroys the shadow window.</summary>
     public void Dispose()
     {
         BindingOperations.ClearAllBindings(_element);
         _source.Dispose();
     }
+
+    private static int Pixels(double logical, double scale) =>
+        (int)Math.Round(logical * scale, MidpointRounding.AwayFromZero);
 
     private void Place(HWND surface, RECT bounds, SET_WINDOW_POS_FLAGS show)
     {

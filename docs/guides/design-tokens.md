@@ -1,8 +1,8 @@
 # Tokens de diseño
 
-Guía de los colores, formas, tiempos de movimiento y fuentes de Clícalo: de dónde salen, cómo se convierten, cómo se garantiza el contraste y cómo se consumen desde WPF (servicio de temas y controles base, §14 a §16).
+Guía de los colores, formas, tiempos de movimiento y fuentes de Clícalo: de dónde salen, cómo se convierten, cómo se garantiza el contraste y cómo se consumen desde WPF (servicio de temas y controles base, §14 a §16). Desde D12 manda la dirección C: las medidas, la escala tipográfica y los componentes base se describen en el [sistema de diseño](../design/sistema.md).
 
-- **Fuente de verdad:** `data/tokens/` (cinco archivos JSON).
+- **Fuente de verdad:** `data/tokens/` (seis archivos JSON).
 - **Código generado:** espacio de nombres `Clicalo.UI.Wpf.Theming.Generated`, producido por `TokenGenerator` (perfil `UiWpf`). Nunca se edita a mano.
 - **Matemática:** `generators/Clicalo.Design.Math` (netstandard2.0, sin dependencias), enlazada en el generador y usada por las pruebas.
 - **Requisitos:** TEM-001 a TEM-009, ACC-003, ACC-009 y NFR-007 del catálogo. **Plano:** §8.4 y §3.2 regla 8.
@@ -15,6 +15,7 @@ data/tokens/extra-tokens.json     tokens nuevos, categorías, correcciones, form
 data/tokens/contrast-pairs.json   pares texto/fondo y gráfico/fondo con su mínimo
 data/tokens/hc-system-map.json    colores de sistema del alto contraste de Windows
 data/tokens/motion.json           duraciones y su valor con reducir movimiento
+data/tokens/design-system.json    espacio, alturas, radios, cajas de icono, grosores, medidas de componente y tipografía (C)
       │
       ▼  TokenGenerator (Clicalo.Generators, perfil UiWpf)
       │    lee y valida → corrige → resuelve alias → OKLCH → sRGB (mapeo de gama CSS Color 4)
@@ -22,7 +23,8 @@ data/tokens/motion.json           duraciones y su valor con reducir movimiento
       ▼
 Clicalo.UI.Wpf.Theming.Generated
   ColorToken · CategoryToken · ThemePalette · ThemePalettes · SystemHighContrastPalette
-  Radii · FocusRing · ShadowSpec · Shadows · MotionToken · Motion
+  Space · ControlHeight · Radii · IconBox · Stroke · ComponentSize · FocusRing · TextStyleToken · TextStyles
+  ShadowSpec · Shadows · MotionToken · Motion
       │
       ▼  pegamento escrito a mano (Clicalo.UI.Wpf.Theming)
   ThemeId · ThemeCatalog.GetPalette(ThemeId)
@@ -52,11 +54,19 @@ Copia fiel de `docs/design/handoff/data/theme-palettes.json` (solo se añade el 
 | `themes` | Nombre C# de cada tema: `dark` → `Dark`, `light` → `Light`, `hc` → `HighContrast`. |
 | `colors` | Tokens que exige TEM-002 y que el paquete no tiene, por tema. Un valor que es el nombre de otro token del mismo tema es un **alias** (`"focusRing": "accent"`). |
 | `categories` | Tonos CAT y fórmula de TEM-003: tinte `oklch(tintL tintChroma tono)`, fondo activo `oklch(washLightness washChroma tono / washA)`; los temas con `"hc": true` usan `highContrast` (#FFE600 sobre #333000). |
-| `corrections` | Correcciones de contraste de TEM-004, con `from`, `to`, `requirement` y `reason` (§6). |
-| `radii` | Radios de esquina (docs/07 «Formas»). |
+| `redesign` | Valores del paquete que cambia la dirección C (D12), con `from` (el valor del paquete), `to`, `decision` y `reason`. Se aplican antes que las correcciones. |
+| `corrections` | Correcciones de contraste de TEM-004, con `from`, `to`, `requirement` y `reason` (§6). Su `from` es el valor ya rediseñado. |
 | `shadows` | Sombras precalculadas: desplazamiento, desenfoque y opacidad. |
-| `focusRing` | Grosor (3) y separación (2) del anillo de foco (TEM-009). |
 | `gamutMapping` | `maxDeltaEOK`: cuánto puede mover el mapeo de gama un color fuera de sRGB (§3.3). |
+
+### 2.2 bis `design-system.json`
+
+Las medidas de la dirección C, con su esquema en `data/schemas/design-system.schema.json`: `space`, `controlHeights`,
+`radii` (los radios y la pastilla; antes en `extra-tokens.json`), `iconBoxes`, `strokes` (con el anillo de foco de
+TEM-009, antes en `extra-tokens.json`), `components` y `typography` (familia, peso, tamaño, interlineado y, en
+`overline`, espaciado y versalitas). Se describen en el [sistema de diseño](../design/sistema.md#2-tokens). Un error es
+CLCT004 en su posición: un estilo por debajo de 11 (TEM-007), un peso que no está empaquetado o un interlineado menor
+que el tamaño.
 
 ### 2.3 `contrast-pairs.json`
 
@@ -146,13 +156,13 @@ Un par por debajo de su mínimo es CLCT002 en la entrada de `backgrounds` que fa
 
 | Familia | Tokens | Papel |
 |---|---|---|
-| Superficies | `panel` (translúcido), `win`, `side`, `card`, `cardHi`, `field` | Fondos. `desk` es el escritorio simulado del prototipo (decorativo). |
+| Superficies | `panel` (translúcido), `win` (surface de C), `side` (surface-2), `card`, `cardHi` (card-hover), `field` | Fondos. `desk` es el escritorio simulado del prototipo (decorativo). |
 | Texto | `text`, `muted` | Texto principal y secundario. |
-| Acento | `accent`, `onAccent`, `accentWash` | Selección, Auto, enlaces; texto sobre acento; fondo de lo seleccionado. |
+| Acento | `accent`, `accentInk`, `onAccent`, `accentWash` | Interactivo o elegido (relleno del primario, anillo de elegido); texto e iconos de acento; texto sobre acento; fondo de lo elegido. |
 | Aviso | `warn`, `onWarn`, `warnWash`, `warnText` | Relleno y bordes de aviso (números de voz, ficha armada); texto sobre el relleno; fondo de avisos; texto e iconos de aviso sobre superficies. |
 | Peligro | `danger`, `onDanger`, `dangerWash`, `dangerText` | Relleno y bordes (Eliminar armado, pánico); texto sobre el relleno; fondo de peligro; texto e iconos de peligro sobre superficies. |
 | Éxito | `success`, `onSuccess` | Marca de acierto del Modo prueba e icono sobre ella. |
-| Líneas | `line`, `border` | `line` es el límite que identifica un componente (contorno de campos, huecos para añadir) y cumple 3:1; `border` es un filete decorativo. |
+| Líneas | `line`, `border` | `line` es el límite que identifica un componente (line-strong de C: contorno de campos, botones secundarios, interruptor apagado) y cumple 3:1; `border` es el filete decorativo de reposo (line de C). |
 | Foco | `focusRing` | Alias de `accent`; amarillo en alto contraste (TEM-009). |
 | Decorativos | `scrim`, `shadow` | Velo tras un modal; color de las sombras. |
 
@@ -170,15 +180,12 @@ Por eso `warnText` y `dangerText` son tokens propios. En el tema oscuro `warnTex
 | Tema | Token | Antes → después | Par determinante | Contraste |
 |---|---|---|---|---|
 | Oscuro | `danger` | oklch(0.62 0.18 25) → **0.588** | `onDanger` sobre `danger` | 3,96 → 4,54 |
-| Oscuro | `line` | oklch(1 0 0 / 0.14) → **/ 0.34** | `line` sobre `field` | 1,44 → 3,05 |
 | Oscuro | `tintL` | 0.82 → **0.84** | insignia `categoryTint` sobre doble `categoryWash` (win) | 4,24 → 4,53 |
-| Claro | `accent` | oklch(0.50 0.11 220) → **0.474** | `accent` sobre `accentWash over card` (y sobre `cardHi`) | 4,03 → 4,50 |
-| Claro | `warn` | oklch(0.58 0.13 70) → **0.602** | `onWarn` sobre `warn` (números de voz) | 4,12 → 4,52 |
-| Claro | `warnText` | oklch(0.58 0.13 70) → **0.503** | `warnText` sobre `cardHi` | 3,26 → 4,52 |
-| Claro | `danger` | oklch(0.62 0.18 25) → **0.588** | `onDanger` sobre `danger` | 3,96 → 4,54 |
-| Claro | `dangerText` | oklch(0.72 0.16 25) → **0.506** | `dangerText` sobre `dangerWash over card` | 1,89 → 4,51 |
-| Claro | `line` | oklch(0 0 0 / 0.16) → **/ 0.43** | `line` sobre `card` | 1,45 → 3,07 |
-| Claro | `tintL` | 0.5 → **0.468** | insignia `categoryTint` sobre doble `categoryWash` (voice → web) | 3,89 → 4,50 |
+| Claro | `tintL` | 0.5 → **0.452** | insignia `categoryTint` sobre doble `categoryWash` sobre el panel gris de C (voice) | 3,63 → ≥4,5 |
+
+Con la dirección C (D12) desaparecen las correcciones de `line`, `accent`, `warn`, `warnText`, `danger` claro y
+`dangerText`: los valores de C ya cumplen sus pares (`line` pasa a 0,42 y 0,45 de alfa, `accentInk` lleva el texto de
+acento, `warn` claro es un relleno con texto oscuro y `warnText` y `dangerText` son las tintas de C).
 
 TEM-004 citaba los fallos del tema claro (warn, accent sobre cardHi, peligro y los bordes line). Medidos sobre el fondo compuesto real, también fallaban en el tema oscuro `line`, el texto blanco sobre `danger` y la insignia de una ficha activa; se corrigen igual. Para `onWarn` sobre `warn` se corrige `warn` (+0,022) y no `onWarn` (−0,055) porque es el cambio menor.
 
@@ -190,7 +197,7 @@ TEM-004 citaba los fallos del tema claro (warn, accent sobre cardHi, peligro y l
 
 ## 8. Formas y foco
 
-- **Radios** (`Radii`): `Compact` 6, `Control` 8, `Button` 10, `Tile` 12, `LargeCard` 14, `Window` 16, `Panel` 18, `Modal` 20.
+- **Radios** (`Radii`, de `design-system.json`): `Small` 8, `Medium` 12, `Large` 16 y `Pill` 999 (D12).
 - **Sombras** (`Shadows`): `Panel` 0 18 50 al 45 %, `Modal` 0 30 80 al 50 %, `Menu` 0 14 40 al 45 %, `Bubble` 0 10 30 al 40 % y `Handle` (asa de la barra) 0 6 20 al 35 %. Se pintan precalculadas, nunca con `DropShadowEffect` (§8.1). `ShadowSpec.ColorIn(palette)` aplica la opacidad al token `shadow` del tema; en alto contraste devuelve transparente.
 - **Anillo de foco** (`FocusRing`): 3 px separados 2 px del control, en `focusRing`.
 
@@ -215,7 +222,9 @@ TimeSpan fade = Motion.Get(MotionToken.PanelOpacity, reduceMotion: true); // Tim
 | `ThemePalette` | Colores de un tema: propiedades, `GetColor`, `GetCategoryTint`, `GetCategoryWash`, fábricas de pinceles congelados, `Key`, `Name`, `IsHighContrast`, `BorderThickness`. Inmutable. |
 | `ThemePalettes` | `Dark`, `Light`, `HighContrast` y `All` (los temas en el orden de los datos). |
 | `SystemHighContrastPalette` | Colores de sistema por token y `Capture()`. |
-| `Radii`, `FocusRing`, `ShadowSpec`, `Shadows` | Formas. |
+| `Space`, `ControlHeight`, `Radii`, `IconBox`, `Stroke`, `ComponentSize`, `FocusRing` | Medidas de la dirección C (constantes `double`). |
+| `TextStyleToken`, `TextFamily`, `TextStyleSpec`, `TextStyles` | Escala tipográfica cerrada: `TextStyles.Get(token)` da familia, peso, tamaño, interlineado, espaciado y versalitas. |
+| `ShadowSpec`, `Shadows` | Sombras. |
 | `MotionToken`, `Motion` | Duraciones con y sin reducir movimiento. |
 
 **Hilos (plano §3.2 regla 8).** Las paletas son inmutables y los pinceles salen congelados (`Freeze`): un `Freezable` congelado se puede compartir entre dispatchers. Crear pinceles es barato; `ThemeService` los crea una vez por cambio y dispatcher (§15).
@@ -252,7 +261,7 @@ Todos son errores. El mensaje dice qué falla y cómo arreglarlo.
 
 ### CLCT007
 
-**Falta un archivo.** Uno de los cinco archivos no está entre los `AdditionalFiles` del proyecto con perfil `UiWpf`.
+**Falta un archivo.** Uno de los seis archivos no está entre los `AdditionalFiles` del proyecto con perfil `UiWpf`.
 
 ## 11. Cambiar o añadir un token
 
@@ -287,12 +296,12 @@ TEM-005: todo va empaquetado, sin red, con la versión fijada y las licencias in
 |---|---|---|---|
 | Atkinson Hyperlegible 400 y 700 | `AtkinsonHyperlegible-Regular.ttf`, `-Bold.ttf` | `google/fonts` | Sin cambios |
 | JetBrains Mono 500 | `JetBrainsMono-Medium.ttf` | `JetBrains/JetBrainsMono` v2.304 | Sin cambios (estática oficial) |
-| Material Symbols Rounded | `MaterialSymbolsRounded-Regular.ttf` (FILL 0), `MaterialSymbolsRoundedFilled-Regular.ttf` (FILL 1) | `google/material-design-icons` | Instancias de la variable con wght 400, GRAD 0 y opsz 24, recortadas a los iconos que se usan y sin ligaduras |
+| Material Symbols Rounded | `MaterialSymbolsRounded-Regular.ttf` (FILL 0), `MaterialSymbolsRoundedFilled-Regular.ttf` (FILL 1) | `google/material-design-icons` | Instancias de la variable con wght 400, GRAD 0 y opsz 24, con todos los iconos (D14) y sin ligaduras |
 
-- **Origen exacto:** `tools/fonts/sources.json` guarda, por archivo, el repositorio, el *commit* y el SHA-256. Las licencias (`*-OFL.txt`, `MaterialSymbols-LICENSE.txt`) se copian junto a las fuentes.
-- **Regenerar** (a mano, cuando cambia una versión): crear un entorno virtual **fuera del repositorio**, instalar `tools/fonts/requirements.txt` (fontTools fijado) y ejecutar `python tools/fonts/build_fonts.py`. El script descarga a una caché temporal, rechaza un archivo con otro hash y escribe `assets/fonts`; la salida es determinista y se versiona.
-- **Recorte de iconos:** entran los nombres que aparecen en `data/catalogs`, `data/content`, la semilla del paquete y el Prototipo v4 (sobra algún icono, nunca falta). Hoy son 339 y cada fuente pesa unos 70 KB en lugar de 15 MB.
-- **`assets/fonts/codepoints.json`:** nombre → punto de código de cada icono incluido. Los iconos se dibujan **por punto de código**, nunca escribiendo su nombre: las fuentes no tienen ligaduras y un nombre nunca llega a la pantalla ni a UI Automation (UIA008). Un nombre desconocido dibuja el icono de respaldo `bolt` (el icono por defecto de un atajo).
+- **Origen exacto:** `tools/fonts/sources.json` guarda, por archivo, el repositorio, el *commit* y el SHA-256, también de los metadatos oficiales de Material Symbols (categorías y palabras clave). Las licencias (`*-OFL.txt`, `MaterialSymbols-LICENSE.txt`) se copian junto a las fuentes.
+- **Regenerar** (a mano, cuando cambia una versión): crear un entorno virtual **fuera del repositorio**, instalar `tools/fonts/requirements.txt` (fontTools fijado) y ejecutar `python tools/fonts/build_fonts.py`. El script descarga a una caché temporal, rechaza un archivo con otro hash y escribe `assets/fonts` y la parte generada de `data/catalogs/icons.json`; la salida es determinista y se versiona. Los metadatos no tienen versiones: cuando su hash deja de coincidir se descargan otra vez, se revisa el diff de `icons.json` y se fija el hash nuevo.
+- **Colección completa** (D14, [ADR-0025](../adr/0025-fuentes-de-terceros-empaquetadas.md)): las dos fuentes llevan los 4001 glifos de Material Symbols Rounded y pesan 1,0 MB cada una. `icons.json` ofrece 3925 iconos (un glifo una sola vez) en 17 categorías: primero los 744 curados con palabras en español e inglés, escritos a mano, y después el resto, del más popular al menos, con las palabras clave en inglés de los metadatos. Para añadir palabras en español a un icono se le pone `tags` en `icons.json`, se mueve al final de los curados y se vuelve a ejecutar el script.
+- **`assets/fonts/codepoints.json`:** nombre → punto de código de cada nombre de la fuente, alias incluidos. Los iconos se dibujan **por punto de código**, nunca escribiendo su nombre: las fuentes no tienen ligaduras y un nombre nunca llega a la pantalla ni a UI Automation (UIA008). Un nombre desconocido dibuja el icono de respaldo `bolt` (el icono por defecto de un atajo).
 - **En código** (`Clicalo.UI.Wpf.Resources`): `AppFonts` (familias como recursos `pack://` del ensamblado), `MaterialSymbols` (la tabla, con `CodePointOrFallback`) y el control `SymbolIcon` (`Controls`), que dibuja el glifo con un `GlyphRun` en un cuadrado del tamaño del icono, como `line-height: 1` en el prototipo.
 - **Detalle de WPF:** las fuentes `pack://` se leen a través del paquete de recursos que WPF registra en el inicializador de tipo de `Application`. `AppFonts` lo provoca antes de crear las familias; si no, sin un `Application` (pruebas, primeros instantes del arranque) la búsqueda falla y el fallo queda en caché.
 
@@ -309,19 +318,14 @@ TEM-005: todo va empaquetado, sin red, con la versión fijada y las licencias in
 
 ## 16. Controles base
 
-En `Clicalo.UI.Wpf.Controls`, con plantillas selladas construidas en código (una instancia sirve a todos los hilos) y colores siempre por recurso:
+Los controles base de la dirección C (botón en cuatro variantes y tres alturas, botón de icono, opción elegible,
+interruptor, deslizador, campo con 🎤, `Overline`, fila de navegación, zona de desplazamiento, ficha, barra de estado,
+insignia, contador, tarjeta y barra de título) se describen, con su anatomía, sus estados y su API, en el
+[sistema de diseño](../design/sistema.md#3-componentes-base). Todos usan solo tokens, responden en 44 × 44 (REG-02),
+muestran el anillo de foco de 3 (TEM-009), se exponen a UI Automation con un solo patrón (ACC-001) y solo aceptan el
+foco de UI Automation con su ventana activa (REG-01).
 
-| Control | Aspecto (prototipo v4) | UI Automation | Objetivo |
-|---|---|---|---|
-| `TouchButton` | Radio 10, texto 14 en negrita, icono opcional; `Appearance`: Accent, Neutral, Outline, Ghost, Danger, Warn | Button + Invoke, nombre = texto | ≥ 44 × 44; dibujo más pequeño centrado |
-| `IconButton` | Solo icono de 22, Ghost por defecto | Button + Invoke, nombre = `AutomationProperties.Name` | Ídem |
-| `ToggleSwitch` | Fila con icono `muted`, etiqueta y pista de 48 × 28 con botón de 20 que se desliza 20 px en 150 ms | Button + Toggle | La fila entera, alto ≥ 44 |
-| `StepSlider` | − y + `cardHi` de 40, pista `accent`/`line`, botón de 20 | Slider + RangeValue; hijos: − y + con nombre | ≥ 44 |
-| `SegmentedControl` / `SegmentedItem` | Celdas iguales, radio 8, `cardHi` o `accent` | List + Selection; ListItem + SelectionItem | Cada celda ≥ 44 |
-| `Chip` | Radio 10, `card` con borde; activo `accentWash` + `accent` y marca ✓; `IsMonospace` para teclas | Button + Toggle | ≥ 44 (dibujo de 40) |
-| `Card` | Radio 12, `Tone`: Neutral, Accent, Warn, Danger | Group con nombre opcional | No es interactiva |
-
-- **Foco:** anillo de 3 px en `focusRing` (amarillo en alto contraste), TEM-009.
-- **Foco por UI Automation:** como en las fichas, solo con la ventana ya activa; si no, `SetFocus` falla sin tocar el foco (REG-01).
-- **`ShortcutTile`** toma el aspecto del prototipo (CUA-007, CUA-009): icono en el tinte de su `Category`, nombre en negrita, línea de teclas en JetBrains Mono y `muted`, insignia con el tipo (`Badge`) o, si lo hay, el estado (`AccessibleState`), número de voz en `warn`, y los estados Alternar activo, mantener (escala 0,95), armado (borde `warn`) y destello.
-- **Pruebas:** las deterministas están en `tests/Clicalo.Windowing.IntegrationTests/Theming` y `Controls` (sin escritorio); las capturas de los tres temas (`BaseControlRenderTests`, a 168 ppp como la pantalla de 175 %) llevan `Requires=Desktop` y van a la ejecución nocturna.
+- **Pruebas:** las deterministas están en `tests/Clicalo.Windowing.IntegrationTests/Theming`, `Controls`
+  (`BaseControlTests`, `ShortcutTileLookTests`), `Windowing/TitleBarTests` y la hoja de la galería
+  `Automation/Audit/DesignSystemAuditTests`; las capturas de `BaseControlRenderTests` (a 168 ppp) llevan
+  `Requires=Desktop` y van a la ejecución nocturna.

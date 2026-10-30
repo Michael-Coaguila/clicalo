@@ -28,6 +28,12 @@ public enum TryNowOutcome
     EngineStopped,
 
     /// <summary>
+    /// Clícalo is paused (BUR-004): nothing is sent until it resumes, so nothing was tried and the Control Center
+    /// stayed where it was.
+    /// </summary>
+    Paused,
+
+    /// <summary>
     /// The try was cancelled before it ended: a key it held or latched was released (REG-03) and the Control Center came
     /// back; nothing is asked.
     /// </summary>

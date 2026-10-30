@@ -21,7 +21,7 @@ código, los identificadores y los comentarios, en inglés.
 | [overview.md](overview.md) | Resumen arc42 con diagramas C4 en Mermaid | Descriptivo; si discrepa del plano, manda el plano |
 | [testing-strategy.md](testing-strategy.md) | Pirámide de pruebas, proyectos, trazabilidad `[Trait("Req", …)]` e instantáneas propias de TestKit | Reversible |
 | [tooling.md](tooling.md) | Verbos de `cl`, Central Package Management, *lock files*, analizadores, CSharpier y CI | Reversible |
-| [contracts.md](contracts.md) | Contratos de línea de órdenes entre ejecutables: arranque de Sentinel (protocolo 3), relanzamiento y códigos de salida | Contrato público: se cambia con un ADR |
+| [contracts.md](contracts.md) | Contratos de línea de órdenes entre ejecutables: arranque de Sentinel (protocolo 4), relanzamiento y códigos de salida | Contrato público: se cambia con un ADR |
 | [deviations.md](deviations.md) | Desviaciones del plano con su motivo | Registro vivo |
 | [../adr/](../adr/README.md) | ADR en formato MADR 4 | Inmutables una vez aceptados |
 
@@ -48,8 +48,11 @@ decisión de stack y se revisó el plano. Son la evidencia que citan los ADR.
   [catálogo](../requirements/catalog.md).
 - Seguridad y privacidad: [modelo de amenazas](../security/threat-model.md) y
   [privacidad](../security/privacy.md).
-- Guías: [preparar el entorno](../guides/dev-setup.md) y
-  [programar con pantalla táctil y voz](../guides/voice-and-touch-workflow.md).
+- Guías: [preparar el entorno](../guides/dev-setup.md),
+  [programar con pantalla táctil y voz](../guides/voice-and-touch-workflow.md),
+  [publicar una versión](../guides/release.md) y el
+  [guion de aceptación manual](../guides/aceptacion-manual.md).
+- Para quien usa Clícalo: la [guía de usuario](../guides/guia-de-usuario.md).
 - Diseño: [qué es vinculante del paquete de diseño](../design/handoff/LEEME-VINCULANTE.md).
 - Para agentes: [AGENTS.md](../../AGENTS.md).
 

@@ -5,8 +5,9 @@ using Clicalo.Domain.Tests.Execution.Support;
 namespace Clicalo.Domain.Tests.Keys;
 
 /// <summary>
-/// The key line of a tile (CUA-007, CUA-008): labels of the interface language joined by « + »; in the size S the
-/// abbreviations joined by «+» without spaces; the accessible name with the spoken names.
+/// The key line of a tile (CUA-007, CUA-008): labels of the interface language joined by «+» without spaces (the
+/// notation of direction C, D12); in the size S the abbreviations, also joined by «+»; the accessible name with the
+/// spoken names joined by « + ».
 /// </summary>
 [Trait("Req", "CUA-007")]
 [Trait("Req", "CUA-008")]
@@ -27,18 +28,18 @@ public sealed class KeyChordFormatterTests
         new()
         {
             // keys, style, language → text
-            { "ctrl+shift+t", KeyLabelStyle.Full, "es", "Ctrl + Shift + T" },
+            { "ctrl+shift+t", KeyLabelStyle.Full, "es", "Ctrl+Shift+T" },
             { "ctrl+shift+t", KeyLabelStyle.Abbreviated, "es", "Ctl+⇧+T" },
-            { "rctrl+t", KeyLabelStyle.Full, "es", "Ctrl der. + T" },
-            { "rctrl+t", KeyLabelStyle.Full, "en", "Right Ctrl + T" },
+            { "rctrl+t", KeyLabelStyle.Full, "es", "Ctrl der.+T" },
+            { "rctrl+t", KeyLabelStyle.Full, "en", "Right Ctrl+T" },
             { "rctrl+t", KeyLabelStyle.Abbreviated, "en", "R Ctl+T" },
-            { "altgr+t", KeyLabelStyle.Full, "es", "AltGr + T" },
-            { "win+left", KeyLabelStyle.Full, "es", "Win + ←" },
+            { "altgr+t", KeyLabelStyle.Full, "es", "AltGr+T" },
+            { "win+left", KeyLabelStyle.Full, "es", "Win+←" },
             { "win+left", KeyLabelStyle.Spoken, "es", "Win + Flecha izquierda" },
             { "win+left", KeyLabelStyle.Spoken, "en", "Win + Left arrow" },
-            { "ctrl+delete", KeyLabelStyle.Full, "en", "Ctrl + Delete" },
-            { "ctrl+char:ñ", KeyLabelStyle.Full, "es", "Ctrl + Ñ" },
-            { "ctrl+t", KeyLabelStyle.Full, "fr", "Ctrl + T" },
+            { "ctrl+delete", KeyLabelStyle.Full, "en", "Ctrl+Delete" },
+            { "ctrl+char:ñ", KeyLabelStyle.Full, "es", "Ctrl+Ñ" },
+            { "ctrl+t", KeyLabelStyle.Full, "fr", "Ctrl+T" },
         };
 
     [Theory]

@@ -156,6 +156,17 @@ public sealed class PanelInteractionControllerTests
     }
 
     [Fact]
+    [Trait("Req", "SEG-007")]
+    public void A_view_change_releases_everything_as_a_terminal_event()
+    {
+        _controller.ViewChanged().ShouldBeTrue();
+
+        var terminal = _engine.Events.ShouldHaveSingleItem().ShouldBeOfType<EngineEvent.Terminal>();
+        terminal.Reason.ShouldBe(TerminalReason.ViewChange);
+        terminal.Lane.ShouldBe(EngineLane.Priority);
+    }
+
+    [Fact]
     [Trait("Req", "EJE-006")]
     public void Every_activation_reads_the_foreground_epoch_of_its_own_moment()
     {

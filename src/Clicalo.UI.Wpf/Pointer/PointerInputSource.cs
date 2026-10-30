@@ -5,6 +5,7 @@ using Clicalo.Domain.Geometry;
 using Clicalo.Domain.Timing;
 using Clicalo.Domain.Touch;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input;
 using Windows.Win32.UI.Input.Pointer;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -191,9 +192,15 @@ public sealed class PointerInputSource : IDisposable
                 OnEnter(PointerIdOf(wParam));
                 break;
             case PInvoke.WM_POINTERLEAVE:
-                // Windows sends the leave of a contact only once the contact is over: if it is still tracked, its up
-                // was lost (no hold may stay down, REG-03).
-                _ = EndLostContact(PointerIdOf(wParam));
+                // A finger or a pen sends its leave only once its contact is over: if it is still tracked, its up was
+                // lost (no hold may stay down, REG-03). A mouse or a touchpad leaves whenever the cursor goes out; one
+                // that only went out for Clícalo's own round trip of a wheel step (EJE-009), its button still down, is
+                // not over: its hold goes on and ends with its up.
+                if (!LeftForRoundTrip(hwnd, PointerIdOf(wParam)))
+                {
+                    _ = EndLostContact(PointerIdOf(wParam));
+                }
+
                 OnLeave(PointerIdOf(wParam));
                 break;
             case PInvoke.WM_NCDESTROY:
@@ -325,7 +332,21 @@ public sealed class PointerInputSource : IDisposable
             return false;
         }
 
+        // The cursor taken out of the window by an injection while the mouse or the touchpad holds a tile is Clícalo's own
+        // round trip of a wheel step (EJE-009), not the hand: it must not move the contact off its tile. An injected
+        // move inside the window (the way back, or the drag of an assistive tool) moves the contact as usual.
         var position = new PhysicalPoint(info.ptPixelLocation.X, info.ptPixelLocation.Y);
+        if (
+            tracked
+            && down
+            && kind == PointerKind.Mouse
+            && CurrentOrigin() == PointerInputOrigin.Injected
+            && !IsOverWindow(position)
+        )
+        {
+            return true;
+        }
+
         var stamp = Stamp(info.PerformanceCount);
         var samples = 0;
         Collect(
@@ -488,6 +509,50 @@ public sealed class PointerInputSource : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Whether the leave of a tracked mouse or touchpad contact comes from Clícalo's cursor round trip (EJE-009): the leave
+    /// was injected, or the cursor is already back over the window. The position the leave itself reports is the one
+    /// outside, so the live cursor decides, not <c>GetPointerInfo</c>.
+    /// </summary>
+    private bool LeftForRoundTrip(nint hwnd, uint pointerId)
+    {
+        var index = IndexOfTracked(pointerId);
+        if (index < 0 || _tracked[index].Kind != PointerKind.Mouse)
+        {
+            return false;
+        }
+
+        // The button must still be down: an assistive tool (Voice Access, Mouse Keys) that lets go of it outside ends
+        // the contact, or a held scroll would go on by itself (REG-03).
+        return PrimaryButtonDown()
+            && (
+                CurrentOrigin() == PointerInputOrigin.Injected
+                || (
+                    PInvoke.GetCursorPos(out var cursor)
+                    && IsOver(hwnd, new PhysicalPoint(cursor.X, cursor.Y))
+                )
+            );
+    }
+
+    /// <summary>Whether the primary button is down now, as Windows sees it (left and right swapped as the person set them).</summary>
+    private static bool PrimaryButtonDown()
+    {
+        const int Left = 0x01;
+        const int Right = 0x02;
+        var primary =
+            PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_SWAPBUTTON) != 0 ? Right : Left;
+        return PInvoke.GetAsyncKeyState(primary) < 0;
+    }
+
+    private bool IsOverWindow(PhysicalPoint position) => IsOver(_window, position);
+
+    private static bool IsOver(nint hwnd, PhysicalPoint position) =>
+        PInvoke.GetWindowRect(new HWND(hwnd), out var rect)
+        && position.X >= rect.left
+        && position.X < rect.right
+        && position.Y >= rect.top
+        && position.Y < rect.bottom;
 
     /// <summary>
     /// Delivers a <see cref="PointerPhase.Cancel"/> for a contact that is still tracked but will send no more messages

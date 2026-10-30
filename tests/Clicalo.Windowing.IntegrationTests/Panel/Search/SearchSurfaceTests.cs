@@ -10,6 +10,7 @@ using Clicalo.Presentation.Panel.Search;
 using Clicalo.TestKit.Windows.Rendering;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Surfaces.Panel.Search;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.Windowing.IntegrationTests.Controls;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 
@@ -38,13 +39,14 @@ public sealed class SearchSurfaceTests
             bar.UpdateLayout();
 
             bar.Visibility.ShouldBe(Visibility.Visible);
-            bar.Field.ActualHeight.ShouldBe(SearchBar.FieldHeight);
+            // Direction C (D12): the field is a control of the medium height.
+            bar.Field.ActualHeight.ShouldBe(ControlHeight.Medium);
             TouchTarget
                 .IsLargeEnough(
                     new Size(bar.DictateButton.ActualWidth, bar.DictateButton.ActualHeight)
                 )
                 .ShouldBeTrue();
-            AutomationProperties.GetName(bar.Field).ShouldBe(search.Placeholder);
+            AutomationProperties.GetName(bar.Field).ShouldBe(search.FieldName);
             UIElementAutomationPeer
                 .CreatePeerForElement(bar.DictateButton)
                 .GetName()
@@ -100,7 +102,7 @@ public sealed class SearchSurfaceTests
             card.Visibility.ShouldBe(Visibility.Collapsed);
         });
 
-    private static SearchViewModel Search()
+    internal static SearchViewModel Search(string language = "es")
     {
         var search = new SearchViewModel(
             new PanelSearch(
@@ -110,7 +112,7 @@ public sealed class SearchSurfaceTests
                 TimeProvider.System,
                 keyboard: null
             ),
-            PanelTestData.Localization("es"),
+            PanelTestData.Localization(language),
             () => WindowToken.None,
             static _ => null,
             static _ => { }
@@ -119,7 +121,7 @@ public sealed class SearchSurfaceTests
         return search;
     }
 
-    private static SuggestionViewModel Suggestion() =>
+    internal static SuggestionViewModel Suggestion(string language = "es") =>
         new(
             new DocumentStore(
                 SearchTestWorld.Document(),
@@ -128,7 +130,7 @@ public sealed class SearchSurfaceTests
                 TimeProvider.System
             ),
             SuggestionViewModelTests.Content,
-            PanelTestData.Localization("es"),
+            PanelTestData.Localization(language),
             new SequentialTestIds(),
             static () => new ProfileState(new ViewTarget.Profile(ProfileId.General), false, null),
             static (SuggestionAccepted _) => { },

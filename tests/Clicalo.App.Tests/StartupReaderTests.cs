@@ -50,7 +50,7 @@ public sealed class StartupReaderTests : IDisposable
     [Fact]
     public async Task Nothing_is_read_or_written_on_the_thread_that_starts_the_app()
     {
-        var threads = new ConcurrentBag<int>();
+        var threads = new ConcurrentBag<Thread>();
         var writer = new ThreadRecordingWriter(
             new AtomicFile(TimeProvider.System, NullLogger<AtomicFile>.Instance),
             threads
@@ -62,12 +62,13 @@ public sealed class StartupReaderTests : IDisposable
             NullLogger<StartupReader>.Instance
         );
 
-        // A dedicated thread plays the UI thread: the thread pool can never run work on it.
-        var ui = 0;
+        // A dedicated thread plays the UI thread: the thread pool can never run work on it. It is compared as an
+        // object, not by its id: the thread ends at Join, and a pool thread created after that can reuse its id.
+        Thread? ui = null;
         Task<StartupRead>? pending = null;
         var thread = new Thread(() =>
         {
-            ui = Environment.CurrentManagedThreadId;
+            ui = Thread.CurrentThread;
             pending = reader.ReadAsync(
                 new StartupRequest(
                     RepoPaths.Data,
@@ -82,13 +83,13 @@ public sealed class StartupReaderTests : IDisposable
         var read = await pending!;
 
         threads.ShouldNotBeEmpty();
-        threads.ShouldNotContain(ui);
+        threads.ShouldNotContain(ui!);
         read.Documents.Load.Outcome.ShouldBe(DocumentLoadOutcome.FirstRun);
         read.Localization.Current.Locale.Code.ShouldBe("es");
         File.Exists(AppDataLocations.CrashJournal(_locations)).ShouldBeTrue();
     }
 
-    private StartupDocuments Documents(IAtomicFileWriter writer, ConcurrentBag<int> threads)
+    private StartupDocuments Documents(IAtomicFileWriter writer, ConcurrentBag<Thread> threads)
     {
         var time = TimeProvider.System;
         var backups = new BackupService(
@@ -117,12 +118,12 @@ public sealed class StartupReaderTests : IDisposable
     /// <summary>The real repository, recording the thread of every call.</summary>
     private sealed class ThreadRecordingDocuments(
         IDocumentRepository inner,
-        ConcurrentBag<int> threads
+        ConcurrentBag<Thread> threads
     ) : IDocumentRepository
     {
         public Task<DocumentLoad> LoadAsync(CancellationToken cancellationToken)
         {
-            threads.Add(Environment.CurrentManagedThreadId);
+            threads.Add(Thread.CurrentThread);
             return inner.LoadAsync(cancellationToken);
         }
 
@@ -131,14 +132,16 @@ public sealed class StartupReaderTests : IDisposable
             CancellationToken cancellationToken
         )
         {
-            threads.Add(Environment.CurrentManagedThreadId);
+            threads.Add(Thread.CurrentThread);
             return inner.SaveAsync(document, cancellationToken);
         }
     }
 
     /// <summary>The real writer, recording the thread of every write.</summary>
-    private sealed class ThreadRecordingWriter(IAtomicFileWriter inner, ConcurrentBag<int> threads)
-        : IAtomicFileWriter
+    private sealed class ThreadRecordingWriter(
+        IAtomicFileWriter inner,
+        ConcurrentBag<Thread> threads
+    ) : IAtomicFileWriter
     {
         public Task<Result<AtomicWriteReceipt>> WriteAsync(
             string path,
@@ -146,7 +149,7 @@ public sealed class StartupReaderTests : IDisposable
             CancellationToken cancellationToken
         )
         {
-            threads.Add(Environment.CurrentManagedThreadId);
+            threads.Add(Thread.CurrentThread);
             return inner.WriteAsync(path, content, cancellationToken);
         }
     }

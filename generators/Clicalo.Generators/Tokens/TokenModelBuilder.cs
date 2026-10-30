@@ -18,6 +18,7 @@ internal sealed class TokenModelBuilder
     private const string TintLightness = "tintL";
     private const string WashAlpha = "washA";
     private const string Border = "border";
+    private const string Redesign = "redesign";
 
     private readonly TokenIssues _issues = new();
     private readonly Dictionary<string, TokenDocument> _documents = new(
@@ -57,6 +58,7 @@ internal sealed class TokenModelBuilder
         ReadCategories();
         ReadShapes();
         _model.Motion.AddRange(MotionReader.Read(_documents[TokenFiles.Motion], _issues));
+        DesignSystemReader.Read(_documents[TokenFiles.DesignSystem], _model, _issues);
         SystemColorMapReader.Read(_documents[TokenFiles.HighContrastSystemMap], _model, _issues);
         if (HasStructuralIssue())
         {
@@ -168,10 +170,9 @@ internal sealed class TokenModelBuilder
             "themes",
             "colors",
             "categories",
+            "redesign",
             "corrections",
-            "radii",
             "shadows",
-            "focusRing",
             "gamutMapping"
         );
         var pairs = _documents[TokenFiles.ContrastPairs];
@@ -468,6 +469,13 @@ internal sealed class TokenModelBuilder
 
     private void ApplyCorrections()
     {
+        // The redesign (D12) replaces values of the design package first; the contrast corrections (TEM-004) start
+        // from the redesigned values.
+        if (Extra.Root[Redesign] is { } redesign)
+        {
+            ApplySection(redesign, Redesign, "decision");
+        }
+
         var corrections = JsonShape.Required(
             Extra,
             Extra.Root,
@@ -475,12 +483,20 @@ internal sealed class TokenModelBuilder
             JsonKind.Object,
             _issues
         );
-        if (corrections is null)
+        if (corrections is not null)
+        {
+            ApplySection(corrections, "corrections", "requirement");
+        }
+    }
+
+    private void ApplySection(JsonNode section, string name, string basis)
+    {
+        if (!JsonShape.Expect(Extra, section, JsonKind.Object, "'" + name + "'", _issues))
         {
             return;
         }
 
-        foreach (var theme in JsonShape.DataMembers(corrections))
+        foreach (var theme in JsonShape.DataMembers(section))
         {
             var draft = FindDraft(Extra, theme.Key, theme.Value);
             if (
@@ -509,22 +525,16 @@ internal sealed class TokenModelBuilder
                     )
                 )
                 {
-                    ApplyCorrection(draft, correction.Key, correction.Value);
+                    ApplyCorrection(draft, correction.Key, correction.Value, basis);
                 }
             }
         }
     }
 
-    private void ApplyCorrection(ThemeDraft draft, string key, JsonNode correction)
+    private void ApplyCorrection(ThemeDraft draft, string key, JsonNode correction, string basis)
     {
-        JsonShape.AllowOnly(Extra, correction, _issues, "from", "to", "requirement", "reason");
-        var requirement = JsonShape.Required(
-            Extra,
-            correction,
-            "requirement",
-            JsonKind.String,
-            _issues
-        );
+        JsonShape.AllowOnly(Extra, correction, _issues, "from", "to", basis, "reason");
+        var requirement = JsonShape.Required(Extra, correction, basis, JsonKind.String, _issues);
         var reason = JsonShape.Required(Extra, correction, "reason", JsonKind.String, _issues);
         if (reason is not null && string.IsNullOrWhiteSpace(reason.StringValue))
         {
@@ -540,7 +550,13 @@ internal sealed class TokenModelBuilder
             return;
         }
 
-        var note = requirement.StringValue + ": corrected from ";
+        var note =
+            requirement.StringValue
+            + (
+                string.Equals(basis, "decision", StringComparison.Ordinal)
+                    ? ": redesigned from "
+                    : ": corrected from "
+            );
         if (numeric)
         {
             if (!draft.Numbers.TryGetValue(key, out var number))
@@ -1037,20 +1053,6 @@ internal sealed class TokenModelBuilder
 
     private void ReadShapes()
     {
-        var radii = JsonShape.Required(Extra, Extra.Root, "radii", JsonKind.Object, _issues);
-        if (radii is not null)
-        {
-            foreach (var radius in JsonShape.DataMembers(radii))
-            {
-                if (ReadLength(radius.Key, radius.Value, "radius"))
-                {
-                    _model.Radii.Add(
-                        new KeyValuePair<string, double>(radius.Key, radius.Value.NumberValue)
-                    );
-                }
-            }
-        }
-
         var shadows = JsonShape.Required(Extra, Extra.Root, "shadows", JsonKind.Object, _issues);
         if (shadows is not null)
         {
@@ -1058,29 +1060,6 @@ internal sealed class TokenModelBuilder
             {
                 ReadShadow(shadow.Key, shadow.Value);
             }
-        }
-
-        var ring = JsonShape.Required(Extra, Extra.Root, "focusRing", JsonKind.Object, _issues);
-        if (ring is not null)
-        {
-            JsonShape.AllowOnly(Extra, ring, _issues, "thickness", "offset");
-        }
-
-        var thickness = ring is null
-            ? null
-            : JsonShape.Required(Extra, ring, "thickness", JsonKind.Number, _issues);
-        var offset = ring is null
-            ? null
-            : JsonShape.Required(Extra, ring, "offset", JsonKind.Number, _issues);
-        if (
-            thickness is not null
-            && offset is not null
-            && ReadLength("thickness", thickness, "focus ring thickness")
-            && ReadLength("offset", offset, "focus ring offset")
-        )
-        {
-            _model.FocusRingThickness = thickness.NumberValue;
-            _model.FocusRingOffset = offset.NumberValue;
         }
     }
 

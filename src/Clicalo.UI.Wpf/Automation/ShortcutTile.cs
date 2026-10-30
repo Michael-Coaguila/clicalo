@@ -104,8 +104,54 @@ public sealed class ShortcutTile : Control
         nameof(IconSize),
         typeof(double),
         typeof(ShortcutTile),
-        new FrameworkPropertyMetadata(28d)
+        new FrameworkPropertyMetadata(IconBox.Medium)
     );
+
+    /// <summary>Identifies <see cref="OriginSymbol"/>.</summary>
+    public static readonly DependencyProperty OriginSymbolProperty = DependencyProperty.Register(
+        nameof(OriginSymbol),
+        typeof(string),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(null)
+    );
+
+    /// <summary>Identifies <see cref="TypeSymbol"/>.</summary>
+    public static readonly DependencyProperty TypeSymbolProperty = DependencyProperty.Register(
+        nameof(TypeSymbol),
+        typeof(string),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(null, OnBadgeChanged)
+    );
+
+    private static readonly DependencyPropertyKey IsTypeShownPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(IsTypeShown),
+            typeof(bool),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(false)
+        );
+
+    /// <summary>Identifies <see cref="IsTypeShown"/>.</summary>
+    public static readonly DependencyProperty IsTypeShownProperty =
+        IsTypeShownPropertyKey.DependencyProperty;
+
+    /// <summary>Identifies <see cref="MaxNameLines"/>.</summary>
+    public static readonly DependencyProperty MaxNameLinesProperty = DependencyProperty.Register(
+        nameof(MaxNameLines),
+        typeof(int),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(1, FrameworkPropertyMetadataOptions.AffectsMeasure),
+        static value => value is 1 or 2
+    );
+
+    /// <summary>Identifies <see cref="ReservesNameLines"/>.</summary>
+    public static readonly DependencyProperty ReservesNameLinesProperty =
+        DependencyProperty.Register(
+            nameof(ReservesNameLines),
+            typeof(bool),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure)
+        );
 
     /// <summary>Identifies <see cref="Category"/>.</summary>
     public static readonly DependencyProperty CategoryProperty = DependencyProperty.Register(
@@ -136,8 +182,32 @@ public sealed class ShortcutTile : Control
         nameof(Keys),
         typeof(string),
         typeof(ShortcutTile),
-        new FrameworkPropertyMetadata(string.Empty)
+        new FrameworkPropertyMetadata(string.Empty, OnBadgeChanged)
     );
+
+    private static readonly DependencyPropertyKey FootTextPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(FootText),
+            typeof(string),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(string.Empty)
+        );
+
+    /// <summary>Identifies <see cref="FootText"/>.</summary>
+    public static readonly DependencyProperty FootTextProperty =
+        FootTextPropertyKey.DependencyProperty;
+
+    private static readonly DependencyPropertyKey IsStateShownPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(IsStateShown),
+            typeof(bool),
+            typeof(ShortcutTile),
+            new FrameworkPropertyMetadata(false)
+        );
+
+    /// <summary>Identifies <see cref="IsStateShown"/>.</summary>
+    public static readonly DependencyProperty IsStateShownProperty =
+        IsStateShownPropertyKey.DependencyProperty;
 
     /// <summary>Identifies <see cref="KeysFontSize"/>.</summary>
     public static readonly DependencyProperty KeysFontSizeProperty = DependencyProperty.Register(
@@ -189,6 +259,14 @@ public sealed class ShortcutTile : Control
         typeof(bool),
         typeof(ShortcutTile),
         new FrameworkPropertyMetadata(false)
+    );
+
+    /// <summary>Identifies <see cref="ShowsCard"/>.</summary>
+    public static readonly DependencyProperty ShowsCardProperty = DependencyProperty.Register(
+        nameof(ShowsCard),
+        typeof(bool),
+        typeof(ShortcutTile),
+        new FrameworkPropertyMetadata(true)
     );
 
     static ShortcutTile()
@@ -265,8 +343,9 @@ public sealed class ShortcutTile : Control
 
     /// <summary>
     /// The localized state of the tile (ACC-003), such as «ACTIVO» for a Toggle shortcut that is on; empty when there
-    /// is nothing to say. Shown on the tile and exposed as the UI Automation item status, so the state is never
-    /// color alone and Narrator reads it with the name.
+    /// is nothing to say. Shown on the tile in the place of its key line (<see cref="FootText"/>), never over its icon
+    /// or its voice number, and exposed as the UI Automation item status, so the state is never color alone and
+    /// Narrator reads it with the name.
     /// </summary>
     public string AccessibleState
     {
@@ -281,11 +360,49 @@ public sealed class ShortcutTile : Control
         set => SetValue(SymbolProperty, value);
     }
 
-    /// <summary>Side of the icon: 20, 28 or 34 in S, M or L (CUA-007).</summary>
+    /// <summary>Side of the icon box (<see cref="IconBox.Medium"/>, 24, by default; the glyph is centered in it).</summary>
     public double IconSize
     {
         get => (double)GetValue(IconSizeProperty);
         set => SetValue(IconSizeProperty, value);
+    }
+
+    /// <summary>
+    /// Material Symbols name of the type of the shortcut (Mantener, Alternar, Macro, Web, App, Texto) shown in the slot
+    /// at the top right, in a box of <see cref="IconBox.Badge"/> in <c>muted</c> (filled in <c>accentInk</c> while the
+    /// tile is chosen or held, in <c>warnText</c> while it is armed); null leaves the slot to <see cref="BadgeText"/>.
+    /// </summary>
+    public string? TypeSymbol
+    {
+        get => (string?)GetValue(TypeSymbolProperty);
+        set => SetValue(TypeSymbolProperty, value);
+    }
+
+    /// <summary>
+    /// Material Symbols name of the profile of origin of a Frequents tile or of a search result, drawn beside the icon in
+    /// a box of <see cref="IconBox.Badge"/> in <c>muted</c> (FRE-003, D21); null draws nothing.
+    /// </summary>
+    public string? OriginSymbol
+    {
+        get => (string?)GetValue(OriginSymbolProperty);
+        set => SetValue(OriginSymbolProperty, value);
+    }
+
+    /// <summary>Lines the name may take before «…»: 1 (direction C) or 2 (S at the largest text, CUA-011).</summary>
+    public int MaxNameLines
+    {
+        get => (int)GetValue(MaxNameLinesProperty);
+        set => SetValue(MaxNameLinesProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the name keeps the room of the <see cref="MaxNameLines"/> that fit even when it is shorter: tiles side
+    /// by side, some with a name of one line and some of two, keep their icons on one line (D12).
+    /// </summary>
+    public bool ReservesNameLines
+    {
+        get => (bool)GetValue(ReservesNameLinesProperty);
+        set => SetValue(ReservesNameLinesProperty, value);
     }
 
     /// <summary>
@@ -331,7 +448,7 @@ public sealed class ShortcutTile : Control
 
     /// <summary>
     /// The type badge at the top right (CUA-007): MANTENER, ALTERNAR, the number of steps, WEB, APP, TXT or the pin;
-    /// empty for none. While <see cref="AccessibleState"/> is set (ACTIVO), the badge shows the state instead.
+    /// empty for none. It shows only on a tile without <see cref="TypeSymbol"/>.
     /// </summary>
     public string Badge
     {
@@ -339,8 +456,25 @@ public sealed class ShortcutTile : Control
         set => SetValue(BadgeProperty, value);
     }
 
-    /// <summary>What the badge shows: <see cref="AccessibleState"/> when set, otherwise <see cref="Badge"/> (ACC-003).</summary>
+    /// <summary>
+    /// What the top right slot writes: <see cref="Badge"/> when the tile has no <see cref="TypeSymbol"/>; empty when
+    /// the slot shows the type icon. The state never goes in this slot: it is too narrow beside the voice number and
+    /// the icon (D12).
+    /// </summary>
     public string BadgeText => (string)GetValue(BadgeTextProperty);
+
+    /// <summary>Whether the top right slot shows the type icon (a <see cref="TypeSymbol"/>).</summary>
+    public bool IsTypeShown => (bool)GetValue(IsTypeShownProperty);
+
+    /// <summary>
+    /// What the line under the name writes: <see cref="AccessibleState"/> while there is one («Manteniendo», «ACTIVO»,
+    /// «Paso 2/5», ACC-003, EJE-010), in the interface font and <c>accentInk</c> (<c>warnText</c> while armed),
+    /// otherwise <see cref="Keys"/>. It shows only while it fits under the name.
+    /// </summary>
+    public string FootText => (string)GetValue(FootTextProperty);
+
+    /// <summary>Whether the line under the name shows the state instead of the keys.</summary>
+    public bool IsStateShown => (bool)GetValue(IsStateShownProperty);
 
     /// <summary>A Mantener tile held down: scale 0.95, category wash and a 2 px tint outline (CUA-009).</summary>
     public bool IsHeld
@@ -361,6 +495,16 @@ public sealed class ShortcutTile : Control
     {
         get => (bool)GetValue(IsFlashingProperty);
         set => SetValue(IsFlashingProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the tile is drawn on its card with its line (the default). Without it, a tile that is a tool among icon
+    /// buttons (Scroll up and down of the bar, PES-008) looks like them at rest, and still shows held or chosen (D20).
+    /// </summary>
+    public bool ShowsCard
+    {
+        get => (bool)GetValue(ShowsCardProperty);
+        set => SetValue(ShowsCardProperty, value);
     }
 
     /// <summary>
@@ -437,11 +581,14 @@ public sealed class ShortcutTile : Control
         DependencyPropertyChangedEventArgs e
     ) => ((ShortcutTile)tile).UpdateBadgeText();
 
-    private void UpdateBadgeText() =>
-        SetValue(
-            BadgeTextPropertyKey,
-            string.IsNullOrEmpty(AccessibleState) ? Badge ?? string.Empty : AccessibleState
-        );
+    private void UpdateBadgeText()
+    {
+        var hasState = !string.IsNullOrEmpty(AccessibleState);
+        SetValue(BadgeTextPropertyKey, TypeSymbol is null ? Badge ?? string.Empty : string.Empty);
+        SetValue(IsTypeShownPropertyKey, TypeSymbol is not null);
+        SetValue(IsStateShownPropertyKey, hasState);
+        SetValue(FootTextPropertyKey, hasState ? AccessibleState : Keys ?? string.Empty);
+    }
 
     private static ShortcutTileAutomationPeer? ExistingPeer(DependencyObject tile) =>
         UIElementAutomationPeer.FromElement((ShortcutTile)tile) as ShortcutTileAutomationPeer;

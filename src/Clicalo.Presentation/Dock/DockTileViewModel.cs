@@ -1,4 +1,5 @@
 using Clicalo.Application.Coordinators;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Domain.VoiceNumbering;
@@ -9,14 +10,18 @@ namespace Clicalo.Presentation.Dock;
 
 /// <summary>
 /// One shortcut of the bar of the Tab view or of its «Pinned» window (PES-007, PES-010): icon and name, without keys or
-/// badges, but with its accessible state and its voice number. It forwards what happens on it to the
+/// badges, but with its accessible state, its voice number, the warn outline of an armed confirmation (EJE-002) and the
+/// slight outline of an ignored touch (TAC-003). It forwards what happens on it to the
 /// <see cref="PanelInteractionController"/>, like a tile of the panel, and decides nothing.
 /// </summary>
-public sealed class DockTileViewModel : ObservableObject
+public sealed class DockTileViewModel : ObservableObject, IIgnoredTouchState
 {
     private readonly PanelInteractionController _controller;
     private TileModel _model;
     private bool _isLatched;
+    private bool _isArmed;
+    private bool _isIgnored;
+    private bool _isFlashing;
     private string _accessibleState = string.Empty;
     private string _accessibleHelpText = string.Empty;
     private int? _voiceNumber;
@@ -32,11 +37,32 @@ public sealed class DockTileViewModel : ObservableObject
         _controller = controller;
     }
 
+    /// <summary>The prefix of the ids of the bar's own tools (⏶ ⏷), which are not shortcuts of the library.</summary>
+    public const string ToolIdPrefix = "dock.";
+
     /// <summary>The shortcut.</summary>
     public ShortcutId Id => _model.Id;
 
+    /// <summary>Whether <paramref name="id"/> is one of the bar's own tools (⏶ ⏷, the arrows), not a shortcut.</summary>
+    /// <param name="id">The id.</param>
+    public static bool IsToolId(ShortcutId id) =>
+        id.Value.StartsWith(ToolIdPrefix, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Whether it is one of the bar's own tools (⏶ ⏷, PES-008), not a shortcut of the library: releasing it does not fold
+    /// the bar, since it is held to read a page (PES-012, D21 review).
+    /// </summary>
+    public bool IsBarTool => IsToolId(_model.Id);
+
     /// <summary>How it reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;
+
+    /// <summary>
+    /// Whether it scrolls while held (⏶ ⏷, a Mantener of a scroll): UI Automation invokes it, one step per invocation,
+    /// as a button and not as a toggle that never turns on (EJE-005).
+    /// </summary>
+    public bool ScrollsWhileHeld =>
+        _model.Binding.Shortcut.Action is MouseAction mouse && MouseOps.RepeatsWhileHeld(mouse.Op);
 
     /// <summary>What it runs.</summary>
     public TileBinding Binding => _model.Binding;
@@ -70,6 +96,44 @@ public sealed class DockTileViewModel : ObservableObject
         get => _isLatched;
         private set => SetProperty(ref _isLatched, value);
     }
+
+    /// <summary>
+    /// Whether the first tap armed the shortcut and it waits for the confirmation tap (EJE-002): it shows a warn
+    /// outline and <see cref="AccessibleState"/> says so, as on the panel.
+    /// </summary>
+    public bool IsArmed
+    {
+        get => _isArmed;
+        private set => SetProperty(ref _isArmed, value);
+    }
+
+    /// <summary>
+    /// Whether the touch filter just ignored a touch on the shortcut (TAC-003): a slight outline shows for
+    /// <c>Timings.Touch.IgnoredTouchFeedback</c>, so the person knows nothing was sent.
+    /// </summary>
+    public bool IsIgnored
+    {
+        get => _isIgnored;
+        private set => SetProperty(ref _isIgnored, value);
+    }
+
+    /// <summary>Starts or ends the outline of an ignored touch (the composition times it, TAC-003).</summary>
+    /// <param name="ignored">Whether it shows.</param>
+    public void ShowIgnored(bool ignored) => IsIgnored = ignored;
+
+    /// <summary>
+    /// Whether the shortcut just ran: it flashes for <c>Timings.Notices.ExecutionFlash</c> (EJE-012), the one sign on
+    /// screen that a tap worked now that the Tab view only says its confirmations (D21).
+    /// </summary>
+    public bool IsFlashing
+    {
+        get => _isFlashing;
+        private set => SetProperty(ref _isFlashing, value);
+    }
+
+    /// <summary>Starts or ends the flash (the composition times it, EJE-012).</summary>
+    /// <param name="flashing">Whether it flashes.</param>
+    public void Flash(bool flashing) => IsFlashing = flashing;
 
     /// <summary>The voice number (ACC-009); <see langword="null"/> when they are off.</summary>
     public int? VoiceNumber
@@ -128,9 +192,10 @@ public sealed class DockTileViewModel : ObservableObject
         }
     }
 
-    internal void ApplyState(bool latched, string state, string helpText)
+    internal void ApplyState(bool latched, bool armed, string state, string helpText)
     {
         IsLatched = latched;
+        IsArmed = armed;
         AccessibleState = state;
         AccessibleHelpText = helpText;
     }

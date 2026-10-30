@@ -3,6 +3,7 @@ using Clicalo.Application.Ports;
 using Clicalo.Application.UseCases;
 using Clicalo.Domain.Document;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Templates;
 using Clicalo.Infrastructure.Catalogs;
 using Microsoft.Extensions.Logging;
 
@@ -12,9 +13,9 @@ namespace Clicalo.App.Lifecycle;
 /// The document the start hands to the store (blueprint §3.1 step 1, §6.5):
 /// <list type="number">
 /// <item>the document read by the recovery chain;</item>
-/// <item>on a new installation (no <c>clicalo.json</c> and nothing to recover), the starter kit of <c>content</c> with
-/// the options it marks by default («Basics» only, user decision D2, until the welcome of M4 lets the user choose), in
-/// the language of Windows, written at once;</item>
+/// <item>on a new installation (no <c>clicalo.json</c> and nothing to recover), an empty General and Siempre visible in
+/// the language of Windows, written at once: the welcome, which opens while the document has not finished it, installs
+/// the starter kit the person marks (user decision D2; [Omitir] installs «Basics» only, BIE-003);</item>
 /// <item>the usage of <c>usage.json</c>, merged and purged (FRE-002).</item>
 /// </list>
 /// Clícalo never reads the files of Macro Quick Access (ADR-0020). A document of the start that could not be written
@@ -99,13 +100,15 @@ internal sealed partial class StartupDocuments(
     }
 
     /// <summary>
-    /// The document of the starter kit with the options it marks by default (user decision D2), or
+    /// The document of the starter kit with nothing marked, which the welcome fills (user decision D2, BIE-003), or
     /// <see langword="null"/> when the content cannot be read (the caller keeps General alone).
     /// </summary>
     private UserDocument? ReadSeed(string? contentFolder, Domain.Settings.UserSettings settings) =>
         contentFolder is not null
         && StarterContentFiles.Load(contentFolder) is { } content
-        && FirstDocument.CreateDefault(content, settings, ids).TryGetValue(out var document)
+        && FirstDocument
+            .Create(content, StarterSelection.Empty, settings, ids)
+            .TryGetValue(out var document)
             ? document
             : null;
 

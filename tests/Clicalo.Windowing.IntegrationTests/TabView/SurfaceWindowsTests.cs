@@ -9,10 +9,12 @@ using Clicalo.Presentation.Bubble;
 using Clicalo.Presentation.Dock;
 using Clicalo.Presentation.Panel;
 using Clicalo.TestKit.Windows.Rendering;
+using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces;
 using Clicalo.UI.Wpf.Surfaces.Panel;
 using Clicalo.UI.Wpf.Surfaces.TabView;
 using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
 using Clicalo.UI.Wpf.Windowing;
 using Clicalo.Windowing.IntegrationTests.MinimalPanel;
 using Clicalo.Windowing.IntegrationTests.Theming;
@@ -54,8 +56,11 @@ public sealed class SurfaceWindowsTests
             try
             {
                 bubble.Look.ShouldBe(SurfaceLook.Bubble);
-                bubble.Button.Symbol.ShouldBe("keyboard");
-                bubble.Button.IconSize.ShouldBe(PanelSizes.Layout.BubbleIconPx);
+                // Direction C (D12): the mark of Clícalo, never taken for the touch keyboard of Windows.
+                var mark =
+                    bubble.Button.Content.ShouldBeOfType<Clicalo.UI.Wpf.Controls.SymbolIcon>();
+                mark.Symbol.ShouldBe("touch_app");
+                mark.Size.ShouldBe(IconBox.Large);
                 bubble.Title.ShouldBe("Mostrar panel");
                 bubble.BorderThickness.Left.ShouldBeLessThan(3);
 
@@ -83,7 +88,8 @@ public sealed class SurfaceWindowsTests
     [Trait("Req", "PES-001")]
     [Trait("Req", "REG-02")]
     [Trait("Req", "ACC-002")]
-    public void The_handle_is_drawn_32_deep_rounded_toward_the_screen_and_takes_a_touch_44_deep(
+    [Trait("Req", "TEM-002")]
+    public void The_handle_is_drawn_as_deep_as_its_touch_44_and_rounded_toward_the_screen(
         DockSide side,
         double width,
         double height
@@ -107,9 +113,13 @@ public sealed class SurfaceWindowsTests
             {
                 handle.Button.Width.ShouldBe(width);
                 handle.Button.Height.ShouldBe(height);
-                var face = handle.Button.Content.ShouldBeOfType<System.Windows.Controls.Border>();
-                face.CornerRadius.ShouldBe(SurfaceLook.DockHandle(side).Corners);
-                (DockGeometry.IsVertical(side) ? face.Width : face.Height).ShouldBe(32);
+                var face = handle.Button.Content.ShouldBeOfType<System.Windows.Controls.Grid>();
+                var backdrop = face.Children.OfType<System.Windows.Controls.Border>().First();
+                backdrop.CornerRadius.ShouldBe(SurfaceLook.DockHandle(side).Corners);
+                // D21: the face lets a little of the app behind show through, the glyphs stay solid.
+                backdrop.Opacity.ShouldBeInRange(0.5, 0.99);
+                // D12: no control is drawn smaller than it answers; the dot of what is held has a corner of its own.
+                (DockGeometry.IsVertical(side) ? face.Width : face.Height).ShouldBe(44);
                 handle.Title.ShouldBe("Abrir barra");
             }
             finally
@@ -124,6 +134,7 @@ public sealed class SurfaceWindowsTests
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-007")]
     [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
     public void The_bar_shows_its_zones_and_the_shortcuts_of_its_page()
     {
         using var lab = SurfaceLab.Create();
@@ -146,10 +157,61 @@ public sealed class SurfaceWindowsTests
                 bar.Look.ShouldBe(SurfaceLook.Panel);
                 bar.TileControls.Select(static t => t.AccessibleName)
                     .ShouldBe(["Copiar", "Mantener Ctrl", "Mayús fija", "Web"]);
-                bar.Buttons.Count.ShouldBe(10);
+                // D21: the arrows are the twelfth.
+                bar.Buttons.Count.ShouldBe(12);
+
+                // PES-009: tune, the last of the tools of D20, opens Quick settings beside the bar.
+                bar.Buttons[10].ShouldBeSameAs(bar.TuneButton);
+                bar.TuneButton.Symbol.ShouldBe("tune");
+                System
+                    .Windows.Automation.AutomationProperties.GetName(bar.TuneButton)
+                    .ShouldBe("Ajustes rápidos");
 
                 dock.ApplyTileSpace(130);
                 bar.TileControls.Count.ShouldBe(2);
+            }
+            finally
+            {
+                bar.Close();
+                theme.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    [Trait("Req", "PES-014")]
+    [Trait("Req", "ACC-001")]
+    public void The_bar_says_what_the_Tab_view_keeps_off_the_screen_through_its_window()
+    {
+        using var lab = SurfaceLab.Create();
+        var time = new FakeTimeProvider();
+        WpfThread.Invoke(() =>
+        {
+            var theme = Theme();
+            var bar = new DockBarWindow(
+                DockSide.Right,
+                Dock(time),
+                lab.Registry,
+                time,
+                theme,
+                PanelDesktopFixture.Touch,
+                static (_, _, _) => { }
+            );
+            try
+            {
+                // The row of its tiles has no UI Automation peer: what it said there was never heard.
+                bar.Announcer.Region.ShouldBeSameAs(bar);
+                System
+                    .Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(bar)
+                    .ShouldNotBeNull();
+
+                bar.Announcer.Say("Ctrl+S enviado a Word", AnnouncementUrgency.Polite);
+
+                bar.Announcer.LastText.ShouldBe("Ctrl+S enviado a Word");
+                bar.Announcer.Announcements.ShouldBe(1);
+                System
+                    .Windows.Automation.AutomationProperties.GetLiveSetting(bar)
+                    .ShouldBe(System.Windows.Automation.AutomationLiveSetting.Off);
             }
             finally
             {
@@ -178,15 +240,18 @@ public sealed class SurfaceWindowsTests
             );
             panel.Apply(PanelProjector.Project(PanelTestData.Profile(), LangCode.Es, LangCode.Es));
             panel.ApplyLayout(PanelLayoutSettings.Default with { Compact = true });
-            var row = new CompactRowView(panel.Selector, panel.Pager, () => false);
+            var body = new PanelBodyView(panel);
 
-            row.Visibility.ShouldBe(System.Windows.Visibility.Collapsed);
-            row.TapTargets.ShouldBeEmpty();
-            row.Show(shown: true);
-            row.Visibility.ShouldBe(System.Windows.Visibility.Visible);
-            row.FrequentsButton.AccessibleName.ShouldBe("Frecuentes");
-            row.TapTargets.Count().ShouldBeGreaterThanOrEqualTo(2);
-            row.Detach();
+            // Direction C (D12): the row «Qué ver» goes to the foot of the Compact view, right under the grid; the pager is
+            // the last row, so it comes and goes with the pages moving only the bottom edge (D21).
+            body.Children.IndexOf(body.Selector)
+                .ShouldBeGreaterThan(body.Children.IndexOf(body.GridArea));
+            body.Children.IndexOf(body.Pager)
+                .ShouldBeGreaterThan(body.Children.IndexOf(body.Selector));
+            body.Selector.Visibility.ShouldBe(System.Windows.Visibility.Visible);
+            body.Selector.FrequentsButton.AccessibleName.ShouldBe("Frecuentes");
+            body.Selector.TapTargets.Count().ShouldBeGreaterThanOrEqualTo(2);
+            body.Detach();
         });
     }
 
@@ -226,7 +291,6 @@ public sealed class SurfaceWindowsTests
                 IsFixed: false,
                 CanRepeat: false,
                 DockFlyout.None,
-                CoachStep: 0,
                 BarOpen: true,
                 AnythingHeld: false
             )
@@ -276,11 +340,11 @@ public sealed class SurfaceWindowsTests
 
         public void ToggleSticky() { }
 
+        public void ToggleArrows() { }
+
         public void TogglePinOpen() { }
 
-        public void CoachNext() { }
-
-        public void CoachSkip() { }
+        public void QuickSettings() { }
 
         public void ReleaseAll() { }
     }

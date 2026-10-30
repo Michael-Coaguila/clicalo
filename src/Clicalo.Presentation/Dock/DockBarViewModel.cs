@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using Clicalo.Application.Coordinators;
 using Clicalo.Application.Engine;
 using Clicalo.Application.Localization;
+using Clicalo.Application.Profiles;
 using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Keys;
 using Clicalo.Domain.KeySafety;
@@ -20,15 +21,25 @@ namespace Clicalo.Presentation.Dock;
 /// <summary>
 /// The handle and the bar of the Tab view (docs/04 «Vista pestaña», PES-001 to PES-015) and the floating «Release all»
 /// beside them: the shortcuts of the view, paged by what fits whole (PES-007), «What to see» (PES-006), the tools
-/// (PES-008), the «Pinned» window (PES-010) and the first-time guide (PES-015). Every rule comes from the domain
+/// (PES-008, PES-009), the «Pinned» window (PES-010) and the first-time guide (PES-015). Every rule comes from the domain
 /// (<see cref="DockRules"/>, <see cref="DockGeometry"/>, <see cref="Paging"/>); every text from <c>data/i18n</c>,
 /// formatted when applied. What the buttons do goes to <see cref="IDockIntents"/>.
 /// </summary>
 public sealed class DockBarViewModel : ObservableObject
 {
     private const string FrequentsIcon = "star";
+    private const string EmptyProfileIcon = "inbox";
     private const string NoProfileIcon = "keyboard";
     private const string ScrollUpIcon = "keyboard_double_arrow_up";
+
+    /// <summary>The four arrow keys of the window of arrows (D21), in the order of the cross: ↑, ←, →, ↓.</summary>
+    private static readonly (string Id, string Key, string Icon, Message Name)[] Arrows =
+    [
+        ("arrowUp", "up", "arrow_upward", L.DockArrowUp),
+        ("arrowLeft", "left", "arrow_back", L.DockArrowLeft),
+        ("arrowRight", "right", "arrow_forward", L.DockArrowRight),
+        ("arrowDown", "down", "arrow_downward", L.DockArrowDown),
+    ];
     private const string ScrollDownIcon = "keyboard_double_arrow_down";
     private const string ScrollCategory = "nav";
 
@@ -44,6 +55,10 @@ public sealed class DockBarViewModel : ObservableObject
     private PageWindow _window = Paging.Window(0, 1, 0);
     private int _page;
     private double _tileSpace = double.NaN;
+    private double _tileGap = double.NaN;
+    private int _tileColumns = 1;
+    private double _verticalTileLength;
+    private double _horizontalTileLength;
     private int _perPage = 1;
     private bool _isVertical = true;
     private string _pageLabel = string.Empty;
@@ -54,20 +69,20 @@ public sealed class DockBarViewModel : ObservableObject
     private string _autoFixedName = string.Empty;
     private string _pinLabel = string.Empty;
     private string _pinName = string.Empty;
-    private string _coachStepLabel = string.Empty;
-    private string _coachTitle = string.Empty;
-    private string _coachText = string.Empty;
-    private string _coachNextLabel = string.Empty;
-    private bool _showsCoach;
 
     /// <summary>Creates the bar.</summary>
     /// <param name="controller">Where the gestures of its shortcuts go.</param>
     /// <param name="localization">The interface language.</param>
     /// <param name="intents">What its buttons ask for.</param>
+    /// <param name="layers">
+    /// Test mode and the menu of a shortcut, shared with the panel (PES-010, PES-014); <see langword="null"/> for a bar
+    /// without them.
+    /// </param>
     public DockBarViewModel(
         PanelInteractionController controller,
         ILocalizationContext localization,
-        IDockIntents intents
+        IDockIntents intents,
+        PanelLayerModels? layers = null
     )
     {
         ArgumentNullException.ThrowIfNull(controller);
@@ -77,19 +92,34 @@ public sealed class DockBarViewModel : ObservableObject
         _localization = localization;
         _intents = intents;
         ScrollUp = ScrollTile(
-            "dock.scrollUp",
+            DockTileViewModel.ToolIdPrefix + "scrollUp",
             MouseOp.ScrollUp,
             ScrollUpIcon,
             localization.Current.Format(L.DockScrollUp)
         );
         ScrollDown = ScrollTile(
-            "dock.scrollDown",
+            DockTileViewModel.ToolIdPrefix + "scrollDown",
             MouseOp.ScrollDown,
             ScrollDownIcon,
             localization.Current.Format(L.DockScrollDown)
         );
+        ArrowTiles =
+        [
+            .. Arrows.Select(arrow =>
+                ArrowTile(arrow.Id, arrow.Key, arrow.Icon, localization.Current.Format(arrow.Name))
+            ),
+        ];
         Labels = new DockLabels(localization);
+        Modes = layers is null
+            ? null
+            : new DockTileModes(layers.TestMode, layers.Menu, layers.InFrequents);
     }
+
+    /// <summary>
+    /// What a gesture on a shortcut does before it runs: test mode and the menu (PES-010, PES-014); <see langword="null"/>
+    /// for a bar without them.
+    /// </summary>
+    public DockTileModes? Modes { get; }
 
     /// <summary>The texts of the handle and the bar in the interface language.</summary>
     public DockLabels Labels { get; }
@@ -113,11 +143,23 @@ public sealed class DockBarViewModel : ObservableObject
     /// <summary>The shortcuts of the page of the bar, in order (PES-007).</summary>
     public ObservableCollection<DockTileViewModel> PageTiles { get; } = [];
 
+    /// <summary>
+    /// <see cref="PageTiles"/> holds another page: raised once per change, after the collection is whole, so a view
+    /// builds the page once and not once per shortcut that moved.
+    /// </summary>
+    public event EventHandler? PageChanged;
+
     /// <summary>The shortcuts of Always visible, for the «Pinned» window (PES-010).</summary>
     public ObservableCollection<DockTileViewModel> PinnedTiles { get; } = [];
 
     /// <summary>⏶ Scroll up: a Mantener of the mouse wheel (PES-008).</summary>
     public DockTileViewModel ScrollUp { get; }
+
+    /// <summary>
+    /// ↑, ←, → and ↓ (D21, asked by the maintainer): each sends its arrow key to the app in front, with the sticky keys
+    /// on (Mayús fija + → selects), from a window beside the bar that stays open while they are used.
+    /// </summary>
+    public IReadOnlyList<DockTileViewModel> ArrowTiles { get; }
 
     /// <summary>⏷ Scroll down: a Mantener of the mouse wheel (PES-008).</summary>
     public DockTileViewModel ScrollDown { get; }
@@ -140,6 +182,30 @@ public sealed class DockBarViewModel : ObservableObject
         get => _pageLabel;
         private set => SetProperty(ref _pageLabel, value);
     }
+
+    /// <summary>The shortcut <paramref name="shortcut"/> ran: its tiles on the bar and in Pinned flash (EJE-012).</summary>
+    /// <param name="shortcut">The shortcut.</param>
+    /// <param name="flashing">Whether the flash starts or ends.</param>
+    public void Flash(ShortcutId shortcut, bool flashing)
+    {
+        // The keys of Arrows flash as well when they run (D21 review: only the bar and Pinned did).
+        foreach (var tile in PageTiles.Concat(PinnedTiles).Concat(ArrowTiles))
+        {
+            if (tile.Id == shortcut)
+            {
+                tile.Flash(flashing);
+            }
+        }
+    }
+
+    /// <summary>
+    /// CUA-010 on the bar: with no shortcut in view, what the empty place says (Frequents still empty, or a profile
+    /// without shortcuts) and its icon, as the card of the panel; empty while there are shortcuts.
+    /// </summary>
+    public (string Icon, string Text) EmptyView =>
+        PageTiles.Count > 0 ? (string.Empty, string.Empty)
+        : _state?.Frequents == true ? (FrequentsIcon, Labels.EmptyFrequents)
+        : (EmptyProfileIcon, Labels.EmptyProfile);
 
     /// <summary>The icon of the handle: ★ in Frequents, the profile's, or keyboard without a profile (PES-001).</summary>
     public string HandleIcon
@@ -169,6 +235,9 @@ public sealed class DockBarViewModel : ObservableObject
         private set => SetProperty(ref _autoFixedLabel, value);
     }
 
+    /// <summary>Both words the pill may say, «Auto» and «Fijo»: a pill as wide as the longer keeps the bar's length.</summary>
+    public IReadOnlyList<string> AutoFixedLabels { get; private set; } = [];
+
     /// <summary>[autoA] or [lockA]: the accessible name of the pill.</summary>
     public string AutoFixedName
     {
@@ -188,41 +257,6 @@ public sealed class DockBarViewModel : ObservableObject
     {
         get => _pinName;
         private set => SetProperty(ref _pinName, value);
-    }
-
-    /// <summary>Whether the first-time guide shows (PES-015).</summary>
-    public bool ShowsCoach
-    {
-        get => _showsCoach;
-        private set => SetProperty(ref _showsCoach, value);
-    }
-
-    /// <summary>«i / 3» of the guide.</summary>
-    public string CoachStepLabel
-    {
-        get => _coachStepLabel;
-        private set => SetProperty(ref _coachStepLabel, value);
-    }
-
-    /// <summary>The title of the step: [co1t], [co2t] or [co3t].</summary>
-    public string CoachTitle
-    {
-        get => _coachTitle;
-        private set => SetProperty(ref _coachTitle, value);
-    }
-
-    /// <summary>The text of the step: [co1d], [co2d] or [co3d].</summary>
-    public string CoachText
-    {
-        get => _coachText;
-        private set => SetProperty(ref _coachText, value);
-    }
-
-    /// <summary>[next], or [understood] on the last step.</summary>
-    public string CoachNextLabel
-    {
-        get => _coachNextLabel;
-        private set => SetProperty(ref _coachNextLabel, value);
     }
 
     /// <summary>Whether 📌 «Pinned» shows (PES-008).</summary>
@@ -247,12 +281,9 @@ public sealed class DockBarViewModel : ObservableObject
             state.Frequents ? "undo"
             : state.Flyout == DockFlyout.Profiles ? "close"
             : "expand_more";
-        AutoFixedIcon = state.IsFixed ? "lock" : "autorenew";
-        ShowsCoach = DockRules.ShowsCoach(
-            state.BarOpen,
-            state.Dock.CoachDone,
-            state.Flyout != DockFlyout.None
-        );
+        AutoFixedIcon = state.IsFixed
+            ? PanelHeaderModel.FixedIcon.Name
+            : PanelHeaderModel.AutoIcon.Name;
         Format();
         Repage();
         OnPropertyChanged(nameof(State));
@@ -272,12 +303,15 @@ public sealed class DockBarViewModel : ObservableObject
     {
         _list = SyncById(_listById, list.IsDefault ? [] : list);
         _pinned = SyncById(_pinnedById, pinned.IsDefault ? [] : pinned);
-        Sync(PinnedTiles, _pinned);
+        _ = Sync(PinnedTiles, _pinned);
         ApplyEngine(_engine);
         OnPropertyChanged(nameof(ShowsPinned));
     }
 
-    /// <summary>Applies what the engine holds: the state of every shortcut (PES-007) and the dot of the handle.</summary>
+    /// <summary>
+    /// Applies what the engine holds: the state of every shortcut (PES-007), the shortcut armed for its confirmation tap
+    /// (EJE-002) and the dot of the handle.
+    /// </summary>
     /// <param name="snapshot">The engine snapshot.</param>
     public void ApplyEngine(EngineSnapshot snapshot)
     {
@@ -296,10 +330,14 @@ public sealed class DockBarViewModel : ObservableObject
         foreach (var tile in _list.Concat(_pinned).Append(ScrollUp).Append(ScrollDown))
         {
             var isHeld = held.TryGetValue(tile.Id, out var item);
+
+            // EJE-002: the armed shortcut shows its warn outline and says «Toca otra vez para confirmar», as on the panel.
+            var armed = snapshot.Armed?.Shortcut == tile.Id;
             tile.ApplyState(
                 isHeld,
-                isHeld
-                    ? localizer.Format(item!.ContactId is null ? L.Latched : L.Holding)
+                armed,
+                isHeld ? localizer.Format(item!.ContactId is null ? L.Latched : L.Holding)
+                    : armed ? localizer.Format(L.ConfirmClose)
                     : string.Empty,
                 localizer.Format(
                     tile.Behavior switch
@@ -326,6 +364,39 @@ public sealed class DockBarViewModel : ObservableObject
         }
 
         _tileSpace = availablePx;
+        Repage();
+    }
+
+    /// <summary>
+    /// How many shortcuts a side bar puts across its width (D20): two icons side by side in S, one with its name in M
+    /// and L. A page holds the rows that fit times this, at most the preference of General.
+    /// </summary>
+    /// <param name="columns">1 or 2.</param>
+    public void ApplyTileColumns(int columns)
+    {
+        var across = Math.Max(1, columns);
+        if (across == _tileColumns)
+        {
+            return;
+        }
+
+        _tileColumns = across;
+        Repage();
+    }
+
+    /// <summary>
+    /// The space the bar draws between two of its shortcuts, in logical pixels (direction C, D12: one gap of the
+    /// spacing scale for every size); until the bar says it, the gap of the panel size.
+    /// </summary>
+    /// <param name="gapPx">The gap.</param>
+    public void ApplyTileGap(double gapPx)
+    {
+        if (double.IsNaN(gapPx) || Math.Abs(gapPx - _tileGap) < 0.5)
+        {
+            return;
+        }
+
+        _tileGap = gapPx;
         Repage();
     }
 
@@ -356,14 +427,52 @@ public sealed class DockBarViewModel : ObservableObject
         Labels.Relocalize();
         ScrollUp.Update(ScrollModel(ScrollUp, _localization.Current.Format(L.DockScrollUp)));
         ScrollDown.Update(ScrollModel(ScrollDown, _localization.Current.Format(L.DockScrollDown)));
+        for (var i = 0; i < Arrows.Length; i++)
+        {
+            ArrowTiles[i]
+                .Update(ScrollModel(ArrowTiles[i], _localization.Current.Format(Arrows[i].Name)));
+        }
         Format();
         Repage();
         ApplyEngine(_engine);
     }
 
-    /// <summary>The length of one shortcut along the bar: 50/58/70 high (vertical) or 62/72/88 wide (PES-007).</summary>
-    public double TileLength =>
-        IsVertical ? Metrics.DockVerticalTileHeightPx : Metrics.DockHorizontalTileWidthPx;
+    /// <summary>
+    /// The length of one shortcut along the bar, as the view draws it with the text scale of the person
+    /// (<see cref="ApplyTileLengths"/>): 80/88/96 wide on a top or bottom bar and 52/52/64 high on a side bar at 100 %,
+    /// and longer with a larger text so its name keeps its words whole (PES-007 with the measures of direction C, D12;
+    /// CUA-011). Never shorter than the size says.
+    /// </summary>
+    public double TileLength => TileLengthAlong(IsVertical);
+
+    /// <summary>
+    /// <see cref="TileLength"/> along a side bar (<paramref name="vertical"/>) or a top or bottom one, whatever edge is
+    /// in view: the bar of another edge builds its shortcuts with its own length, never with the one of the edge in view.
+    /// </summary>
+    /// <param name="vertical">Whether the bar is on the left or the right edge.</param>
+    public double TileLengthAlong(bool vertical) =>
+        vertical
+            ? Math.Max(Metrics.DockVerticalTileHeightPx, _verticalTileLength)
+            : Math.Max(Metrics.DockHorizontalTileWidthPx, _horizontalTileLength);
+
+    /// <summary>
+    /// The length of a shortcut along a side bar (its height) and along a top or bottom one (its width) at the text
+    /// scale of the person (CUA-011), which the view measures with its type scale. The pages follow it.
+    /// </summary>
+    /// <param name="vertical">The height of a shortcut of a side bar, in logical pixels.</param>
+    /// <param name="horizontal">The width of a shortcut of a top or bottom bar, in logical pixels.</param>
+    public void ApplyTileLengths(double vertical, double horizontal)
+    {
+        if (vertical.Equals(_verticalTileLength) && horizontal.Equals(_horizontalTileLength))
+        {
+            return;
+        }
+
+        _verticalTileLength = vertical;
+        _horizontalTileLength = horizontal;
+        OnPropertyChanged(nameof(TileLength));
+        Repage();
+    }
 
     /// <summary>The handle was tapped.</summary>
     public void OpenBar() => _intents.OpenBar();
@@ -399,14 +508,14 @@ public sealed class DockBarViewModel : ObservableObject
     /// <summary>Sticky keys.</summary>
     public void ToggleSticky() => _intents.ToggleSticky();
 
+    /// <summary>The arrows: their window beside the button, or closes it (D21).</summary>
+    public void ToggleArrows() => _intents.ToggleArrows();
+
     /// <summary>The lock of the bar.</summary>
     public void TogglePinOpen() => _intents.TogglePinOpen();
 
-    /// <summary>[next] or [understood].</summary>
-    public void CoachNext() => _intents.CoachNext();
-
-    /// <summary>[coachSkip].</summary>
-    public void CoachSkip() => _intents.CoachSkip();
+    /// <summary>The <c>tune</c> button: Quick settings beside the bar (PES-009).</summary>
+    public void QuickSettings() => _intents.QuickSettings();
 
     /// <summary>The floating «Release all».</summary>
     public void ReleaseAll() => _intents.ReleaseAll();
@@ -438,45 +547,59 @@ public sealed class DockBarViewModel : ObservableObject
         );
     }
 
+    private DockTileViewModel ArrowTile(string id, string key, string icon, string name)
+    {
+        var shortcutId = new ShortcutId(DockTileViewModel.ToolIdPrefix + id);
+        var shortcut = new Shortcut(
+            shortcutId,
+            LocalizedText.Same(id, LangCode.Es),
+            new IconRef(icon),
+            AutoIcon: false,
+            new CategoryId(ScrollCategory),
+            new TapAction(KeyChord.Create([new KeyStroke(new KeyId(key))]), []),
+            new ShortcutOptions(Confirm: false, new HoldLimit.InheritGlobal(), IsPrivate: false),
+            Origin: null,
+            PinnedFrom: null
+        );
+        return new DockTileViewModel(
+            new TileModel(
+                shortcutId,
+                name,
+                TileBehavior.Tap,
+                new TileBinding(shortcut, null, InjectionMode.VirtualKey),
+                new IconRef(icon),
+                new CategoryId(ScrollCategory)
+            ),
+            _controller
+        );
+    }
+
     private void Format()
     {
         var l = _localization.Current;
         var state = _state;
         var isFixed = state?.IsFixed == true;
         AutoFixedLabel = l.Format(isFixed ? L.LockOn2 : L.Auto2);
+        AutoFixedLabels = [l.Format(L.Auto2), l.Format(L.LockOn2)];
         AutoFixedName = l.Format(isFixed ? L.LockA : L.AutoA);
         var pinOpen = state?.Dock.PinOpen == true;
         PinLabel = l.Format(pinOpen ? L.PinOn : L.PinFolds);
         PinName = l.Format(pinOpen ? L.PinOnA : L.PinOffA);
-        var step = Math.Clamp(state?.CoachStep ?? 0, 0, DockRules.CoachSteps - 1);
-        CoachStepLabel = l.Format(L.CoachStep(index: step + 1, total: DockRules.CoachSteps));
-        CoachTitle = l.Format(
-            step switch
-            {
-                0 => L.Co1t,
-                1 => L.Co2t,
-                _ => L.Co3t,
-            }
-        );
-        CoachText = l.Format(
-            step switch
-            {
-                0 => L.Co1d,
-                1 => L.Co2d,
-                _ => L.Co3d,
-            }
-        );
-        CoachNextLabel = l.Format(DockRules.NextCoachStep(step) is null ? L.Understood : L.Next);
     }
 
     private void Repage()
     {
         var preference = _state?.Dock.PerPage ?? SettingsSchema.DockPerPageChoices[0];
-        _perPage = DockGeometry.TilesPerPage(
-            preference,
+        var columns = IsVertical ? _tileColumns : 1;
+        var rows = DockGeometry.TilesPerPage(
+            int.MaxValue,
             double.IsNaN(_tileSpace) ? double.PositiveInfinity : _tileSpace,
             TileLength,
-            Metrics.GapPx
+            double.IsNaN(_tileGap) ? Metrics.GapPx : _tileGap
+        );
+        _perPage = Math.Max(
+            1,
+            Math.Min(preference, (int)Math.Min(int.MaxValue, (long)rows * columns))
         );
         _window = Paging.Window(_list.Count, _perPage, _page);
         _page = _window.Page;
@@ -492,7 +615,11 @@ public sealed class DockBarViewModel : ObservableObject
             _pinned[i].ApplyVoiceNumber(numbers ? VoiceNumbers.ForStrip(_list.Count, i) : null);
         }
 
-        Sync(PageTiles, page);
+        if (Sync(PageTiles, page))
+        {
+            PageChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         PageLabel = _localization.Current.Format(
             L.DockPageOf(index: _window.Page + 1, total: _window.PageCount)
         );
@@ -502,15 +629,18 @@ public sealed class DockBarViewModel : ObservableObject
         OnPropertyChanged(nameof(CanGoNext));
     }
 
-    /// <summary>Makes <paramref name="target"/> hold <paramref name="items"/>, in order, touching it only when they differ.</summary>
-    private static void Sync(
+    /// <summary>
+    /// Makes <paramref name="target"/> hold <paramref name="items"/>, in order, touching it only when they differ;
+    /// true when it changed.
+    /// </summary>
+    private static bool Sync(
         ObservableCollection<DockTileViewModel> target,
         IReadOnlyList<DockTileViewModel> items
     )
     {
         if (target.SequenceEqual(items))
         {
-            return;
+            return false;
         }
 
         target.Clear();
@@ -518,6 +648,8 @@ public sealed class DockBarViewModel : ObservableObject
         {
             target.Add(item);
         }
+
+        return true;
     }
 
     private static TileModel ScrollModel(DockTileViewModel tile, string name) =>

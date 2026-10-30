@@ -1,6 +1,7 @@
 using Clicalo.Domain.Errors;
 using Clicalo.Domain.Execution;
 using Clicalo.Domain.Execution.Internal;
+using Clicalo.Domain.Geometry;
 using Clicalo.Domain.KeySafety;
 using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
@@ -109,8 +110,40 @@ public sealed class OtherPlannersTests
         effects.OfType<EngineEffect.MouseAction>().Single().Op.ShouldBe(MouseOp.Drag);
         engine.Receiver.Buttons.ShouldBe(MouseButtons.Left);
         engine.Advance(TimeSpan.FromSeconds(1));
-        engine.Tap(drag);
+
+        // The drop: the cursor goes to where the person points now, then the button goes up there (D21).
+        engine.Pointer = new PhysicalPoint(900, 300);
+        var drop = engine.Tap(drag).ToList();
+        var move = drop.OfType<EngineEffect.MouseAction>().ShouldHaveSingleItem();
+        move.Op.ShouldBe(MouseOp.Drag);
+        move.Target.ShouldBe(new PhysicalPoint(900, 300));
+        drop.IndexOf(move)
+            .ShouldBeLessThan(drop.IndexOf(drop.OfType<EngineEffect.Inject>().First()));
         engine.Receiver.IsEmpty.ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-007")]
+    [Trait("Req", "REG-03")]
+    public void A_drag_let_go_of_by_hand_ends_instead_of_staying_latched()
+    {
+        // D21: the person drops it with a touchpad click; Windows says the button is up, the engine lets go too.
+        var engine = Engine();
+        var drag = Shortcuts.Mouse("drag", MouseOp.Drag);
+        engine.Tap(drag);
+        engine.Receiver.Buttons.ShouldBe(MouseButtons.Left);
+
+        var effects = engine.Apply(new EngineEvent.ButtonLiftedOutside());
+
+        engine.Receiver.IsEmpty.ShouldBeTrue();
+        engine.State.IsQuiet.ShouldBeTrue();
+        effects.OfType<EngineEffect.Notice>().ShouldHaveSingleItem();
+
+        // Nothing latched: nothing happens.
+        engine
+            .Apply(new EngineEvent.ButtonLiftedOutside())
+            .OfType<EngineEffect.Inject>()
+            .ShouldBeEmpty();
     }
 
     [Fact]

@@ -1,5 +1,10 @@
 # Capturas de referencia del Prototipo v4
 
+> **Ahora manda la dirección C** (decisión D12 del usuario, 2026-10-16): el aspecto de Clícalo sigue la
+> [maqueta C](../redesign-c/index.html) y el [sistema de diseño](../sistema.md). Estas capturas del prototipo v4 quedan
+> como referencia de las funciones, los textos y el orden de los elementos, que siguen vinculantes; para colores,
+> medidas, tipografía y aspecto de los controles, manda C.
+
 Capturas PNG del [Prototipo v4](<../handoff/prototype/Prototipo v4.dc.html>) para comparar a ojo el aspecto
 de las superficies de WPF durante M3 (colores de tema, tipografía, tamaños de los objetivos táctiles, radios,
 sombras y orden de los elementos).

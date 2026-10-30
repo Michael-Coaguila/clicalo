@@ -29,12 +29,16 @@ internal static class CatalogFiles
 
     public static string ContentFile(string fileName) => Path.Combine(ContentDirectory, fileName);
 
-    /// <summary>Every data file validated by a schema: catalogs, content and templates.</summary>
+    /// <summary>
+    /// Every data file validated by a schema: catalogs, content, templates and the design system of direction C
+    /// (the other token files are checked by the token generator).
+    /// </summary>
     public static IReadOnlyList<string> DataFiles() =>
         [
             .. Directory.GetFiles(CatalogsDirectory, "*.json"),
             .. Directory.GetFiles(ContentDirectory, "*.json"),
             .. Directory.GetFiles(TemplatesDirectory, "*.json"),
+            Path.Combine(RepoPaths.Data, "tokens", "design-system.json"),
         ];
 
     public static IReadOnlyList<string> TemplateFiles() =>

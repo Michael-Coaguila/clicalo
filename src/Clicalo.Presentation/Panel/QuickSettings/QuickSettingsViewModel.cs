@@ -14,7 +14,7 @@ namespace Clicalo.Presentation.Panel.QuickSettings;
 /// <summary>
 /// The Quick settings sheet (AJR-001 to AJR-005, docs/04 §5), in this order: the «Centro de control» card ([openCC] and
 /// [ccSub]); Vista (Completa, Compacta, Pestaña); Opacidad (− · slider from 30 to 100 % · +); Tamaño (S, M, L); Lado
-/// de la pestaña, only in the Tab view; Tema in 2 × 2 (Auto, Oscuro, Claro, Alto contraste); and the switch rows Modo
+/// de la pestaña, only in the Tab view; Tema in 2 × 2 (Como Windows, Oscuro, Claro, Alto contraste); and the switch rows Modo
 /// prueba (30 s), [autoDim], [stickyMods] and [voiceNums]. Every change is a <see cref="SetSetting"/> on the document,
 /// saved by itself and applied at once by whoever follows the settings (theme, opacity, layout, dimming); presentation
 /// settings stay out of the undo history (DAT-006).
@@ -38,7 +38,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
     private const string PercentSign = "%";
     private const string TestModeIcon = "science";
     private const string AutoDimIcon = "blur_on";
-    private const string StickyIcon = "keyboard";
+    private const string StickyIcon = "keyboard_lock";
     private const string VoiceIcon = "pin";
 
     private readonly DocumentStore _store;
@@ -52,6 +52,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
     private int _opacityPercent;
     private string _opacityText = string.Empty;
     private string _name = string.Empty;
+    private string _closeName = string.Empty;
     private string _controlCenterTitle = string.Empty;
     private string _controlCenterSubtitle = string.Empty;
     private string _viewHeading = string.Empty;
@@ -104,10 +105,10 @@ public sealed class QuickSettingsViewModel : ObservableObject
         ];
         Sides =
         [
-            Option(DockSide.Left, "align_horizontal_left", SettingPaths.DockSide, closes: true),
-            Option(DockSide.Top, "align_vertical_top", SettingPaths.DockSide, closes: true),
-            Option(DockSide.Bottom, "align_vertical_bottom", SettingPaths.DockSide, closes: true),
-            Option(DockSide.Right, "align_horizontal_right", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Left, "border_left", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Top, "border_top", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Bottom, "border_bottom", SettingPaths.DockSide, closes: true),
+            Option(DockSide.Right, "border_right", SettingPaths.DockSide, closes: true),
         ];
         Themes =
         [
@@ -161,6 +162,16 @@ public sealed class QuickSettingsViewModel : ObservableObject
     {
         get => _name;
         private set => SetProperty(ref _name, value);
+    }
+
+    /// <summary>
+    /// [close] «Cerrar», the name of the 44 × 44 button that closes the sheet from its own title row (direction C, D12:
+    /// the sheet is a layer over the panel with its title and its way out).
+    /// </summary>
+    public string CloseName
+    {
+        get => _closeName;
+        private set => SetProperty(ref _closeName, value);
     }
 
     /// <summary>[openCC], the title of the card.</summary>
@@ -265,7 +276,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
         private set => SetProperty(ref _themeHeading, value);
     }
 
-    /// <summary>Auto, Oscuro, Claro and Alto contraste, in a 2 × 2 grid.</summary>
+    /// <summary>Como Windows, Oscuro, Claro and Alto contraste, in a 2 × 2 grid (D18: [themeAuto] everywhere).</summary>
     public IReadOnlyList<QuickOptionViewModel> Themes { get; }
 
     /// <summary>Modo prueba (30 s).</summary>
@@ -333,6 +344,7 @@ public sealed class QuickSettingsViewModel : ObservableObject
     {
         var l = _localization.Current;
         Name = l.Format(L.Quick);
+        CloseName = l.Format(L.Close);
         ControlCenterTitle = l.Format(L.OpenCC);
         ControlCenterSubtitle = l.Format(L.CcSub);
         ViewHeading = l.Format(L.View);
@@ -352,14 +364,14 @@ public sealed class QuickSettingsViewModel : ObservableObject
         Label(Sides[1], string.Empty, l.Format(L.STop));
         Label(Sides[2], string.Empty, l.Format(L.SBottom));
         Label(Sides[3], string.Empty, l.Format(L.SRight));
-        Label(Themes[0], l.Format(L.ThemeAutoS));
+        Label(Themes[0], l.Format(L.ThemeAuto));
         Label(Themes[1], l.Format(L.Dark));
         Label(Themes[2], l.Format(L.Light));
         Label(Themes[3], l.Format(L.Hc));
         TestModeSwitch.Label = l.Format(L.TmLabel);
         AutoDimSwitch.Label = l.Format(L.AutoDim);
         StickySwitch.Label = l.Format(L.StickyMods);
-        VoiceNumbersSwitch.Label = l.Format(L.VoiceNums);
+        VoiceNumbersSwitch.Label = l.Format(L.VoiceNumsT);
     }
 
     private static int Percent(double fraction) =>

@@ -15,6 +15,12 @@ public sealed record PanelHeaderActions(
     Action? Minimize
 )
 {
+    /// <summary>
+    /// The title opens or closes the profile grid while the selector row is hidden in the Full view (SEL-006);
+    /// <see langword="null"/> leaves the title as a drag zone only.
+    /// </summary>
+    public Action? Title { get; init; }
+
     /// <summary>No action yet: only the grip, the title and Auto/Fixed are shown.</summary>
     public static PanelHeaderActions None { get; } = new(null, null, null, null);
 }

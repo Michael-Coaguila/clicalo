@@ -44,7 +44,8 @@ public sealed class SearchViewModelTests
         _search.IsSearching.ShouldBeFalse();
         _search.Results.ShouldBeEmpty();
         _search.ShowNoResults.ShouldBeFalse();
-        _search.Placeholder.ShouldBe("Buscar acción en todos los perfiles…");
+        _search.Placeholder.ShouldBe("Buscar");
+        _search.FieldName.ShouldBe("Buscar acción en todos los perfiles…");
         _search.DictateName.ShouldBe("Dictar");
         _search.SearchName.ShouldBe("Buscar");
     }
@@ -139,7 +140,8 @@ public sealed class SearchViewModelTests
         localization.TrySetLanguage("en").ShouldBeTrue();
         search.Relocalize();
 
-        search.Placeholder.ShouldBe("Search actions in all profiles…");
+        search.Placeholder.ShouldBe("Search");
+        search.FieldName.ShouldBe("Search actions in all profiles…");
         search.DictateName.ShouldBe("Dictate");
     }
 }

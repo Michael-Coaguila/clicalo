@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
@@ -85,11 +86,57 @@ public sealed class LiveAnnouncerTests
     public void Any_other_element_receives_the_notice_as_its_automation_name() =>
         WpfThread.Invoke(() =>
         {
-            var region = new Border();
+            // An element with a peer of its own: a Border, a Grid or a StackPanel has none, so it could never be heard.
+            var region = new Image();
             new LiveAnnouncer(region).Announce("Soltado todo", AnnouncementUrgency.Assertive);
 
             AutomationProperties.GetName(region).ShouldBe("Soltado todo");
             AutomationProperties.GetLiveSetting(region).ShouldBe(AutomationLiveSetting.Assertive);
+        });
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    public void A_window_says_the_text_without_showing_it_or_becoming_a_live_region() =>
+        WpfThread.Invoke(() =>
+        {
+            var content = new TextBlock { Text = "Probar" };
+            var window = new Window { Content = content };
+            try
+            {
+                var announcer = new LiveAnnouncer(window);
+
+                announcer.Announce("¿Funcionó?", AnnouncementUrgency.Polite);
+                announcer.Say("No se puede usar Ctrl+Alt+Supr", AnnouncementUrgency.Assertive);
+
+                window.Content.ShouldBeSameAs(content, "a window never shows the text it says");
+                AutomationProperties.GetName(window).ShouldBeEmpty();
+                AutomationProperties.GetLiveSetting(window).ShouldBe(AutomationLiveSetting.Off);
+                announcer.LastText.ShouldBe("No se puede usar Ctrl+Alt+Supr");
+                announcer.LastUrgency.ShouldBe(AnnouncementUrgency.Assertive);
+                announcer.Announcements.ShouldBe(2);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+    [Fact]
+    [Trait("Req", "ACC-001")]
+    public void A_region_that_is_not_in_a_window_yet_still_shows_and_counts_its_notices() =>
+        WpfThread.Invoke(() =>
+        {
+            // A view being built again: its region is not in a window yet, so the events wait for the layout.
+            var region = new TextBlock();
+            var announcer = new LiveAnnouncer(region);
+
+            announcer.Announce("Combinación bloqueada", AnnouncementUrgency.Assertive);
+            announcer.Announce("Combinación especial", AnnouncementUrgency.Polite);
+            WpfThread.DrainPendingWork();
+
+            region.Text.ShouldBe("Combinación especial");
+            announcer.Announcements.ShouldBe(2);
+            announcer.LastUrgency.ShouldBe(AnnouncementUrgency.Polite);
         });
 
     [Fact]

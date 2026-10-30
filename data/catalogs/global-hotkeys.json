@@ -1,0 +1,20 @@
+{
+  "$schema": "../schemas/global-hotkeys.schema.json",
+  "catalogVersion": 1,
+  "criteria": [
+    "Off by default; the person turns it on and picks one of these combinations (user decision D10, BUR-005). The first one is preselected.",
+    "No Windows key: Windows keeps Win combinations for itself and adds new ones in updates.",
+    "Ctrl+Alt never goes with a letter, a digit or a symbol: on Spanish, Latin American and many other layouts Ctrl+Alt acts as AltGr and types characters such as @, # or the euro sign.",
+    "None of the combinations that Windows or Remote Desktop handle themselves: Ctrl+Alt+Delete, Ctrl+Shift+Esc, Ctrl+Alt+Home, Ctrl+Alt+End, Ctrl+Alt+Pause and Ctrl+Alt with the arrows; and not Ctrl+Alt+F12, which some graphics drivers take.",
+    "None of the Ctrl+Alt function keys that Office uses: F1 and F2 in Word, F5 and F9 in Excel; and never Ctrl+Shift+M, Mute in Teams (BUR-005).",
+    "Never a combination of blocked-combos.json or one that the seed, the library or a template sends (GlobalHotkeyCatalogTests).",
+    "Another app may already hold the combination: then registering it fails, the product says so and the person picks another one from this list."
+  ],
+  "hotkeys": [
+    { "id": "ctrl-alt-space", "keys": ["ctrl", "alt", "space"] },
+    { "id": "ctrl-alt-shift-space", "keys": ["ctrl", "alt", "shift", "space"] },
+    { "id": "ctrl-alt-f8", "keys": ["ctrl", "alt", "f8"] },
+    { "id": "ctrl-alt-f10", "keys": ["ctrl", "alt", "f10"] },
+    { "id": "ctrl-alt-f11", "keys": ["ctrl", "alt", "f11"] }
+  ]
+}

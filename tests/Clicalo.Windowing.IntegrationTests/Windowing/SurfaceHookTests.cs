@@ -90,8 +90,6 @@ public sealed class SurfaceHookTests
         (size.Width, size.Height).ShouldBe((300, 150), "200 × 100 logical units at 150 %.");
     }
 
-    [Trait("Category", "Quarantine")]
-    [Trait("Issue", "4")]
     [Fact]
     [Trait("Req", "REG-01")]
     [Trait("Req", "ACC-008")]
@@ -115,22 +113,28 @@ public sealed class SurfaceHookTests
             Bottom = work.Top + 60 + 150,
         };
 
-        // WPF answers with SetWindowPos(SWP_NOZORDER | SWP_ASYNCWINDOWPOS), without SWP_NOACTIVATE (#7561).
-        WpfThread.Invoke(() =>
-            NativeSurface.SendWithStructure(
+        // WPF answers with SetWindowPos(SWP_NOZORDER | SWP_ASYNCWINDOWPOS), without SWP_NOACTIVATE (#7561). Only the
+        // activation messages that arrive while the message is being handled are its own: the surface thread does
+        // not pump in between, while a WM_ACTIVATEAPP(TRUE) caused by another window of the thread or by the desktop
+        // can reach every top-level window at any other moment (issue 4).
+        var activations = WpfThread.Invoke(() =>
+        {
+            var before = surface.Activations.Count;
+            _ = NativeSurface.SendWithStructure(
                 window,
                 NativeSurface.WmDpiChanged,
                 (nint)((newDpi << 16) | newDpi),
                 suggested
-            )
-        );
+            );
+            return surface.Activations.Skip(before).ToList();
+        });
 
         var bounds = NativeSurface.Bounds(window);
         (bounds.Left, bounds.Top, bounds.Right, bounds.Bottom).ShouldBe(
             (suggested.Left, suggested.Top, suggested.Right, suggested.Bottom)
         );
         NativeSurface.IsWindowVisible(window).ShouldBeFalse();
-        surface.Activations.ShouldBeEmpty("WPF's SetWindowPos ran inside the activation veto.");
+        activations.ShouldBeEmpty("WPF's SetWindowPos ran inside the activation veto.");
         lab.Guard.Violations.ShouldBe(0);
         failures.Messages.ShouldBeEmpty();
     }

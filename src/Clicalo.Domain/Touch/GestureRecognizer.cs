@@ -31,7 +31,9 @@ namespace Clicalo.Domain.Touch;
 /// <item><see cref="TouchTargetKind.Hold"/>: <see cref="GestureKind.HoldStart"/> after the minimum contact if the
 /// debounce allows it (<see cref="TouchFilter.CanStartHold"/>), then exactly one <see cref="GestureKind.HoldEnd"/>
 /// when the contact lifts, is cancelled, leaves the extra hit area or the recognizer is reset (EJE-004, REG-03). No
-/// long press.</item>
+/// long press. On a target that lies in a zone that scrolls (<see cref="TouchTarget.InScrollZone"/>, TAC-004) the hold
+/// waits at least <c>HoldInScrollDelay</c>, and a contact that moves past the drag threshold before that is a scroll:
+/// it is ignored with <see cref="IgnoreReason.Moved"/> and nothing is ever pressed.</item>
 /// </list>
 /// <para>
 /// A contact that lifts after moving more than <c>SwipeMinDistancePx</c> horizontally with
@@ -74,6 +76,9 @@ public sealed class GestureRecognizer
     /// <summary>The targets hit-tested by <see cref="Feed"/>, in physical screen pixels.</summary>
     public ImmutableArray<TouchTarget> Targets { get; private set; } = [];
 
+    /// <summary>The layers drawn over other targets: a contact on one reaches only its own targets (TAC-002).</summary>
+    public ImmutableArray<TouchOccluder> Occluders { get; private set; } = [];
+
     /// <summary>Contacts currently down on the surface (drives the frozen layout of PAN-009).</summary>
     public int ActiveContacts => _count;
 
@@ -105,8 +110,14 @@ public sealed class GestureRecognizer
     /// survives (TAC-002).
     /// </summary>
     /// <exception cref="ArgumentException">Two targets share an identifier.</exception>
-    public void SetTargets(ImmutableArray<TouchTarget> targets)
+    /// <param name="targets">The targets.</param>
+    /// <param name="occluders">The layers drawn over other targets (<see cref="TouchOccluder"/>); none by default.</param>
+    public void SetTargets(
+        ImmutableArray<TouchTarget> targets,
+        ImmutableArray<TouchOccluder> occluders = default
+    )
     {
+        Occluders = occluders.IsDefault ? [] : occluders;
         var next = targets.IsDefault ? [] : targets;
         var states = new ButtonFilterState[next.Length];
         for (var i = 0; i < next.Length; i++)
@@ -388,7 +399,13 @@ public sealed class GestureRecognizer
         contact.Position = sample.Position;
         contact.DownTime = now;
         contact.PalmLike = _thresholds.IsPalm(sample.Contact);
-        var hit = HitResolver.Resolve(Targets.AsSpan(), sample.Position, _thresholds.HitSlop);
+        contact.IsMouse = sample.Kind == PointerKind.Mouse;
+        var hit = HitResolver.Resolve(
+            Targets.AsSpan(),
+            sample.Position,
+            _thresholds.HitSlop,
+            Occluders.AsSpan()
+        );
         if (hit >= 0)
         {
             contact.HasTarget = true;
@@ -409,7 +426,17 @@ public sealed class GestureRecognizer
         }
         else if (contact.Target.Kind == TouchTargetKind.Hold)
         {
-            var minContact = _thresholds.Settings.MinContact;
+            var minContact = contact.IsMouse ? TimeSpan.Zero : _thresholds.Settings.MinContact;
+            if (
+                !contact.IsMouse
+                && contact.Target.InScrollZone
+                && minContact < Timings.Touch.HoldInScrollDelay
+            )
+            {
+                // TAC-004: in a zone that scrolls, wait until the finger shows that it is not scrolling.
+                minContact = Timings.Touch.HoldInScrollDelay;
+            }
+
             if (minContact > TimeSpan.Zero)
             {
                 contact.Stage = ContactStage.HoldPending;
@@ -483,7 +510,12 @@ public sealed class GestureRecognizer
                     Ignore(ref contact, IgnoreReason.Palm);
                 }
                 else if (
-                    contact.LeftTarget || thresholds.ExceedsCancelMove(contact.MaxDisplacement)
+                    contact.LeftTarget
+                    || thresholds.ExceedsCancelMove(contact.MaxDisplacement)
+                    // TAC-004: past the drag threshold the surface scrolls; that contact never holds.
+                    || (
+                        contact.Target.InScrollZone && contact.MaxDisplacement > thresholds.MoveSlop
+                    )
                 )
                 {
                     Ignore(ref contact, IgnoreReason.Moved);
@@ -565,7 +597,12 @@ public sealed class GestureRecognizer
             contact.MaxDisplacement / thresholds.DpiScale,
             contact.PalmLike
         );
-        var settings = thresholds.Settings;
+        var settings = contact.IsMouse
+            ? thresholds.Settings with
+            {
+                MinContact = TimeSpan.Zero,
+            }
+            : thresholds.Settings;
         var index = IndexOf(contact.Target.Id);
         TouchVerdict verdict;
         if (index >= 0)

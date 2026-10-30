@@ -3,35 +3,28 @@ using System.Windows;
 using System.Windows.Controls;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// The administrator notice (EJE-013, PAN-007: under the panic strip): a warnWash card with a warn outline, the
-/// <c>admin_panel_settings</c> icon in warn, [adminMsg] in 13 px and the warn button [adminBtn] (36 visual, 44 touch).
-/// It only projects <see cref="AdminNoticeViewModel"/>.
+/// The administrator notice (EJE-013) in direction C (D12): a card of the warn tone (attention) with the
+/// <c>admin_panel_settings</c> icon in <c>warnText</c>, [adminMsg] in <c>bodySmall</c> and the secondary button
+/// [adminBtn] of 44. The panel shows it as a layer at the foot of its body, over the tiles, without moving them. It
+/// only projects <see cref="AdminNoticeViewModel"/>.
 /// </summary>
 public sealed class AdminNoticeView : Border
 {
-    private const double IconPx = 20;
-    private const double TextPx = 13;
-    private const double ButtonPx = 12;
-    private const double ButtonHeight = 36;
-    private const double Gap = 8;
-
     private readonly AdminNoticeViewModel _viewModel;
-    private readonly TextBlock _message = new() { TextWrapping = TextWrapping.Wrap };
+    private readonly StyledText _message = PanelChrome.Text(TextStyleToken.BodySmall, lines: 0);
     private readonly TouchButton _relaunch = new()
     {
-        Appearance = ButtonAppearance.Warn,
-        Height = ButtonHeight,
-        Padding = new Thickness(12, 0, 12, 0),
+        Variant = ButtonVariant.Secondary,
+        MaxLines = 2,
         Focusable = false,
         IsTabStop = false,
-        HorizontalAlignment = HorizontalAlignment.Left,
-        Margin = new Thickness(0, 6, 0, 0),
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        Margin = new Thickness(0, Space.S3, 0, 0),
     };
 
     /// <summary>Creates the card of <paramref name="viewModel"/>.</summary>
@@ -40,20 +33,9 @@ public sealed class AdminNoticeView : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Margin = new Thickness(10, 0, 10, 10);
-        var icon = new SymbolIcon
-        {
-            Symbol = "admin_panel_settings",
-            Size = IconPx,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 0, Gap, 0),
-        };
-        icon.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Warn)
-        );
-        _message.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(TextPx));
-        _relaunch.SetResourceReference(Control.FontSizeProperty, ThemeKeys.TextSize(ButtonPx));
+        var icon = PanelChrome.Icon("admin_panel_settings", IconBox.Medium, ColorToken.WarnText);
+        icon.VerticalAlignment = VerticalAlignment.Top;
+        icon.Margin = new Thickness(0, 0, Space.S3, 0);
         _relaunch.Click += (_, _) => _viewModel.Relaunch();
 
         var text = new StackPanel();
@@ -63,16 +45,14 @@ public sealed class AdminNoticeView : Border
         DockPanel.SetDock(icon, Dock.Left);
         row.Children.Add(icon);
         row.Children.Add(text);
-        Child = new Card
-        {
-            Tone = CardTone.Warn,
-            Padding = new Thickness(12, 10, 12, 10),
-            Content = row,
-        };
+        Child = new Card { Tone = CardTone.Warn, Content = row };
 
         viewModel.PropertyChanged += OnChanged;
         Refresh();
     }
+
+    /// <summary>[adminMsg] as the card shows it.</summary>
+    public string Message => _message.Text;
 
     /// <summary>[adminBtn] while the card shows.</summary>
     public IEnumerable<PanelTapTarget> TapTargets =>
@@ -87,7 +67,7 @@ public sealed class AdminNoticeView : Border
     {
         Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
         _message.Text = _viewModel.Message;
+        // ACC-001: the text and the button are read as they are; a name on the card would never reach UI Automation.
         _relaunch.Content = _viewModel.ButtonName;
-        System.Windows.Automation.AutomationProperties.SetName(this, _viewModel.Message);
     }
 }

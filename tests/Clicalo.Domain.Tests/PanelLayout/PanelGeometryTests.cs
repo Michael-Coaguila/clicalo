@@ -112,6 +112,48 @@ public sealed class PanelGeometryTests
     }
 
     [Fact]
+    [Trait("Req", "BUS-002")]
+    public void A_panel_the_touch_keyboard_covers_goes_right_above_it()
+    {
+        // The keyboard takes the bottom 400 px of the work area; the panel (500 high) reached down to 940.
+        var keyboard = new PhysicalRect(0, 640, 1920, 400);
+        var panel = new PhysicalRect(1500, 440, 316, 500);
+
+        var moved = PanelGeometry.Avoid(panel, keyboard, Primary);
+
+        moved.ShouldBe(panel with { Top = 640 - 8 - 500 });
+        moved.Bottom.ShouldBeLessThanOrEqualTo(keyboard.Top);
+    }
+
+    [Fact]
+    [Trait("Req", "BUS-002")]
+    public void A_panel_the_keyboard_does_not_touch_stays_where_it_is()
+    {
+        var panel = new PhysicalRect(1500, 40, 316, 500);
+
+        PanelGeometry.Avoid(panel, new PhysicalRect(0, 640, 1920, 400), Primary).ShouldBe(panel);
+        PanelGeometry.Avoid(panel, PhysicalRect.Empty, Primary).ShouldBe(panel);
+
+        // A floating keyboard elsewhere on the screen does not move it either.
+        PanelGeometry.Avoid(panel, new PhysicalRect(100, 600, 800, 300), Primary).ShouldBe(panel);
+    }
+
+    [Fact]
+    [Trait("Req", "BUS-002")]
+    public void Without_room_above_the_panel_goes_below_the_keyboard_or_to_the_top_of_the_work_area()
+    {
+        // A floating keyboard near the top: no room above it, room below.
+        var floating = new PhysicalRect(1200, 100, 700, 300);
+        var panel = new PhysicalRect(1500, 40, 316, 500);
+        PanelGeometry.Avoid(panel, floating, Primary).ShouldBe(panel with { Top = 100 + 300 + 8 });
+
+        // A panel too tall to fit above or below shows its header and its search field at the top.
+        var tall = new PhysicalRect(1500, 200, 316, 900);
+        var docked = new PhysicalRect(0, 640, 1920, 400);
+        PanelGeometry.Avoid(tall, docked, Primary).ShouldBe(tall with { Top = 8 });
+    }
+
+    [Fact]
     [Trait("Req", "PAN-006")]
     public void The_monitor_of_a_surface_is_the_one_under_its_center()
     {

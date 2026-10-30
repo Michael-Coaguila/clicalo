@@ -138,7 +138,7 @@ Las versiones marcadas «x» se fijan de forma exacta al crear el repositorio. D
 | IA | Microsoft.Extensions.AI (`IChatClient`) + Microsoft.Extensions.Http.Resilience | 10.x | Proveedor intercambiable por configuración; tiempo máximo de 15 s. Solo con clave propia en la 2.0. |
 | Actualizaciones | Velopack (NuGet + CLI `vpk` de la misma versión) | 1.2.x | Por usuario sin UAC, canales, deltas y fuente propia `IUpdateSource` con verificación de firma. |
 | Firma del manifiesto | ECDSA P-256 en una llave de hardware PIV (YubiKey 5 serie Nano o equivalente), mediante `cl sign-manifest` | — | Clave fuera de GitHub (D15). La verificación usa la BCL (`ECDsa`). |
-| Fuentes | Atkinson Hyperlegible, JetBrains Mono, Material Symbols Rounded (instancias estáticas FILL 0 y 1, recortadas) | Versionadas | El script de recorte en `/tools/fonts` es Python, se ejecuta a mano y su salida se versiona. No hay Python en la compilación. |
+| Fuentes | Atkinson Hyperlegible, JetBrains Mono, Material Symbols Rounded (instancias estáticas FILL 0 y 1, con todos los iconos desde D14) | Versionadas | El script de `/tools/fonts` es Python, se ejecuta a mano y su salida (las fuentes y la parte generada de `icons.json`) se versiona. No hay Python en la compilación. |
 | Pruebas | xUnit v3, Shouldly, comparador de instantáneas propio en TestKit (texto y PNG con tolerancia; sustituye a Verify, [D-01](deviations.md)), CsCheck, `FakeTimeProvider`, ArchUnitNET (`TngTech.ArchUnitNET.xUnitV3`), FlaUI.UIA3, Axe.Windows | 4.x ([D-02](deviations.md)) / 4.x / — / 4.x / 10.x / — / 5.x / 2.4.x | Ver §10. Stryker.NET y SharpFuzz entran **después de la 2.0** (M7). |
 | Análisis | Meziantou.Analyzer, Microsoft.CodeAnalysis.BannedApiAnalyzers, NetAnalyzers del SDK y analizadores propios `Clicalo.Analyzers` | 2.x | Ver §4.4. |
 | Formato | CSharpier + `.editorconfig` | 1.x | Determinista y sin opciones, así que se puede dictar sin cuidar la sangría. |
@@ -200,7 +200,7 @@ Las versiones marcadas «x» se fijan de forma exacta al crear el repositorio. D
 │                 «Soltar todo» de la bandeja sin el motor                        │
 └──────┬───────────────────────────────────────▲──────────────────────────────────┘
        │ un solo handle heredado (PROC_THREAD_ATTRIBUTE_HANDLE_LIST):
-       │  proceso padre (SYNCHRONIZE | QUERY_LIMITED); protocolo 3 (ADR-0023)
+       │  proceso padre (SYNCHRONIZE | QUERY_LIMITED); protocolo 4 (ADR-0023, ADR-0032)
        ▼                                       │ el principal comprueba cada 1 s
 ┌──────────────── Clicalo.Sentinel.exe (Native AOT, misma integridad, ≤5 MB) ─────┐
 │ WaitForSingleObject(padre) → GetAsyncKeyState(0x01‥0xFE) → SendInput(key-ups    │
@@ -289,6 +289,8 @@ Opcional, componente de sistema (§3.3), instalado una vez con UAC:
 
 ### 3.3 Elevación, uiAccess y componente de sistema
 
+> **Modificado en la 2.0 por la decisión D7 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** no hay componente de sistema ni inicio elevado sin UAC. «Reabrir como administrador» es un botón de Sistema › Inicio que pide la confirmación de UAC cada vez y solo eleva el `Clicalo.exe` instalado en `%LocalAppData%\Clicalo.App\current`; «Iniciar con Windows» arranca siempre sin elevación. Lo que sigue describe el diseño original.
+
 Hay **una sola instalación por usuario** (Velopack, sin UAC) y un **componente de sistema opcional** que se instala una vez con UAC desde Sistema › Inicio. El componente cumple SIS-002 en la 2.0 y es la base de uiAccess en M7.
 
 | Capacidad | Solo instalación por usuario (predeterminada) | Con componente de sistema (2.0, opcional) | uiAccess (M7, sobre el componente) |
@@ -344,7 +346,9 @@ No se transfiere estado por IPC, así que no hay superficie de ataque.
 
 **Nombres:**
 - `sidHash` son los 16 primeros caracteres hexadecimales de `SHA-256(UserSid)`.
-- El mutex está en `Local\` (una instancia por sesión, SIS-003).
+- El mutex está en `Local\` (una instancia por sesión, SIS-003). Un arranque con `--data` añade a los dos
+  nombres un sufijo derivado de la ruta de esa carpeta y es una instancia propia
+  ([ADR-0030](../adr/0030-instancia-aislada-con-datos-propios.md)).
 - El pipe es `\\.\pipe\Clicalo.{sidHash}.{sessionId}`.
 
 **Servidor:**
@@ -667,7 +671,7 @@ Hay seis mecanismos. Todos se ejecutan en la CI y todos bloquean.
 5. **Prueba de facetas de `ActionKind`.** Recorre todos los subtipos de `ShortcutAction` y exige que cada uno tenga sus facetas registradas en todas las capas: planificador (Domain), validador de completitud (Domain), mapeador DTO (Infrastructure), editor (Presentation), vista (UI.Wpf) y claves de texto en ES y EN. Es la forma de tener exhaustividad mientras C# no tenga uniones discriminadas.
 
 6. **Pruebas de reglas de producto** (`Architecture.Tests/ProductRules`):
-   - **R4 (REG-04):** todo comando destructivo implementa `IDestructiveCommand`. Una lista cerrada en `architecture/destructive-operations.json` exige que existan y lo implementen: `DeleteShortcut`, `DeleteProfile`, `DeleteDuplicate`, `ResetFrequents`, `ReplaceOnImport`, `RestoreBackup`, `DeleteMacroStep` y los casos de uso `RollbackVersion`, `UninstallKeepOrDeleteData` y `UninstallSystemComponent`. Un comando cuyo `Apply` elimina entidades o vacía listas (detectado con CsCheck sobre documentos generados) y no está en la lista hace fallar la prueba.
+   - **R4 (REG-04):** todo comando destructivo implementa `IDestructiveCommand`. Una lista cerrada en `architecture/destructive-operations.json` exige que existan y lo implementen: `DeleteShortcut`, `DeleteProfile`, `DeleteDuplicate`, `ResetFrequents`, `ReplaceOnImport`, `RestoreBackup`, `DeleteMacroStep`, `KeepOnlyInAlwaysVisible` y los casos de uso `RollbackVersion`, `UninstallKeepOrDeleteData` y `StartFromScratchOnReinstall` (hasta M6 figuraba `UninstallSystemComponent`, que dejó de existir con la decisión D7; [ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md)). Un comando cuyo `Apply` elimina entidades o vacía listas (detectado con CsCheck sobre documentos generados) y no está en la lista hace fallar la prueba.
    - **R7 (REG-07):** la prueba recorre todos los `IDocumentCommand` y los aplica a documentos generados. Exige `UndoIntent.Record`, salvo los que figuran en `architecture/undo-exemptions.json` con su justificación (`RecordUsage`, posición del panel, ajustes cuyo descriptor tenga `Undoable = false`, `FinishOnboarding`).
    - **R5 (REG-05, ACC-011):** es la regla UIA010 (§10.2). Todo campo de texto libre tiene un botón hermano «Dictar» (🎤), o «Pegar» en el campo de la clave de IA.
 
@@ -1546,6 +1550,8 @@ public sealed record TemplateRequest(string AppName, KeyboardLayoutKind Layout, 
 
 ### 9.3 Actualizaciones
 
+> **Modificado en la 2.0 por la decisión D6 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** sin manifiesto firmado ni `.sig`. Velopack lee las GitHub Releases del repositorio por HTTPS y verifica cada paquete; nunca baja de versión por sí solo, «Volver» descarga la versión anterior durante 7 días y una instancia elevada no actualiza. Lo que sigue describe el diseño original, que vuelve con la firma de SignPath.
+
 ```
 UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
  1 GET releases.{channel}.json + .sig (GitHub Releases) mediante SignedManifestSource : Velopack IUpdateSource
@@ -1600,6 +1606,9 @@ UpdateService (ThreadPool; al arrancar, cada 24 h y a petición; desactivable)
 **Interruptores de emergencia**, como datos firmados y nunca como código remoto: `disabledFeatures`, `minSafeVersion` y `revoked`.
 
 **Desinstalación (NFR-010):**
+
+> **Modificado en la 2.0 ([ADR-0029](../adr/0029-desinstalar-reinstalar-y-correo-de-opinion.md), decisión D7 del usuario):** no hay componente de sistema que desinstalar. «Desinstalar Clícalo» está en Sistema › Inicio y estabilidad: conserva los datos por defecto y, si se pide borrarlos, exige dos toques y una copia guardada fuera de las carpetas de datos; la instancia deja un marcador, sale por `ExitAsync` y el *hook* del desinstalador borra. Al reinstalar, «Empezar de cero» guarda la copia previa en `pre-restore` ([D-30](deviations.md#d-30--integración-de-m6)).
+
 - **Desde Sistema › Desinstalar:** pregunta «¿conservar datos?» con dos toques si se borran, borra si procede, desinstala el componente de sistema si existe (UAC) y lanza `Update.exe --uninstall`.
 - **Desde Configuración de Windows:** los *hooks* de Velopack no pueden mostrar UI, así que este camino **conserva siempre los datos** y no toca `%AppData%\Clicalo`. Una prueba de S8 lo comprueba.
 - **Al reinstalar**, la bienvenida detecta los datos existentes y ofrece conservarlos (por defecto) o empezar de cero con una copia previa `pre-reset` (P6).
@@ -1655,7 +1664,7 @@ Estáticas: analizadores, generadores, ArchUnit, reglas de producto, esquemas, p
 | UI.Wpf.Tests | Peers, ≥44 px, layout, pseudo, contraste resuelto, **instantáneas de renderizado** (`RenderTargetBitmap` por forma, tamaño S/M/L, tema, escala y estado de la matriz, comparadas con `RenderSnapshot` de TestKit y tolerancia por píxel ΔE ≤ 2 y ≤0,5 % de píxeles distintos; hoy la tolerancia es por canal y el modo ΔE llega antes de las primeras referencias de la UI) | Cada PR (x64 y ARM64) |
 | Platform.IntegrationTests | Inyección en los dos modos con varias distribuciones, *hook* LL bajo presión de GC, `PointerPositionTracker` con toque sintético, sesión y suspensión, portapapeles, lanzador sin intérprete en el hilo Shell, ACL de la tarea elevada, escritura elevada y luego media | Alojado interactivo o equipo táctil |
 | Windowing.IntegrationTests | No activación de las 4 superficies con dedo, lápiz y mouse sintéticos; `ActivationGuard` (prueba negativa); concesiones 20 de 20 por origen; bandeja (Bloc de notas activo → menú → Soltar todo → el foco vuelve al Bloc de notas); CCM-004; PRB-004/007; menús; IME; `Upstream/` con una prueba por cada solución provisional de WPF (#3147, #2054, #9752, #7561, #4127, #10459, #10422, #7857, #11847 y la de S3: `RaiseNotificationEvent` pasa una cadena ancha donde UI Automation lee un `BSTR`, que `LiveAnnouncer.ForUiaBstr` compensa, `wpf-notification-bstr`), con `[Trait("Upstream", …)]` | Alojado y equipo táctil |
-| Sentinel.Tests | Soltado de lo que Windows dice que está pulsado, con un estado de teclas y un `SendInput` falsos: máscara, modo VK y extendidas, reintentos mientras se rechaza, relanzamiento solo tras una salida anómala, bucle de fallos (`timings.json`); contrato de arranque (protocolo 3) | Cada PR |
+| Sentinel.Tests | Soltado de lo que Windows dice que está pulsado, con un estado de teclas y un `SendInput` falsos: máscara, modo VK y extendidas, reintentos mientras se rechaza, relanzamiento solo tras una salida anómala, bucle de fallos (`timings.json`); contrato de arranque (protocolo 4, con la carpeta de `--data`) y su entrecomillado | Cada PR |
 | Launcher.Tests | Verificación tras la copia, rechazo de un archivo alterado, `minSafeVersion` monótono, camino rápido, sin argumentos | Alojado (con elevación de runner) y equipo táctil |
 | E2E | Reglas UIA, instantánea del árbol, Axe.Windows, recorridos (bienvenida sin teclado, crear cada tipo, vincular y Probar ahora, cerrar el CC devuelve el foco) | Alojado (humo) y equipo táctil (completo) |
 | Performance | §10.3 | Tendencia y puerta |
@@ -1780,6 +1789,8 @@ Se guardan en `tests/Clicalo.Performance/budgets.json`, que está versionado.
 ---
 
 ## 11. Distribución, versionado y publicación
+
+> **Modificado en la 2.0 por la decisión D6 del usuario (2026-10-09, [ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)):** la 2.0 sale sin firma de código, sin `cl beta` ni `cl sign-manifest` y sin GitHub Actions de publicación. `cl package [--channel stable|beta]` empaqueta en local con Velopack y la publicación es manual ([guía de publicación](../guides/release.md)).
 
 - **Instalador:** Velopack `Setup.exe` por usuario y sin UAC, con `packId Clicalo.App`.
   - Autocontenido para `win-x64` (beta y estable) y `win-arm64` (beta; estable según P5).

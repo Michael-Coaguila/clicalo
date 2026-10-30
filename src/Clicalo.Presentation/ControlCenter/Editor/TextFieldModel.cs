@@ -6,10 +6,12 @@ namespace Clicalo.Presentation.ControlCenter.Editor;
 /// <param name="DictateName">The accessible name of the dictation button.</param>
 /// <param name="Encrypted">[textEnc].</param>
 /// <param name="Version">Changes whenever the saved text changes.</param>
+/// <param name="Placeholder">[textPh]: the example of the empty field, only a guide (EDI-006).</param>
 public sealed record TextFieldModel(
     string Label,
     string Hint,
     string DictateName,
     string Encrypted,
-    int Version
+    int Version,
+    string Placeholder = ""
 );

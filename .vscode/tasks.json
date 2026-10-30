@@ -133,6 +133,22 @@
       "problemMatcher": ["$msCompile"]
     },
     {
+      "label": "cl trace",
+      "detail": "Escribe artifacts/cl/trace.md: cada requisito del catálogo con las pruebas que lo nombran.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["trace"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cl package",
+      "detail": "Publica y empaqueta Clícalo en local con Velopack (canal estable y la arquitectura de este equipo). No publica nada.",
+      "type": "shell",
+      "command": ".\\cl.cmd",
+      "args": ["package"],
+      "problemMatcher": ["$msCompile"]
+    },
+    {
       "label": "cl quarantine",
       "detail": "Ejecuta solo las pruebas en cuarentena (Category=Quarantine).",
       "type": "shell",

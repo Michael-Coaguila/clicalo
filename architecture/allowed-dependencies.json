@@ -55,10 +55,11 @@
     },
     "Clicalo.Infrastructure": {
       "area": "src",
-      "rule": "Persistence, backups, catalogs, AI, updates and logging. Depends on Application (ports), Domain, Platform.Core (Trust only), Serilog, Velopack, Microsoft.Extensions.AI with HTTP resilience, and DPAPI; never on Presentation, UI, Platform.Windows or WPF (blueprint §4.2, §2).",
+      "rule": "Persistence, backups, catalogs, AI, updates and logging. Depends on Application (ports), Domain, Platform.Core (Trust only), Serilog, Velopack, Microsoft.Extensions.AI with HTTP resilience and the official Anthropic provider (ADR-0014), and DPAPI; never on Presentation, UI, Platform.Windows or WPF (blueprint §4.2, §2).",
       "platform": "windows",
       "projectReferences": ["Clicalo.Application", "Clicalo.Domain", "Clicalo.Platform.Core"],
       "packageReferences": [
+        "Anthropic",
         "Microsoft.Extensions.AI",
         "Microsoft.Extensions.Http.Resilience",
         "Serilog",

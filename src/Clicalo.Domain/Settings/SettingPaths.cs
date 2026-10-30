@@ -53,6 +53,7 @@ public static class SettingPaths
     public const string AiFreeLeftToday = "ai.freeLeftToday";
     public const string AiFreeResetAt = "ai.freeResetAt";
     public const string AiApiKeyRef = "ai.apiKeyRef";
+    public const string AiProvider = "aiProvider";
     public const string StartWithWindows = "reliability.startWithWindows";
     public const string AutoBackup = "reliability.autoBackup";
     public const string CrashRecovery = "reliability.crashRecovery";
@@ -63,4 +64,10 @@ public static class SettingPaths
     public const string UpdatesBackupBefore = "updates.backupBefore";
     public const string UpdatesChannel = "updates.channel";
     public const string NoKeyboardUser = "noKeyboardUser";
+    public const string HandlePositionsByMonitor = "handlePosByMonitor";
+    public const string ControlCenter = "controlCenter";
+    public const string GlobalHotkeyEnabled = "globalHotkey.enabled";
+    public const string GlobalHotkeyCombo = "globalHotkey.combo";
+    public const string TimeMultiplier = "timeMultiplier";
+    public const string GuidesDone = "guidesDone";
 }

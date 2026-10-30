@@ -67,6 +67,24 @@ internal sealed record SettingsDto
 
     public bool? NoKeyboardUser { get; init; }
 
+    /// <summary>Handle position per monitor and side (PES-016); since 1.1, at this level so a 1.0 version keeps it.</summary>
+    public List<MonitorHandlePositionDto>? HandlePosByMonitor { get; init; }
+
+    /// <summary>Size, position and monitor of the Control Center (CCM-001); since 1.1.</summary>
+    public ControlCenterDto? ControlCenter { get; init; }
+
+    /// <summary>The global shortcut (BUR-005); since 1.1.</summary>
+    public GlobalHotkeyDto? GlobalHotkey { get; init; }
+
+    /// <summary>Multiplier of the confirmation window and of notices (ACC-006): 1, 2 or 3; since 1.1.</summary>
+    public int? TimeMultiplier { get; init; }
+
+    /// <summary>The AI provider, <c>anthropic</c> or <c>gemini</c> (ADR-0033); since 1.2, at this level so a 1.1 version keeps it.</summary>
+    public string? AiProvider { get; init; }
+
+    /// <summary>The ids of the first-time guides finished or skipped (R-39); since 1.3 (ADR-0034).</summary>
+    public List<string>? GuidesDone { get; init; }
+
     /// <summary>Settings of a later minor, kept when rewriting (§6.5).</summary>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }

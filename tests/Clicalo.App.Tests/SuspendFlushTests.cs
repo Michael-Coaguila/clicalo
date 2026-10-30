@@ -8,15 +8,17 @@ namespace Clicalo.App.Tests;
 /// <summary>
 /// The suspend of the computer (<c>PBT_APMSUSPEND</c>; blueprint §6.4, §7.6): the message is answered only after the
 /// release and then the flush of the document, the usage and the backups, bounded by
-/// <c>Timings.App.SuspendFlushTimeout</c>, since the machine may sleep as soon as it returns.
+/// <c>Timings.App.SuspendFlushTimeout</c>, since the machine may sleep as soon as it returns. The limit runs on a
+/// fake clock that only the test moves, so a loaded machine can never make a flush look late (issue 4).
 /// </summary>
 [Trait("Req", "DAT-002")]
 [Trait("Req", "REG-08")]
 [Trait("Req", "SEG-006")]
-[Trait("Category", "Quarantine")]
-[Trait("Issue", "4")]
 public sealed class SuspendFlushTests
 {
+    private static FakeTimeProvider Clock() =>
+        new(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
+
     [Fact]
     public void The_suspend_is_answered_after_the_release_and_the_flush()
     {
@@ -26,13 +28,15 @@ public sealed class SuspendFlushTests
             () => steps.Add("release"),
             async token =>
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(20), token);
+                // The flush really ends on another thread, after the suspend started waiting for it.
+                await Task.Yield();
+                token.ThrowIfCancellationRequested();
                 lock (steps)
                 {
                     steps.Add("flush");
                 }
             },
-            TimeProvider.System
+            Clock()
         );
 
         flushed.ShouldBeTrue();
@@ -42,7 +46,7 @@ public sealed class SuspendFlushTests
     [Fact]
     public async Task A_flush_that_does_not_end_never_keeps_the_suspend_waiting_past_the_limit()
     {
-        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 26, 10, 0, 0, TimeSpan.Zero));
+        var time = Clock();
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var suspend = Task.Run(
             () =>
@@ -72,10 +76,6 @@ public sealed class SuspendFlushTests
     [Fact]
     public void A_flush_that_fails_never_keeps_the_suspend_from_being_answered() =>
         SuspendFlush
-            .Run(
-                static () => { },
-                static _ => Task.FromException(new IOException("disk")),
-                TimeProvider.System
-            )
+            .Run(static () => { }, static _ => Task.FromException(new IOException("disk")), Clock())
             .ShouldBeFalse();
 }

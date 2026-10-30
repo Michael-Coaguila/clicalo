@@ -43,14 +43,14 @@ public interface IDockIntents
     /// <summary>Sticky keys: its window beside the button, or closes it (PES-008, AUD-13).</summary>
     void ToggleSticky();
 
+    /// <summary>The arrow keys: their window beside the button, or closes it (D21).</summary>
+    void ToggleArrows();
+
     /// <summary>The lock of the bar: «Collapses» or «Open» (PES-008, PES-012).</summary>
     void TogglePinOpen();
 
-    /// <summary>[next] or [understood] in the guide (PES-015).</summary>
-    void CoachNext();
-
-    /// <summary>[coachSkip] in the guide (PES-015).</summary>
-    void CoachSkip();
+    /// <summary>The <c>tune</c> button: Quick settings beside the bar, with the side of the Tab view (PES-009).</summary>
+    void QuickSettings();
 
     /// <summary>The floating «Release all» (PES-013, REG-03).</summary>
     void ReleaseAll();

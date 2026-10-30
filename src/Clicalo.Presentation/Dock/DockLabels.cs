@@ -12,6 +12,7 @@ public sealed class DockLabels : ObservableObject
 {
     private readonly ILocalizationContext _localization;
     private string _openBar = string.Empty;
+    private string _barName = string.Empty;
     private string _hideBar = string.Empty;
     private string _expand = string.Empty;
     private string _frequents = string.Empty;
@@ -25,8 +26,13 @@ public sealed class DockLabels : ObservableObject
     private string _nextPage = string.Empty;
     private string _pickProfile = string.Empty;
     private string _releaseAll = string.Empty;
-    private string _coachSkip = string.Empty;
     private string _activeApp = string.Empty;
+    private string _quickSettings = string.Empty;
+    private string _notices = string.Empty;
+    private string _emptyFrequents = string.Empty;
+    private string _on = string.Empty;
+    private string _arrows = string.Empty;
+    private string _emptyProfile = string.Empty;
 
     /// <summary>Creates the texts in the current language.</summary>
     /// <param name="localization">The interface language.</param>
@@ -37,11 +43,32 @@ public sealed class DockLabels : ObservableObject
         Relocalize();
     }
 
+    /// <summary>[quick]: the <c>tune</c> button of the bar and its window (PES-009).</summary>
+    public string QuickSettings
+    {
+        get => _quickSettings;
+        private set => SetProperty(ref _quickSettings, value);
+    }
+
+    /// <summary>[dockNotices]: the notice surface of the Tab view (PES-014).</summary>
+    public string Notices
+    {
+        get => _notices;
+        private set => SetProperty(ref _notices, value);
+    }
+
     /// <summary>[openBar]: the handle.</summary>
     public string OpenBar
     {
         get => _openBar;
         private set => SetProperty(ref _openBar, value);
+    }
+
+    /// <summary>[dockBarName]: the window of the open bar for UI Automation (REG-06), not the name of the handle.</summary>
+    public string BarName
+    {
+        get => _barName;
+        private set => SetProperty(ref _barName, value);
     }
 
     /// <summary>[hideBar]: the chevron of the bar.</summary>
@@ -135,13 +162,6 @@ public sealed class DockLabels : ObservableObject
         private set => SetProperty(ref _releaseAll, value);
     }
 
-    /// <summary>[coachSkip].</summary>
-    public string CoachSkip
-    {
-        get => _coachSkip;
-        private set => SetProperty(ref _coachSkip, value);
-    }
-
     /// <summary>[activeApp]: the dot of the profile of the active app.</summary>
     public string ActiveApp
     {
@@ -149,11 +169,40 @@ public sealed class DockLabels : ObservableObject
         private set => SetProperty(ref _activeApp, value);
     }
 
+    /// <summary>[dockArrows]: the button of the arrows and the title of their window (D21).</summary>
+    public string Arrows
+    {
+        get => _arrows;
+        private set => SetProperty(ref _arrows, value);
+    }
+
+    /// <summary>[on]: the state UI Automation tells of the chosen view of «Qué ver», as the panel does.</summary>
+    public string On
+    {
+        get => _on;
+        private set => SetProperty(ref _on, value);
+    }
+
+    /// <summary>[freqEmptyT]: the bar in Frequents before anything was used (CUA-010).</summary>
+    public string EmptyFrequents
+    {
+        get => _emptyFrequents;
+        private set => SetProperty(ref _emptyFrequents, value);
+    }
+
+    /// <summary>[emptyProfT]: the bar of a profile without shortcuts (CUA-010).</summary>
+    public string EmptyProfile
+    {
+        get => _emptyProfile;
+        private set => SetProperty(ref _emptyProfile, value);
+    }
+
     /// <summary>Formats every text again in the current language.</summary>
     public void Relocalize()
     {
         var l = _localization.Current;
         OpenBar = l.Format(L.OpenBar);
+        BarName = l.Format(L.DockBarName);
         HideBar = l.Format(L.HideBar);
         Expand = l.Format(L.Expand);
         Frequents = l.Format(L.Freq);
@@ -167,7 +216,12 @@ public sealed class DockLabels : ObservableObject
         NextPage = l.Format(L.NextPage);
         PickProfile = l.Format(L.PickProfile);
         ReleaseAll = l.Format(L.ReleaseAll);
-        CoachSkip = l.Format(L.CoachSkip);
         ActiveApp = l.Format(L.ActiveApp);
+        QuickSettings = l.Format(L.Quick);
+        Notices = l.Format(L.DockNotices);
+        EmptyFrequents = l.Format(L.FreqEmptyT);
+        On = l.Format(L.On);
+        Arrows = l.Format(L.DockArrows);
+        EmptyProfile = l.Format(L.EmptyProfT);
     }
 }

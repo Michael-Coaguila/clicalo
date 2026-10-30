@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Michael-Coaguila/clicalo/main/data/schemas/ai-template.v1.schema.json",
+  "title": "Clícalo AI template answer, contract v1",
+  "description": "What an AI provider must answer to a template generation (PLA-008, ADR-0014, blueprint §9.2). Self-contained on purpose: Infrastructure.Ai checks the same rules in code (AiResponseReader) before the semantic check of Domain (TemplateSchema), and a future proxy may share it without Domain. Only key combinations can be proposed: no Web, App, Macro or Text.",
+  "type": "object",
+  "required": ["known", "app", "icon", "buttons"],
+  "additionalProperties": false,
+  "properties": {
+    "known": {
+      "description": "Whether the AI knows the program; false shows the unknown-program notice (PLA-007).",
+      "type": "boolean"
+    },
+    "app": {
+      "description": "The program name.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "process": {
+      "description": "Its executable without path; ignored when known is false (the process is never guessed, PLA-007).",
+      "type": "string",
+      "maxLength": 64
+    },
+    "icon": {
+      "description": "Material Symbols Rounded icon of the profile.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,39}$"
+    },
+    "buttons": {
+      "description": "The proposed shortcuts (Timings.Ai.AiMaxShortcuts at most).",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "required": ["name", "icon", "keys", "cat"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "The name in Spanish and English (Timings.Ai.AiNameMaxLength characters at most).",
+            "type": "object",
+            "required": ["es", "en"],
+            "additionalProperties": false,
+            "properties": {
+              "es": { "type": "string", "minLength": 1, "maxLength": 32 },
+              "en": { "type": "string", "minLength": 1, "maxLength": 32 }
+            }
+          },
+          "icon": {
+            "description": "Material Symbols Rounded icon.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "keys": {
+            "description": "Key ids of data/catalogs/keys.json in press order.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "pattern": "^(?:[a-z0-9]+(?:\\.[a-z0-9]+)*|char:[^\\sA-Za-z0-9])$"
+            }
+          },
+          "cat": {
+            "description": "Colour category.",
+            "enum": ["edit", "hist", "file", "sel", "win", "voice", "nav", "fmt", "web", "text"]
+          },
+          "confidence": {
+            "description": "How sure the AI is, from 0 to 1.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

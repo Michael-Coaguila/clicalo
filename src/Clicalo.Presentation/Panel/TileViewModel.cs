@@ -1,4 +1,5 @@
 using Clicalo.Application.Coordinators;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 using Clicalo.Domain.VoiceNumbering;
@@ -12,7 +13,7 @@ namespace Clicalo.Presentation.Panel;
 /// as intentions; the <see cref="PanelInteractionController"/> turns them into engine events. It decides nothing.
 /// Every gesture has an equivalent without gesture (§8.6): a hold is a latched toggle when invoked (EJE-005).
 /// </summary>
-public sealed class TileViewModel : ObservableObject
+public sealed class TileViewModel : ObservableObject, IIgnoredTouchState
 {
     private readonly PanelInteractionController _controller;
     private readonly SearchResultViewModel? _result;
@@ -22,6 +23,8 @@ public sealed class TileViewModel : ObservableObject
     private string _badge = string.Empty;
     private bool _isLatched;
     private bool _isFlashing;
+    private bool _isArmed;
+    private bool _isIgnored;
     private int? _voiceNumber;
 
     /// <summary>Creates the tile.</summary>
@@ -52,14 +55,40 @@ public sealed class TileViewModel : ObservableObject
     /// <summary>The shortcut id: the key of the tile.</summary>
     public ShortcutId Id => _model.Id;
 
+    /// <summary>Whether it is a result of the search, whose line under the name is its profile of origin (BUS-005).</summary>
+    public bool IsSearchResult => _result is not null;
+
+    /// <summary>
+    /// Whether the line under the name is the profile of origin, of a Frequents tile or of a search result (FRE-003,
+    /// BUS-005): the Compact view, which has no key line (VCO-001), still shows it.
+    /// </summary>
+    public bool KeyLineIsOrigin => _model.KeyLineIsOrigin;
+
+    /// <summary>The Material Symbols name of the icon of its profile of origin (FRE-003, D21), or null.</summary>
+    public string? OriginIcon => _model.OriginIcon is { Name.Length: > 0 } icon ? icon.Name : null;
+
     /// <summary>How the tile reacts to the finger.</summary>
     public TileBehavior Behavior => _model.Behavior;
+
+    /// <summary>
+    /// Whether it scrolls while held (⏶ ⏷, a Mantener of a scroll): UI Automation invokes it, one step per invocation,
+    /// as a button and not as a toggle that never turns on (EJE-005).
+    /// </summary>
+    public bool ScrollsWhileHeld =>
+        _model.Binding.Shortcut.Action is MouseAction mouse && MouseOps.RepeatsWhileHeld(mouse.Op);
 
     /// <summary>What the tile runs.</summary>
     public TileBinding Binding => _model.Binding;
 
     /// <summary>The Material Symbols name of the icon (CUA-007).</summary>
     public string Icon => _model.Icon.Name;
+
+    /// <summary>
+    /// The Material Symbols icon of the type of the action, for the slot at the top right of the tile (CUA-007, direction
+    /// C): Mantener, Alternar, Texto, Mouse, Macro, Web, App or Sistema, with the icons of the Control Center; null for
+    /// Pulsar, which needs no mark. The type is also in the help text, so it is never the icon alone (ACC-003).
+    /// </summary>
+    public string? TypeSymbol => TypeSymbolOf(_model.Binding.Shortcut.Action.Kind);
 
     /// <summary>The color category id (TEM-003), such as <c>edit</c> or <c>voice</c>.</summary>
     public string Category => _model.Category.Value;
@@ -116,6 +145,30 @@ public sealed class TileViewModel : ObservableObject
     /// <summary>Starts or ends the flash of the tile (the composition times it, EJE-012).</summary>
     /// <param name="flashing">Whether it flashes.</param>
     public void Flash(bool flashing) => IsFlashing = flashing;
+
+    /// <summary>
+    /// Whether the first tap armed the tile and it waits for the confirmation tap (EJE-002): it shows a warn outline
+    /// and <see cref="AccessibleState"/> says so.
+    /// </summary>
+    public bool IsArmed
+    {
+        get => _isArmed;
+        private set => SetProperty(ref _isArmed, value);
+    }
+
+    /// <summary>
+    /// Whether the touch filter just ignored a touch on the tile (TAC-003): a slight outline shows for
+    /// <c>Timings.Touch.IgnoredTouchFeedback</c>, so the person knows nothing was sent.
+    /// </summary>
+    public bool IsIgnored
+    {
+        get => _isIgnored;
+        private set => SetProperty(ref _isIgnored, value);
+    }
+
+    /// <summary>Starts or ends the outline of an ignored touch (the composition times it, TAC-003).</summary>
+    /// <param name="ignored">Whether it shows.</param>
+    public void ShowIgnored(bool ignored) => IsIgnored = ignored;
 
     /// <summary>
     /// Its voice number while «Numbers for voice» is on (ACC-009, ACC-010), shown in yellow at the top left; the UI
@@ -192,6 +245,7 @@ public sealed class TileViewModel : ObservableObject
         var renamed = !string.Equals(model.Name, _model.Name, StringComparison.Ordinal);
         var reiconed = model.Icon != _model.Icon;
         var recolored = model.Category != _model.Category;
+        var retyped = model.Binding.Shortcut.Action.Kind != _model.Binding.Shortcut.Action.Kind;
         var rekeyed =
             !string.Equals(model.Keys, _model.Keys, StringComparison.Ordinal)
             || !string.Equals(model.SpokenKeys, _model.SpokenKeys, StringComparison.Ordinal);
@@ -217,6 +271,11 @@ public sealed class TileViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(Category));
         }
+
+        if (retyped)
+        {
+            OnPropertyChanged(nameof(TypeSymbol));
+        }
     }
 
     /// <summary>Applies its voice number, or <see langword="null"/> when the option is off.</summary>
@@ -235,4 +294,22 @@ public sealed class TileViewModel : ObservableObject
         AccessibleHelpText = helpText;
         Badge = badge;
     }
+
+    /// <summary>Applies whether the engine has the tile armed (EJE-002).</summary>
+    /// <param name="armed">Whether it waits for its confirmation tap.</param>
+    internal void ApplyArmed(bool armed) => IsArmed = armed;
+
+    private static string? TypeSymbolOf(ActionKind kind) =>
+        kind switch
+        {
+            ActionKind.Hold => "pan_tool",
+            ActionKind.Toggle => "toggle_on",
+            ActionKind.Text => "text_fields",
+            ActionKind.Mouse => "mouse",
+            ActionKind.Macro => "playlist_play",
+            ActionKind.Url => "public",
+            ActionKind.App => "open_in_new",
+            ActionKind.System => "settings",
+            _ => null,
+        };
 }

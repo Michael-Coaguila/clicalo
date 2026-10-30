@@ -1,5 +1,6 @@
 using Clicalo.Application.Coordinators;
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Library;
 using Clicalo.Domain.PanelLayout;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Settings;
@@ -86,26 +87,6 @@ public sealed class DockBarViewModelTests
     }
 
     [Fact]
-    [Trait("Req", "PES-015")]
-    public void The_guide_shows_its_step_and_ends_with_understood()
-    {
-        _dock.Apply(State());
-        _dock.ShowsCoach.ShouldBeTrue();
-        _dock.CoachStepLabel.ShouldBe("1 / 3");
-        _dock.CoachTitle.ShouldBe("Arriba: cerrar y expandir");
-        _dock.CoachNextLabel.ShouldBe("Siguiente");
-
-        _dock.Apply(State() with { CoachStep = 2 });
-        _dock.CoachStepLabel.ShouldBe("3 / 3");
-        _dock.CoachNextLabel.ShouldBe("Entendido");
-
-        _dock.Apply(State() with { Flyout = DockFlyout.Pinned });
-        _dock.ShowsCoach.ShouldBeFalse();
-        _dock.Apply(State() with { Dock = Dock() with { CoachDone = true } });
-        _dock.ShowsCoach.ShouldBeFalse();
-    }
-
-    [Fact]
     [Trait("Req", "PES-001")]
     [Trait("Req", "PES-006")]
     public void The_handle_and_the_profile_button_follow_the_view()
@@ -135,6 +116,7 @@ public sealed class DockBarViewModelTests
     [Fact]
     [Trait("Req", "PES-005")]
     [Trait("Req", "PES-008")]
+    [Trait("Req", "PES-009")]
     public void Every_button_forwards_its_intent()
     {
         _dock.OpenBar();
@@ -147,9 +129,9 @@ public sealed class DockBarViewModelTests
         _dock.Repeat();
         _dock.TogglePinned();
         _dock.ToggleSticky();
+        _dock.ToggleArrows();
         _dock.TogglePinOpen();
-        _dock.CoachNext();
-        _dock.CoachSkip();
+        _dock.QuickSettings();
         _dock.ReleaseAll();
         _dock.MoveHandle(30);
 
@@ -164,12 +146,46 @@ public sealed class DockBarViewModelTests
             "Repeat",
             "TogglePinned",
             "ToggleSticky",
+            "ToggleArrows",
             "TogglePinOpen",
-            "CoachNext",
-            "CoachSkip",
+            "QuickSettings",
             "ReleaseAll",
             "MoveHandle 30",
         ]);
+    }
+
+    [Fact]
+    [Trait("Req", "PES-008")]
+    public void The_arrows_send_their_keys_in_the_order_of_the_cross()
+    {
+        // D21, asked by the maintainer: ↑ ← → ↓ at hand, each a tap that sends its arrow key (with the sticky keys).
+        var arrows = _dock.ArrowTiles;
+
+        arrows
+            .Select(static a => a.AccessibleName)
+            .ShouldBe(["Flecha arriba", "Flecha izquierda", "Flecha derecha", "Flecha abajo"]);
+        foreach (var (arrow, key) in arrows.Zip(["up", "left", "right", "down"]))
+        {
+            arrow.Behavior.ShouldBe(TileBehavior.Tap);
+            arrow.IsBarTool.ShouldBeTrue();
+            var tap = arrow.Binding.Shortcut.Action.ShouldBeOfType<TapAction>();
+            tap.Chord.Strokes.ShouldHaveSingleItem().Key.Value.ShouldBe(key);
+        }
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-012")]
+    [Trait("Req", "PES-008")]
+    public void An_arrow_that_ran_flashes_like_any_tile_of_the_bar()
+    {
+        var up = _dock.ArrowTiles[0];
+
+        _dock.Flash(up.Id, flashing: true);
+        up.IsFlashing.ShouldBeTrue();
+        _dock.ArrowTiles.Skip(1).ShouldAllBe(static a => !a.IsFlashing);
+
+        _dock.Flash(up.Id, flashing: false);
+        up.IsFlashing.ShouldBeFalse();
     }
 
     private static DockSettings Dock() =>
@@ -198,7 +214,6 @@ public sealed class DockBarViewModelTests
             IsFixed: false,
             CanRepeat: false,
             DockFlyout.None,
-            CoachStep: 0,
             BarOpen: true,
             AnythingHeld: false
         );
@@ -229,11 +244,11 @@ public sealed class DockBarViewModelTests
 
         public void ToggleSticky() => Calls.Add(nameof(ToggleSticky));
 
+        public void ToggleArrows() => Calls.Add(nameof(ToggleArrows));
+
         public void TogglePinOpen() => Calls.Add(nameof(TogglePinOpen));
 
-        public void CoachNext() => Calls.Add(nameof(CoachNext));
-
-        public void CoachSkip() => Calls.Add(nameof(CoachSkip));
+        public void QuickSettings() => Calls.Add(nameof(QuickSettings));
 
         public void ReleaseAll() => Calls.Add(nameof(ReleaseAll));
     }

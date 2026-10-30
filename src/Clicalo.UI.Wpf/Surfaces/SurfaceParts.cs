@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Clicalo.UI.Wpf.Controls;
 using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
@@ -10,6 +11,14 @@ namespace Clicalo.UI.Wpf.Surfaces;
 /// <summary>The small pieces the surfaces of the Tab view and the bubble are built from: icons, texts and buttons.</summary>
 internal static class SurfaceParts
 {
+    /// <summary>
+    /// Paints a part of a surface that must not show yet must take the touch (the band around the handle, the window
+    /// under a translucent face): alpha 0 would let touches through the per-pixel transparent window.
+    /// </summary>
+    public static readonly Brush TouchBand = Frozen(
+        new SolidColorBrush(AlmostTransparent(ThemeCatalog.GetPalette(ThemeId.Dark).Shadow))
+    );
+
     /// <summary>A Material Symbols icon in the color of <paramref name="token"/>.</summary>
     public static SymbolIcon Icon(string symbol, double size, ColorToken token)
     {
@@ -50,7 +59,7 @@ internal static class SurfaceParts
     public static TouchButton Button(
         string symbol,
         double iconSize,
-        ButtonAppearance appearance,
+        ButtonVariant variant,
         Action tap,
         double width = double.NaN,
         double height = double.NaN
@@ -60,7 +69,7 @@ internal static class SurfaceParts
         {
             Symbol = symbol,
             IconSize = iconSize,
-            Appearance = appearance,
+            Variant = variant,
             Width = width,
             Height = height,
             Padding = new Thickness(2),
@@ -77,7 +86,21 @@ internal static class SurfaceParts
     /// Puts the icon above the label inside <paramref name="button"/> (the narrow bar of the Tab view), the icon in the
     /// foreground of the button; returns the label to fill.
     /// </summary>
-    public static TextBlock Stack(TouchButton button, string symbol, double iconSize)
+    public static TextBlock Stack(TouchButton button, string symbol, double iconSize) =>
+        Labeled(button, symbol, iconSize, stacked: true).Label;
+
+    /// <summary>
+    /// Puts an icon and a small label inside <paramref name="button"/> (the bar of the Tab view), the icon above the
+    /// label when <paramref name="stacked"/> and before it otherwise, both in the foreground of the button; returns
+    /// them to fill. The label is one line as high as its text (the prototype's <c>line-height: 1</c>), so the two fit
+    /// the button also with the thicker borders of high contrast, and it ends in «…» where it has no room.
+    /// </summary>
+    public static (SymbolIcon Icon, TextBlock Label) Labeled(
+        TouchButton button,
+        string symbol,
+        double iconSize,
+        bool stacked
+    )
     {
         ArgumentNullException.ThrowIfNull(button);
         var icon = new SymbolIcon
@@ -85,6 +108,7 @@ internal static class SurfaceParts
             Symbol = symbol,
             Size = iconSize,
             HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         _ = icon.SetBinding(
             SymbolIcon.ForegroundProperty,
@@ -95,14 +119,18 @@ internal static class SurfaceParts
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextAlignment = TextAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 3, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+            LineHeight = button.FontSize,
+            Margin = stacked ? new Thickness(0, 1, 0, 0) : new Thickness(4, 0, 0, 0),
         };
-        var stack = new StackPanel { Orientation = Orientation.Vertical };
-        _ = stack.Children.Add(icon);
-        _ = stack.Children.Add(label);
+        var parts = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(icon, stacked ? Dock.Top : Dock.Left);
+        _ = parts.Children.Add(icon);
+        _ = parts.Children.Add(label);
         button.Symbol = null;
-        button.Content = stack;
-        return label;
+        button.Content = parts;
+        return (icon, label);
     }
 
     /// <summary>
@@ -158,4 +186,13 @@ internal static class SurfaceParts
     /// <summary><see cref="Visibility.Visible"/> or <see cref="Visibility.Collapsed"/>.</summary>
     public static Visibility Shown(bool visible) =>
         visible ? Visibility.Visible : Visibility.Collapsed;
+
+    private static Color AlmostTransparent(Color color) =>
+        Color.FromArgb(byte.MinValue + 1, color.R, color.G, color.B);
+
+    private static Brush Frozen(Brush brush)
+    {
+        brush.Freeze();
+        return brush;
+    }
 }

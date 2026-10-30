@@ -1,25 +1,40 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Surfaces.Panel.EditMode;
 using Clicalo.UI.Wpf.Surfaces.Panel.TestMode;
+using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
 /// A tile with what the layers of the panel draw over it (docs/04 «Anatomía de un botón»): the test mode mark over the
-/// whole tile (TAC-008) and, on the grid, the red × of edit mode at its top right corner (CUA-012). Without layers it is
-/// the tile alone.
+/// whole tile (TAC-008), the slight outline of an ignored touch (TAC-003), the ring while its menu is open (CUA-014)
+/// and, on the grid, the × of edit mode in its top right slot (CUA-012). Without layers it is the tile alone.
 /// </summary>
 internal sealed class TileCell
 {
-    private TileCell(FrameworkElement element, TestMarkBadge? badge, TileRemoveButton? remove)
+    private readonly Action? _detachMenu;
+
+    private TileCell(
+        FrameworkElement element,
+        TestMarkBadge? badge,
+        TileRemoveButton? remove,
+        IgnoredTouchOutline? ignored = null,
+        Action? detachMenu = null
+    )
     {
         Element = element;
         Badge = badge;
         Remove = remove;
+        Ignored = ignored;
+        _detachMenu = detachMenu;
     }
+
+    /// <summary>The outline of an ignored touch, with layers (TAC-003).</summary>
+    public IgnoredTouchOutline? Ignored { get; }
 
     /// <summary>What goes into the grid or the row.</summary>
     public FrameworkElement Element { get; }
@@ -53,23 +68,32 @@ internal sealed class TileCell
 
         var cell = new Grid();
         cell.Children.Add(control);
+        var ignored = new IgnoredTouchOutline(viewModel) { Margin = control.Margin };
+        cell.Children.Add(ignored);
         var badge = new TestMarkBadge(layers.TestMode, viewModel.Id) { Margin = control.Margin };
         cell.Children.Add(badge);
         TileRemoveButton? remove = null;
         if (removable)
         {
-            remove = new TileRemoveButton(layers.EditMode, viewModel);
-            var inset = control.Margin.Top;
-            remove.Margin = new Thickness(
+            // The × takes the slot at the top right of the tile, Space.S1 inside its corner (direction C: never
+            // outside the tile nor over its icon); its 44 × 44 box reaches past the drawing around it.
+            remove = new TileRemoveButton(layers.EditMode, viewModel, control);
+            remove.RestMargin = new Thickness(
                 0,
-                inset - TileRemoveButton.Overhang,
-                control.Margin.Right - TileRemoveButton.Overhang,
+                control.Margin.Top + Space.S1 - TileRemoveButton.Overflow,
+                control.Margin.Right + Space.S1 - TileRemoveButton.Overflow,
                 0
             );
             cell.Children.Add(remove);
         }
 
-        return new TileCell(cell, badge, remove);
+        // CUA-014: the tile whose menu is open keeps the ring, so the menu says which tile it belongs to.
+        var menu = layers.Menu;
+        void Ring() => control.IsExpanded = menu.IsOpen && menu.Shortcut == viewModel.Id;
+        PropertyChangedEventHandler onMenu = (_, _) => Ring();
+        menu.PropertyChanged += onMenu;
+        Ring();
+        return new TileCell(cell, badge, remove, ignored, () => menu.PropertyChanged -= onMenu);
     }
 
     /// <summary>Stops following the layers when the tile goes away.</summary>
@@ -77,5 +101,7 @@ internal sealed class TileCell
     {
         Badge?.Detach();
         Remove?.Detach();
+        Ignored?.Detach();
+        _detachMenu?.Invoke();
     }
 }

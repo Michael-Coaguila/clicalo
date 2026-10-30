@@ -50,6 +50,7 @@ internal static class EngineAdapters
         var sender = new LowLevelInjector();
         var supervisor = new SentinelSupervisor(
             Path.Combine(AppContext.BaseDirectory, SentinelFileName),
+            options.IsolatedData ? options.DataDirectory : null,
             services.GetRequiredService<TimeProvider>(),
             services.GetRequiredService<ILogger<SentinelSupervisor>>()
         );

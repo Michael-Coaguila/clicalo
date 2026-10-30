@@ -12,7 +12,7 @@ usar su equipo. Nos la tomamos en serio.
 
 | Versión | Soporte |
 |---|---|
-| 2.x (en desarrollo, hito M0) | Todavía no hay versiones publicadas |
+| 2.x (en desarrollo, 2.0.0 en preparación) | Todavía no hay versiones publicadas |
 | Macro Quick Access (1.x) | Sin soporte; la sustituye Clícalo 2 |
 
 Cuando se publique la 2.0, recibirán correcciones de seguridad la última versión estable y la última beta.
@@ -30,7 +30,7 @@ te dio acceso, y nunca en un *issue*. Antes de hacer público el repositorio se 
 
 Incluye, si puedes:
 
-- la versión de Clícalo y de Windows, y si Clícalo estaba elevado o con el componente de sistema;
+- la versión de Clícalo y de Windows, y si Clícalo estaba elevado («Reabrir como administrador»);
 - qué límite de confianza se cruza (por ejemplo, un proceso de integridad media que consigue inyectar en una
   app elevada, un canal de actualización que acepta un paquete no firmado o un perfil importado que ejecuta
   código);
@@ -54,10 +54,13 @@ Cuando un CVE afecta al runtime de .NET que Clícalo incluye (`Microsoft.NETCore
 
 ### Cómo se protegen las actualizaciones
 
-Las versiones se firman con Authenticode y el manifiesto de actualización se firma con una llave de hardware
-del mantenedor, fuera de GitHub. Los detalles están en la
-[política de firma de código](CODE_SIGNING_POLICY.md) y en
-[ADR-0013](docs/adr/0013-firma-de-codigo-y-manifiesto-firmado.md).
+La versión 2.0 sale **sin firma de código** (decisión D6 del usuario,
+[ADR-0027](docs/adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)): las actualizaciones llegan por HTTPS
+desde las GitHub Releases del repositorio y Velopack verifica cada paquete con su suma. Windows avisará de que el
+instalador no está firmado. Todo queda preparado para firmar más adelante con SignPath Foundation: los detalles
+están en la [política de firma de código](CODE_SIGNING_POLICY.md) y en
+[ADR-0013](docs/adr/0013-firma-de-codigo-y-manifiesto-firmado.md). El
+[modelo de amenazas](docs/security/threat-model.md) dice qué riesgos se aceptan mientras tanto.
 
 ## English
 
@@ -69,7 +72,7 @@ seriously.
 
 | Version | Support |
 |---|---|
-| 2.x (in development, milestone M0) | No releases yet |
+| 2.x (in development, 2.0.0 being prepared) | No releases yet |
 | Macro Quick Access (1.x) | Unsupported; superseded by Clícalo 2 |
 
 Once 2.0 ships, the latest stable and the latest beta receive security fixes.
@@ -85,8 +88,8 @@ used to give you access, and never in an issue. Before the repository goes publi
 turned on (**Settings › Code security › Private vulnerability reporting**) and a security email is added
 here.
 
-Please include the Clícalo and Windows versions (and whether Clícalo was elevated or had the system
-component installed), the trust boundary that is crossed, reproduction steps, impact, and whether the issue
+Please include the Clícalo and Windows versions (and whether Clícalo was elevated with
+«Reabrir como administrador»), the trust boundary that is crossed, reproduction steps, impact, and whether the issue
 is already public. The threat model, including accepted residual risks, is in
 [docs/security/threat-model.md](docs/security/threat-model.md) (in Spanish).
 
@@ -103,5 +106,8 @@ patched beta ships within 72 hours and a patched stable release within 7 days.
 
 ### How updates are protected
 
-Releases are Authenticode-signed and the update manifest is signed with the maintainer's hardware key,
-outside GitHub. See the [code signing policy](CODE_SIGNING_POLICY.md#english).
+Version 2.0 ships **without code signing** (user decision D6,
+[ADR-0027](docs/adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)): updates come over HTTPS from the
+GitHub Releases of the repository and Velopack verifies each package against its checksum. Windows will warn that
+the installer is unsigned. Everything is ready to sign later with SignPath Foundation; see the
+[code signing policy](CODE_SIGNING_POLICY.md#english).

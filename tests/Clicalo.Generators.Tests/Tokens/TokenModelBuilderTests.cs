@@ -20,10 +20,12 @@ public sealed class TokenModelBuilderTests
         model.Issues.Select(Describe).ShouldBeEmpty();
         model.CanEmit.ShouldBeTrue();
         model.Themes.Select(theme => theme.Name).ShouldBe(["Dark", "Light", "HighContrast"]);
-        model.ColorTokens.Count.ShouldBe(27);
+        model.ColorTokens.Count.ShouldBe(28);
         model.Categories.Count.ShouldBe(10);
         model.Motion.Count.ShouldBe(8);
-        model.SystemColorByToken.Count.ShouldBe(27);
+        model.SystemColorByToken.Count.ShouldBe(28);
+        model.TextStyles.Count.ShouldBe(11);
+        model.Space.Count.ShouldBe(7);
     }
 
     [Fact]
@@ -37,8 +39,9 @@ public sealed class TokenModelBuilderTests
             string.Equals(theme.Key, "dark", StringComparison.Ordinal)
         );
 
-        light.Colors["accent"].Value.ToArgbHex().ShouldBe("#FF006885");
-        light.Colors["accent"].Note.ShouldBe("TEM-004: corrected from oklch(0.50 0.11 220)");
+        light.Colors["card"].Value.ToArgbHex().ShouldBe("#FFFFFFFF");
+        light.Colors["card"].Note.ShouldBe("D12: redesigned from oklch(0.94 0.006 260)");
+        dark.Colors["danger"].Note.ShouldBe("TEM-004: corrected from oklch(0.62 0.18 25)");
         light.Colors["focusRing"].Value.ShouldBe(light.Colors["accent"].Value);
         light.Colors["focusRing"].Note.ShouldBe("Same as accent.");
         dark.BorderThickness.ShouldBe(1d);
@@ -69,11 +72,7 @@ public sealed class TokenModelBuilderTests
     [Fact]
     public void CLCT001_reports_an_invalid_border_inside_the_shorthand()
     {
-        var files = TokenTestData.With(
-            Palettes,
-            "1px solid oklch(1 0 0 / 0.09)",
-            "1px dotted oklch(1 0 0 / 0.09)"
-        );
+        var files = TokenTestData.With(Palettes, "2px solid #ffffff", "2px dotted #ffffff");
 
         var issue = TokenTestData.Build(files).Issues.ShouldHaveSingleItem();
 
@@ -86,9 +85,9 @@ public sealed class TokenModelBuilderTests
     public void CLCT002_reports_a_pair_below_its_minimum_at_the_background_entry()
     {
         var files = TokenTestData.With(
-            Palettes,
-            "\"muted\": \"oklch(0.45 0.015 260)\"",
-            "\"muted\": \"oklch(0.62 0.015 260)\""
+            Extra,
+            "\"to\": \"oklch(0.43 0.015 260)\"",
+            "\"to\": \"oklch(0.62 0.015 260)\""
         );
 
         var issues = TokenTestData.Build(files).Issues;
@@ -111,7 +110,7 @@ public sealed class TokenModelBuilderTests
     [Trait("Req", "TEM-004")]
     public void CLCT002_lists_the_failing_categories_of_a_category_pair()
     {
-        var files = TokenTestData.With(Extra, "\"to\": 0.468", "\"to\": 0.5");
+        var files = TokenTestData.With(Extra, "\"to\": 0.452", "\"to\": 0.5");
 
         var issue = TokenTestData
             .Build(files)
@@ -124,7 +123,7 @@ public sealed class TokenModelBuilderTests
 
         issue.Id.ShouldBe(TokenIds.ContrastTooLow);
         issue.Message.ShouldContain("is below 4.5:1 for the categories ");
-        issue.Message.ShouldContain("voice (3.88:1)");
+        issue.Message.ShouldContain("voice (3.63:1)");
     }
 
     [Fact]
@@ -166,13 +165,13 @@ public sealed class TokenModelBuilderTests
     [Fact]
     public void CLCT004_reports_malformed_json_at_its_position()
     {
-        var files = TokenTestData.With(Extra, "\"compact\": 6,", "\"compact\": 6,,");
+        var files = TokenTestData.With(Extra, "\"tintChroma\": 0.12,", "\"tintChroma\": 0.12,,");
 
         var issue = TokenTestData.Build(files).Issues.ShouldHaveSingleItem();
 
         issue.Id.ShouldBe(TokenIds.MalformedFile);
         issue.Path.ShouldBe(TokenTestData.Directory + Extra);
-        issue.Line.ShouldBe(TokenTestData.PositionOf(files[Extra], "6,,").Line);
+        issue.Line.ShouldBe(TokenTestData.PositionOf(files[Extra], "0.12,,").Line);
     }
 
     [Fact]
@@ -343,9 +342,9 @@ public sealed class TokenModelBuilderTests
         TokenTestData
             .Build(
                 TokenTestData.With(
-                    Palettes,
-                    "\"muted\": \"oklch(0.45 0.015 260)\"",
-                    "\"muted\": \"oklch(0.62 0.015 260)\""
+                    Extra,
+                    "\"to\": \"oklch(0.43 0.015 260)\"",
+                    "\"to\": \"oklch(0.62 0.015 260)\""
                 )
             )
             .CanEmit.ShouldBeTrue();

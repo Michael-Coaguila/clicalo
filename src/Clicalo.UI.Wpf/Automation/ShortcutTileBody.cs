@@ -1,0 +1,136 @@
+using System.Windows;
+using System.Windows.Controls;
+
+namespace Clicalo.UI.Wpf.Automation;
+
+/// <summary>
+/// The body of a tile (CUA-007, CUA-011): its icon, its name and its key line, one under the other,
+/// <see cref="Theming.Generated.Space.S1"/> apart. Nothing is drawn cut: the name takes the lines the height of the
+/// tile leaves it, <see cref="NameLines"/> at most, and ends in «…» when it has more; the key line shows only while it
+/// fits under the name.
+/// </summary>
+/// <remarks>Its three children are, in this order, the icon, the name and the key line.</remarks>
+internal sealed class ShortcutTileBody : Panel
+{
+    /// <summary>Identifies <see cref="NameLines"/>.</summary>
+    public static readonly DependencyProperty NameLinesProperty = DependencyProperty.Register(
+        nameof(NameLines),
+        typeof(int),
+        typeof(ShortcutTileBody),
+        new FrameworkPropertyMetadata(1, FrameworkPropertyMetadataOptions.AffectsMeasure)
+    );
+
+    /// <summary>Lines the name may take: one in direction C, two in S at the largest text (CUA-011).</summary>
+    public int NameLines
+    {
+        get => (int)GetValue(NameLinesProperty);
+        set => SetValue(NameLinesProperty, value);
+    }
+
+    /// <summary>Identifies <see cref="ReservesNameLines"/>.</summary>
+    public static readonly DependencyProperty ReservesNameLinesProperty =
+        DependencyProperty.Register(
+            nameof(ReservesNameLines),
+            typeof(bool),
+            typeof(ShortcutTileBody),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure)
+        );
+
+    /// <summary>
+    /// Whether the name keeps the room of all the lines it may take and that fit, even when it needs fewer, so the
+    /// icons of tiles side by side stay on one line whatever the length of their names.
+    /// </summary>
+    public bool ReservesNameLines
+    {
+        get => (bool)GetValue(ReservesNameLinesProperty);
+        set => SetValue(ReservesNameLinesProperty, value);
+    }
+
+    private const double Rounding = 0.5;
+
+    private double _nameSlot;
+
+    private bool _keysFit = true;
+
+    /// <inheritdoc />
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (InternalChildren.Count != 3)
+        {
+            return default;
+        }
+
+        var (icon, name, keys) = (InternalChildren[0], InternalChildren[1], InternalChildren[2]);
+        var open = new Size(availableSize.Width, double.PositiveInfinity);
+        icon.Measure(open);
+        name.Measure(open);
+        keys.Measure(open);
+
+        var room = availableSize.Height - icon.DesiredSize.Height;
+        var keysHeight = keys.DesiredSize.Height;
+        var nameHeight = name.DesiredSize.Height;
+        if (name is TextBlock text && nameHeight > 0 && LineOf(text) is > 0 and var line)
+        {
+            // The name first: the lines it has, two at most, of those that fit (one at least).
+            var wanted = Math.Clamp((int)Math.Round(nameHeight / line), 1, Math.Max(1, NameLines));
+            var fit = double.IsInfinity(room)
+                ? wanted
+                : Math.Clamp((int)Math.Floor((room + Rounding) / line), 1, wanted);
+            nameHeight = fit * line;
+            if (name.DesiredSize.Height > nameHeight + Rounding)
+            {
+                // The last line that fits ends in «…» (the name trims by characters).
+                name.Measure(new Size(availableSize.Width, nameHeight + Rounding));
+            }
+
+            if (ReservesNameLines && !double.IsInfinity(room))
+            {
+                var reserved = Math.Clamp(
+                    (int)Math.Floor((room + Rounding) / line),
+                    1,
+                    Math.Max(1, NameLines)
+                );
+                nameHeight = Math.Max(nameHeight, reserved * line);
+            }
+        }
+
+        _nameSlot = Math.Max(name.DesiredSize.Height, ReservesNameLines ? nameHeight : 0);
+
+        _keysFit = keysHeight <= 0 || nameHeight + keysHeight <= room + Rounding;
+
+        var shownKeys = _keysFit ? keys.DesiredSize : default;
+        return new Size(
+            Math.Max(icon.DesiredSize.Width, Math.Max(name.DesiredSize.Width, shownKeys.Width)),
+            icon.DesiredSize.Height + _nameSlot + shownKeys.Height
+        );
+    }
+
+    /// <inheritdoc />
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        if (InternalChildren.Count != 3)
+        {
+            return finalSize;
+        }
+
+        var (name, keys) = (InternalChildren[1], InternalChildren[2]);
+        keys.Opacity = _keysFit ? 1 : 0;
+        var y = 0.0;
+        foreach (UIElement child in InternalChildren)
+        {
+            var height =
+                ReferenceEquals(child, keys) && !_keysFit ? 0
+                : ReferenceEquals(child, name) ? _nameSlot
+                : child.DesiredSize.Height;
+            child.Arrange(new Rect(0, y, finalSize.Width, height));
+            y += height;
+        }
+
+        return finalSize;
+    }
+
+    private static double LineOf(TextBlock text) =>
+        double.IsNaN(text.LineHeight)
+            ? text.FontFamily.LineSpacing * text.FontSize
+            : text.LineHeight;
+}

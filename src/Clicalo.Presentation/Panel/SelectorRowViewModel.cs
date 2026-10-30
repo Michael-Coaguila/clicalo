@@ -20,6 +20,7 @@ public sealed class SelectorRowViewModel : ObservableObject
     private bool _isActiveApp;
     private string _activeAppName = string.Empty;
     private string _buttonHelp = string.Empty;
+    private string _suggestionName = string.Empty;
     private SelectorCaret _caret;
     private SelectorLook _look;
 
@@ -81,6 +82,37 @@ public sealed class SelectorRowViewModel : ObservableObject
         private set => SetProperty(ref _activeAppName, value);
     }
 
+    /// <summary>
+    /// Whether a profile suggestion waits for the active app (SEL-005): the profile button shows a yellow dot, since
+    /// «Crear para {app}» is in its grid.
+    /// </summary>
+    public bool HasSuggestion => _suggestionName.Length > 0;
+
+    /// <summary>[suggestionDot] with the app: the accessible name of the yellow dot; empty without a suggestion.</summary>
+    public string SuggestionName
+    {
+        get => _suggestionName;
+        private set
+        {
+            if (SetProperty(ref _suggestionName, value))
+            {
+                OnPropertyChanged(nameof(HasSuggestion));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The state of the profile button in words for UI Automation (never color alone): [activeApp] for the dot of the
+    /// active app and <see cref="SuggestionName"/> for the yellow dot, joined with « · ».
+    /// </summary>
+    public string ButtonState =>
+        string.Join(
+            " · ",
+            new[] { IsActiveApp ? ActiveAppName : null, HasSuggestion ? SuggestionName : null }
+                .OfType<string>()
+                .Where(static part => part.Length > 0)
+        );
+
     /// <summary>[switchProf], help text of the button.</summary>
     public string ButtonHelp
     {
@@ -137,9 +169,11 @@ public sealed class SelectorRowViewModel : ObservableObject
         string frequentsName,
         string activeAppName,
         string switchProfile,
-        string onWord
+        string onWord,
+        string? suggestionName = null
     )
     {
+        SuggestionName = suggestionName ?? string.Empty;
         IsFrequentsActive = frequents;
         FrequentsState = frequents ? onWord : string.Empty;
         FrequentsName = frequentsName;
@@ -150,6 +184,7 @@ public sealed class SelectorRowViewModel : ObservableObject
         ButtonHelp = switchProfile;
         Caret = SelectorRules.Caret(frequents, pickerOpen);
         Look = SelectorRules.Look(frequents, pickerOpen);
+        OnPropertyChanged(nameof(ButtonState));
         IsVisible = visible;
     }
 }

@@ -9,12 +9,10 @@ namespace Clicalo.Application.Tests.Engine;
 /// <summary>
 /// Clícalo's own chords go through the engine (blueprint §3.6, D-14, D-22): a request to the mailbox, sent by the host,
 /// in test mode and pause too (INV-7), and answered to the requester; a failed send answers «not sent», and a hung
-/// engine answers «not sent» after <c>Timings.Engine.InternalChordWait</c>.
+/// engine answers «not sent» after <c>Timings.Engine.InternalChordWait</c>. Every wait runs on a fake clock.
 /// </summary>
 [Trait("Req", "REG-03")]
 [Trait("Req", "BUS-003")]
-[Trait("Category", "Quarantine")]
-[Trait("Issue", "4")]
 public sealed class EngineKeyEffectsTests
 {
     private sealed class Hotkey : IInternalRightsHotkey
@@ -47,7 +45,7 @@ public sealed class EngineKeyEffectsTests
             inbox,
             new InternalChordReplies(),
             new Hotkey { IsRegistered = false },
-            TimeProvider.System
+            new FakeTimeProvider()
         );
 
         (
@@ -166,7 +164,7 @@ public sealed class EngineKeyEffectsTests
             new Inbox(static _ => false),
             replies,
             new Hotkey(),
-            TimeProvider.System
+            new FakeTimeProvider()
         );
 
         (

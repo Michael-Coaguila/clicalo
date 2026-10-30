@@ -106,10 +106,13 @@ public void Scan_code_mode_releases_with_the_same_scan_code_it_pressed() { /* �
   `dotnet test --project tests/Clicalo.Domain.Tests/Clicalo.Domain.Tests.csproj --filter-trait "Req=EJE-003"`.
   Si ninguna prueba coincide, Microsoft Testing Platform termina con el código 8 («no se ejecutó ninguna
   prueba»).
-- `cl trace` generará `docs/requirements/traceability.md` a partir del catálogo y de los resultados de la
-  CI; ese archivo no se versiona.
+- `cl trace` escribe `artifacts/cl/trace.md`: cada requisito del catálogo con las pruebas que lo nombran y,
+  arriba del todo, los MUST sin prueba. Lee los rasgos del código de las pruebas (no hace falta compilar ni
+  ejecutar), así que da lo mismo en cualquier equipo; falla solo si un rasgo nombra un identificador que no
+  está en el catálogo. El archivo no se versiona ([D-29](deviations.md#d-29--sin-cl-states-ni-cl-accept)).
 - **Desde el hito RC, ningún requisito MUST puede quedar sin prueba automática** o sin una entrada en el
-  guion manual o en la aceptación en hardware.
+  [guion de aceptación manual](../guides/aceptacion-manual.md): `cl trace` marca como «solo en el guion
+  manual» el MUST sin prueba cuyo identificador aparece en el guion, y como «SIN PRUEBA» el resto.
 - Al tocar el comportamiento de un requisito, su prueba se actualiza o se crea en el mismo PR.
 
 El plano escribe `[Req("…")]` como notación abreviada; la forma canónica en el código es
@@ -141,8 +144,9 @@ Dónde se usan:
 - la salida de los generadores y los diagnósticos de los analizadores;
 - las migraciones del esquema propio con *fixtures* por versión;
 - el árbol UIA por ventana y estado (un cambio de accesibilidad aparece en el *diff*);
-- el renderizado (`RenderTargetBitmap`) por forma, tamaño S/M/L, tema, escala y estado, recorrido por
-  `StateMatrixFixture`. `cl states` genera todas las instantáneas y abre la carpeta.
+- el renderizado (`RenderTargetBitmap`) por forma, tamaño S/M/L, tema, escala y estado. `cl states` no se
+  construye ([D-29](deviations.md#d-29--sin-cl-states-ni-cl-accept)): las pruebas sin pantalla comprueban lo que
+  cada vista proyecta y, con `CLICALO_CC_PREVIEW=1`, escriben las vistas previas en `artifacts/cc-preview`.
 
 ## Pruebas de propiedades y de modelo
 
@@ -205,9 +209,10 @@ Dónde se usan:
 | Solo el núcleo (menos de 45 s) | `cl fast` | `dotnet test --solution Core.slnf` |
 | Un proyecto | — | `dotnet test --project tests/<Proyecto>/<Proyecto>.csproj` |
 | Integración de escritorio | `cl desk` | `CLICALO_DESKTOP_TESTS=1` y `dotnet test --solution Clicalo.slnx --filter-trait Requires=Desktop` |
-| Instantáneas de todos los estados | `cl states` | — |
+| Vistas previas del Centro de control y la bienvenida | — | `CLICALO_CC_PREVIEW=1` y `dotnet test --project tests/Clicalo.Windowing.IntegrationTests/Clicalo.Windowing.IntegrationTests.csproj` (salen en `artifacts/cc-preview`) |
 | Rendimiento | `cl perf` | — |
 | Cuarentena | `cl quarantine` | `CLICALO_DESKTOP_TESTS=1` y `dotnet test --solution Clicalo.slnx --filter-trait Category=Quarantine` |
-| Aceptación en hardware | `cl accept` | — |
+| Trazabilidad requisito → pruebas | `cl trace` | `dotnet run --project tools/Clicalo.DevCli -- trace` |
+| Aceptación con la persona usuaria y en una máquina limpia | — | A mano, con el [guion de aceptación manual](../guides/aceptacion-manual.md) |
 
 Los verbos de `cl` están descritos en [tooling.md](tooling.md#verbos-de-cl).

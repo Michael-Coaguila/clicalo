@@ -21,16 +21,16 @@ public static class DockGeometry
     /// <summary>A horizontal bar stays this far from its edge (PES-005).</summary>
     public const int HorizontalBarInsetPx = 12;
 
+    /// <summary>The padding of the open bar around what it shows (PES-005).</summary>
+    public const int BarPaddingPx = 8;
+
     /// <summary>The floating «Release all» of the open bar stays this far from a side edge or the top (PES-013).</summary>
     public const int PanicInsetPx = 110;
 
     /// <summary>On the bottom edge it stays this far from the bottom (PES-013).</summary>
     public const int PanicBottomInsetPx = 180;
 
-    /// <summary>The «Pinned» and «Sticky keys» windows open this far from their button, toward the screen (PES-010).</summary>
-    public const int ButtonWindowGapPx = 16;
-
-    /// <summary>The profile grid and the guide open this far from the bar (PES-011, PES-015).</summary>
+    /// <summary>Every window beside the bar opens this far from it (PES-009 to PES-011, PES-015; D20).</summary>
     public const int BarWindowGapPx = 8;
 
     /// <summary>The windows beside the bar are at most the work area minus this, high (PES-010, PES-011).</summary>
@@ -157,21 +157,27 @@ public static class DockGeometry
     }
 
     /// <summary>
-    /// The open bar (PES-005): as thick as the size says (76/88/108 wide on a vertical edge, 58/66/78 high on a
-    /// horizontal one), as long as its content up to <see cref="MaxBarLength"/>, centered along its edge; against a
-    /// vertical edge (18 px away on the right with <paramref name="gutter"/>), 12 px away from a horizontal one.
+    /// The open bar (PES-005): as thick as the size says (108 wide on a vertical edge; on a horizontal one, its padding
+    /// around what it shows, which is 64 high as its shortcuts are, PES-007, or as <paramref name="thickness"/> when its
+    /// shortcuts grow with the text scale, CUA-011), as long as its content up to <see cref="MaxBarLength"/>, centered
+    /// along its edge; against a vertical edge (18 px away on the right with <paramref name="gutter"/>), 12 px away
+    /// from a horizontal one.
     /// </summary>
     /// <param name="side">The edge.</param>
     /// <param name="length">The length its content asks for, in physical pixels.</param>
     /// <param name="size">The panel size.</param>
     /// <param name="monitor">The monitor of the panel.</param>
     /// <param name="gutter">«Respect the scroll bar».</param>
+    /// <param name="thickness">
+    /// How high its content asks a horizontal bar to be, in physical pixels; never thinner than the size says.
+    /// </param>
     public static PhysicalRect Bar(
         DockSide side,
         int length,
         SizeMetrics size,
         DisplayMonitor monitor,
-        bool gutter
+        bool gutter,
+        int thickness = 0
     )
     {
         ArgumentNullException.ThrowIfNull(size);
@@ -189,7 +195,10 @@ public static class DockGeometry
             return new PhysicalRect(left, top, width, along);
         }
 
-        var height = monitor.ToPhysical(size.DockBarHeightPx);
+        var height = Math.Max(
+            monitor.ToPhysical(size.DockBarHeightPx + (2 * BarPaddingPx)),
+            thickness
+        );
         var inset = monitor.ToPhysical(HorizontalBarInsetPx);
         var x = work.Left + ((work.Width - along) / 2);
         var y = side == DockSide.Top ? work.Top + inset : work.Bottom - inset - height;
@@ -250,6 +259,82 @@ public static class DockGeometry
     }
 
     /// <summary>
+    /// What a window opened by a button of the bar goes beside (PES-009, PES-010; D20): the edge of the bar across it,
+    /// so the window never covers the bar wherever the button sits inside it (a pair puts one button 48 further in), and
+    /// the button along it, so the window lines up with what opened it.
+    /// </summary>
+    /// <param name="side">The edge of the bar.</param>
+    /// <param name="bar">The bar on screen.</param>
+    /// <param name="button">The button of the bar on screen.</param>
+    public static PhysicalRect AtButton(DockSide side, PhysicalRect bar, PhysicalRect button) =>
+        IsVertical(side)
+            ? new PhysicalRect(bar.Left, button.Top, bar.Width, button.Height)
+            : new PhysicalRect(button.Left, bar.Top, button.Width, bar.Height);
+
+    /// <summary>
+    /// <see cref="Beside"/>, clear of the surfaces already placed there (PES-014): while the place is taken by one of
+    /// <paramref name="taken"/>, the surface goes further from the edge, beside that one too. Only the depth of the
+    /// anchor grows, so a surface centered on a button stays on it (D21 review). The notice surface of the Tab view uses
+    /// it, so it never covers a window beside the bar nor the floating «Release all»; so does the menu of a shortcut.
+    /// </summary>
+    /// <param name="side">The edge of the Tab view.</param>
+    /// <param name="anchor">The bar, the handle or a button, in physical pixels.</param>
+    /// <param name="width">The width of the surface.</param>
+    /// <param name="height">The height of the surface.</param>
+    /// <param name="gap">The gap between the anchor and the surface.</param>
+    /// <param name="align">How it lines up along the edge.</param>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="taken">The surfaces already placed beside the anchor.</param>
+    public static PhysicalRect BesideClear(
+        DockSide side,
+        PhysicalRect anchor,
+        int width,
+        int height,
+        int gap,
+        DockAlign align,
+        DisplayMonitor monitor,
+        IReadOnlyList<PhysicalRect> taken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(taken);
+        var rect = Beside(side, anchor, width, height, gap, align, monitor);
+        for (var pass = 0; pass < taken.Count; pass++)
+        {
+            PhysicalRect? hit = null;
+            foreach (var other in taken)
+            {
+                if (Overlap(rect, other))
+                {
+                    hit = other;
+                    break;
+                }
+            }
+
+            if (hit is not { } covered)
+            {
+                break;
+            }
+
+            anchor = IsVertical(side)
+                ? PhysicalRect.FromEdges(
+                    Math.Min(anchor.Left, covered.Left),
+                    anchor.Top,
+                    Math.Max(anchor.Right, covered.Right),
+                    anchor.Bottom
+                )
+                : PhysicalRect.FromEdges(
+                    anchor.Left,
+                    Math.Min(anchor.Top, covered.Top),
+                    anchor.Right,
+                    Math.Max(anchor.Bottom, covered.Bottom)
+                );
+            rect = Beside(side, anchor, width, height, gap, align, monitor);
+        }
+
+        return rect;
+    }
+
+    /// <summary>
     /// The floating «Release all» of the open bar (PES-013): 110 px from a side edge or the top (180 from the bottom),
     /// centered along the edge.
     /// </summary>
@@ -292,6 +377,85 @@ public static class DockGeometry
         return PanelGeometry.ClampInto(rect, work, 0);
     }
 
+    /// <summary>
+    /// The floating «Release all» of the open bar (PES-013) where <see cref="Panic"/> puts it, but never over the bar
+    /// (a bar of L, 124, is wider than the inset of 110) nor over a window beside it (D20: they open
+    /// <see cref="BarWindowGapPx"/> from the bar): it moves away from the edge until it is clear, so it never hides a
+    /// control nor turns a tap meant for one into a release.
+    /// </summary>
+    /// <param name="side">The edge of the bar.</param>
+    /// <param name="width">Width of the button, in physical pixels.</param>
+    /// <param name="height">Height of the button, in physical pixels.</param>
+    /// <param name="monitor">The monitor of the panel.</param>
+    /// <param name="bar">The open bar on screen.</param>
+    /// <param name="gap">Space kept from the bar and from each window, in physical pixels.</param>
+    /// <param name="taken">The windows already beside the bar.</param>
+    public static PhysicalRect PanicClear(
+        DockSide side,
+        int width,
+        int height,
+        DisplayMonitor monitor,
+        PhysicalRect bar,
+        int gap,
+        IReadOnlyList<PhysicalRect> taken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(taken);
+        var rect = Away(side, Panic(side, width, height, monitor), bar, gap);
+        for (var pass = 0; pass < taken.Count; pass++)
+        {
+            var hit = taken.FirstOrDefault(other => Overlap(rect.Inflate(gap), other));
+            if (hit.IsEmpty)
+            {
+                break;
+            }
+
+            rect = Away(side, rect, hit, gap);
+        }
+
+        return PanelGeometry.ClampInto(rect, monitor.WorkArea, 0);
+    }
+
+    /// <summary>
+    /// The side of the floating panel a window of <paramref name="width"/> opens on (AJR-001, D21): the one it already
+    /// has while it fits there whole, else the side of the screen with room, else the other one; when neither fits, the
+    /// side of the screen with room, which has more of it. Expressed as the edge <see cref="Beside"/> places it from: <see cref="DockSide.Right"/> puts
+    /// it on the left of the panel and <see cref="DockSide.Left"/> on its right. It never jumps across the panel while
+    /// the panel is dragged past the middle of the screen, and never covers it while one side has room.
+    /// </summary>
+    /// <param name="panel">The panel, in physical pixels.</param>
+    /// <param name="width">Width of the window, in physical pixels.</param>
+    /// <param name="gap">Space between the panel and the window, in physical pixels.</param>
+    /// <param name="monitor">The monitor of the panel.</param>
+    /// <param name="kept">The side it has now, or null when it opens.</param>
+    public static DockSide SideBesidePanel(
+        PhysicalRect panel,
+        int width,
+        int gap,
+        DisplayMonitor monitor,
+        DockSide? kept
+    )
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+        var onLeft = panel.Left - gap - monitor.WorkArea.Left;
+        var onRight = monitor.WorkArea.Right - panel.Right - gap;
+        bool Fits(DockSide side) => (side == DockSide.Right ? onLeft : onRight) >= width;
+
+        if (kept is DockSide.Left or DockSide.Right && Fits(kept.Value))
+        {
+            return kept.Value;
+        }
+
+        var toward =
+            panel.Center.X > monitor.WorkArea.Left + (monitor.WorkArea.Width / 2)
+                ? DockSide.Right
+                : DockSide.Left;
+        var other = toward == DockSide.Right ? DockSide.Left : DockSide.Right;
+
+        // The side of the screen with room is also the one with more room when neither fits.
+        return Fits(toward) || !Fits(other) ? toward : other;
+    }
+
     /// <summary>The tallest a window beside the bar may be (PES-010, PES-011): the work area less 140.</summary>
     /// <param name="monitor">The monitor of the panel.</param>
     public static int MaxSideWindowHeight(DisplayMonitor monitor)
@@ -320,6 +484,42 @@ public static class DockGeometry
             : (int)Math.Floor((Math.Max(0, availablePx) + gapPx) / (tilePx + gapPx));
         return Math.Max(1, Math.Min(preference, fit));
     }
+
+    /// <summary><paramref name="rect"/> moved away from the edge until it is <paramref name="gap"/> clear of <paramref name="other"/>.</summary>
+    private static PhysicalRect Away(
+        DockSide side,
+        PhysicalRect rect,
+        PhysicalRect other,
+        int gap
+    ) =>
+        side switch
+        {
+            DockSide.Right when rect.Right > other.Left - gap => rect with
+            {
+                Left = other.Left - gap - rect.Width,
+            },
+            DockSide.Left when rect.Left < other.Right + gap => rect with
+            {
+                Left = other.Right + gap,
+            },
+            DockSide.Top when rect.Top < other.Bottom + gap => rect with
+            {
+                Top = other.Bottom + gap,
+            },
+            DockSide.Bottom when rect.Bottom > other.Top - gap => rect with
+            {
+                Top = other.Top - gap - rect.Height,
+            },
+            _ => rect,
+        };
+
+    private static bool Overlap(PhysicalRect a, PhysicalRect b) =>
+        !a.IsEmpty
+        && !b.IsEmpty
+        && a.Left < b.Right
+        && b.Left < a.Right
+        && a.Top < b.Bottom
+        && b.Top < a.Bottom;
 
     private static int GutterPx(DockSide side, bool gutter, DisplayMonitor monitor) =>
         side == DockSide.Right && gutter

@@ -8,6 +8,7 @@
     <ProjectReference Include="..\Clicalo.Application\Clicalo.Application.csproj" />
     <ProjectReference Include="..\Clicalo.Domain\Clicalo.Domain.csproj" />
     <ProjectReference Include="..\Clicalo.Platform.Core\Clicalo.Platform.Core.csproj" />
+    <PackageReference Include="Anthropic" />
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Serilog" />

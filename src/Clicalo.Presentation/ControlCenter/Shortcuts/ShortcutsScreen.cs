@@ -10,6 +10,7 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <param name="Column">What the editor column shows.</param>
 /// <param name="EmptyText">[pickOne].</param>
 /// <param name="Library">«Añadir atajo», when open.</param>
+/// <param name="EmptyList">The empty state of a list without shortcuts, instead of <paramref name="EmptyText"/>; else null.</param>
 public sealed record ShortcutsScreen(
     TopBarModel TopBar,
     ProfilesModel Profiles,
@@ -19,5 +20,6 @@ public sealed record ShortcutsScreen(
     GridModel Grid,
     EditorColumn Column,
     string EmptyText,
-    LibraryModel? Library
+    LibraryModel? Library,
+    EmptyListModel? EmptyList = null
 );

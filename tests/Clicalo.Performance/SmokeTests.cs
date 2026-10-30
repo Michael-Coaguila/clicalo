@@ -202,6 +202,48 @@ public sealed class SmokeTests
         markdown.ShouldNotContain(Environment.UserName, Case.Insensitive);
     }
 
+    [Fact]
+    [Trait("Req", "SIS-003")]
+    public void The_measurements_never_run_two_instances_at_once()
+    {
+        // One Clícalo per user and session: two measurements at the same time would find each other's instance.
+        typeof(SmokeTests)
+            .Assembly.GetCustomAttributes(typeof(Xunit.v3.ParallelizationAttribute), inherit: false)
+            .Cast<Xunit.v3.ParallelizationAttribute>()
+            .ShouldHaveSingleItem()
+            .GetMode()
+            .ShouldBe(Xunit.Sdk.ParallelMode.None);
+        // Every start has a data folder of its own, so it is an instance of its own (ADR-0030), with the names the app
+        // derives: InstanceIdentityTests fixes the same suffix for the same folder.
+        var data = @"C:\dev\clicalo-qa\live-data";
+        RunningInstance
+            .MutexName(data)
+            .ShouldMatch(@"^Local\\Clicalo\.[0-9a-f]{16}\.dfe8f6acf7d7db647\.Instance$");
+        RunningInstance
+            .PipeName(data)
+            .ShouldMatch(@"^Clicalo\.[0-9a-f]{16}\.dfe8f6acf7d7db647\.\d+$");
+        RunningInstance
+            .MutexName(data)
+            .Split('.')[1]
+            .ShouldBe(RunningInstance.PipeName(data).Split('.')[1], "the same sidHash");
+        string.Equals(
+                RunningInstance.ScopeOf(data),
+                RunningInstance.ScopeOf(AppLaunch.NewDataDirectory()),
+                StringComparison.Ordinal
+            )
+            .ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(0, "it was shown")]
+    [InlineData(2, "did not answer")]
+    [InlineData(3, "ipc.squat_detected")]
+    [InlineData(70, "its log says why")]
+    public void A_start_that_ends_before_its_first_frame_says_what_its_exit_code_means(
+        int code,
+        string meaning
+    ) => AppLaunch.ExitCodeMeaning(code).ShouldContain(meaning);
+
     private static StartupSample Sample(int run, double firstFrameMs, long workingSetMb) =>
         new(
             "sc-r2r",

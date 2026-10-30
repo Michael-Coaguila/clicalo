@@ -9,7 +9,9 @@ namespace Clicalo.Domain.Touch;
 /// 44 and enlarged to 44), the one whose center is nearest wins (REG-02);</item>
 /// <item>otherwise, among the targets whose extra hit area contains the point, the nearest one (distance to its
 /// bounds) wins, and a tie goes to the nearest center (TAC-002);</item>
-/// <item>a remaining tie goes to the target listed first, so the result never depends on anything else.</item>
+/// <item>a remaining tie goes to the target listed first, so the result never depends on anything else;</item>
+/// <item>a point on a layer drawn over other controls (<see cref="TouchOccluder"/>) reaches only the targets of that
+/// layer, the last one listed when layers overlap.</item>
 /// </list>
 /// Empty targets are never hit.
 /// </summary>
@@ -19,8 +21,34 @@ internal static class HitResolver
     /// <param name="targets">The targets, in physical screen pixels.</param>
     /// <param name="point">The contact position, in physical screen pixels.</param>
     /// <param name="hitSlop">The extra hit area, in physical pixels.</param>
-    public static int Resolve(ReadOnlySpan<TouchTarget> targets, PhysicalPoint point, int hitSlop)
+    public static int Resolve(
+        ReadOnlySpan<TouchTarget> targets,
+        PhysicalPoint point,
+        int hitSlop
+    ) => Resolve(targets, point, hitSlop, []);
+
+    /// <summary>The index of the target hit at <paramref name="point"/>, or -1 when there is none.</summary>
+    /// <param name="targets">The targets, in physical screen pixels.</param>
+    /// <param name="point">The contact position, in physical screen pixels.</param>
+    /// <param name="hitSlop">The extra hit area, in physical pixels.</param>
+    /// <param name="occluders">The layers drawn over other targets; a point on one reaches only its own targets.</param>
+    public static int Resolve(
+        ReadOnlySpan<TouchTarget> targets,
+        PhysicalPoint point,
+        int hitSlop,
+        ReadOnlySpan<TouchOccluder> occluders
+    )
     {
+        var layer = -1;
+        for (var o = occluders.Length - 1; o >= 0; o--)
+        {
+            if (occluders[o].Bounds.Contains(point))
+            {
+                layer = o;
+                break;
+            }
+        }
+
         var best = -1;
         var bestInside = false;
         var bestEdge = 0L;
@@ -28,7 +56,7 @@ internal static class HitResolver
         for (var i = 0; i < targets.Length; i++)
         {
             var bounds = targets[i].Bounds;
-            if (bounds.IsEmpty)
+            if (bounds.IsEmpty || (layer >= 0 && !occluders[layer].Own.Contains(targets[i].Id)))
             {
                 continue;
             }

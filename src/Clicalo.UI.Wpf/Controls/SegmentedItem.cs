@@ -2,16 +2,18 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using Clicalo.UI.Wpf.Controls.Internal;
+using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// One option of a <see cref="SegmentedControl"/> (prototype: 8 px radius, <c>cardHi</c> fill and <c>text</c>; the
-/// selected one <c>accent</c> with <c>onAccent</c>, bold 13 px text, optional icon above it). At least 44 × 44
-/// (REG-02). UI Automation sees a ListItem with the SelectionItem pattern whose name is the text (ACC-001).
+/// One option of a <see cref="SegmentedControl"/>, with the single look of «elegido» of direction C (D12): wash, a
+/// ring of 2 inside and the icon filled, or a ✓ when it has no icon. Its shape is the group's
+/// <see cref="SegmentedControl.Kind"/> (a segment inside the track by default, or tiles and option cards with their
+/// line). At least 44 × 44 (REG-02). UI Automation sees a ListItem with the SelectionItem pattern whose name is the
+/// text (ACC-001).
 /// </summary>
 public sealed class SegmentedItem : ListBoxItem
 {
@@ -20,11 +22,14 @@ public sealed class SegmentedItem : ListBoxItem
         typeof(SegmentedItem)
     );
 
-    /// <summary>Name of the rounded border.</summary>
-    public const string ChromePart = "PART_Chrome";
+    /// <summary>Identifies <see cref="Kind"/>.</summary>
+    public static readonly DependencyProperty KindProperty = OptionButton.KindProperty.AddOwner(
+        typeof(SegmentedItem),
+        new FrameworkPropertyMetadata(OptionKind.Segment, OnKindChanged)
+    );
 
-    private const string IconPart = "PART_Icon";
-    private static readonly ControlTemplate DefaultTemplate = CreateTemplate();
+    /// <summary>Name of the fill of the template (its background in every state).</summary>
+    public const string FillPart = ControlChrome.FillPart;
 
     static SegmentedItem()
     {
@@ -32,85 +37,80 @@ public sealed class SegmentedItem : ListBoxItem
             typeof(SegmentedItem),
             new FrameworkPropertyMetadata(typeof(SegmentedItem))
         );
-        TemplateProperty.OverrideMetadata(
-            typeof(SegmentedItem),
-            new FrameworkPropertyMetadata(DefaultTemplate)
-        );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(SegmentedItem),
-            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Control))
+            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Small))
         );
         TouchTarget.Enforce(typeof(SegmentedItem));
     }
 
-    /// <summary>Creates an option.</summary>
+    /// <summary>Creates a segment.</summary>
     public SegmentedItem()
     {
-        Templates.UseTheme(this, ColorToken.CardHi, ColorToken.Text, ColorToken.CardHi);
-        FontSize = 13;
-        FontWeight = FontWeights.Bold;
-        Margin = new Thickness(2);
-        Padding = new Thickness(6, 4, 6, 4);
         HorizontalContentAlignment = HorizontalAlignment.Center;
         VerticalContentAlignment = VerticalAlignment.Center;
+        SetResourceReference(FontFamilyProperty, ThemeKeys.UiFont);
+        SetResourceReference(FontSizeProperty, ThemeKeys.FontSize(TextStyleToken.Label));
+        FontWeight = FontWeights.Bold;
+        Apply(OptionKind.Segment);
     }
 
-    /// <summary>Material Symbols name of the icon above the text; null for none.</summary>
+    /// <summary>Material Symbols name of the icon; null for none.</summary>
     public string? Symbol
     {
         get => (string?)GetValue(SymbolProperty);
         set => SetValue(SymbolProperty, value);
     }
 
+    /// <summary>The shape; the group sets it on its options.</summary>
+    public OptionKind Kind
+    {
+        get => (OptionKind)GetValue(KindProperty);
+        set => SetValue(KindProperty, value);
+    }
+
+    /// <inheritdoc />
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        if (GetTemplateChild(OptionChrome.TextPart) is ContentPresenter presenter)
+        {
+            presenter.Resources[typeof(TextBlock)] = OptionChrome.TextStyleFor(
+                1,
+                centered: true,
+                TextStyleToken.Label
+            );
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+        SetValue(OptionChrome.IsTextContentProperty, newContent is string);
+    }
+
     /// <inheritdoc />
     protected override AutomationPeer OnCreateAutomationPeer() => new WrapperPeer(this);
 
-    private static ControlTemplate CreateTemplate()
+    private void Apply(OptionKind kind)
     {
-        var icon = Templates
-            .Element<SymbolIcon>(IconPart)
-            .With(SymbolIcon.SymbolProperty, Templates.Bind(SymbolProperty))
-            .With(SymbolIcon.SizeProperty, 20d)
-            .With(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 3))
-            .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        var content = Templates
-            .Element<ContentPresenter>()
-            .With(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center)
-            .With(ContentPresenter.RecognizesAccessKeyProperty, false);
-        var stack = Templates
-            .Element<StackPanel>()
-            .With(
-                FrameworkElement.HorizontalAlignmentProperty,
-                Templates.Bind(Control.HorizontalContentAlignmentProperty)
-            )
-            .With(
-                FrameworkElement.VerticalAlignmentProperty,
-                Templates.Bind(Control.VerticalContentAlignmentProperty)
-            )
-            .Add(icon, content);
-        var chrome = Templates.Chrome(ChromePart, Radii.Control).Add(stack);
-        return Templates.Seal(
+        Template = OptionChrome.For(
             typeof(SegmentedItem),
-            chrome,
-            Templates.When(
-                SymbolProperty,
-                null,
-                new Setter(UIElement.VisibilityProperty, Visibility.Collapsed, IconPart)
-            ),
-            Templates.When(
-                IsSelectedProperty,
-                true,
-                Templates.Brush(Border.BackgroundProperty, ColorToken.Accent, ChromePart),
-                Templates.Brush(Border.BorderBrushProperty, ColorToken.Accent, ChromePart),
-                Templates.Brush(TextElement.ForegroundProperty, ColorToken.OnAccent, ChromePart)
-            ),
-            Templates.When(
-                IsEnabledProperty,
-                false,
-                new Setter(UIElement.OpacityProperty, ButtonChrome.DisabledOpacity, ChromePart)
-            )
+            kind,
+            IsSelectedProperty,
+            SymbolProperty,
+            OptionButton.CaptionProperty,
+            OptionButton.CountProperty
         );
+        OptionChrome.Paint(this, kind);
+        Margin = new Thickness(kind == OptionKind.Segment ? Space.S1 / 2 : Space.S1);
     }
+
+    private static void OnKindChanged(
+        DependencyObject item,
+        DependencyPropertyChangedEventArgs e
+    ) => ((SegmentedItem)item).Apply((OptionKind)e.NewValue);
 
     /// <summary>
     /// The peer behind the item's ListItem: named by its text when <c>AutomationProperties.Name</c> is not set, and

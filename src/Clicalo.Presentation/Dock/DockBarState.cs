@@ -20,7 +20,6 @@ namespace Clicalo.Presentation.Dock;
 /// <param name="IsFixed">Fixed (red, lock) or Auto (blue).</param>
 /// <param name="CanRepeat">There is a last action to repeat.</param>
 /// <param name="Flyout">The window beside the bar.</param>
-/// <param name="CoachStep">The step of the guide on show.</param>
 /// <param name="BarOpen">The bar is open.</param>
 /// <param name="AnythingHeld">Something is held or latched, sticky keys included (PES-001, PES-013).</param>
 public sealed record DockBarState(
@@ -36,7 +35,13 @@ public sealed record DockBarState(
     bool IsFixed,
     bool CanRepeat,
     DockFlyout Flyout,
-    int CoachStep,
     bool BarOpen,
     bool AnythingHeld
-);
+)
+{
+    /// <summary>Quick settings are open beside the bar (PES-009).</summary>
+    public bool QuickOpen { get; init; }
+
+    /// <summary>The menu of a shortcut is open beside the bar (CUA-014).</summary>
+    public bool MenuOpen { get; init; }
+}

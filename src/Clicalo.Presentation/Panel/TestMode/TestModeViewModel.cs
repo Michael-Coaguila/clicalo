@@ -221,6 +221,8 @@ public sealed class TestModeViewModel : ObservableObject
         if (_state.UntilNextChange(now) is not { } wait)
         {
             End();
+            // AVI-002: the fixed notice lasts while the mode lasts; [tmEnd] says it ended.
+            _notices.ClearSticky(this);
             _notices.Notify(new PanelNotice(L.TmEnd, new IconRef(ModeIcon), NoticeTone.Notice));
             return;
         }

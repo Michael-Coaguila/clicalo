@@ -56,6 +56,54 @@ desincronizar con el código y no añade pasos de despliegue.
 de icono de los datos está incluido y tiene glifo en las dos variantes, y hay un icono de respaldo. Revisión: el
 paquete de publicación (M5) incluye las licencias de `assets/fonts`.
 
+### Actualización del 2026-10-16: decisión D14 del usuario, la colección completa
+
+El usuario decidió (D14, [catálogo §6.2](../requirements/catalog.md#62-decisiones-del-usuario)) que el selector
+ofrezca **toda** la colección de Material Symbols Rounded, con categorías y búsqueda, y que los ~600 iconos más útiles
+lleven palabras en español. Cambia el recorte; el resto de la decisión (instancias estáticas, sin ligaduras, fuentes
+fijadas por hash, licencias junto a las fuentes) se mantiene.
+
+- **Fuente completa.** `build_fonts.py` ya no recorta a los iconos de los datos: las dos instancias (FILL 0 y 1,
+  wght 400, GRAD 0, opsz 24) llevan los **4001 glifos** del archivo de puntos de código de
+  `google/material-design-icons` en el *commit* `49d4db35df873165d6bd6ba09b063c7dafbac2f4` (2026-10-09), y
+  `codepoints.json` lleva sus **4301 nombres**, alias incluidos, así que cualquier nombre de un perfil importado se
+  dibuja. Cada fuente pesa **1,0 MB** (1 024 156 y 1 062 368 bytes) en lugar de unos 70 KB: el ensamblado crece unos
+  2 MB en total. No hace falta reducirlas (el umbral acordado era unos 3 MB por archivo); si algún día hiciera falta,
+  el primer paso sería quitar los 76 glifos retirados que el selector ya no ofrece, sin perder ningún icono útil.
+- **Metadatos oficiales.** Las categorías y las palabras clave en inglés salen de los metadatos de Material Symbols
+  que publica Google (`fonts.google.com/metadata/icons`, la misma fuente que lee el propio script
+  `update/update_symbols.py` del repositorio oficial; el repositorio no los incluye). `sources.json` los fija por
+  SHA-256; como el servicio no tiene versiones, cuando el hash deje de coincidir se descargan otra vez, se revisa el
+  diff de `icons.json` y se fija el hash nuevo. De ellos solo se copian el nombre de la categoría y palabras sueltas.
+- **`data/catalogs/icons.json`** pasa a tener dos partes (D14). A mano: `catalogVersion` (2), los iconos por defecto,
+  `featured`, `profileFeatured` y los **744 iconos curados**, primero y en su orden (los 128 del prototipo y 616
+  nuevos de edición, archivos, comunicación, multimedia, navegación, dispositivos, apps, accesibilidad, oficina y
+  programación), con sus palabras en español y en inglés. Lo escribe el script: las **17 categorías** con su nombre
+  en los dos idiomas, la categoría y las palabras clave (`keywords`) de cada icono, y el resto de la colección, del más
+  popular al menos. Un glifo se ofrece una sola vez (**3925 iconos**); los 76 glifos retirados que la fuente conserva
+  por compatibilidad no se ofrecen, salvo `brightness_high` y `brightness_low`, que usan los datos. Una palabra clave
+  que comparte más del 3 % de los iconos («symbol», «data») no los distingue y se omite: el archivo pesa 1,1 MB y se
+  lee una vez, fuera del hilo de la interfaz.
+- **Selector.** Una capa del centro de control con las 17 categorías («Todos» primero), la búsqueda y los
+  sugeridos. La rejilla recibe todos los iconos de la categoría y la búsqueda, pero solo construye las filas que se ven
+  y las reutiliza al desplazarse (una pila virtualizada de filas), así que abrir «Todos» no crea 3925 botones; el tope
+  provisional `IconPickerMaxShown` ya no existe (R-35). La búsqueda recorre los 3925 iconos y las sugerencias
+  (EDI-005) pliegan las palabras una sola vez al leer el catálogo.
+
+Consecuencias nuevas:
+
+- Buena, porque ningún icono de Material Symbols se dibuja con el de respaldo y un icono nuevo de los datos ya no
+  exige volver a ejecutar el script (la consecuencia mala del recorte desaparece).
+- Buena, porque la persona encuentra iconos por categoría y por palabras en los dos idiomas.
+- Mala, porque el ensamblado y los datos crecen unos 3 MB, y la búsqueda en inglés devuelve más resultados que la
+  española, que solo cubre los iconos curados.
+
+Confirmación nueva: `ContentIntegrityTests.The_library_offers_every_icon_of_the_font_once_with_its_category` y
+`Icons_are_unique_and_searchable_in_both_languages` (Clicalo.Data.Tests) y
+`EditorCatalogFilesTests.The_shipped_library_has_every_icon_by_category_and_finds_them_in_both_languages`
+(Clicalo.Infrastructure.Tests). Criterio de reapertura nuevo: que Google retire los metadatos o los publique con
+condiciones que no permitan copiar sus categorías y palabras.
+
 ## Pros y contras de las opciones
 
 ### Recursos WPF del ensamblado

@@ -11,6 +11,7 @@ using Clicalo.Domain.Library;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Privacy;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Templates;
 
 namespace Clicalo.Application.Tests.UseCases.Editor;
@@ -30,6 +31,7 @@ public sealed class ShortcutsWorkspaceTests
             [
                 new IconEntry(new IconRef("save"), ["guardar", "save"]),
                 new IconEntry(new IconRef("picture_as_pdf"), ["pdf"]),
+                new IconEntry(new IconRef("content_copy"), ["copy"]),
             ],
             [],
             []
@@ -46,6 +48,17 @@ public sealed class ShortcutsWorkspaceTests
                             new IconRef("content_paste"),
                             new CategoryId("edit"),
                             new TapAction(KeyChord.FromKeys(KeyIds.Ctrl, KeyIds.V), []),
+                            false
+                        ),
+                        new TemplateShortcut(
+                            "copy",
+                            new LocalizedText([
+                                new(LangCode.Es, "Copiar"),
+                                new(LangCode.En, "Copy"),
+                            ]),
+                            new IconRef("bolt"),
+                            new CategoryId("edit"),
+                            new TapAction(KeyChord.FromKeys(KeyIds.Ctrl, KeyIds.K), []),
                             false
                         ),
                     ]
@@ -98,6 +111,7 @@ public sealed class ShortcutsWorkspaceTests
 
     [Fact]
     [Trait("Req", "ATJ-011")]
+    [Trait("Req", "EDI-002")]
     [Trait("Req", "EDI-003")]
     public void The_first_edit_creates_the_draft_and_a_draft_blank_again_is_discarded_without_trace()
     {
@@ -246,6 +260,83 @@ public sealed class ShortcutsWorkspaceTests
     }
 
     [Fact]
+    [Trait("Req", "ATJ-009")]
+    public void A_tile_dropped_where_it_already_is_changes_nothing_and_leaves_no_undo_step()
+    {
+        _workspace.SelectList(Word);
+        _workspace.Shortcuts.Select(s => s.Id).ShouldBe([StoreSamples.Bold, StoreSamples.Save]);
+
+        _workspace.Reorder(StoreSamples.Bold, StoreSamples.Save);
+        _workspace.Reorder(StoreSamples.Save, null);
+
+        _workspace.Shortcuts.Select(s => s.Id).ShouldBe([StoreSamples.Bold, StoreSamples.Save]);
+        _harness.Changes.ShouldBeEmpty();
+        _harness.Store.CanUndo.ShouldBeFalse();
+
+        _workspace.Reorder(StoreSamples.Bold, null);
+
+        _workspace
+            .Shortcuts.Select(s => s.Id)
+            .ShouldBe([StoreSamples.Save, StoreSamples.Bold], "past its right-hand neighbour");
+        _harness.Store.CanUndo.ShouldBeTrue();
+    }
+
+    [Fact]
+    [Trait("Req", "ATJ-009")]
+    public void With_three_tiles_a_drop_lands_in_front_of_the_tile_it_names_and_a_drop_in_place_says_nothing()
+    {
+        _workspace.SelectList(Word);
+        _workspace.OpenLibrary();
+        var category = _workspace
+            .Categories()
+            .Single(c => string.Equals(c.Id, "edit", StringComparison.Ordinal));
+        _workspace.AddFromLibrary(category, category.Items[0]);
+        var paste = _workspace.Shortcuts[^1].Id;
+        _workspace.Select(StoreSamples.Bold);
+        _notices.Clear();
+        var undoable = _harness.Changes.Count;
+
+        // Where it already is: in front of its right-hand neighbour, or at the end for the last one.
+        _workspace.Reorder(StoreSamples.Bold, StoreSamples.Save);
+        _workspace.Reorder(paste, null);
+        _harness.Changes.Count.ShouldBe(undoable);
+        _notices.ShouldBeEmpty("a drop that changes nothing says nothing");
+
+        // On the second half of its right-hand neighbour: past it, in front of the third.
+        _workspace.Reorder(StoreSamples.Bold, paste);
+        _workspace
+            .Shortcuts.Select(s => s.Id)
+            .ShouldBe([StoreSamples.Save, StoreSamples.Bold, paste]);
+
+        // The last one in front of the first.
+        _workspace.Reorder(paste, StoreSamples.Save);
+        _workspace
+            .Shortcuts.Select(s => s.Id)
+            .ShouldBe([paste, StoreSamples.Save, StoreSamples.Bold]);
+    }
+
+    [Fact]
+    [Trait("Req", "EDI-005")]
+    [Trait("Req", "EDI-004")]
+    public void The_suggestions_read_the_name_in_Spanish_and_in_English()
+    {
+        _workspace.SelectList(Word);
+        _workspace.OpenLibrary();
+        var category = _workspace
+            .Categories()
+            .Single(c => string.Equals(c.Id, "edit", StringComparison.Ordinal));
+
+        _workspace.AddFromLibrary(
+            category,
+            category.Items.Single(i => string.Equals(i.ItemId, "copy", StringComparison.Ordinal))
+        );
+        _workspace.Select(_workspace.Shortcuts[^1].Id);
+
+        // «Copiar» alone finds nothing in this library; «Copy», its English name, does, whatever the interface says.
+        _workspace.SuggestedIcons().ShouldContain(new IconRef("content_copy"));
+    }
+
+    [Fact]
     [Trait("Req", "EDI-016")]
     public void The_position_buttons_move_it_inside_its_list()
     {
@@ -339,5 +430,39 @@ public sealed class ShortcutsWorkspaceTests
 
         _workspace.List.ShouldBe(new ListRef.InProfile(ProfileId.General));
         _workspace.Pane.ShouldBe(new EditorPane.Editing(new ShortcutId("undo")));
+    }
+
+    [Fact]
+    [Trait("Req", "BIE-005")]
+    public void An_empty_list_opens_the_library_for_whoever_cannot_use_the_keyboard()
+    {
+        _harness
+            .Dispatch(
+                new CreateProfile(
+                    Document.Library.General with
+                    {
+                        Shortcuts = [],
+                    },
+                    ListPosition.End
+                )
+            )
+            .IsSuccess.ShouldBeTrue();
+        var empty = _harness.Changes[^1].Events.OfType<ProfileCreated>().Single().Id;
+
+        _workspace.SelectList(new ListRef.InProfile(empty));
+        _workspace.Pane.ShouldBeOfType<EditorPane.Empty>("typing is the default way to create");
+
+        _harness
+            .Dispatch(new SetSetting(SettingPaths.NoKeyboardUser, true))
+            .IsSuccess.ShouldBeTrue();
+        _workspace.SelectList(Word);
+        _workspace.Pane.ShouldBe(new EditorPane.Editing(StoreSamples.Bold));
+        _workspace.SelectList(new ListRef.InProfile(empty));
+        _workspace.Pane.ShouldBeOfType<EditorPane.Library>();
+        _workspace.Open(new ListRef.InProfile(empty), null, library: false);
+        _workspace.Pane.ShouldBeOfType<EditorPane.Library>();
+
+        _workspace.CloseLibrary();
+        _workspace.Pane.ShouldBeOfType<EditorPane.Empty>("✕ still leaves the library");
     }
 }

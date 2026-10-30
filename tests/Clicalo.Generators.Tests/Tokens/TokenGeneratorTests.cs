@@ -17,6 +17,7 @@ public sealed class TokenGeneratorTests
         "CategoryToken.g.cs",
         "ColorToken.g.cs",
         "DesignShapes.g.cs",
+        "DesignSystem.g.cs",
         "Motion.g.cs",
         "SystemHighContrastPalette.g.cs",
         "ThemePalette.g.cs",
@@ -67,7 +68,7 @@ public sealed class TokenGeneratorTests
         var palettes = Source(TokenGeneratorHarness.Run(TokenTestData.Files), "ThemePalettes.g.cs");
 
         palettes.ShouldContain("Argb(0xFF56D3DA), // accent: oklch(0.80 0.11 200)");
-        palettes.ShouldContain("Argb(0xFF006885), // accent: oklch(0.474 0.11 220)");
+        palettes.ShouldContain("Argb(0xFFFFFFFF), // card: #ffffff");
         palettes.ShouldContain("Argb(0xFFFFE600), // accent: #FFE600");
         palettes.ShouldContain(
             "public static global::System.Collections.Generic.IReadOnlyList<ThemePalette> All { get; } = [Dark, Light, HighContrast];"
@@ -205,7 +206,7 @@ public sealed class TokenGeneratorTests
 
         generated.Constant("FocusRing", "Thickness").ShouldBe(3d);
         generated.Constant("FocusRing", "Offset").ShouldBe(2d);
-        generated.Constant("Radii", "Panel").ShouldBe(18d);
+        generated.Constant("Radii", "Medium").ShouldBe(12d);
         var shadow = generated.Static("Shadows", "Panel");
         Invoke(shadow, "ColorIn", generated.Static("ThemePalettes", "Dark"))
             .ToString()
@@ -217,6 +218,37 @@ public sealed class TokenGeneratorTests
         Invoke(shadow, "ColorIn", generated.Invoke("SystemHighContrastPalette", "Capture"))
             .ToString()
             .ShouldBe("#00" + WpfStubs.SystemColorHex("WindowColor")[3..]);
+    }
+
+    [Fact]
+    [Trait("Req", "TEM-002")]
+    [Trait("Req", "TEM-007")]
+    public void The_design_system_of_direction_C_is_emitted_as_constants_and_text_styles()
+    {
+        using var generated = GeneratedAssembly.Load();
+
+        generated.Constant("Space", "S3").ShouldBe(12d);
+        generated.Constant("Space", "S12").ShouldBe(48d);
+        generated.Constant("ControlHeight", "Small").ShouldBe(44d);
+        generated.Constant("ControlHeight", "Medium").ShouldBe(52d);
+        generated.Constant("ControlHeight", "Large").ShouldBe(64d);
+        generated.Constant("Radii", "Pill").ShouldBe(999d);
+        generated.Constant("IconBox", "Medium").ShouldBe(24d);
+        generated.Constant("Stroke", "Selected").ShouldBe(2d);
+        generated.Constant("ComponentSize", "SwitchHeight").ShouldBe(28d);
+        generated.Constant("ComponentSize", "CaptionButton").ShouldBe(56d);
+        generated
+            .Static("TextStyles", "Overline")
+            .ToString()
+            .ShouldBe(
+                "TextStyleSpec { Family = Ui, Weight = 700, Size = 12, LineHeight = 16, LetterSpacing = 0.06, Uppercase = True }"
+            );
+        generated
+            .Invoke("TextStyles", "Get", generated.EnumValue("TextStyleToken", "KeysTile"))
+            .ToString()
+            .ShouldBe(
+                "TextStyleSpec { Family = Keys, Weight = 500, Size = 11, LineHeight = 14, LetterSpacing = 0, Uppercase = False }"
+            );
     }
 
     private static string Source(GeneratorDriverRunResult result, string hintName) =>

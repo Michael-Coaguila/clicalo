@@ -37,4 +37,8 @@ public readonly record struct ActivationContext(
     ButtonFilterState Filter,
     TouchSettings Touch,
     DateTimeOffset Now
-);
+)
+{
+    /// <summary>How much longer the confirmation window lasts: ×1, ×2 or ×3 (ACC-006).</summary>
+    public int TimeMultiplier { get; init; } = 1;
+}

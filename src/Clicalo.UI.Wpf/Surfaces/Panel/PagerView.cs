@@ -1,29 +1,29 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using Clicalo.Domain.Guides;
 using Clicalo.Presentation.Panel;
 using Clicalo.UI.Wpf.Automation;
 using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Guides;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel;
 
 /// <summary>
-/// ◀, the page dots and ▶ under the grid (CUA-004): the arrows are 48 × 40 cards that dim on the first and last page;
-/// the active dot is 24 × 10 in accent and the others 10 × 10 in line; each dot is named «Página n» and has a 44 touch
-/// target. It only projects <see cref="PagerViewModel"/>.
+/// ◀, the page dots and ▶ under the grid (CUA-004, VCO-002) in direction C (D12): a row of
+/// <see cref="ControlHeight.Small"/> with secondary icon buttons of 44 × 44 at its ends, which look disabled on the first
+/// and the last page, and the dots between them, the active one a pill of <see cref="Space.S6"/> in <c>accent</c> and
+/// the others dots of <see cref="Space.S2"/> in <c>line</c>, each one named «Página n» inside a 44 × 44 target. The
+/// panel reserves the row in its design, so a profile with one page does not make the panel shorter; then the row is
+/// empty. It only projects <see cref="PagerViewModel"/>.
 /// </summary>
 public sealed class PagerView : DockPanel
 {
-    private const double ArrowWidth = 48;
-    private const double ArrowHeight = 40;
-    private const double ArrowIcon = 24;
-    private const double DotHeight = 10;
-    private const double Gap = 8;
-
     private readonly PagerViewModel _viewModel;
-    private readonly ShortcutTile _previous;
-    private readonly ShortcutTile _next;
+    private readonly IconButton _previous;
+    private readonly IconButton _next;
     private readonly StackPanel _dots = new()
     {
         Orientation = Orientation.Horizontal,
@@ -33,37 +33,63 @@ public sealed class PagerView : DockPanel
 
     private readonly List<(ShortcutTile Control, PageDotViewModel Dot)> _dotControls = [];
 
+    // «2/5» when the dots do not fit between the arrows: each dot answers on 44, and a target over ▶ would turn to the
+    // last page instead of the next one.
+    private readonly StyledText _counter = new(
+        string.Empty,
+        TextStyleToken.LabelSmall,
+        ColorToken.Muted
+    )
+    {
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        Visibility = Visibility.Collapsed,
+    };
+
     /// <summary>Creates the pager of <paramref name="viewModel"/>.</summary>
     /// <param name="viewModel">The pager.</param>
     public PagerView(PagerViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Margin = new Thickness(12, Gap, 12, 0);
+        Height = ControlHeight.Small;
         LastChildFill = true;
         _previous = Arrow("chevron_left", viewModel.Previous);
         _next = Arrow("chevron_right", viewModel.Next);
+        GuideTargets.SetTarget(_next, GuideTarget.PanelPager);
         SetDock(_previous, Dock.Left);
         SetDock(_next, Dock.Right);
         Children.Add(_previous);
         Children.Add(_next);
-        Children.Add(_dots);
+        var middle = new Grid();
+        middle.Children.Add(_dots);
+        middle.Children.Add(_counter);
+        Children.Add(middle);
+        middle.SizeChanged += (_, _) => Fit();
         viewModel.PropertyChanged += OnChanged;
         Refresh();
     }
+
+    /// <summary>Whether the pages are shown: more than one page in a view that pages (the panel decides).</summary>
+    public bool ShowsPages { get; private set; }
 
     /// <summary>The visible tappable elements: the arrows and every dot.</summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
         get
         {
-            if (!_viewModel.IsVisible)
+            if (!ShowsPages)
             {
                 yield break;
             }
 
             yield return new PanelTapTarget(_previous, _viewModel.Previous);
             yield return new PanelTapTarget(_next, _viewModel.Next);
+            if (_counter.Visibility == Visibility.Visible)
+            {
+                yield break;
+            }
+
             foreach (var (control, dot) in _dotControls)
             {
                 yield return new PanelTapTarget(control, dot.Select);
@@ -71,19 +97,37 @@ public sealed class PagerView : DockPanel
         }
     }
 
+    /// <summary>◀.</summary>
+    public IconButton PreviousButton => _previous;
+
+    /// <summary>▶.</summary>
+    public IconButton NextButton => _next;
+
+    /// <summary>Shows the pages or leaves the row empty, keeping its place.</summary>
+    /// <param name="shown">Whether the pages show.</param>
+    public void ShowPages(bool shown)
+    {
+        ShowsPages = shown;
+        var visibility = shown ? Visibility.Visible : Visibility.Hidden;
+        _previous.Visibility = visibility;
+        _next.Visibility = visibility;
+        _dots.Visibility = visibility;
+        Fit();
+    }
+
     /// <summary>Stops following the view model.</summary>
     public void Detach() => _viewModel.PropertyChanged -= OnChanged;
 
-    private static ShortcutTile Arrow(string symbol, Action action)
+    private static IconButton Arrow(string symbol, Action action)
     {
-        var arrow = PanelChrome.NewButton(PanelChrome.Button, ShortcutTilePattern.Invoke);
-        arrow.Width = ArrowWidth;
-        arrow.Height = ArrowHeight;
-        arrow.HorizontalContentAlignment = HorizontalAlignment.Center;
-        arrow.VerticalContentAlignment = VerticalAlignment.Center;
-        arrow.Tag = new SymbolIcon { Symbol = symbol, Size = ArrowIcon };
-        PanelChrome.Paint(arrow, ColorToken.Card, ColorToken.Text, ColorToken.Border);
-        arrow.Invoked += (_, _) => action();
+        var arrow = new IconButton
+        {
+            Symbol = symbol,
+            Variant = ButtonVariant.Secondary,
+            Focusable = false,
+            IsTabStop = false,
+        };
+        arrow.Click += (_, _) => action();
         return arrow;
     }
 
@@ -91,39 +135,48 @@ public sealed class PagerView : DockPanel
 
     private void Refresh()
     {
-        Visibility = _viewModel.IsVisible ? Visibility.Visible : Visibility.Collapsed;
-        _previous.AccessibleName = _viewModel.PreviousName;
-        _next.AccessibleName = _viewModel.NextName;
-        // CUA-004: the arrows dim on the first and the last page; UI Automation hears it as not enabled, not by color alone.
+        AutomationProperties.SetName(_previous, _viewModel.PreviousName);
+        AutomationProperties.SetName(_next, _viewModel.NextName);
+        // CUA-004: the arrows look disabled on the first and the last page; UI Automation hears it as not enabled.
         _previous.IsEnabled = _viewModel.CanGoPrevious;
         _next.IsEnabled = _viewModel.CanGoNext;
-        _previous.SetResourceReference(
-            Control.ForegroundProperty,
-            ThemeBrushKey.For(_viewModel.CanGoPrevious ? ColorToken.Text : ColorToken.Line)
-        );
-        _next.SetResourceReference(
-            Control.ForegroundProperty,
-            ThemeBrushKey.For(_viewModel.CanGoNext ? ColorToken.Text : ColorToken.Line)
-        );
         _dots.Children.Clear();
         _dotControls.Clear();
         foreach (var dot in _viewModel.Dots)
         {
             var control = PanelChrome.NewButton(PanelChrome.Dot, ShortcutTilePattern.Invoke);
             control.Width = dot.WidthPx;
-            control.Height = DotHeight;
+            control.Height = Space.S2;
             control.AccessibleName = dot.AccessibleName;
             control.AccessibleState = dot.AccessibleState;
-            PanelChrome.Paint(
+            PanelChrome.SetBrush(
                 control,
-                dot.IsActive ? ColorToken.Accent : ColorToken.Line,
-                ColorToken.Text,
-                null
+                Control.BackgroundProperty,
+                dot.IsActive ? ColorToken.Accent : ColorToken.Line
             );
             var page = dot;
             control.Invoked += (_, _) => page.Select();
             _dots.Children.Add(control);
             _dotControls.Add((control, dot));
         }
+
+        _counter.Text = _viewModel.PageLabel;
+        Fit();
+    }
+
+    /// <summary>The dots while each has its 44 between the arrows, the counter otherwise.</summary>
+    private void Fit()
+    {
+        if (_dots.Parent is not FrameworkElement middle)
+        {
+            return;
+        }
+
+        var fits =
+            middle.ActualWidth <= 0
+            || _viewModel.Dots.Count * ControlHeight.Small <= middle.ActualWidth;
+        var shown = ShowsPages ? Visibility.Visible : Visibility.Hidden;
+        _dots.Visibility = fits ? shown : Visibility.Collapsed;
+        _counter.Visibility = fits ? Visibility.Collapsed : shown;
     }
 }

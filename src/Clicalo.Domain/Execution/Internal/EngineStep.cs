@@ -491,14 +491,17 @@ internal sealed class EngineStep
             Config.InterfaceLanguage == LangCode.Es ? LangCode.En : LangCode.Es
         );
 
-    /// <summary>The app in front as the notices name it: its process without «.exe» (EJE-003).</summary>
-    public string AppName()
-    {
-        var process = State.Foreground?.Process.Value ?? string.Empty;
-        return process.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-            ? process[..^4]
-            : process;
-    }
+    /// <summary>
+    /// The app in front as the notices name it (EJE-003): the description of its executable once read, else its
+    /// executable without «.exe» and with a capital letter.
+    /// </summary>
+    public string AppName() =>
+        State.Foreground switch
+        {
+            { DisplayName: { Length: > 0 } name } => name,
+            { } foreground => foreground.Process.AppName,
+            _ => string.Empty,
+        };
 
     /// <summary>A combination written with the key labels of the interface language («Ctrl + S»).</summary>
     public string KeysText(ValueList<Keys.KeyStroke> strokes) =>

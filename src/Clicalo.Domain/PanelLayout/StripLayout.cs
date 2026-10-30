@@ -1,18 +1,21 @@
 using Clicalo.Domain.Catalog;
+using Clicalo.Domain.Settings;
 
 namespace Clicalo.Domain.PanelLayout;
 
 /// <summary>
 /// The Always visible row (FIJ-001 to FIJ-003): 4 columns; 4 shortcuts in S or Compact and 8 in M or L; with more,
-/// capacity − 1 per page and a «··· i/N» chip that cycles; names hidden in S and Compact.
+/// capacity − 1 per page and a «··· i/N» chip that cycles. In S and in Compact the row is a row of icons as high as a
+/// touch target (FIJ-002, VCO-001; D19): the name, in a quarter of the narrowest panel, ended in «…», and a row of the
+/// height of M made S and Compact as tall as M. In M and L it keeps the name, 56 high (D20).
 /// </summary>
 public static class StripLayout
 {
     /// <summary>Columns of the row (FIJ-002).</summary>
     public const int Columns = 4;
 
-    /// <summary>Visual height of the row in the Compact view (FIJ-002; 44 as touch target).</summary>
-    public const int CompactHeightPx = 40;
+    /// <summary>Height of the row in the Compact view: one touch target, for its icons (VCO-001, REG-02).</summary>
+    public static int CompactHeightPx => PanelSizes.Layout.MinTouchTargetPx;
 
     /// <summary>Shortcuts the row holds before paging: 4 in S or Compact, 8 in M or L (FIJ-003).</summary>
     /// <param name="settings">Size and view.</param>
@@ -24,20 +27,44 @@ public static class StripLayout
             : settings.Metrics.StripCapacity;
     }
 
-    /// <summary>Visual height of a tile of the row: 44/60/72 in S/M/L and 40 in Compact (FIJ-002).</summary>
-    /// <param name="settings">Size and view.</param>
+    /// <summary>
+    /// Height of a tile of the row: the size's (44 in S, 56 in M and L) and 44 in Compact (FIJ-002, D19, D20). A row
+    /// with names grows with the text scale by what its name grows, as the tiles of the grid (CUA-011); a row of icons
+    /// does not.
+    /// </summary>
+    /// <param name="settings">Size, view and text scale.</param>
     public static int TileHeight(PanelLayoutSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return settings.Compact ? CompactHeightPx : settings.Metrics.StripHeightPx;
+        var height = settings.Compact ? CompactHeightPx : settings.Metrics.StripHeightPx;
+        if (height <= PanelSizes.Layout.MinTouchTargetPx)
+        {
+            return height;
+        }
+
+        var scale = Math.Clamp(
+            settings.TextScalePercent,
+            (int)SettingsSchema.TextScalePercent.Min,
+            (int)SettingsSchema.TextScalePercent.Max
+        );
+        var growth =
+            (scale - 100)
+            / 100d
+            * settings.Metrics.StripLabelPx
+            * PanelSizes.Layout.TextScaleTileGrowth;
+        return (int)Math.Round(height + growth, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>Whether the tiles show their name: not in S nor in Compact (FIJ-002).</summary>
+    /// <summary>
+    /// Whether the tiles show their name: when the row is taller than one touch target, as in M and L. A row of the
+    /// height of a touch target shows icons alone (S, Compact); the name stays for UI Automation and the voice
+    /// numbers (FIJ-002, VCO-001).
+    /// </summary>
     /// <param name="settings">Size and view.</param>
     public static bool ShowsNames(PanelLayoutSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        return !settings.IsSmall && !settings.Compact;
+        return TileHeight(settings) > PanelSizes.Layout.MinTouchTargetPx;
     }
 
     /// <summary>The page <paramref name="page"/> of a row of <paramref name="count"/> shortcuts (FIJ-003).</summary>

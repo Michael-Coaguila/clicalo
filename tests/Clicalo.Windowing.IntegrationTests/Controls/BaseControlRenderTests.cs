@@ -63,7 +63,7 @@ public sealed class BaseControlRenderTests
     {
         var section = new StackPanel();
         var segmented = new SegmentedControl { Columns = 2, SelectedIndex = 1 };
-        foreach (var label in new[] { "Auto", "Oscuro", "Claro", "Alto contraste" })
+        foreach (var label in new[] { "Como Windows", "Oscuro", "Claro", "Alto contraste" })
         {
             segmented.Items.Add(new SegmentedItem { Content = label });
         }
@@ -143,7 +143,7 @@ public sealed class BaseControlRenderTests
             new TouchButton
             {
                 Content = "Ahora no",
-                Appearance = ButtonAppearance.Outline,
+                Variant = ButtonVariant.Secondary,
                 Margin = new Thickness(0, 0, 6, 6),
             }
         );
@@ -151,16 +151,16 @@ public sealed class BaseControlRenderTests
             new TouchButton
             {
                 Content = "Soltar todo",
-                Appearance = ButtonAppearance.Danger,
+                Variant = ButtonVariant.Danger,
                 Symbol = "warning",
                 Margin = new Thickness(0, 0, 6, 6),
             }
         );
-        var search = new IconButton { Symbol = "search", Appearance = ButtonAppearance.Neutral };
+        var search = new IconButton { Symbol = "search", Variant = ButtonVariant.Secondary };
         AutomationProperties.SetName(search, "Buscar");
         buttons.Children.Add(search);
         buttons.Children.Add(
-            new Chip
+            new OptionButton
             {
                 Content = "Ctrl",
                 IsMonospace = true,
@@ -168,7 +168,7 @@ public sealed class BaseControlRenderTests
             }
         );
         buttons.Children.Add(
-            new Chip
+            new OptionButton
             {
                 Content = "Alt",
                 IsMonospace = true,

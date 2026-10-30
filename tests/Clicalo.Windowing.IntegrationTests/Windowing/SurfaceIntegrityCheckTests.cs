@@ -38,10 +38,12 @@ public sealed class SurfaceIntegrityCheckTests
 
     [Fact]
     [Trait("Req", "REG-01")]
-    public void One_surface_leaving_the_topmost_band_takes_its_siblings_and_all_are_repaired()
+    public void One_surface_leaving_the_topmost_band_leaves_every_surface_repaired()
     {
         // SetWindowPos: "when a topmost window is made non-topmost, its owners and its owned windows are also made
-        // non-topmost". Every surface is owned by the same OwnerAnchor, so they leave the band together (S1 finding).
+        // non-topmost". Every surface is owned by the same OwnerAnchor, so they usually leave the band together (S1
+        // finding); Windows 11 does not always take the siblings along (seen on 2026-10-24, on and off on the same
+        // build). Either way the check puts every surface back in the band.
         using var lab = SurfaceLab.Create();
         var panel = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Panel, 0, 200, 100));
         var bubble = SurfaceLab.WithHandle(lab.CreateSurface(SurfaceKind.Bubble, 0, 64, 64));
@@ -58,8 +60,9 @@ public sealed class SurfaceIntegrityCheckTests
             )
             .ShouldBeTrue();
 
-        NativeSurface.HasExStyle(bubble.Handle, NativeSurface.ExTopmost).ShouldBeFalse();
-        WpfThread.Invoke(lab.Integrity.CheckNow).ShouldBe(2);
+        NativeSurface.HasExStyle(panel.Handle, NativeSurface.ExTopmost).ShouldBeFalse();
+        var siblingLeft = !NativeSurface.HasExStyle(bubble.Handle, NativeSurface.ExTopmost);
+        WpfThread.Invoke(lab.Integrity.CheckNow).ShouldBe(siblingLeft ? 2 : 1);
         NativeSurface.HasExStyle(panel.Handle, NativeSurface.ExTopmost).ShouldBeTrue();
         NativeSurface.HasExStyle(bubble.Handle, NativeSurface.ExTopmost).ShouldBeTrue();
     }

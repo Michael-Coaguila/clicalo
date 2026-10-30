@@ -13,16 +13,16 @@ public sealed class GridMetricsTests
     public static TheoryData<PanelSize, int, bool, int> TileHeights =>
         new()
         {
-            { PanelSize.Small, 100, false, 66 },
-            { PanelSize.Medium, 100, false, 78 },
-            { PanelSize.Large, 100, false, 98 },
-            { PanelSize.Small, 150, false, 76 },
-            { PanelSize.Medium, 150, false, 89 },
-            { PanelSize.Large, 120, false, 103 },
-            { PanelSize.Large, 150, false, 111 },
-            { PanelSize.Small, 100, true, 50 },
-            { PanelSize.Medium, 100, true, 62 },
-            { PanelSize.Large, 150, true, 95 },
+            { PanelSize.Small, 100, false, 64 },
+            { PanelSize.Medium, 100, false, 68 },
+            { PanelSize.Large, 100, false, 80 },
+            { PanelSize.Small, 150, false, 74 },
+            { PanelSize.Medium, 150, false, 79 },
+            { PanelSize.Large, 120, false, 85 },
+            { PanelSize.Large, 150, false, 93 },
+            { PanelSize.Small, 100, true, 48 },
+            { PanelSize.Medium, 100, true, 52 },
+            { PanelSize.Large, 150, true, 77 },
         };
 
     /// <summary>Size, columns, expected panel width.</summary>
@@ -30,12 +30,12 @@ public sealed class GridMetricsTests
         new()
         {
             { PanelSize.Small, 2, 288 },
-            { PanelSize.Small, 3, 288 },
-            { PanelSize.Small, 4, 330 },
-            { PanelSize.Medium, 3, 316 },
-            { PanelSize.Medium, 4, 416 },
-            { PanelSize.Large, 3, 392 },
-            { PanelSize.Large, 4, 518 },
+            { PanelSize.Small, 3, 292 },
+            { PanelSize.Small, 4, 384 },
+            { PanelSize.Medium, 3, 340 },
+            { PanelSize.Medium, 4, 448 },
+            { PanelSize.Large, 3, 412 },
+            { PanelSize.Large, 4, 544 },
         };
 
     /// <summary>Size, row preference, expected maximum rows.</summary>
@@ -70,7 +70,8 @@ public sealed class GridMetricsTests
         {
             { PanelSize.Medium, 0, -1, 3 },
             { PanelSize.Medium, 0, 10_000, 3 },
-            { PanelSize.Medium, 0, 165, 2 },
+            { PanelSize.Medium, 0, 144, 2 },
+            { PanelSize.Medium, 0, 143, 1 },
             { PanelSize.Medium, 0, 10, 1 },
             { PanelSize.Small, 0, 10_000, 2 },
             { PanelSize.Small, 3, 10_000, 3 },
@@ -145,8 +146,49 @@ public sealed class GridMetricsTests
     {
         var shape = GridMetrics.Shape(Settings(PanelSize.Medium), null);
 
-        shape.HeightPx.ShouldBe((3 * 78) + (2 * 8));
-        GridMetrics.HeightOf(0, 78, 8).ShouldBe(0);
+        shape.HeightPx.ShouldBe((3 * 68) + (2 * 8));
+        GridMetrics.HeightOf(0, 80, 8).ShouldBe(0);
+    }
+
+    /// <summary>Text scale, chosen columns, whether the words fit, expected columns (D17).</summary>
+    public static TheoryData<int, int, bool, int> ColumnsForWords =>
+        new()
+        {
+            { 150, 3, false, 2 },
+            { 120, 4, false, 2 },
+            { 150, 3, true, 3 },
+            { 100, 3, false, 3 },
+            { 150, 2, false, 2 },
+        };
+
+    [Theory]
+    [MemberData(nameof(ColumnsForWords))]
+    [Trait("Req", "CUA-011")]
+    [Trait("Req", "PAN-002")]
+    public void A_word_that_does_not_fit_at_a_larger_text_gives_the_grid_two_columns_and_the_panel_keeps_its_size(
+        int textScale,
+        int columns,
+        bool wordsFit,
+        int expected
+    )
+    {
+        var settings = Settings(PanelSize.Medium) with
+        {
+            TextScalePercent = textScale,
+            Columns = columns,
+        };
+
+        var shape = GridMetrics.Shape(settings, null, wordsFit);
+
+        shape.Columns.ShouldBe(expected);
+        shape.PerPage.ShouldBe(expected * 3);
+        GridMetrics.NarrowsForWords(settings).ShouldBe(textScale > 100 && columns > 2);
+
+        // D16: the panel keeps the width of the chosen columns and the height of its rows.
+        GridMetrics
+            .PanelWidth(settings)
+            .ShouldBe(GridMetrics.PanelWidth(settings with { TextScalePercent = 100 }));
+        shape.HeightPx.ShouldBe(GridMetrics.Shape(settings, null).HeightPx);
     }
 
     private static PanelLayoutSettings Settings(PanelSize size) =>

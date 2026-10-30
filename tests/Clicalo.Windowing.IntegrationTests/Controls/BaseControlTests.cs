@@ -16,10 +16,10 @@ using Clicalo.Windowing.IntegrationTests.Theming;
 namespace Clicalo.Windowing.IntegrationTests.Controls;
 
 /// <summary>
-/// The base controls with the prototype's look (button, icon button, switch, slider with − and +, segmented control,
-/// chip and card): each one exposes its name, control type and pattern to UI Automation (ACC-001, REG-06), responds
-/// on at least 44 × 44 (REG-02), shows the 3 px focus ring (TEM-009) and paints with the theme tokens, repainting in
-/// place. Laid out without a window: nothing here needs a desktop.
+/// The base controls of direction C (D12: button, icon button, option, switch, slider with − and +, segmented control
+/// and card): each one exposes its name, control type and pattern to UI Automation (ACC-001, REG-06), responds on at
+/// least 44 × 44 (REG-02), shows the 3 px focus ring (TEM-009), shows «elegido» one way without changing size, and
+/// paints with the theme tokens, repainting in place. Laid out without a window: nothing here needs a desktop.
 /// </summary>
 public sealed class BaseControlTests
 {
@@ -39,7 +39,7 @@ public sealed class BaseControlTests
                     Height = 32,
                 },
                 new ToggleSwitch { Content = "Modo prueba" },
-                new Chip { Content = "Ctrl", IsMonospace = true },
+                new OptionButton { Content = "Ctrl", IsMonospace = true },
                 new StepSlider { Width = 220 },
                 segmented,
                 new ShortcutTile
@@ -96,7 +96,7 @@ public sealed class BaseControlTests
             PeerOf(button).GetAutomationControlType().ShouldBe(AutomationControlType.Button);
             PeerOf(button).GetPattern(PatternInterface.Invoke).ShouldNotBeNull();
             PeerOf(unnamed).GetName().ShouldBeEmpty();
-            button.Appearance.ShouldBe(ButtonAppearance.Ghost);
+            button.Variant.ShouldBe(ButtonVariant.Tertiary);
         });
 
     [Fact]
@@ -121,8 +121,8 @@ public sealed class BaseControlTests
             toggle.IsChecked.ShouldBe(true);
             provider.ToggleState.ShouldBe(ToggleState.On);
             toggle.KnobOffset.ShouldBe(ToggleSwitch.KnobTravel, "the knob's side tells the state");
-            Fill(toggle, ToggleSwitch.TrackPart).ShouldBe(ThemePalettes.Dark.Accent);
-            var track = (Border)toggle.Template.FindName(ToggleSwitch.TrackPart, toggle);
+            Fill(toggle, ToggleSwitch.TrackFillPart).ShouldBe(ThemePalettes.Dark.Accent);
+            var track = (FrameworkElement)toggle.Template.FindName(ToggleSwitch.TrackPart, toggle);
             track.ActualWidth.ShouldBe(ToggleSwitch.TrackWidth);
             track.ActualHeight.ShouldBe(ToggleSwitch.TrackHeight);
             toggle.ActualWidth.ShouldBeGreaterThan(
@@ -131,28 +131,103 @@ public sealed class BaseControlTests
             );
         });
 
-    [Fact]
+    [Theory]
     [Trait("Req", "ACC-001")]
     [Trait("Req", "ACC-003")]
-    public void A_chip_is_a_Toggle_button_that_shows_a_check_when_on() =>
+    [InlineData(OptionKind.Tile)]
+    [InlineData(OptionKind.Chip)]
+    [InlineData(OptionKind.Segment)]
+    public void An_option_is_chosen_one_way_with_a_check_and_never_changes_size(OptionKind kind) =>
         WpfThread.Invoke(() =>
         {
-            var chip = new Chip { Content = "Alt", IsMonospace = true };
-            using var service = Host(chip);
-            var icon = (SymbolIcon)chip.Template.FindName(Chip.IconPart, chip);
-            var peer = PeerOf(chip);
+            var option = new OptionButton
+            {
+                Content = "Alt",
+                IsMonospace = true,
+                Kind = kind,
+            };
+            using var service = Host(option);
+            var check = (SymbolIcon)option.Template.FindName("PART_Check", option);
+            var ring = (FrameworkElement)option.Template.FindName("PART_Ring", option);
+            var peer = PeerOf(option);
+            var before = new Size(option.ActualWidth, option.ActualHeight);
 
             peer.GetName().ShouldBe("Alt");
-            peer.GetPattern(PatternInterface.Toggle).ShouldNotBeNull();
-            icon.Visibility.ShouldBe(Visibility.Collapsed);
-            chip.FontFamily.ShouldBeSameAs(AppFonts.Mono);
+            peer.GetAutomationControlType().ShouldBe(AutomationControlType.RadioButton);
+            peer.GetPattern(PatternInterface.SelectionItem).ShouldNotBeNull();
+            peer.GetPattern(PatternInterface.Toggle).ShouldBeNull();
+            check.Visibility.ShouldBe(Visibility.Collapsed);
+            ring.Visibility.ShouldBe(Visibility.Collapsed);
+            option.FontFamily.ShouldBeSameAs(AppFonts.Mono);
 
-            chip.IsChecked = true;
-            chip.UpdateLayout();
+            option.IsSelected = true;
+            option.UpdateLayout();
 
-            icon.Visibility.ShouldBe(Visibility.Visible);
-            icon.Symbol.ShouldBe(Chip.CheckedSymbol);
-            Fill(chip, Chip.ChromePart).ShouldBe(ThemePalettes.Dark.AccentWash);
+            check.Visibility.ShouldBe(Visibility.Visible);
+            check.Symbol.ShouldBe("check");
+            ring.Visibility.ShouldBe(Visibility.Visible);
+            Fill(option, OptionButton.FillPart).ShouldBe(ThemePalettes.Dark.AccentWash);
+            new Size(option.ActualWidth, option.ActualHeight).ShouldBe(
+                before,
+                "the ring is inside"
+            );
+        });
+
+    [Theory]
+    [Trait("Req", "EDI-008")]
+    [Trait("Req", "ACC-003")]
+    [InlineData("B", 44d, false)]
+    [InlineData("Ctrl", 78d, false)]
+    [InlineData("Ctrl", 160d, true)]
+    public void A_chosen_key_shows_its_check_only_where_its_whole_label_fits_beside_it(
+        string label,
+        double width,
+        bool checks
+    ) =>
+        WpfThread.Invoke(() =>
+        {
+            // A key of the combination box: a cell of 44 or a modifier in its row of four (EDI-008).
+            var option = new OptionButton
+            {
+                Content = label,
+                IsMonospace = true,
+                IsSelected = true,
+                Role = OptionRole.Toggle,
+                Width = width,
+                Padding = new Thickness(Space.S1, 0, Space.S1, 0),
+            };
+            using var service = Host(option);
+            var check = (FrameworkElement)option.Template.FindName("PART_Check", option);
+            var text = Descendants(option)
+                .OfType<TextBlock>()
+                .Single(block => string.Equals(block.Text, label, StringComparison.Ordinal));
+            var face = new Typeface(
+                text.FontFamily,
+                text.FontStyle,
+                text.FontWeight,
+                text.FontStretch
+            );
+            var whole = new FormattedText(
+                label,
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                face,
+                text.FontSize,
+                Brushes.Black,
+                VisualTreeHelper.GetDpi(text).PixelsPerDip
+            ).WidthIncludingTrailingWhitespace;
+
+            whole.ShouldBeLessThanOrEqualTo(text.ActualWidth + 0.5, "never «✓ C…»");
+            (
+                System.Windows.Controls.Primitives.LayoutInformation.GetLayoutSlot(check).Width > 0
+            ).ShouldBe(checks);
+            text.TransformToAncestor(option)
+                .Transform(new Point(text.ActualWidth / 2, 0))
+                .X.ShouldBe(width / 2, 1, "the label stays on the axis of the key");
+            (
+                (IToggleProvider)PeerOf(option).GetPattern(PatternInterface.Toggle)
+            ).ToggleState.ShouldBe(ToggleState.On, "UI Automation still says it is chosen");
+            Fill(option, OptionButton.FillPart).ShouldBe(ThemePalettes.Dark.AccentWash);
         });
 
     [Fact]
@@ -217,7 +292,7 @@ public sealed class BaseControlTests
             peer.GetPattern(PatternInterface.Selection).ShouldNotBeNull();
             items
                 .Select(item => item.GetName())
-                .ShouldBe(["Auto", "Oscuro", "Claro", "Alto contraste"]);
+                .ShouldBe(["Como Windows", "Oscuro", "Claro", "Alto contraste"]);
             items.ShouldAllBe(item =>
                 item.GetAutomationControlType() == AutomationControlType.ListItem
             );
@@ -228,8 +303,19 @@ public sealed class BaseControlTests
             (
                 (ISelectionItemProvider)items[2].GetPattern(PatternInterface.SelectionItem)
             ).IsSelected.ShouldBeTrue();
-            Fill(Item(segmented, 2), SegmentedItem.ChromePart).ShouldBe(ThemePalettes.Dark.Accent);
-            Fill(Item(segmented, 1), SegmentedItem.ChromePart).ShouldBe(ThemePalettes.Dark.CardHi);
+            Fill(Item(segmented, 2), SegmentedItem.FillPart)
+                .ShouldBe(ThemePalettes.Dark.AccentWash);
+            (
+                (SolidColorBrush)
+                    (
+                        (Border)
+                            Item(segmented, 1)
+                                .Template.FindName(SegmentedItem.FillPart, Item(segmented, 1))
+                    ).Background
+            ).Color.A.ShouldBe(
+                (byte)0,
+                "a segment has no fill of its own: the track shows through"
+            );
             Item(segmented, 0).ActualWidth.ShouldBe(Item(segmented, 1).ActualWidth, 0.5);
             Item(segmented, 2)
                 .TranslatePoint(default, segmented)
@@ -266,7 +352,7 @@ public sealed class BaseControlTests
             {
                 new TouchButton { Content = "Crear" },
                 new ToggleSwitch { Content = "Atenuar" },
-                new Chip { Content = "Win" },
+                new OptionButton { Content = "Win" },
                 new StepSlider(),
             };
             using var service = Host(controls);
@@ -287,7 +373,7 @@ public sealed class BaseControlTests
         {
             new TouchButton().FocusVisualStyle.ShouldBeSameAs(FocusRingStyle.Button);
             new IconButton().FocusVisualStyle.ShouldBeSameAs(FocusRingStyle.Button);
-            new Chip().FocusVisualStyle.ShouldBeSameAs(FocusRingStyle.Button);
+            new OptionButton().FocusVisualStyle.ShouldBeSameAs(FocusRingStyle.Button);
             new ToggleSwitch().FocusVisualStyle.ShouldNotBeNull();
             new StepSlider().FocusVisualStyle.ShouldNotBeNull();
             new SegmentedItem().FocusVisualStyle.ShouldNotBeNull();
@@ -296,28 +382,25 @@ public sealed class BaseControlTests
     [Fact]
     [Trait("Req", "TEM-002")]
     [Trait("Req", "TEM-001")]
-    public void Appearances_use_their_tokens_and_a_theme_change_repaints_them_in_place() =>
+    public void Variants_use_their_tokens_and_a_theme_change_repaints_them_in_place() =>
         WpfThread.Invoke(() =>
         {
-            var accent = new TouchButton { Content = "Crear" };
-            var danger = new TouchButton
-            {
-                Content = "Soltar todo",
-                Appearance = ButtonAppearance.Danger,
-            };
-            var neutral = new IconButton { Symbol = "add", Appearance = ButtonAppearance.Neutral };
-            using var service = Host(accent, danger, neutral);
+            var primary = new TouchButton { Content = "Crear" };
+            var danger = new TouchButton { Content = "Eliminar", Variant = ButtonVariant.Danger };
+            var secondary = new IconButton { Symbol = "add", Variant = ButtonVariant.Secondary };
+            using var service = Host(primary, danger, secondary);
 
-            Fill(accent, "PART_Chrome").ShouldBe(ThemePalettes.Dark.Accent);
-            Fill(danger, "PART_Chrome").ShouldBe(ThemePalettes.Dark.Danger);
-            Fill(neutral, "PART_Chrome").ShouldBe(ThemePalettes.Dark.CardHi);
-            ((SolidColorBrush)danger.Foreground).Color.ShouldBe(ThemePalettes.Dark.OnDanger);
+            Fill(primary, TouchButton.FillPart).ShouldBe(ThemePalettes.Dark.Accent);
+            Fill(danger, TouchButton.FillPart).ShouldBe(ThemePalettes.Dark.Card);
+            Fill(secondary, TouchButton.FillPart).ShouldBe(ThemePalettes.Dark.Card);
+            ((SolidColorBrush)danger.Foreground).Color.ShouldBe(ThemePalettes.Dark.DangerText);
+            primary.ActualHeight.ShouldBe(ControlHeight.Small);
 
             service.Preference = ThemeChoice.Light;
 
-            Fill(accent, "PART_Chrome").ShouldBe(ThemePalettes.Light.Accent);
-            Fill(danger, "PART_Chrome").ShouldBe(ThemePalettes.Light.Danger);
-            ((SolidColorBrush)accent.Foreground).Color.ShouldBe(ThemePalettes.Light.OnAccent);
+            Fill(primary, TouchButton.FillPart).ShouldBe(ThemePalettes.Light.Accent);
+            Fill(danger, TouchButton.FillPart).ShouldBe(ThemePalettes.Light.Card);
+            ((SolidColorBrush)primary.Foreground).Color.ShouldBe(ThemePalettes.Light.OnAccent);
         });
 
     [Fact]
@@ -331,6 +414,51 @@ public sealed class BaseControlTests
             icon.DesiredSize.ShouldBe(new Size(28, 28));
             UIElementAutomationPeer.CreatePeerForElement(icon)?.IsControlElement().ShouldBeFalse();
         });
+
+    [Fact]
+    [Trait("Req", "AJR-001")]
+    [Trait("Req", "ACC-001")]
+    public void A_navigation_row_never_leaves_the_last_word_of_its_caption_alone() =>
+        WpfThread.Invoke(() =>
+        {
+            const string caption = "Atajos, plantillas, columnas, idioma y más";
+            var row = new NavRow
+            {
+                Content = "Centro de control",
+                Caption = caption,
+                Symbol = "tune",
+                Width = 300,
+            };
+            using var service = Host(row);
+
+            // «más» goes with «y», and «y» with what follows it: the second line is never a word alone.
+            row.ShownCaption.ShouldBe("Atajos, plantillas, columnas, idioma y más");
+            NavRow
+                .Settle("Shortcuts, templates and more")
+                .ShouldBe("Shortcuts, templates and more");
+            NavRow
+                .Settle("Colores de la app o del sistema")
+                .ShouldBe("Colores de la app o del sistema");
+            NavRow.Settle("Uno").ShouldBe("Uno");
+            var drawn = Descendants(row)
+                .OfType<StyledText>()
+                .Single(static t => t.Text.Contains("idioma", StringComparison.Ordinal));
+            drawn.Text.ShouldBe(row.ShownCaption);
+            PeerOf(row).GetHelpText().ShouldBe(caption, "UI Automation reads it as written");
+        });
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in Descendants(child))
+            {
+                yield return nested;
+            }
+        }
+    }
 
     internal static ThemeService Host(params FrameworkElement[] elements)
     {
@@ -354,7 +482,7 @@ public sealed class BaseControlTests
     private static SegmentedControl Segmented()
     {
         var segmented = new SegmentedControl { Columns = 2 };
-        foreach (var label in new[] { "Auto", "Oscuro", "Claro", "Alto contraste" })
+        foreach (var label in new[] { "Como Windows", "Oscuro", "Claro", "Alto contraste" })
         {
             segmented.Items.Add(new SegmentedItem { Content = label });
         }

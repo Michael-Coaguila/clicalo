@@ -58,11 +58,13 @@ public sealed class DocumentRepositoryTests : IDisposable
         load.IsReadOnly.ShouldBeTrue();
         save.Failure.Code.ShouldBe("persist.readonly");
         File.ReadAllBytes(Data.Document).ShouldBe(before);
+        repository.IsAwaitingAcceptance.ShouldBeFalse();
         repository.AcceptDefaultDocument();
         repository.IsReadOnly.ShouldBeTrue();
     }
 
     [Fact]
+    [Trait("Req", "DAT-003")]
     public async Task Nothing_usable_is_a_default_in_memory_not_written_until_accepted()
     {
         Put(Data.Document, Encoding.UTF8.GetBytes("{ truncated"));
@@ -77,8 +79,46 @@ public sealed class DocumentRepositoryTests : IDisposable
             "persist.readonly"
         );
         File.Exists(Data.Document).ShouldBeFalse();
+        repository.IsAwaitingAcceptance.ShouldBeTrue();
         repository.AcceptDefaultDocument();
         repository.IsReadOnly.ShouldBeFalse();
+        repository.IsAwaitingAcceptance.ShouldBeFalse();
+        (await repository.SaveAsync(TestDocuments.Document(), Token)).IsSuccess.ShouldBeTrue();
+        File.Exists(Data.Document).ShouldBeTrue("the accepted document is saved in its place");
+        Directory
+            .GetFiles(Data.Quarantine)
+            .Length.ShouldBe(1, "what could not be read stays in quarantine, never overwritten");
+    }
+
+    [Fact]
+    [Trait("Req", "DAT-003")]
+    public async Task An_unreadable_document_that_cannot_go_to_quarantine_is_never_replaced_by_the_default()
+    {
+        Put(Data.Document, Encoding.UTF8.GetBytes("{ truncated"));
+        var before = File.ReadAllBytes(Data.Document);
+
+        // A file where the quarantine folder goes: the unreadable document cannot be moved out of the way.
+        Directory.CreateDirectory(Path.GetDirectoryName(Data.Quarantine)!);
+        File.WriteAllText(Data.Quarantine, "in the way");
+        var repository = Repository();
+
+        var load = await repository.LoadAsync(Token);
+        load.Outcome.ShouldBe(DocumentLoadOutcome.DefaultInMemory);
+        repository.AcceptDefaultDocument();
+
+        // Accepting the default must not let it overwrite the original (D20 review).
+        repository.IsReadOnly.ShouldBeTrue();
+        (await repository.SaveAsync(TestDocuments.Document(), Token)).Failure.Code.ShouldBe(
+            "persist.readonly"
+        );
+        File.ReadAllBytes(Data.Document).ShouldBe(before);
+
+        // Once the quarantine can be made, accepting moves the original there first.
+        File.Delete(Data.Quarantine);
+        repository.AcceptDefaultDocument();
+        repository.IsReadOnly.ShouldBeFalse();
+        File.Exists(Data.Document).ShouldBeFalse();
+        Directory.GetFiles(Data.Quarantine).Length.ShouldBe(1);
     }
 
     [Fact]
@@ -88,6 +128,7 @@ public sealed class DocumentRepositoryTests : IDisposable
         var repository = Repository(files: new AlwaysLocked(Data.Document));
 
         var load = await FakeClock.RunAsync(_time, repository.LoadAsync(Token));
+        repository.IsAwaitingAcceptance.ShouldBeFalse("a locked file is never given up for lost");
         repository.AcceptDefaultDocument();
 
         load.IsReadOnly.ShouldBeTrue();

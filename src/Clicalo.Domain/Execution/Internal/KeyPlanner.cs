@@ -35,9 +35,17 @@ internal static class KeyPlanner
         bool countsUsage
     )
     {
-        if (!KeyResolver.TryResolve(strokes, origin.Injection, step.Layout, out var keys))
+        if (
+            !KeyResolver.TryResolve(
+                strokes,
+                origin.Injection,
+                step.Layout,
+                out var keys,
+                out var missing
+            )
+        )
         {
-            step.Notice(EngineNotices.NotInLayout, NoticeUrgency.Assertive);
+            step.Notice(EngineNotices.NotInLayout(step, missing), NoticeUrgency.Assertive);
             return false;
         }
 
@@ -178,9 +186,17 @@ internal static class KeyPlanner
     {
         // FIJ-006 (c): the active sticky modifiers are added while the button is held.
         var strokes = StickyPlanner.Compose(step, chord.Strokes);
-        if (!KeyResolver.TryResolve(strokes, origin.Injection, step.Layout, out var keys))
+        if (
+            !KeyResolver.TryResolve(
+                strokes,
+                origin.Injection,
+                step.Layout,
+                out var keys,
+                out var missing
+            )
+        )
         {
-            step.Notice(EngineNotices.NotInLayout, NoticeUrgency.Assertive);
+            step.Notice(EngineNotices.NotInLayout(step, missing), NoticeUrgency.Assertive);
             return;
         }
 

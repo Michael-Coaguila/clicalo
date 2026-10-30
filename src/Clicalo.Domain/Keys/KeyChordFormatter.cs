@@ -12,8 +12,8 @@ namespace Clicalo.Domain.Keys;
 /// </summary>
 public static class KeyChordFormatter
 {
-    private const string FullSeparator = " + ";
-    private const string ShortSeparator = "+";
+    private const string Separator = "+";
+    private const string SpokenSeparator = " + ";
 
     private static readonly FrozenDictionary<(KeyId Base, KeySide Side), KeyId> SidedKeys =
         KeyDefinitions
@@ -50,10 +50,7 @@ public static class KeyChordFormatter
             parts[i] = KeyText(chord.Strokes[i], labels, style, language, fallback);
         }
 
-        return string.Join(
-            style == KeyLabelStyle.Abbreviated ? ShortSeparator : FullSeparator,
-            parts
-        );
+        return string.Join(style == KeyLabelStyle.Spoken ? SpokenSeparator : Separator, parts);
     }
 
     /// <summary>The text of one stroke in <paramref name="style"/>.</summary>

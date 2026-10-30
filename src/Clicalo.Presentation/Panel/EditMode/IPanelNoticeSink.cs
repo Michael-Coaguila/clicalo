@@ -15,8 +15,8 @@ public interface IPanelNoticeSink
     void Notify(PanelNotice notice);
 
     /// <summary>
-    /// A sticky notice ([editHint], [tmStart]): it stays until another notice replaces it or its owner clears it
-    /// (AVI-002).
+    /// A fixed notice ([editHint], [tmStart]): it lasts while the state of its owner lasts. It shows whenever no posted
+    /// notice does and comes back after one, until its owner clears it (AVI-002).
     /// </summary>
     /// <param name="owner">Who shows it; only the same owner clears it.</param>
     /// <param name="notice">The notice.</param>

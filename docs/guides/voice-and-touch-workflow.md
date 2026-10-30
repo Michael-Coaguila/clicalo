@@ -86,7 +86,7 @@ fusionar.
 - Tras `cl setup`, el *hook* del repositorio añade el `Signed-off-by` del DCO a cada commit, también desde la
   vista de control de código de VS Code, sin escribirlo.
 - Dicta el título del commit en inglés con el formato de Conventional Commits (`fix(touch): …`).
-- `cl note` crea la nota de novedades para usuarios y `cl pr` abre el PR.
+- `cl note` crea la nota de novedades para usuarios. El PR se abre desde GitHub: no hay `cl pr`.
 
 ## Un perfil de Clícalo para programar
 

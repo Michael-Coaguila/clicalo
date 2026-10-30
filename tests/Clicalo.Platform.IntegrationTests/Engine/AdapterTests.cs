@@ -24,7 +24,14 @@ public sealed class AdapterTests
     private readonly PhysicalStateInjector _sender = new();
     private readonly InputInjector _injector;
 
-    public AdapterTests() => _injector = new InputInjector(_sender, _sender);
+    // The windows of the screen are the test's: no window of Clícalo under any point, the cursor elsewhere.
+    public AdapterTests() =>
+        _injector = new InputInjector(
+            _sender,
+            _sender,
+            cursorOnClicalo: static () => null,
+            isOnClicalo: static _ => false
+        );
 
     [Fact]
     [Trait("Req", "ATJ-004")]
@@ -106,6 +113,65 @@ public sealed class AdapterTests
         inputs[0].ShouldBe(LowLevelInput.MoveTo(640, 480));
         inputs[1].Kind.ShouldBe(kind);
         _sender.Buttons.ShouldBe(LowLevelMouseButtons.None);
+    }
+
+    [Theory]
+    [InlineData(MouseOp.ScrollUp, true)]
+    [InlineData(MouseOp.ScrollRight, true)]
+    [InlineData(MouseOp.RightClick, false)]
+    [Trait("Req", "EJE-009")]
+    [Trait("Req", "REG-03")]
+    public void A_wheel_step_taken_with_the_cursor_on_a_tile_takes_the_cursor_back_to_it(
+        MouseOp op,
+        bool back
+    )
+    {
+        // The mouse or the touchpad taps or holds a tile of Clícalo at (100, 200): the wheel goes to the app at (640,
+        // 480) and the cursor comes back in the same batch, so it never seems to jump into the app and a release lands
+        // on the tile and ends the hold.
+        var injector = new InputInjector(
+            _sender,
+            _sender,
+            static () => new PhysicalPoint(100, 200),
+            static _ => false
+        );
+
+        injector.Mouse(op, new PhysicalPoint(640, 480)).Status.ShouldBe(InjectionStatus.Sent);
+
+        var inputs = _sender.Batches.Single();
+        inputs[0].ShouldBe(LowLevelInput.MoveTo(640, 480));
+        (inputs[^1] == LowLevelInput.MoveTo(100, 200)).ShouldBe(back);
+        _sender.Buttons.ShouldBe(LowLevelMouseButtons.None);
+    }
+
+    [Fact]
+    [Trait("Req", "EJE-009")]
+    public void A_point_now_under_Clicalo_never_takes_the_action()
+    {
+        // The bar opened over the place where the touchpad crossed into the handle: the step goes to the centre of the
+        // app in front instead, or nowhere when Clícalo covers that too; never to Clícalo itself.
+        var covered = new PhysicalPoint(1900, 1050);
+        var injector = new InputInjector(
+            _sender,
+            _sender,
+            static () => null,
+            point => point == covered
+        );
+
+        var result = injector.Mouse(MouseOp.ScrollDown, covered);
+
+        if (result.Status == InjectionStatus.Sent)
+        {
+            _sender.Batches.Single()[0].ShouldNotBe(LowLevelInput.MoveTo(covered.X, covered.Y));
+        }
+        else
+        {
+            _sender.Batches.ShouldBeEmpty();
+        }
+
+        new InputInjector(_sender, _sender, static () => null, static _ => true)
+            .Mouse(MouseOp.RightClick, new PhysicalPoint(10, 10))
+            .Status.ShouldBe(InjectionStatus.Failed);
     }
 
     [Fact]

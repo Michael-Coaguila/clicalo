@@ -15,7 +15,7 @@ se puede desactivar. No hay telemetría ni informes de fallo automáticos** (LOG
 | Destino | Qué se envía | Cuándo |
 |---|---|---|
 | *Feed* de actualizaciones (GitHub Releases) | Una petición GET anónima; la dirección IP es inevitable | Al arrancar y cada 24 h; se puede desactivar |
-| Proveedor de IA elegido por el usuario, con su propia clave | **Solo los 4 datos de PLA-008:** `appName`, `keyboardLayout`, `appsLang` y `uiLang` | Solo al pedir una plantilla con IA, tras dar el consentimiento |
+| Proveedor de IA elegido por el usuario, con su propia clave: Anthropic (`api.anthropic.com`) o Google (`generativelanguage.googleapis.com`) | **Solo los 4 datos de PLA-008:** `appName`, `keyboardLayout`, `appsLang` y `uiLang` | Solo al pedir una plantilla con IA, tras dar el consentimiento para ese proveedor |
 | Correo o GitHub (opinión) | Lo que el usuario ve en la vista previa exacta | Solo cuando el usuario lo envía |
 
 ### IA
@@ -26,16 +26,34 @@ se puede desactivar. No hay telemetría ni informes de fallo automáticos** (LOG
   programas y el idioma de la interfaz, más una plantilla fija de *prompt*. Nunca documentos, títulos de
   ventana ni atajos del usuario.
 - En la 2.0 solo funciona con la clave propia del usuario, guardada en el Administrador de credenciales de
-  Windows ([ADR-0014](../adr/0014-ia-con-clave-propia.md)).
-- Control: una prueba de Infrastructure intercepta la petición HTTP del adaptador de IA y exige que el cuerpo
-  solo contenga esos 4 valores más la plantilla fija del *prompt*.
+  Windows ([ADR-0014](../adr/0014-ia-con-clave-propia.md)), con uno de dos proveedores
+  ([ADR-0033](../adr/0033-gemini-como-segundo-proveedor-de-ia.md)):
+  - **Claude Haiku 5.5 de Anthropic**, con una clave de pago y el SDK oficial.
+  - **Gemini 3.5 Flash-Lite de Google**, con una clave de Google AI Studio y un cliente REST propio de
+    `generateContent`, sin paquetes nuevos. La dirección está fija en código y la clave va solo en la cabecera
+    `x-goog-api-key`, nunca en la URL. **Capa gratuita:** según las condiciones adicionales de la API de Gemini,
+    Google usa lo enviado y las respuestas para mejorar sus productos y personas revisoras pueden leerlos,
+    disociados de la cuenta; con una clave de pago, no, y solo se registran un tiempo limitado para detectar
+    abusos. En el EEE, Suiza y el Reino Unido, Google aplica las condiciones de datos de pago a todos los
+    servicios. Esas condiciones exigen 18 años o más.
+- El consentimiento es de cada proveedor: cambiar de proveedor lo borra en el mismo paso de deshacer, y la
+  tarjeta lo vuelve a pedir nombrando al destinatario; con Gemini añade el aviso de la capa gratuita
+  ([aiGeminiFree]). Cada proveedor tiene su propia clave (`Clicalo/ai/anthropic` y `Clicalo/ai/gemini`), así
+  que una clave nunca se envía a otro proveedor. El documento guarda la elección en `settings.aiProvider`
+  (esquema 1.2), nunca la clave.
+- Control: dos pruebas de Infrastructure (`ByoKeyTemplateGeneratorTests` y `GeminiProviderTests`) interceptan
+  la petición HTTP de cada adaptador con un manejador falso y exigen que el cuerpo solo contenga esos 4 valores
+  más la plantilla fija del *prompt*; la de Gemini exige además la clave solo en su cabecera. Ninguna prueba
+  llama a la API real.
 - El proxy de cuota, si algún día se construye, tampoco enviará ningún identificador de instalación ni otro
   dato persistente o enlazable.
 
 ### Actualizaciones
 
-- La comprobación descarga el manifiesto firmado del canal (estable o beta) y, si hay versión nueva, el
-  paquete. No envía ningún identificador ni dato de uso.
+- La comprobación descarga de las GitHub Releases la lista de versiones del canal (estable o beta) y, si hay
+  versión nueva, el paquete, cuya suma comprueba Velopack. La 2.0 no lleva firma de código ni manifiesto
+  firmado ([ADR-0027](../adr/0027-distribucion-sin-firma-y-elevacion-bajo-demanda.md)). No envía ningún
+  identificador ni dato de uso.
 
 ## Qué se guarda en el equipo
 
@@ -44,7 +62,7 @@ se puede desactivar. No hay telemetría ni informes de fallo automáticos** (LOG
 | Perfiles, atajos y ajustes | `%AppData%\Clicalo\clicalo.json` (y `.prev`) | Los textos de los atajos Texto y de los pasos de texto de macro, cifrados con DPAPI ligada a la cuenta de Windows (LOG-003) |
 | Uso de cada atajo (para Frecuentes) | `%AppData%\Clicalo\usage.json` | Solo local |
 | Copias de seguridad | `%AppData%\Clicalo\backups\` | Mismo cifrado que el documento |
-| Clave de la IA | Administrador de credenciales de Windows, persistencia local | No viaja con el perfil itinerante; la interfaz nunca la vuelve a mostrar |
+| Clave de la IA, una por proveedor | Administrador de credenciales de Windows, persistencia local (`Clicalo/ai/anthropic`, `Clicalo/ai/gemini`) | No viaja con el perfil itinerante; la interfaz nunca la vuelve a mostrar; desinstalar con borrado de datos borra las dos |
 | Registros | `%AppData%\Clicalo\logs\clicalo.log`, rotación de 5 × 1 MB | Redactados por tipos (ver abajo) |
 | Diagnóstico, guardado de emergencia y registro de fallos | `%LocalAppData%\Clicalo\` | Solo local |
 

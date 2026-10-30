@@ -72,6 +72,18 @@ public abstract record EngineEvent
         public override EngineLane Lane => EngineLane.Priority;
     }
 
+    /// <summary>
+    /// The name of the app in front was read (EJE-003): the notices say it instead of its executable. A name read for
+    /// an older foreground changes nothing.
+    /// </summary>
+    /// <param name="Epoch">The epoch of the foreground it was read for.</param>
+    /// <param name="Name">The description of its executable («Microsoft Word»).</param>
+    public sealed record ForegroundNamed(long Epoch, string Name) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Normal;
+    }
+
     /// <summary>The foreground thread switched layout (<c>WM_INPUTLANGCHANGE</c>).</summary>
     /// <param name="Layout">The new layout.</param>
     public sealed record LayoutChanged(KeyboardLayoutSnapshot Layout) : EngineEvent
@@ -83,6 +95,16 @@ public abstract record EngineEvent
     /// <summary>A terminal event: release everything, cancel the macro, empty the state (SEG-007, INV-3).</summary>
     /// <param name="Reason">Why.</param>
     public sealed record Terminal(TerminalReason Reason) : EngineEvent
+    {
+        /// <inheritdoc />
+        public override EngineLane Lane => EngineLane.Priority;
+    }
+
+    /// <summary>
+    /// The primary button is up although a latched drag holds it: the person let go of it by hand (a touchpad click,
+    /// a touch on the app), so the drag ends as if its tile had been tapped again (EJE-007, D21).
+    /// </summary>
+    public sealed record ButtonLiftedOutside : EngineEvent
     {
         /// <inheritdoc />
         public override EngineLane Lane => EngineLane.Priority;

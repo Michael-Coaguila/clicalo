@@ -29,6 +29,7 @@ public sealed class PanelHeaderViewModel : ObservableObject
     private bool _showsAutoFixed = true;
     private string _autoFixedIcon = string.Empty;
     private string _autoFixedName = string.Empty;
+    private string _autoFixedLabel = string.Empty;
     private string _moveName = string.Empty;
     private string _searchName = string.Empty;
     private string _editName = string.Empty;
@@ -37,6 +38,9 @@ public sealed class PanelHeaderViewModel : ObservableObject
     private bool _isSearchOpen;
     private bool _isEditing;
     private bool _isQuickSettingsOpen;
+    private bool _titleOpensPicker;
+    private bool _isPickerOpen;
+    private string _titleHelp = string.Empty;
 
     /// <summary>Creates the header.</summary>
     /// <param name="profiles">Where Auto/Fixed goes (PER-006).</param>
@@ -85,7 +89,10 @@ public sealed class PanelHeaderViewModel : ObservableObject
         private set => SetProperty(ref _activeAppDotName, value);
     }
 
-    /// <summary>Fixed (red, lock) or Auto (blue, autorenew); the Toggle state of the button (CAB-003).</summary>
+    /// <summary>
+    /// Fixed (lock) or Auto (autorenew); the Toggle state of the button (CAB-003). In direction C (D12) Fixed is drawn as
+    /// «elegido», never in red: red only means danger.
+    /// </summary>
     public bool IsFixed
     {
         get => _isFixed;
@@ -111,6 +118,13 @@ public sealed class PanelHeaderViewModel : ObservableObject
     {
         get => _autoFixedName;
         private set => SetProperty(ref _autoFixedName, value);
+    }
+
+    /// <summary>The word under the icon of the Auto/Fixed button: [auto2] «Auto» or [lockOn2] «Fijo» (D12).</summary>
+    public string AutoFixedLabel
+    {
+        get => _autoFixedLabel;
+        private set => SetProperty(ref _autoFixedLabel, value);
     }
 
     /// <summary>The accessible name of the grip ([move] «Mover panel»).</summary>
@@ -178,6 +192,30 @@ public sealed class PanelHeaderViewModel : ObservableObject
         private set => SetProperty(ref _isQuickSettingsOpen, value);
     }
 
+    /// <summary>
+    /// Whether a tap on the title opens the profile grid (SEL-006): in the Full view without the selector row, so
+    /// Frequents and the other profiles stay one tap away. The title still drags the panel (PAN-004).
+    /// </summary>
+    public bool TitleOpensPicker
+    {
+        get => _titleOpensPicker;
+        private set => SetProperty(ref _titleOpensPicker, value);
+    }
+
+    /// <summary>Whether the profile grid is open: the ExpandCollapse state of the title (SEL-006).</summary>
+    public bool IsPickerOpen
+    {
+        get => _isPickerOpen;
+        private set => SetProperty(ref _isPickerOpen, value);
+    }
+
+    /// <summary>[switchProf], the help text of the title while it opens the profile grid.</summary>
+    public string TitleHelp
+    {
+        get => _titleHelp;
+        private set => SetProperty(ref _titleHelp, value);
+    }
+
     /// <summary>Whether Search has an action and shows.</summary>
     public bool HasSearch => _actions.Search is not null;
 
@@ -215,10 +253,20 @@ public sealed class PanelHeaderViewModel : ObservableObject
         IsQuickSettingsOpen = quickSettingsOpen;
     }
 
+    /// <summary>Applies whether the title opens the profile grid and whether that grid is open (SEL-006).</summary>
+    /// <param name="titleOpensPicker">The Full view shows no selector row, and the composition gave the action.</param>
+    /// <param name="pickerOpen">Whether the profile grid is open.</param>
+    public void ApplyPicker(bool titleOpensPicker, bool pickerOpen)
+    {
+        TitleOpensPicker = titleOpensPicker && _actions.Title is not null;
+        IsPickerOpen = pickerOpen;
+    }
+
     /// <summary>Formats every text again in the current language (IDI-001).</summary>
     public void Relocalize()
     {
         var localizer = _localization.Current;
+        TitleHelp = localizer.Format(L.SwitchProf);
         MoveName = localizer.Format(L.Move);
         SearchName = localizer.Format(L.SearchA);
         EditName = localizer.Format(L.Edit);
@@ -230,6 +278,18 @@ public sealed class PanelHeaderViewModel : ObservableObject
 
     /// <summary>The Auto/Fixed button (a tap, or UI Automation Toggle): PER-006.</summary>
     public void ToggleLock() => _profiles.ToggleLock();
+
+    /// <summary>
+    /// A tap on the title, or its UI Automation Invoke, Expand or Collapse (SEL-006): opens or closes the profile grid
+    /// while <see cref="TitleOpensPicker"/>; nothing otherwise.
+    /// </summary>
+    public void TitleTapped()
+    {
+        if (TitleOpensPicker)
+        {
+            _actions.Title?.Invoke();
+        }
+    }
 
     /// <summary>The Search button.</summary>
     public void Search() => _actions.Search?.Invoke();
@@ -253,5 +313,6 @@ public sealed class PanelHeaderViewModel : ObservableObject
         var localizer = _localization.Current;
         Title = _model.Title is { } title ? localizer.Format(title) : _model.ProfileName;
         AutoFixedName = localizer.Format(_model.AutoFixedName);
+        AutoFixedLabel = localizer.Format(_model.IsFixed ? L.LockOn2 : L.Auto2);
     }
 }

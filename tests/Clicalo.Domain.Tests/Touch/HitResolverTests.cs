@@ -96,4 +96,28 @@ public sealed class HitResolverTests
 
         HitResolver.Resolve(targets, new PhysicalPoint(140, 140), hitSlop: 0).ShouldBe(0);
     }
+
+    [Fact]
+    public void A_touch_on_a_layer_reaches_only_the_controls_of_the_layer()
+    {
+        // D21 review: a card over the grid from y 190, its button at [120, 200)×[220, 260); the tile above ends at 180.
+        var tile = TouchScript.Tile(1, 100, 100);
+        var button = new TouchTarget(
+            new TouchTargetId(2),
+            new PhysicalRect(120, 220, 80, 40),
+            TouchTargetKind.Tap
+        );
+        TouchTarget[] targets = [tile, button];
+        TouchOccluder[] card = [new(new PhysicalRect(90, 190, 200, 120), [new TouchTargetId(2)])];
+
+        // The top edge of the card, within the extra area of the tile: without the layer the tile wins, with it nothing.
+        HitResolver.Resolve(targets, new PhysicalPoint(140, 192), hitSlop: 14).ShouldBe(0);
+        HitResolver.Resolve(targets, new PhysicalPoint(140, 192), 14, card).ShouldBe(-1);
+
+        // The button of the card keeps its own extra area inside the layer.
+        HitResolver.Resolve(targets, new PhysicalPoint(140, 212), 14, card).ShouldBe(1);
+
+        // Outside the layer nothing changes.
+        HitResolver.Resolve(targets, new PhysicalPoint(140, 140), 14, card).ShouldBe(0);
+    }
 }

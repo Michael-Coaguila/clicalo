@@ -79,11 +79,18 @@ public static class GridMetrics
 
     /// <summary>
     /// The shape of the grid: visible rows = <c>max(1, min(max rows, rows that fit))</c> (CUA-001). Without a
-    /// measure yet (<see langword="null"/>), every allowed row.
+    /// measure yet (<see langword="null"/>), every allowed row. The columns are the ones of <see cref="Columns"/>.
     /// </summary>
     /// <param name="settings">The layout settings.</param>
     /// <param name="gridSpacePx">The measured height available to the grid, or <see langword="null"/>.</param>
-    public static GridShape Shape(PanelLayoutSettings settings, double? gridSpacePx)
+    /// <param name="wordsFit">
+    /// Whether every word of every name of the view fits a tile of the chosen columns; the surface measures it.
+    /// </param>
+    public static GridShape Shape(
+        PanelLayoutSettings settings,
+        double? gridSpacePx,
+        bool wordsFit = true
+    )
     {
         ArgumentNullException.ThrowIfNull(settings);
         var tile = TileHeight(settings);
@@ -92,7 +99,33 @@ public static class GridMetrics
         var rows = gridSpacePx is { } space
             ? Math.Max(1, Math.Min(max, RowsThatFit(space, tile, gap)))
             : max;
-        return new GridShape(ColumnsOf(settings), rows, max, tile, gap);
+        return new GridShape(Columns(settings, wordsFit), rows, max, tile, gap);
+    }
+
+    /// <summary>
+    /// Whether the grid may give up columns so a name is read whole: only with the text above 100 % (D17, CUA-011).
+    /// </summary>
+    /// <param name="settings">The layout settings.</param>
+    public static bool NarrowsForWords(PanelLayoutSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return settings.TextScalePercent > (int)SettingsSchema.TextScalePercent.Min
+            && ColumnsOf(settings) > (int)SettingsSchema.Columns.Min;
+    }
+
+    /// <summary>
+    /// The columns of the grid: the chosen ones (GEN-008) or, when the text is larger and a word of a name does not fit
+    /// a tile of them, the fewest (2), whose wider tiles show the name whole instead of ending it in «…» (D17). The
+    /// panel keeps its width (PAN-002) and its height (D16).
+    /// </summary>
+    /// <param name="settings">The layout settings.</param>
+    /// <param name="wordsFit">Whether every word of every name of the view fits a tile of the chosen columns.</param>
+    public static int Columns(PanelLayoutSettings settings, bool wordsFit)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return !wordsFit && NarrowsForWords(settings)
+            ? (int)SettingsSchema.Columns.Min
+            : ColumnsOf(settings);
     }
 
     /// <summary>Height of <paramref name="rows"/> rows of tiles and the gaps between them.</summary>

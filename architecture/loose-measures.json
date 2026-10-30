@@ -1,0 +1,28 @@
+{
+  "$schema": "./schemas/loose-measures.schema.json",
+  "description": "Loose measures that remain in Clicalo.UI.Wpf (numeric literals in Thickness, CornerRadius, GridLength, Size, widths, heights, type sizes and the view builders), per file. Direction C allows only the tokens of data/tokens/design-system.json: these counts can only go down, and the test asks to lower them when a file improves.",
+  "decision": "D12",
+  "baseline": {
+    "src/Clicalo.UI.Wpf/Automation/ShortcutTileBody.cs": 1,
+    "src/Clicalo.UI.Wpf/Automation/ShortcutTileTemplate.cs": 1,
+    "src/Clicalo.UI.Wpf/Guides/GuideCard.cs": 1,
+    "src/Clicalo.UI.Wpf/Surfaces/Panel/IgnoredTouchOutline.cs": 1,
+    "src/Clicalo.UI.Wpf/Surfaces/Panel/QuickSettings/QuickSheetFit.cs": 1,
+    "src/Clicalo.UI.Wpf/Surfaces/Panel/TestMode/TestMarkBadge.cs": 1,
+    "src/Clicalo.UI.Wpf/Surfaces/SurfaceParts.cs": 9,
+    "src/Clicalo.UI.Wpf/Surfaces/TabView/DockFlyoutWindow.cs": 2,
+    "src/Clicalo.UI.Wpf/Surfaces/TabView/DockMenuWindow.cs": 1,
+    "src/Clicalo.UI.Wpf/Surfaces/TabView/DockNoticeWindow.cs": 1,
+    "src/Clicalo.UI.Wpf/Windowing/DisplayMonitors.cs": 1,
+    "src/Clicalo.UI.Wpf/Windowing/Internal/SurfaceHook.cs": 1,
+    "src/Clicalo.UI.Wpf/Windowing/Internal/SurfaceShadow.cs": 2,
+    "src/Clicalo.UI.Wpf/Workspace/About/AboutSectionView.cs": 1,
+    "src/Clicalo.UI.Wpf/Workspace/General/GeneralSectionView.cs": 2,
+    "src/Clicalo.UI.Wpf/Workspace/Internal/Ui.cs": 2,
+    "src/Clicalo.UI.Wpf/Workspace/ShortcutEditorView.cs": 5,
+    "src/Clicalo.UI.Wpf/Workspace/ShortcutsSectionView.cs": 1,
+    "src/Clicalo.UI.Wpf/Workspace/Templates/TemplatesSectionView.cs": 2,
+    "src/Clicalo.UI.Wpf/Workspace/TouchPrecision/TouchPrecisionView.cs": 2,
+    "src/Clicalo.UI.Wpf/Workspace/Welcome/WelcomeWindow.cs": 2
+  }
+}

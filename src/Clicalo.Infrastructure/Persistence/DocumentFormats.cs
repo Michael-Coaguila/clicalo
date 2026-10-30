@@ -12,8 +12,12 @@ public static class DocumentFormats
     /// <summary>The <c>type</c> of a shared profile, <c>clicalo-perfil-&lt;id&gt;.json</c> (DAT-007).</summary>
     public const string ProfileShare = "profile-share";
 
-    /// <summary>The document schema this version writes and the greatest it reads: 1.0.</summary>
-    public static SchemaVersion DocumentSchema { get; } = new(1, 0);
+    /// <summary>
+    /// The document schema this version writes: 1.3, the done flags of the first-use guides (ADR-0034) after the AI
+    /// provider (1.2, ADR-0033) and the additive settings and welcome answers of M6 (1.1, ADR-0028). It reads any 1.x: an
+    /// older document takes the defaults of the new members, and a later minor keeps its unknown ones.
+    /// </summary>
+    public static SchemaVersion DocumentSchema { get; } = new(1, 3);
 
     /// <summary>The usage schema this version writes and the greatest it reads: 1.0.</summary>
     public static SchemaVersion UsageSchema { get; } = new(1, 0);

@@ -1,4 +1,5 @@
 using Clicalo.Application.Coordinators;
+using Clicalo.Domain.Catalog;
 using Clicalo.Domain.Primitives;
 using Clicalo.Domain.Touch;
 
@@ -18,18 +19,24 @@ public sealed class SearchResultViewModel
     /// <param name="binding">What it runs: the shortcut, its origin profile and that profile's injection mode.</param>
     /// <param name="name">The shortcut name in the interface language (user data, shown as is).</param>
     /// <param name="origin">The name of its profile, or «Siempre visible», in the interface language.</param>
+    /// <param name="originIcon">The icon of its profile, or 📌 for Always visible (FRE-003, D21).</param>
     internal SearchResultViewModel(
         SearchViewModel owner,
         TileBinding binding,
         string name,
-        string origin
+        string origin,
+        IconRef originIcon
     )
     {
         _owner = owner;
         Binding = binding;
         AccessibleName = name;
         Origin = origin;
+        OriginIcon = originIcon;
     }
+
+    /// <summary>The icon of its profile of origin, beside its own icon (FRE-003, D21).</summary>
+    public IconRef OriginIcon { get; }
 
     /// <summary>The shortcut id.</summary>
     public ShortcutId Id => Binding.Shortcut.Id;

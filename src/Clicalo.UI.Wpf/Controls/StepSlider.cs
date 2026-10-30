@@ -10,10 +10,12 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// A slider with discrete − and + buttons (ACC-005: «Todos tienen − / + discretos, teclado y RangeValue»; prototype
-/// quick settings, Opacidad): a <c>cardHi</c> − button of 40 × 40, the track (filled part in <c>accent</c>, the rest
-/// in <c>line</c>, a 20 px <c>accent</c> knob) and a + button. − and + move by <see cref="RangeBase.SmallChange"/>;
-/// touching the track moves to that point. Every part responds on at least 44 high (REG-02).
+/// A slider with discrete − and + buttons (ACC-005: «Todos tienen − / + discretos, teclado y RangeValue»), in
+/// direction C (D12): a secondary <see cref="IconButton"/> − of 44 × 44, the track <see cref="Space.S3"/> away from
+/// each button (filled part in <c>accent</c>, the rest in <c>line</c>, a knob of
+/// <see cref="ComponentSize.SliderKnob"/> in <c>accent</c>) and a + button. − and + move by
+/// <see cref="RangeBase.SmallChange"/>; touching the track moves to that point. Every part responds on at least 44
+/// high (REG-02).
 /// </summary>
 /// <remarks>
 /// UI Automation sees a Slider with the RangeValue pattern (named with <c>AutomationProperties.Name</c>) whose only
@@ -44,14 +46,14 @@ public sealed class StepSlider : Slider
     /// <summary>Name of the + button.</summary>
     public const string IncreasePart = "PART_Increase";
 
-    /// <summary>Visual side of the − and + buttons (prototype: 40).</summary>
-    public const double StepButtonSize = 40;
+    /// <summary>Side of the − and + buttons.</summary>
+    public const double StepButtonSize = ControlHeight.Small;
 
     /// <summary>Thickness of the track.</summary>
-    public const double TrackThickness = 6;
+    public const double TrackThickness = ComponentSize.SliderTrack;
 
     /// <summary>Side of the knob.</summary>
-    public const double KnobSize = 20;
+    public const double KnobSize = ComponentSize.SliderKnob;
 
     private const string TrackPart = "PART_Track";
 
@@ -83,7 +85,7 @@ public sealed class StepSlider : Slider
         );
         FocusVisualStyleProperty.OverrideMetadata(
             typeof(StepSlider),
-            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Control))
+            new FrameworkPropertyMetadata(FocusRingStyle.Create(Radii.Small))
         );
         TouchTarget.Enforce(typeof(StepSlider));
     }
@@ -91,7 +93,7 @@ public sealed class StepSlider : Slider
     /// <summary>Creates a slider from 0 to 10 that moves to the touched point.</summary>
     public StepSlider()
     {
-        Templates.UseTheme(this, ColorToken.Card, ColorToken.Text, ColorToken.Line);
+        SetResourceReference(ForegroundProperty, ThemeBrushKey.For(ColorToken.Text));
         Background = Brushes.Transparent;
         IsMoveToPointEnabled = true;
         SmallChange = 1;
@@ -193,7 +195,7 @@ public sealed class StepSlider : Slider
             .With(Track.MinimumProperty, Templates.Bind(MinimumProperty))
             .With(Track.MaximumProperty, Templates.Bind(MaximumProperty))
             .With(Track.ValueProperty, Templates.Bind(ValueProperty))
-            .With(FrameworkElement.MarginProperty, new Thickness(8, 0, 8, 0));
+            .With(FrameworkElement.MarginProperty, new Thickness(Space.S3, 0, Space.S3, 0));
         var row = Templates
             .Element<DockPanel>()
             .With(Panel.BackgroundProperty, Templates.Bind(Control.BackgroundProperty))
@@ -205,7 +207,7 @@ public sealed class StepSlider : Slider
             Templates.When(
                 IsEnabledProperty,
                 false,
-                new Setter(UIElement.OpacityProperty, ButtonChrome.DisabledOpacity)
+                Templates.Brush(Control.ForegroundProperty, ColorToken.Muted)
             )
         );
     }
@@ -219,8 +221,7 @@ public sealed class StepSlider : Slider
         Templates
             .Element<IconButton>(name)
             .With(TouchButton.SymbolProperty, symbol)
-            .With(TouchButton.IconSizeProperty, 20d)
-            .With(TouchButton.AppearanceProperty, ButtonAppearance.Neutral)
+            .With(TouchButton.VariantProperty, ButtonVariant.Secondary)
             .With(FrameworkElement.WidthProperty, StepButtonSize)
             .With(FrameworkElement.HeightProperty, StepButtonSize)
             .With(ButtonBase.CommandProperty, command)

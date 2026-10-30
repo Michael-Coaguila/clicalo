@@ -44,6 +44,75 @@ public sealed class PanelFormsTests
         PanelForms.IsDock(form).ShouldBe(form is PanelForm.DockClosed or PanelForm.DockOpen);
     }
 
+    [Theory]
+    [InlineData(PanelDensity.Dock, false, PanelForm.Full)]
+    [InlineData(PanelDensity.Dock, true, PanelForm.Full)]
+    [InlineData(PanelDensity.Full, false, PanelForm.Full)]
+    [InlineData(PanelDensity.Compact, false, PanelForm.Compact)]
+    [Trait("Req", "PAN-001")]
+    [Trait("Req", "BUS-006")]
+    public void A_search_from_the_bar_shows_the_Full_view_for_a_while_without_changing_the_view(
+        PanelDensity density,
+        bool dockOpen,
+        PanelForm expected
+    )
+    {
+        PanelForms.Of(true, density, false, dockOpen, searchPeek: true).ShouldBe(expected);
+
+        // Hidden from the tray stays hidden, and once the search ends the Tab view is back as it was.
+        PanelForms
+            .Of(false, density, false, dockOpen, searchPeek: true)
+            .ShouldBe(PanelForm.Hidden);
+        PanelForms
+            .Of(true, PanelDensity.Dock, false, dockOpen)
+            .ShouldBe(dockOpen ? PanelForm.DockOpen : PanelForm.DockClosed);
+    }
+
+    [Theory]
+    [InlineData(PanelForm.DockOpen, true, false, false, false, true)]
+    [InlineData(PanelForm.DockClosed, true, false, false, false, true)]
+    [InlineData(PanelForm.DockClosed, false, false, true, false, true)]
+    [InlineData(PanelForm.DockOpen, false, false, false, true, true)]
+    [InlineData(PanelForm.DockOpen, false, false, false, false, false)]
+    // D21: a plain confirmation is only said in the Tab view; in Compact it shows for a moment under the panel.
+    [InlineData(PanelForm.DockOpen, true, true, false, false, false)]
+    [InlineData(PanelForm.DockClosed, true, true, false, false, false)]
+    [InlineData(PanelForm.DockOpen, true, true, true, false, true)]
+    [InlineData(PanelForm.Compact, true, true, false, false, true)]
+    [InlineData(PanelForm.Full, true, false, true, true, false)]
+    [InlineData(PanelForm.Compact, true, false, false, false, true)]
+    [InlineData(PanelForm.Compact, false, false, true, true, false)]
+    [InlineData(PanelForm.Bubble, true, false, false, false, true)]
+    [InlineData(PanelForm.Bubble, true, true, false, false, false)]
+    [InlineData(PanelForm.Bubble, false, false, true, true, false)]
+    [InlineData(PanelForm.Hidden, true, false, false, false, false)]
+    [Trait("Req", "PES-014")]
+    [Trait("Req", "VCO-001")]
+    public void The_notice_surface_shows_in_the_Tab_view_while_there_is_something_to_tell(
+        PanelForm form,
+        bool notice,
+        bool confirmation,
+        bool adminNotice,
+        bool testMode,
+        bool expected
+    ) =>
+        DockRules
+            .ShowsNotices(form, notice, confirmation, adminNotice, testMode)
+            .ShouldBe(expected);
+
+    [Theory]
+    [InlineData(PanelForm.DockOpen, true, true)]
+    [InlineData(PanelForm.DockOpen, false, false)]
+    [InlineData(PanelForm.DockClosed, true, false)]
+    [InlineData(PanelForm.Full, true, false)]
+    [Trait("Req", "PES-009")]
+    [Trait("Req", "CUA-014")]
+    public void Quick_settings_and_the_menu_show_beside_the_bar_only_while_it_is_open(
+        PanelForm form,
+        bool open,
+        bool expected
+    ) => DockRules.ShowsBesideBar(form, open).ShouldBe(expected);
+
     /// <summary>What a button did, the lock of the bar, and whether the bar collapses after it.</summary>
     public static TheoryData<DockUse, bool, bool> Collapses =>
         new()
@@ -56,6 +125,8 @@ public sealed class PanelFormsTests
             { DockUse.HoldReleased, true, false },
             { DockUse.ToggleChanged, true, false },
             { DockUse.ConfirmArmed, true, false },
+            { DockUse.Navigated, false, false },
+            { DockUse.Navigated, true, false },
         };
 
     [Theory]
@@ -66,6 +137,31 @@ public sealed class PanelFormsTests
         bool pinOpen,
         bool expected
     ) => DockRules.CollapsesAfter(use, pinOpen).ShouldBe(expected);
+
+    [Fact]
+    [Trait("Req", "PES-012")]
+    public void Releasing_a_tool_of_the_bar_only_moved_through_the_document()
+    {
+        // ⏶ ⏷ and the arrows are held or tapped many times in a row: the bar stays open (D21 review).
+        DockRules.UseOfRelease(barTool: true).ShouldBe(DockUse.Navigated);
+        DockRules.UseOfRelease(barTool: false).ShouldBe(DockUse.HoldReleased);
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false, true)]
+    [InlineData(true, false, false, false, false)]
+    [InlineData(false, true, false, false, false)]
+    [InlineData(false, false, true, false, false)]
+    [InlineData(false, false, false, true, false)]
+    [Trait("Req", "PES-012")]
+    [Trait("Req", "PAN-009")]
+    public void The_bar_never_folds_under_a_finger_with_a_sheet_open_or_while_a_macro_runs(
+        bool pinOpen,
+        bool touched,
+        bool sheetOpen,
+        bool macroRunning,
+        bool expected
+    ) => DockRules.FoldsNow(pinOpen, touched, sheetOpen, macroRunning).ShouldBe(expected);
 
     [Theory]
     [InlineData(true, 3, true)]
@@ -100,15 +196,6 @@ public sealed class PanelFormsTests
         bool expected
     ) => DockRules.ShowsCoach(open, done, sideWindow).ShouldBe(expected);
 
-    [Fact]
-    [Trait("Req", "PES-015")]
-    public void The_guide_has_three_steps()
-    {
-        DockRules.NextCoachStep(0).ShouldBe(1);
-        DockRules.NextCoachStep(1).ShouldBe(2);
-        DockRules.NextCoachStep(2).ShouldBeNull();
-    }
-
     [Theory]
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
@@ -130,4 +217,27 @@ public sealed class PanelFormsTests
     [Trait("Req", "VCO-002")]
     public void Its_arrows_and_dots_show_with_several_pages(int pages, bool empty, bool expected) =>
         CompactRowRules.ShowsPager(pages, empty).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(new int[0], false, false)]
+    [InlineData(new[] { 7 }, false, false)]
+    [InlineData(new[] { 7 }, true, true)]
+    [InlineData(new int[0], true, true)]
+    [Trait("Req", "PES-013")]
+    [Trait("Req", "REG-03")]
+    public void The_floating_release_shows_for_what_outlasts_its_finger(
+        int[] underFingers,
+        bool latched,
+        bool expected
+    )
+    {
+        // A Mantener under a finger ends when it lifts; a latched Toggle or a locked sticky key needs the button.
+        IEnumerable<int?> held = underFingers.Select(static c => (int?)c);
+        if (latched)
+        {
+            held = held.Append(null);
+        }
+
+        DockRules.ShowsFloatingRelease(held).ShouldBe(expected);
+    }
 }

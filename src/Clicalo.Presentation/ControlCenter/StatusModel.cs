@@ -7,11 +7,13 @@ namespace Clicalo.Presentation.ControlCenter;
 /// <param name="CanUndo">Whether [undo] shows.</param>
 /// <param name="UndoText">[undo].</param>
 /// <param name="UndoName">The accessible name of [undo]: what it undoes.</param>
+/// <param name="IsNotice">Whether it is a message to announce, rather than [saved] at rest (ACC-001).</param>
 public sealed record StatusModel(
     string Icon,
     string Text,
     bool IsWarning,
     bool CanUndo,
     string UndoText,
-    string UndoName
+    string UndoName,
+    bool IsNotice = false
 );

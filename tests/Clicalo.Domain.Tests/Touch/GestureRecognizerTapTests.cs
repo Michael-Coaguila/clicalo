@@ -50,6 +50,28 @@ public sealed class GestureRecognizerTapTests
         tap.Timestamp.ShouldBe(TouchScript.At(Duration(settings)));
     }
 
+    [Fact]
+    public void A_click_of_the_mouse_or_the_touchpad_is_never_too_short()
+    {
+        // «Temblor fuerte» asks fingers for 80 ms; a touchpad tap or a click of Voice Access is a down and an up at once.
+        var settings = TouchPresetSettings.Get("strong-tremor");
+        settings.MinContact.ShouldBeGreaterThan(TimeSpan.Zero);
+        var script = new TouchScript(settings, Tall);
+
+        script.Frame(0, Mouse(TouchScript.Sample(1, PointerPhase.Down, 180, 180, 0)));
+        script.Frame(1, Mouse(TouchScript.Sample(1, PointerPhase.Up, 180, 180, 1)));
+        script.Tap(2, 180, 180, atMs: 5_000, durationMs: 1);
+
+        script.Events[0].Kind.ShouldBe(GestureKind.Tap);
+        script.Events[1].Ignored.ShouldBe(IgnoreReason.TooShort);
+
+        static PointerSample Mouse(PointerSample sample) =>
+            sample with
+            {
+                Kind = PointerKind.Mouse,
+            };
+    }
+
     [Theory]
     [MemberData(nameof(TouchPresetSettings.All), MemberType = typeof(TouchPresetSettings))]
     public void A_contact_shorter_than_the_minimum_contact_is_ignored_as_too_short(string preset)

@@ -1,62 +1,67 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Clicalo.Domain.Geometry;
+using Clicalo.Domain.Settings;
 using Clicalo.Domain.Touch;
 using Clicalo.Presentation.Panel.QuickSettings;
 using Clicalo.UI.Wpf.Controls;
-using Clicalo.UI.Wpf.Theming;
 using Clicalo.UI.Wpf.Theming.Generated;
 
 namespace Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
 
 /// <summary>
-/// The Quick settings sheet of the panel (AJR-001, docs/04 §5, prototype lines 77–126): a <c>card</c> sheet of radius
-/// 12 under the search, margin 0 12 10 12, padding 10, sections 14 apart, at most 62 % of the screen high with its own
-/// scroll. In order: the «Centro de control» card (56 high, accent outline on accentWash, a 36 px accent tile with the
-/// <c>settings</c> icon, [openCC] in 14 bold, [ccSub] in 11 muted and a chevron); Vista (three 52 px options with
-/// icons); Opacidad with its value in accent (− · slider · +); Tamaño (S, M, L); Lado de la pestaña (four icons, only
-/// in the Tab view); Tema (2 × 2); and the four switch rows. It only projects <see cref="QuickSettingsViewModel"/>.
+/// The Quick settings sheet (AJR-001) of direction C (D12): in its own window beside the panel or the bar of the Tab
+/// view (D21, the <c>win</c> surface with the decorative line on top), as tall as its content up to the work area. With <see cref="ShowsHeader"/>, a title row of <see cref="ControlHeight.Medium"/> with [quick] in
+/// <c>heading</c> and «Cerrar», a 44 × 44 icon button. Below, the designed scroll (<see cref="ThemedScrollViewer"/>:
+/// the thin bar in its own channel and the fade at the foot while there is more), with, in order: the way to the
+/// Control Center (<see cref="NavRow"/>); Vista (three option cards); Opacidad with its value aligned with the controls
+/// (− · slider · +); Tamaño (S, M, L); Lado de la pestaña (four icons, only in the Tab view); Tema (2 × 2); and the four
+/// switch rows under a line. Every section has its <see cref="Overline"/> <see cref="Space.S2"/> above its controls and
+/// sections are <see cref="Space.S4"/> apart. It only projects <see cref="QuickSettingsViewModel"/>.
 /// </summary>
 /// <remarks>
 /// The panel registers <see cref="TapTargets"/> with its pointer layer (a tap calls the view model); UI Automation
 /// Invoke, SelectionItem, RangeValue and Toggle reach the same view model through the controls. Every target is at
 /// least 44 × 44 (REG-02). The panel's pointer layer consumes the finger, so the sheet follows it itself
 /// (<see cref="Track"/>): a finger on the opacity track slides the value (AJR-002) and a vertical drag elsewhere scrolls
-/// the sheet (AJR-001). The panel also limits the sheet to the free space of the work area (<see cref="FitHeight"/>).
+/// the sheet (AJR-001). The window beside the Tab bar limits the sheet to the free space of the work area
+/// (<see cref="FitHeight"/>).
 /// </remarks>
 public sealed class QuickSettingsSheet : Border
 {
-    /// <summary>AJR-001: the sheet is at most 62 % of the screen high.</summary>
-    public const double ScreenShare = 0.62;
-
-    private const double SectionGap = 14;
-    private const double HeadingGap = 6;
-    private const double CardHeight = 56;
-    private const double CardIconTile = 36;
-    private const double ViewOptionHeight = 52;
-    private const double OptionHeight = 40;
-    private const double HeadingPx = 12;
-
-    /// <summary>The sheet never gets lower than this to fit the work area: the rest scrolls inside.</summary>
-    private const double MinimumFitHeight = 120;
-
     private readonly QuickSettingsViewModel _viewModel;
-    private readonly TouchButton _controlCenter;
-    private readonly TextBlock _ccTitle = new() { FontWeight = FontWeights.Bold };
-    private readonly TextBlock _ccSubtitle = new() { TextWrapping = TextWrapping.Wrap };
-    private readonly TextBlock _viewHeading = Heading();
-    private readonly TextBlock _opacityHeading = Heading();
-    private readonly TextBlock _opacityValue = new()
+    private readonly DockPanel _header = new()
     {
-        VerticalAlignment = VerticalAlignment.Bottom,
+        LastChildFill = true,
+        Height = ControlHeight.Medium,
+        Margin = new Thickness(Space.S3, 0, Space.S1, 0),
+        Visibility = Visibility.Collapsed,
     };
-    private readonly TextBlock _sizeHeading = Heading();
-    private readonly TextBlock _sideHeading = Heading();
-    private readonly TextBlock _themeHeading = Heading();
+
+    private readonly StyledText _title = PanelChrome.Text(TextStyleToken.Heading);
+    private readonly IconButton _close = new()
+    {
+        Symbol = "close",
+        Focusable = false,
+        IsTabStop = false,
+        VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    private readonly NavRow _controlCenter;
+    private readonly Overline _viewHeading = new();
+    private readonly Overline _opacityHeading = new();
+    private readonly StyledText _opacityValue = PanelChrome.Text(TextStyleToken.Label);
+    private readonly Overline _sizeHeading = new();
+    private readonly Overline _sideHeading = new();
+    private readonly Overline _themeHeading = new();
     private readonly StackPanel _sideSection;
+    private readonly FrameworkElement[] _first;
+    private readonly FrameworkElement[] _second;
+    private int _columns = 1;
     private readonly StepSlider _opacity;
     private readonly List<(
         SegmentedControl Group,
@@ -64,10 +69,12 @@ public sealed class QuickSettingsSheet : Border
         QuickOptionViewModel Option
     )> _options = [];
     private readonly List<(ToggleSwitch Row, QuickSwitchViewModel Switch)> _switches = [];
-    private readonly ScrollViewer _scroller;
-    private double _screenLimit = double.PositiveInfinity;
+    private readonly ThemedScrollViewer _scroller;
+    private readonly SegmentedControl _themes;
+    private readonly bool _showsAlways;
     private uint? _contact;
     private bool _sliding;
+    private bool _onTrack;
     private bool _scrolling;
     private Point _origin;
     private double _startOffset;
@@ -79,14 +86,24 @@ public sealed class QuickSettingsSheet : Border
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         _viewModel = viewModel;
-        Margin = new Thickness(12, 0, 12, 10);
-        Padding = new Thickness(10);
-        CornerRadius = new CornerRadius(Radii.Tile);
-        BorderThickness = new Thickness(1);
-        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Card));
+        BorderThickness = new Thickness(0, Stroke.Line, 0, 0);
+        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Win));
         SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
 
-        _controlCenter = ControlCenterCard();
+        _title.VerticalAlignment = VerticalAlignment.Center;
+        _close.Click += (_, _) => _viewModel.Close();
+        DockPanel.SetDock(_close, Dock.Right);
+        _header.Children.Add(_close);
+        _header.Children.Add(_title);
+
+        _controlCenter = new NavRow
+        {
+            Symbol = "settings",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Focusable = false,
+            IsTabStop = false,
+            Margin = new Thickness(0, Space.S1, 0, 0),
+        };
         _controlCenter.Click += (_, _) => _viewModel.OpenControlCenter();
 
         _opacity = new StepSlider
@@ -108,35 +125,43 @@ public sealed class QuickSettingsSheet : Border
             }
         };
 
-        var opacityTitle = new DockPanel();
+        // The value goes at the end of the heading, aligned with the controls under it (never against the scroll bar).
+        var opacityTitle = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_opacityValue, Dock.Right);
+        _opacityValue.VerticalAlignment = VerticalAlignment.Bottom;
+        _opacityHeading.VerticalAlignment = VerticalAlignment.Bottom;
         opacityTitle.Children.Add(_opacityValue);
         opacityTitle.Children.Add(_opacityHeading);
-        _opacityValue.SetResourceReference(TextBlock.FontFamilyProperty, ThemeKeys.MonoFont);
-        _opacityValue.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(13));
-        _opacityValue.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Accent)
-        );
 
-        _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionHeight));
-        var layout = new StackPanel();
-        layout.Children.Add(_controlCenter);
-        layout.Children.Add(Section(_viewHeading, Group(viewModel.Views, 3, ViewOptionHeight)));
-        layout.Children.Add(Section(opacityTitle, _opacity));
-        layout.Children.Add(Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionHeight)));
-        layout.Children.Add(_sideSection);
-        layout.Children.Add(Section(_themeHeading, Group(viewModel.Themes, 2, OptionHeight)));
-        layout.Children.Add(Switches(viewModel.Switches));
+        _sideSection = Section(_sideHeading, Group(viewModel.Sides, 4, OptionKind.Tile));
+        // S3 at both sides: the options spread S1 past them, so they sit S2 from the edge and S2 from the scroll bar
+        // (with S1 they touched it, D20 review); S3 at the foot too, so the top and the bottom look alike.
+        _themes = Group(viewModel.Themes, 2, OptionKind.Tile);
+        _themes.SizeChanged += (_, _) => FitThemes();
 
-        _scroller = new ScrollViewer
+        // The order of AJR-001: what changes the panel first, then its look. In two columns (beside the panel, D21) the
+        // first ones go on the left and the theme and the switches on the right.
+        _first =
+        [
+            _controlCenter,
+            Section(_viewHeading, Group(viewModel.Views, 3, OptionKind.Card)),
+            Section(opacityTitle, _opacity),
+            Section(_sizeHeading, Group(viewModel.Sizes, 3, OptionKind.Tile)),
+            _sideSection,
+        ];
+        _second = [Section(_themeHeading, _themes), Switches(viewModel.Switches)];
+
+        _scroller = new ThemedScrollViewer
         {
-            Content = layout,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Focusable = false,
+            PansWithMouse = false,
+            CollapsesChannel = true,
+            Content = Arrange(1),
         };
-        Child = _scroller;
+        var rows = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(_header, Dock.Top);
+        rows.Children.Add(_header);
+        rows.Children.Add(_scroller);
+        Child = rows;
 
         viewModel.PropertyChanged += OnChanged;
         foreach (var (_, _, option) in _options)
@@ -153,8 +178,9 @@ public sealed class QuickSettingsSheet : Border
     }
 
     /// <summary>
-    /// The card, every option, − and + of the opacity and the switch rows, while the sheet shows. A control scrolled
-    /// out of sight is no target: its touch margin would otherwise take touches from the header or the grid (REG-02).
+    /// The close button, the way to the Control Center, every option, − and + of the opacity and the switch rows,
+    /// while the sheet shows. A control scrolled out of sight is no target: its touch margin would otherwise take
+    /// touches from the header or the status row (REG-02).
     /// </summary>
     public IEnumerable<PanelTapTarget> TapTargets
     {
@@ -190,30 +216,95 @@ public sealed class QuickSettingsSheet : Border
             }
 
             var view = TouchBounds.Of(_scroller, inflate: false);
-            return targets.FindAll(target => InView(view, target.Element));
-        }
-    }
+            var shown = targets.FindAll(target => InView(view, target.Element));
+            if (_header.Visibility == Visibility.Visible)
+            {
+                shown.Insert(0, new PanelTapTarget(_close, _viewModel.Close));
+            }
 
-    /// <summary>Limits the sheet to 62 % of the screen it is on (AJR-001); the rest scrolls inside.</summary>
-    /// <param name="screenHeight">The height of the monitor's work area, in device-independent pixels.</param>
-    public void ApplyScreenHeight(double screenHeight)
-    {
-        _screenLimit = screenHeight > 0 ? screenHeight * ScreenShare : double.PositiveInfinity;
-        MaxHeight = _screenLimit;
+            return shown;
+        }
     }
 
     /// <summary>
+    /// Whether the sheet has its own title row with «Cerrar» (the panel: the sheet covers its body, so it says what it is
+    /// and how to leave it).
+    /// </summary>
+    public bool ShowsHeader
+    {
+        get => _header.Visibility == Visibility.Visible;
+        init => _header.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The «Cerrar» button of the title row.</summary>
+    public IconButton CloseButton => _close;
+
+    /// <summary>The scroll of the sheet.</summary>
+    public ThemedScrollViewer Scroller => _scroller;
+
+    /// <summary>
+    /// The columns of the sheet: one, beside the bar of the Tab view, which it grows along; or two, beside the panel,
+    /// so the sheet is about half as high and stands at the height of the panel instead of reaching the foot of the
+    /// screen (AJR-001, D21: the maintainer found it odd that it came up from the bottom).
+    /// </summary>
+    public int Columns
+    {
+        get => _columns;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 2);
+            if (_columns == value)
+            {
+                return;
+            }
+
+            _columns = value;
+            _scroller.Content = Arrange(value);
+        }
+    }
+
+    /// <summary>
+    /// Whether the sheet shows whatever the view model says: in the window beside the bar of the Tab view (PES-009) the
+    /// window itself appears and goes away, and a sheet that collapsed first would shrink it to its border for a moment.
+    /// </summary>
+    public bool ShowsAlways
+    {
+        get => _showsAlways;
+        init
+        {
+            _showsAlways = value;
+            Refresh();
+        }
+    }
+
+    /// <summary>
+    /// The height of the whole content of the sheet, its title row and border included, once it was laid out; null
+    /// before. It is what the sheet takes when that is less than its limit.
+    /// </summary>
+    public double? NaturalHeight =>
+        _scroller.ExtentHeight > 0
+            ? _scroller.ExtentHeight
+                + (ShowsHeader ? _header.Height : 0)
+                + BorderThickness.Top
+                + BorderThickness.Bottom
+            : null;
+
+    /// <summary>
     /// Limits the sheet to <paramref name="room"/>, the height left for it down to the bottom of the work area, and never
-    /// above 62 % of the screen: the panel never leaves the screen, and what does not fit scrolls inside (AJR-001).
+    /// below its minimum: what does not fit scrolls inside (AJR-001).
     /// </summary>
     /// <param name="room">The free height for the sheet, in device-independent pixels.</param>
-    public void FitHeight(double room)
+    /// <returns>The height the sheet will have once laid out (<see cref="QuickSheetFit.Height"/>).</returns>
+    public double FitHeight(double room)
     {
-        var height = Math.Min(_screenLimit, Math.Max(MinimumFitHeight, room));
-        if (Math.Abs(MaxHeight - height) > 0.5)
+        var height = QuickSheetFit.MaxHeight(room);
+        if (!MaxHeight.Equals(height))
         {
             MaxHeight = height;
         }
+
+        return QuickSheetFit.Height(MaxHeight, NaturalHeight);
     }
 
     /// <summary>
@@ -236,9 +327,12 @@ public sealed class QuickSettingsSheet : Border
                     && TouchBounds.Of(track, inflate: true).Contains(sample.Position)
                 )
                 {
+                    // The track sits in the middle of what scrolls: a vertical swipe that starts on it scrolls, a
+                    // horizontal one slides the value and a tap sets it where it lands (AJR-002, D21 review).
                     _contact = sample.PointerId;
-                    _sliding = true;
-                    Slide(at);
+                    _onTrack = true;
+                    _origin = at;
+                    _startOffset = _scroller.VerticalOffset;
                     return true;
                 }
 
@@ -258,7 +352,26 @@ public sealed class QuickSettingsSheet : Border
                     return true;
                 }
 
+                var dx = at.X - _origin.X;
                 var dy = at.Y - _origin.Y;
+                if (_onTrack && !_scrolling)
+                {
+                    // Which way the finger goes decides, past half the drag threshold.
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) <= thresholdPx / 2)
+                    {
+                        return true;
+                    }
+
+                    if (Math.Abs(dx) >= Math.Abs(dy))
+                    {
+                        _sliding = true;
+                        Slide(at);
+                        return true;
+                    }
+
+                    _scrolling = true;
+                }
+
                 _scrolling |= Math.Abs(dy) > thresholdPx;
                 if (_scrolling)
                 {
@@ -266,14 +379,20 @@ public sealed class QuickSettingsSheet : Border
                     _scroller.ScrollToVerticalOffset(_startOffset - (dy / scale));
                 }
 
-                return _scrolling;
+                return _scrolling || _onTrack;
 
             case PointerPhase.Up
             or PointerPhase.Cancel when _contact == sample.PointerId:
-                var used = _sliding || _scrolling;
+                if (_onTrack && !_sliding && !_scrolling && sample.Phase == PointerPhase.Up)
+                {
+                    Slide(_origin);
+                }
+
+                var used = _sliding || _scrolling || _onTrack;
                 _contact = null;
                 _sliding = false;
                 _scrolling = false;
+                _onTrack = false;
                 return used;
 
             default:
@@ -318,115 +437,68 @@ public sealed class QuickSettingsSheet : Border
         }
     }
 
-    private static TextBlock Heading()
+    /// <summary>The sections in <paramref name="columns"/> columns, each S3 from the edges and S4 from the other.</summary>
+    private Grid Arrange(int columns)
     {
-        var heading = new TextBlock { FontWeight = FontWeights.Bold };
-        heading.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(HeadingPx));
-        heading.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
-        return heading;
-    }
-
-    private static StackPanel Section(UIElement heading, UIElement content)
-    {
-        var section = new StackPanel { Margin = new Thickness(0, SectionGap, 0, 0) };
-        section.Children.Add(heading);
-        if (content is FrameworkElement element)
+        foreach (var section in _first.Concat(_second))
         {
-            element.Margin = new Thickness(0, HeadingGap, 0, 0);
+            if (section.Parent is System.Windows.Controls.Panel parent)
+            {
+                parent.Children.Remove(section);
+            }
         }
 
-        section.Children.Add(content);
-        return section;
+        var grid = new Grid { Margin = new Thickness(Space.S3, 0, Space.S3, Space.S3) };
+        var left = new StackPanel();
+        foreach (var section in columns == 1 ? _first.Concat(_second) : _first)
+        {
+            _ = left.Children.Add(section);
+        }
+
+        grid.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
+        _ = grid.Children.Add(left);
+        // The first heading of the right column starts at the top, with the first row of the left one.
+        _second[0].Margin = new Thickness(0, columns == 2 ? 0 : Space.S4, 0, 0);
+        if (columns == 2)
+        {
+            var right = new StackPanel();
+            foreach (var section in _second)
+            {
+                _ = right.Children.Add(section);
+            }
+
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Space.S4) });
+            grid.ColumnDefinitions.Add(
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            );
+            Grid.SetColumn(right, 2);
+            _ = grid.Children.Add(right);
+        }
+
+        return grid;
     }
 
-    private TouchButton ControlCenterCard()
+    private static StackPanel Section(FrameworkElement heading, FrameworkElement content)
     {
-        var tile = new Border
-        {
-            Width = CardIconTile,
-            Height = CardIconTile,
-            CornerRadius = new CornerRadius(Radii.Control),
-            Child = new SymbolIcon
-            {
-                Symbol = "settings",
-                Size = 20,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
-        };
-        tile.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Accent));
-        ((SymbolIcon)tile.Child).SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.OnAccent)
-        );
-
-        _ccTitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(14));
-        _ccSubtitle.SetResourceReference(TextBlock.FontSizeProperty, ThemeKeys.TextSize(11));
-        _ccSubtitle.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Muted)
-        );
-        var texts = new StackPanel
-        {
-            Margin = new Thickness(10, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        texts.Children.Add(_ccTitle);
-        texts.Children.Add(_ccSubtitle);
-
-        var chevron = new SymbolIcon
-        {
-            Symbol = "chevron_right",
-            Size = 22,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        chevron.SetResourceReference(
-            SymbolIcon.ForegroundProperty,
-            ThemeBrushKey.For(ColorToken.Accent)
-        );
-
-        var row = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(tile, Dock.Left);
-        DockPanel.SetDock(chevron, Dock.Right);
-        row.Children.Add(tile);
-        row.Children.Add(chevron);
-        row.Children.Add(texts);
-
-        var card = new TouchButton
-        {
-            Appearance = ButtonAppearance.Outline,
-            MinHeight = CardHeight,
-            Padding = new Thickness(8, 8, 10, 8),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            FontWeight = FontWeights.Normal,
-            Focusable = false,
-            IsTabStop = false,
-            Content = row,
-        };
-        card.SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.AccentWash));
-        card.SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Accent));
-        return card;
+        var section = new StackPanel { Margin = new Thickness(0, Space.S4, 0, 0) };
+        heading.Margin = new Thickness(0, 0, 0, Space.S2);
+        section.Children.Add(heading);
+        section.Children.Add(content);
+        return section;
     }
 
     private SegmentedControl Group(
         IReadOnlyList<QuickOptionViewModel> options,
         int columns,
-        double height
+        OptionKind kind
     )
     {
-        var group = new SegmentedControl { Columns = columns };
+        var group = new SegmentedControl { Kind = kind, Columns = columns };
         foreach (var option in options)
         {
-            var item = new SegmentedItem
-            {
-                Height = height,
-                Focusable = false,
-                IsTabStop = false,
-            };
+            var item = new SegmentedItem { Focusable = false, IsTabStop = false };
             if (option.Icon.Length > 0)
             {
                 item.Symbol = option.Icon;
@@ -458,9 +530,9 @@ public sealed class QuickSettingsSheet : Border
         return group;
     }
 
-    private StackPanel Switches(IReadOnlyList<QuickSwitchViewModel> switches)
+    private Border Switches(IReadOnlyList<QuickSwitchViewModel> switches)
     {
-        var rows = new StackPanel { Margin = new Thickness(0, SectionGap, 0, 0) };
+        var rows = new StackPanel { Margin = new Thickness(0, Space.S1, 0, 0) };
         foreach (var item in switches)
         {
             var row = new ToggleSwitch
@@ -476,7 +548,14 @@ public sealed class QuickSettingsSheet : Border
             _switches.Add((row, item));
         }
 
-        return rows;
+        var block = new Border
+        {
+            Child = rows,
+            Margin = new Thickness(0, Space.S3, 0, 0),
+            BorderThickness = new Thickness(0, Stroke.Line, 0, 0),
+        };
+        block.SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Border));
+        return block;
     }
 
     private void Toggled(QuickSwitchViewModel item, bool on)
@@ -489,17 +568,66 @@ public sealed class QuickSettingsSheet : Border
         }
     }
 
+    /// <inheritdoc />
+    /// <remarks>A Group named [quick] around its sections (ACC-001): a Border has no peer of its own.</remarks>
+    protected override AutomationPeer OnCreateAutomationPeer() => new GroupAutomationPeer(this);
+
     private void OnChanged(object? sender, PropertyChangedEventArgs change) => Refresh();
+
+    /// <summary>
+    /// The themes go in two columns, as in the mockup, while every name fits whole beside its swatch; in a
+    /// narrower sheet (the Tab view, S, a larger text) they go one under the other, never cut with «…».
+    /// </summary>
+    private void FitThemes()
+    {
+        if (_themes.ActualWidth <= 0)
+        {
+            return;
+        }
+
+        // The group spreads Space.S1 past each side and every cell keeps Space.S1 around its option.
+        var cell = (_themes.ActualWidth / 2) - (2 * Space.S1);
+        var fits = true;
+        foreach (var (owner, item, _) in _options)
+        {
+            if (!ReferenceEquals(owner, _themes))
+            {
+                continue;
+            }
+
+            // The inner padding of a card, not of a tile: with 12 at each side «Como Windows» fitted two columns of
+            // the sheet of 340 by 1.4 px, so a rounding left the themes in one column in high contrast and in two in
+            // the other themes (D20 review). With 8 the names keep room to spare.
+            item.Padding = new Thickness(Space.S2, 0, Space.S2, 0);
+            if (
+                fits
+                && item.Content is DockPanel row
+                && item.Padding.Left + item.Padding.Right + ThemeSwatch.WholeWidth(row) > cell
+            )
+            {
+                fits = false;
+            }
+        }
+
+        var columns = fits ? 2 : 1;
+        if (_themes.Columns != columns)
+        {
+            _themes.Columns = columns;
+        }
+    }
 
     private void Refresh()
     {
         _applying = true;
         try
         {
-            Visibility = _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
+            Visibility =
+                _showsAlways || _viewModel.IsOpen ? Visibility.Visible : Visibility.Collapsed;
             AutomationProperties.SetName(this, _viewModel.Name);
-            _ccTitle.Text = _viewModel.ControlCenterTitle;
-            _ccSubtitle.Text = _viewModel.ControlCenterSubtitle;
+            _title.Text = _viewModel.Name;
+            AutomationProperties.SetName(_close, _viewModel.CloseName);
+            _controlCenter.Content = _viewModel.ControlCenterTitle;
+            _controlCenter.Caption = _viewModel.ControlCenterSubtitle;
             AutomationProperties.SetName(_controlCenter, _viewModel.ControlCenterTitle);
             AutomationProperties.SetHelpText(_controlCenter, _viewModel.ControlCenterSubtitle);
             _viewHeading.Text = _viewModel.ViewHeading;
@@ -518,9 +646,35 @@ public sealed class QuickSettingsSheet : Border
 
             foreach (var (_, item, option) in _options)
             {
-                item.Content = option.Label.Length > 0 ? option.Label : null;
+                // A theme shows its swatch (filled with ✓ while chosen), as in «General y panel» and the welcome.
+                item.Content =
+                    option.Value is ThemeChoice theme
+                        ? ThemeSwatch.Row(theme, option.Label, option.IsSelected)
+                    : option.Label.Length > 0 ? option.Label
+                    : null;
+                if (option.Value is ThemeChoice)
+                {
+                    item.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                }
+
                 item.IsSelected = option.IsSelected;
-                AutomationProperties.SetName(item, option.AccessibleName);
+
+                // The name starts with what the option reads («M», label in name for voice), the long one is its help.
+                var shortLabel =
+                    option.Label.Length > 0
+                    && !string.Equals(
+                        option.Label,
+                        option.AccessibleName,
+                        StringComparison.Ordinal
+                    );
+                AutomationProperties.SetName(
+                    item,
+                    shortLabel ? option.Label : option.AccessibleName
+                );
+                AutomationProperties.SetHelpText(
+                    item,
+                    shortLabel ? option.AccessibleName : string.Empty
+                );
             }
 
             foreach (var (row, item) in _switches)
@@ -533,5 +687,7 @@ public sealed class QuickSettingsSheet : Border
         {
             _applying = false;
         }
+
+        FitThemes();
     }
 }

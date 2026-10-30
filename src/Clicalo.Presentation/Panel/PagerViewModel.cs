@@ -15,6 +15,7 @@ public sealed class PagerViewModel : ObservableObject
     private bool _isVisible;
     private string _previousName = string.Empty;
     private string _nextName = string.Empty;
+    private string _pageLabel = string.Empty;
 
     internal PagerViewModel(Action<int> goTo) => _goTo = goTo;
 
@@ -54,6 +55,16 @@ public sealed class PagerViewModel : ObservableObject
         private set => SetProperty(ref _nextName, value);
     }
 
+    /// <summary>
+    /// «2/5»: what the row shows in place of the dots when they do not fit between ◀ and ▶ (each dot answers on 44, so
+    /// five pages in S would run over the arrows).
+    /// </summary>
+    public string PageLabel
+    {
+        get => _pageLabel;
+        private set => SetProperty(ref _pageLabel, value);
+    }
+
     /// <summary>◀ (or UI Automation Invoke).</summary>
     public void Previous() => _goTo(Paging.Step(_window, -1));
 
@@ -70,13 +81,15 @@ public sealed class PagerViewModel : ObservableObject
         string previousName,
         string nextName,
         string pageWord,
-        string currentWord
+        string currentWord,
+        string pageLabel
     )
     {
         var moved = window != _window;
         _window = window;
         PreviousName = previousName;
         NextName = nextName;
+        PageLabel = pageLabel;
         var dots = Paging.Dots(window);
         if (Dots.Count != dots.Length)
         {

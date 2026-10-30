@@ -118,7 +118,7 @@ public sealed class TileContextMenuViewModelTests
         menu.Relocalize();
 
         menu.Rows.Select(static r => r.Label)
-            .ShouldBe(["Pin to Frequent", "Remove from Frequent", "Edit", "Cancel"]);
+            .ShouldBe(["Pin to Frequents", "Remove from Frequents", "Edit", "Cancel"]);
         menu.AccessibleName.ShouldBe("More options");
     }
 }

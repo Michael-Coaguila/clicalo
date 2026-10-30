@@ -7,9 +7,11 @@ using Clicalo.UI.Wpf.Theming.Generated;
 namespace Clicalo.UI.Wpf.Controls;
 
 /// <summary>
-/// A card of the prototype (docs/07 «Formas»: radius 12; padding 10): a rounded container filled as
-/// <see cref="Tone"/> says. It is not interactive: its content is. UI Automation sees a Group, named with
-/// <c>AutomationProperties.Name</c> when the card has a title (<see cref="CardAutomationPeer"/>).
+/// A card of direction C (D12): a container of radius <see cref="Radii.Large"/> with a padding of
+/// <see cref="Space.S4"/>, filled and lined as <see cref="Tone"/> says (its line is drawn inside). It is the second
+/// level of elevation (surface → card) and never goes inside another card: no more than two nested borders. It is not
+/// interactive: its content is. UI Automation sees a Group, named with <c>AutomationProperties.Name</c> when the card
+/// has a title (<see cref="CardAutomationPeer"/>).
 /// </summary>
 public sealed class Card : ContentControl
 {
@@ -26,7 +28,7 @@ public sealed class Card : ContentControl
 
     private static readonly ControlTemplate DefaultTemplate = Templates.Seal(
         typeof(Card),
-        Templates.Chrome(ChromePart, Radii.Tile).Add(Templates.Element<ContentPresenter>())
+        Templates.Chrome(ChromePart, Radii.Large).Add(Templates.Element<ContentPresenter>())
     );
 
     static Card()
@@ -46,7 +48,7 @@ public sealed class Card : ContentControl
     public Card()
     {
         Apply(this, CardTone.Neutral);
-        Padding = new Thickness(10);
+        Padding = new Thickness(Space.S4);
     }
 
     /// <summary>The fill of the card (<see cref="CardTone.Neutral"/> by default).</summary>

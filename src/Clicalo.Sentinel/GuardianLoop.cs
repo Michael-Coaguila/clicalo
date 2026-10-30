@@ -20,6 +20,8 @@ namespace Clicalo.Sentinel;
 /// release afterwards.</item>
 /// <item>Sentinel cannot write files (only <c>AtomicFile</c> and the log sink may): the relaunched main process records
 /// the crash from <see cref="CrashJournal.AfterCrashArgument"/>, with the time of the death, not of the release.</item>
+/// <item>A main process started with <c>--data</c> is relaunched with the same folder
+/// (<see cref="SentinelStartInfo.DataFolder"/>, ADR-0032): an isolated copy never comes back on the user's data.</item>
 /// </list>
 /// </remarks>
 /// <param name="startInfo">The parsed start-up contract.</param>
@@ -66,7 +68,11 @@ internal sealed class GuardianLoop(
         }
 
         return environment.Relaunch(
-            CrashJournal.RelaunchArguments(diedAt, decision == RelaunchDecision.RelaunchInSafeMode)
+            CrashJournal.RelaunchArguments(
+                diedAt,
+                decision == RelaunchDecision.RelaunchInSafeMode,
+                startInfo.DataFolder
+            )
         )
             ? SentinelExitCode.ReleasedAndRelaunched
             : SentinelExitCode.ReleasedWithoutRelaunch;

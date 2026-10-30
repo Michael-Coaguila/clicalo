@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Clicalo.Domain.Messages;
 using Clicalo.Domain.Primitives;
+using Clicalo.Domain.Timing;
 
 namespace Clicalo.Domain.Settings;
 
@@ -136,7 +137,7 @@ internal static class SettingsRegistry
             Leaf(
                 SettingPaths.VoiceNumbers,
                 Presentation,
-                L.VoiceNums,
+                L.VoiceNumsT,
                 null,
                 s => s.VoiceNumbers,
                 (s, v) => s with { VoiceNumbers = v }
@@ -407,6 +408,26 @@ internal static class SettingsRegistry
                 s => s.Keyboard.Detected,
                 (s, v) => s with { Keyboard = s.Keyboard with { Detected = v } }
             ),
+            // ADR-0033: a consent given for one provider is not one for another, so writing another provider clears it
+            // in the same step. It goes before the consent: undo copies the leaves in this order, so the provider comes
+            // back first and the consent of that step after it.
+            Leaf(
+                SettingPaths.AiProvider,
+                Behavior,
+                L.AiProvider,
+                null,
+                s => s.Ai.Provider,
+                (s, v) =>
+                    s with
+                    {
+                        Ai = s.Ai with
+                        {
+                            Provider = v,
+                            Consent = s.Ai.Consent && s.Ai.Provider == v,
+                        },
+                    },
+                Defined
+            ),
             Leaf(
                 SettingPaths.AiConsent,
                 Behavior,
@@ -536,6 +557,61 @@ internal static class SettingsRegistry
                 s => s.NoKeyboardUser,
                 (s, v) => s with { NoKeyboardUser = v }
             ),
+            Leaf(
+                SettingPaths.HandlePositionsByMonitor,
+                Placement,
+                L.HandlePos,
+                L.HandlePosD,
+                s => s.HandlePositionsByMonitor,
+                (s, v) => s with { HandlePositionsByMonitor = v },
+                static (value, _) => MonitorHandlePositions.Repair(value)
+            ),
+            Leaf(
+                SettingPaths.ControlCenter,
+                Placement,
+                L.Cc,
+                null,
+                s => s.ControlCenter,
+                (s, v) => s with { ControlCenter = v },
+                static (value, _) => value is { IsUsable: true } ? value : null,
+                nullable: true
+            ),
+            Leaf(
+                SettingPaths.GlobalHotkeyEnabled,
+                Behavior,
+                L.GlobalHotkeyT,
+                L.GlobalHotkeyD,
+                s => s.GlobalHotkey.Enabled,
+                (s, v) => s with { GlobalHotkey = s.GlobalHotkey with { Enabled = v } }
+            ),
+            Leaf(
+                SettingPaths.GlobalHotkeyCombo,
+                Behavior,
+                L.Keys,
+                null,
+                s => s.GlobalHotkey.Combo,
+                (s, v) => s with { GlobalHotkey = s.GlobalHotkey with { Combo = v } },
+                static (value, fallback) => GlobalHotkeys.Find(value) is null ? fallback : value
+            ),
+            Leaf(
+                SettingPaths.TimeMultiplier,
+                Behavior,
+                L.TimeMultiplierT,
+                L.TimeMultiplierD,
+                s => s.TimeMultiplier,
+                (s, v) => s with { TimeMultiplier = v },
+                In(SettingsSchema.TimeMultiplier),
+                SettingsSchema.TimeMultiplier
+            ),
+            Leaf(
+                SettingPaths.GuidesDone,
+                Presentation,
+                L.SeeGuides,
+                L.SeeGuidesD,
+                s => s.GuidesDone,
+                (s, v) => s with { GuidesDone = v },
+                GuideIds
+            ),
         ];
 
     private static SettingLeaf<T> Leaf<T>(
@@ -642,6 +718,30 @@ internal static class SettingsRegistry
         }
 
         return best;
+    }
+
+    /// <summary>
+    /// The ids of the guides done (ADR-0034): each once and non-empty, at most <c>Timings.Guides.MaxDoneIds</c> of at most
+    /// <c>Timings.Guides.MaxIdLength</c> characters. An id this version does not know is kept: a later one may add guides.
+    /// </summary>
+    private static ValueList<string> GuideIds(ValueList<string> value, ValueList<string> fallback)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var kept = ImmutableArray.CreateBuilder<string>();
+        foreach (var id in value)
+        {
+            if (
+                id is { Length: > 0 }
+                && id.Length <= Timings.Guides.MaxIdLength
+                && kept.Count < Timings.Guides.MaxDoneIds
+                && seen.Add(id)
+            )
+            {
+                kept.Add(id);
+            }
+        }
+
+        return kept.Count == value.Count ? value : new ValueList<string>(kept.ToImmutable());
     }
 
     private static ValueList<MonitorPosition> PanelPositions(

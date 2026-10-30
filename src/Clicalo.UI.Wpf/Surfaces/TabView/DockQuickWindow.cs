@@ -1,0 +1,139 @@
+using System.ComponentModel;
+using System.Windows;
+using Clicalo.Application.Ports;
+using Clicalo.Domain.PanelLayout;
+using Clicalo.Domain.Touch;
+using Clicalo.Presentation.Panel.QuickSettings;
+using Clicalo.UI.Wpf.Controls;
+using Clicalo.UI.Wpf.Surfaces.Panel.QuickSettings;
+using Clicalo.UI.Wpf.Theming;
+using Clicalo.UI.Wpf.Theming.Generated;
+using Clicalo.UI.Wpf.Windowing;
+
+namespace Clicalo.UI.Wpf.Surfaces.TabView;
+
+/// <summary>
+/// Quick settings beside the open bar of the Tab view (PES-009, DIS-22): the same sheet as the panel's
+/// (<see cref="QuickSettingsSheet"/> over the same <see cref="QuickSettingsViewModel"/>), with the row «Lado de la
+/// pestaña» (AJR-005), in a <see cref="NonActivatingWindow"/> of its own, never a <c>Popup</c> (REG-01). The <c>tune</c>
+/// button of the bar opens and closes it. It scrolls and slides the opacity with the finger, like the sheet of the
+/// panel, and a contact that did so activates nothing (TAC-004).
+/// </summary>
+public sealed class DockQuickWindow : TouchSurface
+{
+    /// <summary>
+    /// The instance of the side window in the registry: clear of the windows of the bar, whose instance is their
+    /// <see cref="DockFlyout"/> (1 to 4), and of the guide (10). At 4 it was the id of the arrows, and whichever of the
+    /// two got its handle second never became a surface: it showed, but could be neither used nor hidden (D21).
+    /// </summary>
+    public const int Instance = 11;
+
+    /// <summary>
+    /// The width of the panel M in its default layout, so the sheet beside the bar is the sheet of the panel (D19): at the
+    /// 288 it had, «Compacta» ended in «…», the themes went one under another and the sheet was most of the screen high.
+    /// </summary>
+    private static readonly double SheetWidth = GridMetrics.PanelWidth(PanelLayoutSettings.Default);
+
+    private readonly QuickSettingsViewModel _viewModel;
+    private readonly QuickSettingsSheet _sheet;
+
+    /// <summary>Creates the window on the UI thread of <paramref name="registry"/>.</summary>
+    /// <param name="viewModel">Quick settings, shared with the panel.</param>
+    /// <param name="registry">The surfaces of the process.</param>
+    /// <param name="time">The clock of the pointer layer.</param>
+    /// <param name="theme">The theme service.</param>
+    /// <param name="touch">The touch filter.</param>
+    public DockQuickWindow(
+        QuickSettingsViewModel viewModel,
+        SurfaceRegistry registry,
+        TimeProvider time,
+        ThemeService theme,
+        TouchSettings touch
+    )
+        : base(
+            new SurfaceId(SurfaceKind.SideWindow, Instance),
+            registry,
+            time,
+            theme,
+            touch,
+            static (_, _, _) => { },
+            SurfaceLook.SideWindow
+        )
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        _viewModel = viewModel;
+        // The sheet is at the level of the panel (D12): the surface of the bar, its controls the second level.
+        SetResourceReference(BackgroundProperty, ThemeBrushKey.For(ColorToken.Panel));
+        SetResourceReference(BorderBrushProperty, ThemeBrushKey.For(ColorToken.Line));
+        SetResourceReference(BorderThicknessProperty, ThemeScope.BorderThicknessKey);
+        // With its title and «Cerrar», as the other windows beside the bar have their heading (D21 review).
+        _sheet = new QuickSettingsSheet(viewModel)
+        {
+            Margin = new Thickness(0),
+            BorderThickness = new Thickness(0),
+            ShowsAlways = true,
+            ShowsHeader = true,
+        };
+        _sheet.Background = System.Windows.Media.Brushes.Transparent;
+        Width = SheetWidth;
+        FixedWidth = SheetWidth;
+        SizeToContent = SizeToContent.Height;
+        Content = _sheet;
+        viewModel.PropertyChanged += OnChanged;
+        Title = viewModel.Name;
+    }
+
+    /// <summary>The sheet.</summary>
+    public QuickSettingsSheet Sheet => _sheet;
+
+    /// <summary>
+    /// The columns of the sheet (<see cref="QuickSettingsSheet.Columns"/>): one beside the bar, two beside the panel
+    /// where they fit; the window is as wide as they are.
+    /// </summary>
+    public int Columns
+    {
+        get => _sheet.Columns;
+        set
+        {
+            _sheet.Columns = value;
+            Width = WidthFor(value);
+            FixedWidth = Width;
+        }
+    }
+
+    /// <summary>The width of the window with <paramref name="columns"/> columns, in logical pixels.</summary>
+    /// <param name="columns">One or two.</param>
+    public static double WidthFor(int columns) =>
+        columns == 2 ? (2 * SheetWidth) + Space.S4 - (2 * Space.S3) : SheetWidth;
+
+    /// <summary>The tallest it may be, in logical pixels; what does not fit scrolls inside the sheet.</summary>
+    /// <param name="height">The height.</param>
+    public void FitHeight(double height) => _sheet.FitHeight(height);
+
+    /// <inheritdoc />
+    protected override IEnumerable<SurfaceTarget> CollectTargets()
+    {
+        foreach (var target in _sheet.TapTargets)
+        {
+            yield return SurfaceTarget.Button(target.Element, target.Tap);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override bool TrackContact(in PointerSample sample) =>
+        _sheet.Track(sample, DragThresholdPx);
+
+    /// <inheritdoc />
+    protected override void OnClosed(EventArgs e)
+    {
+        _viewModel.PropertyChanged -= OnChanged;
+        _sheet.Detach();
+        base.OnClosed(e);
+    }
+
+    private void OnChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        Title = _viewModel.Name;
+        RefreshTargets();
+    }
+}

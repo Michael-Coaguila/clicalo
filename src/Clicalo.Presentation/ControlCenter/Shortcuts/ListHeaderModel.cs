@@ -8,6 +8,9 @@ namespace Clicalo.Presentation.ControlCenter.Shortcuts;
 /// <param name="Editing">Whether the profile card is open.</param>
 /// <param name="EditName">[editProf].</param>
 /// <param name="AddText">[add].</param>
+/// <param name="BackText">
+/// «[backToProfile]»: the way back from the page of the editor to the list, in the narrow window (CCM-005).
+/// </param>
 public sealed record ListHeaderModel(
     string Icon,
     string Title,
@@ -15,5 +18,6 @@ public sealed record ListHeaderModel(
     bool CanEdit,
     bool Editing,
     string EditName,
-    string AddText
+    string AddText,
+    string BackText = ""
 );

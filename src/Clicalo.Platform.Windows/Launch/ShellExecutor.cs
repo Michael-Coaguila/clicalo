@@ -17,7 +17,8 @@ namespace Clicalo.Platform.Windows.Launch;
 /// runs on its own <see cref="ShellThread"/>, and the result goes back to the engine's inbox. Apps, Store apps,
 /// documents and web addresses start with <c>ShellExecute</c>, never through a command interpreter (LOG-008, checked
 /// again with <see cref="LaunchSafety"/>); when Clícalo runs elevated they start unelevated through the desktop shell
-/// (<see cref="DesktopShellLauncher"/>), and when that is not possible they do not start at all.
+/// (<see cref="DesktopShellLauncher"/>), and when that is not possible they do not start at all. The feedback email
+/// of «Acerca de» is its own entry (<see cref="OpenMailAsync"/>, ADR-0029): no shortcut can reach it.
 /// </summary>
 public sealed class ShellExecutor : IShellExecutor, IDisposable
 {
@@ -81,6 +82,50 @@ public sealed class ShellExecutor : IShellExecutor, IDisposable
 
             _ = replyTo.Post(new EngineEvent.SystemCommandCompleted(effect, succeeded));
         });
+    }
+
+    /// <summary>
+    /// Opens the email app with the feedback message of «Acerca de» (ACE-004, ADR-0029), on the Shell thread and
+    /// unelevated: only a <c>mailto:</c> address towards <paramref name="projectMail"/>, with a subject and a body and
+    /// nothing else (<see cref="LaunchSafety.CheckMail"/>). Anything else is refused without touching the shell.
+    /// </summary>
+    /// <param name="address">The <c>mailto:</c> address.</param>
+    /// <param name="projectMail">The fixed contact address of the project; without one nothing opens.</param>
+    /// <param name="cancellationToken">Stops waiting for the answer.</param>
+    /// <returns>Whether Windows started an email app.</returns>
+    public Task<bool> OpenMailAsync(
+        Uri address,
+        string? projectMail,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        if (LaunchSafety.CheckMail(address, projectMail) != LaunchVerdict.Allowed)
+        {
+            return Task.FromResult(false);
+        }
+
+        var done = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var file = address.AbsoluteUri;
+        _thread.Post(() =>
+        {
+            try
+            {
+                _ = done.TrySetResult(
+                    _selfElevated
+                        ? DesktopShellLauncher.TryStart(file, string.Empty, string.Empty)
+                        : ShellOpen(file, string.Empty, string.Empty)
+                );
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _onFailure?.Invoke(ex);
+                _ = done.TrySetResult(false);
+            }
+        });
+        return done.Task.WaitAsync(cancellationToken);
     }
 
     /// <inheritdoc />

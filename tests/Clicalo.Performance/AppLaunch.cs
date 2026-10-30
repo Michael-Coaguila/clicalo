@@ -7,7 +7,9 @@ namespace Clicalo.Performance;
 /// One start of a published <c>Clicalo.exe</c> with its own empty data folder (<c>--data</c>), measured from the
 /// creation of the process to the first frame of the panel: the app sets the event named by
 /// <c>CLICALO_FIRST_FRAME_EVENT</c> when the panel's content is rendered. Without key sending unless the measurement
-/// runs in continuous integration (<c>--no-input</c>). Disposing it ends the process and its children (Sentinel).
+/// runs in continuous integration (<c>--no-input</c>). Disposing it ends the process and its children (Sentinel). A
+/// start with <c>--data</c> is an instance of its own (ADR-0030), so it runs beside the Clícalo the person uses; it
+/// only waits until an instance with the same data folder is gone (<see cref="RunningInstance"/>).
 /// </summary>
 internal sealed class AppLaunch : IDisposable
 {
@@ -33,7 +35,18 @@ internal sealed class AppLaunch : IDisposable
     /// <summary>From the creation of the process to the first frame.</summary>
     public TimeSpan FirstFrame { get; }
 
-    /// <summary>Starts <paramref name="variant"/> and waits for its first frame.</summary>
+    /// <summary>The data folder of this start (<c>--data</c>): a second start with it finds this instance.</summary>
+    public string DataDirectory => _data;
+
+    /// <summary>A new, empty data folder under <c>%TEMP%\clicalo-perf-data</c>.</summary>
+    public static string NewDataDirectory() =>
+        Path.Combine(
+            Path.GetTempPath(),
+            "clicalo-perf-data",
+            Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)
+        );
+
+    /// <summary>Starts <paramref name="variant"/> with a new data folder and waits for its first frame.</summary>
     /// <param name="variant">The publication.</param>
     /// <param name="sendInput">False adds <c>--no-input</c>: nothing can be injected.</param>
     /// <param name="extraArguments">More options (<c>--guardian after-first-frame</c>).</param>
@@ -41,14 +54,25 @@ internal sealed class AppLaunch : IDisposable
         AppVariant variant,
         bool sendInput,
         params string[] extraArguments
+    ) => Start(variant, NewDataDirectory(), sendInput, extraArguments);
+
+    /// <summary>Starts <paramref name="variant"/> with <paramref name="data"/> and waits for its first frame.</summary>
+    /// <param name="variant">The publication.</param>
+    /// <param name="data">The data folder (<see cref="NewDataDirectory"/>).</param>
+    /// <param name="sendInput">False adds <c>--no-input</c>: nothing can be injected.</param>
+    /// <param name="extraArguments">More options (<c>--guardian after-first-frame</c>).</param>
+    public static AppLaunch Start(
+        AppVariant variant,
+        string data,
+        bool sendInput,
+        params string[] extraArguments
     )
     {
         ArgumentNullException.ThrowIfNull(variant);
-        var data = Path.Combine(
-            Path.GetTempPath(),
-            "clicalo-perf-data",
-            Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)
-        );
+        ArgumentException.ThrowIfNullOrWhiteSpace(data);
+
+        // A start is a first start only when no Clícalo with the same data folder is alive (RunningInstance).
+        RunningInstance.WaitUntilGone(data, RunningInstance.GoneTimeout);
         var name =
             @"Local\Clicalo.Perf." + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         using var firstFrame = new EventWaitHandle(false, EventResetMode.ManualReset, name);
@@ -87,7 +111,7 @@ internal sealed class AppLaunch : IDisposable
                 throw new InvalidOperationException(
                     string.Create(
                         CultureInfo.InvariantCulture,
-                        $"Clicalo.exe ({variant.Name}) ended with code {code} before its first frame: 70 is a failed start (its log says why), 0 means another Clícalo of this session was already running."
+                        $"Clicalo.exe ({variant.Name}) ended with code {code} before its first frame: {ExitCodeMeaning(code)}"
                     )
                 );
             }
@@ -98,6 +122,17 @@ internal sealed class AppLaunch : IDisposable
             "Clicalo.exe (" + variant.Name + ") showed no frame within " + FirstFrameTimeout + "."
         );
     }
+
+    /// <summary>What an exit code of <c>Clicalo.exe</c> before its first frame means (App/AppExitCode).</summary>
+    internal static string ExitCodeMeaning(int code) =>
+        code switch
+        {
+            70 => "the start failed (its log says why).",
+            0 => "another Clícalo of this session was already running, and it was shown.",
+            2 => "another Clícalo of this session was starting or ending, and it did not answer.",
+            3 => "another program holds the pipe of Clícalo (ipc.squat_detected).",
+            _ => "an exit code Clícalo does not use.",
+        };
 
     /// <summary>The working set and private bytes after <paramref name="settle"/>.</summary>
     /// <param name="settle">How long to let the start settle.</param>

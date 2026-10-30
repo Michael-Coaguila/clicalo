@@ -23,6 +23,7 @@ internal static class CommandFailures
     public const string MonitorEmptyCode = "command.position.monitor_empty";
     public const string InvalidBackupCode = "command.backup.invalid";
     public const string IdsExhaustedCode = "command.ids.exhausted";
+    public const string NotAMergeCode = "command.import.not_a_merge";
 
     public static Failure BlankDraft() => Warning(BlankDraftCode, L.Incomplete);
 
@@ -58,6 +59,8 @@ internal static class CommandFailures
         );
 
     public static Failure IdsExhausted() => Warning(IdsExhaustedCode, L.Retry);
+
+    public static Failure NotAMerge() => Warning(NotAMergeCode, L.ImportInvalid);
 
     private static Failure Warning(string code, Message message) =>
         new(

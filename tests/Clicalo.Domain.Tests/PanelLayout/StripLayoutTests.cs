@@ -11,10 +11,11 @@ public sealed class StripLayoutTests
         new()
         {
             { PanelSize.Small, false, 4, 44, false },
-            { PanelSize.Medium, false, 8, 60, true },
-            { PanelSize.Large, false, 8, 72, true },
-            { PanelSize.Medium, true, 4, 40, false },
-            { PanelSize.Large, true, 4, 40, false },
+            { PanelSize.Medium, false, 8, 56, true },
+            { PanelSize.Large, false, 8, 56, true },
+            { PanelSize.Small, true, 4, 44, false },
+            { PanelSize.Medium, true, 4, 44, false },
+            { PanelSize.Large, true, 4, 44, false },
         };
 
     /// <summary>Shortcuts, capacity, page asked, expected page, pages, start, count, chip.</summary>
@@ -37,6 +38,7 @@ public sealed class StripLayoutTests
     [MemberData(nameof(Rows))]
     [Trait("Req", "FIJ-002")]
     [Trait("Req", "FIJ-003")]
+    [Trait("Req", "VCO-001")]
     public void The_row_holds_four_in_S_or_Compact_and_eight_in_M_or_L(
         PanelSize size,
         bool compact,
@@ -50,6 +52,31 @@ public sealed class StripLayoutTests
         StripLayout.Capacity(settings).ShouldBe(capacity);
         StripLayout.TileHeight(settings).ShouldBe(height);
         StripLayout.ShowsNames(settings).ShouldBe(names);
+    }
+
+    [Theory]
+    [InlineData(PanelSize.Medium, false, 150, 66)]
+    [InlineData(PanelSize.Large, false, 120, 60)]
+    [InlineData(PanelSize.Small, false, 150, 44)]
+    [InlineData(PanelSize.Medium, true, 150, 44)]
+    [Trait("Req", "FIJ-002")]
+    [Trait("Req", "CUA-011")]
+    public void A_row_with_names_grows_with_the_text_and_a_row_of_icons_does_not(
+        PanelSize size,
+        bool compact,
+        int scale,
+        int height
+    )
+    {
+        var settings = PanelLayoutSettings.Default with
+        {
+            Size = size,
+            Compact = compact,
+            TextScalePercent = scale,
+        };
+
+        StripLayout.TileHeight(settings).ShouldBe(height);
+        StripLayout.ShowsNames(settings).ShouldBe(height > 44);
     }
 
     [Theory]

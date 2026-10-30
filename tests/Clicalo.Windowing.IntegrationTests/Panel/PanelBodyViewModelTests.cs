@@ -30,7 +30,7 @@ public sealed class PanelBodyViewModelTests
         panel.Shape.PerPage.ShouldBe(9);
         Ids(panel).ShouldBe(Range(0, 9));
         panel.Pager.IsVisible.ShouldBeTrue();
-        panel.Pager.Dots.Select(static d => d.WidthPx).ShouldBe([24d, 10, 10]);
+        panel.Pager.Dots.Select(static d => d.WidthPx).ShouldBe([24d, 8, 8]);
         panel.Pager.Dots[1].AccessibleName.ShouldBe("Página 2");
         panel.Pager.Dots.Select(static d => d.AccessibleState).ShouldBe(["Activado", "", ""]);
         panel.Pager.CanGoPrevious.ShouldBeFalse();
@@ -69,7 +69,8 @@ public sealed class PanelBodyViewModelTests
     {
         var panel = Panel(20);
 
-        panel.ApplyGridSpace(165);
+        // Two tiles of 80 and the gap of 8 between them (direction C, D12).
+        panel.ApplyGridSpace(168);
         panel.Shape.Rows.ShouldBe(2);
         panel.Tiles.Count.ShouldBe(6);
         panel.Pager.PageCount.ShouldBe(4);
@@ -128,7 +129,7 @@ public sealed class PanelBodyViewModelTests
     [Fact]
     [Trait("Req", "FIJ-002")]
     [Trait("Req", "FIJ-003")]
-    public void In_S_the_row_holds_four_and_shows_only_icons()
+    public void In_S_the_row_holds_four_icons()
     {
         var panel = Panel(0, strip: 5);
         panel.ApplyLayout(
@@ -138,6 +139,7 @@ public sealed class PanelBodyViewModelTests
             }
         );
 
+        // D19: the row of S is the handoff's row of icons, one touch target high; the names stay for UI Automation.
         panel.Strip.ShowsNames.ShouldBeFalse();
         panel.Strip.Tiles.Count.ShouldBe(3);
         panel.Strip.MoreLabel.ShouldBe("1/2");
@@ -359,7 +361,7 @@ public sealed class PanelBodyViewModelTests
         panel.Admin.Message.ShouldStartWith(
             "Administrador de tareas se ejecuta como administrador."
         );
-        panel.Admin.ButtonName.ShouldBe("Iniciar Clícalo como administrador");
+        panel.Admin.ButtonName.ShouldBe("Reabrir como administrador");
         panel.Admin.Relaunch();
         _intents.Calls.ShouldBe(["RelaunchElevated"]);
     }
@@ -382,8 +384,9 @@ public sealed class PanelBodyViewModelTests
         panel.Empty.Add();
         _intents.Calls.ShouldBe(["AddShortcut:p-excel"]);
 
+        // In Frequents the card of the empty profile gives way to the one of Frequents (M6PanelTests).
         panel.ApplyContext(PanelBodyContext.Idle with { Frequents = true });
-        panel.Empty.IsVisible.ShouldBeFalse();
+        panel.Empty.IsFrequents.ShouldBeTrue();
     }
 
     [Fact]
@@ -439,7 +442,7 @@ public sealed class PanelBodyViewModelTests
         panel.Relocalize();
 
         panel.Notices.Message.ShouldBe("Ready. Tap a button to use it.");
-        panel.Selector.FrequentsName.ShouldBe("Frequent");
+        panel.Selector.FrequentsName.ShouldBe("Frequents");
     }
 
     [Fact]
