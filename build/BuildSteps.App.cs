@@ -275,6 +275,30 @@ internal sealed partial class BuildSteps
             .. properties,
         ];
 
+    /// <summary>
+    /// The ReadyToRun intermediates of <paramref name="project"/> under <paramref name="artifacts"/>
+    /// (<c>obj/&lt;project&gt;/&lt;pivot&gt;/R2R</c>). The SDK skips crossgen while they are newer than the assemblies,
+    /// whatever the mode they were compiled in: after the composite variant of <c>cl perf</c>, a plain ReadyToRun
+    /// publish (<c>cl package</c>) would ship the component assemblies without their <c>Clicalo.r2r.dll</c>, and
+    /// Clícalo would fail fast before its first frame.
+    /// </summary>
+    internal static IReadOnlyList<string> ReadyToRunIntermediates(string artifacts, string project)
+    {
+        var obj = Path.Combine(artifacts, "obj", Path.GetFileNameWithoutExtension(project));
+        if (!Directory.Exists(obj))
+        {
+            return [];
+        }
+
+        return
+        [
+            .. Directory
+                .EnumerateDirectories(obj)
+                .Select(pivot => Path.Combine(pivot, "R2R"))
+                .Where(Directory.Exists),
+        ];
+    }
+
     private async Task PublishProjectAsync(
         string project,
         string folder,
@@ -282,6 +306,12 @@ internal sealed partial class BuildSteps
         string? runtime = null
     )
     {
+        // Every publish compiles its own ReadyToRun images: the last ones may belong to another mode.
+        foreach (var intermediate in ReadyToRunIntermediates(layout.Artifacts, project))
+        {
+            Directory.Delete(intermediate, recursive: true);
+        }
+
         var log = PrepareErrorLog("publish");
         var args = PublishArguments(project, layout.Relative(folder), properties, runtime);
         AddMsBuildSwitches(args, log);
