@@ -18,8 +18,10 @@ param(
     [Parameter(Mandatory)] [string]$Command,
     [string]$Output = "$env:TEMP\clicalo-hidden-out.txt",
     [int]$TimeoutSeconds = 900,
-    [string]$WorkDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    [string]$WorkDir = ''
 )
+# Windows PowerShell 5.1 can leave $PSScriptRoot empty while it binds the defaults of param: the folder is found here.
+if (-not $WorkDir) { $WorkDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path }
 if (-not ('HiddenDesktop' -as [type])) {
 Add-Type @'
 using System;
